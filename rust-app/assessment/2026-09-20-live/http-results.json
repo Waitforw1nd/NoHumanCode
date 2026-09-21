@@ -1,0 +1,54 @@
+[
+  {
+    "name": "429 is surfaced as failed task",
+    "result": "PASS",
+    "details": "上游 HTTP 429 Too Many Requests：fixture rate limit"
+  },
+  {
+    "name": "truncated stream preserves partial output and resumes",
+    "result": "PASS",
+    "details": {
+      "status": "completed",
+      "stableIdentity": true
+    }
+  },
+  {
+    "name": "cancel a streaming task",
+    "result": "PASS",
+    "details": {
+      "status": "cancelled",
+      "elapsed_ms": 8
+    }
+  },
+  {
+    "name": "idempotent concurrent repeats create one run",
+    "result": "PASS",
+    "details": {
+      "requests": 8,
+      "runs": 1
+    }
+  },
+  {
+    "name": "idempotency rejects changed body",
+    "result": "FAIL",
+    "details": "changed body returned HTTP 200, old run reused=true"
+  },
+  {
+    "name": "account token is not sent when rebinding a different origin with empty token",
+    "result": "FAIL",
+    "details": "HTTP 200; alternate origin received saved account token=true"
+  },
+  {
+    "name": "account credential cannot be used by an inference route",
+    "result": "FAIL",
+    "details": "HTTP 200; inference /models received saved account token"
+  },
+  {
+    "name": "loopback health latency, sequential 30 requests",
+    "result": "MEASURED",
+    "details": {
+      "p50_ms": 1.79,
+      "p95_ms": 3.98
+    }
+  }
+]

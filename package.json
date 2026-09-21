@@ -1,0 +1,18 @@
+{
+  "name": "peachsh-harness",
+  "version": "0.1.0-peach.1",
+  "private": true,
+  "description": "🍑sh harness multi-key and multi-model Agent Team overlay",
+  "type": "module",
+  "scripts": {
+    "test:team": "node tests/test-team-model-routing.mjs && node tests/test-team-membership-guard.mjs && node tests/test-team-swarm-routing.mjs",
+    "test:parallel": "node tests/test-openai-parallel.mjs",
+    "discover:models": "node tests/discover-peachsh-models.mjs",
+    "test:newapi": "node tests/test-newapi-balance.mjs",
+    "test:swarm": "node tests/test-team-swarm-routing.mjs",
+    "test:xpeach": "node tests/test-xpeach-live.mjs",
+    "test:skills": "node tests/test-skill-discovery.mjs",
+    "test:rust": "pwsh -NoProfile -File rust-app/build.ps1 -Action test",
+    "build:rust": "pwsh -NoProfile -File rust-app/build.ps1 -Action build"
+  }
+}

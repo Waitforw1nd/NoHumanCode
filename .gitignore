@@ -1,0 +1,32 @@
+# Runtime and local state
+data/
+data-rust/
+workspace/
+bin/
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.key
+*.pem
+.env
+.env.*
+
+# Dependencies and build output
+node_modules/
+target/
+rust-app/target/
+dist/
+build/
+
+# Local/editor files
+.idea/
+.vscode/
+*.user
+*.suo
+*.swp
+*.tmp
+
+# Generated PDF/text extraction scratch files
+spatiotemporal_extract.txt

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>🍑sh harness · Rust</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<aside class="sidebar"><a class="brand" href="/">🍑<span>sh harness<small>你的多模型开发工作台</small></span></a>
+<button id="new-run" class="primary">＋ 新建任务</button>
+<nav><button data-view="chat">▣ 对话</button><button data-view="work" class="selected">◈ 工作台</button><button data-view="models">⇄ 模型与 Key</button><button data-view="account">◉ 账户与余额</button></nav>
+<div class="history-label">最近任务</div><div id="history" class="history"></div>
+<footer><span class="dot"></span> 本机运行 <span class="version">Rust 0.2.0</span></footer></aside>
+<main><header><div><span id="page-title">工作台</span><span class="muted breadcrumb"> / 🍑sh</span></div><span class="badge">RUST NATIVE</span></header>
+<div id="notice" role="status" hidden></div>
+<section id="chat" class="view" hidden>
+<div class="intro"><span class="eyebrow">CONVERSATION</span><h1>直接和模型对话。</h1><p>每个对话固定一个模型路由，连续消息保留完整上下文；需要多人协作时再切换到工作台。</p></div>
+<div class="card chat-shell"><div class="chat-toolbar"><label>模型路由<select id="chat-route"></select></label><div class="chat-actions"><span id="chat-status" class="chat-status"></span><button id="chat-stop" class="danger" hidden>停止</button><button id="new-chat" class="secondary">＋ 新对话</button></div></div><div class="chat-permissions"><label class="check"><input id="chat-tools" type="checkbox" checked>允许读取项目文件</label><label class="check"><input id="chat-writes" type="checkbox">允许修改整个项目</label><label class="check"><input id="chat-commands" type="checkbox">允许运行命令（默认 30 秒，最长 10 分钟）</label></div><div id="chat-messages" class="chat-messages"><div class="empty">选择模型后发送第一条消息。</div></div><div class="chat-compose"><textarea id="chat-input" placeholder="输入消息，按 Ctrl+Enter 发送…"></textarea><button id="chat-send" class="primary">发送 ↗</button></div></div>
+</section>
+<section id="work" class="view">
+<div id="create-panel"><div class="intro"><span class="eyebrow">BUILD TOGETHER, THINK DIFFERENTLY</span><h1>让合适的模型，完成合适的事。</h1><p>一个任务，一个清晰的职责。独立 Key、稳定身份、可继续的协作。</p></div>
+<div class="card composer"><div class="card-top"><div><h2>创建开发任务</h2><p>先从一个模型开始，需要时再加入队员。</p></div><button id="add-member" class="secondary">＋ 添加队员</button></div>
+<label>任务标题<input id="run-title" placeholder="例如：完善项目的登录功能" maxlength="160"></label>
+<div id="members"></div><label class="check"><input type="checkbox" id="summarize" checked>多成员任务完成后，使用首位成员的模型生成汇总</label>
+<div class="composer-bottom"><span id="workspace-label" class="muted"></span><button id="start-run" class="primary">开始任务 ↗</button></div>
+</div><div class="feature-grid"><article><span>01 / ROUTING</span><h3>模型各司其职</h3><p>每位成员绑定独立路由，继续任务时保持原来的模型与职责。</p></article><article><span>02 / CONTINUITY</span><h3>中断也能继续</h3><p>任务与工具记录保存到本机，刷新页面不会打断正在进行的工作。</p></article><article><span>03 / CONTROL</span><h3>掌握写入范围</h3><p>划分成员可修改的文件范围，重叠任务会在启动前得到提示。</p></article></div></div>
+<div id="run-panel" hidden><div class="run-heading"><div><span class="eyebrow">AGENT WORKSPACE</span><h1 id="run-heading"></h1></div><button id="refresh-run" class="secondary">刷新状态</button></div><div id="task-results"></div></div>
+</section>
+<section id="models" class="view" hidden><div class="intro"><span class="eyebrow">CONNECTIONS</span><h1>每一个 Key，都有自己的位置。</h1><p>直接适配 xpeach.codes；模型名称使用接口实际公布的 ID。</p></div>
+<div class="card"><div class="settings-grid"><label>项目目录<input id="workspace" placeholder="D:\\my-project"></label><label>总并发上限<input id="concurrency" type="number" min="1" max="8" value="3"></label></div><p class="hint">项目工具只在所选目录工作。修改设置前请先结束正在运行的任务。</p></div>
+<div id="routes"></div><div class="toolbar"><button id="add-route" class="secondary">＋ 添加路由</button><button id="save-settings" class="primary">保存设置</button></div></section>
+<section id="account" class="view" hidden><div class="intro"><span class="eyebrow">ACCOUNT</span><h1>余额清楚，开发心里有数。</h1><p>绑定 New API 账号查询总额度。账号访问令牌与模型调用 Key 分开保存。</p></div>
+<div class="account-grid"><form id="account-form" class="card"><h2>绑定 New API</h2><label>网站根地址<input id="account-url" type="url" value="https://xpeach.codes" required></label><label>用户 ID<input id="account-id" inputmode="numeric" required placeholder="例如：123"></label><label>账号访问令牌<input id="account-token" type="password" autocomplete="new-password" placeholder="已绑定时留空可沿用"></label><label>每显示单位对应的原始 quota<input id="account-unit" type="number" value="500000" min="1" required></label><p class="hint">默认使用 New API 的 500000 换算比例；站点可能自定义单位。这里显示账户额度，不代表实际结算价格。</p><button class="primary" type="submit">验证并绑定</button></form>
+<div class="card balance-card"><span class="eyebrow">AVAILABLE BALANCE</span><div id="balance-value">—</div><p id="balance-detail">绑定账号后可查看余额</p><button id="refresh-balance" class="secondary">刷新余额</button></div></div></section>
+</main></body></html>

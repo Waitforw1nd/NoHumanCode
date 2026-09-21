@@ -1,0 +1,12 @@
+[package]
+name = "peachsh-protocol"
+version = "0.1.0"
+edition = "2024"
+description = "Versioned host/UI protocol types for Peachsh"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
