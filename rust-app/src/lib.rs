@@ -1,6 +1,7 @@
 pub mod domain;
 pub mod engine;
 pub mod provider;
+pub mod repository;
 pub mod secrets;
 pub mod server;
 pub mod store;

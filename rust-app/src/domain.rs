@@ -1,5 +1,8 @@
 use anyhow::{Result, bail, ensure};
-pub use peachsh_protocol::SessionKind;
+pub use peachsh_protocol::{
+    AgentId, EVENT_SCHEMA_VERSION, EventEnvelope, EventId, LifecycleStatus, ProjectId, SessionId,
+    SessionKind, TaskId, TurnId,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -334,13 +337,150 @@ pub struct Run {
     pub created_at: u64,
     pub tasks: Vec<Task>,
 }
-#[derive(Clone, Serialize, Deserialize)]
+
+/// Compatibility projection of [`EventEnvelope`].
+///
+/// Existing HTTP/SSE clients read `seq`, `task_id`, `kind`, `data`, and `at`.
+/// New persistence also stores `schema_version`, `cursor`, `session_id`, and
+/// `turn_id`.  Those extra fields are optional on read so schema 5 rows still
+/// decode.  `at` remains the timestamp alias and is always written.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Event {
+    #[serde(default)]
+    pub schema_version: u32,
     pub seq: i64,
+    #[serde(default)]
+    pub cursor: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub turn_id: Option<String>,
     pub task_id: String,
     pub kind: String,
     pub data: Value,
+    #[serde(alias = "timestamp")]
     pub at: u64,
+}
+
+impl Event {
+    pub fn envelope(&self) -> EventEnvelope {
+        EventEnvelope {
+            schema_version: self.schema_version,
+            seq: self.seq,
+            cursor: if self.cursor.is_empty() {
+                self.seq.to_string()
+            } else {
+                self.cursor.clone()
+            },
+            session_id: self.session_id.clone().map(SessionId),
+            turn_id: self.turn_id.clone().map(TurnId),
+            task_id: TaskId(self.task_id.clone()),
+            kind: self.kind.clone(),
+            data: self.data.clone(),
+            timestamp: self.at,
+        }
+    }
+}
+
+/// User-selected local directory.  Identity is the project id, not the path
+/// text and not any agent display name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Project {
+    pub id: ProjectId,
+    pub name: String,
+    pub root_path: String,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+/// Continuous user-visible context bound to exactly one project.
+///
+/// `kind` is stored from the protocol field.  Callers must not derive it from
+/// `title` or from a member display name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Session {
+    pub id: SessionId,
+    pub project_id: ProjectId,
+    pub kind: SessionKind,
+    pub title: String,
+    /// Legacy `runs.id` while the old HTTP surface still addresses runs.
+    /// New sessions keep this equal to `id` so both projections share one key.
+    pub legacy_run_id: String,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+/// One user request inside a session, and the recovery unit for that request.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Turn {
+    pub id: TurnId,
+    pub session_id: SessionId,
+    pub project_id: ProjectId,
+    pub status: LifecycleStatus,
+    pub request_hash: String,
+    /// Stable idempotency key when the caller supplied one.  Never a secret.
+    pub idempotency_key: Option<String>,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+/// Stable agent identity.  `display_name` may change; `id` must not.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Agent {
+    pub id: AgentId,
+    pub session_id: SessionId,
+    pub display_name: String,
+    pub role: String,
+    pub created_at: u64,
+}
+
+/// Executable unit inside a turn.  Dependencies, when present, use task ids
+/// rather than display names.  `legacy_task_id` keeps the old `tasks` row.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TurnTask {
+    pub id: TaskId,
+    pub turn_id: TurnId,
+    pub session_id: SessionId,
+    pub agent_id: AgentId,
+    pub legacy_task_id: String,
+    pub status: LifecycleStatus,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+/// Same key plus the same request digest returns the original turn.
+/// Same key plus a different digest is a conflict and must not create another
+/// turn, run, or task.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum IdempotencyHit {
+    Same,
+    Conflict,
+}
+
+pub fn event_id(seq: i64) -> EventId {
+    EventId(format!("evt-{seq}"))
+}
+
+pub fn stamped_event(
+    seq: i64,
+    session_id: &str,
+    turn_id: Option<&str>,
+    task_id: &str,
+    kind: &str,
+    data: Value,
+    at: u64,
+) -> Event {
+    Event {
+        schema_version: EVENT_SCHEMA_VERSION,
+        seq,
+        cursor: seq.to_string(),
+        session_id: Some(session_id.to_owned()),
+        turn_id: turn_id.map(str::to_owned),
+        task_id: task_id.to_owned(),
+        kind: kind.to_owned(),
+        data,
+        at,
+    }
 }
 
 #[cfg(test)]
@@ -384,5 +524,56 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(team.kind, SessionKind::Team);
+    }
+
+    #[test]
+    fn project_session_turn_ids_do_not_follow_display_names() {
+        let project = Project {
+            id: ProjectId::from("prj-1"),
+            name: "任意项目名".into(),
+            root_path: "D:/work".into(),
+            created_at: 1,
+            updated_at: 1,
+        };
+        let session = Session {
+            id: SessionId::from("ses-1"),
+            project_id: project.id.clone(),
+            kind: SessionKind::Chat,
+            title: "chat-session".into(),
+            legacy_run_id: "ses-1".into(),
+            created_at: 1,
+            updated_at: 1,
+        };
+        let turn = Turn {
+            id: TurnId::from("trn-1"),
+            session_id: session.id.clone(),
+            project_id: project.id.clone(),
+            status: LifecycleStatus::Queued,
+            request_hash: "digest".into(),
+            idempotency_key: Some("idem-1".into()),
+            created_at: 1,
+            updated_at: 1,
+        };
+        assert_eq!(session.kind, SessionKind::Chat);
+        assert_ne!(session.id.0, session.title);
+        assert_ne!(turn.id.0, "chat-session");
+        assert_eq!(serde_json::to_value(&session).unwrap()["kind"], "chat");
+        let event = stamped_event(
+            4,
+            &session.id.0,
+            Some(&turn.id.0),
+            "task-1",
+            "status",
+            json_status(),
+            9,
+        );
+        assert_eq!(event.cursor, "4");
+        assert_eq!(event.schema_version, EVENT_SCHEMA_VERSION);
+        assert_eq!(event.envelope().timestamp, 9);
+        assert_eq!(event_id(4).0, "evt-4");
+    }
+
+    fn json_status() -> Value {
+        serde_json::json!({"status": "queued"})
     }
 }
