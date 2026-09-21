@@ -30,3 +30,6 @@ build/
 
 # Generated PDF/text extraction scratch files
 spatiotemporal_extract.txt
+
+# Reference project retained as a local nested checkout
+references/pi-desktop/
