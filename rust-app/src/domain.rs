@@ -183,7 +183,7 @@ pub fn overlaps(a: &str, b: &str) -> bool {
     a == b || a.starts_with(&format!("{b}/")) || b.starts_with(&format!("{a}/"))
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TaskSpec {
     pub name: String,
     pub role: String,
@@ -313,7 +313,7 @@ impl RunRequest {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Task {
     pub id: String,
     pub run_id: String,
@@ -328,7 +328,7 @@ pub struct Task {
     pub created_at: u64,
     pub updated_at: u64,
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Run {
     pub id: String,
     pub title: String,
@@ -468,6 +468,14 @@ pub fn safe_task_value(task: &Task) -> Result<Value> {
 pub enum IdempotencyHit {
     Same,
     Conflict,
+}
+
+/// Explicit replay result.  An old run is not converted into a Turn because
+/// the legacy table has no project, session, or agent identity.
+#[derive(Clone, Debug)]
+pub enum IdempotencyReplay {
+    Turn(Turn),
+    LegacyRun(Run),
 }
 
 pub fn event_id(seq: i64) -> EventId {

@@ -72,6 +72,38 @@ pub fn open(_: &[u8]) -> Result<Vec<u8>> {
 /// Field names and token-shaped text are both rewritten.  Callers must store
 /// the returned value instead of the original; checking only `sk-` is not
 /// enough for provider tokens.
+pub fn validate_persisted_id(field: &str, value: &str) -> anyhow::Result<()> {
+    anyhow::ensure!(!value.is_empty() && value.len() <= 128, "{field} 长度无效");
+    anyhow::ensure!(
+        !value.chars().any(|ch| ch.is_control()),
+        "{field} 包含控制字符"
+    );
+    anyhow::ensure!(!sensitive_text(value), "{field} 不能作为标识保存敏感内容");
+    Ok(())
+}
+
+pub fn safe_metadata_text(field: &str, value: &str) -> anyhow::Result<String> {
+    anyhow::ensure!(
+        !value.trim().is_empty() && value.len() <= 500,
+        "{field} 长度无效"
+    );
+    anyhow::ensure!(
+        !value.chars().any(|ch| ch.is_control()),
+        "{field} 包含控制字符"
+    );
+    anyhow::ensure!(!sensitive_text(value), "{field} 包含敏感内容，拒绝写入");
+    Ok(value.to_owned())
+}
+
+fn sensitive_text(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    lower.contains("bearer ")
+        || lower.contains("authorization:")
+        || lower.contains("api_key=")
+        || lower.contains("apikey=")
+        || token_end(value, 0).is_some()
+}
+
 pub fn redact_persisted(value: &serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Object(map) => {
@@ -131,11 +163,15 @@ fn sensitive_field(name: &str) -> bool {
             | "credentials"
             | "private_key"
             | "key"
-    ) || name.ends_with("_token")
+    ) || name == "authorization_header"
+        || name == "api_key"
+        || name == "apikey"
+        || name == "token_value"
+        || name.ends_with("_token")
         || name.ends_with("_secret")
-        || name.ends_with("_password")
-        || name.ends_with("_key")
+        || name.ends_with("_credential")
         || name.ends_with("_authorization")
+        || (name.ends_with("_key") && name != "max_tokens")
 }
 
 fn redact_text(input: &str) -> String {
@@ -331,6 +367,9 @@ mod tests {
             "providerKey": "provider-key",
             "authorizationHeader": "Bearer camel-auth",
             "clientSecret": "client-secret",
+            "authorizationHeader": "plain-secret",
+            "APIKey": "plain-secret",
+            "tokenValue": "plain-secret",
             "items": [{"nestedKey": "nested-key"}]
         });
         let redacted = redact_persisted(&camel).to_string();
@@ -341,6 +380,7 @@ mod tests {
             "camel-auth",
             "client-secret",
             "nested-key",
+            "plain-secret",
         ] {
             assert!(!redacted.contains(secret), "{secret} leaked");
         }

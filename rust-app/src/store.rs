@@ -130,10 +130,7 @@ impl Store {
     pub fn create_run(&self, run: &Run) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
-        tx.execute(
-            "INSERT INTO runs(id,title,kind,created_at) VALUES (?1,?2,?3,?4)",
-            params![run.id, run.title, run.kind.as_str(), run.created_at],
-        )?;
+        insert_legacy_run(&tx, run)?;
         for task in &run.tasks {
             insert_legacy_task(&tx, task)?;
         }
@@ -148,10 +145,7 @@ impl Store {
     ) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
-        tx.execute(
-            "INSERT INTO runs(id,title,kind,created_at) VALUES (?1,?2,?3,?4)",
-            params![run.id, run.title, run.kind.as_str(), run.created_at],
-        )?;
+        insert_legacy_run(&tx, run)?;
         for task in &run.tasks {
             insert_legacy_task(&tx, task)?;
         }
@@ -263,8 +257,9 @@ impl Store {
     }
 
     pub fn insert_project(&self, project: &Project) -> Result<()> {
-        reject_record_secrets(&project.name)?;
-        reject_record_secrets(&project.root_path)?;
+        secrets::validate_persisted_id("project_id", &project.id.0)?;
+        secrets::safe_metadata_text("project_name", &project.name)?;
+        secrets::safe_metadata_text("project_path", &project.root_path)?;
         repository::Repository::new(&self.db.lock().unwrap()).insert_project(project)
     }
 
@@ -277,7 +272,9 @@ impl Store {
     }
 
     pub fn insert_session(&self, session: &Session) -> Result<()> {
-        reject_record_secrets(&session.title)?;
+        secrets::validate_persisted_id("session_id", &session.id.0)?;
+        secrets::validate_persisted_id("legacy_run_id", &session.legacy_run_id)?;
+        secrets::safe_metadata_text("session_title", &session.title)?;
         repository::Repository::new(&self.db.lock().unwrap()).insert_session(session)
     }
 
@@ -305,6 +302,7 @@ impl Store {
         key: Option<&str>,
         legacy_tasks: &[Task],
     ) -> Result<Turn> {
+        anyhow::ensure!(!tasks.is_empty(), "回合至少需要一个任务");
         reject_record_secrets(&turn.request_hash)?;
         if let Some(key) = key {
             reject_record_secrets(key)?;
@@ -420,15 +418,39 @@ impl Store {
         repository::Repository::new(&self.db.lock().unwrap()).turns_for_session(id)
     }
 
-    /// Same key and same digest returns the original turn.  A different digest
-    /// is a conflict.  Missing key returns `Ok(None)`.
-    pub fn idempotent_turn(&self, key: &str, request_hash: &str) -> Result<Option<Turn>> {
-        match repository::Repository::new(&self.db.lock().unwrap())
-            .idempotency(key, request_hash)?
-        {
-            None => Ok(None),
-            Some(Ok(turn)) => Ok(Some(turn)),
+    /// New records win.  A key that exists only in the legacy table returns
+    /// `LegacyRun`; it is not invented as a Turn and it is not reported as
+    /// missing.  A different digest is always a conflict.
+    pub fn idempotency_replay(
+        &self,
+        key: &str,
+        request_hash: &str,
+    ) -> Result<Option<IdempotencyReplay>> {
+        let db = self.db.lock().unwrap();
+        let repo = repository::Repository::new(&db);
+        match repo.idempotency(key, request_hash)? {
+            Some(Ok(turn)) => return Ok(Some(IdempotencyReplay::Turn(turn))),
             Some(Err(())) => bail!("同一个 Idempotency-Key 不能用于不同请求"),
+            None => {}
+        }
+        let legacy = repo.legacy_idempotency(key, request_hash)?;
+        drop(db);
+        match legacy {
+            Some(Ok(run_id)) => Ok(Some(IdempotencyReplay::LegacyRun(self.run(&run_id)?))),
+            Some(Err(())) => bail!("同一个 Idempotency-Key 不能用于不同请求"),
+            None => Ok(None),
+        }
+    }
+
+    /// Compatibility wrapper.  A legacy-only key is an error here because this
+    /// method cannot safely return a Turn for it.
+    pub fn idempotent_turn(&self, key: &str, request_hash: &str) -> Result<Option<Turn>> {
+        match self.idempotency_replay(key, request_hash)? {
+            Some(IdempotencyReplay::Turn(turn)) => Ok(Some(turn)),
+            Some(IdempotencyReplay::LegacyRun(_)) => {
+                bail!("legacy replay requires legacy handling")
+            }
+            None => Ok(None),
         }
     }
     pub fn file_backups(&self, task_id: &str) -> Result<Vec<Value>> {
@@ -595,7 +617,19 @@ fn event_columns(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
     })
 }
 
+fn insert_legacy_run(tx: &rusqlite::Transaction<'_>, run: &Run) -> Result<()> {
+    secrets::validate_persisted_id("run_id", &run.id)?;
+    let title = secrets::safe_metadata_text("run_title", &run.title)?;
+    tx.execute(
+        "INSERT INTO runs(id,title,kind,created_at) VALUES (?1,?2,?3,?4)",
+        params![run.id, title, run.kind.as_str(), run.created_at],
+    )?;
+    Ok(())
+}
+
 fn insert_legacy_task(tx: &rusqlite::Transaction<'_>, task: &Task) -> Result<()> {
+    secrets::validate_persisted_id("task_id", &task.id)?;
+    secrets::validate_persisted_id("run_id", &task.run_id)?;
     let value = safe_task_value(task)?;
     tx.execute(
         "INSERT INTO tasks(id,run_id,value) VALUES (?1,?2,?3)",
@@ -1251,18 +1285,12 @@ mod tests {
                 .commit_turn(
                     &cycle,
                     &[a.clone(), b.clone()],
-                    Some("idem-cycle"),
+                    cycle.idempotency_key.as_deref(),
                     &[legacy_a, legacy_b]
                 )
                 .is_err()
         );
-        a.depends_on = vec![a.id.clone()];
-        assert!(
-            store
-                .task_dependencies(&TaskId::from("tsk-a"))
-                .unwrap()
-                .is_empty()
-        );
+        assert!(store.task_dependencies(&TaskId::from("tsk-a")).is_err());
         let _ = (session, agent);
     }
 
@@ -1315,5 +1343,67 @@ mod tests {
             1,
         );
         assert!(repository::Repository::append_event(&tx, &mismatch).is_err());
+    }
+
+    #[test]
+    fn legacy_idempotency_replay_is_explicit() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("replay.db")).unwrap();
+        let legacy = {
+            let (_project, session, _agent, _turn, _task, legacy) = sample_graph(&store);
+            assert_eq!(session.legacy_run_id, legacy.run_id);
+            legacy
+        };
+        store
+            .create_run_with_idempotency(
+                &Run {
+                    id: legacy.run_id.clone(),
+                    title: "legacy replay".into(),
+                    kind: SessionKind::Team,
+                    created_at: 1,
+                    tasks: vec![legacy.clone()],
+                },
+                "legacy-key",
+                "digest-legacy",
+            )
+            .unwrap();
+        match store
+            .idempotency_replay("legacy-key", "digest-legacy")
+            .unwrap()
+        {
+            Some(IdempotencyReplay::LegacyRun(run)) => assert_eq!(run.id, legacy.run_id),
+            other => panic!("expected legacy run, got {other:?}"),
+        }
+        assert!(
+            store
+                .idempotent_turn("legacy-key", "digest-legacy")
+                .is_err()
+        );
+        assert!(
+            store
+                .idempotency_replay("legacy-key", "other-digest")
+                .is_err()
+        );
+        assert!(store.task_dependencies(&TaskId::from("missing")).is_err());
+        let empty = tempfile::tempdir().unwrap();
+        let empty_store = Store::open(&empty.path().join("empty.db")).unwrap();
+        let (_project, _session, _agent, turn, task, legacy_task) = sample_graph(&empty_store);
+        assert!(
+            empty_store
+                .commit_turn(&turn, &[], turn.idempotency_key.as_deref(), &[])
+                .is_err()
+        );
+        assert!(
+            store
+                .create_run(&Run {
+                    id: legacy_task.run_id,
+                    title: "bearer peach-token".into(),
+                    kind: SessionKind::Team,
+                    created_at: 1,
+                    tasks: vec![]
+                })
+                .is_err()
+        );
+        let _ = task;
     }
 }

@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
 );
 CREATE INDEX IF NOT EXISTS sessions_project ON sessions(project_id, created_at);
 CREATE INDEX IF NOT EXISTS turns_session ON turns(session_id, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS turn_tasks_legacy_task_id_unique ON turn_tasks(legacy_task_id);
 CREATE INDEX IF NOT EXISTS turn_tasks_turn ON turn_tasks(turn_id);
 CREATE INDEX IF NOT EXISTS agents_session ON agents(session_id);
 ";
@@ -95,6 +96,22 @@ const EVENT_ENVELOPE_COLUMNS: &[(&str, &str)] = &[
 ];
 
 const REQUIRED_COLUMNS: &[(&str, &[&str])] = &[
+    (
+        "agents",
+        &["id", "session_id", "display_name", "role", "created_at"],
+    ),
+    ("turn_task_dependencies", &["task_id", "depends_on_task_id"]),
+    (
+        "idempotency_records",
+        &[
+            "key",
+            "request_hash",
+            "turn_id",
+            "session_id",
+            "legacy_run_id",
+            "created_at",
+        ],
+    ),
     (
         "projects",
         &["id", "name", "root_path", "created_at", "updated_at"],
@@ -142,6 +159,7 @@ const REQUIRED_COLUMNS: &[(&str, &[&str])] = &[
 pub fn apply_schema_6(tx: &Transaction<'_>) -> Result<()> {
     verify_or_reject_partial_tables(tx)?;
     tx.execute_batch(SCHEMA_6_SQL)?;
+    verify_or_reject_partial_tables(tx)?;
     ensure_event_columns(tx)?;
     backfill_event_cursors(tx)?;
     let applied = tx.execute(
@@ -172,7 +190,36 @@ fn verify_or_reject_partial_tables(tx: &Transaction<'_>) -> Result<()> {
             bail!("schema 6 表 {table} 结构不完整，缺少列 {missing:?}；停止迁移，避免写入时才失败");
         }
     }
+    if table_exists(tx, "turn_tasks")? {
+        let duplicates: i64 = tx.query_row(
+            "SELECT count(*) FROM (SELECT legacy_task_id FROM turn_tasks GROUP BY legacy_task_id HAVING count(*)>1)",
+            [],
+            |row| row.get(0),
+        )?;
+        anyhow::ensure!(
+            duplicates == 0,
+            "turn_tasks.legacy_task_id 存在重复值，停止迁移"
+        );
+        let unique: i64 = tx.query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='index' AND name='turn_tasks_legacy_task_id_unique'",
+            [],
+            |row| row.get(0),
+        )?;
+        anyhow::ensure!(
+            unique == 1,
+            "schema 6 缺少 turn_tasks_legacy_task_id_unique；停止迁移"
+        );
+    }
     Ok(())
+}
+
+fn table_exists(tx: &Transaction<'_>, table: &str) -> Result<bool> {
+    let count: i64 = tx.query_row(
+        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?1",
+        [table],
+        |row| row.get(0),
+    )?;
+    Ok(count == 1)
 }
 
 fn ensure_event_columns(tx: &Transaction<'_>) -> Result<()> {
@@ -482,6 +529,12 @@ impl<'a> Repository<'a> {
     }
 
     pub fn dependencies(&self, task_id: &TaskId) -> Result<Vec<TaskId>> {
+        let exists: i64 = self.conn.query_row(
+            "SELECT count(*) FROM turn_tasks WHERE id=?1",
+            [&task_id.0],
+            |row| row.get(0),
+        )?;
+        anyhow::ensure!(exists == 1, "执行任务不存在");
         let mut stmt = self.conn.prepare(
             "SELECT depends_on_task_id FROM turn_task_dependencies WHERE task_id=?1 ORDER BY depends_on_task_id",
         )?;
