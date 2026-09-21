@@ -93,8 +93,28 @@ pub fn redact_persisted(value: &serde_json::Value) -> serde_json::Value {
     }
 }
 
+fn normalize_field(name: &str) -> String {
+    let mut out = String::new();
+    let mut previous_underscore = false;
+    for ch in name.chars() {
+        if ch == '-' || ch == '.' || ch == ' ' || ch == '_' {
+            if !previous_underscore && !out.is_empty() {
+                out.push('_');
+                previous_underscore = true;
+            }
+            continue;
+        }
+        if ch.is_ascii_uppercase() && !previous_underscore && !out.is_empty() {
+            out.push('_');
+        }
+        out.push(ch.to_ascii_lowercase());
+        previous_underscore = false;
+    }
+    out
+}
+
 fn sensitive_field(name: &str) -> bool {
-    let name = name.to_ascii_lowercase().replace('-', "_");
+    let name = normalize_field(name);
     matches!(
         name.as_str(),
         "token"
@@ -184,6 +204,8 @@ fn assignment_end(input: &str, index: usize) -> Option<usize> {
         "api-key",
         "access_token",
         "token",
+        "bearer",
+        "authorization",
         "secret",
         "password",
         "authorization",
@@ -303,5 +325,24 @@ mod tests {
         assert!(!blob.contains("ntn_accountsecret"));
         assert!(blob.contains("src/main.rs"));
         assert_eq!(redacted["tool"]["api_key"], "[redacted]");
+        let camel = serde_json::json!({
+            "accessToken": "camel-token",
+            "modelToken": "model-token",
+            "providerKey": "provider-key",
+            "authorizationHeader": "Bearer camel-auth",
+            "clientSecret": "client-secret",
+            "items": [{"nestedKey": "nested-key"}]
+        });
+        let redacted = redact_persisted(&camel).to_string();
+        for secret in [
+            "camel-token",
+            "model-token",
+            "provider-key",
+            "camel-auth",
+            "client-secret",
+            "nested-key",
+        ] {
+            assert!(!redacted.contains(secret), "{secret} leaked");
+        }
     }
 }

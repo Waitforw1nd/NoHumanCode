@@ -12,7 +12,7 @@ use crate::{
     },
     secrets,
 };
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::Value;
 
@@ -94,7 +94,53 @@ const EVENT_ENVELOPE_COLUMNS: &[(&str, &str)] = &[
     ("turn_id", "TEXT"),
 ];
 
+const REQUIRED_COLUMNS: &[(&str, &[&str])] = &[
+    (
+        "projects",
+        &["id", "name", "root_path", "created_at", "updated_at"],
+    ),
+    (
+        "sessions",
+        &[
+            "id",
+            "project_id",
+            "kind",
+            "title",
+            "legacy_run_id",
+            "created_at",
+            "updated_at",
+        ],
+    ),
+    (
+        "turns",
+        &[
+            "id",
+            "session_id",
+            "project_id",
+            "status",
+            "request_hash",
+            "idempotency_key",
+            "created_at",
+            "updated_at",
+        ],
+    ),
+    (
+        "turn_tasks",
+        &[
+            "id",
+            "turn_id",
+            "session_id",
+            "agent_id",
+            "legacy_task_id",
+            "status",
+            "created_at",
+            "updated_at",
+        ],
+    ),
+];
+
 pub fn apply_schema_6(tx: &Transaction<'_>) -> Result<()> {
+    verify_or_reject_partial_tables(tx)?;
     tx.execute_batch(SCHEMA_6_SQL)?;
     ensure_event_columns(tx)?;
     backfill_event_cursors(tx)?;
@@ -104,6 +150,28 @@ pub fn apply_schema_6(tx: &Transaction<'_>) -> Result<()> {
     )?;
     anyhow::ensure!(applied == 1, "schema 6 迁移标记没有写入");
     tx.pragma_update(None, "user_version", 6)?;
+    Ok(())
+}
+
+fn verify_or_reject_partial_tables(tx: &Transaction<'_>) -> Result<()> {
+    for (table, required) in REQUIRED_COLUMNS {
+        let mut existing = Vec::new();
+        let mut stmt = tx.prepare(&format!("PRAGMA table_info({table})"))?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        for name in rows {
+            existing.push(name?);
+        }
+        if existing.is_empty() {
+            continue;
+        }
+        let missing: Vec<_> = required
+            .iter()
+            .filter(|column| !existing.iter().any(|name| name == *column))
+            .collect();
+        if !missing.is_empty() {
+            bail!("schema 6 表 {table} 结构不完整，缺少列 {missing:?}；停止迁移，避免写入时才失败");
+        }
+    }
     Ok(())
 }
 
@@ -299,6 +367,10 @@ impl<'a> Repository<'a> {
         for task in tasks {
             insert_turn_task_tx(tx, task)?;
         }
+        for task in tasks {
+            Repository::replace_dependencies(tx, &task.id, &task.depends_on)?;
+        }
+        ensure_acyclic(tx, &turn.id)?;
         if let Some(key) = idempotency_key {
             let legacy_run_id: String = tx.query_row(
                 "SELECT legacy_run_id FROM sessions WHERE id=?1",
@@ -344,7 +416,11 @@ impl<'a> Repository<'a> {
             "SELECT id,turn_id,session_id,agent_id,legacy_task_id,status,created_at,updated_at FROM turn_tasks WHERE turn_id=?1 ORDER BY created_at, id",
         )?;
         let rows = stmt.query_map([&turn_id.0], turn_task_row)?;
-        Ok(rows.collect::<rusqlite::Result<_>>()?)
+        let mut tasks = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+        for task in &mut tasks {
+            task.depends_on = self.dependencies(&task.id)?;
+        }
+        Ok(tasks)
     }
 
     pub fn update_turn_status(&self, id: &TurnId, status: LifecycleStatus, at: u64) -> Result<()> {
@@ -484,6 +560,51 @@ impl<'a> Repository<'a> {
     }
 }
 
+fn ensure_acyclic(tx: &Transaction<'_>, turn_id: &TurnId) -> Result<()> {
+    let mut edges = std::collections::HashMap::<String, Vec<String>>::new();
+    let mut stmt = tx.prepare(
+        "SELECT d.task_id, d.depends_on_task_id FROM turn_task_dependencies d JOIN turn_tasks t ON t.id=d.task_id WHERE t.turn_id=?1",
+    )?;
+    let rows = stmt.query_map([&turn_id.0], |row| Ok((row.get(0)?, row.get(1)?)))?;
+    for row in rows {
+        let (task_id, dependency): (String, String) = row?;
+        edges.entry(task_id).or_default().push(dependency);
+    }
+    drop(stmt);
+    let mut visiting = std::collections::HashSet::new();
+    let mut visited = std::collections::HashSet::new();
+    for task_id in edges.keys() {
+        if cycle_from(task_id, &edges, &mut visiting, &mut visited) {
+            bail!("任务依赖存在循环");
+        }
+    }
+    Ok(())
+}
+
+fn cycle_from(
+    task_id: &str,
+    edges: &std::collections::HashMap<String, Vec<String>>,
+    visiting: &mut std::collections::HashSet<String>,
+    visited: &mut std::collections::HashSet<String>,
+) -> bool {
+    if visited.contains(task_id) {
+        return false;
+    }
+    if !visiting.insert(task_id.to_owned()) {
+        return true;
+    }
+    if let Some(dependencies) = edges.get(task_id) {
+        for dependency in dependencies {
+            if cycle_from(dependency, edges, visiting, visited) {
+                return true;
+            }
+        }
+    }
+    visiting.remove(task_id);
+    visited.insert(task_id.to_owned());
+    false
+}
+
 fn insert_turn_tx(tx: &Transaction<'_>, turn: &Turn) -> Result<()> {
     let project_id: String = tx.query_row(
         "SELECT project_id FROM sessions WHERE id=?1",
@@ -563,6 +684,41 @@ fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
             event.session_id.as_deref() == Some(session_id.as_str()),
             "事件的回合不属于该会话"
         );
+        let task_turn: Option<String> = tx
+            .query_row(
+                "SELECT turn_id FROM turn_tasks WHERE id=?1 OR legacy_task_id=?1",
+                [&event.task_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        anyhow::ensure!(
+            task_turn.as_deref() == Some(turn_id.as_str()),
+            "事件的任务不属于该回合"
+        );
+    } else if let Some(session_id) = &event.session_id {
+        let legacy_run_id: String = tx.query_row(
+            "SELECT legacy_run_id FROM sessions WHERE id=?1",
+            [session_id],
+            |row| row.get(0),
+        )?;
+        let run_id: Option<String> = tx
+            .query_row(
+                "SELECT run_id FROM tasks WHERE id=?1",
+                [&event.task_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        anyhow::ensure!(
+            run_id.as_deref() == Some(legacy_run_id.as_str()),
+            "事件的任务不属于该会话"
+        );
+    } else {
+        let exists: i64 = tx.query_row(
+            "SELECT count(*) FROM tasks WHERE id=?1",
+            [&event.task_id],
+            |row| row.get(0),
+        )?;
+        anyhow::ensure!(exists == 1, "事件引用了不存在的任务");
     }
     let data = secrets::redact_persisted(&event.data);
     tx.execute(
@@ -640,6 +796,7 @@ fn turn_task_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TurnTask> {
         session_id: SessionId(row.get(2)?),
         agent_id: AgentId(row.get(3)?),
         legacy_task_id: row.get(4)?,
+        depends_on: Vec::new(),
         status,
         created_at: row.get(6)?,
         updated_at: row.get(7)?,

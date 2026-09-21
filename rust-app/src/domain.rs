@@ -443,9 +443,22 @@ pub struct TurnTask {
     pub session_id: SessionId,
     pub agent_id: AgentId,
     pub legacy_task_id: String,
+    /// Stable task ids in the same turn.  Display names are not dependencies.
+    #[serde(default)]
+    pub depends_on: Vec<TaskId>,
     pub status: LifecycleStatus,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+/// The only Task JSON that persistence may store.
+///
+/// `create_run`, idempotent creation, turn commit, task updates, and recovery
+/// must all pass through this so a later Engine path cannot skip redaction.
+pub fn safe_task_value(task: &Task) -> Result<Value> {
+    Ok(crate::secrets::redact_persisted(&serde_json::to_value(
+        task,
+    )?))
 }
 
 /// Same key plus the same request digest returns the original turn.

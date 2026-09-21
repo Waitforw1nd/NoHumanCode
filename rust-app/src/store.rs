@@ -135,10 +135,7 @@ impl Store {
             params![run.id, run.title, run.kind.as_str(), run.created_at],
         )?;
         for task in &run.tasks {
-            tx.execute(
-                "INSERT INTO tasks VALUES (?1,?2,?3)",
-                params![task.id, task.run_id, serde_json::to_string(task)?],
-            )?;
+            insert_legacy_task(&tx, task)?;
         }
         tx.commit()?;
         Ok(())
@@ -156,10 +153,7 @@ impl Store {
             params![run.id, run.title, run.kind.as_str(), run.created_at],
         )?;
         for task in &run.tasks {
-            tx.execute(
-                "INSERT INTO tasks VALUES (?1,?2,?3)",
-                params![task.id, task.run_id, serde_json::to_string(task)?],
-            )?;
+            insert_legacy_task(&tx, task)?;
         }
         tx.execute(
             "INSERT INTO idempotency(key,run_id,created_at,request_hash) VALUES (?1,?2,?3,?4)",
@@ -189,7 +183,7 @@ impl Store {
         Ok(None)
     }
     pub fn save_task(&self, task: &Task) -> Result<()> {
-        let value = secrets::redact_persisted(&serde_json::to_value(task)?);
+        let value = safe_task_value(task)?;
         let changed = self.db.lock().unwrap().execute(
             "UPDATE tasks SET value=?2 WHERE id=?1",
             params![task.id, value.to_string()],
@@ -314,6 +308,15 @@ impl Store {
         reject_record_secrets(&turn.request_hash)?;
         if let Some(key) = key {
             reject_record_secrets(key)?;
+            anyhow::ensure!(
+                turn.idempotency_key.as_deref() == Some(key),
+                "回合中的幂等 key 必须与请求 key 一致"
+            );
+        } else {
+            anyhow::ensure!(
+                turn.idempotency_key.is_none(),
+                "未提供幂等 key 时回合不能残留幂等 key"
+            );
         }
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
@@ -338,6 +341,22 @@ impl Store {
             }
         }
         let session = repository::Repository::new(&tx).session(&turn.session_id)?;
+        let legacy_ids: std::collections::HashSet<&str> = tasks
+            .iter()
+            .map(|task| task.legacy_task_id.as_str())
+            .collect();
+        anyhow::ensure!(
+            legacy_tasks
+                .iter()
+                .all(|task| task.run_id == session.legacy_run_id),
+            "旧任务的 run_id 必须等于会话的 legacy_run_id"
+        );
+        anyhow::ensure!(
+            legacy_tasks
+                .iter()
+                .all(|task| legacy_ids.contains(task.id.as_str())),
+            "旧任务必须对应回合任务的 legacy_task_id"
+        );
         let run_exists: i64 = tx.query_row(
             "SELECT count(*) FROM runs WHERE id=?1",
             [&session.legacy_run_id],
@@ -355,12 +374,7 @@ impl Store {
             )?;
         }
         for task in legacy_tasks {
-            let mut value = serde_json::to_value(task)?;
-            value = secrets::redact_persisted(&value);
-            tx.execute(
-                "INSERT INTO tasks(id,run_id,value) VALUES (?1,?2,?3)",
-                params![task.id, task.run_id, value.to_string()],
-            )?;
+            insert_legacy_task(&tx, task)?;
         }
         let event = stamped_event(
             0,
@@ -392,6 +406,10 @@ impl Store {
 
     pub fn turn(&self, id: &TurnId) -> Result<Turn> {
         repository::Repository::new(&self.db.lock().unwrap()).turn(id)
+    }
+
+    pub fn task_dependencies(&self, id: &TaskId) -> Result<Vec<TaskId>> {
+        repository::Repository::new(&self.db.lock().unwrap()).dependencies(id)
     }
 
     pub fn turn_tasks(&self, id: &TurnId) -> Result<Vec<TurnTask>> {
@@ -475,7 +493,7 @@ impl Store {
                 task.updated_at = now();
                 let mut db = self.db.lock().unwrap();
                 let tx = db.transaction()?;
-                let value = secrets::redact_persisted(&serde_json::to_value(&task)?);
+                let value = safe_task_value(&task)?;
                 let changed = tx.execute(
                     "UPDATE tasks SET value=?2 WHERE id=?1",
                     params![task.id, value.to_string()],
@@ -575,6 +593,15 @@ fn event_columns(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
         data,
         at: row.get(8)?,
     })
+}
+
+fn insert_legacy_task(tx: &rusqlite::Transaction<'_>, task: &Task) -> Result<()> {
+    let value = safe_task_value(task)?;
+    tx.execute(
+        "INSERT INTO tasks(id,run_id,value) VALUES (?1,?2,?3)",
+        params![task.id, task.run_id, value.to_string()],
+    )?;
+    Ok(())
 }
 
 fn reject_record_secrets(value: &str) -> Result<()> {
@@ -749,6 +776,7 @@ mod tests {
             session_id: session.id.clone(),
             agent_id: agent.id.clone(),
             legacy_task_id: "legacy-task-row".into(),
+            depends_on: Vec::new(),
             status: LifecycleStatus::Queued,
             created_at: 10,
             updated_at: 10,
@@ -990,7 +1018,7 @@ mod tests {
         task.status = LifecycleStatus::Running;
         legacy.status = "running".into();
         store
-            .commit_turn(&turn, &[task], Some("idem-run"), &[legacy])
+            .commit_turn(&turn, &[task], turn.idempotency_key.as_deref(), &[legacy])
             .unwrap();
         assert_eq!(store.recover().unwrap(), 2);
         assert_eq!(
@@ -1041,7 +1069,7 @@ mod tests {
             .commit_turn(
                 &replay_turn,
                 std::slice::from_ref(&task),
-                Some("idem-review"),
+                replay_turn.idempotency_key.as_deref(),
                 std::slice::from_ref(&legacy),
             )
             .unwrap();
@@ -1053,7 +1081,7 @@ mod tests {
                     ..replay_turn.clone()
                 },
                 std::slice::from_ref(&task),
-                Some("idem-review"),
+                replay_turn.idempotency_key.as_deref(),
                 &[],
             )
             .unwrap();
@@ -1062,14 +1090,14 @@ mod tests {
         let db = Connection::open(temp.path().join("review.db")).unwrap();
         let legacy_run: String = db
             .query_row(
-                "SELECT legacy_run_id FROM idempotency_records WHERE key='idem-review'",
+                "SELECT legacy_run_id FROM idempotency_records WHERE key='idem-a'",
                 [],
                 |row| row.get(0),
             )
             .unwrap();
         let old_run: String = db
             .query_row(
-                "SELECT run_id FROM idempotency WHERE key='idem-review'",
+                "SELECT run_id FROM idempotency WHERE key='idem-a'",
                 [],
                 |row| row.get(0),
             )
@@ -1133,5 +1161,159 @@ mod tests {
         let mut db = store.db.lock().unwrap();
         let tx = db.transaction().unwrap();
         assert!(repository::Repository::append_event(&tx, &injected).is_err());
+    }
+
+    #[test]
+    fn legacy_create_run_redacts_prompt_messages_and_errors() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("legacy-create.db")).unwrap();
+        let mut legacy = sample_graph(&store).5;
+        legacy.spec.prompt = "please use sk-promptsecret".into();
+        legacy.messages = vec![
+            json!({"role":"tool","api_key":"plain-provider-token","arguments":{"accessToken":"camel-token"}}),
+        ];
+        legacy.output = "xai-notaskey".into();
+        legacy.error = Some("authorization: Bearer peach-token".into());
+        store
+            .create_run(&Run {
+                id: legacy.run_id.clone(),
+                title: "legacy".into(),
+                kind: SessionKind::Team,
+                created_at: 1,
+                tasks: vec![legacy.clone()],
+            })
+            .unwrap();
+        let db = Connection::open(temp.path().join("legacy-create.db")).unwrap();
+        let raw: String = db
+            .query_row("SELECT value FROM tasks WHERE id=?1", [&legacy.id], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        for secret in [
+            "sk-promptsecret",
+            "plain-provider-token",
+            "camel-token",
+            "xai-notaskey",
+        ] {
+            assert!(!raw.contains(secret), "{secret} leaked through create_run");
+        }
+        assert!(raw.contains("please use"));
+    }
+
+    #[test]
+    fn dependencies_are_same_turn_and_acyclic() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("deps.db")).unwrap();
+        let (_project, session, agent, turn, mut first, legacy) = sample_graph(&store);
+        let mut second = first.clone();
+        second.id = TaskId::from("tsk-second");
+        second.legacy_task_id = "legacy-second".into();
+        second.depends_on = vec![first.id.clone()];
+        let mut second_legacy = legacy.clone();
+        second_legacy.id = second.legacy_task_id.clone();
+        first.depends_on.clear();
+        store
+            .commit_turn(
+                &turn,
+                &[first.clone(), second.clone()],
+                turn.idempotency_key.as_deref(),
+                &[legacy.clone(), second_legacy],
+            )
+            .unwrap();
+        assert_eq!(
+            store.task_dependencies(&second.id).unwrap(),
+            vec![first.id.clone()]
+        );
+        let mut cycle = turn.clone();
+        cycle.id = TurnId::from("trn-cycle");
+        cycle.request_hash = "digest-cycle".into();
+        cycle.idempotency_key = Some("idem-cycle".into());
+        let mut a = first.clone();
+        a.turn_id = cycle.id.clone();
+        a.id = TaskId::from("tsk-a");
+        a.legacy_task_id = "legacy-a".into();
+        let mut b = second.clone();
+        b.turn_id = cycle.id.clone();
+        b.id = TaskId::from("tsk-b");
+        b.legacy_task_id = "legacy-b".into();
+        a.depends_on = vec![b.id.clone()];
+        b.depends_on = vec![a.id.clone()];
+        let legacy_a = Task {
+            id: a.legacy_task_id.clone(),
+            ..legacy.clone()
+        };
+        let legacy_b = Task {
+            id: b.legacy_task_id.clone(),
+            ..legacy
+        };
+        assert!(
+            store
+                .commit_turn(
+                    &cycle,
+                    &[a.clone(), b.clone()],
+                    Some("idem-cycle"),
+                    &[legacy_a, legacy_b]
+                )
+                .is_err()
+        );
+        a.depends_on = vec![a.id.clone()];
+        assert!(
+            store
+                .task_dependencies(&TaskId::from("tsk-a"))
+                .unwrap()
+                .is_empty()
+        );
+        let _ = (session, agent);
+    }
+
+    #[test]
+    fn partial_schema_6_table_stops_before_user_version() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("broken.db");
+        legacy_schema_5(&path);
+        let db = Connection::open(&path).unwrap();
+        db.execute_batch("CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL);")
+            .unwrap();
+        drop(db);
+        let error = match Store::open(&path) {
+            Ok(_) => panic!("不完整 schema 不应打开"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("结构不完整"));
+        let db = Connection::open(&path).unwrap();
+        let version: u32 = db
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, 5);
+    }
+
+    #[test]
+    fn event_task_must_belong_to_turn_or_session() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("event-owner.db")).unwrap();
+        let (_project, session, _agent, turn, task, legacy) = sample_graph(&store);
+        store
+            .commit_turn(
+                &turn,
+                std::slice::from_ref(&task),
+                turn.idempotency_key.as_deref(),
+                std::slice::from_ref(&legacy),
+            )
+            .unwrap();
+        store
+            .event(&legacy.id, "status", json!({"status":"queued"}))
+            .unwrap();
+        let mut db = store.db.lock().unwrap();
+        let tx = db.transaction().unwrap();
+        let mismatch = stamped_event(
+            0,
+            &session.id.0,
+            Some(&turn.id.0),
+            "missing-task",
+            "status",
+            json!({}),
+            1,
+        );
+        assert!(repository::Repository::append_event(&tx, &mismatch).is_err());
     }
 }
