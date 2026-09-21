@@ -169,6 +169,9 @@ fn sensitive_field(name: &str) -> bool {
         || name == "token_value"
         || name.ends_with("_token")
         || name.ends_with("_secret")
+        || name.ends_with("_password")
+        || name == "password"
+        || name == "a_p_i_key"
         || name.ends_with("_credential")
         || name.ends_with("_authorization")
         || (name.ends_with("_key") && name != "max_tokens")
@@ -368,8 +371,9 @@ mod tests {
             "authorizationHeader": "Bearer camel-auth",
             "clientSecret": "client-secret",
             "authorizationHeader": "plain-secret",
-            "APIKey": "plain-secret",
-            "tokenValue": "plain-secret",
+            "APIKey": "apikey-unique-value",
+            "tokenValue": "tokenvalue-unique-value",
+            "databasePassword": "password-unique-value",
             "items": [{"nestedKey": "nested-key"}]
         });
         let redacted = redact_persisted(&camel).to_string();
@@ -381,6 +385,9 @@ mod tests {
             "client-secret",
             "nested-key",
             "plain-secret",
+            "apikey-unique-value",
+            "tokenvalue-unique-value",
+            "password-unique-value",
         ] {
             assert!(!redacted.contains(secret), "{secret} leaked");
         }

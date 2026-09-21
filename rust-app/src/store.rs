@@ -428,17 +428,26 @@ impl Store {
     ) -> Result<Option<IdempotencyReplay>> {
         let db = self.db.lock().unwrap();
         let repo = repository::Repository::new(&db);
-        match repo.idempotency(key, request_hash)? {
-            Some(Ok(turn)) => return Ok(Some(IdempotencyReplay::Turn(turn))),
-            Some(Err(())) => bail!("同一个 Idempotency-Key 不能用于不同请求"),
-            None => {}
-        }
+        let current = repo.idempotency(key, request_hash)?;
         let legacy = repo.legacy_idempotency(key, request_hash)?;
         drop(db);
-        match legacy {
-            Some(Ok(run_id)) => Ok(Some(IdempotencyReplay::LegacyRun(self.run(&run_id)?))),
-            Some(Err(())) => bail!("同一个 Idempotency-Key 不能用于不同请求"),
-            None => Ok(None),
+        match (current, legacy) {
+            (Some(Err(())), _) | (_, Some(Err(()))) => {
+                bail!("同一个 Idempotency-Key 不能用于不同请求")
+            }
+            (Some(Ok(turn)), Some(Ok(run_id))) => {
+                anyhow::ensure!(
+                    self.session(&turn.session_id)?.legacy_run_id == run_id,
+                    "新旧幂等记录指向不同对象"
+                );
+                Ok(Some(IdempotencyReplay::Turn(turn)))
+            }
+            (Some(Ok(turn)), None) => Ok(Some(IdempotencyReplay::Turn(turn))),
+            (None, Some(Ok(run_id))) => match self.run(&run_id) {
+                Ok(run) => Ok(Some(IdempotencyReplay::LegacyRun(run))),
+                Err(error) => bail!("旧幂等记录指向不存在的运行：{error}"),
+            },
+            (None, None) => Ok(None),
         }
     }
 
@@ -1393,10 +1402,11 @@ mod tests {
                 .commit_turn(&turn, &[], turn.idempotency_key.as_deref(), &[])
                 .is_err()
         );
+        let legacy_copy = legacy_task.clone();
         assert!(
             store
                 .create_run(&Run {
-                    id: legacy_task.run_id,
+                    id: legacy_copy.run_id.clone(),
                     title: "bearer peach-token".into(),
                     kind: SessionKind::Team,
                     created_at: 1,
@@ -1404,6 +1414,23 @@ mod tests {
                 })
                 .is_err()
         );
-        let _ = task;
+        let mut colliding = task.clone();
+        colliding.id = TaskId::from(legacy_copy.id.clone());
+        colliding.legacy_task_id = "legacy-other".into();
+        let other = Turn {
+            id: TurnId::from("trn-collide"),
+            request_hash: "digest-collide".into(),
+            idempotency_key: Some("idem-collide".into()),
+            ..turn
+        };
+        let other_legacy = Task {
+            id: "legacy-other".into(),
+            ..legacy_copy
+        };
+        assert!(
+            empty_store
+                .commit_turn(&other, &[colliding], Some("idem-collide"), &[other_legacy])
+                .is_err()
+        );
     }
 }

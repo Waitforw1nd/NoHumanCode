@@ -681,6 +681,33 @@ fn insert_turn_tx(tx: &Transaction<'_>, turn: &Turn) -> Result<()> {
     Ok(())
 }
 
+fn resolve_task_turn(tx: &Transaction<'_>, task_id: &str) -> Result<Option<String>> {
+    let by_id: Option<String> = tx
+        .query_row(
+            "SELECT turn_id FROM turn_tasks WHERE id=?1",
+            [task_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let by_legacy: Vec<String> = {
+        let mut stmt = tx.prepare("SELECT turn_id FROM turn_tasks WHERE legacy_task_id=?1")?;
+        let rows = stmt.query_map([task_id], |row| row.get(0))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    anyhow::ensure!(
+        by_legacy.len() <= 1,
+        "legacy_task_id 重复，任务引用无法确定"
+    );
+    match (by_id, by_legacy.first()) {
+        (Some(id_turn), Some(legacy_turn)) if id_turn != *legacy_turn => {
+            bail!("任务引用歧义：id 与 legacy_task_id 指向不同任务")
+        }
+        (Some(id_turn), _) => Ok(Some(id_turn)),
+        (None, Some(legacy_turn)) => Ok(Some(legacy_turn.clone())),
+        (None, None) => Ok(None),
+    }
+}
+
 fn insert_turn_task_tx(tx: &Transaction<'_>, task: &TurnTask) -> Result<()> {
     let turn_session: String = tx.query_row(
         "SELECT session_id FROM turns WHERE id=?1",
@@ -697,6 +724,12 @@ fn insert_turn_task_tx(tx: &Transaction<'_>, task: &TurnTask) -> Result<()> {
         agent_session == task.session_id.0,
         "任务的 Agent 不属于该会话"
     );
+    let collision: i64 = tx.query_row(
+        "SELECT count(*) FROM turn_tasks WHERE id=?1 OR legacy_task_id=?2 OR id=?2",
+        params![task.legacy_task_id, task.id.0],
+        |row| row.get(0),
+    )?;
+    anyhow::ensure!(collision == 0, "任务 ID 与已有 legacy_task_id 冲突");
     tx.execute(
         "INSERT INTO turn_tasks(id,turn_id,session_id,agent_id,legacy_task_id,status,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
         params![
@@ -737,15 +770,9 @@ fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
             event.session_id.as_deref() == Some(session_id.as_str()),
             "事件的回合不属于该会话"
         );
-        let task_turn: Option<String> = tx
-            .query_row(
-                "SELECT turn_id FROM turn_tasks WHERE id=?1 OR legacy_task_id=?1",
-                [&event.task_id],
-                |row| row.get(0),
-            )
-            .optional()?;
+        let resolved = resolve_task_turn(tx, &event.task_id)?;
         anyhow::ensure!(
-            task_turn.as_deref() == Some(turn_id.as_str()),
+            resolved.as_deref() == Some(turn_id.as_str()),
             "事件的任务不属于该回合"
         );
     } else if let Some(session_id) = &event.session_id {
