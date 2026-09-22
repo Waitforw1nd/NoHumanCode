@@ -279,6 +279,12 @@ pub struct Repository<'a> {
 }
 
 impl<'a> Repository<'a> {
+    pub fn connection(&self) -> &'a Connection {
+        self.conn
+    }
+}
+
+impl<'a> Repository<'a> {
     pub fn new(conn: &'a Connection) -> Self {
         Self { conn }
     }
@@ -403,7 +409,7 @@ impl<'a> Repository<'a> {
     /// The caller inserts the legacy run and task rows in the same
     /// transaction before this returns.  A later failure rolls those rows
     /// back with the domain rows.
-    pub fn commit_turn(
+    pub(crate) fn commit_turn(
         tx: &Transaction<'_>,
         turn: &Turn,
         tasks: &[TurnTask],
@@ -508,10 +514,6 @@ impl<'a> Repository<'a> {
             [&task_id.0],
             |row| row.get(0),
         )?;
-        tx.execute(
-            "DELETE FROM turn_task_dependencies WHERE task_id=?1",
-            [&task_id.0],
-        )?;
         for dependency in depends_on {
             anyhow::ensure!(dependency != task_id, "任务不能依赖自己");
             let dependency_turn: String = tx.query_row(
@@ -520,6 +522,12 @@ impl<'a> Repository<'a> {
                 |row| row.get(0),
             )?;
             anyhow::ensure!(dependency_turn == turn_id, "任务只能依赖同一回合中的任务");
+        }
+        tx.execute(
+            "DELETE FROM turn_task_dependencies WHERE task_id=?1",
+            [&task_id.0],
+        )?;
+        for dependency in depends_on {
             tx.execute(
                 "INSERT INTO turn_task_dependencies(task_id,depends_on_task_id) VALUES (?1,?2)",
                 params![task_id.0, dependency.0],

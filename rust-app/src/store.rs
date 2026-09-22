@@ -320,22 +320,12 @@ impl Store {
         let tx = db.transaction()?;
         if let Some(key) = key {
             let repo = repository::Repository::new(&tx);
-            match repo.classify_idempotency(key, &turn.request_hash)? {
-                Some(IdempotencyHit::Same) => {
-                    return repo
-                        .idempotency(key, &turn.request_hash)?
-                        .transpose()
-                        .map_err(|_| anyhow::anyhow!("同一个 Idempotency-Key 不能用于不同请求"))?
-                        .context("幂等记录缺少原回合");
+            match classify_both(&repo, key, &turn.request_hash)? {
+                Some(IdempotencyReplay::Turn(existing)) => return Ok(existing),
+                Some(IdempotencyReplay::LegacyRun(_)) => {
+                    bail!("同一个 Idempotency-Key 已经绑定旧运行，不能再创建新回合")
                 }
-                Some(IdempotencyHit::Conflict) => {
-                    bail!("同一个 Idempotency-Key 不能用于不同请求");
-                }
-                None => match repo.legacy_idempotency(key, &turn.request_hash)? {
-                    Some(Ok(_)) => bail!("同一个 Idempotency-Key 已经绑定旧运行，不能再创建新回合"),
-                    Some(Err(())) => bail!("同一个 Idempotency-Key 不能用于不同请求"),
-                    None => {}
-                },
+                None => {}
             }
         }
         let session = repository::Repository::new(&tx).session(&turn.session_id)?;
@@ -361,11 +351,12 @@ impl Store {
             |row| row.get(0),
         )?;
         if run_exists == 0 {
+            let title = secrets::safe_metadata_text("run_title", &session.title)?;
             tx.execute(
                 "INSERT INTO runs(id,title,kind,created_at) VALUES (?1,?2,?3,?4)",
                 params![
                     session.legacy_run_id,
-                    session.title,
+                    title,
                     session.kind.as_str(),
                     session.created_at
                 ],
@@ -428,27 +419,9 @@ impl Store {
     ) -> Result<Option<IdempotencyReplay>> {
         let db = self.db.lock().unwrap();
         let repo = repository::Repository::new(&db);
-        let current = repo.idempotency(key, request_hash)?;
-        let legacy = repo.legacy_idempotency(key, request_hash)?;
+        let classified = classify_both(&repo, key, request_hash);
         drop(db);
-        match (current, legacy) {
-            (Some(Err(())), _) | (_, Some(Err(()))) => {
-                bail!("同一个 Idempotency-Key 不能用于不同请求")
-            }
-            (Some(Ok(turn)), Some(Ok(run_id))) => {
-                anyhow::ensure!(
-                    self.session(&turn.session_id)?.legacy_run_id == run_id,
-                    "新旧幂等记录指向不同对象"
-                );
-                Ok(Some(IdempotencyReplay::Turn(turn)))
-            }
-            (Some(Ok(turn)), None) => Ok(Some(IdempotencyReplay::Turn(turn))),
-            (None, Some(Ok(run_id))) => match self.run(&run_id) {
-                Ok(run) => Ok(Some(IdempotencyReplay::LegacyRun(run))),
-                Err(error) => bail!("旧幂等记录指向不存在的运行：{error}"),
-            },
-            (None, None) => Ok(None),
-        }
+        classified
     }
 
     /// Compatibility wrapper.  A legacy-only key is an error here because this
@@ -624,6 +597,53 @@ fn event_columns(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
         data,
         at: row.get(8)?,
     })
+}
+
+fn classify_both(
+    repo: &repository::Repository<'_>,
+    key: &str,
+    request_hash: &str,
+) -> Result<Option<IdempotencyReplay>> {
+    let current = repo.idempotency(key, request_hash)?;
+    let legacy = repo.legacy_idempotency(key, request_hash)?;
+    match (current, legacy) {
+        (Some(Err(())), _) | (_, Some(Err(()))) => {
+            bail!("同一个 Idempotency-Key 不能用于不同请求")
+        }
+        (Some(Ok(turn)), Some(Ok(run_id))) => {
+            let bound = repo.session(&turn.session_id)?.legacy_run_id;
+            anyhow::ensure!(bound == run_id, "新旧幂等记录指向不同对象");
+            Ok(Some(IdempotencyReplay::Turn(turn)))
+        }
+        (Some(Ok(turn)), None) => Ok(Some(IdempotencyReplay::Turn(turn))),
+        (None, Some(Ok(run_id))) => {
+            let title: String = repo
+                .connection()
+                .query_row("SELECT title FROM runs WHERE id=?1", [&run_id], |row| {
+                    row.get(0)
+                })
+                .context("旧幂等记录指向不存在的运行")?;
+            let created_at: u64 = repo.connection().query_row(
+                "SELECT created_at FROM runs WHERE id=?1",
+                [&run_id],
+                |row| row.get(0),
+            )?;
+            let kind: String = repo.connection().query_row(
+                "SELECT kind FROM runs WHERE id=?1",
+                [&run_id],
+                |row| row.get(0),
+            )?;
+            let kind = serde_json::from_value(Value::String(kind))?;
+            Ok(Some(IdempotencyReplay::LegacyRun(Run {
+                id: run_id,
+                title,
+                kind,
+                created_at,
+                tasks: vec![],
+            })))
+        }
+        (None, None) => Ok(None),
+    }
 }
 
 fn insert_legacy_run(tx: &rusqlite::Transaction<'_>, run: &Run) -> Result<()> {
@@ -1432,5 +1452,18 @@ mod tests {
                 .commit_turn(&other, &[colliding], Some("idem-collide"), &[other_legacy])
                 .is_err()
         );
+        let db = Connection::open(temp.path().join("replay.db")).unwrap();
+        db.execute(
+            "UPDATE idempotency SET request_hash='other-digest' WHERE key='legacy-key'",
+            [],
+        )
+        .unwrap();
+        drop(db);
+        assert!(
+            store
+                .idempotency_replay("legacy-key", "digest-legacy")
+                .is_err()
+        );
+        assert_eq!(store.runs().unwrap().len(), 1);
     }
 }
