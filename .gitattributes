@@ -1,0 +1,9 @@
+# Normal project text uses LF; Windows command files check out as CRLF.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Evidence and vendored references keep their bytes; text diffs remain enabled.
+niuma/** -text !eol
+NoManCode/rust-app/assessment/** -text !eol
+references/** -text !eol

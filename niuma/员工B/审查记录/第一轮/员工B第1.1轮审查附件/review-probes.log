@@ -1,0 +1,44 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-b11-review-30b643772f)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.51s
+     Running tests\review_b11_probes.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\review_b11_probes-7b568df1b96b8ebc.exe)
+
+running 9 tests
+database_error_classification=Some(CorruptState)
+malformed_prefix_accepted=false, provider_call_delta=0
+session_decode_classification=Some(NotFound)
+multi_agent_accepted=false, turns_before=1, turns_after=1
+wrong_predecessor_workspace_accepted=false
+test review_database_failure_must_not_be_classified_as_not_found ... ok
+test review_malformed_message_must_fail_before_commit_and_provider ... ok
+test review_multiple_agents_must_be_refused ... ok
+test review_wrong_workspace_must_not_be_silently_replaced ... ok
+latest_is_old=false, historical_resume_accepted=false
+partial_fixture: run_deltas=1, current_task_deltas=0, old_executor_alive_after_drop=true
+
+thread 'review_b11_partial_fixture_must_have_its_own_delta' (29944) panicked at tests\review_b11_probes.rs:148:5:
+the claimed restart fixture has no current-task partial and did not stop the old executor
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test review_b11_partial_fixture_must_have_its_own_delta ... FAILED
+incomplete_function_accepted=true, provider_call_delta=1, turn_delta=1
+
+thread 'review_b11_incomplete_function_must_not_dispatch' (58924) panicked at tests\review_b11_probes.rs:109:5:
+a paired call with no function name or arguments was persisted and dispatched
+test review_old_event_must_not_reopen_historical_turn ... ok
+test review_stale_predecessor_snapshot_must_be_rejected_or_refreshed ... ok
+test review_b11_incomplete_function_must_not_dispatch ... FAILED
+turn_decode_classification=Some(NotFound)
+
+thread 'review_b11_session_and_turn_decode_failures_are_not_missing' (35332) panicked at tests\review_b11_probes.rs:127:5:
+diagnostic promise not met for session/turn
+test review_b11_session_and_turn_decode_failures_are_not_missing ... FAILED
+
+failures:
+
+failures:
+    review_b11_incomplete_function_must_not_dispatch
+    review_b11_partial_fixture_must_have_its_own_delta
+    review_b11_session_and_turn_decode_failures_are_not_missing
+
+test result: FAILED. 6 passed; 3 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.14s
+
+error: test failed, to rerun pass `--test review_b11_probes`

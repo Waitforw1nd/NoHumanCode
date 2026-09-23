@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-23",
+  "moved_roots": 13,
+  "inventoried_files": 86,
+  "unchanged_non_markdown_files": 66,
+  "documents_checked": 95,
+  "local_links_checked": 404,
+  "broken_links": [],
+  "ignore_checks": "passed",
+  "cargo_metadata": "passed offline locked no-deps",
+  "production_tests_run": false
+}

@@ -1,0 +1,42 @@
+warning: in the working copy of './审查记录\第一轮\员工C第1.1轮审查附件\reviewed-http_contract.rs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of './.local/temp/fufu-c12-review-d94f190c6f\tests\http_contract.rs', LF will be replaced by CRLF the next time Git touches it
+diff --git "a/niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/reviewed-http_contract.rs" "b/.local/temp/fufu-c12-review-d94f190c6f/tests/http_contract.rs"
+index c1dfb63..60c200f 100644
+--- "a/niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/reviewed-http_contract.rs"
++++ "b/.local/temp/fufu-c12-review-d94f190c6f/tests/http_contract.rs"
+@@ -1006,7 +1006,7 @@ async fn h7_disconnect_does_not_cancel_running_task() {
+             let counted = counted.clone();
+             async move {
+                 counted.fetch_add(1, Ordering::SeqCst);
+-                started.notify_waiters();
++                started.notify_one();
+                 gate.notified().await;
+                 (
+                     [("content-type", "text/event-stream")],
+@@ -1075,9 +1075,16 @@ async fn h7_disconnect_does_not_cancel_running_task() {
+         .unwrap();
+     assert_eq!(started_run.status(), reqwest::StatusCode::OK);
+     let run: Run = started_run.json().await.unwrap();
++    tokio::time::timeout(Duration::from_secs(3), async {
++        while calls.load(Ordering::SeqCst) == 0 {
++            tokio::task::yield_now().await;
++        }
++    })
++    .await
++    .expect("provider must enter before the saved handshake is awaited");
+     tokio::time::timeout(Duration::from_secs(3), entered.notified())
+         .await
+-        .unwrap();
++        .expect("a permit saved by notify_one must survive a late waiter");
+     assert!(engine.is_busy());
+     let session_id = engine.store.events(&run.id, 0).unwrap()[0]
+         .session_id
+@@ -1097,7 +1104,7 @@ async fn h7_disconnect_does_not_cancel_running_task() {
+         "closing the SSE client must not cancel the task"
+     );
+     assert_eq!(calls.load(Ordering::SeqCst), 1);
+-    release.notify_waiters();
++    release.notify_one();
+     tokio::time::timeout(Duration::from_secs(5), async {
+         loop {
+             let current = engine.store.run(&run.id).unwrap();

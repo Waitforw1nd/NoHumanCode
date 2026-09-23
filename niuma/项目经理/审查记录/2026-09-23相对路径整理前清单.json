@@ -1,0 +1,1456 @@
+{
+  "scope": "Text files in own project before repository path normalization; paths relative to repository root",
+  "files": [
+    {
+      "path": "项目经理启动提示词.md",
+      "bytes": 2890,
+      "sha256": "1D0CBEBD341523EC81D95132004AA9141B1A7F9FAB5049B9E86977A4DF0AB3BB"
+    },
+    {
+      "path": "项目开发守则.md",
+      "bytes": 13500,
+      "sha256": "92967CF8243D31D375FA26C234855EBF4CAABB1F07EB3074B297B4F168C7F181"
+    },
+    {
+      "path": "WORKSPACE-SETUP.md",
+      "bytes": 1840,
+      "sha256": "6B070C37928F2CF427E17BEE6FDB770D8E2229215C26F7EFC7AE63C18EA42A46"
+    },
+    {
+      "path": "HANDOFF-TO-NEXT-MODEL.md",
+      "bytes": 2630,
+      "sha256": "60D54A3CF4537C2B9C746B4255A09B88C774CADE1786AF0B2EFEB40253B2F635"
+    },
+    {
+      "path": "DESIGN-DIRECTION-DRAFT-2026-09-22.md",
+      "bytes": 8124,
+      "sha256": "CC3534D5DA62583ABAABACACF7B01A108FBAA16736F2304434BCC51FD5A3309F"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 3946,
+      "sha256": "4D0AC7C0C19808E7EBD4900DB0CBC553A76D8591403ACA581AF301B2D4864978"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 437,
+      "sha256": "C5997D3F3CBAD7715EDB6836244A7637F2E0CF174D196BCE86AD7C79D81328C8"
+    },
+    {
+      "path": "README.md",
+      "bytes": 7579,
+      "sha256": "1B4AC2696CB29FFE34DF5D3C5D6330A17A22EFF2693E26618BE8BD386E5C5B57"
+    },
+    {
+      "path": "PROJECT-BOOK.md",
+      "bytes": 19935,
+      "sha256": "A6A8FB05EE175B688CB1FA260979A89EFAEC7206AAD153233367B3946730417E"
+    },
+    {
+      "path": "NoManCode/tests/test-xpeach-live.mjs",
+      "bytes": 3338,
+      "sha256": "9B8C0C9BBAB55000B44909485994666EE82C955C448015BDFE0B9FA2411437E0"
+    },
+    {
+      "path": "NoManCode/tests/test-team-swarm-routing.mjs",
+      "bytes": 3641,
+      "sha256": "A04D6043463CB96963941A61DF03916EB6AD7CCC7A75D10B1D0B5D0C4A5C6450"
+    },
+    {
+      "path": "NoManCode/tests/test-team-model-routing.mjs",
+      "bytes": 2650,
+      "sha256": "A754C307D6E20DD698282AEE0C37EE48B3F6BC0A5F64DB3FE66581D84675F505"
+    },
+    {
+      "path": "NoManCode/tests/test-team-membership-guard.mjs",
+      "bytes": 1077,
+      "sha256": "E804F22AF4AB0030463038FB63B7BA841FB40F09061671B3F50DDC032BE9D3B2"
+    },
+    {
+      "path": "NoManCode/tests/test-skill-discovery.mjs",
+      "bytes": 998,
+      "sha256": "7E7CD835429A6AEF6685F3163EAF0724F21FE08CE2CDFD5B2378C868AC530AA1"
+    },
+    {
+      "path": "NoManCode/tests/test-openai-parallel.mjs",
+      "bytes": 1253,
+      "sha256": "67EC7B4AAF494B47D8B9094383C15382237635FF6AC03B9EAA108848D6DC405D"
+    },
+    {
+      "path": "NoManCode/tests/test-newapi-balance.mjs",
+      "bytes": 1560,
+      "sha256": "14BC6B1910613C73407EBF90059528612F89FFC84D925088E3467C2F0F28040E"
+    },
+    {
+      "path": "NoManCode/tests/README.md",
+      "bytes": 479,
+      "sha256": "6B18FE462219E87C3E155901854E35E10198AA7A8B1C1AB1FD2FE4270F082C56"
+    },
+    {
+      "path": "NoManCode/tests/dump-config.txt",
+      "bytes": 19325,
+      "sha256": "B33D8834FCE668A80EB6BC570A9AFF4E7B73E19EDD1CF268E4CCC3C8EA5F29D8"
+    },
+    {
+      "path": "NoManCode/tests/discover-peachsh-models.mjs",
+      "bytes": 923,
+      "sha256": "5E2A0245E3B0B2AC2A63A315E8CF69445A1C48810E168DB9EA19ABC6089439F0"
+    },
+    {
+      "path": "NoManCode/start-peachsh.cmd",
+      "bytes": 391,
+      "sha256": "5C5181DFDFB1B6720A0A0DFDEDF6EC47A4B73CBBD1527512455FB420BD8FDE7A"
+    },
+    {
+      "path": "NoManCode/start-peachsh-legacy.cmd",
+      "bytes": 619,
+      "sha256": "D377CE5EF47CA0B4883637C091DD2E32FA58BFF1FAF6619122330F4EF29FEB1F"
+    },
+    {
+      "path": "NoManCode/set-peachsh-key.ps1",
+      "bytes": 2022,
+      "sha256": "F754DBB37B825212231110AE5A601F39FA2E1235BBBF9DE3449A8FAD4DFFF6AA"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/历史交接/2026-09-23启动收敛前交接全文.md",
+      "bytes": 16479,
+      "sha256": "C72D8F876C23DBA804AE618F20F9A1DD9BF60602FAED79043266455336C1C0CD"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/README.md",
+      "bytes": 1159,
+      "sha256": "0F3BF9B563655DF8134A96B05056DAD9F0F1EA25054837AD3ADECABE590E2A9E"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+      "bytes": 26784,
+      "sha256": "F096AF85DB5A0AD9C464B76C8114B022B429F708E384947550F88041B88661BC"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/CONVERSATION-FULL.md",
+      "bytes": 100581,
+      "sha256": "8D9FF2E07381CC22943DD11CC31296784115994C3996F96B158DEF0B317E5B6A"
+    },
+    {
+      "path": "niuma/项目经理/项目地图.md",
+      "bytes": 13192,
+      "sha256": "FD36E18E13FE8E076F3AD84FFE0F32850E9E9FC1C5CBA9EB2C764BC23211CF0F"
+    },
+    {
+      "path": "niuma/项目经理/环境与验证.md",
+      "bytes": 4384,
+      "sha256": "2076AD13C51B0DBC7938E15F512349CF87AF8088875013B4929737ED876DB441"
+    },
+    {
+      "path": "NoManCode/newapi.cmd",
+      "bytes": 583,
+      "sha256": "CB428CCFD08DDA891D29CFF4118B80CD31359E720DB85E9884ABB7564976CA32"
+    },
+    {
+      "path": "NoManCode/apply-overrides.ps1",
+      "bytes": 2302,
+      "sha256": "475CE2E36177C82839D25713E3094EBF85F5BF0B74D5C12528D523941C062A9B"
+    },
+    {
+      "path": "NoManCode/AGENTS.md",
+      "bytes": 640,
+      "sha256": "50290C76EC3FDBEE4343B2A61D12BEB0D79B69C0275C16EB8E09AE8578626B1B"
+    },
+    {
+      "path": "NoManCode/dsh-peachsh.cmd",
+      "bytes": 580,
+      "sha256": "9142712B35970AB3E23A078B957D0C4B1615EF2B59D584C98250903D21B60F2F"
+    },
+    {
+      "path": "NoManCode/pnpm-lock.yaml",
+      "bytes": 114,
+      "sha256": "17C814B167307942D3609C7B9D916CEDDB85839573AB39BAA114E30EDB132A1A"
+    },
+    {
+      "path": "NoManCode/package.json",
+      "bytes": 868,
+      "sha256": "AAC6F329D72751B8182FB6CB71E0C6573D60CBB68545DDE60417947BD791688B"
+    },
+    {
+      "path": "NoManCode/rust-app/.gitignore",
+      "bytes": 23,
+      "sha256": "3A471A3D48F2626877780A22158A5FF15FBB1E018F902D837269934BBD51F6AA"
+    },
+    {
+      "path": "NoManCode/README.md",
+      "bytes": 2315,
+      "sha256": "DB3F869BEF1347661E9A4177D08DB5A752D1B41A2AF7CCAED194CD22F0987C1E"
+    },
+    {
+      "path": "NoManCode/rust-app/ARCHITECTURE-AUDIT-DRAFT.md",
+      "bytes": 15059,
+      "sha256": "7A06DD046815F0455D956A71AF8B76C2BE7BA261578668F6E58140A59D74D9CF"
+    },
+    {
+      "path": "NoManCode/rust-app/ARCHITECTURE-REBUTTAL.md",
+      "bytes": 3901,
+      "sha256": "CF2EA59BAD06C2D0F7EC6287E67291B5E9B3448C43EB7748013877B7EE5C2FD0"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.toml",
+      "bytes": 1104,
+      "sha256": "195D0637D5986B6B3AEC1609C8EA31E49896BC51D24235E2144AF0C77FDB6082"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.lock",
+      "bytes": 77750,
+      "sha256": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+    },
+    {
+      "path": "NoManCode/rust-app/build.ps1",
+      "bytes": 2681,
+      "sha256": "6B29F00BFA2940EC56BD04C37370079C94218EAD2E72044E2610F006AF756D1C"
+    },
+    {
+      "path": "NoManCode/rust-app/ASSESSMENT-LIVE-2026-09-20.md",
+      "bytes": 12579,
+      "sha256": "F5EB43573E6F43D009269AEF300436307414636C63C46692246A146C85598B3D"
+    },
+    {
+      "path": "NoManCode/rust-app/EVALUATION-2026-09-20.md",
+      "bytes": 3972,
+      "sha256": "D59D6E4BF27BF0C128F45C940772384B42891BFA36D4D9819B22CF64CF9CE9AD"
+    },
+    {
+      "path": "niuma/项目经理/提交报告/README.md",
+      "bytes": 390,
+      "sha256": "2ED891707063306084EA14ACC3A8D1F2ECB726CAC1EACD517594C2A5037453B6"
+    },
+    {
+      "path": "niuma/项目经理/提交报告/2026-09-23经理启动材料报告.md",
+      "bytes": 3013,
+      "sha256": "5384A32ACF014F338667DAFAD8F0084EDA57FD9739B5222F8EE095E9F4204838"
+    },
+    {
+      "path": "niuma/项目经理/提交报告/2026-09-23源码目录迁移报告.md",
+      "bytes": 2800,
+      "sha256": "89E47001AA8883FE53EB9C1C4054F3CE2810454C0AF082F162D35E7307EA8B04"
+    },
+    {
+      "path": "niuma/项目经理/提交报告/2026-09-23根入口与启动提示词.md",
+      "bytes": 828,
+      "sha256": "8E4B84FCDA462345E762E613356E0820066FCD17FC0C53B66BC263791B3D551C"
+    },
+    {
+      "path": "niuma/项目经理/提交报告/2026-09-23协作目录与身份交接调整报告.md",
+      "bytes": 4011,
+      "sha256": "83C739C69C02E10A0C200F756B27375923796F044366C56DD709D755CADEBEE6"
+    },
+    {
+      "path": "niuma/项目经理/当前任务板.md",
+      "bytes": 5247,
+      "sha256": "EECCFEA8E7DBB6BF76C87F3BC99CD2C7673401EB409E8F6EE3FBC38540C45687"
+    },
+    {
+      "path": "NoManCode/rust-app/PI-DESKTOP-ADAPTATION-2026-09-21.md",
+      "bytes": 5230,
+      "sha256": "6B4A47F9080DCC8723258F173DEFCEA463049AF27E315755FD8B2C85FB140EF1"
+    },
+    {
+      "path": "NoManCode/rust-app/PHASE0-NEXT-AUDIT.md",
+      "bytes": 3749,
+      "sha256": "018835E6AD89E66C48F4ECDD4D7E07F815AFDFFD3E7C4EC88A0D3A8F8A343A58"
+    },
+    {
+      "path": "NoManCode/rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md",
+      "bytes": 13136,
+      "sha256": "6EDF6E803AF243707365463246813FDFFC7DBF925EC81896C1B0639AB199A8A9"
+    },
+    {
+      "path": "NoManCode/rust-app/ITERATION-PLAN.md",
+      "bytes": 2538,
+      "sha256": "2C0F07004320A97FC185DFA3E052F2C0AB57636795FAF36993327BCB67DEFA08"
+    },
+    {
+      "path": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md",
+      "bytes": 18421,
+      "sha256": "1F148F7430558C848CC3395522FD82E6592094439B0386E3F6AF9E6DDCD82E64"
+    },
+    {
+      "path": "NoManCode/rust-app/FRESH-INTEGRATION-AUDIT.md",
+      "bytes": 10496,
+      "sha256": "E78AFE0A32D0695299D8F677BA753F54E2E80194900B59B334B6C5E8CEFF64FB"
+    },
+    {
+      "path": "NoManCode/rust-app/FRAMEWORK-DECISION-2026-09-21.md",
+      "bytes": 5901,
+      "sha256": "44F7121158F466649BE8C95D9FD61C6A4B49564DE691694F2DC7EA81D81EF50F"
+    },
+    {
+      "path": "niuma/项目经理/README.md",
+      "bytes": 819,
+      "sha256": "54829EC39F895EBD00859A99574B95B79A3E87BF726708768C9A99214641FB45"
+    },
+    {
+      "path": "NoManCode/rust-app/README.md",
+      "bytes": 9048,
+      "sha256": "83FC2F5462B5486CA0135BAD0FE47608FE40E58D4DA52ABD8D660A4553C9C114"
+    },
+    {
+      "path": "NoManCode/rust-app/PROTOCOL-MIGRATION-TEST-PLAN.md",
+      "bytes": 2482,
+      "sha256": "962B7DA95B2D9F3C019032351E143AD9FCA2E8A7BEE9CA48CE273EA31CC535BC"
+    },
+    {
+      "path": "NoManCode/rust-app/PROJECT-REORGANIZATION-2026-09-21.md",
+      "bytes": 15599,
+      "sha256": "2E02EB1264953BD233F0A893E6853DCBEA6468C4BCE7E2BE7078EFFEF069AAA7"
+    },
+    {
+      "path": "NoManCode/rust-app/PRODUCT-GAP-AUDIT-2026-09-20.md",
+      "bytes": 25774,
+      "sha256": "274FF52E60211707F35A1CF0C98319B3D962ADA98B8C11D6E20E3691DD66FEA8"
+    },
+    {
+      "path": "NoManCode/rust-app/rust-toolchain.toml",
+      "bytes": 88,
+      "sha256": "E8E5900C9696B384BF21A5582D895B5FED111261187E15A4D3A56F61A6CFD34E"
+    },
+    {
+      "path": "NoManCode/rust-app/VALIDATION.md",
+      "bytes": 2468,
+      "sha256": "987C7E486FCDC08906A0931BC12120FD44E6BAD6A212EB14644F4F02344A0A82"
+    },
+    {
+      "path": "niuma/项目经理/启动说明.md",
+      "bytes": 4827,
+      "sha256": "6A9AD4B156800C6BB406EC2F1C84FD792358449E856CC68836BC90C49DBC80BD"
+    },
+    {
+      "path": "niuma/项目经理/关键约定与验收索引.md",
+      "bytes": 5006,
+      "sha256": "5AEB1457F5E6023DD4446EE2B05CFFB528E7571719D328DDE63F85771B719291"
+    },
+    {
+      "path": "niuma/项目经理/开发记录/第一轮工作总结与员工分工.md",
+      "bytes": 16174,
+      "sha256": "C841B47EECCC8121B82EB62435D6E244077B658E9D8E9E39C86415403EA8E7BF"
+    },
+    {
+      "path": "niuma/项目经理/开发记录/核心骨架完成度盘点-2026-09-23.md",
+      "bytes": 7223,
+      "sha256": "1F051C0B38667D35ED84383D1DA94335EB676BD3A2698837CFA780B0E6E598A1"
+    },
+    {
+      "path": "niuma/项目经理/开发记录/后续开发注意事项.md",
+      "bytes": 6321,
+      "sha256": "1B8C2F26101D6F1AD222651D197E5C4DC0947F2C3F1FFBEBA3167218E1DB5655"
+    },
+    {
+      "path": "niuma/模板/提交报告模板.md",
+      "bytes": 934,
+      "sha256": "E5D617136E73FB888F7ACDDF2E95974D96391D64B48D5E5510C8CC3D34CF0B38"
+    },
+    {
+      "path": "niuma/模板/审查记录模板.md",
+      "bytes": 804,
+      "sha256": "ECD3B374A6C5C51F6A0E2D2BE0D8ED88B4C21118EA2ABD3DCE885CC2033E652B"
+    },
+    {
+      "path": "niuma/模板/任务说明模板.md",
+      "bytes": 1037,
+      "sha256": "6C3645ECE70152EBC9FF8304A036D86D6097D1FF09271613CC0CFC490B940BEF"
+    },
+    {
+      "path": "niuma/模板/个人身份认知模板.md",
+      "bytes": 1911,
+      "sha256": "7A143356660BE8E2143E297C9BD55B8FDCAA1E642E4A89C07D38F77B6A129A9F"
+    },
+    {
+      "path": "NoManCode/config/README.md",
+      "bytes": 1228,
+      "sha256": "D7CAFF4288BFB6A7510B84D4290CA52E4D91323550D1B361733EC9EAA6AD0009"
+    },
+    {
+      "path": "NoManCode/config/peachsh.providers.yaml",
+      "bytes": 1080,
+      "sha256": "3CDAA8A63CA1A38261BEE673246DB238D6D4BC0702F23FF066921BC9227CD36A"
+    },
+    {
+      "path": "niuma/员工B/个人身份认知.md",
+      "bytes": 6366,
+      "sha256": "B3F8434585BC795410A529F2D7A5D4EC7DF554AEE25A2DEBFBE560E092EED511"
+    },
+    {
+      "path": "niuma/员工B/README.md",
+      "bytes": 569,
+      "sha256": "532409B7CA2E7C5006727006F0C80DB3F8B39DF8E5049CE8817B1BB995571B44"
+    },
+    {
+      "path": "niuma/员工D/提交报告/README.md",
+      "bytes": 385,
+      "sha256": "79AD15E23D4444C83E9EE65CB5C50C91301E879E2BC4BA549A2BF6237C339B86"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第一轮/员工B（Engine连续Chat回合 第1轮报告）.md",
+      "bytes": 11846,
+      "sha256": "EF866FADA47B9C7E05FD64B1BE3D9D83710F5E9F72977A28832FD124041D8768"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第一轮/员工B（Engine连续Chat回合 第1.2轮报告）.md",
+      "bytes": 5523,
+      "sha256": "3A1BE2696A83EC410E7E8AA76646D4D9A881E621F6832F1290E1410D9FACDB88"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第一轮/员工B（Engine连续Chat回合 第1.1轮报告）.md",
+      "bytes": 8155,
+      "sha256": "282840E00B967992AAED889CB152EB1987081B86447E460589936AA6EB6FCB75"
+    },
+    {
+      "path": "niuma/员工B/提交报告/README.md",
+      "bytes": 385,
+      "sha256": "A94D0CFF07070BAC06450DFA81A6672B360C3F3C99FD871AEC98E0F2D5D369C1"
+    },
+    {
+      "path": "niuma/员工D/审查记录/README.md",
+      "bytes": 373,
+      "sha256": "00718E0B8A5AF8890D1B2ED3507C54CF360F081569E0E8FC813E852BAE343503"
+    },
+    {
+      "path": "niuma/项目经理/任务/README.md",
+      "bytes": 316,
+      "sha256": "4275BBFFDBBED8A9905604FDEBE030D9FD2839286F175DB1A99DD8D6906A4390"
+    },
+    {
+      "path": "niuma/项目经理/任务/2026-09-23经理启动材料检查.md",
+      "bytes": 804,
+      "sha256": "CDDE8F9E8E278C26B96B28709BD899F28F1E92357D76F2A1A89BADDC1F187370"
+    },
+    {
+      "path": "niuma/项目经理/任务/2026-09-23源码目录迁移.md",
+      "bytes": 709,
+      "sha256": "D810B1B35961D2E53F981349987718B89E65463845EAD855EB6ACBF99C92111E"
+    },
+    {
+      "path": "niuma/项目经理/任务/2026-09-23根入口与启动提示词.md",
+      "bytes": 597,
+      "sha256": "9C924337E591C154ADB4315D8845FF1EB5F61A720EC05C2890179DD1DFE03308"
+    },
+    {
+      "path": "niuma/项目经理/任务/2026-09-23协作目录与身份交接调整.md",
+      "bytes": 1317,
+      "sha256": "A6B1DCE3D7181FF6C97C0CFBEC8C19AA1CCF5999B84273B9F7864166E51A06DC"
+    },
+    {
+      "path": "niuma/项目经理/个人身份认知.md",
+      "bytes": 6768,
+      "sha256": "1A1CF7B1BCAAFCCB60C7A5ECD39EA54DD0D709994EBED1A7376D28F4EA940B40"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23目录身份检查结果.json",
+      "bytes": 414,
+      "sha256": "14A3B96BA555DD2EC9039F072ED77991AFDF9B5525D20D6F9088B76D065C985A"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23源码迁移清单.json",
+      "bytes": 22304,
+      "sha256": "50D4AC985E037E1F7AA40DA6198D61BEB82B86B8DC8846F2BF0053D46C392B35"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23源码路径更新文件.json",
+      "bytes": 1521,
+      "sha256": "C383EFC5F2EEEF292CAFD9A41172E361206474811CCE9A65FF3F3EA3019ED9F8"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23源码目录迁移审查.md",
+      "bytes": 2167,
+      "sha256": "A4C0515974BA03A395069472A82E8FC46D6B9885DA58B162D4DB82AD02614042"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23源码目录检查结果.json",
+      "bytes": 317,
+      "sha256": "B878870A3BC39985BA501331318C3DCB1C3174B03CA4251B2155B51F2D166AF9"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23根入口检查结果.json",
+      "bytes": 913,
+      "sha256": "6DEA78E2C5C3D9D35194CFB87A3676B1608B5FF768DA62F6E060802AA036625F"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23根入口与启动提示词.md",
+      "bytes": 1494,
+      "sha256": "483D52D5A303A524A6C4E7B0E76C69408D7D543FA166454F5D466E6CDC5E0959"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23旧交接归档.json",
+      "bytes": 342,
+      "sha256": "0F2A12D7B012AEDDFD7403190F22302D4D767B06D801FC9DBAD3068BFEF08173"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23导航更新文件.json",
+      "bytes": 1154,
+      "sha256": "365D34955082CD50E3BAE15FFD36FEBB6C8070DFF19990F61F8A50CE0C39E493"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23协作目录与身份交接审查.md",
+      "bytes": 3627,
+      "sha256": "0EDECBC70CA0D310F07BB08C60D65A2D2FFF14D4D15F43D57F549B3792BE365D"
+    },
+    {
+      "path": "niuma/员工D/复盘/README.md",
+      "bytes": 295,
+      "sha256": "69DC770AD8662E8970DB69B704DC4AD2921F655B8D5AA08829CCE66F24B116EB"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/recovery.json",
+      "bytes": 141,
+      "sha256": "D40213E64322CF60644D1E5B0822E099E657C2C6EE5E6F8369E5B18AB9980648"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/live-evidence.json",
+      "bytes": 498,
+      "sha256": "EE3B033B1B82AC170FABA3C665FA31A6389DD0117C89439BF8913EEB798B1546"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/http-results.json",
+      "bytes": 1316,
+      "sha256": "6A900AF74579834A78459C831D5B0F13E7D109BEDCE2A95F9FB92E9F0E89BDEC"
+    },
+    {
+      "path": "niuma/项目经理/复盘/README.md",
+      "bytes": 300,
+      "sha256": "E7B037FC48421FC3936042A73D23405A273813C00F06B56D73B9BE8B503ACF48"
+    },
+    {
+      "path": "niuma/员工D/任务/README.md",
+      "bytes": 311,
+      "sha256": "C242166D6BB7A46ACDA4EC3DE59F02B68FFA2D16F2C29DA911570A038C186723"
+    },
+    {
+      "path": "niuma/员工D/个人身份认知.md",
+      "bytes": 5202,
+      "sha256": "C8DDA1785454C24A0672F2F5F2B2511E2DDF2768C8B09F9E2E16D48CB12A948F"
+    },
+    {
+      "path": "niuma/员工D/README.md",
+      "bytes": 569,
+      "sha256": "618BA7497892455CCA381F4D1D9136B273D0D9D0F3C16EA615C1F2B89FD85517"
+    },
+    {
+      "path": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1轮报告）.md",
+      "bytes": 4813,
+      "sha256": "D402E3E309C20BD5D7957F3BC5B2B106569B8F189ECDF42C1C71C17635DDBE54"
+    },
+    {
+      "path": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.5轮报告）.md",
+      "bytes": 3127,
+      "sha256": "85D0A5BF65707ACEA183A418463084BEFAEDF064A485975E5F039AE7C727D000"
+    },
+    {
+      "path": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.4轮报告）.md",
+      "bytes": 3466,
+      "sha256": "FCBE79EC3C17464A319A0532F41C57E9059B8BEE28CA6C5EFF6F759C29320272"
+    },
+    {
+      "path": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.3轮报告）.md",
+      "bytes": 4853,
+      "sha256": "72DD7B5EF09EA0936AE185B3C5AD19BB25B464B22F185917634CD0F1A964CACB"
+    },
+    {
+      "path": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.2轮报告）.md",
+      "bytes": 3471,
+      "sha256": "F423E19FF8B8D0345D73527A62D923320DD7C70EC36D83AD02460446F7B8CBB7"
+    },
+    {
+      "path": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.1轮报告）.md",
+      "bytes": 3793,
+      "sha256": "BEA9B2D91E9BEB3EA48B15912EB2229C0856E61B3B0A24D8F73BF3F98A54168F"
+    },
+    {
+      "path": "niuma/员工A/提交报告/README.md",
+      "bytes": 385,
+      "sha256": "2E83CA440E9AE6A6BAF13D5C1952E9E4DA3C839A7BF7CE704BB701C40ABA25AE"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/迁移保留的空目录/README.md",
+      "bytes": 552,
+      "sha256": "852664174643FBAF5712D66390E66C83739CDE487A7AEA6C446CE6C7EF731341"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/README.md",
+      "bytes": 378,
+      "sha256": "01AE8891A40FA627E6685CEF80567E0826E727ABDC6AA8E51DB18D6991AB5208"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23经理启动检查结果.json",
+      "bytes": 1197,
+      "sha256": "38A1B95EEE587742498B45CE7E4900C05105C2098AA3C9C7C75D1994A69B5C56"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23经理启动材料审查.md",
+      "bytes": 3578,
+      "sha256": "68686A4E1D865C9579D1FDB5042531C328A7521E7CBA032C81D2FA1D5BC62AD2"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23目录迁移清单.json",
+      "bytes": 40895,
+      "sha256": "0E849930F5B5EF08BBAC219611A52B63028DE3CA54B669138384D1B028D8751D"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/session_turns.rs",
+      "bytes": 62548,
+      "sha256": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review_b12_probes.rs",
+      "bytes": 10058,
+      "sha256": "60239F15CCBFC29A2705139446C5FCE2D556A16C7C169BE73BB067FF7C75AD20"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review_b12_boundary_probes.rs",
+      "bytes": 4413,
+      "sha256": "89E0418C4D63715C9BC691AE78A6FDC75C9F275BFB37B9C4C4CF49131DC45003"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "bytes": 34308,
+      "sha256": "546B2A8CB0B94D63A70A6246D196C430E44C825E4EC9CEF1644E9F41B02CD74E"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A 最终审查.md",
+      "bytes": 8565,
+      "sha256": "5677C212458E334ED25CFF2A33D8EADA57D0F20D4E0E7688E5B28CF831CA77F5"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A review.md",
+      "bytes": 7298,
+      "sha256": "0F6FFE64D61D77296613CF1E77B2F1F17908994DC6CC85CBDF80A8B90AAA1660"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A review 1.5.md",
+      "bytes": 7296,
+      "sha256": "FBBD9E2834680FDA03135843B16B6B05A70A7650F56289D0484561D12A7B0914"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A review 1.4.md",
+      "bytes": 8886,
+      "sha256": "1525ECFDB44AFB15B2D3F47FD872B61E6429A2805D860B5697BFE59C6B52BFD9"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A review 1.3.md",
+      "bytes": 11685,
+      "sha256": "06ED2E23ACC5DE6AF91819BA0D440B121C4705B41FA771615E9C27725711EA9D"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A review 1.2.md",
+      "bytes": 19634,
+      "sha256": "4C5D63987B452A1AF470A3BA5D6751B6F6E921366D5450806BF93AA203D445FD"
+    },
+    {
+      "path": "niuma/员工A/审查记录/第一轮/员工A review 1.1.md",
+      "bytes": 10043,
+      "sha256": "8C7AEF83B82936B7C08A000F07BBB29FCD4677778B126D1E1F4F090380D49754"
+    },
+    {
+      "path": "niuma/员工A/审查记录/README.md",
+      "bytes": 373,
+      "sha256": "00BB34F95D2AFB6B849B47C863FDC55F00AA4E9C4EC489DF0D4E5A8F48E66BE8"
+    },
+    {
+      "path": "niuma/员工A/README.md",
+      "bytes": 569,
+      "sha256": "BF3556B7B553E51D20796A478AD502F91EFE8AE255CF7C0BD7AFBDD333095DF4"
+    },
+    {
+      "path": "niuma/README.md",
+      "bytes": 4650,
+      "sha256": "D556D3083ADC46BD9C16C531B2D15D4E650BE07A68408DEE409B987455D4BD30"
+    },
+    {
+      "path": "niuma/员工A/个人身份认知.md",
+      "bytes": 6242,
+      "sha256": "927A7ED29FF459DA1DBE6C22FC83ACCBBB502B23CF8BC0FE0EC0EF8BEF6C2994"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/reviewed-src/store.rs",
+      "bytes": 77383,
+      "sha256": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/reviewed-src/repository.rs",
+      "bytes": 72967,
+      "sha256": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/reviewed-src/engine.rs",
+      "bytes": 32363,
+      "sha256": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/reviewed-src/domain.rs",
+      "bytes": 24823,
+      "sha256": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-wasm-check.log",
+      "bytes": 330,
+      "sha256": "BE2DEF60434FA52F89583B146E27C53E3A2DF9B4BE2B969B566B68C8C74D88CC"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-test.log",
+      "bytes": 10341,
+      "sha256": "311BECBC0B5F5C4F7351AA4E3A72A08CBDFFE8999EC048C3569E0923AFEE873C"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-source-recheck.json",
+      "bytes": 1973,
+      "sha256": "A915AA640111CF8E534DDC7858EBE5FB73DAFAECC32E785802FB61F7A21EC2AC"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-source-manifest.json",
+      "bytes": 1013,
+      "sha256": "6D473195A5243BB0C7881582FB0CFE2F777FE882BA3E5F5648E100A308CCB112"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-probes.log",
+      "bytes": 1434,
+      "sha256": "0A84C506CCBFF08AF2C573DF97C40E584EF33F94CD0781D80679A09E64F89E1D"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-probe-results.json",
+      "bytes": 227,
+      "sha256": "D7E2EF87C312F5C767AB7A8A863DB62E8B105DB1709F85F11A605E2D48CE2F9D"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-gates.json",
+      "bytes": 224,
+      "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-environment.log",
+      "bytes": 115,
+      "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-clippy.log",
+      "bytes": 330,
+      "sha256": "9089FBCA6D94726E511C03BB01316BED71506790AB1A35A569CFBFA884463525"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-c12-comparison.json",
+      "bytes": 481,
+      "sha256": "9451DB682EC631897AFD239120EED3FA4806B9F7E45B7BB9940D1E86A8A11508"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-boundary-result.json",
+      "bytes": 59,
+      "sha256": "5D8E7D3A4ACE621465CA4D321F8472D2EDA0F6A3B6BF2863DFC377674D12064C"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review-boundary-probes.log",
+      "bytes": 826,
+      "sha256": "58D90F8429AB79EC78AF9C26F27A34E5DC0716036F68506E488E467302586F68"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/README.md",
+      "bytes": 3269,
+      "sha256": "EC940761FF81641094046C15CE63FFC9E65F834268535BB083F92CE3C7115B1B"
+    },
+    {
+      "path": "niuma/员工C/提交报告/第一轮/员工C（HTTP与SSE传输契约 第1轮报告）.md",
+      "bytes": 6823,
+      "sha256": "49201C604EB8BF645AADE354AAE904B6257DB204C0CA9CF0C9756B9E61AB1129"
+    },
+    {
+      "path": "niuma/员工C/提交报告/第一轮/员工C（HTTP与SSE传输契约 第1.2轮报告）.md",
+      "bytes": 3317,
+      "sha256": "BAFA0C2D694A5D99F87D3B448C06AD196621D18F6080467D3C80ABFE024EE790"
+    },
+    {
+      "path": "niuma/员工C/提交报告/第一轮/员工C（HTTP与SSE传输契约 第1.1轮报告）.md",
+      "bytes": 4589,
+      "sha256": "F0CC7137E7A5882B9BA654D3A97E85E18FD190046E272E2E4132AF45AF0E0688"
+    },
+    {
+      "path": "niuma/员工C/提交报告/README.md",
+      "bytes": 385,
+      "sha256": "F7B08E7D8A1820713493780D76049BCD9F1A04EA225158A02664FC8E1483C4E1"
+    },
+    {
+      "path": "niuma/员工A/复盘/员工A复盘与反思日志.md",
+      "bytes": 8646,
+      "sha256": "1707C9E92297D1C91AC30F03B913EDD9703051778697B5B6E12C0C8C0619928D"
+    },
+    {
+      "path": "niuma/员工A/复盘/README.md",
+      "bytes": 295,
+      "sha256": "58C1589340B74E5B5733A228BDB2E3FA1F48A041D737077DE78012F1E5952720"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B review 1.1.md",
+      "bytes": 18689,
+      "sha256": "DE0A4035F82D30C7EDE803902D885EDAB8DC1373CB8AF9DD4B1188951636B1D6"
+    },
+    {
+      "path": "niuma/员工B/审查记录/README.md",
+      "bytes": 373,
+      "sha256": "3E9719131BA0718B5958CD0E2F2CF5ECBA44EDDDA41AA7ADA93378F17E8B1B01"
+    },
+    {
+      "path": "niuma/员工A/任务/README.md",
+      "bytes": 311,
+      "sha256": "618A0335679A6E568985F699BFA6EC510213A64EDD8C366385DD976460E57C49"
+    },
+    {
+      "path": "niuma/员工B/复盘/README.md",
+      "bytes": 295,
+      "sha256": "9CE5DE13E4801507BBF40860CD03628358CC1F66CB5BC08A0CE2F14978CC5EFE"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/source-recheck.json",
+      "bytes": 2230,
+      "sha256": "0FA43D74682A23F1CCCFC3DC47B870F247F62E6C8281A0DE9DDADABA459C9340"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/session_turns.rs",
+      "bytes": 48873,
+      "sha256": "63B7C2531F90FCC6EE0AE07D00867E7AA470D29A0B2EF8CEA81AB47064788BCF"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review_b11_probes.rs",
+      "bytes": 10058,
+      "sha256": "60239F15CCBFC29A2705139446C5FCE2D556A16C7C169BE73BB067FF7C75AD20"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "bytes": 7954,
+      "sha256": "FCA87AC480AC4DB4E2BBBC79855FAC23494DCB19A985BA87DD1F47F16DF208BB"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "bytes": 10354,
+      "sha256": "32D346CDE51710B21C57A7A76001EF9C1CFF4BAB406832B1AA743E0D1D9A9332"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "bytes": 56210,
+      "sha256": "13252EB94AB75176994C693A73440CD6599F39E356A8EF956945AF3C3099C9E1"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "bytes": 75526,
+      "sha256": "440BDD9F5DDA5DD3C2C0D8BCCC263FF413624C49E99F4953C2B7FFACBC2DEB65"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/reviewed-src/store.rs",
+      "bytes": 77306,
+      "sha256": "2E18BEC393217EDC94EDE6B7C186330A4A5582C0871704BBAE0C8618F644320A"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/reviewed-src/repository.rs",
+      "bytes": 72522,
+      "sha256": "0D1B09578B721F1E68CE87174FBBE5BB5F4186961AE14B135654B84F4FDF0922"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/reviewed-src/engine.rs",
+      "bytes": 35125,
+      "sha256": "0A1620B8E2A2D3FB67ABCDA431B31B854CB2E08370AB61F17D9BC79F35DF9230"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/reviewed-src/domain.rs",
+      "bytes": 23344,
+      "sha256": "719067F366C190617DA49549BEE592277166CFF4CC0097CCAA72112A74E1C438"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-wasm-check.log",
+      "bytes": 6509,
+      "sha256": "5C1A7AAFEE2DDA56865DDA03C72E3528180590BEFB0B4D04E81D12E8D966D0BA"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-test.log",
+      "bytes": 10073,
+      "sha256": "106DFD6DD3FD22BBD5AE62E7AD4539CF74EC2891CD6CCF945D6867E581F3EADE"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-source-manifest.json",
+      "bytes": 1148,
+      "sha256": "9C248197B1285988B73CDDF7C89F05D4662B8EE939DF3D7C93B7ED47F057976E"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-probes.log",
+      "bytes": 2510,
+      "sha256": "23A0DA0409D03E7D068CAB3D5D89AF107511B3F232D0AE0E0DA1ACEE388BA2DF"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-probe-result.json",
+      "bytes": 61,
+      "sha256": "F9DCEC24D60F91F068D7B6C481CC58EA25E80528D2AB3A543C9165B57FA500AE"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-gates.json",
+      "bytes": 224,
+      "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-environment.log",
+      "bytes": 115,
+      "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/review-clippy.log",
+      "bytes": 847,
+      "sha256": "451B02E5096620DD93196C6844BC47F0C9FC8BE407331C5DDC14072E20D86914"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B第1.1轮审查附件/README.md",
+      "bytes": 3425,
+      "sha256": "6A5E42909698DAB69DC9FE0120E228FE6ADD91D578193BFCC248554092975F7E"
+    },
+    {
+      "path": "niuma/员工B/任务/第一轮/员工B提示词.md",
+      "bytes": 14581,
+      "sha256": "C666363CADC5CAC383806C073204B67425A8DCB282289DC1FCE6C960F2D09A07"
+    },
+    {
+      "path": "niuma/员工B/任务/README.md",
+      "bytes": 311,
+      "sha256": "A16ABF142188921F67BB6695152E327B8D5FEBB9471807D2FC6A9521609EEE7B"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B review.md",
+      "bytes": 19151,
+      "sha256": "8A221B2D88DB797E94DECA8BB5BE674B98B7D90ED35D1850BB743CB4EBD2C779"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B review 1.2.md",
+      "bytes": 10890,
+      "sha256": "28C1F67F293E43340325A095EA910FDD1631F321672B9A242B3203597133B9F7"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B 最终审查.md",
+      "bytes": 5187,
+      "sha256": "A1F043CDB9AC96FAE5142D7E50499C8CFDE92EE5DF311F49CA25AC792A0DBDC1"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C review 1.1.md",
+      "bytes": 11375,
+      "sha256": "B6D9F41878D04820ACB409AC274AF9D9E0788DC79ADC8906EE331FDC6CC4BCDC"
+    },
+    {
+      "path": "niuma/员工C/审查记录/README.md",
+      "bytes": 373,
+      "sha256": "5D7FFDE85B7075ACD19A48677BDF6A4F53248F442AFD5E264AF8EE056EC9AF02"
+    },
+    {
+      "path": "niuma/员工C/个人身份认知.md",
+      "bytes": 6457,
+      "sha256": "F8451FD0B8EF1BABCF2B8E64E98DEFE842B1DCAC3D4CCC7A8C4977D8B0EF334A"
+    },
+    {
+      "path": "niuma/员工C/README.md",
+      "bytes": 569,
+      "sha256": "FA06D44FC898A4D244E143C6B6CD80DA26FA02591163B3C36CB908D7934CF9C9"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/ui-fixture.mjs",
+      "bytes": 1493,
+      "sha256": "D7D15B9A616F01CDA6A90B2B8B46A56C3A8D1FB27C7F7958C0D7772088A40ACF"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review_c12_probes.rs",
+      "bytes": 43117,
+      "sha256": "02C4DC193583A78083252CECB61B2AEB3EAD102E45770E8520F00B0EE5E945FC"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/source-recheck.json",
+      "bytes": 1977,
+      "sha256": "E7E3DE6F50C692AFC071CB7737D24F66090687885500A3D56841BAAF57AB9F3B"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/session_turns.rs",
+      "bytes": 62548,
+      "sha256": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/reviewed-server.rs",
+      "bytes": 29547,
+      "sha256": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/runtime.rs",
+      "bytes": 30103,
+      "sha256": "D2CC3DFCCFF239A808BEA85A4BEFDBCFBA717684336D44D18283C20EC97F0720"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/session_turns.rs",
+      "bytes": 34740,
+      "sha256": "F88142CF3CBA163995622A440B241CF47AE7A13C005625D26B26EFB9F869D8E8"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/reviewed-http_contract.rs",
+      "bytes": 46650,
+      "sha256": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/live.rs",
+      "bytes": 4092,
+      "sha256": "EBF0BE4A6AA30B982D6714BD6296A27436D30CA32449FE47CCE95EEF40CA3315"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review_b_probes.rs",
+      "bytes": 6227,
+      "sha256": "8F4B007359F8E4A2A94662235F61646566CC92F360C077E3A0A0FC26DA10C532"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-wasm-check.log",
+      "bytes": 330,
+      "sha256": "4095F309633250CAC8E558A7C2FBB746A87B38D03C4B5D0F4A173157A258CECC"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "bytes": 46650,
+      "sha256": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-wasm-check.log",
+      "bytes": 330,
+      "sha256": "BE819F9BCAA5712FAF89D4BE93AF310307E6889AA9BBB9F09226C71C6B863F58"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-test.log",
+      "bytes": 10342,
+      "sha256": "AC3A850B757A3AD6D9E67410AEE3680CFE16B1ED8D6819F5E55E7F21ADC46A9E"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/final_acceptance.rs",
+      "bytes": 12014,
+      "sha256": "5239FD3A25B8EFD76CC527897BF2CCA190AF48DD5BE497B3872095D62DD9EB1A"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-source-manifest.json",
+      "bytes": 1016,
+      "sha256": "03F4F26B17860BF139763768EF2E439F31CB7C5A60FC3419A30D30B92A538E6E"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-source-recheck.json",
+      "bytes": 1727,
+      "sha256": "E830B0582FC11EF1D5C2A6F406BA3CA1063EE15F88B16ECFA5F4612500825EBC"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-probes.log",
+      "bytes": 2830,
+      "sha256": "C49EBA672FD62BCB8DE5D98F5C8118C9878F084DA64FD76DCD5579CF3738739A"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment_adversarial.rs",
+      "bytes": 3705,
+      "sha256": "F3CE6F14E6E90C40D5D6CF385D6621192352465D773A8D74FE9F32B47964828E"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-source-manifest.json",
+      "bytes": 887,
+      "sha256": "E122A41129FD1B9BCF80B0DFE47AF5B61BAE4FFD4AF1396A69CCF0EB9BDFA85F"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-gates.json",
+      "bytes": 171,
+      "sha256": "F800739D8E911AE03AA809E832E419DA7ADCF2A44D7972E00F3F866E2E874AE0"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment-http.mjs",
+      "bytes": 6050,
+      "sha256": "46DD5A0BB47665E0F90B649FCD9B692AF765F465657FF235FC12AC5921679126"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-probes.log",
+      "bytes": 1408,
+      "sha256": "0ECC6464155CBB8BCEEBFDC6F5F7BDD01EEDD4275C8CEEDB7B4DCDAA7695E176"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-environment.log",
+      "bytes": 115,
+      "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment-fixture.mjs",
+      "bytes": 4146,
+      "sha256": "B4B84C47EC71B89D37F1D947B3BAFA161241D827C09B8B657AACB70360EEE1EF"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-probe-results.json",
+      "bytes": 61,
+      "sha256": "A78CAE04AA0DBF2D6BC73336CC3A4C7F18F3208A4E9BF394D276CC78142AEA33"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-clippy.log",
+      "bytes": 428,
+      "sha256": "4937FE8F9763098B20A70DCA4168F87377B0C1C1E9844C533262331836BEE945"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/review-baseline-test.log",
+      "bytes": 8646,
+      "sha256": "8A315A010A223FB09708486E80116645006C7A0AF62B7C6528C97F57CBC2C59D"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-http-diff.txt",
+      "bytes": 2716,
+      "sha256": "AA6ECC2FE68F524FE59EE04010646F5F01E4E5F0077B17FDB9AC084D76BA1ED0"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-gates.json",
+      "bytes": 224,
+      "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-environment.log",
+      "bytes": 115,
+      "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/review-clippy.log",
+      "bytes": 430,
+      "sha256": "6FB08661C2597F415F0CE010FDFA47FE30EA5B29F9A4EBF0FB8172FB00921481"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/README.md",
+      "bytes": 2699,
+      "sha256": "4CB6BAA862F5619137D76FBA88879240DFEB13414160F3D601FEA0A13DB30020"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.2轮审查附件/b-integration-session_turns.rs",
+      "bytes": 62548,
+      "sha256": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C review.md",
+      "bytes": 16195,
+      "sha256": "74686BED27D23052FB53BD0BC3440EF0CE44E83617F7325620E98E7E656D010E"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C review 1.2.md",
+      "bytes": 6244,
+      "sha256": "7ADC8C9C24364AA903173EA7FAFAC66D116DBA53A9C82474F36ABFBAAA13F899"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C 最终审查.md",
+      "bytes": 3566,
+      "sha256": "1ACA6F0904A1BC77EE87F673CBF9C3734C86C6C27B2E77EECF51D6D300C10F49"
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B审查附件/README.md",
+      "bytes": 4068,
+      "sha256": "9E894A8600472DB06A054F7BA92CE05A48517937724BECE94F43E1905A9C4200"
+    },
+    {
+      "path": "NoManCode/rust-app/web/app.js",
+      "bytes": 19606,
+      "sha256": "364DB15D4BD5198AEA3C232AB2B62B05CD353E09641A23D0A1692129859DFB55"
+    },
+    {
+      "path": "niuma/员工C/复盘/README.md",
+      "bytes": 295,
+      "sha256": "0C47CAF33CA36395D39B146EDCEBC9931F32D44B08BA73B8BEF7F5B69B33C084"
+    },
+    {
+      "path": "NoManCode/rust-app/web/style.css",
+      "bytes": 9089,
+      "sha256": "38BAD5F9B446498E9B0B897061A556B3CBAB1015590944ADD98EF01AC15B5EA0"
+    },
+    {
+      "path": "NoManCode/rust-app/web/index.html",
+      "bytes": 6137,
+      "sha256": "44A50C8936A825E4E8DBCFEDDCDBE2A40602334ECAA33F22351BEC28DAAEA426"
+    },
+    {
+      "path": "NoManCode/rust-app/examples/wasm-echo/README.md",
+      "bytes": 966,
+      "sha256": "44339D7A19C6C750DBB5F2AAF6F5EC8BFE04DCFA04676C1A659ED6349F71F50C"
+    },
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "bytes": 151,
+      "sha256": "4098803D2CC0B6BE178705168C47017BAE521E6F672626EF0AB45C50B10055ED"
+    },
+    {
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "bytes": 32363,
+      "sha256": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721"
+    },
+    {
+      "path": "NoManCode/rust-app/src/domain.rs",
+      "bytes": 24823,
+      "sha256": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider.rs",
+      "bytes": 12131,
+      "sha256": "0502471AEA648715B7A59F203158B18D5289FA785410448B9DE18FA348FDB4E3"
+    },
+    {
+      "path": "NoManCode/rust-app/src/main.rs",
+      "bytes": 2639,
+      "sha256": "2412667906142934E3BDE239D3D65C397E0BECC6DCFF2CDC3E4A937F4FD21362"
+    },
+    {
+      "path": "NoManCode/rust-app/src/repository.rs",
+      "bytes": 72967,
+      "sha256": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950"
+    },
+    {
+      "path": "niuma/员工C/任务/README.md",
+      "bytes": 311,
+      "sha256": "7A2EAEFFDD2789760F74B853EFC85018896CBA23C9C33D696F18A73EA787A58B"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-environment.log",
+      "bytes": 115,
+      "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-clippy.log",
+      "bytes": 430,
+      "sha256": "E28E6BD834986E6FB9AF6A1A7AC27D32991009DC5CF3355798932763257C803D"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/README.md",
+      "bytes": 3479,
+      "sha256": "ED652F233382729443D1ED229C9A7A6927D8353B13AFB925DDAEC4AB580275DA"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-gates.json",
+      "bytes": 224,
+      "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-h7-schedule.log",
+      "bytes": 958,
+      "sha256": "F6B5AE81CECDEB9F5F7C5CE27DCAF1E4EE4C530509E92BF5036E1093FFB19140"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-clippy.log",
+      "bytes": 428,
+      "sha256": "506B6057EAD9206C85B5D8AB36C141C455734DD13855F011106DE7E0C580CF99"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/README.md",
+      "bytes": 4084,
+      "sha256": "9E29D624F7B863A6C69897E231298F3FE8924A961B53ACE4367E7E90CEC01BD1"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/b-intermediate-session_turns.rs",
+      "bytes": 49121,
+      "sha256": "3574363DD13D5F9F209736BDD41178725B8FA06FEECA43C6775B67685BB36812"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-environment.log",
+      "bytes": 115,
+      "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-gates.json",
+      "bytes": 226,
+      "sha256": "25ED02AA64802B8A6DD9AB20FA833BCBAEC9ABF5676FA9BBD6905D80ADBD55A9"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review_c11_probes.rs",
+      "bytes": 43117,
+      "sha256": "02C4DC193583A78083252CECB61B2AEB3EAD102E45770E8520F00B0EE5E945FC"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review_c11_h7_schedule.rs",
+      "bytes": 57423,
+      "sha256": "D6A3483DF789EFD59ACAB317EDB2552171CB16AB7F42E8BD7AA3A6B3488262CE"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/reviewed-server.rs",
+      "bytes": 29547,
+      "sha256": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/reviewed-http_contract.rs",
+      "bytes": 46348,
+      "sha256": "2A42005EF7051229A2538E37A9874CB32D0B25FA2A080790426CE6AD56335D46"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-wasm-check.log",
+      "bytes": 330,
+      "sha256": "C1CA382EAC05403BB703696756057BFB9C9A336DF94C6629B6CDF3A25D9FE691"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-test.log",
+      "bytes": 10054,
+      "sha256": "F34350622ABEFA62C541E38AB01F2C4469951A03125DB239C72423A3FA5E34A2"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-source-recheck.json",
+      "bytes": 1727,
+      "sha256": "8DAEA11C7643ED1C522EBA47AD0824064B18E398BADDF2A540A36B8D860897C5"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-source-manifest.json",
+      "bytes": 887,
+      "sha256": "B469DFC087BC835E4762399CBAE207DB9496408B1AAAC35D32752A5AB5381B28"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-probes.log",
+      "bytes": 1407,
+      "sha256": "20AE01B295B132DDB8C8545025B88695B6DB5BA89E7B199DC212ADE7CB69AAFB"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C第1.1轮审查附件/review-probe-results.json",
+      "bytes": 156,
+      "sha256": "0BE898985532CFC554F298DFEB9E4F9B4B8A70EF8A2ED10C2B73BB5A32B6A480"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/source-recheck.json",
+      "bytes": 1969,
+      "sha256": "8E723329CDD4D9D9E0EA6FA669BA65DF4949C753A2B90D4D96B5F0DE2D3D4F02"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/server.rs",
+      "bytes": 27780,
+      "sha256": "EAB305287F2413BA84761FA3A8E99EB1F85A81F3FC898CB371409443E299B443"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review_c_probes.rs",
+      "bytes": 43117,
+      "sha256": "02C4DC193583A78083252CECB61B2AEB3EAD102E45770E8520F00B0EE5E945FC"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-wasm-check.log",
+      "bytes": 330,
+      "sha256": "8F91C6E37E0613019DDC7D96194EC9D3990844F938C90819E66B71FC13FF04A0"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-test.log",
+      "bytes": 6099,
+      "sha256": "09492BDB86520E5F383DEC297D9DCEABF342F553F94BDEBA796107967A2331C5"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-stopped-test.json",
+      "bytes": 337,
+      "sha256": "D34081CE343D3A17EA74983F86AED256C3B322FD45D114F08D44AD5182B5CAB7"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-test-isolated.log",
+      "bytes": 18007,
+      "sha256": "7632307640A69B407497DA5FB3A988524EC99F36C6DDDACC543CB156E332F2DF"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-source-manifest.json",
+      "bytes": 1008,
+      "sha256": "B41D0312AF9EB941D015FA11B65CE9FA9B4B461291972DFB3EDD39377BAEBBAA"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-probes.log",
+      "bytes": 3153,
+      "sha256": "2C51E09E9840D6B2D6519F517EE683E5EA636F53723E0301DC4D310F792716CA"
+    },
+    {
+      "path": "NoManCode/rust-app/src/secrets.rs",
+      "bytes": 21336,
+      "sha256": "218A18756159849D76DB2F8A6CD0A5A98B9EEC718506D558AD810BB96AF514F4"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-probe-result.json",
+      "bytes": 55,
+      "sha256": "53C3E63ECFA5BBD1790AAFD8D7D6D8CC4FBF7FE3649064743C08C654E79E0E74"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-http-result.json",
+      "bytes": 53,
+      "sha256": "33B56E5BBB72EF49CA220B5DD58E905832608070299EA530961EBCAED1FC70C7"
+    },
+    {
+      "path": "niuma/员工C/审查记录/第一轮/员工C审查附件/review-http-contract.log",
+      "bytes": 1027,
+      "sha256": "C395D91225E521A9BF75C16341E6EF772A7339681E6701265D18DD14627A2796"
+    },
+    {
+      "path": "niuma/员工C/任务/第一轮/员工C提示词.md",
+      "bytes": 12907,
+      "sha256": "F8F2F2B1FD9EC0F8E5203D92D81C8AC992ABFB47927AE19AABDB610DE7A5919B"
+    },
+    {
+      "path": "niuma/员工C/任务/第一轮/员工C HTTP-SSE契约.md",
+      "bytes": 5691,
+      "sha256": "EBD8001376E35D54B14AF6D14A79BAD8F84133BB269465F34F06E29B39ED78B6"
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "bytes": 29547,
+      "sha256": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788"
+    },
+    {
+      "path": "NoManCode/rust-app/src/store.rs",
+      "bytes": 77383,
+      "sha256": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE"
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace.rs",
+      "bytes": 15334,
+      "sha256": "AEF5DF5B809013AB31F450DC4015F4C68C3AFABB859B518992A8E7121C1C13AF"
+    },
+    {
+      "path": "NoManCode/rust-app/src/wasm.rs",
+      "bytes": 9902,
+      "sha256": "580C183567A74FB526B3789C587D2340997C9D89F3723B6C5AA5A82B9FD7814C"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "bytes": 34308,
+      "sha256": "546B2A8CB0B94D63A70A6246D196C430E44C825E4EC9CEF1644E9F41B02CD74E"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+      "bytes": 342,
+      "sha256": "A711032CB89732C3642F968415953BBEE07B81FCEB7AE5E57CE324E0BEB67EE0"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/README.md",
+      "bytes": 536,
+      "sha256": "828F48AAB6D2CE8266631A0AE1C84AE24CD2AA07E68D24E44D349AE0F2061CDB"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+      "bytes": 230,
+      "sha256": "C08CAAF927C6AAC2617FDA42782247C789CBBEED17C3E0266D2F3D5E658EB9C0"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/src/lib.rs",
+      "bytes": 12352,
+      "sha256": "7E94BA099F0AB9E87E122CD273C6A9A81B3ADACE874FA3BA1ED2305FDEC3F52B"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js",
+      "bytes": 174294,
+      "sha256": "6F408A37FE71CA2A8752F83365687B34EB480925D9D787B2279E5C22FA043621"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "bytes": 75526,
+      "sha256": "440BDD9F5DDA5DD3C2C0D8BCCC263FF413624C49E99F4953C2B7FFACBC2DEB65"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/src/lib.rs",
+      "bytes": 755,
+      "sha256": "9E6A41743AB03FF7B0B61DD8B29F735461BE371E1A68DAFEAD6AD5758A5F82E9"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "bytes": 56210,
+      "sha256": "13252EB94AB75176994C693A73440CD6599F39E356A8EF956945AF3C3099C9E1"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "bytes": 10354,
+      "sha256": "32D346CDE51710B21C57A7A76001EF9C1CFF4BAB406832B1AA743E0D1D9A9332"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "bytes": 7954,
+      "sha256": "FCA87AC480AC4DB4E2BBBC79855FAC23494DCB19A985BA87DD1F47F16DF208BB"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/baseline.log",
+      "bytes": 2872,
+      "sha256": "D3DBC68B5CCBF3AB17C5B4B4085FAFEB768F8DEC59C7C9217B6CDD6DD002A5C6",
+      "scope_note": "Ignored historical assessment log; captured immediately before its path-only normalization"
+    }
+  ]
+}

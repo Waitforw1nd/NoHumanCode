@@ -1,0 +1,30 @@
+[
+  {
+    "Path": "src/server.rs",
+    "MatchesC12": true
+  },
+  {
+    "Path": "tests/http_contract.rs",
+    "MatchesC12": true
+  },
+  {
+    "Path": "src/engine.rs",
+    "MatchesC12": true
+  },
+  {
+    "Path": "src/domain.rs",
+    "MatchesC12": true
+  },
+  {
+    "Path": "src/store.rs",
+    "MatchesC12": true
+  },
+  {
+    "Path": "src/repository.rs",
+    "MatchesC12": true
+  },
+  {
+    "Path": "tests/session_turns.rs",
+    "MatchesC12": true
+  }
+]

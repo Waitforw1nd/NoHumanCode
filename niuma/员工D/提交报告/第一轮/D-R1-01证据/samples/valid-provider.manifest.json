@@ -1,0 +1,20 @@
+{
+  "manifest_version": 1,
+  "id": "demo.provider",
+  "display_name": "Demo Provider",
+  "version": { "major": 1, "minor": 0, "patch": 0 },
+  "scope": "host",
+  "runtime": "builtin",
+  "lifecycle": "host_managed",
+  "surfaces": ["cli"],
+  "permissions": [],
+  "config_schema": {},
+  "provides": [
+    {
+      "kind": "service",
+      "name": "greeter",
+      "version": { "major": 1, "minor": 0, "patch": 0 }
+    }
+  ],
+  "requires": []
+}

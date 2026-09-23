@@ -1,0 +1,24 @@
+# NEXT-01 修订2.1 文件哈希与 Git 状态（2026-09-23）
+
+## sha256（rustfmt 2024 格式化后的最终版）
+d89f035c0fdb8ca8b3e316e73e2d8f80a3e134d535e6a66e743d20f1f9959667 *NoManCode/rust-app/src/server.rs
+9b8d53617674c4c06d29aa52690fbfae6b9c8746d5aa37a14a928d9c1f94f954 *NoManCode/rust-app/tests/turn_http.rs
+
+## 行数
+  1195 NoManCode/rust-app/src/server.rs
+  2717 NoManCode/rust-app/tests/turn_http.rs
+  3912 total
+
+## git status --short -- 相关路径
+?? NoManCode/rust-app/src/server.rs
+?? NoManCode/rust-app/tests/turn_http.rs
+?? "niuma/\345\221\230\345\267\245C/"
+
+## HEAD
+8f0ccdc79bf5443caf53e0bf98d455ffd9ef9da5
+8f0ccdc fix: share idempotency checks across replay and commit
+ccd85d4 fix: resolve task identity and idempotency conflicts
+d3a5a67 fix: make legacy replay and schema checks explicit
+
+## git diff --check
+exit=0

@@ -16,11 +16,12 @@ bin/
 # Dependencies and build output
 node_modules/
 target/
-rust-app/target/
+NoManCode/rust-app/target/
 dist/
 build/
 
 # Local/editor files
+.local/
 .idea/
 .vscode/
 *.user

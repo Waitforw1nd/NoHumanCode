@@ -1,0 +1,21 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-c12-review-d94f190c6f)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.51s
+     Running tests\review_c12_probes.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\review_c12_probes-bf13ec0900d5ec20.exe)
+
+running 7 tests
+after_first_frame: corrupt_kind=true, first_seq=1, next=Ok(Some("event: error\ndata: {\"after\":1,\"code\":\"internal\",\"message\":\"存储读取失败\",\"retryable\":false}"))
+test review_bad_kind_after_success_returns_error_frame ... ok
+corrupt_identity: status=500, code="internal"
+test review_corrupt_run_identity_is_internal ... ok
+encoded_duplicate: status=400 Bad Request
+test review_encoded_duplicate_cursor_is_rejected ... ok
+test review_encoded_invalid_cursor_must_not_replay ... ok
+health_failure: status=500, code="internal"
+test review_health_schema_failure_is_safe ... ok
+invalid_path: status=400, content_type=application/json
+test review_invalid_path_is_structured_json ... ok
+after_first_frame: corrupt_kind=false, first_seq=1, next=Ok(Some("event: error\ndata: {\"after\":1,\"code\":\"internal\",\"message\":\"存储数据损坏\",\"retryable\":false}"))
+test review_read_failure_after_success_keeps_cursor ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.35s
+

@@ -1,0 +1,19 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-c-review-22cad04b86)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.63s
+     Running tests\http_contract.rs (target\debug\deps\http_contract-f778b41217419584.exe)
+
+running 11 tests
+test h10_stream_failure_keeps_last_sent_cursor_and_writes_nothing ... ok
+test h11_existing_run_idempotency_and_bad_key_stay ... ok
+test h1_read_shapes_and_security_headers_stay ... ok
+test h2_missing_is_404_and_corruption_is_500 ... ok
+test h3_guard_rejections_are_structured_and_do_not_execute ... ok
+test h4_json_input_failures_do_not_enter_engine ... ok
+test h5_cursor_inputs_reject_ambiguity ... ok
+test h6_sse_frame_matches_persisted_event ... ok
+test h7_disconnect_reconnects_after_consumed_seq_without_cancelling ... ok
+test h8_sessions_do_not_cross_and_seq_may_gap ... ok
+test h9_idle_and_future_cursor_do_not_replay ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+

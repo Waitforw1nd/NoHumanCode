@@ -1,0 +1,5 @@
+{
+  "Action": "eight-applicable-historical-probes",
+  "ExitCode": 0,
+  "Skipped": "review_b11_partial_fixture_must_have_its_own_delta: replaced obsolete Harness-drop procedure with formally reviewed T9 Runtime shutdown"
+}

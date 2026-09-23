@@ -1,0 +1,20 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-c11-review-e80a349693)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.14s
+     Running tests\review_c11_h7_schedule.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\review_c11_h7_schedule-1b129ae5c44c5bad.exe)
+
+running 2 tests
+test review_h7_delayed_waiter_notify_one_control ... ok
+
+thread 'review_h7_delayed_waiter_original' (33852) panicked at tests\review_c11_h7_schedule.rs:1534:10:
+called `Result::unwrap()` on an `Err` value: Elapsed(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test review_h7_delayed_waiter_original ... FAILED
+
+failures:
+
+failures:
+    review_h7_delayed_waiter_original
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 3.12s
+
+error: test failed, to rerun pass `--test review_c11_h7_schedule`

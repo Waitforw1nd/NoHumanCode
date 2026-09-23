@@ -1,0 +1,50 @@
+[
+    {
+        "step":  "check",
+        "command":  "cargo check --workspace --locked",
+        "exitCode":  0,
+        "seconds":  1
+    },
+    {
+        "step":  "test-integration",
+        "command":  "cargo test -p peachsh --locked --test plugin_catalog",
+        "exitCode":  0,
+        "seconds":  4
+    },
+    {
+        "step":  "test-unit",
+        "command":  "cargo test -p peachsh --locked --lib plugin_catalog::",
+        "exitCode":  0,
+        "seconds":  0
+    },
+    {
+        "step":  "clippy-module",
+        "command":  "cargo clippy -p peachsh --lib --test plugin_catalog --locked -- -D warnings",
+        "exitCode":  0,
+        "seconds":  1
+    },
+    {
+        "step":  "gate-test",
+        "command":  "cargo test --workspace --locked",
+        "exitCode":  0,
+        "seconds":  9
+    },
+    {
+        "step":  "gate-fmt",
+        "command":  "cargo fmt --all -- --check",
+        "exitCode":  0,
+        "seconds":  0
+    },
+    {
+        "step":  "gate-clippy",
+        "command":  "cargo clippy --workspace --all-targets --locked -- -D warnings",
+        "exitCode":  0,
+        "seconds":  1
+    },
+    {
+        "step":  "gate-wasm-check",
+        "command":  "cargo check -p peachsh-ui --target wasm32-unknown-unknown --locked",
+        "exitCode":  0,
+        "seconds":  0
+    }
+]

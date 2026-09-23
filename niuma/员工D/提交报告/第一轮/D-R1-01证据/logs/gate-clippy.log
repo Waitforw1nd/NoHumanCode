@@ -1,0 +1,11 @@
+﻿cargo :     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s
+所在位置 D:\code\fufu\.local\verification\d-r1-0753\run-gate.ps1:76 字符: 29
++ ... e-clippy' { cargo clippy --workspace --all-targets --locked -- -D war ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `d...get(s) in 0.46s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.
+1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibi
+lities --id 1`

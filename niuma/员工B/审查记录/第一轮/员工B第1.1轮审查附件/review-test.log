@@ -1,0 +1,177 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-b11-review-30b643772f)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.20s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src\lib.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\peachsh-0465969cf9814345.exe)
+
+running 43 tests
+test domain::tests::paths_and_names ... ok
+test domain::tests::project_session_turn_ids_do_not_follow_display_names ... ok
+test provider::tests::truncated_stream_fails ... ok
+test provider::tests::balance_validation ... ok
+test domain::tests::session_kind_is_explicit_and_name_independent ... ok
+test provider::tests::utf8_sse_and_fragmented_tools ... ok
+test secrets::tests::credential_fields_redact_independently_without_token_shaped_values ... ok
+test secrets::tests::ordinary_metadata_and_code_are_preserved ... ok
+test secrets::tests::redaction ... ok
+test server::tests::changing_newapi_origin_requires_new_token ... ok
+test secrets::tests::persisted_values_redact_nested_and_non_sk_tokens ... ok
+test secrets::tests::credential_text_is_checked_throughout_metadata ... ok
+test secrets::tests::authorization_assignments_redact_scheme_and_credential ... ok
+test secrets::tests::identifier_key_and_path_limits_match_their_contracts ... ok
+test secrets::tests::dpapi_roundtrip ... ok
+test wasm::tests::manifest_rejects_imports ... ok
+test workspace::tests::file_boundaries ... ok
+test wasm::tests::echo_and_limits ... ok
+test workspace::tests::search_reports_project_matches ... ok
+test repository::schema_tests::session_unique_constraint_cannot_be_replaced_by_a_partial_index ... ok
+test provider::tests::done_does_not_wait_for_connection_close ... ok
+test repository::schema_tests::partial_schema_with_missing_indexes_retries_atomically ... ok
+test repository::schema_tests::failed_marker_write_rolls_back_all_schema_changes ... ok
+test repository::task_identity_tests::event_resolution_rejects_preexisting_cross_table_identity_collision ... ok
+test repository::task_identity_tests::new_task_id_cannot_claim_an_unrelated_legacy_task ... ok
+test repository::schema_tests::marked_schema_6_repairs_only_the_missing_legacy_unique_index ... ok
+test repository::task_identity_tests::legacy_replay_checks_relational_identity_and_redacts_historical_tasks ... ok
+test repository::task_identity_tests::repository_uses_path_and_http_idempotency_limits ... ok
+test repository::task_identity_tests::events_normalize_task_ids_and_preserve_session_and_project_scope ... ok
+test store::tests::partial_schema_6_table_stops_before_user_version ... ok
+test repository::schema_tests::current_marker_does_not_hide_missing_tables_or_bad_event_columns ... ok
+test repository::schema_tests::missing_index_repair_refuses_duplicate_and_crossed_task_ids ... ok
+test store::tests::dependencies_are_same_turn_and_acyclic ... ok
+test store::tests::legacy_create_run_redacts_prompt_messages_and_errors ... ok
+test store::tests::event_task_must_belong_to_turn_or_session ... ok
+test repository::schema_tests::malformed_schema_never_advances_version_or_marker ... ok
+test store::tests::turn_identity_idempotency_and_rollback ... ok
+test store::tests::schema_5_migrates_once_and_keeps_legacy_rows ... ok
+test store::tests::recover_marks_running_turn_interrupted ... ok
+test repository::schema_tests::forged_named_indexes_are_rejected_even_with_valid_marker ... ok
+test store::tests::interrupted_schema_6_retries_without_advancing_early ... ok
+test store::tests::review_fixes_redact_replay_and_real_legacy_run ... ok
+test store::tests::legacy_idempotency_replay_is_explicit ... ok
+
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running unittests src\main.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\peachsh-38496f4643084736.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\assessment_adversarial.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\assessment_adversarial-af12e360e83ee519.exe)
+
+running 4 tests
+test wasm_rejects_unbounded_large_table ... ok
+test inference_route_cannot_read_account_secret ... ok
+test idempotency_storage_failure_leaves_no_orphan_run ... ok
+test idempotency_rejects_different_payload ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\final_acceptance.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\final_acceptance-1cf4b24444008436.exe)
+
+running 9 tests
+test inconsistent_initial_state_and_forged_status_event_are_rejected ... ok
+test legacy_only_replay_returns_complete_tasks ... ok
+test invalid_dependency_or_missing_projection_rolls_back_everything ... ok
+test same_idempotency_key_replays_original_turn_without_new_objects ... ok
+test bundle_commits_project_session_agent_turn_and_legacy_projection ... ok
+test resume_keeps_task_identity_and_requeues_turn ... ok
+test state_updates_sync_new_projection_and_reject_backwards_transition ... ok
+test sqlite_trigger_failure_is_atomic ... ok
+test recovery_and_resume_events_roll_back_with_their_states ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests\http_contract.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\http_contract-e6ffe760ccbda411.exe)
+
+running 11 tests
+test h3_guard_rejections_are_structured_and_do_not_execute ... ok
+test h4_json_input_failures_do_not_enter_engine ... ok
+test h6_sse_frame_matches_persisted_event ... ok
+test h1_read_shapes_and_security_headers_stay ... ok
+test h2_missing_is_404_and_corruption_is_500 ... ok
+test h8_sessions_do_not_cross_and_seq_may_gap ... ok
+test h7_disconnect_reconnects_after_consumed_seq_without_cancelling ... ok
+test h10_stream_failure_keeps_last_sent_cursor_and_writes_nothing ... ok
+test h11_existing_run_idempotency_and_bad_key_stay ... ok
+test h9_idle_and_future_cursor_do_not_replay ... ok
+test h5_cursor_inputs_reject_ambiguity ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests\live.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\live-6cc7c9c9cbbcd5be.exe)
+
+running 1 test
+test xpeach_native_stream_and_coding_tool ... ignored, requires PEACHSH_TEST_KEY; makes small paid model calls
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\runtime.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\runtime-23d8275a2ab0bf61.exe)
+
+running 10 tests
+test restart_and_http_security ... ok
+test schema_v1_migrates_to_current_version ... ok
+test wasm_plugin_runs_through_agent_tool_boundary ... ok
+test conflicts_cancel_and_configuration_lock ... ok
+test http_run_exposes_domain_and_session_events_with_conflict_replay ... ok
+test explicit_session_kind_survives_arbitrary_member_names ... ok
+test multiple_keys_limits_identity_and_resume ... ok
+test tool_execution_and_path_rejection ... ok
+test dependency_order_summary_and_cycle_rejection ... ok
+test replace_existing_file_preserves_hardlink_and_command_permission ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests\session_turns.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\session_turns-be160fffaebd97f4.exe)
+
+running 12 tests
+test t7_unsupported_and_invalid_inputs_add_nothing ... ok
+test t5_two_store_connections_allow_only_one_successor ... ok
+test t8_event_insert_failure_rolls_back_append ... ok
+test t12_session_events_stay_ordered_across_turns ... ok
+test t6_same_second_uuid_order_does_not_decide_latest ... ok
+test t4_changed_key_inputs_and_legacy_key_conflict ... ok
+test t1_t2_three_turns_keep_identity_and_independent_results ... ok
+test t10_historical_resume_loses_to_a_newer_turn ... ok
+test t3_same_key_replay_does_not_relaunch_or_grow ... ok
+test t7_busy_non_chat_corrupt_order_and_unpaired_tools_are_refused ... ok
+test t9_cancel_restart_and_resume_boundaries ... ok
+test t11_route_workspace_and_context_limits_fail_closed ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s
+
+     Running unittests src\lib.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\peachsh_protocol-7d810204b85e14fa.exe)
+
+running 5 tests
+test tests::envelope_keeps_legacy_at_and_fills_cursor ... ok
+test tests::error_wire_shape_is_stable ... ok
+test tests::kind_is_stable_wire_data ... ok
+test tests::lifecycle_status_round_trips_without_display_names ... ok
+test tests::ids_are_opaque_strings ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\peachsh_ui-574068fbea75ca7b.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peachsh
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peachsh_protocol
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peachsh_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

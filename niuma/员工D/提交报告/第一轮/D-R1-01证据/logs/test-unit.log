@@ -1,0 +1,20 @@
+﻿cargo :     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+所在位置 D:\code\fufu\.local\verification\d-r1-0753\run-gate.ps1:72 字符: 27
++ ... est-unit' { cargo test -p peachsh --locked --lib plugin_catalog:: } ' ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `t...get(s) in 0.23s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+     Running unittests src\lib.rs (D:\code\fufu\.local\targets\d-plugin-catalog\debug\deps\peachsh-65a9b0539ea16e0f.exe
+)
+
+running 6 tests
+test plugin_catalog::tests::exact_version_orders_as_numeric_triple ... ok
+test plugin_catalog::tests::display_name_rules ... ok
+test plugin_catalog::tests::scope_identity_uses_persisted_id_rules ... ok
+test plugin_catalog::tests::name_charset_rules ... ok
+test plugin_catalog::tests::register_failure_keeps_catalog_unchanged ... ok
+test plugin_catalog::tests::strict_json_rejects_duplicate_members_everywhere ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 47 filtered out; finished in 0.00s
+

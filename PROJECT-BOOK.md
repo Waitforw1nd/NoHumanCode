@@ -1,12 +1,53 @@
-# 🍑sh harness 项目书
+# NoHumanCode 项目书
 
-版本：0.1  
-日期：2026-09-22  
+仓库可克隆到任意位置；本文正文中的 `./` 指仓库根，链接相对于所在文件。全部协作者遵循 [路径与可移植性](路径与可移植性.md)，历史本机路径已按用户要求相对化，旧哈希对应改写前证据。
+
+版本：0.2
+日期：2026-09-23
 状态：多模型协作开发基线
+
+## 当前执行说明（2026-09-23）
+
+本轮最新交接：C-R2-01 第2.1轮补证经 [review 2.1](<niuma/员工C/审查记录/第二轮/员工C review 2.1.md>) APPROVED（NEXT-01 范围）；D-R1-01 已由用户指定 SWE2max 完成并在实现与冻结快照范围 APPROVED。C/D 联合候选已由经理串行执行门禁通过（[记录](niuma/项目经理/审查记录/2026-09-23C-D联合门禁.md)）；均未 Git 提交/合并/发布，Git 基线收尾待执行。SWE2max仅覆盖D本任务的默认模型安排，C原安排保持。范围、源码唯一所有权及固定快照验证见 [双线协调](niuma/项目经理/任务/2026-09-23C-D双线协调.md)，实际执行状态以任务板/员工身份为准。
+
+新对话接任项目经理，从 [启动说明](niuma/项目经理/启动说明.md) 开始；现行代码位置与调用链看 [项目地图](niuma/项目经理/项目地图.md)，下一项管理交付看 [当前任务板](niuma/项目经理/当前任务板.md)。
+
+最新目录约定：总项目/Git 根目录保留 `./`；自有源码和配套文件统一放到 `./NoManCode`，Rust 工作目录为 `NoManCode/rust-app`；人员档案放 niuma，参考资料放 references。项目名称仍为 NoHumanCode，源码目录使用用户指定的 NoManCode 拼写。源码入口见 [说明](NoManCode/README.md)。
+
+项目正式名称调整为 **NoHumanCode**，`./` 表示整个仓库根。所有人员档案统一进入 [niuma](niuma/README.md)，每人含身份、任务、提交报告、审查与复盘，项目经理同样执行。每轮更新个人身份与交接状态，换对话从 [AGENTS.md](AGENTS.md) 开始。旧品牌与验收事实保留，本机路径已按用户要求相对化，旧哈希对应改写前内容；技术标识保留兼容，当前导航优先于旧快照。
+
+当前工作区是 `./`，已经建立 Git；下文关于旧目录、尚未建立 Git 和早期运行版本的描述保留为历史快照，不再作为开工指令。员工 A 的领域/Repository 基础已通过最终审查，最终修复仍保存在工作区；整个产品尚未完成。
+
+第一轮分工为：B 实现已有无工具 Chat Session 的后续 Turn 应用服务，C 完善现有 HTTP/SSE 传输契约。两者现在均已通过明确范围的最终审查，入口见下；下一阶段接新增 Turn HTTP 写入口，不同时扩大 UI/审批范围。
+
+第一轮历史并行安排（已结束，不再派工）：当时 C 同步实现现有 HTTP/SSE 与独立测试，限定 server 边界，不修改 B 的领域、存储或执行文件。B/C 现已通过；新增 Turn HTTP 写入口以任务板和后续新任务单为准。
+
+首轮历史记录：B 第一轮曾为 `CHANGES_REQUIRED`，涉及回合顺序、前序快照竞争、输入/归属拒绝及有效验收证据；原意见见 [员工 B review](<niuma/员工B/审查记录/第一轮/员工B review.md>)，当前结论以下方最终审查为准。
+
+首轮历史记录：C 第一轮曾为 `CHANGES_REQUIRED`，涉及编码游标、读取故障分类、路径错误、SSE 编帧失败及测试证据；原意见见 [员工 C review](<niuma/员工C/审查记录/第一轮/员工C review.md>)，后续均已闭合。
+
+最新 B 复审：第 1.2 轮 `APPROVED（已有单 Agent、无工具 Chat 连续 Turn 应用服务）`，B-R1～B-R5 全关闭，B-C1 原诊断反例关闭。实际 99 通过、1 忽略，fmt/Clippy/WASM 全通过，另 8+2 审查探针通过。最终契约、证据和非阻断事项见 [员工 B 最终审查](<niuma/员工B/审查记录/第一轮/员工B 最终审查.md>)。B 本轮结束，无需第 1.3 轮。
+
+最新 C 复审：第 1.2 轮已闭合 H7 握手与强制晚等待回归，C-R1～C-R5 全部关闭，结论为 `APPROVED（现有 HTTP/SSE 范围）`。C-R2-01 的新 POST Turn 入口经第2.1轮补证与 [review 2.1](<niuma/员工C/审查记录/第二轮/员工C review 2.1.md>) 复核，已按 NEXT-01 范围验收，待 Git 基线纳入。
+
+开工与协作统一查阅：
+
+- [项目开发守则](项目开发守则.md)
+- [第一轮工作总结与员工分工](niuma/项目经理/开发记录/第一轮工作总结与员工分工.md)：三位员工的职责、交付、问题、修法与后续协作方向。
+- [核心骨架完成度盘点](niuma/项目经理/开发记录/核心骨架完成度盘点-2026-09-23.md)：按完整 Host 核心范围粗估约四成，明确当前基础、缺口及后续优先级。
+- [员工 A 最终审查](<niuma/员工A/审查记录/第一轮/员工A 最终审查.md>)
+- [员工 A 复盘与反思日志](niuma/员工A/复盘/员工A复盘与反思日志.md)
+- [后续开发注意事项](niuma/项目经理/开发记录/后续开发注意事项.md)
+- [员工 B 第一轮任务](niuma/员工B/任务/第一轮/员工B提示词.md)
+- [员工 B 最终审查](<niuma/员工B/审查记录/第一轮/员工B 最终审查.md>)
+- [员工 C 第一轮任务](niuma/员工C/任务/第一轮/员工C提示词.md)
+- [员工 C 最终审查](<niuma/员工C/审查记录/第一轮/员工C 最终审查.md>)
+
+以下原项目书继续约束产品方向；已确认任务单只调整其明确涉及的实施范围。
 
 ## 1. 项目定位
 
-🍑sh harness 是 Windows 本机优先的 AI 编程工作台。它要帮助用户完成一条可审阅、可恢复、可继续的开发闭环：
+NoHumanCode 是 Windows 本机优先的 AI 编程工作台。它要帮助用户完成一条可审阅、可恢复、可继续的开发闭环：
 
 ```text
 选择项目 → 提出目标 → 读取代码 → 获得操作批准
@@ -16,16 +57,22 @@
 
 产品的核心不是“调用模型”，而是提供一个可以组合、替换、审阅、恢复和持续优化的开发环境。
 
-我们借鉴 DeepSeek Harness、Cordis 和时空可组合性理论，但不把任何现有项目当作终点。它们是第一批设计证据；🍑sh 将根据 Windows、本机 AI 编程、审批、凭据、Diff、Checkpoint 和多模型协作的实际需求逐步优化。
+我们借鉴 DeepSeek Harness、Cordis 和时空可组合性理论，但不把任何现有项目当作终点。它们是第一批设计证据；NoHumanCode 将根据 Windows、本机 AI 编程、审批、凭据、Diff、Checkpoint 和多模型协作的实际需求逐步优化。
 
-## 2. 当前事实基线
+## 2. 现行事实与历史快照
 
-事实以以下文件为准：
+2026-09-23 的现行事实：Git 总根是 ./，源码在 NoManCode/rust-app，代码中的 SCHEMA_VERSION 为 6；A/B/C 第一轮分别通过领域/Repository、无工具连续 Chat 应用服务、现有 HTTP/SSE 的限定验收。C 的新增 Turn HTTP 已按 NEXT-01 范围验收（待 Git 基线纳入）；D 的纯内存插件目录在代码范围已审，完整插件/审批/变更管理/CLI 仍未交付。当前没有据此确认新实例已经运行。
 
-- `D:\peachsh-harness\HANDOFF-TO-NEXT-MODEL.md`
-- `D:\peachsh-harness\rust-app\MASTER-ARCHITECTURE-BASELINE-2026-09-22.md`
+实际状态依据当前代码、[验收索引](niuma/项目经理/关键约定与验收索引.md) 和 [任务板](niuma/项目经理/当前任务板.md) 核对。
 
-当前状态：
+### 2.1 2026-09-22 旧实例快照（仅供查证）
+
+下列是旧目录当时的状态，schema 5、无 Git、Repository 尚未完成等描述已被上方当前事实更新，不能作为现行开工指令。当时参考文件为：
+
+- `./.local/legacy-instance/HANDOFF-TO-NEXT-MODEL.md`
+- `./.local/legacy-instance/rust-app\MASTER-ARCHITECTURE-BASELINE-2026-09-22.md`
+
+当时状态：
 
 - Rust Host 已运行在 `http://127.0.0.1:3090/`；
 - 健康接口当前为 Rust runtime、schema 5、version 0.2.0；
@@ -247,7 +294,7 @@ Schema / Migration 变化
 
 跨模型修改必须先写出契约，再写代码。后端先提供可测试的 API、事件和 mock；前端根据已确认的契约实现，不以临时字段反向锁定后端。
 
-当前目录不是 Git 仓库。开始并行修改前，项目总监应先决定建立独立 Git 仓库、工作树或其他可审阅的变更隔离方式。若暂时不建立版本库，必须使用明确的文件所有权和串行合并，不允许多个模型同时改同一文件。
+当前已有 Git 仓库，根为 ./。有效修复和目录迁移仍含未提交内容；新工作树若只从 HEAD 创建，不包含这些成果。并行修改前由经理明确代码基线、文件唯一写入人及隔离方式，不允许多个员工同时改同一区域，也不因旧路径显示删除就还原或清理新目录。
 
 ## 8. 不可违反的边界
 
@@ -265,21 +312,21 @@ Schema / Migration 变化
 
 ### 给 GPT-6 项目总监
 
-> 你负责 🍑sh harness 的项目总监、架构、范围和验收。先读取 `D:\peachsh-harness\PROJECT-BOOK.md`、`HANDOFF-TO-NEXT-MODEL.md` 和 `rust-app\MASTER-ARCHITECTURE-BASELINE-2026-09-22.md`。当前路线是 CLI 开发者版优先、Desktop 友好版随后；我们借鉴 DSH/Cordis，但要持续优化，不能复制实现或把计划当成完成。先建立后端优先的任务拆分、契约和验收清单。不要索要或输出 API Key。
+> 接任 NoHumanCode 项目经理。工作区是 ./，请先读取 niuma/项目经理/启动说明.md，按现行地图、任务板、身份和验收证据恢复工作。继续下一项经理交付，Grok 员工负责实现与测试，用户分发提示词；每轮更新身份、任务板和交接记录。
 
 ### 给 Grok 4.7 后端实现负责人
 
-> 你负责 🍑sh harness 的 Rust 后端实现。先读取 `D:\peachsh-harness\PROJECT-BOOK.md` 和交接文件。优先实现 Plugin Runtime、Context、Registry、依赖解析、可撤销生命周期、Project/Session/Turn 持久化、Approval/Capability、Provider、Workspace、Diff/Checkpoint 和 CLI。每次修改报告 API、Event、Migration、权限影响、失败路径和测试。不要把 UI 临时状态写进领域模型，不要索要或输出 API Key。
+> 你负责 NoHumanCode 的 Rust 后端实现。先读取 `./PROJECT-BOOK.md` 和交接文件。优先实现 Plugin Runtime、Context、Registry、依赖解析、可撤销生命周期、Project/Session/Turn 持久化、Approval/Capability、Provider、Workspace、Diff/Checkpoint 和 CLI。每次修改报告 API、Event、Migration、权限影响、失败路径和测试。不要把 UI 临时状态写进领域模型，不要索要或输出 API Key。
 
 ### 给 Kimi K3 前端实现负责人
 
-> 你负责 🍑sh harness 的 Leptos/Desktop 前端实现。先读取 `D:\peachsh-harness\PROJECT-BOOK.md` 和交接文件。后端协议稳定前可制作 mock client 和协议测试；正式页面必须使用已确认的 API、事件和权限语义。优先实现 Chat、Approval、ToolCall、Diff、Checkpoint、Session 和 SSE 重连。浏览器不得接触 Key、DPAPI、文件、进程或 SQLite。每次修改报告 UI contract、事件消费、失败状态和 E2E 结果。
+> 你负责 NoHumanCode 的 Leptos/Desktop 前端实现。先读取 `./PROJECT-BOOK.md` 和交接文件。后端协议稳定前可制作 mock client 和协议测试；正式页面必须使用已确认的 API、事件和权限语义。优先实现 Chat、Approval、ToolCall、Diff、Checkpoint、Session 和 SSE 重连。浏览器不得接触 Key、DPAPI、文件、进程或 SQLite。每次修改报告 UI contract、事件消费、失败状态和 E2E 结果。
 
 ## 10. 当前下一步
 
-第一步不是扩大 UI，而是由 GPT-6 先确认后端优先的契约和任务边界；随后由 Grok 4.7 实现第一个后端垂直切片。Kimi K3 同时可以准备 mock client，但不应在未确认协议前锁定前端 API。
+当前C按已冻结的NEXT-01完成新增Turn HTTP，但须按 [C review 2.0](niuma/员工C/审查记录/第二轮/员工C%20review%202.0.md) 补证；D-R1-01 / NEXT-02A 已由SWE2max交付并通过代码范围 review。二者源码范围分开、最终集成串行。后续再接真实Context/服务注册/effect生命周期、逐次审批、工作区变更恢复和CLI，不能以目录计划或现有WASM宣称完整Host完成。前端仍须明确任务，不自行锁定未确认协议。
 
-第一个后端垂直切片建议为：
+最初规划的后端切片路径保留作目标参考，其中 Repository、事件和部分执行基础已有验收，其他环节尚未完整交付：
 
 ```text
 Plugin manifest
@@ -295,7 +342,7 @@ Plugin manifest
 
 ## 11. 对话与进度记录
 
-项目在 `records/` 中保存两种协作记录：
+项目在 `niuma/项目经理/项目记录/` 中保存两种协作记录：
 
 - `CONVERSATION-FULL.md`：可见的用户消息、助手回复和工具动作元数据；
 - `PROJECT-PROGRESS-SUMMARY.md`：项目进度、当前决策、风险、下一步和模型自我述职。

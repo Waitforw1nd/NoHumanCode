@@ -1,0 +1,18 @@
+{
+  "scope": "Repository-owned text; excluded generated/dependency/local data and third-party trees. All own Markdown including historical archives checked.",
+  "text_files": 299,
+  "markdown_files": 132,
+  "local_links_checked": 649,
+  "personal_local_path_files": [],
+  "absolute_markdown_links": [],
+  "broken_links": [],
+  "case_or_boundary_issues": [],
+  "json_errors": [],
+  "rust_source_and_snapshot_files_checked": 45,
+  "rust_changed_files": [],
+  "modified_existing_files": 104,
+  "product_functional_tests_run": false,
+  "diff_check_exit": 0,
+  "delegated_checks": "27 targeted PASS: path suite 15 includes Node syntax, build discovery 6 scenarios on PowerShell 7 and 5.1; AST and archived-entry checks passed",
+  "independent_review": "Passed; two findings closed: history wording and Git diff path headers; hunk body unchanged"
+}

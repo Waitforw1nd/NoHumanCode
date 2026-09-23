@@ -1,0 +1,14 @@
+[
+  {
+    "Action": "fmt",
+    "ExitCode": 0
+  },
+  {
+    "Action": "clippy",
+    "ExitCode": 0
+  },
+  {
+    "Action": "wasm-check",
+    "ExitCode": 0
+  }
+]

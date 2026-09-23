@@ -1,0 +1,74 @@
+{
+  "task_id": "D-R1-01",
+  "parent_priority": "NEXT-02A",
+  "revision": 1,
+  "captured_at": "2026-09-23T07:31:42.3537042+08:00",
+  "head": "8f0ccdc79bf5443caf53e0bf98d455ffd9ef9da5",
+  "branch": "main",
+  "workspace": "./",
+  "mode": "shared-working-tree",
+  "base_manifest": "niuma/项目经理/审查记录/2026-09-23NEXT-01工作区基线.json",
+  "c_execution": "C-R2-01-20260923-0701",
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "bytes": 151,
+      "sha256": "4098803D2CC0B6BE178705168C47017BAE521E6F672626EF0AB45C50B10055ED",
+      "owner": "D-only-add-module-export-after-dispatch"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.toml",
+      "bytes": 1104,
+      "sha256": "195D0637D5986B6B3AEC1609C8EA31E49896BC51D24235E2144AF0C77FDB6082",
+      "owner": "read-only-baseline"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.lock",
+      "bytes": 77750,
+      "sha256": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519",
+      "owner": "read-only-baseline"
+    },
+    {
+      "path": "NoManCode/rust-app/rust-toolchain.toml",
+      "bytes": 88,
+      "sha256": "E8E5900C9696B384BF21A5582D895B5FED111261187E15A4D3A56F61A6CFD34E",
+      "owner": "read-only-baseline"
+    },
+    {
+      "path": "NoManCode/rust-app/build.ps1",
+      "bytes": 5990,
+      "sha256": "48CBBF0BBA93E23DE117647E54E0E74BA9777AA0AFD081AE15A834E9E01F7ECD",
+      "owner": "read-only-baseline"
+    },
+    {
+      "path": "NoManCode/rust-app/src/wasm.rs",
+      "bytes": 9902,
+      "sha256": "580C183567A74FB526B3789C587D2340997C9D89F3723B6C5AA5A82B9FD7814C",
+      "owner": "read-only-baseline"
+    },
+    {
+      "path": "NoManCode/rust-app/src/secrets.rs",
+      "bytes": 21336,
+      "sha256": "218A18756159849D76DB2F8A6CD0A5A98B9EEC718506D558AD810BB96AF514F4",
+      "owner": "read-only-baseline"
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "bytes": 39658,
+      "sha256": "A43DEBCBDCBBB335896F76019E81EEE6B687C6ABC09F051FEE6BCC56C0A9E372",
+      "owner": "C-active-observation-only"
+    }
+  ],
+  "new_file_absence": [
+    {
+      "path": "NoManCode/rust-app/src/plugin_catalog.rs",
+      "exists": false
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_catalog.rs",
+      "exists": false
+    }
+  ],
+  "staged_paths": [],
+  "product_tests_run": false
+}

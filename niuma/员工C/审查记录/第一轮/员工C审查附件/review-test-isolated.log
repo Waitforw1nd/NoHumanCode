@@ -1,0 +1,421 @@
+   Compiling unicode-ident v1.0.26
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling cfg-if v1.0.5
+   Compiling pin-project-lite v0.2.17
+   Compiling memchr v2.8.3
+   Compiling windows-link v0.2.1
+   Compiling futures-core v0.3.34
+   Compiling serde_core v1.0.229
+   Compiling futures-sink v0.3.34
+   Compiling once_cell v1.21.4
+   Compiling version_check v0.9.5
+   Compiling futures-io v0.3.34
+   Compiling serde v1.0.229
+   Compiling futures-task v0.3.34
+   Compiling slab v0.4.12
+   Compiling itoa v1.0.18
+   Compiling smallvec v1.16.1
+   Compiling bumpalo v3.20.3
+   Compiling bytes v1.12.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.151
+   Compiling semver v1.0.28
+   Compiling percent-encoding v2.3.2
+   Compiling litemap v0.8.3
+   Compiling writeable v0.6.4
+   Compiling hashbrown v0.17.1
+   Compiling find-msvc-tools v0.1.13
+   Compiling icu_properties_data v2.3.0
+   Compiling shlex v2.0.1
+   Compiling utf8_iter v1.0.4
+   Compiling windows-sys v0.61.2
+   Compiling equivalent v1.0.2
+   Compiling icu_normalizer_data v2.3.0
+   Compiling parking_lot_core v0.9.12
+   Compiling scopeguard v1.2.0
+   Compiling futures-channel v0.3.34
+   Compiling wasm-bindgen-shared v0.2.128
+   Compiling lock_api v0.4.14
+   Compiling form_urlencoded v1.2.2
+   Compiling typenum v1.20.1
+   Compiling rustc_version v0.4.1
+   Compiling rustversion v1.0.23
+   Compiling base64 v0.22.1
+   Compiling thiserror v2.0.20
+   Compiling getrandom v0.4.3
+   Compiling anyhow v1.0.104
+   Compiling tracing-core v0.1.36
+   Compiling log v0.4.34
+   Compiling httparse v1.10.1
+   Compiling cpufeatures v0.2.17
+   Compiling unicode-segmentation v1.13.3
+   Compiling tower-service v0.3.3
+   Compiling generic-array v0.14.7
+   Compiling zeroize v1.9.0
+   Compiling getrandom v0.2.17
+   Compiling untrusted v0.9.0
+   Compiling cc v1.4.7
+   Compiling http v1.5.0
+   Compiling libc v0.2.189
+   Compiling indexmap v2.14.2
+   Compiling try-lock v0.2.5
+   Compiling sync_wrapper v1.0.2
+   Compiling tower-layer v0.3.3
+   Compiling tracing v0.1.44
+   Compiling libm v0.2.16
+   Compiling rustls v0.23.45
+   Compiling httpdate v1.0.3
+   Compiling atomic-waker v1.1.2
+   Compiling bitflags v2.13.2
+   Compiling mio v1.2.3
+   Compiling socket2 v0.6.5
+   Compiling ipnet v2.12.2
+   Compiling rustls-pki-types v1.15.1
+   Compiling leb128fmt v0.1.0
+   Compiling subtle v2.6.1
+   Compiling ryu v1.0.23
+   Compiling want v0.3.1
+   Compiling vcpkg v0.2.15
+   Compiling pkg-config v0.3.34
+   Compiling http-body v1.1.0
+   Compiling anstyle v1.0.14
+   Compiling ring v0.17.14
+   Compiling once_cell_polyfill v1.70.2
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling utf8parse v0.2.2
+   Compiling uuid v1.26.1
+   Compiling parking_lot v0.12.5
+   Compiling http-body-util v0.1.5
+   Compiling anstyle-parse v1.0.0
+   Compiling wasm-encoder v0.259.0
+   Compiling anstyle-query v1.1.5
+   Compiling convert_case v0.11.0
+   Compiling anstyle-wincon v3.0.11
+   Compiling wasmparser v0.228.0
+   Compiling foldhash v0.1.5
+   Compiling unicode-width v0.2.2
+   Compiling wasmi_ir v2.0.0
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling or_poisoned v0.1.0
+   Compiling webpki-roots v1.0.9
+   Compiling clap_lex v1.1.1
+   Compiling strsim v0.11.1
+   Compiling wasm-bindgen v0.2.128
+   Compiling wasmi v2.0.0
+   Compiling heck v0.5.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling libsqlite3-sys v0.35.0
+   Compiling hashbrown v0.15.5
+   Compiling mime v0.3.17
+   Compiling matchit v0.8.4
+   Compiling fallible-iterator v0.3.0
+   Compiling wasmi_collections v2.0.0
+   Compiling syn v3.0.6
+   Compiling syn v2.0.119
+   Compiling anstream v1.0.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling parking v2.2.1
+   Compiling unsafe-libyaml v0.2.11
+   Compiling paste v1.0.15
+   Compiling spin v0.9.9
+   Compiling slotmap v1.1.1
+   Compiling proc-macro-error-attr2 v2.0.0
+   Compiling throw_error v0.3.1
+   Compiling unicode-xid v0.2.6
+   Compiling konst_macro_rules v0.2.19
+   Compiling digest v0.10.7
+   Compiling windows-targets v0.52.6
+   Compiling server_fn_macro v0.8.10
+   Compiling wast v259.0.0
+   Compiling axum-core v0.5.6
+   Compiling windows-sys v0.59.0
+   Compiling event-listener v5.4.2
+   Compiling const_format_proc_macros v0.2.34
+   Compiling konst v0.2.20
+   Compiling sha2 v0.10.9
+   Compiling proc-macro-utils v0.10.0
+   Compiling clap_builder v4.6.7
+   Compiling reactive_graph v0.2.14
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling send_wrapper v0.6.0
+   Compiling fastrand v2.5.0
+   Compiling serde_path_to_error v0.1.20
+   Compiling either v1.18.0
+   Compiling hashlink v0.10.0
+   Compiling xxhash-rust v0.8.18
+   Compiling event-listener-strategy v0.5.4
+   Compiling guardian v1.3.0
+   Compiling rustc-hash v2.1.3
+   Compiling thiserror v1.0.69
+   Compiling wasmi_core v2.0.0
+   Compiling camino v1.2.6
+   Compiling yansi v1.0.1
+   Compiling const_format v0.2.36
+   Compiling tempfile v3.27.0
+   Compiling itertools v0.14.0
+   Compiling manyhow-macros v0.11.4
+   Compiling tachys v0.2.18
+   Compiling html-escape v0.2.15
+   Compiling async-lock v3.4.2
+   Compiling winnow v1.0.4
+   Compiling prettyplease v0.2.37
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling winapi-util v0.1.11
+   Compiling server_fn v0.8.13
+   Compiling aho-corasick v1.1.5
+   Compiling const_str_slice_concat v0.1.0
+   Compiling regex-syntax v0.8.11
+   Compiling interpolator v0.5.0
+   Compiling next_tuple v0.1.0
+   Compiling either_of v0.1.9
+   Compiling drain_filter_polyfill v0.1.3
+   Compiling erased v0.1.2
+   Compiling collection_literals v1.0.3
+   Compiling convert_case v0.6.0
+   Compiling same-file v1.0.6
+   Compiling leptos_macro v0.8.17
+   Compiling pathdiff v0.2.3
+   Compiling proc-macro-error2 v2.0.1
+   Compiling synstructure v0.14.0
+   Compiling wasm-bindgen-macro-support v0.2.128
+   Compiling manyhow v0.11.4
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling const-str v1.1.0
+   Compiling base16 v0.2.1
+   Compiling convert_case_extras v0.2.0
+   Compiling rustls-webpki v0.103.15
+   Compiling leptos v0.8.15
+   Compiling walkdir v2.5.0
+   Compiling async-once-cell v0.5.4
+   Compiling rusqlite v0.37.0
+   Compiling toml v1.1.6+spec-1.1.0
+   Compiling serde_derive v1.0.229
+   Compiling futures-macro v0.3.34
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.3
+   Compiling zerovec-derive v0.11.6
+   Compiling displaydoc v0.2.7
+   Compiling tokio-macros v2.7.2
+   Compiling thiserror-impl v2.0.20
+   Compiling clap_derive v4.6.7
+   Compiling derive-where v1.7.0
+   Compiling async-trait v0.1.92
+   Compiling regex-automata v0.4.18
+   Compiling wat v1.259.0
+   Compiling config v0.15.26
+   Compiling async-stream-impl v0.3.6
+   Compiling syn_derive v0.2.0
+   Compiling quote-use-macros v0.8.4
+   Compiling thiserror-impl v1.0.69
+   Compiling pin-project-internal v1.1.13
+   Compiling reactive_stores_macro v0.4.3
+   Compiling tokio v1.53.1
+   Compiling futures-util v0.3.34
+   Compiling server_fn_macro_default v0.8.5
+   Compiling typed-builder-macro v0.23.2
+   Compiling wasm_split_macros v0.2.2
+   Compiling zerofrom v0.1.8
+   Compiling quote-use v0.8.4
+   Compiling async-stream v0.3.6
+   Compiling yoke v0.8.3
+   Compiling clap v4.6.7
+   Compiling wasm_split_helpers v0.2.3
+   Compiling pin-project v1.1.13
+   Compiling typed-builder v0.23.2
+   Compiling attribute-derive-macro v0.10.5
+   Compiling regex v1.13.1
+   Compiling wasm-bindgen-macro v0.2.128
+   Compiling zerovec v0.11.8
+   Compiling zerotrie v0.2.5
+   Compiling rstml v0.12.1
+   Compiling attribute-derive v0.10.5
+   Compiling hyper v1.11.1
+   Compiling tokio-rustls v0.26.5
+   Compiling tokio-util v0.7.19
+   Compiling tower v0.5.3
+   Compiling hyper-util v0.1.20
+   Compiling futures-executor v0.3.34
+   Compiling futures v0.3.34
+   Compiling peachsh-protocol v0.1.0 (./.local/temp/fufu-c-review-22cad04b86\crates\protocol)
+   Compiling serde_urlencoded v0.7.1
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling hydration_context v0.3.1
+   Compiling oco_ref v0.2.1
+   Compiling serde_qs v0.15.0
+   Compiling codee v0.3.5
+   Compiling leptos_config v0.8.10
+   Compiling hyper-rustls v0.27.9
+   Compiling axum v0.8.9
+   Compiling tinystr v0.8.4
+   Compiling potential_utf v0.1.6
+   Compiling icu_collections v2.3.0
+   Compiling icu_locale_core v2.3.0
+   Compiling icu_provider v2.3.1
+   Compiling icu_normalizer v2.3.0
+   Compiling icu_properties v2.3.0
+   Compiling leptos_hot_reload v0.8.6
+   Compiling js-sys v0.3.105
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling tower-http v0.6.11
+   Compiling reqwest v0.12.28
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-c-review-22cad04b86)
+   Compiling wasm-bindgen-futures v0.4.78
+   Compiling web-sys v0.3.105
+   Compiling any_spawner v0.3.0
+   Compiling reactive_stores v0.4.3
+   Compiling gloo-utils v0.2.0
+   Compiling gloo-net v0.6.0
+   Compiling wasm-streams v0.5.0
+   Compiling leptos_dom v0.8.8
+   Compiling leptos_server v0.8.7
+   Compiling peachsh-ui v0.1.0 (./.local/temp/fufu-c-review-22cad04b86\crates\ui)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 41.10s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src\lib.rs (target\debug\deps\peachsh-0465969cf9814345.exe)
+
+running 43 tests
+test domain::tests::session_kind_is_explicit_and_name_independent ... ok
+test domain::tests::project_session_turn_ids_do_not_follow_display_names ... ok
+test provider::tests::truncated_stream_fails ... ok
+test domain::tests::paths_and_names ... ok
+test provider::tests::balance_validation ... ok
+test secrets::tests::credential_fields_redact_independently_without_token_shaped_values ... ok
+test secrets::tests::authorization_assignments_redact_scheme_and_credential ... ok
+test secrets::tests::credential_text_is_checked_throughout_metadata ... ok
+test server::tests::changing_newapi_origin_requires_new_token ... ok
+test provider::tests::utf8_sse_and_fragmented_tools ... ok
+test secrets::tests::persisted_values_redact_nested_and_non_sk_tokens ... ok
+test secrets::tests::ordinary_metadata_and_code_are_preserved ... ok
+test secrets::tests::identifier_key_and_path_limits_match_their_contracts ... ok
+test secrets::tests::redaction ... ok
+test secrets::tests::dpapi_roundtrip ... ok
+test workspace::tests::file_boundaries ... ok
+test repository::schema_tests::session_unique_constraint_cannot_be_replaced_by_a_partial_index ... ok
+test wasm::tests::manifest_rejects_imports ... ok
+test wasm::tests::echo_and_limits ... ok
+test provider::tests::done_does_not_wait_for_connection_close ... ok
+test repository::task_identity_tests::repository_uses_path_and_http_idempotency_limits ... ok
+test repository::task_identity_tests::events_normalize_task_ids_and_preserve_session_and_project_scope ... ok
+test repository::task_identity_tests::new_task_id_cannot_claim_an_unrelated_legacy_task ... ok
+test workspace::tests::search_reports_project_matches ... ok
+test repository::schema_tests::failed_marker_write_rolls_back_all_schema_changes ... ok
+test repository::task_identity_tests::event_resolution_rejects_preexisting_cross_table_identity_collision ... ok
+test repository::task_identity_tests::legacy_replay_checks_relational_identity_and_redacts_historical_tasks ... ok
+test repository::schema_tests::partial_schema_with_missing_indexes_retries_atomically ... ok
+test repository::schema_tests::marked_schema_6_repairs_only_the_missing_legacy_unique_index ... ok
+test repository::schema_tests::current_marker_does_not_hide_missing_tables_or_bad_event_columns ... ok
+test repository::schema_tests::missing_index_repair_refuses_duplicate_and_crossed_task_ids ... ok
+test repository::schema_tests::malformed_schema_never_advances_version_or_marker ... ok
+test repository::schema_tests::forged_named_indexes_are_rejected_even_with_valid_marker ... ok
+test store::tests::event_task_must_belong_to_turn_or_session ... ok
+test store::tests::legacy_create_run_redacts_prompt_messages_and_errors ... ok
+test store::tests::dependencies_are_same_turn_and_acyclic ... ok
+test store::tests::recover_marks_running_turn_interrupted ... ok
+test store::tests::turn_identity_idempotency_and_rollback ... ok
+test store::tests::review_fixes_redact_replay_and_real_legacy_run ... ok
+test store::tests::partial_schema_6_table_stops_before_user_version ... ok
+test store::tests::schema_5_migrates_once_and_keeps_legacy_rows ... ok
+test store::tests::legacy_idempotency_replay_is_explicit ... ok
+test store::tests::interrupted_schema_6_retries_without_advancing_early ... ok
+
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running unittests src\main.rs (target\debug\deps\peachsh-38496f4643084736.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\assessment_adversarial.rs (target\debug\deps\assessment_adversarial-af12e360e83ee519.exe)
+
+running 4 tests
+test wasm_rejects_unbounded_large_table ... ok
+test inference_route_cannot_read_account_secret ... ok
+test idempotency_storage_failure_leaves_no_orphan_run ... ok
+test idempotency_rejects_different_payload ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\final_acceptance.rs (target\debug\deps\final_acceptance-1cf4b24444008436.exe)
+
+running 9 tests
+test resume_keeps_task_identity_and_requeues_turn ... ok
+test invalid_dependency_or_missing_projection_rolls_back_everything ... ok
+test legacy_only_replay_returns_complete_tasks ... ok
+test bundle_commits_project_session_agent_turn_and_legacy_projection ... ok
+test same_idempotency_key_replays_original_turn_without_new_objects ... ok
+test inconsistent_initial_state_and_forged_status_event_are_rejected ... ok
+test state_updates_sync_new_projection_and_reject_backwards_transition ... ok
+test sqlite_trigger_failure_is_atomic ... ok
+test recovery_and_resume_events_roll_back_with_their_states ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\http_contract.rs (target\debug\deps\http_contract-e6ffe760ccbda411.exe)
+
+running 11 tests
+test h6_sse_frame_matches_persisted_event ... ok
+test h3_guard_rejections_are_structured_and_do_not_execute ... ok
+test h1_read_shapes_and_security_headers_stay ... ok
+test h4_json_input_failures_do_not_enter_engine ... ok
+test h10_stream_failure_keeps_last_sent_cursor_and_writes_nothing ... ok
+test h2_missing_is_404_and_corruption_is_500 ... ok
+test h7_disconnect_reconnects_after_consumed_seq_without_cancelling ... ok
+test h8_sessions_do_not_cross_and_seq_may_gap ... ok
+test h11_existing_run_idempotency_and_bad_key_stay ... ok
+test h9_idle_and_future_cursor_do_not_replay ... ok
+test h5_cursor_inputs_reject_ambiguity ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests\live.rs (target\debug\deps\live-6cc7c9c9cbbcd5be.exe)
+
+running 1 test
+test xpeach_native_stream_and_coding_tool ... ignored, requires PEACHSH_TEST_KEY; makes small paid model calls
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\runtime.rs (target\debug\deps\runtime-23d8275a2ab0bf61.exe)
+
+running 10 tests
+test restart_and_http_security ... ok
+test schema_v1_migrates_to_current_version ... ok
+test wasm_plugin_runs_through_agent_tool_boundary ... ok
+test conflicts_cancel_and_configuration_lock ... ok
+test http_run_exposes_domain_and_session_events_with_conflict_replay ... ok
+test explicit_session_kind_survives_arbitrary_member_names ... ok
+test multiple_keys_limits_identity_and_resume ... ok
+test tool_execution_and_path_rejection ... ok
+test dependency_order_summary_and_cycle_rejection ... ok
+test replace_existing_file_preserves_hardlink_and_command_permission ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+     Running tests\session_turns.rs (target\debug\deps\session_turns-be160fffaebd97f4.exe)
+
+running 12 tests
+test t7_unsupported_and_invalid_inputs_add_nothing ... ok
+test t5_two_store_connections_allow_only_one_successor ... ok
+test t8_event_insert_failure_rolls_back_append ... ok
+test t12_session_events_stay_ordered_across_turns ... ok
+test t4_changed_key_inputs_and_legacy_key_conflict ... ok
+test t6_same_second_uuid_order_does_not_decide_latest ... ok
+test t1_t2_three_turns_keep_identity_and_independent_results ... ok
+test t10_historical_resume_loses_to_a_newer_turn ... ok
+test t7_busy_non_chat_corrupt_order_and_unpaired_tools_are_refused ... ok
+test t9_cancel_restart_and_resume_boundaries ... ok
+test t11_route_workspace_and_context_limits_fail_closed ... ok
+test t3_same_key_replay_does_not_relaunch_or_grow has been running for over 60 seconds
+error: test failed, to rerun pass `-p peachsh --test session_turns`
+
+Caused by:
+  process didn't exit successfully: `./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\session_turns-be160fffaebd97f4.exe` (exit code: 0xffffffff)
+note: test exited abnormally; to see the full output pass --no-capture to the harness.

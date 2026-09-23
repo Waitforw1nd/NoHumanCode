@@ -1,0 +1,59 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-c-review-22cad04b86)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.29s
+     Running tests\review_c_probes.rs (target\debug\deps\review_c_probes-28a3e43c31bdcdd9.exe)
+
+running 7 tests
+health_failure: status=500, code="internal"
+invalid_path: status=400, content_type=text/plain; charset=utf-8
+
+thread 'review_invalid_path_is_structured_json' (45324) panicked at tests\review_c_probes.rs:1218:5:
+assertion failed: content_type.starts_with("application/json")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+encoded_negative: status=200, replayed_seq=1
+
+thread 'review_encoded_invalid_cursor_must_not_replay' (26288) panicked at tests\review_c_probes.rs:1207:5:
+assertion `left == right` failed: an encoded invalid cursor must not become zero
+  left: 200
+ right: 400
+encoded_duplicate: status=200 OK
+
+thread 'review_encoded_duplicate_cursor_is_rejected' (37912) panicked at tests\review_c_probes.rs:1192:5:
+assertion `left == right` failed
+  left: 200
+ right: 400
+corrupt_identity: status=400, code="request_failed"
+
+thread 'review_corrupt_run_identity_is_internal' (63704) panicked at tests\review_c_probes.rs:1183:5:
+assertion `left == right` failed
+  left: (400, Some("request_failed"))
+ right: (500, Some("internal"))
+test review_health_schema_failure_is_safe ... ok
+test review_encoded_invalid_cursor_must_not_replay ... FAILED
+test review_invalid_path_is_structured_json ... FAILED
+test review_encoded_duplicate_cursor_is_rejected ... FAILED
+test review_corrupt_run_identity_is_internal ... FAILED
+
+thread 'review_bad_kind_after_success_returns_error_frame' (17880) panicked at ./.local/user-profile/.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.9\src\response\sse.rs:399:9:
+assertion `left == right` failed: SSE field value cannot contain newlines or carriage returns
+  left: Some(3)
+ right: None
+after_first_frame: corrupt_kind=true, first_seq=1, next=Err(reqwest::Error { kind: Decode, source: reqwest::Error { kind: Body, source: hyper::Error(Body, Custom { kind: UnexpectedEof, error: "unexpected EOF during chunk size line" }) } })
+
+thread 'review_bad_kind_after_success_returns_error_frame' (17880) panicked at tests\review_c_probes.rs:1259:5:
+fault must produce an error frame instead of breaking the HTTP body
+after_first_frame: corrupt_kind=false, first_seq=1, next=Ok(Some("event: error\ndata: {\"after\":1,\"code\":\"internal\",\"message\":\"存储数据损坏\",\"retryable\":false}"))
+test review_bad_kind_after_success_returns_error_frame ... FAILED
+test review_read_failure_after_success_keeps_cursor ... ok
+
+failures:
+
+failures:
+    review_bad_kind_after_success_returns_error_frame
+    review_corrupt_run_identity_is_internal
+    review_encoded_duplicate_cursor_is_rejected
+    review_encoded_invalid_cursor_must_not_replay
+    review_invalid_path_is_structured_json
+
+test result: FAILED. 2 passed; 5 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.11s
+
+error: test failed, to rerun pass `--test review_c_probes`

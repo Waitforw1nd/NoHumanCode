@@ -1,4 +1,4 @@
-# 🍑sh harness 设计方向草案
+# NoHumanCode 设计方向草案
 
 更新时间：2026-09-22  
 状态：讨论后的方向记录，不替代 `HANDOFF-TO-NEXT-MODEL.md` 或主架构基线
@@ -175,7 +175,7 @@ chat-agent
 
 ## 7. 当前基线与下一步
 
-当前事实仍以 `HANDOFF-TO-NEXT-MODEL.md` 和 `rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md` 为准：Rust 服务和 schema 5 已运行，Leptos 仍是迁移壳，旧 HTML/JS 仍是实际页面，许多审批、Diff、Checkpoint、worktree、KeyPool 和 Team 能力尚未完成。
+当前事实仍以 `HANDOFF-TO-NEXT-MODEL.md` 和 `NoManCode/rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md` 为准：Rust 服务和 schema 5 已运行，Leptos 仍是迁移壳，旧 HTML/JS 仍是实际页面，许多审批、Diff、Checkpoint、worktree、KeyPool 和 Team 能力尚未完成。
 
 下一步不是立即扩大 UI，而是把这份方向进一步落成三份可审阅设计：
 

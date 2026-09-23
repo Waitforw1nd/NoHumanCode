@@ -1,0 +1,12 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-b12-review-5494090598)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.53s
+     Running tests\review_b12_boundary_probes.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\review_b12_boundary_probes-6edbde29fee406bb.exe)
+
+running 2 tests
+explicit empty tool_calls array accepted; one new provider call; original prefix preserved
+test review_b12_explicit_empty_tool_array_keeps_text_continuation ... ok
+paired malformed and complete tool histories rejected by Engine and Store; all 11 row counts unchanged
+test review_b12_tool_history_rejection_has_no_rows_at_either_boundary ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.17s
+

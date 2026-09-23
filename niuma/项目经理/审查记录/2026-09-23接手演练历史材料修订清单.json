@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-23",
+  "records": [
+    {
+      "path": "niuma/员工B/任务/第一轮/员工B提示词.md",
+      "change": "Prepend current closed-task navigation; original body preserved byte-for-byte",
+      "before_sha256": "078732dc0dbf093eaa5dadc5d2a22faae65ba399429dea39a3cb735b1198878c",
+      "after_sha256": "a52686670671b26dbd808385b3704539c4b2dc6c16d550300918c2101197b5f6",
+      "original_body_preserved": true
+    },
+    {
+      "path": "niuma/员工C/任务/第一轮/员工C提示词.md",
+      "change": "Prepend current closed-task navigation; original body preserved byte-for-byte",
+      "before_sha256": "1fdd4211aeb1a4f3b816bfe7937353a272052eb39d64d472415893fb098a8530",
+      "after_sha256": "f72ad9f50041079f360f7d9eef32d7ad68501751e13aca22fccc7c3b72ffe7f4",
+      "original_body_preserved": true
+    },
+    {
+      "path": "niuma/员工B/审查记录/第一轮/员工B review 1.2.md",
+      "change": "Correct one table-name substring corrupted by path replacement, append correction reference; no acceptance result or test count changes",
+      "before_sha256": "dfff8c5e2501605e21c7491b3065d0cc3fb6ca04614a8c791e8d6bdfdd0ff49a",
+      "after_sha256": "720bc3554c48ade6c6fc831c2a77b256cdbe759257f7aea6c57dc5692de4c346",
+      "old_fragment": "idempotency_niuma/项目经理/项目记录/",
+      "new_fragment": "idempotency_records/",
+      "evidence": [
+        "niuma/员工B/审查记录/第一轮/员工B第1.2轮审查附件/review_b12_boundary_probes.rs",
+        "NoManCode/rust-app/src/repository.rs"
+      ],
+      "replacement_count": 1
+    }
+  ],
+  "historical_hashes_not_recomputed": true
+}

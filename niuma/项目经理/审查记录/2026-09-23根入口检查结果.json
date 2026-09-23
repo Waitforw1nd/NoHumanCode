@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-09-23 05:41:32 +08:00",
+  "scope": "Root manager prompt and entry documentation; no product tests",
+  "active_markdown_documents": 107,
+  "local_links_checked": 540,
+  "broken_links": [],
+  "excluded": "Original employee reports, review attachments, full conversation, archived handoff, references, generated files",
+  "edited_documents_checked": 11,
+  "format_issues": [],
+  "tracked_entry_diff_check_exit": 0,
+  "product_tests_run": false,
+  "independent_entry_review": "Passed usability review; five core entry files, 48 local links verified by read-only reviewer",
+  "conversation_append": {
+    "prior_bytes": 98273,
+    "prior_sha256": "363AC6A823C48AF608B2B655CB1B284D32F5CF5EC185BF25D0943957CD359A3E",
+    "preserved_prefix_sha256": "363AC6A823C48AF608B2B655CB1B284D32F5CF5EC185BF25D0943957CD359A3E",
+    "prefix_matches": true,
+    "final_bytes": 100581
+  }
+}

@@ -1,0 +1,52 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-b-review-50496aff95)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.30s
+     Running tests\review_b_probes.rs (./rust-app\target\debug\deps\review_b_probes-f1c75b8d56e77b2f.exe)
+
+running 6 tests
+database_error_classification=Some(NotFound)
+
+thread 'review_database_failure_must_not_be_classified_as_not_found' (64028) panicked at tests\review_b_probes.rs:87:5:
+assertion `left != right` failed: persisted row decoding failure was discarded and mislabeled missing object
+  left: Some(NotFound)
+ right: Some(NotFound)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test review_database_failure_must_not_be_classified_as_not_found ... FAILED
+malformed_prefix_accepted=true, provider_call_delta=1
+
+thread 'review_malformed_message_must_fail_before_commit_and_provider' (54852) panicked at tests\review_b_probes.rs:66:5:
+malformed prefix persisted and dispatched
+wrong_predecessor_workspace_accepted=true
+
+thread 'review_wrong_workspace_must_not_be_silently_replaced' (51384) panicked at tests\review_b_probes.rs:78:5:
+wrong workspace was silently replaced with Project.root_path
+latest_is_old=true, historical_resume_accepted=true
+
+thread 'review_old_event_must_not_reopen_historical_turn' (47764) panicked at tests\review_b_probes.rs:15:5:
+old status event changed commit order and allowed historical resume
+multi_agent_accepted=true, turns_before=1, turns_after=2
+
+thread 'review_multiple_agents_must_be_refused' (41224) panicked at tests\review_b_probes.rs:52:5:
+multi-agent Chat accepted
+stale_snapshot_accepted=true, intervening_history_preserved=false
+
+thread 'review_stale_predecessor_snapshot_must_be_rejected_or_refreshed' (5596) panicked at tests\review_b_probes.rs:41:5:
+append silently lost a legal resume that completed after candidate construction
+test review_malformed_message_must_fail_before_commit_and_provider ... FAILED
+test review_wrong_workspace_must_not_be_silently_replaced ... FAILED
+test review_old_event_must_not_reopen_historical_turn ... FAILED
+test review_multiple_agents_must_be_refused ... FAILED
+test review_stale_predecessor_snapshot_must_be_rejected_or_refreshed ... FAILED
+
+failures:
+
+failures:
+    review_database_failure_must_not_be_classified_as_not_found
+    review_malformed_message_must_fail_before_commit_and_provider
+    review_multiple_agents_must_be_refused
+    review_old_event_must_not_reopen_historical_turn
+    review_stale_predecessor_snapshot_must_be_rejected_or_refreshed
+    review_wrong_workspace_must_not_be_silently_replaced
+
+test result: FAILED. 0 passed; 6 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.12s
+
+error: test failed, to rerun pass `--test review_b_probes`

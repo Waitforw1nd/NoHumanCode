@@ -1,0 +1,84 @@
+{
+  "date": "2026-09-23",
+  "scope": "Repository-owned files; excludes ignored/generated/dependency/local data and references. Includes historical Markdown.",
+  "markdown_files": 139,
+  "local_links_checked": 688,
+  "broken_links": [],
+  "absolute_markdown_links": [],
+  "case_or_boundary_issues": [],
+  "personal_local_path_files": [],
+  "json_errors": [],
+  "attribute_probes": [
+    {
+      "label": "source",
+      "logical_path": "NoManCode/rust-app/src/git-policy-probe.txt",
+      "attributes": {
+        "text": "auto",
+        "eol": "lf",
+        "diff": "unspecified"
+      },
+      "clean_bytes": "LF",
+      "passed": true
+    },
+    {
+      "label": "windows_script",
+      "logical_path": "NoManCode/git-policy-probe.cmd",
+      "attributes": {
+        "text": "set",
+        "eol": "crlf",
+        "diff": "unspecified"
+      },
+      "clean_bytes": "LF",
+      "passed": true
+    },
+    {
+      "label": "personnel_evidence",
+      "logical_path": "niuma/项目经理/审查记录/git-policy-probe.log",
+      "attributes": {
+        "text": "unset",
+        "eol": "unspecified",
+        "diff": "unspecified"
+      },
+      "clean_bytes": "CRLF preserved",
+      "passed": true
+    },
+    {
+      "label": "legacy_assessment",
+      "logical_path": "NoManCode/rust-app/assessment/git-policy-probe.log",
+      "attributes": {
+        "text": "unset",
+        "eol": "unspecified",
+        "diff": "unspecified"
+      },
+      "clean_bytes": "CRLF preserved",
+      "passed": true
+    },
+    {
+      "label": "reference",
+      "logical_path": "references/git-policy-probe.md",
+      "attributes": {
+        "text": "unset",
+        "eol": "unspecified",
+        "diff": "unspecified"
+      },
+      "clean_bytes": "CRLF preserved",
+      "passed": true
+    }
+  ],
+  "probe_method": "In-memory sample via git hash-object --stdin, no -w, no objects or fixture files written; checkout convention checked via attributes.",
+  "git_branch": "main",
+  "git_head": "8f0ccdc79bf5443caf53e0bf98d455ffd9ef9da5",
+  "staged_files": 0,
+  "remote_count": 0,
+  "diff_check_exit": 0,
+  "cached_diff_check_exit": 0,
+  "product_functional_tests_run": false,
+  "independent_review": "Passed; read-only review found no blocking or necessary corrections in policy, five templates, GitHub constraints and evidence attributes.",
+  "limitations": [
+    "No backlog committed or merged.",
+    "GitHub protection and CI are configuration goals, not enabled.",
+    "Existing tracked line endings have not been renormalized; ordinary text may warn at future staging.",
+    "No full source checkout or product build/test performed."
+  ],
+  "passed": true
+}

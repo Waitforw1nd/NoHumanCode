@@ -1,0 +1,61 @@
+   Compiling peachsh v0.2.0 (./.local/legacy-instance/rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.65s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-80c3634d5fcc9d9a.exe)
+
+running 10 tests
+test domain::tests::paths_and_names ... ok
+test provider::tests::balance_validation ... ok
+test provider::tests::truncated_stream_fails ... ok
+test secrets::tests::redaction ... ok
+test provider::tests::utf8_sse_and_fragmented_tools ... ok
+test wasm::tests::manifest_rejects_imports ... ok
+test secrets::tests::dpapi_roundtrip ... ok
+test workspace::tests::file_boundaries ... ok
+test wasm::tests::echo_and_limits ... ok
+test provider::tests::done_does_not_wait_for_connection_close ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src\main.rs (target\debug\deps\peachsh-aa038233f671df7d.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\assessment_adversarial.rs (target\debug\deps\assessment_adversarial-972b4ce6137135f7.exe)
+
+running 4 tests
+test idempotency_rejects_different_payload ... ignored, Assessment A01: mismatched request payload currently silently reuses the original run
+test idempotency_storage_failure_leaves_no_orphan_run ... ignored, Assessment A02: run transaction commits before idempotency binding
+test inference_route_cannot_read_account_secret ... ignored, Assessment A03: provider IDs share secret namespace with New API account
+test wasm_rejects_unbounded_large_table ... ignored, Assessment A04: WASM table allocations have no host budget
+
+test result: ok. 0 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\live.rs (target\debug\deps\live-c203d5997a00d85d.exe)
+
+running 1 test
+test xpeach_native_stream_and_coding_tool ... ignored, requires PEACHSH_TEST_KEY; makes small paid model calls
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\runtime.rs (target\debug\deps\runtime-c64f3fd2af73f563.exe)
+
+running 8 tests
+test schema_v1_migrates_to_current_version ... ok
+test restart_and_http_security ... ok
+test wasm_plugin_runs_through_agent_tool_boundary ... ok
+test conflicts_cancel_and_configuration_lock ... ok
+test multiple_keys_limits_identity_and_resume ... ok
+test tool_execution_and_path_rejection ... ok
+test dependency_order_summary_and_cycle_rejection ... ok
+test replace_existing_file_preserves_hardlink_and_command_permission ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+   Doc-tests peachsh
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

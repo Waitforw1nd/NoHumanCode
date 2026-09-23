@@ -1,0 +1,32 @@
+﻿cargo :    Compiling peachsh v0.2.0 (D:\code\fufu\.local\verification\d-r1-0753\rust-app)
+所在位置 D:\code\fufu\.local\verification\d-r1-0753\run-gate.ps1:71 字符: 34
++ ... egration' { cargo test -p peachsh --locked --test plugin_catalog } 'c ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling pe...-0753\rust-app):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.47s
+     Running tests\plugin_catalog.rs (D:\code\fufu\.local\targets\d-plugin-catalog\debug\deps\plugin_catalog-05ac490b33
+d35a13.exe)
+
+running 17 tests
+test d03_missing_version_and_kind_are_distinct ... ok
+test d06_reachability_and_root_rules ... ok
+test d01_full_chain_parse_register_resolve ... ok
+test d07_open_config_schema_and_boundaries ... ok
+test d07_register_revalidates_direct_constructs_atomically ... ok
+test d07_duplicate_json_members_rejected_everywhere ... ok
+test d02_graph_orders_deterministically_and_dedups ... ok
+test d11_declarations_do_not_execute_and_errors_do_not_echo ... ok
+test d08_duplicate_id_rules ... ok
+test d10_remove_and_replace_provider ... ok
+test d09_scope_kinds_and_instance_isolation ... ok
+test d12_existing_abi_and_modules_unaffected ... ok
+test d04_ambiguous_provider_lists_sorted_ids ... ok
+test d05_cycles_report_real_closed_paths_only ... ok
+test d07_id_and_name_rules_with_boundaries ... ok
+test d07_scope_identity_is_validated ... ok
+test d07_structure_type_and_duplicate_declarations ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

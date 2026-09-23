@@ -1,0 +1,7 @@
+﻿cargo :     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.33s
+所在位置 D:\code\fufu\.local\verification\d-r1-0753\run-gate.ps1:73 字符: 31
++ ... y-module' { cargo clippy -p peachsh --lib --test plugin_catalog --loc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `d...get(s) in 0.33s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

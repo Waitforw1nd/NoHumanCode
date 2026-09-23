@@ -1,0 +1,17 @@
+# NEXT-01 文件哈希与 Git 状态（2026-09-23）
+
+## sha256
+d89f035c0fdb8ca8b3e316e73e2d8f80a3e134d535e6a66e743d20f1f9959667 *NoManCode/rust-app/src/server.rs
+430a6f9e8792d95f0e9d95b02736d4a71a7c6242a543024167f4737638f629c8 *NoManCode/rust-app/tests/turn_http.rs
+
+## git status --short -- 相关路径
+?? NoManCode/rust-app/src/server.rs
+?? NoManCode/rust-app/tests/turn_http.rs
+
+## HEAD
+8f0ccdc fix: share idempotency checks across replay and commit
+ccd85d4 fix: resolve task identity and idempotency conflicts
+d3a5a67 fix: make legacy replay and schema checks explicit
+
+## git diff --check
+exit=0

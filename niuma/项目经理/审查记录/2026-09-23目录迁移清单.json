@@ -1,0 +1,794 @@
+[
+  {
+    "source": "员工任务\\第一轮\\员工B提示词.md",
+    "destination": "niuma\\员工B\\任务\\第一轮\\员工B提示词.md",
+    "bytes": 14414,
+    "sha256": "0F1721B19DE64AD3E6FCFFC8A7F703BC1C7D6519A9F47C642C4DEE64C9B3B163"
+  },
+  {
+    "source": "员工任务\\第一轮\\员工C HTTP-SSE契约.md",
+    "destination": "niuma\\员工C\\任务\\第一轮\\员工C HTTP-SSE契约.md",
+    "bytes": 5681,
+    "sha256": "20ADF87BB39F6E263800A9E9BDDEE77CCCBB61A54658EE3EEDAF44DD2D0FB19E"
+  },
+  {
+    "source": "员工任务\\第一轮\\员工C提示词.md",
+    "destination": "niuma\\员工C\\任务\\第一轮\\员工C提示词.md",
+    "bytes": 12790,
+    "sha256": "E7F10D14C20444FB4E6124A1E61763C47AC711714C5F99236DC4F5216431FA09"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.1轮报告）.md",
+    "destination": "niuma\\员工A\\提交报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.1轮报告）.md",
+    "bytes": 3793,
+    "sha256": "BEA9B2D91E9BEB3EA48B15912EB2229C0856E61B3B0A24D8F73BF3F98A54168F"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.2轮报告）.md",
+    "destination": "niuma\\员工A\\提交报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.2轮报告）.md",
+    "bytes": 3471,
+    "sha256": "F423E19FF8B8D0345D73527A62D923320DD7C70EC36D83AD02460446F7B8CBB7"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.3轮报告）.md",
+    "destination": "niuma\\员工A\\提交报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.3轮报告）.md",
+    "bytes": 4853,
+    "sha256": "72DD7B5EF09EA0936AE185B3C5AD19BB25B464B22F185917634CD0F1A964CACB"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.4轮报告）.md",
+    "destination": "niuma\\员工A\\提交报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.4轮报告）.md",
+    "bytes": 3466,
+    "sha256": "FCBE79EC3C17464A319A0532F41C57E9059B8BEE28CA6C5EFF6F759C29320272"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.5轮报告）.md",
+    "destination": "niuma\\员工A\\提交报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1.5轮报告）.md",
+    "bytes": 3127,
+    "sha256": "85D0A5BF65707ACEA183A418463084BEFAEDF064A485975E5F039AE7C727D000"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1轮报告）.md",
+    "destination": "niuma\\员工A\\提交报告\\第一轮\\员工A（Project-Session-Turn领域契约与SQLite Repository 第1轮报告）.md",
+    "bytes": 4813,
+    "sha256": "D402E3E309C20BD5D7957F3BC5B2B106569B8F189ECDF42C1C71C17635DDBE54"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工B（Engine连续Chat回合 第1.1轮报告）.md",
+    "destination": "niuma\\员工B\\提交报告\\第一轮\\员工B（Engine连续Chat回合 第1.1轮报告）.md",
+    "bytes": 8155,
+    "sha256": "282840E00B967992AAED889CB152EB1987081B86447E460589936AA6EB6FCB75"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工B（Engine连续Chat回合 第1.2轮报告）.md",
+    "destination": "niuma\\员工B\\提交报告\\第一轮\\员工B（Engine连续Chat回合 第1.2轮报告）.md",
+    "bytes": 5523,
+    "sha256": "3A1BE2696A83EC410E7E8AA76646D4D9A881E621F6832F1290E1410D9FACDB88"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工B（Engine连续Chat回合 第1轮报告）.md",
+    "destination": "niuma\\员工B\\提交报告\\第一轮\\员工B（Engine连续Chat回合 第1轮报告）.md",
+    "bytes": 11846,
+    "sha256": "EF866FADA47B9C7E05FD64B1BE3D9D83710F5E9F72977A28832FD124041D8768"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工C（HTTP与SSE传输契约 第1.1轮报告）.md",
+    "destination": "niuma\\员工C\\提交报告\\第一轮\\员工C（HTTP与SSE传输契约 第1.1轮报告）.md",
+    "bytes": 4589,
+    "sha256": "F0CC7137E7A5882B9BA654D3A97E85E18FD190046E272E2E4132AF45AF0E0688"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工C（HTTP与SSE传输契约 第1.2轮报告）.md",
+    "destination": "niuma\\员工C\\提交报告\\第一轮\\员工C（HTTP与SSE传输契约 第1.2轮报告）.md",
+    "bytes": 3317,
+    "sha256": "BAFA0C2D694A5D99F87D3B448C06AD196621D18F6080467D3C80ABFE024EE790"
+  },
+  {
+    "source": "员工报告\\第一轮\\员工C（HTTP与SSE传输契约 第1轮报告）.md",
+    "destination": "niuma\\员工C\\提交报告\\第一轮\\员工C（HTTP与SSE传输契约 第1轮报告）.md",
+    "bytes": 6823,
+    "sha256": "49201C604EB8BF645AADE354AAE904B6257DB204C0CA9CF0C9756B9E61AB1129"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A 最终审查.md",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A 最终审查.md",
+    "bytes": 8465,
+    "sha256": "9E89B5D9E139476A882B13CC7342E88D14739674DF33615CA197FC7EAF9F1BFF"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A review",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A review.md",
+    "bytes": 7194,
+    "sha256": "084FB5B790E0A61D675BDA43E8FB29AD6781AA098B738E691DEB271A8A19E272"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A review 1.1",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A review 1.1.md",
+    "bytes": 9979,
+    "sha256": "DEB296AC1C833DFA24E65397ACCE3B99E57C90FAE5BFBB64F4C7C3217E29836B"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A review 1.2",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A review 1.2.md",
+    "bytes": 19580,
+    "sha256": "7D161CF30E488BD5B4F39D23543850115B2B01804E4D71242F5F2B2CED944E6A"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A review 1.3",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A review 1.3.md",
+    "bytes": 11611,
+    "sha256": "F1C852DFECC59315229BC23E2188CF4194D634692049846EF7355429844C3910"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A review 1.4",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A review 1.4.md",
+    "bytes": 8832,
+    "sha256": "029432311F99EBC32F74D406E7A2EA6D318D384D650D10C3A4C80D878F817935"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工A review 1.5",
+    "destination": "niuma\\员工A\\审查记录\\第一轮\\员工A review 1.5.md",
+    "bytes": 7232,
+    "sha256": "FE58CFF640A788964790B2756FC2737B3A35EAD49A4277AF5B4D406688602807"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B 最终审查.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B 最终审查.md",
+    "bytes": 5115,
+    "sha256": "816E809AE687026B6D1CE4C0390CEE84B0428E0195F9896D02B1A812F8140191"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B review 1.1.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B review 1.1.md",
+    "bytes": 18407,
+    "sha256": "319647A7094C3894B1CFFB57C88505D29A9B23F4F8E1E111CFBFE36CB2C6EFA8"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B review 1.2.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B review 1.2.md",
+    "bytes": 10682,
+    "sha256": "84E2D6855D713C7E00848120F8C1A2CA54DBB25773D3847C43C6DB2F9061629E"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B review.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B review.md",
+    "bytes": 18913,
+    "sha256": "E262D4C6436109B45F1C9407F9E66CE0E550621B4979971C619D761DFD0CD1FD"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C 最终审查.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C 最终审查.md",
+    "bytes": 3530,
+    "sha256": "C2F6E5FC483FDB7720E84161BA58CB777D52A2C0C481D0E6E8C0A399D1F338D2"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C review 1.1.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C review 1.1.md",
+    "bytes": 11209,
+    "sha256": "DC3A9B46C5AD56B18C2F618F899948784C1C1A827F45F934BCE62C21B1D1612D"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C review 1.2.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C review 1.2.md",
+    "bytes": 6150,
+    "sha256": "C638E8605BA4B88AEE3B629E73EEAB77434A52ED4ED74B058891AF61233D6A13"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C review.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C review.md",
+    "bytes": 16037,
+    "sha256": "2570911D70A9BF9C94FA68BB143B2DAF239ACE2A63C0EFF4674422C98B0706F9"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\README.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\README.md",
+    "bytes": 4068,
+    "sha256": "9E894A8600472DB06A054F7BA92CE05A48517937724BECE94F43E1905A9C4200"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review_b_probes.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review_b_probes.rs",
+    "bytes": 6227,
+    "sha256": "8F4B007359F8E4A2A94662235F61646566CC92F360C077E3A0A0FC26DA10C532"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-baseline-test.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-baseline-test.log",
+    "bytes": 8646,
+    "sha256": "8A315A010A223FB09708486E80116645006C7A0AF62B7C6528C97F57CBC2C59D"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-clippy.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-clippy.log",
+    "bytes": 428,
+    "sha256": "4937FE8F9763098B20A70DCA4168F87377B0C1C1E9844C533262331836BEE945"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-environment.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-environment.log",
+    "bytes": 115,
+    "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-gates.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-gates.json",
+    "bytes": 171,
+    "sha256": "F800739D8E911AE03AA809E832E419DA7ADCF2A44D7972E00F3F866E2E874AE0"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-probes.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-probes.log",
+    "bytes": 2830,
+    "sha256": "C49EBA672FD62BCB8DE5D98F5C8118C9878F084DA64FD76DCD5579CF3738739A"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-source-manifest.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-source-manifest.json",
+    "bytes": 1016,
+    "sha256": "03F4F26B17860BF139763768EF2E439F31CB7C5A60FC3419A30D30B92A538E6E"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\review-wasm-check.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\review-wasm-check.log",
+    "bytes": 330,
+    "sha256": "BE819F9BCAA5712FAF89D4BE93AF310307E6889AA9BBB9F09226C71C6B863F58"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\session_turns.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\session_turns.rs",
+    "bytes": 34740,
+    "sha256": "F88142CF3CBA163995622A440B241CF47AE7A13C005625D26B26EFB9F869D8E8"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B审查附件\\source-recheck.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B审查附件\\source-recheck.json",
+    "bytes": 1977,
+    "sha256": "E7E3DE6F50C692AFC071CB7737D24F66090687885500A3D56841BAAF57AB9F3B"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\README.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\README.md",
+    "bytes": 3425,
+    "sha256": "6A5E42909698DAB69DC9FE0120E228FE6ADD91D578193BFCC248554092975F7E"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review_b11_probes.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review_b11_probes.rs",
+    "bytes": 10058,
+    "sha256": "60239F15CCBFC29A2705139446C5FCE2D556A16C7C169BE73BB067FF7C75AD20"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-clippy.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-clippy.log",
+    "bytes": 847,
+    "sha256": "451B02E5096620DD93196C6844BC47F0C9FC8BE407331C5DDC14072E20D86914"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-environment.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-environment.log",
+    "bytes": 115,
+    "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-gates.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-gates.json",
+    "bytes": 224,
+    "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-probe-result.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-probe-result.json",
+    "bytes": 61,
+    "sha256": "F9DCEC24D60F91F068D7B6C481CC58EA25E80528D2AB3A543C9165B57FA500AE"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-probes.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-probes.log",
+    "bytes": 2510,
+    "sha256": "23A0DA0409D03E7D068CAB3D5D89AF107511B3F232D0AE0E0DA1ACEE388BA2DF"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-source-manifest.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-source-manifest.json",
+    "bytes": 1148,
+    "sha256": "9C248197B1285988B73CDDF7C89F05D4662B8EE939DF3D7C93B7ED47F057976E"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-test.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-test.log",
+    "bytes": 10073,
+    "sha256": "106DFD6DD3FD22BBD5AE62E7AD4539CF74EC2891CD6CCF945D6867E581F3EADE"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\review-wasm-check.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\review-wasm-check.log",
+    "bytes": 6509,
+    "sha256": "5C1A7AAFEE2DDA56865DDA03C72E3528180590BEFB0B4D04E81D12E8D966D0BA"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\session_turns.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\session_turns.rs",
+    "bytes": 48873,
+    "sha256": "63B7C2531F90FCC6EE0AE07D00867E7AA470D29A0B2EF8CEA81AB47064788BCF"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\source-recheck.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\source-recheck.json",
+    "bytes": 2230,
+    "sha256": "0FA43D74682A23F1CCCFC3DC47B870F247F62E6C8281A0DE9DDADABA459C9340"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\domain.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\domain.rs",
+    "bytes": 23344,
+    "sha256": "719067F366C190617DA49549BEE592277166CFF4CC0097CCAA72112A74E1C438"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\engine.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\engine.rs",
+    "bytes": 35125,
+    "sha256": "0A1620B8E2A2D3FB67ABCDA431B31B854CB2E08370AB61F17D9BC79F35DF9230"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\repository.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\repository.rs",
+    "bytes": 72522,
+    "sha256": "0D1B09578B721F1E68CE87174FBBE5BB5F4186961AE14B135654B84F4FDF0922"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\store.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.1轮审查附件\\reviewed-src\\store.rs",
+    "bytes": 77306,
+    "sha256": "2E18BEC393217EDC94EDE6B7C186330A4A5582C0871704BBAE0C8618F644320A"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\README.md",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\README.md",
+    "bytes": 3269,
+    "sha256": "EC940761FF81641094046C15CE63FFC9E65F834268535BB083F92CE3C7115B1B"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review_b12_boundary_probes.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review_b12_boundary_probes.rs",
+    "bytes": 4413,
+    "sha256": "89E0418C4D63715C9BC691AE78A6FDC75C9F275BFB37B9C4C4CF49131DC45003"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review_b12_probes.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review_b12_probes.rs",
+    "bytes": 10058,
+    "sha256": "60239F15CCBFC29A2705139446C5FCE2D556A16C7C169BE73BB067FF7C75AD20"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-boundary-probes.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-boundary-probes.log",
+    "bytes": 826,
+    "sha256": "58D90F8429AB79EC78AF9C26F27A34E5DC0716036F68506E488E467302586F68"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-boundary-result.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-boundary-result.json",
+    "bytes": 59,
+    "sha256": "5D8E7D3A4ACE621465CA4D321F8472D2EDA0F6A3B6BF2863DFC377674D12064C"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-c12-comparison.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-c12-comparison.json",
+    "bytes": 481,
+    "sha256": "9451DB682EC631897AFD239120EED3FA4806B9F7E45B7BB9940D1E86A8A11508"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-clippy.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-clippy.log",
+    "bytes": 330,
+    "sha256": "9089FBCA6D94726E511C03BB01316BED71506790AB1A35A569CFBFA884463525"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-environment.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-environment.log",
+    "bytes": 115,
+    "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-gates.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-gates.json",
+    "bytes": 224,
+    "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-probe-results.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-probe-results.json",
+    "bytes": 227,
+    "sha256": "D7E2EF87C312F5C767AB7A8A863DB62E8B105DB1709F85F11A605E2D48CE2F9D"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-probes.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-probes.log",
+    "bytes": 1434,
+    "sha256": "0A84C506CCBFF08AF2C573DF97C40E584EF33F94CD0781D80679A09E64F89E1D"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-source-manifest.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-source-manifest.json",
+    "bytes": 1013,
+    "sha256": "6D473195A5243BB0C7881582FB0CFE2F777FE882BA3E5F5648E100A308CCB112"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-source-recheck.json",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-source-recheck.json",
+    "bytes": 1973,
+    "sha256": "A915AA640111CF8E534DDC7858EBE5FB73DAFAECC32E785802FB61F7A21EC2AC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-test.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-test.log",
+    "bytes": 10341,
+    "sha256": "311BECBC0B5F5C4F7351AA4E3A72A08CBDFFE8999EC048C3569E0923AFEE873C"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\review-wasm-check.log",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\review-wasm-check.log",
+    "bytes": 330,
+    "sha256": "BE2DEF60434FA52F89583B146E27C53E3A2DF9B4BE2B969B566B68C8C74D88CC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\session_turns.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\session_turns.rs",
+    "bytes": 62548,
+    "sha256": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\domain.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\domain.rs",
+    "bytes": 24823,
+    "sha256": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\engine.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\engine.rs",
+    "bytes": 32363,
+    "sha256": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\repository.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\repository.rs",
+    "bytes": 72967,
+    "sha256": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\store.rs",
+    "destination": "niuma\\员工B\\审查记录\\第一轮\\员工B第1.2轮审查附件\\reviewed-src\\store.rs",
+    "bytes": 77383,
+    "sha256": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\b-intermediate-session_turns.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\b-intermediate-session_turns.rs",
+    "bytes": 49121,
+    "sha256": "3574363DD13D5F9F209736BDD41178725B8FA06FEECA43C6775B67685BB36812"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\README.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\README.md",
+    "bytes": 4084,
+    "sha256": "9E29D624F7B863A6C69897E231298F3FE8924A961B53ACE4367E7E90CEC01BD1"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review_c_probes.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review_c_probes.rs",
+    "bytes": 43117,
+    "sha256": "02C4DC193583A78083252CECB61B2AEB3EAD102E45770E8520F00B0EE5E945FC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-clippy.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-clippy.log",
+    "bytes": 428,
+    "sha256": "506B6057EAD9206C85B5D8AB36C141C455734DD13855F011106DE7E0C580CF99"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-environment.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-environment.log",
+    "bytes": 115,
+    "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-gates.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-gates.json",
+    "bytes": 226,
+    "sha256": "25ED02AA64802B8A6DD9AB20FA833BCBAEC9ABF5676FA9BBD6905D80ADBD55A9"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-http-contract.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-http-contract.log",
+    "bytes": 1027,
+    "sha256": "C395D91225E521A9BF75C16341E6EF772A7339681E6701265D18DD14627A2796"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-http-result.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-http-result.json",
+    "bytes": 53,
+    "sha256": "33B56E5BBB72EF49CA220B5DD58E905832608070299EA530961EBCAED1FC70C7"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-probe-result.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-probe-result.json",
+    "bytes": 55,
+    "sha256": "53C3E63ECFA5BBD1790AAFD8D7D6D8CC4FBF7FE3649064743C08C654E79E0E74"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-probes.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-probes.log",
+    "bytes": 3153,
+    "sha256": "2C51E09E9840D6B2D6519F517EE683E5EA636F53723E0301DC4D310F792716CA"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-source-manifest.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-source-manifest.json",
+    "bytes": 1008,
+    "sha256": "B41D0312AF9EB941D015FA11B65CE9FA9B4B461291972DFB3EDD39377BAEBBAA"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-stopped-test.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-stopped-test.json",
+    "bytes": 337,
+    "sha256": "D34081CE343D3A17EA74983F86AED256C3B322FD45D114F08D44AD5182B5CAB7"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-test-isolated.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-test-isolated.log",
+    "bytes": 18007,
+    "sha256": "7632307640A69B407497DA5FB3A988524EC99F36C6DDDACC543CB156E332F2DF"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-test.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-test.log",
+    "bytes": 6099,
+    "sha256": "09492BDB86520E5F383DEC297D9DCEABF342F553F94BDEBA796107967A2331C5"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\review-wasm-check.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\review-wasm-check.log",
+    "bytes": 330,
+    "sha256": "8F91C6E37E0613019DDC7D96194EC9D3990844F938C90819E66B71FC13FF04A0"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\server.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\server.rs",
+    "bytes": 27780,
+    "sha256": "EAB305287F2413BA84761FA3A8E99EB1F85A81F3FC898CB371409443E299B443"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C审查附件\\source-recheck.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C审查附件\\source-recheck.json",
+    "bytes": 1969,
+    "sha256": "8E723329CDD4D9D9E0EA6FA669BA65DF4949C753A2B90D4D96B5F0DE2D3D4F02"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\README.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\README.md",
+    "bytes": 3479,
+    "sha256": "ED652F233382729443D1ED229C9A7A6927D8353B13AFB925DDAEC4AB580275DA"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review_c11_h7_schedule.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review_c11_h7_schedule.rs",
+    "bytes": 57423,
+    "sha256": "D6A3483DF789EFD59ACAB317EDB2552171CB16AB7F42E8BD7AA3A6B3488262CE"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review_c11_probes.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review_c11_probes.rs",
+    "bytes": 43117,
+    "sha256": "02C4DC193583A78083252CECB61B2AEB3EAD102E45770E8520F00B0EE5E945FC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-clippy.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-clippy.log",
+    "bytes": 430,
+    "sha256": "E28E6BD834986E6FB9AF6A1A7AC27D32991009DC5CF3355798932763257C803D"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-environment.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-environment.log",
+    "bytes": 115,
+    "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-gates.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-gates.json",
+    "bytes": 224,
+    "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-h7-schedule.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-h7-schedule.log",
+    "bytes": 958,
+    "sha256": "F6B5AE81CECDEB9F5F7C5CE27DCAF1E4EE4C530509E92BF5036E1093FFB19140"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-probe-results.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-probe-results.json",
+    "bytes": 156,
+    "sha256": "0BE898985532CFC554F298DFEB9E4F9B4B8A70EF8A2ED10C2B73BB5A32B6A480"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-probes.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-probes.log",
+    "bytes": 1407,
+    "sha256": "20AE01B295B132DDB8C8545025B88695B6DB5BA89E7B199DC212ADE7CB69AAFB"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-source-manifest.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-source-manifest.json",
+    "bytes": 887,
+    "sha256": "B469DFC087BC835E4762399CBAE207DB9496408B1AAAC35D32752A5AB5381B28"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-source-recheck.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-source-recheck.json",
+    "bytes": 1727,
+    "sha256": "8DAEA11C7643ED1C522EBA47AD0824064B18E398BADDF2A540A36B8D860897C5"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-test.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-test.log",
+    "bytes": 10054,
+    "sha256": "F34350622ABEFA62C541E38AB01F2C4469951A03125DB239C72423A3FA5E34A2"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\review-wasm-check.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\review-wasm-check.log",
+    "bytes": 330,
+    "sha256": "C1CA382EAC05403BB703696756057BFB9C9A336DF94C6629B6CDF3A25D9FE691"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\reviewed-http_contract.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\reviewed-http_contract.rs",
+    "bytes": 46348,
+    "sha256": "2A42005EF7051229A2538E37A9874CB32D0B25FA2A080790426CE6AD56335D46"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.1轮审查附件\\reviewed-server.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.1轮审查附件\\reviewed-server.rs",
+    "bytes": 29547,
+    "sha256": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\b-integration-session_turns.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\b-integration-session_turns.rs",
+    "bytes": 62548,
+    "sha256": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\README.md",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\README.md",
+    "bytes": 2699,
+    "sha256": "4CB6BAA862F5619137D76FBA88879240DFEB13414160F3D601FEA0A13DB30020"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review_c12_probes.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review_c12_probes.rs",
+    "bytes": 43117,
+    "sha256": "02C4DC193583A78083252CECB61B2AEB3EAD102E45770E8520F00B0EE5E945FC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-clippy.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-clippy.log",
+    "bytes": 430,
+    "sha256": "6FB08661C2597F415F0CE010FDFA47FE30EA5B29F9A4EBF0FB8172FB00921481"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-environment.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-environment.log",
+    "bytes": 115,
+    "sha256": "9755F83AC1935B99EF2F1BFDC4B815E000035176B7459BF6C15FC3BBC5C57C26"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-gates.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-gates.json",
+    "bytes": 224,
+    "sha256": "633AD62A854FBC67501FF278AC684F7F65F16BFBC1065D52070D0901DEE444F8"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-http-diff.txt",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-http-diff.txt",
+    "bytes": 2716,
+    "sha256": "AA6ECC2FE68F524FE59EE04010646F5F01E4E5F0077B17FDB9AC084D76BA1ED0"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-probe-results.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-probe-results.json",
+    "bytes": 61,
+    "sha256": "A78CAE04AA0DBF2D6BC73336CC3A4C7F18F3208A4E9BF394D276CC78142AEA33"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-probes.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-probes.log",
+    "bytes": 1408,
+    "sha256": "0ECC6464155CBB8BCEEBFDC6F5F7BDD01EEDD4275C8CEEDB7B4DCDAA7695E176"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-source-manifest.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-source-manifest.json",
+    "bytes": 887,
+    "sha256": "E122A41129FD1B9BCF80B0DFE47AF5B61BAE4FFD4AF1396A69CCF0EB9BDFA85F"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-source-recheck.json",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-source-recheck.json",
+    "bytes": 1727,
+    "sha256": "E830B0582FC11EF1D5C2A6F406BA3CA1063EE15F88B16ECFA5F4612500825EBC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-test.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-test.log",
+    "bytes": 10342,
+    "sha256": "AC3A850B757A3AD6D9E67410AEE3680CFE16B1ED8D6819F5E55E7F21ADC46A9E"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\review-wasm-check.log",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\review-wasm-check.log",
+    "bytes": 330,
+    "sha256": "4095F309633250CAC8E558A7C2FBB746A87B38D03C4B5D0F4A173157A258CECC"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\reviewed-http_contract.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\reviewed-http_contract.rs",
+    "bytes": 46650,
+    "sha256": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72"
+  },
+  {
+    "source": "审查记录\\第一轮\\员工C第1.2轮审查附件\\reviewed-server.rs",
+    "destination": "niuma\\员工C\\审查记录\\第一轮\\员工C第1.2轮审查附件\\reviewed-server.rs",
+    "bytes": 29547,
+    "sha256": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788"
+  },
+  {
+    "source": "开发记录\\第一轮工作总结与员工分工.md",
+    "destination": "niuma\\项目经理\\开发记录\\第一轮工作总结与员工分工.md",
+    "bytes": 16003,
+    "sha256": "EB4F0A47013FBA8B9D421D26881914B9B36A82A4E1F4677D048F108CD4207EC0"
+  },
+  {
+    "source": "开发记录\\核心骨架完成度盘点-2026-09-23.md",
+    "destination": "niuma\\项目经理\\开发记录\\核心骨架完成度盘点-2026-09-23.md",
+    "bytes": 7054,
+    "sha256": "81A3FB7DCF1131D8DC582FC7C095927C37A7937014F1C07ECDC297D0328BC5AA"
+  },
+  {
+    "source": "开发记录\\后续开发注意事项.md",
+    "destination": "niuma\\项目经理\\开发记录\\后续开发注意事项.md",
+    "bytes": 6139,
+    "sha256": "7D76E1D2CD1879D22C602853980B59A0B9B17184D6383FA2DBF326CE5D53A69B"
+  },
+  {
+    "source": "开发记录\\员工A复盘与反思日志.md",
+    "destination": "niuma\\员工A\\复盘\\员工A复盘与反思日志.md",
+    "bytes": 8567,
+    "sha256": "E366072E77EE02226D5A932858E1009F8F61EA57049FC40E28B83D5D93491AB7"
+  },
+  {
+    "source": "records\\CONVERSATION-FULL.md",
+    "destination": "niuma\\项目经理\\项目记录\\CONVERSATION-FULL.md",
+    "bytes": 86946,
+    "sha256": "D323BAADB3A867CCA074AC368C4B4968CE4DAAEC2D099316C13EFE2682AC3E5D"
+  },
+  {
+    "source": "records\\PROJECT-PROGRESS-SUMMARY.md",
+    "destination": "niuma\\项目经理\\项目记录\\PROJECT-PROGRESS-SUMMARY.md",
+    "bytes": 19350,
+    "sha256": "2131FB770949CC794F3E77432A47C726029F5D4291E568607B38070E7B2624AB"
+  },
+  {
+    "source": "records\\README.md",
+    "destination": "niuma\\项目经理\\项目记录\\README.md",
+    "bytes": 617,
+    "sha256": "36E6B824B7C3AC4AC86D7DD5D4BE07A0EE7FA291F164AD65978A6FAA9FAA18A4"
+  },
+  {
+    "source": "review_a14_notes.tmp",
+    "destination": "niuma\\项目经理\\审查记录\\历史草稿\\review_a14_notes.tmp",
+    "bytes": 3129,
+    "sha256": "F66B5D278E0F056BAA0160B381E8FF13C301CA9F177DC8C0FA08DDD83828C645"
+  }
+]

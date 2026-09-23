@@ -1,0 +1,24 @@
+   Compiling peachsh v0.2.0 (./.local/temp/fufu-b12-review-5494090598)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.49s
+     Running tests\review_b12_probes.rs (./.local/temp/fufu-c-review-22cad04b86\target\debug\deps\review_b12_probes-c25ea600bdf9fcab.exe)
+
+running 8 tests
+incomplete_function_accepted=false, provider_call_delta=0, turn_delta=0
+test review_b11_incomplete_function_must_not_dispatch ... ok
+session_decode_classification=Some(CorruptState)
+turn_decode_classification=Some(CorruptState)
+test review_b11_session_and_turn_decode_failures_are_not_missing ... ok
+database_error_classification=Some(CorruptState)
+test review_database_failure_must_not_be_classified_as_not_found ... ok
+malformed_prefix_accepted=false, provider_call_delta=0
+test review_malformed_message_must_fail_before_commit_and_provider ... ok
+multi_agent_accepted=false, turns_before=1, turns_after=1
+test review_multiple_agents_must_be_refused ... ok
+latest_is_old=false, historical_resume_accepted=false
+test review_old_event_must_not_reopen_historical_turn ... ok
+test review_stale_predecessor_snapshot_must_be_rejected_or_refreshed ... ok
+wrong_predecessor_workspace_accepted=false
+test review_wrong_workspace_must_not_be_silently_replaced ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.40s
+

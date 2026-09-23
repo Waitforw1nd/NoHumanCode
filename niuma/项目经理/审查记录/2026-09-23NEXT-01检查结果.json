@@ -1,0 +1,571 @@
+{
+  "date": "2026-09-23T06:54:41.3337434+08:00",
+  "scope": "Manager NEXT-01 documentation and read-only baseline checks; not product tests",
+  "markdown_files_checked": 14,
+  "markdown_files": [
+    "niuma/员工C/任务/第二轮/新增Turn-HTTP契约.md",
+    "niuma/员工C/任务/第二轮/联合验收矩阵.md",
+    "niuma/员工C/任务/第二轮/员工C提示词.md",
+    "niuma/项目经理/任务/2026-09-23NEXT-01契约与基线盘点.md",
+    "niuma/项目经理/任务/2026-09-23GIT-BASELINE收尾.md",
+    "niuma/项目经理/提交报告/2026-09-23NEXT-01契约与基线盘点.md",
+    "niuma/项目经理/审查记录/2026-09-23NEXT-01契约审查.md",
+    "niuma/项目经理/个人身份认知.md",
+    "niuma/员工C/个人身份认知.md",
+    "niuma/项目经理/当前任务板.md",
+    "niuma/项目经理/关键约定与验收索引.md",
+    "niuma/项目经理/项目地图.md",
+    "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+    "niuma/项目经理/项目记录/CONVERSATION-FULL.md"
+  ],
+  "local_links_checked": 245,
+  "broken_links": [],
+  "absolute_links": [],
+  "trailing_whitespace": [],
+  "source_count": 86,
+  "source_hash_mismatches": [],
+  "source_set_differences": [],
+  "historical_manifest_comparisons": [
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/src/server.rs",
+      "expected": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788",
+      "actual": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "expected": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72",
+      "actual": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "expected": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721",
+      "actual": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/src/domain.rs",
+      "expected": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB",
+      "actual": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/src/store.rs",
+      "expected": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE",
+      "actual": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/src/repository.rs",
+      "expected": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950",
+      "actual": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/tests/session_turns.rs",
+      "expected": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448",
+      "actual": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448",
+      "matches": true
+    },
+    {
+      "role": "B",
+      "path": "NoManCode/rust-app/tests/runtime.rs",
+      "expected": "D2CC3DFCCFF239A808BEA85A4BEFDBCFBA717684336D44D18283C20EC97F0720",
+      "actual": "D2CC3DFCCFF239A808BEA85A4BEFDBCFBA717684336D44D18283C20EC97F0720",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/src/server.rs",
+      "expected": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788",
+      "actual": "65031F6823F38E0AB9D3D94885CB0929A15EFD72BC3F1AFA0A0BAF2391ADC788",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "expected": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72",
+      "actual": "2CD609FC1BD2EF0A8C937D2FC7165780405DFF3DA9D3B13FC012A2F8E33C9E72",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "expected": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721",
+      "actual": "50D703CCEBF2CA4D188EE83B0DD3B2DF5C4A421DBC5F0F9BCC4815D162777721",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/src/domain.rs",
+      "expected": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB",
+      "actual": "D03040EB3C5713C5040DABD76BAA99D58355F964B0E4EAE24335F9E7447D3BDB",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/src/store.rs",
+      "expected": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE",
+      "actual": "41F694DAF7F1D64119B6C12E5EA1BA7799FBBB12E272972521222CDD7DF559AE",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/src/repository.rs",
+      "expected": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950",
+      "actual": "82EB5AA1A705F54D4A2DE905936B817CB8B90E99C7A7B321F716719FA703A950",
+      "matches": true
+    },
+    {
+      "role": "C",
+      "path": "NoManCode/rust-app/tests/session_turns.rs",
+      "expected": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448",
+      "actual": "B24445CD761726A0C0B352CC51D06BEEC4243A71A75F5D8CD3CC2FBBA3958448",
+      "matches": true
+    }
+  ],
+  "deleted_move_pair_count": 89,
+  "deleted_move_pairs": [
+    {
+      "source": "apply-overrides.ps1",
+      "destination": "NoManCode/apply-overrides.ps1"
+    },
+    {
+      "source": "config/README.md",
+      "destination": "NoManCode/config/README.md"
+    },
+    {
+      "source": "config/peachsh.providers.yaml",
+      "destination": "NoManCode/config/peachsh.providers.yaml"
+    },
+    {
+      "source": "dsh-peachsh.cmd",
+      "destination": "NoManCode/dsh-peachsh.cmd"
+    },
+    {
+      "source": "newapi.cmd",
+      "destination": "NoManCode/newapi.cmd"
+    },
+    {
+      "source": "overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "destination": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/index.js"
+    },
+    {
+      "source": "overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "destination": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js"
+    },
+    {
+      "source": "overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "destination": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js"
+    },
+    {
+      "source": "overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "destination": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts"
+    },
+    {
+      "source": "overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js",
+      "destination": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js"
+    },
+    {
+      "source": "overrides/root/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "destination": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js"
+    },
+    {
+      "source": "overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "destination": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/index.js"
+    },
+    {
+      "source": "overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "destination": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js"
+    },
+    {
+      "source": "overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "destination": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js"
+    },
+    {
+      "source": "overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "destination": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts"
+    },
+    {
+      "source": "overrides/web/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "destination": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js"
+    },
+    {
+      "source": "package.json",
+      "destination": "NoManCode/package.json"
+    },
+    {
+      "source": "pnpm-lock.yaml",
+      "destination": "NoManCode/pnpm-lock.yaml"
+    },
+    {
+      "source": "records/CONVERSATION-FULL.md",
+      "destination": "niuma/项目经理/项目记录/CONVERSATION-FULL.md"
+    },
+    {
+      "source": "records/PROJECT-PROGRESS-SUMMARY.md",
+      "destination": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md"
+    },
+    {
+      "source": "records/README.md",
+      "destination": "niuma/项目经理/项目记录/README.md"
+    },
+    {
+      "source": "rust-app/.gitignore",
+      "destination": "NoManCode/rust-app/.gitignore"
+    },
+    {
+      "source": "rust-app/ARCHITECTURE-AUDIT-DRAFT.md",
+      "destination": "NoManCode/rust-app/ARCHITECTURE-AUDIT-DRAFT.md"
+    },
+    {
+      "source": "rust-app/ARCHITECTURE-REBUTTAL.md",
+      "destination": "NoManCode/rust-app/ARCHITECTURE-REBUTTAL.md"
+    },
+    {
+      "source": "rust-app/ASSESSMENT-LIVE-2026-09-20.md",
+      "destination": "NoManCode/rust-app/ASSESSMENT-LIVE-2026-09-20.md"
+    },
+    {
+      "source": "rust-app/Cargo.lock",
+      "destination": "NoManCode/rust-app/Cargo.lock"
+    },
+    {
+      "source": "rust-app/Cargo.toml",
+      "destination": "NoManCode/rust-app/Cargo.toml"
+    },
+    {
+      "source": "rust-app/EVALUATION-2026-09-20.md",
+      "destination": "NoManCode/rust-app/EVALUATION-2026-09-20.md"
+    },
+    {
+      "source": "rust-app/FRAMEWORK-DECISION-2026-09-21.md",
+      "destination": "NoManCode/rust-app/FRAMEWORK-DECISION-2026-09-21.md"
+    },
+    {
+      "source": "rust-app/FRESH-INTEGRATION-AUDIT.md",
+      "destination": "NoManCode/rust-app/FRESH-INTEGRATION-AUDIT.md"
+    },
+    {
+      "source": "rust-app/GOAL-ROADMAP-DRAFT.md",
+      "destination": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md"
+    },
+    {
+      "source": "rust-app/ITERATION-PLAN.md",
+      "destination": "NoManCode/rust-app/ITERATION-PLAN.md"
+    },
+    {
+      "source": "rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md",
+      "destination": "NoManCode/rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md"
+    },
+    {
+      "source": "rust-app/PHASE0-NEXT-AUDIT.md",
+      "destination": "NoManCode/rust-app/PHASE0-NEXT-AUDIT.md"
+    },
+    {
+      "source": "rust-app/PI-DESKTOP-ADAPTATION-2026-09-21.md",
+      "destination": "NoManCode/rust-app/PI-DESKTOP-ADAPTATION-2026-09-21.md"
+    },
+    {
+      "source": "rust-app/PRODUCT-GAP-AUDIT-2026-09-20.md",
+      "destination": "NoManCode/rust-app/PRODUCT-GAP-AUDIT-2026-09-20.md"
+    },
+    {
+      "source": "rust-app/PROJECT-REORGANIZATION-2026-09-21.md",
+      "destination": "NoManCode/rust-app/PROJECT-REORGANIZATION-2026-09-21.md"
+    },
+    {
+      "source": "rust-app/PROTOCOL-MIGRATION-TEST-PLAN.md",
+      "destination": "NoManCode/rust-app/PROTOCOL-MIGRATION-TEST-PLAN.md"
+    },
+    {
+      "source": "rust-app/README.md",
+      "destination": "NoManCode/rust-app/README.md"
+    },
+    {
+      "source": "rust-app/VALIDATION.md",
+      "destination": "NoManCode/rust-app/VALIDATION.md"
+    },
+    {
+      "source": "rust-app/assessment/2026-09-20-live/http-results.json",
+      "destination": "NoManCode/rust-app/assessment/2026-09-20-live/http-results.json"
+    },
+    {
+      "source": "rust-app/assessment/2026-09-20-live/live-evidence.json",
+      "destination": "NoManCode/rust-app/assessment/2026-09-20-live/live-evidence.json"
+    },
+    {
+      "source": "rust-app/assessment/2026-09-20-live/recovery.json",
+      "destination": "NoManCode/rust-app/assessment/2026-09-20-live/recovery.json"
+    },
+    {
+      "source": "rust-app/build.ps1",
+      "destination": "NoManCode/rust-app/build.ps1"
+    },
+    {
+      "source": "rust-app/crates/protocol/Cargo.toml",
+      "destination": "NoManCode/rust-app/crates/protocol/Cargo.toml"
+    },
+    {
+      "source": "rust-app/crates/protocol/src/lib.rs",
+      "destination": "NoManCode/rust-app/crates/protocol/src/lib.rs"
+    },
+    {
+      "source": "rust-app/crates/ui/Cargo.toml",
+      "destination": "NoManCode/rust-app/crates/ui/Cargo.toml"
+    },
+    {
+      "source": "rust-app/crates/ui/README.md",
+      "destination": "NoManCode/rust-app/crates/ui/README.md"
+    },
+    {
+      "source": "rust-app/crates/ui/src/lib.rs",
+      "destination": "NoManCode/rust-app/crates/ui/src/lib.rs"
+    },
+    {
+      "source": "rust-app/examples/wasm-echo/README.md",
+      "destination": "NoManCode/rust-app/examples/wasm-echo/README.md"
+    },
+    {
+      "source": "rust-app/rust-toolchain.toml",
+      "destination": "NoManCode/rust-app/rust-toolchain.toml"
+    },
+    {
+      "source": "rust-app/src/domain.rs",
+      "destination": "NoManCode/rust-app/src/domain.rs"
+    },
+    {
+      "source": "rust-app/src/engine.rs",
+      "destination": "NoManCode/rust-app/src/engine.rs"
+    },
+    {
+      "source": "rust-app/src/lib.rs",
+      "destination": "NoManCode/rust-app/src/lib.rs"
+    },
+    {
+      "source": "rust-app/src/main.rs",
+      "destination": "NoManCode/rust-app/src/main.rs"
+    },
+    {
+      "source": "rust-app/src/provider.rs",
+      "destination": "NoManCode/rust-app/src/provider.rs"
+    },
+    {
+      "source": "rust-app/src/repository.rs",
+      "destination": "NoManCode/rust-app/src/repository.rs"
+    },
+    {
+      "source": "rust-app/src/secrets.rs",
+      "destination": "NoManCode/rust-app/src/secrets.rs"
+    },
+    {
+      "source": "rust-app/src/server.rs",
+      "destination": "NoManCode/rust-app/src/server.rs"
+    },
+    {
+      "source": "rust-app/src/store.rs",
+      "destination": "NoManCode/rust-app/src/store.rs"
+    },
+    {
+      "source": "rust-app/src/wasm.rs",
+      "destination": "NoManCode/rust-app/src/wasm.rs"
+    },
+    {
+      "source": "rust-app/src/workspace.rs",
+      "destination": "NoManCode/rust-app/src/workspace.rs"
+    },
+    {
+      "source": "rust-app/tests/assessment-fixture.mjs",
+      "destination": "NoManCode/rust-app/tests/assessment-fixture.mjs"
+    },
+    {
+      "source": "rust-app/tests/assessment-http.mjs",
+      "destination": "NoManCode/rust-app/tests/assessment-http.mjs"
+    },
+    {
+      "source": "rust-app/tests/assessment_adversarial.rs",
+      "destination": "NoManCode/rust-app/tests/assessment_adversarial.rs"
+    },
+    {
+      "source": "rust-app/tests/live.rs",
+      "destination": "NoManCode/rust-app/tests/live.rs"
+    },
+    {
+      "source": "rust-app/tests/runtime.rs",
+      "destination": "NoManCode/rust-app/tests/runtime.rs"
+    },
+    {
+      "source": "rust-app/tests/ui-fixture.mjs",
+      "destination": "NoManCode/rust-app/tests/ui-fixture.mjs"
+    },
+    {
+      "source": "rust-app/web/app.js",
+      "destination": "NoManCode/rust-app/web/app.js"
+    },
+    {
+      "source": "rust-app/web/index.html",
+      "destination": "NoManCode/rust-app/web/index.html"
+    },
+    {
+      "source": "rust-app/web/style.css",
+      "destination": "NoManCode/rust-app/web/style.css"
+    },
+    {
+      "source": "set-peachsh-key.ps1",
+      "destination": "NoManCode/set-peachsh-key.ps1"
+    },
+    {
+      "source": "start-peachsh-legacy.cmd",
+      "destination": "NoManCode/start-peachsh-legacy.cmd"
+    },
+    {
+      "source": "start-peachsh.cmd",
+      "destination": "NoManCode/start-peachsh.cmd"
+    },
+    {
+      "source": "tests/README.md",
+      "destination": "NoManCode/tests/README.md"
+    },
+    {
+      "source": "tests/discover-peachsh-models.mjs",
+      "destination": "NoManCode/tests/discover-peachsh-models.mjs"
+    },
+    {
+      "source": "tests/dump-config.txt",
+      "destination": "NoManCode/tests/dump-config.txt"
+    },
+    {
+      "source": "tests/test-newapi-balance.mjs",
+      "destination": "NoManCode/tests/test-newapi-balance.mjs"
+    },
+    {
+      "source": "tests/test-openai-parallel.mjs",
+      "destination": "NoManCode/tests/test-openai-parallel.mjs"
+    },
+    {
+      "source": "tests/test-skill-discovery.mjs",
+      "destination": "NoManCode/tests/test-skill-discovery.mjs"
+    },
+    {
+      "source": "tests/test-team-membership-guard.mjs",
+      "destination": "NoManCode/tests/test-team-membership-guard.mjs"
+    },
+    {
+      "source": "tests/test-team-model-routing.mjs",
+      "destination": "NoManCode/tests/test-team-model-routing.mjs"
+    },
+    {
+      "source": "tests/test-team-swarm-routing.mjs",
+      "destination": "NoManCode/tests/test-team-swarm-routing.mjs"
+    },
+    {
+      "source": "tests/test-xpeach-live.mjs",
+      "destination": "NoManCode/tests/test-xpeach-live.mjs"
+    },
+    {
+      "source": "员工报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.1轮报告）.md",
+      "destination": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.1轮报告）.md"
+    },
+    {
+      "source": "员工报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.2轮报告）.md",
+      "destination": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.2轮报告）.md"
+    },
+    {
+      "source": "员工报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.3轮报告）.md",
+      "destination": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.3轮报告）.md"
+    },
+    {
+      "source": "员工报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.4轮报告）.md",
+      "destination": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.4轮报告）.md"
+    },
+    {
+      "source": "员工报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.5轮报告）.md",
+      "destination": "niuma/员工A/提交报告/第一轮/员工A（Project-Session-Turn领域契约与SQLite Repository 第1.5轮报告）.md"
+    }
+  ],
+  "unpaired_deleted_paths": [],
+  "git": {
+    "head": "8f0ccdc79bf5443caf53e0bf98d455ffd9ef9da5",
+    "branch": "main",
+    "staged_paths": [],
+    "remotes": [],
+    "diff_check_exit": 0,
+    "cached_diff_check_exit": 0,
+    "diff_messages": [
+      "warning: in the working copy of 'README.md', CRLF will be replaced by LF the next time Git touches it"
+    ],
+    "cached_messages": []
+  },
+  "product_tests_run": false,
+  "implementation_changed": false,
+  "git_write_operations_run": false,
+  "new_document_absolute_work_paths": [],
+  "check_correction": "Initial link boundary check incorrectly rejected two existing links to repository root; resolved root itself is valid. No document link was changed for this correction.",
+  "final_document_hashes": [
+    {
+      "path": "niuma/员工C/任务/第二轮/新增Turn-HTTP契约.md",
+      "sha256": "A8431E96FC8F83B4CECA0C94DB0B8E657628ABA3AD510992C4D871A647A0E67A"
+    },
+    {
+      "path": "niuma/员工C/任务/第二轮/联合验收矩阵.md",
+      "sha256": "27666C54DD7CE49841EBDB099DE56D8475CE59BF7BBC2133FAD6A3CFD477ACFC"
+    },
+    {
+      "path": "niuma/员工C/任务/第二轮/员工C提示词.md",
+      "sha256": "AAAC8EA9D2F4E9B095B1D9DE5BC41B10D0E519C7CBA5B4159C65475A1C127BA1"
+    },
+    {
+      "path": "niuma/项目经理/任务/2026-09-23NEXT-01契约与基线盘点.md",
+      "sha256": "C5A154C3055E8691B1423681E385FECFA75C44CCFBA1FF8A8975491487468448"
+    },
+    {
+      "path": "niuma/项目经理/任务/2026-09-23GIT-BASELINE收尾.md",
+      "sha256": "57FBF7D040173900DE36EF154188B7A5C17D75DA5097B404576B21D92FF576A2"
+    },
+    {
+      "path": "niuma/项目经理/提交报告/2026-09-23NEXT-01契约与基线盘点.md",
+      "sha256": "531D86F3130CBB2E024FF3D62A5CCF3BBE5A37B0B886B104EA286C9137EB235A"
+    },
+    {
+      "path": "niuma/项目经理/审查记录/2026-09-23NEXT-01契约审查.md",
+      "sha256": "3089EA60CD7F8B8B09EB48CCB3A5AD89DAF0803B7CC3199AEDDF65A32BB3AF2B"
+    },
+    {
+      "path": "niuma/项目经理/个人身份认知.md",
+      "sha256": "F49ABC92CDB46C53701A09E79C13E444FB421DFE29890F07CC4BD10F2F26320C"
+    },
+    {
+      "path": "niuma/员工C/个人身份认知.md",
+      "sha256": "B3347554F9BEAF4C1AA13C3CB5AFDF9C204904C235094D122AF2CC642C76B40C"
+    },
+    {
+      "path": "niuma/项目经理/当前任务板.md",
+      "sha256": "1AB5E2B438F6EE3FCE7103FA8579E9AB0A53283CBC4D05859CDEC1641B704B23"
+    },
+    {
+      "path": "niuma/项目经理/关键约定与验收索引.md",
+      "sha256": "418BE083A247E97D496C6A7998246B13ACCCA2D99DDBBCC3A6B735DBEB10BEB1"
+    },
+    {
+      "path": "niuma/项目经理/项目地图.md",
+      "sha256": "B92275B53548E04554D1F90EF46AC21756CF57B1C13EF5C61C54D402273B063F"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+      "sha256": "CC04A73C92A927F791DBC5EDAA53AEF3CDEA22BE632136DD971A0B28F0C21275"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/CONVERSATION-FULL.md",
+      "sha256": "AB0A98A99C2B3253950D54A858D85770515D5EFE63286CF74BDCA533E71CCA01"
+    }
+  ],
+  "final_checked_at": "2026-09-23T06:56:37.2971979+08:00"
+}

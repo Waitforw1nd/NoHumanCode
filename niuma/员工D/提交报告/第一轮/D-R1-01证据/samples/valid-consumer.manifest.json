@@ -1,0 +1,20 @@
+{
+  "manifest_version": 1,
+  "id": "demo.consumer",
+  "display_name": "Demo Consumer",
+  "version": { "major": 0, "minor": 1, "patch": 0 },
+  "scope": "host",
+  "runtime": "wasm",
+  "lifecycle": "host_managed",
+  "surfaces": ["cli", "headless"],
+  "permissions": ["net.read"],
+  "config_schema": { "type": "object", "properties": { "locale": { "type": "string" } } },
+  "provides": [],
+  "requires": [
+    {
+      "kind": "service",
+      "name": "greeter",
+      "version": { "major": 1, "minor": 0, "patch": 0 }
+    }
+  ]
+}

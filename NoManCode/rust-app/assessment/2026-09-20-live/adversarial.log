@@ -1,0 +1,30 @@
+
+running 4 tests
+
+thread 'wasm_rejects_unbounded_large_table' (38480) panicked at tests\assessment_adversarial.rs:113:5:
+unbounded table exceeding the 4 MiB host-memory goal was accepted
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test wasm_rejects_unbounded_large_table ... FAILED
+
+thread 'inference_route_cannot_read_account_secret' (63816) panicked at tests\assessment_adversarial.rs:94:5:
+inference route resolved the account credential
+
+thread 'idempotency_rejects_different_payload' (63296) panicked at tests\assessment_adversarial.rs:53:5:
+different request with same key must be rejected, not silently mapped to old run
+
+thread 'idempotency_storage_failure_leaves_no_orphan_run' (64552) panicked at tests\assessment_adversarial.rs:75:5:
+failed atomic creation left a queued run behind
+test inference_route_cannot_read_account_secret ... FAILED
+test idempotency_storage_failure_leaves_no_orphan_run ... FAILED
+test idempotency_rejects_different_payload ... FAILED
+
+failures:
+
+failures:
+    idempotency_rejects_different_payload
+    idempotency_storage_failure_leaves_no_orphan_run
+    inference_route_cannot_read_account_secret
+    wasm_rejects_unbounded_large_table
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

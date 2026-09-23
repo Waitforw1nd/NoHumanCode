@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-23",
+  "task": "M-PARALLEL-02",
+  "repository_root": "./",
+  "source_root": "NoManCode/rust-app",
+  "git": {
+    "branch": "main",
+    "head": "8f0ccdc79bf5443caf53e0bf98d455ffd9ef9da5",
+    "index": "empty",
+    "manager_ran_product_tests": false,
+    "commit_merge_release": "not performed"
+  },
+  "c": {
+    "task": "C-R2-01/NEXT-01 revision 1",
+    "execution_id": "C-R2-01-20260923-0701",
+    "status": "CHANGES_REQUIRED",
+    "review": "niuma/员工C/审查记录/第二轮/员工C review 2.0.md",
+    "files": {
+      "NoManCode/rust-app/src/server.rs": "d89f035c0fdb8ca8b3e316e73e2d8f80a3e134d535e6a66e743d20f1f9959667",
+      "NoManCode/rust-app/tests/turn_http.rs": "430a6f9e8792d95f0e9d95b02736d4a71a7c6242a543024167f4737638f629c8"
+    },
+    "blocking_evidence": [
+      "N07 fixed 1460000-byte fixture does not prove serialized messages exceed 1500000 bytes",
+      "N09 several snapshots are taken after the request and tool-shape cases share mutation state",
+      "N10 stale/running/behind, N12 race, and N14 config failures lack per-request before/after side-effect evidence"
+    ],
+    "next_task": "niuma/员工C/任务/第二轮/新增Turn-HTTP补证修订2.1.md",
+    "prompt": "niuma/员工C/任务/第二轮/员工C提示词-补证2.1.md",
+    "employee_report": "niuma/员工C/提交报告/第二轮/员工C（新增Turn-HTTP接入 第2.0轮报告）.md"
+  },
+  "d": {
+    "task": "D-R1-01/NEXT-02A revision 1",
+    "execution_id": "D-R1-01-20260923-0753",
+    "model": "SWE2max",
+    "status": "APPROVED_SCOPED",
+    "review": "niuma/员工D/审查记录/第一轮/员工D review 1.0.md",
+    "files": {
+      "NoManCode/rust-app/src/plugin_catalog.rs": "1676d308ac41228642ee4c0dda550b468fe78e050b68cf72e6209cd79fbb1482",
+      "NoManCode/rust-app/tests/plugin_catalog.rs": "2367ffecec26c35036b971d7ac4a1dc89e33764c4ec4ecb44a4998f125f4d250",
+      "NoManCode/rust-app/src/lib.rs": "1a23addcbd7688c90af9bd808449ed97db1637d8d9becfb1633968bb803e11d8"
+    },
+    "scope": "implementation and frozen snapshot gate only; integration gate pending",
+    "employee_report": "niuma/员工D/提交报告/第一轮/员工D（插件目录与依赖解析 第1.0轮报告）.md"
+  },
+  "evidence_limits": [
+    "C and D employee reports each include whole-workspace results that include the other line's tests; counts are not additive",
+    "paid live remains ignored/not executed",
+    "machine-specific environment repairs are recorded facts, not source changes or portable project setup"
+  ]
+}

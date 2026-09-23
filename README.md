@@ -1,24 +1,50 @@
-# 🍑sh harness · Rust 0.2.0
+# NoHumanCode
 
-最新状态：真实任务与继续流程已验证；本轮发现 6 项待修缺陷，含 2 项凭据隔离问题。请先阅读 [实机评估报告](rust-app/ASSESSMENT-LIVE-2026-09-20.md)。
+Windows 本机优先的 AI 编程工作台：可组合、可撤销、可替换、可审阅、可恢复。先 Rust Host 与 CLI，再 Desktop。
 
-当前主入口已切换为独立 Rust 应用：双击 `D:\peachsh-harness\start-peachsh.cmd`，访问 http://127.0.0.1:3090/ 。进入“对话”即可直接连续聊天，进入“工作台”可运行 Team/Swarm 任务。可执行程序位于 `bin/peachsh.exe`，运行不需要 Node 或 npm。
+当前开发根目录用 `./` 表示，即克隆后包含本 README 的目录；克隆位置与目录名可以不同。产品正式名称自 2026-09-23 起为 **NoHumanCode**，员工及项目经理资料统一归入 `niuma/`。文档和脚本遵循 [路径约定](路径与可移植性.md)。
+
+实际项目源码统一位于 [NoManCode](NoManCode/README.md)，Rust 工程在 `NoManCode/rust-app`，配置、测试、构建及启动脚本一并放在源码目录；`references/` 继续存放第三方参考资料。NoManCode 是用户指定的目录名，产品名称仍为 NoHumanCode。
+
+- **换对话先复制：[项目经理启动提示词](项目经理启动提示词.md)**；模型从 [根交接入口](HANDOFF-TO-NEXT-MODEL.md) 开始。
+- 员工换对话复制 [员工启动提示词](员工启动提示词.md)；职责、任务状态与接手续读按 [开发协作架构](niuma/开发协作架构.md)。
+- [所有角色开工入口](AGENTS.md) 与 [niuma 协作中心](niuma/README.md)
+- [项目经理直接启动](niuma/项目经理/启动说明.md) · [项目地图](niuma/项目经理/项目地图.md) · [当前任务板](niuma/项目经理/当前任务板.md)
+- [项目书](PROJECT-BOOK.md) 与 [项目开发守则](项目开发守则.md)
+- [Git 协作规范](Git协作规范.md) · [参与开发](CONTRIBUTING.md)
+- [经理最新进度](niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md)
+- [当前骨架盘点](niuma/项目经理/开发记录/核心骨架完成度盘点-2026-09-23.md)
+- [Rust 源码与构建说明](NoManCode/rust-app/README.md)
+
+第一轮 A/B/C 已按各自范围通过；新 Turn HTTP 写入口、插件 Host、逐次审批、完整工作区变更闭环及 CLI 仍待后续任务。换对话先读取个人身份文件，不能把旧提示词当成当前任务。
+
+本次更新项目名称和协作资料。代码中的 `peachsh` crate、EXE、数据库、协议和配置标识保留兼容，程序展示名称尚待员工实施；本次没有重新构建或替换运行实例。
+
+## 以下为旧版说明与历史快照
+
+下文的旧品牌、./.local/legacy-instance/ 目录、运行能力与缺陷记录属于当时版本。当前状态以上方入口和最新审查为准。
+
+### 原 Rust 0.2.0 说明
+
+最新状态：真实任务与继续流程已验证；本轮发现 6 项待修缺陷，含 2 项凭据隔离问题。请先阅读 [实机评估报告](NoManCode/rust-app/ASSESSMENT-LIVE-2026-09-20.md)。
+
+当前主入口已切换为独立 Rust 应用：双击 `./.local/legacy-instance/start-peachsh.cmd`，访问 http://127.0.0.1:3090/ 。进入“对话”即可直接连续聊天，进入“工作台”可运行 Team/Swarm 任务。可执行程序位于 `bin/peachsh.exe`，运行不需要 Node 或 npm。
 
 支持多 Key / 多模型任务、Team/Swarm 并发与前置依赖、自动汇总、项目工具、停止与继续、New API 余额查询。Key 通过 Windows DPAPI 加密，任务保存到独立的 `data-rust` 目录。
 
-源代码、架构、构建方法与迁移边界见 [Rust 版本说明](rust-app/README.md)；三轮迭代结果见 [迭代计划](rust-app/ITERATION-PLAN.md)，Rust + WASM 取舍见 [架构论证](rust-app/ARCHITECTURE-REBUTTAL.md)，最新全面评估见 [评估报告](rust-app/EVALUATION-2026-09-20.md)。旧会话、插件生态和原版快捷命令尚未迁移，可通过 `start-peachsh-legacy.cmd` 继续使用。下方保留旧版使用说明。
+源代码、架构、构建方法与迁移边界见 [Rust 版本说明](NoManCode/rust-app/README.md)；三轮迭代结果见 [迭代计划](NoManCode/rust-app/ITERATION-PLAN.md)，Rust + WASM 取舍见 [架构论证](NoManCode/rust-app/ARCHITECTURE-REBUTTAL.md)，最新全面评估见 [评估报告](NoManCode/rust-app/EVALUATION-2026-09-20.md)。旧会话、插件生态和原版快捷命令尚未迁移，可通过 `start-peachsh-legacy.cmd` 继续使用。下方保留旧版使用说明。
 
 ---
 # 🍑sh harness
 
-这是基于 DeepSeek Harness `0.1.6-alpha.2` 的本地改造层。原来的 `D:\DeepSeekHarness` 保留为回退版本；🍑sh harness 使用独立的 `D:\peachsh-harness\data` 保存会话和配置。
+这是基于 DeepSeek Harness `0.1.6-alpha.2` 的本地改造层。原来的 `./.local/legacy-harness/` 保留为回退版本；🍑sh harness 使用独立的 `./.local/legacy-instance/data` 保存会话和配置。
 
 ## 启动
 
 双击或在 PowerShell 执行：
 
 ```powershell
-D:\peachsh-harness\start-peachsh-legacy.cmd
+./.local/legacy-instance/start-peachsh-legacy.cmd
 ```
 
 启动脚本每次都会先恢复 Team 改造补丁，然后启动 Web 界面。启动端口可以追加，例如 `--port 3092`。
@@ -30,9 +56,9 @@ D:\peachsh-harness\start-peachsh-legacy.cmd
 先为每个队员路由保存 Key：
 
 ```powershell
-D:\peachsh-harness\set-peachsh-key.ps1 -Slot 1
-D:\peachsh-harness\set-peachsh-key.ps1 -Slot 2
-D:\peachsh-harness\set-peachsh-key.ps1 -Slot 3
+./.local/legacy-instance/set-peachsh-key.ps1 -Slot 1
+./.local/legacy-instance/set-peachsh-key.ps1 -Slot 2
+./.local/legacy-instance/set-peachsh-key.ps1 -Slot 3
 ```
 
 Key 保存到本地凭据存储，不写入 Team 提示词、会话消息或路由模板。每个 Key 对应一个独立的 LLM 路由：`peachsh-key-1`、`peachsh-key-2`、`peachsh-key-3`。
@@ -75,13 +101,13 @@ Team 面板会把成员稳定名称、`teammate` 角色、LLM 路由别名和模
 首次绑定时在 PowerShell 执行：
 
 ```powershell
-D:\peachsh-harness\newapi.cmd bind
+./.local/legacy-instance/newapi.cmd bind
 ```
 
 按提示填写 New API 的根地址、用户 ID 和访问令牌。之后查询：
 
 ```powershell
-D:\peachsh-harness\newapi.cmd balance
+./.local/legacy-instance/newapi.cmd balance
 ```
 
 在 Web 对话中也可以直接输入 `/newapi balance`。余额和已用额度会按 New API 的原始 quota 单位除以 500000 显示；HTTP 错误只显示状态和脱敏摘要。

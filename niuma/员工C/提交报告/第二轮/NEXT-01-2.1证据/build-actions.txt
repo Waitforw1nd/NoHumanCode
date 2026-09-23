@@ -1,0 +1,21 @@
+=== fmt ===
+FMT_EXIT=0
+=== clippy ===
+    Checking ring v0.17.14
+    Checking rustls-webpki v0.103.15
+    Checking rustls v0.23.45
+    Checking tokio-rustls v0.26.5
+    Checking hyper-rustls v0.27.9
+    Checking libsqlite3-sys v0.35.0
+    Checking rusqlite v0.37.0
+    Checking reqwest v0.12.28
+    Checking peachsh v0.2.0 (D:\code\fufu\NoManCode\rust-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.24s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+CLIPPY_EXIT=0
+=== wasm-check ===
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.32s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+WASM_EXIT=0
