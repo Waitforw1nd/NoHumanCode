@@ -2064,3 +2064,20 @@ NEXT-01 与 NEXT-02A 均按各自范围验收、联合门禁通过；下一份�
 ### 当前交接
 
 首次完整 Git 基线已登记在 `main`（`b67fedf`），共享工作树暂存区干净。后续新功能任务由修订任务单指定从该基线派生独立工作树与 `codex/<角色>/<任务>` 分支；下一切片方向为插件 Host 真实生命周期（消费 NEXT-02A 目录结果），再到审批与 Workspace/Diff/CLI。A/B 无新任务；C/D 无待审报告。`codex/manager/baseline` 标记分支待核对后按 §6 清理。
+
+## 2026-09-23：NEXT-02B 插件 Host 任务包（待分发）
+
+### 用户（本轮要求摘要）
+
+用户指示"继续"，按任务板推进下一项经理交付：NEXT-02后续切片。
+
+### 助手工作与结果
+
+- 读取 plugin_catalog 公开 API、wasm.rs 边界、lib.rs、Cargo.toml、tests 惯例、build.ps1 动作表、环境指南与 D-R1-01 契约；确认 src 无既有 Registry/Context/effect 设施，catalog 冻结为只读依赖。
+- 按 Git 规范 §3 创建首个独立工作树：`git worktree add ../nhc-d-plugin-host -b codex/d/plugin-host b67fedf`，worktree list 与 HEAD 核对通过。
+- 写 [D-R2-01 契约](../../员工D/任务/第二轮/插件Host注册表与生命周期契约.md)：PluginHost 一 scope 一 catalog、start 当场 resolve、builtin 工厂注入、受限 PluginContext（bound 仅已声明且计划绑定的 requires、register_effect 仅已声明 provides+激活末全覆盖校验）、六类 effect+事件订阅/emit、五态+Failed 状态机、DependentsActive/级联停、catch_unwind、激活失败逆序回滚、pending_recovery 显式清单（注册表始终无残留）；不做 wasm/process 执行/审批/持久化/HTTP/CLI。配套 [提示词](../../员工D/任务/第二轮/员工D提示词.md)、[任务单](../任务/2026-09-23NEXT-02B插件Host任务包.md)、[经理报告](../提交报告/2026-09-23NEXT-02B插件Host任务包.md)、[自审](../审查记录/2026-09-23NEXT-02B任务包审查.md)。
+- 同步任务板/经理身份/D身份/总进度/验收索引。未改产品源码、未跑产品测试、未声称 D 已开工。
+
+### 当前交接
+
+NEXT-02B 已备待分发：契约+提示词+工作树（`codex/d/plugin-host` @ `b67fedf`）+自审通过。用户分发后 D 登记执行标识，在工作树分支小步提交三处源码；报告交回后经理 review 候选 SHA 并按 §6 整合 main。执行模型由用户分发时确定（建议延续 SWE2max）。再后顺序：审批/capability→Workspace/Diff→CLI。

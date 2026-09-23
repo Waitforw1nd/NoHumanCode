@@ -3,7 +3,14 @@
 
 ## 最新交接：2026-09-23
 
-### GIT-BASELINE 首次完整基线已提交（最新）
+### NEXT-02B 插件 Host 任务包已备（最新）
+
+- 按任务板"NEXT-02后续"完成下一切片准备：[D-R2-01 契约](../../员工D/任务/第二轮/插件Host注册表与生命周期契约.md)（插件 Host 注册表与可撤销生命周期，builtin）+ [提示词](../../员工D/任务/第二轮/员工D提示词.md) + [任务单](../任务/2026-09-23NEXT-02B插件Host任务包.md) + [自审](../审查记录/2026-09-23NEXT-02B任务包审查.md)。状态：待用户分发，无执行者，不宣称 D 已开工。
+- 首个独立工作树任务：`git worktree add ../nhc-d-plugin-host -b codex/d/plugin-host b67fedf` 已建并核对；D 在该分支小步提交，共享树 `./` 仍经理唯一写；报告/身份写共享树 niuma，不编辑工作树内 niuma 副本。
+- 契约固定语义：一 scope 一 catalog、start 当场 resolve、builtin 工厂注入、受限 PluginContext（bound 仅已声明且计划绑定的 requires、register_effect 仅已声明 provides+激活末全覆盖校验）、六类 effect+事件订阅/emit、五态+Failed 状态机、DependentsActive/级联停、catch_unwind、激活失败逆序回滚、pending_recovery 显式清单（注册表始终无残留）。不做：wasm/process 执行、审批、持久化、HTTP/CLI/UI。
+- 下一步：用户分发后 D 登记执行标识开工；报告到达后经理 review 候选 SHA 并按 §6 整合。之后顺序为审批/capability→Workspace/Diff→CLI。
+
+### GIT-BASELINE 首次完整基线已提交
 
 - 经理按 [收尾任务](../任务/2026-09-23GIT-BASELINE收尾.md) 完成首次完整 Git 快照：在含全部有效成果的工作树就地创建 `codex/manager/baseline`，按 462 条明确清单暂存（非 `add -A`），提交 `b67fedfcd6ca35969363096ea64ddd5fb1290524`（`chore(repo): capture reviewed backend and workspace baseline`，383 文件、+65506/−3891）；随后 `git fetch . codex/manager/baseline:main` 快进整合，`main` 现指向该 SHA，分支保留作标记。未配置远程，未推送、未发布。
 - 内容构成：288 A + 79 R + 10 D + 6 M。89 个旧路径删除全部配对迁移目标（81 源码→`NoManCode/`、3 records→`niuma/项目经理/项目记录/`、5 员工报告→`niuma/员工A/提交报告/`）；10 个删除因低于改名阈值显示为 D+A，目标逐一核对在提交内；`assessment/2026-09-20-live/` 两个被忽略 `.log` 按任务单证据例外强制纳入；CRLF→LF 入库清单与 `.cmd` eol 属性见 [整合记录](../审查记录/2026-09-23GIT-BASELINE整合记录.md)。
