@@ -2045,3 +2045,22 @@ C 按 review 补证并交新报告；经理已写好[补证任务](../../员工C
 ### 当前交接
 
 NEXT-01 与 NEXT-02A 均按各自范围验收、联合门禁通过；下一份经理交付是 GIT-BASELINE 收尾：清点全仓候选文件清单（含 C/D 新增与人员资料增量），在无并行写入窗口创建 `codex/manager/baseline` 候选分支、按清单暂存并检查完整 staged diff、处理换行/证据范围后提交首个完整基线并写整合记录。不从旧 HEAD 派生工作树，不推送远程。
+
+## 2026-09-23：GIT-BASELINE 首次完整基线提交与整合
+
+### 用户（本轮要求摘要）
+
+用户发来 C 第2.1轮补证报告路径交回经理；该报告同版本已在上轮复审关闭（sha256 `17aab80c…`、源码哈希未变），无需重审，遂按任务板执行下一项经理交付 GIT-BASELINE。
+
+### 助手工作与结果
+
+- 清点候选：89 个旧路径删除全部验证有迁移目标（81→NoManCode、3 records→项目记录、5 员工报告→员工A提交报告）；6 个根文档修改；365 个新增；无 >500KB 文件、无凭据、无 target/node_modules/data/.local。
+- 就地创建 `codex/manager/baseline`（main 仍在 `8f0ccdc`）；按 462 条明确清单 `git add --pathspec-from-file` 暂存，非 `add -A`。staged 复核：383 项 = 288 A + 10 D + 6 M + 79 R；10 个删除因低于改名阈值显示为 D+A，目标逐一核对在提交内；`git diff --cached --check` 仅历史文档/日志行尾空白（字节保留证据，不修）。
+- 提交 `b67fedfcd6ca35969363096ea64ddd5fb1290524`（`chore(repo): capture reviewed backend and workspace baseline`，383 文件 +65506/−3891），正文标明任务、来源、验收边界、89 配对、强制日志与 CRLF 清单；随后 `git fetch . codex/manager/baseline:main` 快进整合，`main` 现指向该 SHA，候选分支保留作标记。
+- 证据例外：`assessment/2026-09-20-live/` 的 `baseline.log`、`adversarial.log` 被 `*.log` 忽略，按任务单 `git add -f` 纳入（该区域 -text 字节保留）。
+- 写 [整合记录](../审查记录/2026-09-23GIT-BASELINE整合记录.md)：登记来源/候选/整合后 SHA、内容差异、实际验证与未完成项。同步任务板、经理身份、总进度、验收索引、Git 规范 §1 与收尾任务单；本段为对话记录。
+- 验证边界不变：候选即已验收 C/D 联合内容，经理实跑门禁 143/0/1 + fmt/clippy/wasm-check 全 0；历史 99 项通过为引用未重跑。未配置远程，未推送、未发布。
+
+### 当前交接
+
+首次完整 Git 基线已登记在 `main`（`b67fedf`），共享工作树暂存区干净。后续新功能任务由修订任务单指定从该基线派生独立工作树与 `codex/<角色>/<任务>` 分支；下一切片方向为插件 Host 真实生命周期（消费 NEXT-02A 目录结果），再到审批与 Workspace/Diff/CLI。A/B 无新任务；C/D 无待审报告。`codex/manager/baseline` 标记分支待核对后按 §6 清理。

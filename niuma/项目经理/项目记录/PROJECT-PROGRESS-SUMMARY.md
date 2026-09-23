@@ -3,13 +3,20 @@
 
 ## 最新交接：2026-09-23
 
-### C 补证复审与 C/D 联合门禁（最新）
+### GIT-BASELINE 首次完整基线已提交（最新）
+
+- 经理按 [收尾任务](../任务/2026-09-23GIT-BASELINE收尾.md) 完成首次完整 Git 快照：在含全部有效成果的工作树就地创建 `codex/manager/baseline`，按 462 条明确清单暂存（非 `add -A`），提交 `b67fedfcd6ca35969363096ea64ddd5fb1290524`（`chore(repo): capture reviewed backend and workspace baseline`，383 文件、+65506/−3891）；随后 `git fetch . codex/manager/baseline:main` 快进整合，`main` 现指向该 SHA，分支保留作标记。未配置远程，未推送、未发布。
+- 内容构成：288 A + 79 R + 10 D + 6 M。89 个旧路径删除全部配对迁移目标（81 源码→`NoManCode/`、3 records→`niuma/项目经理/项目记录/`、5 员工报告→`niuma/员工A/提交报告/`）；10 个删除因低于改名阈值显示为 D+A，目标逐一核对在提交内；`assessment/2026-09-20-live/` 两个被忽略 `.log` 按任务单证据例外强制纳入；CRLF→LF 入库清单与 `.cmd` eol 属性见 [整合记录](../审查记录/2026-09-23GIT-BASELINE整合记录.md)。
+- 验证边界：候选即已验收 C/D 联合内容，经理实跑门禁 143 通过/0 失败/1 付费忽略、fmt/clippy/wasm-check 全 0（[联合门禁](../审查记录/2026-09-23C-D联合门禁.md)）；历史 99 项通过为引用证据未重跑。提交不伪造员工各自历史，来源在提交正文标明。
+- 下一步：新功能任务按修订任务单从 `b67fedf` 派生独立工作树与 `codex/<角色>/<任务>` 分支；方向回到插件 Host/Context/Registry/生命周期→审批→Workspace/Diff/CLI 主线。A/B 仍无新任务；C/D 实现已随基线入库。
+
+### C 补证复审与 C/D 联合门禁
 
 - 用户本轮让新模型接任项目经理，沿根提示词完成必读并核对实际状态：任务板记录已落后于真实进度——C 已接收修订2.1并交付 [第2.1轮补证报告](<../../员工C/提交报告/第二轮/员工C（新增Turn-HTTP接入 第2.1轮补证报告）.md>)。
 - 经理只读复审：`server.rs` 哈希与 2.0 轮相同、`turn_http.rs` `9b8d5361…`（2717行）与报告一致；rust-app 全部文件与 86 文件派发前基线逐一比对，仅 server.rs、lib.rs 两处预期差异及三处契约允许新增，无范围外改动。review 2.0 的五个 P1（N07/N09/N10/N12/N14）与全部 P2（N11/N16/N05/N06/N03）逐项复核关闭；[C review 2.1](<../../员工C/审查记录/第二轮/员工C review 2.1.md>) 结论 **APPROVED（NEXT-01 范围）**。
 - 按双线协调执行经理串行联合门禁：固定五处 C/D 源码哈希 + 全量基线比对为输入，`build.ps1 -Action test` **143 通过 0 失败 1 付费忽略**，fmt/clippy/wasm-check 退出码 0，见 [联合门禁记录](../审查记录/2026-09-23C-D联合门禁.md)。
 - 环境事实：本机 pwsh 实际解析为 Git 内嵌 shim（Windows PowerShell 5.1.22621，环境指南的 7.6.5 为历史核对值）；VS 装在 `D:\vsstudio` 非标准位置，build.ps1 需显式 `VCToolsInstallDir`/`VSINSTALLDIR`/`WindowsSdkDir` 变量；workspace 的 `run_command` 需 `pwsh.exe` 在 PATH。两次环境性失败已如实记录，非候选缺陷。
-- 当前状态：NEXT-01 与 NEXT-02A 均按各自范围验收，联合门禁通过；**均未 Git 提交、合并或发布**。A/B 无新任务。下一份经理交付：GIT-BASELINE 收尾——清点全仓候选、创建候选分支、检查完整 staged diff 后提交首个完整基线。
+- 当次状态：NEXT-01 与 NEXT-02A 均按各自范围验收，联合门禁通过，当次尚未 Git 提交；随后 GIT-BASELINE 已收尾，见上方最新一节。A/B 无新任务。
 
 ### C/D 首轮交付与经理复核（已由上方更新）
 
