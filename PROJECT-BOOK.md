@@ -324,7 +324,7 @@ Schema / Migration 变化
 
 ## 10. 当前下一步
 
-当前C按已冻结的NEXT-01完成新增Turn HTTP并经 review 2.1 复核验收；D-R1-01 / NEXT-02A 与 D-R2-01 / NEXT-02B 均由SWE2max交付并通过经理 review：builtin 插件 Host 注册表、受限 Context、effect 注册与五态可撤销生命周期已随 merge `0fe73f3` 并入 main（不含 wasm/process 运行时、审批与持久化）。后续再接逐次审批/capability、wasm/process 插件运行时接入、持久化、工作区变更恢复和 CLI，不能以目录计划、builtin Host 或现有 WASM 宣称完整 Host 完成。前端仍须明确任务，不自行锁定未确认协议。
+当前C按已冻结的NEXT-01完成新增Turn HTTP并经 review 2.1 复核验收；D-R1-01 / NEXT-02A 与 D-R2-01 / NEXT-02B 均由SWE2max交付并通过经理 review：builtin 插件 Host 注册表、受限 Context、effect 注册与五态可撤销生命周期已随 merge `0fe73f3` 并入 main（不含 wasm/process 运行时、审批与持久化）。后续切片：NEXT-02C ToolCall 逐次审批与 Capability 网关任务包已备待分发（Host 应用层+schema 7 approvals，不含审批传输面）；再接审批 HTTP 入口、wasm/process 插件运行时接入、持久化、工作区变更恢复和 CLI，不能以目录计划、builtin Host 或现有 WASM 宣称完整 Host 完成。前端仍须明确任务，不自行锁定未确认协议。
 
 最初规划的后端切片路径保留作目标参考，其中 Repository、事件和部分执行基础已有验收，其他环节尚未完整交付：
 

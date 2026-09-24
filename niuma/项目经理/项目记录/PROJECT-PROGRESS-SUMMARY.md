@@ -3,13 +3,21 @@
 
 ## 最新交接：2026-09-25
 
-### NEXT-02B 已验收并整合入 main（最新）
+### NEXT-02B 已验收并整合入 main
 
 - D-R2-01 / NEXT-02B（插件 Host 注册表与可撤销生命周期，builtin）由 SWE2max 员工D 交付：工作树 `../nhc-d-plugin-host` 分支 `codex/d/plugin-host` 候选 `1223f6b80591eb5c54e480f09991f67e525e3b08`，含 `src/plugin_host.rs`（1488 行）、`tests/plugin_host.rs`（2323 行，23 个集成测试）、`lib.rs` 一行导出；见 [第1.0轮报告](<../../员工D/提交报告/第二轮/员工D（插件Host注册表与生命周期 第1.0轮报告）.md>)。
 - 经理审查：候选 `git diff b67fedf..HEAD` 恰好授权三处、sha256 与证据 `candidate-sha256.txt` 一致、测试仅走公开 API；通读确认受限 PluginContext、provides 全覆盖校验、激活失败逆序回滚、DependentsActive/级联停、catch_unwind、pending_recovery 无残留均符合契约。独立实跑 `--test plugin_host` 23/23、模块单测 6/6、`cargo test --workspace --locked` 172 通过 0 失败 1 付费忽略、fmt/clippy/wasm-check 全绿。[D review 1.0](<../../员工D/审查记录/第二轮/员工D review 1.0.md>) 结论 **APPROVED**，含 4 条 P2 保留项，review 记录单独提交 `7cf8663`。
 - 整合：`git merge --no-ff codex/d/plugin-host` → merge commit `0fe73f3a8dfb940d1aaa71cb71ccdadad92d151c` 入 main；工作树与任务分支已清理；[整合记录](../审查记录/2026-09-25NEXT-02B整合记录.md)已写。未推送、无远程；`codex/manager/baseline` 标记分支保留。
 - 交付边界：builtin Host（注册表/受限 Context/effect 注册/五态+Failed 生命周期/pending_recovery）已在 main；wasm/process 执行、审批/capability、持久化、HTTP/CLI 接入仍不在范围。
 - 下一步：审批/capability→Workspace/Diff→CLI 主线；新任务单写明基线与唯一写入人。A/B/C 无新任务，D 无在途任务。
+
+### NEXT-02C 审批网关任务包已备（最新）
+
+- 按任务板"NEXT-02后续"完成审批/capability 切片准备：[B-R2-01 契约](../../员工B/任务/第二轮/审批与Capability网关契约.md)（ToolCall 逐次审批与 Capability 网关，Host 应用层）+ [提示词](../../员工B/任务/第二轮/员工B提示词.md) + [任务单](../任务/2026-09-25NEXT-02C审批网关任务包.md) + [自审](../审查记录/2026-09-25NEXT-02C任务包审查.md)。状态：待用户分发，无执行者，不宣称 B 已开工。
+- 契约固定语义：capability 纯函数分类（读与 run_wasm 直通、write_file/run_command 需审批、新工具默认需审批）；schema 7 `approvals` 表（`tool_call_id` 唯一+`args_digest` 参数摘要+脱敏 preview，pending/approved/denied/cancelled）；闸门在 definitions 白名单后、`file_backup`/`execute` 前；`decide_approval` 库级入口（行+事件同事务）；`recover` 保持 pending；`resume` 按审批行 reconcile 不再 interrupted 封口；审批一次性绑定参数快照。
+- 独立工作树 `../nhc-b-approval` 分支 `codex/b/approval` @ `40da490` 已建并核对；B 唯一写入六处（新 approval.rs、repository.rs、store.rs、engine.rs、lib.rs 一行、新 tests/approval_gate.rs）。
+- 推迟边界：审批 HTTP/CLI 传输面（后续 C 切片消费 `decide_approval`/`ApprovalRecord` 公开面）、插件化 capability、自动放行/持久授权、run_wasm 审批、超时过期、等待期释放并发许可。
+- 下一步：用户分发后 B 登记执行标识开工；报告到达后经理 review 候选 SHA 并按 §6 整合。之后顺序：Workspace/Diff→CLI。
 
 ### NEXT-02B 插件 Host 任务包已备（2026-09-23，已被上方更新）
 

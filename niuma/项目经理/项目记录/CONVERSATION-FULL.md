@@ -2101,3 +2101,22 @@ NEXT-02B 已备待分发：契约+提示词+工作树（`codex/d/plugin-host` @ 
 ### 当前交接
 
 NEXT-02B 已验收并整合：`main` 含 `0fe73f3`。builtin Host 注册表与可撤销生命周期已交付；wasm/process 运行时、审批/capability、持久化、HTTP/CLI 接入未交付。全员无在途任务；下一切片方向审批/capability→Workspace/Diff→CLI，新任务单须写明基线与唯一写入人。`codex/manager/baseline` 标记分支仍保留待按 §6 清理。
+
+
+## 2026-09-25：NEXT-02C 审批网关任务包（待分发）
+
+### 用户（本轮要求摘要）
+
+用户要求"阅读整个项目进度，下一步该做什么"，随后多次"继续"：按任务板推进下一项经理交付。
+
+### 助手工作与结果
+
+- 通读总进度摘要全文、项目书 §5 交付顺序、任务板与验收索引：项目书切片 1–3（manifest/Registry/生命周期、可撤销 effect、持久化 repository+事件日志）已交付；切片 4 Capability/Approval/ToolCall 是既定下一片。
+- 只读探查接缝：engine 工具循环（白名单 ensure→file_backup→tool_start→execute）、resume 一律 interrupted 封口、domain 已预留 approval.requested/resolved、SCHEMA_VERSION=6、AwaitingApproval 为派工前态不可作 running 子态、run_command 是网络/Git 唯一载体、plugin_host 未挂进程；关键行号经亲验复核。
+- 按 Git 规范 §3 建独立工作树：`git worktree add ../nhc-b-approval -b codex/b/approval 40da490`，HEAD 核对通过。
+- 写 [B 契约](../../员工B/任务/第二轮/审批与Capability网关契约.md)：capability 纯函数分类+策略评估、schema 7 approvals 表（tool_call_id 唯一/args_digest/脱敏 preview/pending|approved|denied|cancelled）、闸门在白名单后 backup/execute 前、decide_approval 库级入口、recover 保持 pending、resume 按审批行 reconcile、审批一次性绑定参数快照；AP01～AP12 验收含重启待批/拒绝、取消唤醒、脱敏、schema 6→7 迁移。配套 [提示词](../../员工B/任务/第二轮/员工B提示词.md)、[任务单](../任务/2026-09-25NEXT-02C审批网关任务包.md)、[经理报告](../提交报告/2026-09-25NEXT-02C审批网关任务包.md)、[自审](../审查记录/2026-09-25NEXT-02C任务包审查.md)。
+- 同步任务板/经理身份/B身份/总进度/验收索引/项目书§10/项目地图。未改产品源码、未跑产品测试、未声称 B 已开工。
+
+### 当前交接
+
+NEXT-02C 已备待分发：契约+提示词+工作树（`codex/b/approval` @ `40da490`）+自审通过。用户分发后 B 登记执行标识，在工作树分支小步提交授权六处；报告交回后经理 review 候选 SHA 并按 §6 整合 main。执行模型由用户分发时确定（默认 Grok 4.7）。推迟边界：审批 HTTP/CLI 传输面（后续 C 切片消费 decide_approval/ApprovalRecord 公开面）、插件化 capability、自动放行/持久授权、run_wasm 审批、超时过期、等待期释放并发许可。再后顺序：审批传输面→Workspace/Diff→CLI。
