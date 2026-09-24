@@ -1,0 +1,4 @@
+# D-R2-01 候选文件 sha256（工作树 codex/d/plugin-host @ 1223f6b80591eb5c54e480f09991f67e525e3b08）
+f135627041ccc5d0c245be7c315b5020817569e8be495a268d9fcf8daaf16094 *NoManCode/rust-app/src/plugin_host.rs
+e0b8755daa541114aa0e350688194d60eef8b26fab87309827d1df00656211f0 *NoManCode/rust-app/tests/plugin_host.rs
+c8c528a4fc0d2fa41156d275a2bb3b7a63982096aef72cc48d7b8c493f33c87c *NoManCode/rust-app/src/lib.rs

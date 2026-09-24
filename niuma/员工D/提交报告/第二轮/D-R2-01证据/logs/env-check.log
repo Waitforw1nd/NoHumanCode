@@ -1,0 +1,15 @@
+﻿pwsh.exe :     Checking tokio-rustls v0.26.5
+所在位置 D:\code\nhc-d-plugin-host\.local\d-r2-gate\run-gate.ps1:74 字符: 19
++ ...   $output = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File .\bui ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Checking tokio-rustls v0.26.5:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Checking hyper-rustls v0.27.9
+    Checking reqwest v0.12.28
+    Checking peachsh v0.2.0 (D:\code\nhc-d-plugin-host\NoManCode\rust-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.01s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.
+1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibi
+lities --id 1`

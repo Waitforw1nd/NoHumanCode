@@ -2081,3 +2081,23 @@ NEXT-01 与 NEXT-02A 均按各自范围验收、联合门禁通过；下一份�
 ### 当前交接
 
 NEXT-02B 已备待分发：契约+提示词+工作树（`codex/d/plugin-host` @ `b67fedf`）+自审通过。用户分发后 D 登记执行标识，在工作树分支小步提交三处源码；报告交回后经理 review 候选 SHA 并按 §6 整合 main。执行模型由用户分发时确定（建议延续 SWE2max）。再后顺序：审批/capability→Workspace/Diff→CLI。
+
+
+## 2026-09-25：NEXT-02B 交付审查与整合（review APPROVED，已入 main）
+
+### 用户（本轮要求摘要）
+
+用户通知：D-R2-01 / NEXT-02B 已完成交付——工作树分支 `codex/d/plugin-host` 候选 `1223f6b`，门禁 8 步全绿，第 1.0 轮报告与证据已写入共享树 `niuma/员工D/提交报告/第二轮/`，待经理 review。用户同时附了员工C第2.1轮补证报告路径（该任务此前已验收关闭，不重开）。
+
+### 助手工作与结果
+
+- 核对候选：`git diff b67fedf..1223f6b` 恰好授权三处（新 `src/plugin_host.rs` 1488 行、新 `tests/plugin_host.rs` 2323 行、`lib.rs` 仅 +`pub mod plugin_host;`）；三文件 sha256 与 `D-R2-01证据/candidate-sha256.txt` 一致；测试仅经公开 API。
+- 通读 `plugin_host.rs`：受限 PluginContext（bound 仅 requires+计划绑定、register_effect 仅 provides、subscribe 记录 provider_id 防串台）、start 当场 resolve+预扫 roots+provides 全覆盖+逆序回滚、stop DependentsActive、stop_subtree 逆序级联、unload 拒绝 Active、catch_unwind 隔离、pending_recovery 显式清单（注册表始终无残留）——符合契约 §3。
+- 经理独立实跑（工作树，注入 `MSYS2_ENV_CONV_EXCL` + MSVC/SDK 环境变量）：`--test plugin_host` 23/23、`--lib plugin_host::` 6/6、模块 clippy 0 告警、fmt 干净、wasm-check 过、`cargo test --workspace --locked` 172 通过/0 失败/1 付费忽略、全仓 clippy 0 告警。
+- 写 [D review 1.0](<../../员工D/审查记录/第二轮/员工D review 1.0.md>)：结论 APPROVED，含 4 条 P2（PluginPanic 无 unwound 透出、stop_subtree 错误路径不透出已停列表、unload 防御分支不可达、Deliver-Failed 不级联依赖者），接受 D 全部 5 条契约反馈；review 记录单独提交 `7cf8663`。
+- 按 §6 整合：`git merge --no-ff codex/d/plugin-host` → merge commit `0fe73f3a8dfb940d1aaa71cb71ccdadad92d151c`（parents 7cf8663+1223f6b，+3812/−0，无冲突）；清理工作树 `../nhc-d-plugin-host` 与分支 `codex/d/plugin-host`；写 [整合记录](../审查记录/2026-09-25NEXT-02B整合记录.md)。
+- 同步任务板/经理身份/D身份/总进度/验收索引/项目书§10/项目地图；D 报告与证据目录随本轮 docs 提交入库。未推送、无远程。
+
+### 当前交接
+
+NEXT-02B 已验收并整合：`main` 含 `0fe73f3`。builtin Host 注册表与可撤销生命周期已交付；wasm/process 运行时、审批/capability、持久化、HTTP/CLI 接入未交付。全员无在途任务；下一切片方向审批/capability→Workspace/Diff→CLI，新任务单须写明基线与唯一写入人。`codex/manager/baseline` 标记分支仍保留待按 §6 清理。

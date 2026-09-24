@@ -1,0 +1,12 @@
+﻿pwsh.exe :     Checking peachsh v0.2.0 (D:\code\nhc-d-plugin-host\NoManCode\rust-app)
+所在位置 D:\code\nhc-d-plugin-host\.local\d-r2-gate\run-gate.ps1:74 字符: 19
++ ...   $output = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File .\bui ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Checking pe...nCode\rust-app):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.65s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.
+1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibi
+lities --id 1`

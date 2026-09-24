@@ -1,0 +1,50 @@
+[
+    {
+        "step":  "env-check",
+        "command":  "build.ps1 -Action check",
+        "exitCode":  0,
+        "seconds":  3
+    },
+    {
+        "step":  "test-integration",
+        "command":  "cargo test -p peachsh --locked --test plugin_host",
+        "exitCode":  0,
+        "seconds":  4
+    },
+    {
+        "step":  "test-unit",
+        "command":  "cargo test -p peachsh --locked --lib plugin_host::",
+        "exitCode":  0,
+        "seconds":  3
+    },
+    {
+        "step":  "clippy-module",
+        "command":  "cargo clippy -p peachsh --lib --test plugin_host --locked -- -D warnings",
+        "exitCode":  0,
+        "seconds":  1
+    },
+    {
+        "step":  "gate-test",
+        "command":  "build.ps1 -Action test",
+        "exitCode":  0,
+        "seconds":  23
+    },
+    {
+        "step":  "gate-fmt",
+        "command":  "build.ps1 -Action fmt",
+        "exitCode":  0,
+        "seconds":  1
+    },
+    {
+        "step":  "gate-clippy",
+        "command":  "build.ps1 -Action clippy",
+        "exitCode":  0,
+        "seconds":  4
+    },
+    {
+        "step":  "gate-wasm-check",
+        "command":  "build.ps1 -Action wasm-check",
+        "exitCode":  0,
+        "seconds":  1
+    }
+]

@@ -1,0 +1,11 @@
+﻿pwsh.exe :     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.39s
+所在位置 D:\code\nhc-d-plugin-host\.local\d-r2-gate\run-gate.ps1:74 字符: 19
++ ...   $output = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File .\bui ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Finished `d...get(s) in 0.39s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.
+1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibi
+lities --id 1`

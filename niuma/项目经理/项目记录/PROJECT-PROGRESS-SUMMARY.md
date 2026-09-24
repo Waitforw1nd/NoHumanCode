@@ -1,9 +1,17 @@
 
 # NoHumanCode 项目进度与模型自我述职摘要
 
-## 最新交接：2026-09-23
+## 最新交接：2026-09-25
 
-### NEXT-02B 插件 Host 任务包已备（最新）
+### NEXT-02B 已验收并整合入 main（最新）
+
+- D-R2-01 / NEXT-02B（插件 Host 注册表与可撤销生命周期，builtin）由 SWE2max 员工D 交付：工作树 `../nhc-d-plugin-host` 分支 `codex/d/plugin-host` 候选 `1223f6b80591eb5c54e480f09991f67e525e3b08`，含 `src/plugin_host.rs`（1488 行）、`tests/plugin_host.rs`（2323 行，23 个集成测试）、`lib.rs` 一行导出；见 [第1.0轮报告](<../../员工D/提交报告/第二轮/员工D（插件Host注册表与生命周期 第1.0轮报告）.md>)。
+- 经理审查：候选 `git diff b67fedf..HEAD` 恰好授权三处、sha256 与证据 `candidate-sha256.txt` 一致、测试仅走公开 API；通读确认受限 PluginContext、provides 全覆盖校验、激活失败逆序回滚、DependentsActive/级联停、catch_unwind、pending_recovery 无残留均符合契约。独立实跑 `--test plugin_host` 23/23、模块单测 6/6、`cargo test --workspace --locked` 172 通过 0 失败 1 付费忽略、fmt/clippy/wasm-check 全绿。[D review 1.0](<../../员工D/审查记录/第二轮/员工D review 1.0.md>) 结论 **APPROVED**，含 4 条 P2 保留项，review 记录单独提交 `7cf8663`。
+- 整合：`git merge --no-ff codex/d/plugin-host` → merge commit `0fe73f3a8dfb940d1aaa71cb71ccdadad92d151c` 入 main；工作树与任务分支已清理；[整合记录](../审查记录/2026-09-25NEXT-02B整合记录.md)已写。未推送、无远程；`codex/manager/baseline` 标记分支保留。
+- 交付边界：builtin Host（注册表/受限 Context/effect 注册/五态+Failed 生命周期/pending_recovery）已在 main；wasm/process 执行、审批/capability、持久化、HTTP/CLI 接入仍不在范围。
+- 下一步：审批/capability→Workspace/Diff→CLI 主线；新任务单写明基线与唯一写入人。A/B/C 无新任务，D 无在途任务。
+
+### NEXT-02B 插件 Host 任务包已备（2026-09-23，已被上方更新）
 
 - 按任务板"NEXT-02后续"完成下一切片准备：[D-R2-01 契约](../../员工D/任务/第二轮/插件Host注册表与生命周期契约.md)（插件 Host 注册表与可撤销生命周期，builtin）+ [提示词](../../员工D/任务/第二轮/员工D提示词.md) + [任务单](../任务/2026-09-23NEXT-02B插件Host任务包.md) + [自审](../审查记录/2026-09-23NEXT-02B任务包审查.md)。状态：待用户分发，无执行者，不宣称 D 已开工。
 - 首个独立工作树任务：`git worktree add ../nhc-d-plugin-host -b codex/d/plugin-host b67fedf` 已建并核对；D 在该分支小步提交，共享树 `./` 仍经理唯一写；报告/身份写共享树 niuma，不编辑工作树内 niuma 副本。
