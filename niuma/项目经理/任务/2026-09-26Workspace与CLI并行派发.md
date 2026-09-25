@@ -26,3 +26,9 @@ Workspace第一切片只覆盖 write_file 的任务前镜像、最新成功产�
 CLI首片只接已验收审批HTTP，使用固定loopback origin和port，禁止代理/重定向；在所有Store/目录/锁行为之前分派。新的Workspace API未冻结实现前不接入旧不安全restore；完整create/send/events/resume后续另派。
 
 下一操作：接收A契约审查，必要新增可追溯修订；接收员工固定实现候选，逐项复核W/CL证据与实际API，阻断闭合后组合验证。当前未验收本轮实现。
+
+## 2026-09-26 接续与支持分工
+
+CLI 最终候选 0d4dc9af863458e3d6fe2ec7c8b380eebaaafdcc 已按范围验收并经 43dea036536f43d7834ab65e2fa64af231df6204 合 main，旧 C/A 的模型仍为 gpt-5.6-sol。B 原服务余额不足 403 中断，六处在途修改已按字节保全；用户明确允许员工改用 GPT-6-sol。B-R3-01-20260926-024830 由新 GPT-6-sol 员工原位唯一接续，基线/分支/任务范围不变。
+
+新增 C-R5-CRASH-SUPPORT，GPT-6-sol，详见[支持契约](../../员工C/任务/第五轮/Workspace真实崩溃补证支持.md)：基于 dd57adfc9321454651bdcdabb3a081bc95091600，在 ../nhc-c-workspace-crash、codex/c/workspace-crash-tests 独立仅新增 tests/workspace_crash.rs。员工 C 提交自己分支、经理串行整合；B 不写该文件，C 不写 B 原范围。B 在原 engine.rs 内可追加仅 cfg(test) 私有 phase barrier 与真正停止执行者的单元测试来确定性覆盖副作用前窗口；不得新增生产 hook、公开控制接口、Cargo feature 或运行时环境后门。C 负责后副作用/提交后和真实 HTTP 崩溃场景。所有支持结果仍需固定组合证据，不能宣称 Workspace 已验收。

@@ -1,6 +1,10 @@
-## 2026-09-26 新轮执行：Workspace与审批CLI
+## 2026-09-26 当前状态：CLI 已整合，Workspace 接续中
 
-经理 GPT-6 依据用户“继续”正式派发 B-R3-01/NEXT-03A、C-R4-01/NEXT-04A、A-NEXT03-04-AUDIT；员工均为 gpt-5.6-sol。完整基线 e7f6f98d7fceb0ee4004d9412e1c41c1724fa900。B独立 ../nhc-b-workspace（codex/b/workspace）实现 write_file 变更快照、schema8、安全恢复与typed HTTP；C独立 ../nhc-c-cli（codex/c/approval-cli）仅实现审批CLI三文件；A只读契约及固定候选审查。经理保持协调/review/Git整合，不写产品实现。正式任务见 niuma/项目经理/任务/2026-09-26Workspace与CLI并行派发.md，两份员工契约已落盘并派发。已完成预检/契约/工作树/派发，尚无本轮候选或门禁结论。继承三修改六未跟踪历史档案及旧工作树完整保留。下一步第一操作：裁决A契约发现，收B/C固定候选并审查，未验收前不合并。NEXT-02D已验收事实保持；下方“后续未派发”仅是历史。
+更新人：经理 GPT-6。NEXT-04A 审批 CLI 已按范围验收，最终候选 `0d4dc9af863458e3d6fe2ec7c8b380eebaaafdcc` 合入 main `43dea036536f43d7834ab65e2fa64af231df6204`，Rust tree 与受测候选一致。五门禁在生产修复候选全 0（233/0/1 付费忽略），最终纯测试补强 CLI 11/11、fmt/clippy 全 0；旧 MSVC 失败 101 保留。CLI 实现和审查贡献仍为 gpt-5.6-sol，详见经理审查记录/2026-09-26NEXT-04A整合记录.md。
+
+B-R3-01 / NEXT-03A 未验收。旧 B 服务余额不足 403 后，用户明确允许员工改用 GPT-6-sol；新 B 唯一接续 `B-R3-01-20260926-024830`、`../nhc-b-workspace/`、`codex/b/workspace`，原接收与模型贡献不改写。中间候选 `dd57adfc9321454651bdcdabb3a081bc95091600` 与六处在途修改已保全。新 C（GPT-6-sol）在 `../nhc-c-workspace-crash/` 唯一新增 tests/workspace_crash.rs，按第五轮支持契约补 W07/W08；B 保持原实现所有权，经理不接管产品源码。A 等固定修复 SHA 后继续独立复核。
+
+未完成：七项安全修复的新候选复核、W01～W14 全证据及真实中断窗口、最终组合五门禁、Workspace review 和整合。下一步第一操作：收 B 固定修复 SHA，交 A 差异审查并同步 C 分支。继承历史档案、原始失败日志与旧工作树全部保留，未推送/发布。下方阶段状态为历史。
 
 ## 最新交接：2026-09-26 NEXT-02D闭合
 

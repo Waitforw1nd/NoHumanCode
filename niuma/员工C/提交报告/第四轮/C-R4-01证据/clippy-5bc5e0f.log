@@ -1,0 +1,12 @@
+    Checking wasm-encoder v0.259.0
+    Checking fastrand v2.5.0
+    Checking peachsh-protocol v0.1.0 (<source-worktree>/NoManCode/rust-app\crates\protocol)
+    Checking tempfile v3.27.0
+    Checking peachsh-ui v0.1.0 (<source-worktree>/NoManCode/rust-app\crates\ui)
+    Checking wast v259.0.0
+    Checking wat v1.259.0
+    Checking wasmi v2.0.0
+    Checking peachsh v0.2.0 (<source-worktree>/NoManCode/rust-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.76s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`

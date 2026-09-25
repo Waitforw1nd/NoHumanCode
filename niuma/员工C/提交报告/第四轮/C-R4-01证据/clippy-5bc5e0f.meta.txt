@@ -1,0 +1,5 @@
+command=.\build.ps1 -Action clippy
+sha=5bc5e0f4128b512009cb46e3014076f7d0069aeb
+started=2026-09-26T03:07:06.7454755+08:00
+ended=2026-09-26T03:07:19.9400958+08:00
+exit_code=0

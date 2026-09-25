@@ -1,0 +1,5 @@
+command=.\build.ps1 -Action check
+sha=fd3e7a373466e4b7628196faaf0974e66b461559
+started=2026-09-26T03:16:37.2061650+08:00
+ended=2026-09-26T03:16:38.0384372+08:00
+exit_code=0
