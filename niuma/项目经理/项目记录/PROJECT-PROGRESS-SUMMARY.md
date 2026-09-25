@@ -2,9 +2,9 @@
 
 更新人：经理 GPT-6。NEXT-04A 审批 CLI 已按范围验收，最终候选 `0d4dc9af863458e3d6fe2ec7c8b380eebaaafdcc` 合入 main `43dea036536f43d7834ab65e2fa64af231df6204`，Rust tree 与受测候选一致。五门禁在生产修复候选全 0（233/0/1 付费忽略），最终纯测试补强 CLI 11/11、fmt/clippy 全 0；旧 MSVC 失败 101 保留。CLI 实现和审查贡献仍为 gpt-5.6-sol，详见经理审查记录/2026-09-26NEXT-04A整合记录.md。
 
-B-R3-01 / NEXT-03A 未验收。旧 B 服务余额不足 403 后，用户明确允许员工改用 GPT-6-sol；新 B 唯一接续 `B-R3-01-20260926-024830`、`../nhc-b-workspace/`、`codex/b/workspace`，原接收与模型贡献不改写。中间候选 `dd57adfc9321454651bdcdabb3a081bc95091600` 与六处在途修改已保全。新 C（GPT-6-sol）在 `../nhc-c-workspace-crash/` 唯一新增 tests/workspace_crash.rs，按第五轮支持契约补 W07/W08；B 保持原实现所有权，经理不接管产品源码。A 等固定修复 SHA 后继续独立复核。
+B-R3-01 / NEXT-03A 未验收。旧 B 服务余额不足 403 后，用户明确允许员工改用 GPT-6-sol；新 B 唯一接续 `B-R3-01-20260926-024830`、`../nhc-b-workspace/`、`codex/b/workspace`，原接收与模型贡献不改写。中间候选 `dd57adfc9321454651bdcdabb3a081bc95091600` 与六处在途修改已保全。新 C（GPT-6-sol）在 `../nhc-c-workspace-crash/` 唯一新增 tests/workspace_crash.rs，按第五轮支持契约补 W07/W08；B 保持原实现所有权，经理不接管产品源码。新 A 代理因系统 thread 上限启动失败，本次固定修复差异由经理审查，不冒充独立员工审计。
 
-未完成：七项安全修复的新候选复核、W01～W14 全证据及真实中断窗口、最终组合五门禁、Workspace review 和整合。下一步第一操作：收 B 固定修复 SHA，交 A 差异审查并同步 C 分支。继承历史档案、原始失败日志与旧工作树全部保留，未推送/发布。下方阶段状态为历史。
+B 已交修复中间候选 083eae51820a008d02197c58b0dcfdf2ff7ba775；经理 review 1.1 要求闭合 F6 重启逐路径状态、F7 脱敏参数写前拒绝及 F8 CHECK 字面量校验。C 已固定后窗口测试 0bdaaac237b15829e971e5cc98b6f3ec97dd8d20，追加断言真实复现 F6。未完成：修复与 W01～W14 全证据、前 FS 真中断、最终组合五门禁、Workspace 最终 review/整合。下一步第一操作：收 B 修复及 C 补强固定 SHA，串行组合后验证。继承历史档案、原始失败日志与旧工作树全部保留，未推送/发布。下方阶段状态为历史。
 
 ## 最新交接：2026-09-26 NEXT-02D闭合
 
