@@ -7,6 +7,80 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncReadExt;
 
+pub(crate) fn read_safe_file(path: &Path) -> Result<Option<Vec<u8>>> {
+    let metadata = match std::fs::symlink_metadata(path) {
+        Ok(value) => value,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
+    ensure!(!metadata.file_type().is_symlink(), "拒绝链接文件");
+    ensure!(metadata.is_file(), "目标不是普通文件");
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        ensure!(
+            metadata.file_attributes() & 0x400 == 0,
+            "拒绝 reparse point"
+        );
+    }
+    ensure!(metadata.len() <= 262_144, "文件大于 256 KiB");
+    let bytes = std::fs::read(path)?;
+    std::str::from_utf8(&bytes).context("文件不是 UTF-8")?;
+    Ok(Some(bytes))
+}
+
+pub(crate) fn atomic_replace(path: &Path, bytes: &[u8]) -> Result<()> {
+    let parent = path.parent().context("文件没有父目录")?;
+    std::fs::create_dir_all(parent)?;
+    let temp = parent.join(format!(".peachsh-{}.tmp", uuid::Uuid::new_v4()));
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temp)?;
+    use std::io::Write as _;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    drop(file);
+    if path.exists() {
+        let _ = read_safe_file(path)?;
+    }
+    if let Err(error) = replace_path(&temp, path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(error.into());
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn replace_path(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::rename(from, to)
+}
+
+#[cfg(windows)]
+fn replace_path(from: &Path, to: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn MoveFileExW(existing: *const u16, replacement: *const u16, flags: u32) -> i32;
+    }
+    const MOVEFILE_REPLACE_EXISTING: u32 = 0x1;
+    const MOVEFILE_WRITE_THROUGH: u32 = 0x8;
+    let from: Vec<u16> = from.as_os_str().encode_wide().chain(Some(0)).collect();
+    let to: Vec<u16> = to.as_os_str().encode_wide().chain(Some(0)).collect();
+    let result = unsafe {
+        MoveFileExW(
+            from.as_ptr(),
+            to.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if result == 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
 fn forbidden(relative: &str) -> bool {
     relative.replace('\\', "/").split('/').any(|part| {
         let p = part.to_lowercase();
@@ -65,6 +139,36 @@ pub fn resolve(root: &Path, relative: &str, writing: bool, scopes: &[String]) ->
     }
     Ok(target)
 }
+
+pub(crate) fn change_target(
+    root: &Path,
+    relative: &str,
+    scopes: &[String],
+) -> Result<(PathBuf, String, String)> {
+    let target = resolve(root, relative, true, scopes)?;
+    let canonical_root = root.canonicalize()?;
+    let identity = if target.exists() {
+        target.canonicalize()?
+    } else if let Some(parent) = target.parent().filter(|parent| parent.exists()) {
+        parent
+            .canonicalize()?
+            .join(target.file_name().context("文件名无效")?)
+    } else {
+        target.clone()
+    };
+    ensure!(
+        identity.starts_with(&canonical_root),
+        "路径身份超出工作目录"
+    );
+    let display = identity
+        .strip_prefix(&canonical_root)?
+        .to_string_lossy()
+        .trim_start_matches(['/', '\\'])
+        .replace('\\', "/");
+    ensure!(!display.is_empty(), "文件路径无效");
+    let key = display.to_lowercase();
+    Ok((target, display, key))
+}
 fn definition(name: &str, description: &str, properties: Value, required: &[&str]) -> Value {
     json!({"type":"function","function":{"name":name,"description":description,"parameters":{"type":"object","properties":properties,"required":required,"additionalProperties":false}}})
 }
@@ -93,7 +197,7 @@ pub fn definitions(task: &Task) -> Vec<Value> {
         ),
     ];
     if !task.spec.write_scopes.is_empty() {
-        tools.push(definition("write_file","Create or replace a UTF-8 file strictly within assigned write scopes. Existing content is backed up in the task event log.",json!({"path":{"type":"string"},"content":{"type":"string"}}),&["path","content"]));
+        tools.push(definition("write_file","Create or replace a UTF-8 file strictly within assigned write scopes. Protected recovery data is stored separately; events contain safe metadata only.",json!({"path":{"type":"string"},"content":{"type":"string"}}),&["path","content"]));
     }
     if task.spec.allow_commands {
         tools.push(definition("run_command","Run a PowerShell command in the project directory. Default limit is 30 seconds; timeout_seconds may be raised up to 600 when the user explicitly enabled command access. Command access is not restricted by file write scopes.",json!({"command":{"type":"string"},"timeout_seconds":{"type":"integer","minimum":1,"maximum":600}}),&["command"]));
@@ -216,12 +320,7 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
             let parent = path.parent().context("文件没有父目录")?;
             std::fs::create_dir_all(parent)?;
             resolve(root, relative, true, &task.spec.write_scopes)?;
-            let temp = parent.join(format!(".peachsh-{}.tmp", uuid::Uuid::new_v4()));
-            std::fs::write(&temp, content)?;
-            if let Err(error) = std::fs::rename(&temp, &path) {
-                let _ = std::fs::remove_file(&temp);
-                return Err(error.into());
-            }
+            atomic_replace(&path, content.as_bytes())?;
             Ok(json!({"written":relative,"bytes":content.len()}))
         }
         "run_command" => {

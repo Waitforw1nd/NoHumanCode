@@ -4,6 +4,7 @@ use crate::{
     provider, secrets,
     store::{IdempotencyConflict, Store, TurnBundle},
     workspace,
+    workspace_changes::{self, *},
 };
 use anyhow::{Context, Result, ensure};
 use serde_json::{Value, json};
@@ -813,26 +814,36 @@ impl Engine {
         key: &str,
         approval_id: Option<&str>,
     ) -> Result<()> {
-        if name == "write_file"
-            && let Some(path) = args["path"].as_str()
-            && let Ok(target) = workspace::resolve(
+        let _workspace_gate = if name == "write_file" {
+            Some(self.gate.lock().await)
+        } else {
+            None
+        };
+        let mut prepared = None;
+        if name == "write_file" {
+            let approval_id = approval_id.context("write_file 缺少审批执行权")?;
+            let path = args["path"].as_str().context("缺少 path")?;
+            let (target, path, path_key) = workspace::change_target(
                 std::path::Path::new(&task.workspace),
                 path,
-                true,
                 &task.spec.write_scopes,
-            )
-        {
-            let old = if target.exists() {
-                ensure!(
-                    std::fs::metadata(&target)?.len() <= 262_144,
-                    "原文件过大，禁止自动覆盖"
-                );
-                Some(std::fs::read_to_string(&target)?)
-            } else {
-                None
-            };
-            self.store
-                .event(&task.id, "file_backup", json!({"path":path,"previous":old}))?;
+            )?;
+            let before = workspace::read_safe_file(&target)?;
+            let change = self.store.prepare_workspace_change(
+                task,
+                tool_call_id,
+                &path,
+                &path_key,
+                before.as_deref(),
+            )?;
+            let rechecked = workspace::read_safe_file(&target)?;
+            if rechecked.as_deref().map(workspace_changes::digest)
+                != before.as_deref().map(workspace_changes::digest)
+            {
+                self.store.mark_workspace_change_failed(&change.id)?;
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            prepared = Some((approval_id.to_owned(), change));
         }
         let start_data = if let Some(approval_id) = approval_id {
             json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"args_digest":approval::args_digest(args)?})
@@ -840,15 +851,34 @@ impl Engine {
             json!({"name":name,"arguments":args})
         };
         self.store.event(&task.id, "tool_start", start_data)?;
-        let result = match workspace::execute(task, name, args).await {
-            Ok(value) => value,
-            Err(error) => json!({"error":secrets::scrub(&error.to_string(), key)}),
+        let (result, succeeded) = match workspace::execute(task, name, args).await {
+            Ok(value) => (value, true),
+            Err(error) => (
+                json!({"error":secrets::scrub(&error.to_string(), key)}),
+                false,
+            ),
         };
         let serialized = result.to_string().replace(key, "[redacted]");
         if let Some(approval_id) = approval_id {
-            let serialized =
-                self.store
-                    .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
+            let after = if succeeded && name == "write_file" {
+                args["content"].as_str().map(str::as_bytes)
+            } else {
+                None
+            };
+            if !succeeded && let Some((_, change)) = &prepared {
+                self.store.mark_workspace_change_failed(&change.id)?;
+            }
+            let change = prepared
+                .as_ref()
+                .and_then(|(_, change)| after.map(|bytes| (change.id.as_str(), bytes)));
+            let serialized = self.store.finish_approval_with_change(
+                task,
+                approval_id,
+                &serialized,
+                name,
+                tool_call_id,
+                change,
+            )?;
             task.messages
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
             task.updated_at = now();
@@ -972,68 +1002,297 @@ impl Engine {
         }
         Ok(())
     }
-    pub fn changes(&self, id: &str) -> Result<Vec<Value>> {
-        let task = self.store.task(id)?;
+    pub fn changes(&self, id: &str) -> Result<Vec<WorkspaceChange>> {
+        let task = self.store.task(id).map_err(|error| {
+            if error.chain().any(|cause| {
+                matches!(
+                    cause.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::QueryReturnedNoRows)
+                )
+            }) {
+                WorkspaceChangeError::NotFound.into()
+            } else {
+                error
+            }
+        })?;
         let root = std::path::Path::new(&task.workspace);
-        let mut result = Vec::new();
-        let mut seen = std::collections::HashSet::new();
-        for backup in self.store.file_backups(&task.id)? {
-            let Some(relative) = backup["path"].as_str() else {
-                continue;
-            };
-            if !seen.insert(relative.to_owned()) {
-                continue;
-            }
-            let current = workspace::resolve(root, relative, false, &[])
-                .ok()
-                .and_then(|path| std::fs::read_to_string(path).ok());
-            let exists = current.is_some();
-            result.push(json!({
-                "path": relative,
-                "previous": backup.get("previous").cloned().unwrap_or(Value::Null),
-                "current": current,
-                "exists": exists,
-            }));
+        let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
+            std::collections::BTreeMap::new();
+        for record in self.store.workspace_changes_for_task(id)? {
+            grouped
+                .entry(record.path_key.clone())
+                .and_modify(|first| {
+                    if record.state == ChangeState::Finished {
+                        first.after_digest = record.after_digest.clone();
+                    } else {
+                        first.state = record.state;
+                    }
+                    if record.restore_state != "pending" {
+                        first.restore_state = record.restore_state.clone();
+                    }
+                })
+                .or_insert(record);
         }
-        Ok(result)
+        grouped
+            .into_values()
+            .map(|record| {
+                let after = record.after_digest.clone().unwrap_or_default();
+                let current = if record.state != ChangeState::Finished {
+                    CurrentState::Unknown
+                } else {
+                    match workspace::resolve(root, &record.path, true, &task.spec.write_scopes) {
+                        Err(_) => CurrentState::Invalid,
+                        Ok(path) => match workspace::read_safe_file(&path) {
+                            Ok(Some(bytes))
+                                if record.restore_state == "restored"
+                                    && record.before_digest.as_deref()
+                                        == Some(digest(&bytes).as_str()) =>
+                            {
+                                CurrentState::Restored
+                            }
+                            Ok(None)
+                                if record.restore_state == "restored"
+                                    && record.kind == ChangeKind::Created =>
+                            {
+                                CurrentState::Restored
+                            }
+                            Ok(Some(bytes))
+                                if record.restore_state != "restored"
+                                    && digest(&bytes) == after =>
+                            {
+                                CurrentState::Matches
+                            }
+                            Ok(Some(_)) => CurrentState::Diverged,
+                            Ok(None) => CurrentState::Missing,
+                            Err(error)
+                                if error.to_string().contains("链接")
+                                    || error.to_string().contains("reparse") =>
+                            {
+                                CurrentState::UnsafeLink
+                            }
+                            Err(_) => CurrentState::Unreadable,
+                        },
+                    }
+                };
+                Ok(WorkspaceChange {
+                    change_id: record.id,
+                    task_id: record.task_id,
+                    path: record.path,
+                    kind: record.kind,
+                    before_digest: record.before_digest,
+                    after_digest: after,
+                    state: record.state,
+                    restore_state: record.restore_state.clone(),
+                    current,
+                    restorable: record.state == ChangeState::Finished
+                        && current == CurrentState::Matches
+                        && record.restore_state == "pending",
+                })
+            })
+            .collect()
     }
-    pub fn restore(&self, id: &str) -> Result<usize> {
-        ensure!(
-            !self.active.lock().unwrap().contains_key(id),
-            "成员仍在运行，不能恢复文件"
-        );
-        let task = self.store.task(id)?;
-        let mut restored = std::collections::HashSet::new();
-        let backups = self.store.file_backups(&task.id)?;
-        for backup in backups.into_iter().rev() {
-            let Some(relative) = backup["path"].as_str() else {
-                continue;
-            };
-            if !restored.insert(relative.to_owned()) {
-                continue;
+
+    pub fn latest_restore(&self, id: &str) -> Result<Option<RestoreReceipt>> {
+        self.store.task(id).map_err(|error| {
+            if error.chain().any(|cause| {
+                matches!(
+                    cause.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::QueryReturnedNoRows)
+                )
+            }) {
+                anyhow::Error::from(WorkspaceChangeError::NotFound)
+            } else {
+                error
             }
+        })?;
+        self.store.latest_restore(id)
+    }
+
+    pub async fn restore(&self, id: &str) -> Result<RestoreReceipt> {
+        let _gate = self.gate.lock().await;
+        let task = self.store.task(id).map_err(|error| {
+            if error.chain().any(|cause| {
+                matches!(
+                    cause.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::QueryReturnedNoRows)
+                )
+            }) {
+                anyhow::Error::from(WorkspaceChangeError::NotFound)
+            } else {
+                error
+            }
+        })?;
+        let active_ids: Vec<String> = self.active.lock().unwrap().keys().cloned().collect();
+        for active_id in active_ids {
+            if active_id == id {
+                return Err(WorkspaceChangeError::Active.into());
+            }
+            let active = self.store.task(&active_id)?;
+            if std::path::Path::new(&active.workspace).canonicalize()?
+                == std::path::Path::new(&task.workspace).canonicalize()?
+            {
+                return Err(WorkspaceChangeError::Active.into());
+            }
+        }
+        if let Some(settings) = self.store.settings()? {
+            if std::path::Path::new(&settings.workspace).canonicalize()?
+                != std::path::Path::new(&task.workspace).canonicalize()?
+            {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+        }
+        if let Some(receipt) = self.store.latest_restore(id)? {
+            return if receipt.status == RestoreStatus::Complete {
+                Ok(receipt)
+            } else if receipt.status == RestoreStatus::Unknown
+                || receipt.status == RestoreStatus::Claimed
+            {
+                Err(WorkspaceChangeError::Unknown {
+                    receipt: Some(receipt),
+                }
+                .into())
+            } else {
+                Err(WorkspaceChangeError::Conflict {
+                    receipt: Some(receipt),
+                }
+                .into())
+            };
+        }
+        let records = self.store.workspace_changes_for_task(id)?;
+        if records.is_empty() {
+            if self.store.file_backups(id)?.is_empty() {
+                return Ok(RestoreReceipt {
+                    restore_id: None,
+                    task_id: id.to_owned(),
+                    status: RestoreStatus::Complete,
+                    restored: 0,
+                    outcomes: vec![],
+                });
+            }
+            return Err(WorkspaceChangeError::Unrestorable.into());
+        }
+        if records
+            .iter()
+            .any(|record| record.state != ChangeState::Finished || record.after_digest.is_none())
+        {
+            return Err(WorkspaceChangeError::Unknown { receipt: None }.into());
+        }
+        let workspace_digest = digest(task.workspace.as_bytes());
+        let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
+            std::collections::BTreeMap::new();
+        for record in records {
+            if record.workspace_digest != workspace_digest {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
+            let original_scopes: Vec<String> = serde_json::from_str(&record.write_scopes)
+                .map_err(|_| WorkspaceChangeError::Corrupt)?;
+            if original_scopes != task.spec.write_scopes {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            let approval = self
+                .store
+                .approval_by_tool_call(id, &record.tool_call_id)?
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            if approval.binding_digest != record.binding_digest
+                || approval.workspace != task.workspace
+            {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            grouped
+                .entry(record.path_key.clone())
+                .and_modify(|first| first.after_digest = record.after_digest.clone())
+                .or_insert(record);
+        }
+        let changes: Vec<_> = grouped.into_values().collect();
+        let mut targets = Vec::new();
+        let mut originals = Vec::new();
+        for change in &changes {
             let target = workspace::resolve(
                 std::path::Path::new(&task.workspace),
-                relative,
+                &change.path,
                 true,
                 &task.spec.write_scopes,
-            )?;
-            match backup.get("previous") {
-                Some(previous) if !previous.is_null() => {
-                    let parent = target.parent().context("文件没有父目录")?;
-                    std::fs::create_dir_all(parent)?;
-                    std::fs::write(&target, previous.as_str().context("恢复内容不是文本")?)?;
+            )
+            .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
+            let current = workspace::read_safe_file(&target)
+                .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
+            if current.as_deref().map(digest) != change.after_digest.as_deref().map(str::to_owned) {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            targets.push(target);
+            let before = match change.kind {
+                ChangeKind::Created => None,
+                ChangeKind::Modified => {
+                    let sealed = change
+                        .before_blob
+                        .as_deref()
+                        .ok_or(WorkspaceChangeError::Corrupt)?;
+                    let value = secrets::open(sealed).map_err(|_| WorkspaceChangeError::Corrupt)?;
+                    if Some(digest(&value)) != change.before_digest {
+                        return Err(WorkspaceChangeError::Corrupt.into());
+                    }
+                    Some(value)
                 }
-                _ => {
-                    if target.exists() {
-                        std::fs::remove_file(&target)?;
+            };
+            originals.push(before);
+        }
+        let receipt = self.store.claim_restore(id, &changes)?;
+        anyhow::ensure!(receipt.status == RestoreStatus::Claimed, "恢复领取状态损坏");
+        let restore_id = receipt
+            .restore_id
+            .as_deref()
+            .ok_or(WorkspaceChangeError::Corrupt)?
+            .to_owned();
+        let mut completed = 0usize;
+        for ((change, target), original) in changes.iter().zip(targets).zip(originals) {
+            let action = (|| -> Result<()> {
+                let checked = workspace::resolve(
+                    std::path::Path::new(&task.workspace),
+                    &change.path,
+                    true,
+                    &task.spec.write_scopes,
+                )?;
+                anyhow::ensure!(checked == target, "恢复路径身份发生变化");
+                let current = workspace::read_safe_file(&target)?;
+                anyhow::ensure!(
+                    current.as_deref().map(digest)
+                        == change.after_digest.as_deref().map(str::to_owned),
+                    "恢复前内容发生变化"
+                );
+                match change.kind {
+                    ChangeKind::Created => std::fs::remove_file(&target)?,
+                    ChangeKind::Modified => {
+                        workspace::atomic_replace(
+                            &target,
+                            original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?,
+                        )?;
                     }
                 }
+                Ok(())
+            })();
+            if action.is_err() {
+                let status = if completed == 0 {
+                    RestoreStatus::Unknown
+                } else {
+                    RestoreStatus::Partial
+                };
+                let receipt = self.store.finish_restore(&restore_id, status)?;
+                return Err(if status == RestoreStatus::Partial {
+                    WorkspaceChangeError::Conflict {
+                        receipt: Some(receipt),
+                    }
+                } else {
+                    WorkspaceChangeError::Unknown {
+                        receipt: Some(receipt),
+                    }
+                }
+                .into());
             }
-            self.store
-                .event(&task.id, "file_restore", json!({"path":relative}))?;
+            self.store.finish_restore_path(&restore_id, &change.id)?;
+            completed += 1;
         }
-        Ok(restored.len())
+        self.store
+            .finish_restore(&restore_id, RestoreStatus::Complete)
     }
     pub fn cancel_all(&self) {
         for (id, task) in self.active.lock().unwrap().iter() {

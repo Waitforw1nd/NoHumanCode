@@ -774,7 +774,10 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
             .events(&r.id, 0)
             .unwrap()
             .iter()
-            .any(|e| e.kind == "file_backup" && e.data["previous"] == "original")
+            .any(|e| e.kind == "file_backup"
+                && e.data["path"] == "src/result.txt"
+                && e.data["change_id"].is_string()
+                && e.data.get("previous").is_none())
     );
     let mut command_task = r.tasks[0].clone();
     let args = json!({"command":"Write-Output 'native-command-ok'"});

@@ -1,11 +1,11 @@
-use crate::{approval, domain::*, repository, secrets};
+use crate::{approval, domain::*, repository, secrets, workspace_changes::*};
 use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 8;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -101,7 +101,7 @@ impl Store {
             tx.commit()?;
         } else {
             anyhow::ensure!(
-                version == 6 || version == SCHEMA_VERSION,
+                (6..=SCHEMA_VERSION).contains(&version),
                 "迁移标记与数据库版本不一致"
             );
             let tx = db.transaction()?;
@@ -114,9 +114,26 @@ impl Store {
             tx.commit()?;
         } else {
             let current: u32 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
-            anyhow::ensure!(current == SCHEMA_VERSION, "审批迁移标记与数据库版本不一致");
+            anyhow::ensure!(
+                (7..=SCHEMA_VERSION).contains(&current),
+                "审批迁移标记与数据库版本不一致"
+            );
             let tx = db.transaction()?;
             repository::verify_schema_7(&tx)?;
+            tx.commit()?;
+        }
+        if !repository::migration_applied(&db, repository::WORKSPACE_CHANGE_MIGRATION_ID)? {
+            let tx = db.transaction()?;
+            repository::apply_schema_8(&tx)?;
+            tx.commit()?;
+        } else {
+            let current: u32 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
+            anyhow::ensure!(
+                current == SCHEMA_VERSION,
+                "文件变更迁移标记与数据库版本不一致"
+            );
+            let tx = db.transaction()?;
+            repository::verify_schema_8(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -750,6 +767,166 @@ impl Store {
         }
         Ok(result)
     }
+
+    pub(crate) fn prepare_workspace_change(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        relative: &str,
+        path_key: &str,
+        before: Option<&[u8]>,
+    ) -> Result<PreparedChange> {
+        let path = relative.to_owned();
+        let path_key = path_key.to_owned();
+        let workspace_digest = digest(task.workspace.as_bytes());
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let approval = repository::Repository::new(&tx)
+            .approval_by_tool_call(&task.id, tool_call_id)?
+            .ok_or(WorkspaceChangeError::Corrupt)?;
+        anyhow::ensure!(
+            approval.tool_name == "write_file" && approval.workspace == task.workspace,
+            "write_file 审批绑定不匹配"
+        );
+        let completed: i64 = tx.query_row(
+            "SELECT count(*) FROM workspace_restores WHERE task_id=?1",
+            [&task.id],
+            |row| row.get(0),
+        )?;
+        if completed != 0 {
+            return Err(WorkspaceChangeError::Unrestorable.into());
+        }
+        let latest: Option<String> = tx.query_row(
+            "SELECT after_digest FROM workspace_changes WHERE task_id=?1 AND path_key=?2 AND state='finished' ORDER BY created_at DESC, rowid DESC LIMIT 1",
+            params![task.id, path_key], |row| row.get(0)).optional()?;
+        if let Some(expected) = latest {
+            let actual = before
+                .map(digest)
+                .ok_or_else(|| WorkspaceChangeError::Conflict { receipt: None })?;
+            if actual != expected {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+        }
+        let id = uuid::Uuid::new_v4().to_string();
+        let kind = if before.is_some() {
+            ChangeKind::Modified
+        } else {
+            ChangeKind::Created
+        };
+        let before_digest = before.map(digest);
+        let before_blob = before.map(secrets::seal).transpose()?;
+        let write_scopes = serde_json::to_string(&approval.write_scopes)?;
+        tx.execute(
+            "INSERT INTO workspace_changes(id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state,created_at,finished_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,NULL,'prepared','pending',?12,NULL)",
+            params![id, task.id, tool_call_id, workspace_digest, approval.binding_digest, write_scopes, path, path_key, if kind == ChangeKind::Created {"created"} else {"modified"}, before_blob, before_digest, now()])?;
+        task_event_tx(
+            &tx,
+            &task.id,
+            "file_backup",
+            json!({"change_id":id,"path":path,"kind":kind,"state":"prepared"}),
+        )?;
+        tx.commit()?;
+        drop(db);
+        self.workspace_change_by_id(&id)
+    }
+
+    pub(crate) fn workspace_change_by_id(&self, id: &str) -> Result<PreparedChange> {
+        let db = self.db.lock().unwrap();
+        db.query_row("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE id=?1", [id], workspace_change_row).map_err(Into::into)
+    }
+
+    pub(crate) fn workspace_changes_for_task(&self, task_id: &str) -> Result<Vec<PreparedChange>> {
+        let db = self.db.lock().unwrap();
+        let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY created_at,rowid")?;
+        Ok(stmt
+            .query_map([task_id], workspace_change_row)?
+            .collect::<rusqlite::Result<_>>()?)
+    }
+
+    pub(crate) fn mark_workspace_change_failed(&self, id: &str) -> Result<()> {
+        self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='failed',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
+        Ok(())
+    }
+
+    pub(crate) fn latest_restore(&self, task_id: &str) -> Result<Option<RestoreReceipt>> {
+        let db = self.db.lock().unwrap();
+        let id: Option<String> = db.query_row("SELECT id FROM workspace_restores WHERE task_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1", [task_id], |row| row.get(0)).optional()?;
+        id.map(|id| restore_receipt(&db, &id)).transpose()
+    }
+
+    pub(crate) fn claim_restore(
+        &self,
+        task_id: &str,
+        changes: &[PreparedChange],
+    ) -> Result<RestoreReceipt> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if let Some(id) = tx.query_row("SELECT id FROM workspace_restores WHERE task_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1", [task_id], |row| row.get::<_, String>(0)).optional()? {
+            return restore_receipt(&tx, &id);
+        }
+        let id = uuid::Uuid::new_v4().to_string();
+        tx.execute("INSERT INTO workspace_restores(id,task_id,status,created_at,finished_at) VALUES (?1,?2,'claimed',?3,NULL)", params![id,task_id,now()])?;
+        for change in changes {
+            tx.execute("INSERT INTO workspace_restore_outcomes(restore_id,change_id,path,status,updated_at) VALUES (?1,?2,?3,'claimed',?4)", params![id,change.id,change.path,now()])?;
+        }
+        task_event_tx(
+            &tx,
+            task_id,
+            "file_restore",
+            json!({"restore_id":id,"status":"claimed","count":changes.len()}),
+        )?;
+        tx.commit()?;
+        drop(db);
+        self.restore_receipt(&id)
+    }
+
+    pub(crate) fn finish_restore_path(&self, restore_id: &str, change_id: &str) -> Result<()> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        let changed = tx.execute("UPDATE workspace_restore_outcomes SET status='complete',updated_at=?1 WHERE restore_id=?2 AND change_id=?3 AND status='claimed'", params![now(),restore_id,change_id])?;
+        anyhow::ensure!(changed == 1, "恢复路径状态竞争失败");
+        tx.execute(
+            "UPDATE workspace_changes SET restore_state='restored' WHERE id=?1",
+            [change_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn finish_restore(
+        &self,
+        restore_id: &str,
+        status: RestoreStatus,
+    ) -> Result<RestoreReceipt> {
+        let status = match status {
+            RestoreStatus::Claimed => "claimed",
+            RestoreStatus::Complete => "complete",
+            RestoreStatus::Conflict => "conflict",
+            RestoreStatus::Partial => "partial",
+            RestoreStatus::Unknown => "unknown",
+        };
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        tx.execute("UPDATE workspace_restores SET status=?1,finished_at=?2 WHERE id=?3 AND status='claimed'", params![status,now(),restore_id])?;
+        let task_id: String = tx.query_row(
+            "SELECT task_id FROM workspace_restores WHERE id=?1",
+            [restore_id],
+            |row| row.get(0),
+        )?;
+        task_event_tx(
+            &tx,
+            &task_id,
+            "file_restore",
+            json!({"restore_id":restore_id,"status":status}),
+        )?;
+        tx.commit()?;
+        drop(db);
+        self.restore_receipt(restore_id)
+    }
+
+    pub(crate) fn restore_receipt(&self, id: &str) -> Result<RestoreReceipt> {
+        restore_receipt(&*self.db.lock().unwrap(), id)
+    }
     pub fn events(&self, run_id: &str, after: i64) -> Result<Vec<Event>> {
         let db = self.db.lock().unwrap();
         if let Some(session) = repository::Repository::new(&db).session_by_legacy_run(run_id)? {
@@ -1047,6 +1224,18 @@ impl Store {
         name: &str,
         tool_call_id: &str,
     ) -> Result<String> {
+        self.finish_approval_with_change(task, approval_id, result, name, tool_call_id, None)
+    }
+
+    pub(crate) fn finish_approval_with_change(
+        &self,
+        task: &Task,
+        approval_id: &str,
+        result: &str,
+        name: &str,
+        tool_call_id: &str,
+        change: Option<(&str, &[u8])>,
+    ) -> Result<String> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let current = repository::Repository::new(&tx).approval(approval_id)?;
@@ -1079,6 +1268,19 @@ impl Store {
             "tool_result",
             json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"result":value}),
         )?;
+        if let Some((change_id, after)) = change {
+            let changed = tx.execute(
+                "UPDATE workspace_changes SET after_digest=?1,state='finished',finished_at=?2 WHERE id=?3 AND task_id=?4 AND tool_call_id=?5 AND state='prepared'",
+                params![digest(after), now(), change_id, task.id, tool_call_id],
+            )?;
+            anyhow::ensure!(changed == 1, "文件变更完成状态竞争失败");
+            task_event_tx(
+                &tx,
+                &task.id,
+                "file_backup",
+                json!({"change_id":change_id,"state":"finished"}),
+            )?;
+        }
         tx.execute("UPDATE approvals SET execution_state='finished' WHERE id=?1 AND execution_state='claimed'", [&approval_id])?;
         tx.commit()?;
         Ok(result)
@@ -1126,6 +1328,15 @@ impl Store {
             [],
         )?;
         affected += unknown;
+        affected += tx.execute(
+            "UPDATE workspace_changes SET state='unknown' WHERE state='prepared'",
+            [],
+        )?;
+        affected += tx.execute(
+            "UPDATE workspace_restores SET status='unknown',finished_at=?1 WHERE status='claimed'",
+            [now()],
+        )?;
+        tx.execute("UPDATE workspace_restore_outcomes SET status='unknown',updated_at=?1 WHERE status='claimed'", [now()])?;
         for previous in pending {
             if repository::Repository::new(&tx).turn(&previous.id)?.status != previous.status {
                 affected += 1;
@@ -1134,6 +1345,78 @@ impl Store {
         tx.commit()?;
         Ok(affected)
     }
+}
+
+fn workspace_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PreparedChange> {
+    let kind: String = row.get(8)?;
+    let state: String = row.get(12)?;
+    Ok(PreparedChange {
+        id: row.get(0)?,
+        task_id: row.get(1)?,
+        tool_call_id: row.get(2)?,
+        workspace_digest: row.get(3)?,
+        binding_digest: row.get(4)?,
+        write_scopes: row.get(5)?,
+        path: row.get(6)?,
+        path_key: row.get(7)?,
+        kind: if kind == "created" {
+            ChangeKind::Created
+        } else {
+            ChangeKind::Modified
+        },
+        before_blob: row.get(9)?,
+        before_digest: row.get(10)?,
+        after_digest: row.get(11)?,
+        state: match state.as_str() {
+            "prepared" => ChangeState::Prepared,
+            "finished" => ChangeState::Finished,
+            "unknown" => ChangeState::Unknown,
+            _ => ChangeState::Failed,
+        },
+        restore_state: row.get(13)?,
+    })
+}
+
+fn restore_receipt(db: &Connection, id: &str) -> Result<RestoreReceipt> {
+    let (task_id, status): (String, String) = db.query_row(
+        "SELECT task_id,status FROM workspace_restores WHERE id=?1",
+        [id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    let status = match status.as_str() {
+        "claimed" => RestoreStatus::Claimed,
+        "complete" => RestoreStatus::Complete,
+        "conflict" => RestoreStatus::Conflict,
+        "partial" => RestoreStatus::Partial,
+        _ => RestoreStatus::Unknown,
+    };
+    let mut stmt = db.prepare("SELECT change_id,path,status FROM workspace_restore_outcomes WHERE restore_id=?1 ORDER BY rowid")?;
+    let outcomes = stmt
+        .query_map([id], |row| {
+            let value: String = row.get(2)?;
+            Ok(RestorePathOutcome {
+                change_id: row.get(0)?,
+                path: row.get(1)?,
+                status: match value.as_str() {
+                    "claimed" => RestoreStatus::Claimed,
+                    "complete" => RestoreStatus::Complete,
+                    "conflict" => RestoreStatus::Conflict,
+                    _ => RestoreStatus::Unknown,
+                },
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let restored = outcomes
+        .iter()
+        .filter(|outcome| outcome.status == RestoreStatus::Complete)
+        .count();
+    Ok(RestoreReceipt {
+        restore_id: Some(id.to_owned()),
+        task_id,
+        status,
+        restored,
+        outcomes,
+    })
 }
 
 struct UnicodeStringFormatter;
