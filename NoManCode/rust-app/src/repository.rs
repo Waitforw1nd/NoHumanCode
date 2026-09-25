@@ -126,10 +126,27 @@ pub(crate) fn verify_schema_8(tx: &Transaction<'_>) -> Result<()> {
         anyhow::ensure!(actual == columns, "schema 8 表 {table} 列不匹配");
     }
     let normalize = |sql: &str| {
-        sql.split_whitespace()
-            .collect::<String>()
-            .to_lowercase()
-            .replace("ifnotexists", "")
+        let mut result = String::new();
+        let mut chars = sql.chars().peekable();
+        let mut quote = None;
+        while let Some(ch) = chars.next() {
+            if let Some(delimiter) = quote {
+                result.push(ch);
+                if ch == delimiter {
+                    if chars.peek() == Some(&delimiter) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                result.push(ch);
+            } else if !ch.is_whitespace() {
+                result.push(ch.to_ascii_lowercase());
+            }
+        }
+        result.replacen("createtableifnotexists", "createtable", 1)
     };
     for (table, expected) in [
         ("workspace_changes", WORKSPACE_CHANGES_TABLE_SQL),
