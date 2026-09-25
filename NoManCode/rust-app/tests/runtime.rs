@@ -148,6 +148,29 @@ async fn settled(engine: &Engine, id: &str) -> Run {
     .unwrap()
 }
 
+async fn approve_pending_write(engine: &Engine, task_id: &str) {
+    let approval = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let pending = engine.store.pending_approvals_for_task(task_id).unwrap();
+            if !pending.is_empty() {
+                assert_eq!(
+                    pending.len(),
+                    1,
+                    "expected one approval for the known tool call"
+                );
+                break pending.into_iter().next().unwrap();
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("known write approval did not become pending");
+    assert_eq!(approval.tool_name, "write_file");
+    engine
+        .decide_approval(&approval.id, true, Some("runtime-test"))
+        .unwrap();
+}
+
 async fn first_http_event(mut response: reqwest::Response) -> Value {
     assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert!(
@@ -445,6 +468,7 @@ async fn tool_execution_and_path_rejection() {
         })
         .await
         .unwrap();
+    approve_pending_write(&e, &r.tasks[0].id).await;
     let r = settled(&e, &r.id).await;
     assert_eq!(r.tasks[0].status, "completed");
     assert_eq!(
@@ -462,14 +486,16 @@ async fn tool_execution_and_path_rejection() {
         })
         .await
         .unwrap();
+    approve_pending_write(&e, &r.tasks[0].id).await;
     let r = settled(&e, &r.id).await;
     assert_eq!(r.tasks[0].status, "completed");
-    assert!(
-        r.tasks[0]
-            .messages
-            .iter()
-            .any(|m| m["role"] == "tool" && m["content"].as_str().unwrap().contains("error"))
-    );
+    assert!(r.tasks[0].messages.iter().any(|m| {
+        m["role"] == "tool"
+            && m["content"]
+                .as_str()
+                .and_then(|content| serde_json::from_str::<Value>(content).ok())
+                .is_some_and(|content| content["error"].is_string())
+    }));
     server.abort();
 }
 #[tokio::test]
@@ -683,6 +709,7 @@ async fn dependency_order_summary_and_cycle_rejection() {
         })
         .await
         .unwrap();
+    approve_pending_write(&e, &r.tasks[0].id).await;
     let r = settled(&e, &r.id).await;
     assert!(r.tasks.iter().all(|t| t.status == "completed"));
     assert!(r.tasks[2].messages.iter().any(|m| {
@@ -731,6 +758,7 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
         })
         .await
         .unwrap();
+    approve_pending_write(&e, &r.tasks[0].id).await;
     let r = settled(&e, &r.id).await;
     assert_eq!(r.tasks[0].status, "completed");
     assert_eq!(

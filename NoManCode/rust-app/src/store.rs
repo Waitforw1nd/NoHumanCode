@@ -1,10 +1,11 @@
-use crate::{domain::*, repository, secrets};
+use crate::{approval, domain::*, repository, secrets};
 use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, OptionalExtension, params};
+use serde::Serialize;
 use serde_json::{Value, json};
-use std::{path::Path, sync::Mutex};
+use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 6;
+pub const SCHEMA_VERSION: u32 = 7;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -99,9 +100,23 @@ impl Store {
             repository::apply_schema_6(&tx)?;
             tx.commit()?;
         } else {
-            anyhow::ensure!(version == SCHEMA_VERSION, "迁移标记与数据库版本不一致");
+            anyhow::ensure!(
+                version == 6 || version == SCHEMA_VERSION,
+                "迁移标记与数据库版本不一致"
+            );
             let tx = db.transaction()?;
             repository::verify_current_schema(&tx)?;
+            tx.commit()?;
+        }
+        if !repository::migration_applied(&db, repository::APPROVAL_MIGRATION_ID)? {
+            let tx = db.transaction()?;
+            repository::apply_schema_7(&tx)?;
+            tx.commit()?;
+        } else {
+            let current: u32 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
+            anyhow::ensure!(current == SCHEMA_VERSION, "审批迁移标记与数据库版本不一致");
+            let tx = db.transaction()?;
+            repository::verify_schema_7(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -757,6 +772,320 @@ impl Store {
         }
         Ok(result)
     }
+    pub fn approval_by_tool_call(
+        &self,
+        task_id: &str,
+        tool_call_id: &str,
+    ) -> Result<Option<approval::ApprovalRecord>> {
+        repository::Repository::new(&self.db.lock().unwrap())
+            .approval_by_tool_call(task_id, tool_call_id)
+    }
+
+    pub fn approval(&self, id: &str) -> Result<approval::ApprovalRecord> {
+        repository::Repository::new(&self.db.lock().unwrap()).approval(id)
+    }
+
+    pub fn approvals_for_task(&self, task_id: &str) -> Result<Vec<approval::ApprovalRecord>> {
+        repository::Repository::new(&self.db.lock().unwrap()).approvals_for_task(task_id)
+    }
+
+    pub fn pending_approvals_for_task(
+        &self,
+        task_id: &str,
+    ) -> Result<Vec<approval::ApprovalRecord>> {
+        Ok(self
+            .approvals_for_task(task_id)?
+            .into_iter()
+            .filter(|r| r.status == approval::ApprovalStatus::Pending)
+            .collect())
+    }
+
+    /// Create a pending approval and its requested event, or return the existing
+    /// row for the same tool call without emitting another request.
+    pub fn ensure_approval(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+    ) -> Result<(approval::ApprovalRecord, bool)> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let repo = repository::Repository::new(&tx);
+        let (turn_id, session_id, binding) =
+            approval_binding(&tx, task, tool_call_id, tool_name, args)?;
+        if let Some(existing) = repo.approval_by_tool_call(&task.id, tool_call_id)? {
+            let expected = approval::binding_digest(
+                &task.id,
+                existing.session_id.as_deref(),
+                existing.turn_id.as_deref(),
+                tool_call_id,
+                tool_name,
+                &task.workspace,
+                &task.spec.write_scopes,
+                task.spec.allow_commands,
+                args,
+            )?;
+            if expected != existing.binding_digest
+                || existing.tool_name != tool_name
+                || existing.workspace != task.workspace
+                || existing.write_scopes != task.spec.write_scopes
+                || existing.allow_commands != task.spec.allow_commands
+                || existing.args_digest != approval::args_digest(args)?
+            {
+                return Err(approval::ApprovalError::BindingConflict { id: existing.id }.into());
+            }
+            return Ok((existing, false));
+        }
+        let durable = legacy_task_row(&tx, &task.id)?;
+        if durable.status == "cancelled" {
+            return Err(approval::ApprovalError::Conflict {
+                id: task.id.clone(),
+                status: "cancelled".into(),
+            }
+            .into());
+        }
+        let record = approval::ApprovalRecord {
+            id: id(),
+            tool_call_id: tool_call_id.to_owned(),
+            task_id: task.id.clone(),
+            turn_id: turn_id.clone(),
+            session_id: session_id.clone(),
+            tool_name: tool_name.to_owned(),
+            args_digest: approval::args_digest(args)?,
+            binding_digest: binding,
+            workspace: task.workspace.clone(),
+            write_scopes: task.spec.write_scopes.clone(),
+            allow_commands: task.spec.allow_commands,
+            preview: approval::preview(tool_name, args),
+            status: approval::ApprovalStatus::Pending,
+            execution_state: approval::ExecutionState::NotStarted,
+            created_at: now(),
+            decided_at: None,
+            decided_by: None,
+        };
+        insert_approval(&tx, &record)?;
+        approval_event(
+            &tx,
+            &record,
+            "approval.requested",
+            json!({
+                "approval_id": record.id,
+                "tool_call_id": record.tool_call_id,
+                "tool_name": record.tool_name,
+                "preview": record.preview,
+                "task_id": record.task_id,
+                "turn_id": record.turn_id,
+                "session_id": record.session_id
+            }),
+        )?;
+        tx.commit()?;
+        Ok((record, true))
+    }
+
+    pub fn decide_approval(
+        &self,
+        approval_id: &str,
+        approved: bool,
+        decided_by: &str,
+    ) -> Result<approval::ApprovalRecord> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let current = repository::Repository::new(&tx).approval(approval_id)?;
+        if current.status != approval::ApprovalStatus::Pending {
+            return Err(approval::ApprovalError::Conflict {
+                id: approval_id.to_owned(),
+                status: current.status.as_str().to_owned(),
+            }
+            .into());
+        }
+        let decided_at = now();
+        let status = if approved {
+            approval::ApprovalStatus::Approved
+        } else {
+            approval::ApprovalStatus::Denied
+        };
+        anyhow::ensure!(
+            !decided_by.is_empty() && decided_by.len() <= 128,
+            "审批决定人无效"
+        );
+        secrets::safe_metadata_text("decided_by", decided_by)?;
+        let changed = tx.execute(
+            "UPDATE approvals SET status=?2, decided_at=?3, decided_by=?4 WHERE id=?1 AND status='pending'",
+            params![approval_id, status.as_str(), decided_at, decided_by],
+        )?;
+        anyhow::ensure!(changed == 1, "审批决定竞争失败");
+        let updated = repository::Repository::new(&tx).approval(approval_id)?;
+        approval_event(
+            &tx,
+            &updated,
+            "approval.resolved",
+            json!({
+                "approval_id": updated.id,
+                "status": updated.status.as_str(),
+                "decided_by": updated.decided_by,
+                "decided_at": updated.decided_at
+            }),
+        )?;
+        tx.commit()?;
+        Ok(updated)
+    }
+
+    pub fn cancel_pending_approvals(&self, task_id: &str) -> Result<Vec<approval::ApprovalRecord>> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let mut task = legacy_task_row(&tx, task_id)?;
+        if matches!(task.status.as_str(), "queued" | "running") {
+            task.status = "cancelled".into();
+            task.error = Some("任务已停止".into());
+            task.updated_at = now();
+            save_task_tx(&tx, &task, false)?;
+        }
+        let pending = repository::Repository::new(&tx)
+            .approvals_for_task(task_id)?
+            .into_iter()
+            .filter(|record| {
+                record.execution_state == approval::ExecutionState::NotStarted
+                    && matches!(
+                        record.status,
+                        approval::ApprovalStatus::Pending | approval::ApprovalStatus::Approved
+                    )
+            })
+            .collect::<Vec<_>>();
+        let decided_at = now();
+        let mut cancelled = Vec::new();
+        for record in pending {
+            let was_pending = record.status == approval::ApprovalStatus::Pending;
+            tx.execute(
+                "UPDATE approvals SET status=CASE WHEN status='pending' THEN 'cancelled' ELSE status END, execution_state='cancelled', decided_at=CASE WHEN status='pending' THEN ?2 ELSE decided_at END, decided_by=CASE WHEN status='pending' THEN 'system:task-cancelled' ELSE decided_by END WHERE id=?1 AND execution_state='not_started' AND status IN ('pending','approved')",
+                params![record.id, decided_at],
+            )?;
+            let updated = repository::Repository::new(&tx).approval(&record.id)?;
+            if was_pending {
+                approval_event(
+                    &tx,
+                    &updated,
+                    "approval.resolved",
+                    json!({
+                        "approval_id": updated.id,
+                        "status": updated.status.as_str(),
+                        "decided_by": updated.decided_by,
+                        "decided_at": updated.decided_at
+                    }),
+                )?;
+            }
+            cancelled.push(updated);
+        }
+        tx.commit()?;
+        Ok(cancelled)
+    }
+
+    pub fn claim_approval(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+    ) -> Result<approval::ApprovalRecord> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let current = repository::Repository::new(&tx)
+            .approval_by_tool_call(&task.id, tool_call_id)?
+            .ok_or_else(|| approval::ApprovalError::NotFound {
+                id: tool_call_id.to_owned(),
+            })?;
+        let (_, _, expected) = approval_binding(&tx, task, tool_call_id, tool_name, args)?;
+        if expected != current.binding_digest
+            || approval::args_digest(args)? != current.args_digest
+            || current.tool_name != tool_name
+            || current.workspace != task.workspace
+            || current.write_scopes != task.spec.write_scopes
+            || current.allow_commands != task.spec.allow_commands
+        {
+            return Err(approval::ApprovalError::BindingConflict { id: current.id }.into());
+        }
+        if matches!(
+            current.execution_state,
+            approval::ExecutionState::Unknown | approval::ExecutionState::Claimed
+        ) {
+            return Err(approval::ApprovalError::UnknownResult { id: current.id }.into());
+        }
+        if current.status == approval::ApprovalStatus::Cancelled
+            || current.execution_state == approval::ExecutionState::Cancelled
+            || legacy_task_row(&tx, &task.id)?.status != "running"
+        {
+            return Err(approval::ApprovalError::Conflict {
+                id: current.id,
+                status: "cancelled".into(),
+            }
+            .into());
+        }
+        anyhow::ensure!(
+            current.status == approval::ApprovalStatus::Approved,
+            "审批未批准，工具未执行"
+        );
+        anyhow::ensure!(
+            current.execution_state == approval::ExecutionState::NotStarted,
+            "审批执行状态不可领取"
+        );
+        let changed = tx.execute(
+            "UPDATE approvals SET execution_state='claimed' WHERE id=?1 AND status='approved' AND execution_state='not_started'",
+            [&current.id],
+        )?;
+        anyhow::ensure!(changed == 1, "审批执行权竞争失败");
+        let claimed = repository::Repository::new(&tx).approval(&current.id)?;
+        tx.commit()?;
+        Ok(claimed)
+    }
+
+    /// Persist the tool message, event and finished marker in one transaction.
+    pub fn finish_approval(
+        &self,
+        task: &Task,
+        approval_id: &str,
+        result: &str,
+        name: &str,
+        tool_call_id: &str,
+    ) -> Result<String> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let current = repository::Repository::new(&tx).approval(approval_id)?;
+        if current.task_id != task.id
+            || current.tool_call_id != tool_call_id
+            || current.tool_name != name
+        {
+            return Err(approval::ApprovalError::CorruptState {
+                id: approval_id.to_owned(),
+            }
+            .into());
+        }
+        anyhow::ensure!(
+            current.execution_state == approval::ExecutionState::Claimed,
+            "审批执行状态不是 claimed"
+        );
+        let value = serde_json::from_str::<Value>(result)
+            .unwrap_or_else(|_| Value::String(result.to_owned()));
+        let value = secrets::redact_persisted(&value);
+        let result = stable_safe_json(&value)?;
+        let mut updated_task = task.clone();
+        updated_task
+            .messages
+            .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":result}));
+        updated_task.updated_at = now();
+        save_task_tx(&tx, &updated_task, false)?;
+        task_event_tx(
+            &tx,
+            &task.id,
+            "tool_result",
+            json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"result":value}),
+        )?;
+        tx.execute("UPDATE approvals SET execution_state='finished' WHERE id=?1 AND execution_state='claimed'", [&approval_id])?;
+        tx.commit()?;
+        Ok(result)
+    }
+
+    /// Restart marks queued/running tasks interrupted. Pending approvals stay
+    /// pending: an approval is a user decision, not a process lease.
     pub fn recover(&self) -> Result<usize> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
@@ -792,6 +1121,11 @@ impl Store {
                 affected += 1;
             }
         }
+        let unknown = tx.execute(
+            "UPDATE approvals SET execution_state='unknown' WHERE execution_state='claimed'",
+            [],
+        )?;
+        affected += unknown;
         for previous in pending {
             if repository::Repository::new(&tx).turn(&previous.id)?.status != previous.status {
                 affected += 1;
@@ -800,6 +1134,42 @@ impl Store {
         tx.commit()?;
         Ok(affected)
     }
+}
+
+struct UnicodeStringFormatter;
+
+impl serde_json::ser::Formatter for UnicodeStringFormatter {
+    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> std::io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        for unit in fragment.encode_utf16() {
+            write!(writer, "\\u{unit:04x}")?;
+        }
+        Ok(())
+    }
+}
+
+fn stable_safe_json(value: &Value) -> Result<String> {
+    let compact = value.to_string();
+    if secrets::redact_persisted(&Value::String(compact.clone())) == Value::String(compact.clone())
+    {
+        return Ok(compact);
+    }
+    // Encode string fragments only after structural redaction. This keeps a
+    // second task-level text redaction from consuming JSON delimiters while
+    // preserving the same parsed value for the event integrity check.
+    let mut bytes = Vec::new();
+    let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, UnicodeStringFormatter);
+    value.serialize(&mut serializer)?;
+    let encoded = String::from_utf8(bytes)?;
+    anyhow::ensure!(
+        serde_json::from_str::<Value>(&encoded)? == *value
+            && secrets::redact_persisted(&Value::String(encoded.clone()))
+                == Value::String(encoded.clone()),
+        "安全工具结果无法稳定序列化"
+    );
+    Ok(encoded)
 }
 
 fn command_message(task: &Task) -> String {
@@ -841,6 +1211,156 @@ fn candidate_continues_snapshot(previous: &Task, candidate: &Task, message: &str
         && last["role"] == "user"
         && last["content"] == message
         && last.get("tool_calls").is_none()
+}
+
+fn approval_binding(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    call_id: &str,
+    name: &str,
+    args: &Value,
+) -> Result<(Option<String>, Option<String>, String)> {
+    let conflict = || approval::ApprovalError::BindingConflict {
+        id: call_id.to_owned(),
+    };
+    let durable =
+        legacy_task_row(tx, &task.id).map_err(|_| approval::ApprovalError::CorruptState {
+            id: task.id.clone(),
+        })?;
+    if durable.workspace != task.workspace
+        || durable.spec.write_scopes != task.spec.write_scopes
+        || durable.spec.allow_commands != task.spec.allow_commands
+        || durable.spec.tools != task.spec.tools
+        || !crate::workspace::definitions(&durable)
+            .iter()
+            .any(|t| t["function"]["name"] == name)
+        || approval::evaluate(&durable, name) != approval::PolicyDecision::RequireApproval
+    {
+        return Err(conflict().into());
+    }
+    approval::validate_call_history(&durable.messages)?;
+    let call = durable
+        .messages
+        .iter()
+        .filter_map(|m| m["tool_calls"].as_array())
+        .flatten()
+        .find(|c| c["id"] == call_id)
+        .ok_or_else(|| approval::ApprovalError::CorruptState { id: call_id.into() })?;
+    // Match the persisted redacted representation without persisting the raw
+    // argument. On resume the caller supplies the redacted value; the stored
+    // approval digest below will reject it if the original cannot be restored.
+    let raw_call = task
+        .messages
+        .iter()
+        .filter_map(|m| m["tool_calls"].as_array())
+        .flatten()
+        .find(|c| c["id"] == call_id)
+        .ok_or_else(conflict)?;
+    let raw_args = raw_call["function"]["arguments"]
+        .as_str()
+        .ok_or_else(conflict)?;
+    let raw_value: Value = serde_json::from_str(raw_args).map_err(|_| conflict())?;
+    let safe = secrets::redact_persisted(&Value::String(raw_args.into()));
+    let persisted = &call["function"]["arguments"];
+    let equivalent = safe == *persisted
+        || match (
+            safe.as_str()
+                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
+            persisted
+                .as_str()
+                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
+        ) {
+            (Some(a), Some(b)) => approval::args_digest(&a)? == approval::args_digest(&b)?,
+            _ => false,
+        };
+    if call["function"]["name"] != name
+        || !equivalent
+        || approval::args_digest(&raw_value)? != approval::args_digest(args)?
+    {
+        return Err(conflict().into());
+    }
+    let (turn, session) = approval_scope(tx, &task.id)?;
+    let digest = approval::binding_digest(
+        &task.id,
+        session.as_deref(),
+        turn.as_deref(),
+        call_id,
+        name,
+        &durable.workspace,
+        &durable.spec.write_scopes,
+        durable.spec.allow_commands,
+        args,
+    )?;
+    Ok((turn, session, digest))
+}
+
+fn approval_scope(
+    tx: &rusqlite::Transaction<'_>,
+    task_id: &str,
+) -> Result<(Option<String>, Option<String>)> {
+    let row: Option<(String, String)> = tx
+        .query_row(
+            "SELECT turn_id, session_id FROM turn_tasks WHERE legacy_task_id=?1",
+            [task_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    Ok(match row {
+        Some((turn_id, session_id)) => (Some(turn_id), Some(session_id)),
+        None => (None, None),
+    })
+}
+
+fn insert_approval(
+    tx: &rusqlite::Transaction<'_>,
+    record: &approval::ApprovalRecord,
+) -> Result<()> {
+    secrets::validate_persisted_id("approval_id", &record.id)?;
+    secrets::validate_persisted_id("tool_call_id", &record.tool_call_id)?;
+    secrets::validate_persisted_id("approval_task_id", &record.task_id)?;
+    tx.execute(
+        "INSERT INTO approvals(id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17)",
+        params![
+            record.id,
+            record.tool_call_id,
+            record.task_id,
+            record.turn_id,
+            record.session_id,
+            record.tool_name,
+            record.args_digest,
+            record.binding_digest,
+            record.workspace,
+            serde_json::to_string(&record.write_scopes)?,
+            record.allow_commands as i64,
+            record.preview,
+            record.status.as_str(),
+            record.execution_state.as_str(),
+            record.created_at,
+            record.decided_at,
+            record.decided_by
+        ],
+    )?;
+    Ok(())
+}
+
+fn approval_event(
+    tx: &rusqlite::Transaction<'_>,
+    record: &approval::ApprovalRecord,
+    kind: &str,
+    data: Value,
+) -> Result<()> {
+    let mut event = stamped_event(
+        0,
+        record.session_id.as_deref().unwrap_or(""),
+        record.turn_id.as_deref(),
+        &record.task_id,
+        kind,
+        secrets::redact_persisted(&data),
+        now(),
+    );
+    event.session_id = event.session_id.filter(|id| !id.is_empty());
+    repository::Repository::append_event(tx, &event)?;
+    Ok(())
 }
 
 fn tool_free_chat_task(task: &Task) -> bool {
@@ -949,6 +1469,17 @@ fn save_task_tx(tx: &rusqlite::Transaction<'_>, task: &Task, resume: bool) -> Re
         )
         .context("任务不存在")?;
     let previous: Task = serde_json::from_str(&previous)?;
+    // A stale background snapshot must never undo committed cancellation.
+    // It may still append the real result of a claim which won before cancel.
+    let mut cancelled_task;
+    let task = if !resume && previous.status == "cancelled" {
+        cancelled_task = task.clone();
+        cancelled_task.status = "cancelled".into();
+        cancelled_task.error = previous.error.clone();
+        &cancelled_task
+    } else {
+        task
+    };
     anyhow::ensure!(
         task.run_id == run_id && previous.id == task.id && previous.run_id == run_id,
         "任务身份与持久化关联不一致"
@@ -1283,6 +1814,28 @@ mod tests {
     use super::*;
     use crate::repository::MIGRATION_ID;
 
+    #[test]
+    fn safe_tool_result_json_is_stable_and_roundtrips_unicode() {
+        let ordinary = json!({"exit_code":0,"stdout":"ordinary output","stderr":""});
+        assert_eq!(stable_safe_json(&ordinary).unwrap(), ordinary.to_string());
+
+        let sensitive = json!({
+            "exit_code": 7,
+            "stdout": "bearer [redacted]\n普通🙂",
+            "stderr": "ordinary failure"
+        });
+        let encoded = stable_safe_json(&sensitive).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), sensitive);
+        assert_eq!(
+            secrets::redact_persisted(&Value::String(encoded.clone())),
+            Value::String(encoded)
+        );
+
+        let error = json!({"error":"path rejected"});
+        let encoded = stable_safe_json(&error).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), error);
+    }
+
     fn legacy_schema_5(path: &Path) {
         let db = Connection::open(path).unwrap();
         db.execute_batch(
@@ -1469,7 +2022,7 @@ mod tests {
             assert_eq!(marker, 0);
         }
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 6);
+        assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
         let projects = store.projects().unwrap();
         assert_eq!(projects.len(), 1);
         assert_eq!(projects[0].id.0, "partial");
@@ -1486,7 +2039,7 @@ mod tests {
         let version: u32 = db
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 6);
+        assert_eq!(version, SCHEMA_VERSION);
     }
 
     #[test]

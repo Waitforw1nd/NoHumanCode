@@ -18,6 +18,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde_json::Value;
 
 pub const MIGRATION_ID: &str = "project-session-turn-repository";
+pub const APPROVAL_MIGRATION_ID: &str = "tool-call-approval-repository";
 
 /// Tables and columns added on top of schema 5.  Applied only from inside
 /// the schema 6 transaction.  `CREATE IF NOT EXISTS` keeps a retried open
@@ -255,6 +256,129 @@ pub fn apply_schema_6(tx: &Transaction<'_>) -> Result<()> {
     )?;
     anyhow::ensure!(applied == 1, "schema 6 迁移标记没有写入");
     tx.pragma_update(None, "user_version", 6)?;
+    Ok(())
+}
+
+const APPROVAL_COLUMNS: &[ColumnShape] = &[
+    column("id", true, 1),
+    column("tool_call_id", true, 0),
+    column("task_id", true, 0),
+    column("turn_id", false, 0),
+    column("session_id", false, 0),
+    column("tool_name", true, 0),
+    column("args_digest", true, 0),
+    column("binding_digest", true, 0),
+    column("workspace", true, 0),
+    column("write_scopes", true, 0),
+    integer_column("allow_commands"),
+    column("preview", true, 0),
+    column("status", true, 0),
+    column("execution_state", true, 0),
+    integer_column("created_at"),
+    ColumnShape {
+        name: "decided_at",
+        declaration: "INTEGER",
+        not_null: false,
+        primary_key: 0,
+    },
+    column("decided_by", false, 0),
+];
+
+const APPROVAL_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS approvals (
+          id TEXT NOT NULL PRIMARY KEY,
+          tool_call_id TEXT NOT NULL,
+          task_id TEXT NOT NULL,
+          turn_id TEXT,
+          session_id TEXT,
+          tool_name TEXT NOT NULL,
+          args_digest TEXT NOT NULL,
+          binding_digest TEXT NOT NULL,
+          workspace TEXT NOT NULL,
+          write_scopes TEXT NOT NULL,
+          allow_commands INTEGER NOT NULL CHECK (allow_commands IN (0,1)),
+          preview TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('pending','approved','denied','cancelled')),
+          execution_state TEXT NOT NULL CHECK (execution_state IN ('not_started','claimed','finished','unknown','cancelled')),
+          created_at INTEGER NOT NULL,
+          decided_at INTEGER,
+          decided_by TEXT,
+          FOREIGN KEY(task_id) REFERENCES tasks(id)
+        )";
+
+pub fn apply_schema_7(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(APPROVAL_TABLE_SQL)?;
+    tx.execute_batch("
+        CREATE UNIQUE INDEX IF NOT EXISTS approvals_task_call_unique ON approvals(task_id, tool_call_id);
+        CREATE INDEX IF NOT EXISTS approvals_task_status ON approvals(task_id, status);",
+    )?;
+    verify_schema_7(tx)?;
+    let applied = tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![APPROVAL_MIGRATION_ID, now()],
+    )?;
+    anyhow::ensure!(
+        applied == 1 || migration_applied(tx, APPROVAL_MIGRATION_ID)?,
+        "schema 7 迁移标记没有写入"
+    );
+    tx.pragma_update(None, "user_version", 7)?;
+    Ok(())
+}
+
+pub(crate) fn verify_schema_7(tx: &Transaction<'_>) -> Result<()> {
+    anyhow::ensure!(table_exists(tx, "approvals")?, "schema 7 缺少 approvals 表");
+    verify_columns(tx, "approvals", APPROVAL_COLUMNS)?;
+    verify_unique_columns(tx, "approvals", &["id"])?;
+    verify_unique_columns(tx, "approvals", &["task_id", "tool_call_id"])?;
+    let index: i64 = tx.query_row(
+        "SELECT count(*) FROM sqlite_master WHERE type='index' AND name='approvals_task_status'",
+        [],
+        |row| row.get(0),
+    )?;
+    anyhow::ensure!(index == 1, "schema 7 缺少 approvals_task_status 索引");
+    let unique_index: i64 = tx.query_row(
+        "SELECT count(*) FROM sqlite_master WHERE type='index' AND name='approvals_task_call_unique'",
+        [],
+        |row| row.get(0),
+    )?;
+    anyhow::ensure!(
+        unique_index == 1,
+        "schema 7 缺少 approvals_task_call_unique 约束"
+    );
+    let orphaned: i64 = tx.query_row(
+        "SELECT count(*) FROM approvals a LEFT JOIN tasks t ON t.id=a.task_id WHERE t.id IS NULL",
+        [],
+        |row| row.get(0),
+    )?;
+    anyhow::ensure!(orphaned == 0, "schema 7 approvals 存在未知 task_id");
+    let ddl: String = tx.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='approvals'",
+        [],
+        |row| row.get(0),
+    )?;
+    // Deliberately accept only this unpublished schema's full DDL. Checking
+    // words or named indexes alone would accept forged/missing CHECKs and FKs.
+    let normalize = |sql: &str| {
+        sql.split_whitespace()
+            .collect::<String>()
+            .to_lowercase()
+            .replace("ifnotexists", "")
+    };
+    anyhow::ensure!(
+        normalize(&ddl) == normalize(APPROVAL_TABLE_SQL),
+        "schema 7 approvals 约束不完整或开发版不兼容"
+    );
+    anyhow::ensure!(
+        index_columns_match(tx, "approvals_task_status", &["task_id", "status"])?,
+        "审批索引列不匹配"
+    );
+    let ids = {
+        let mut stmt = tx.prepare("SELECT id FROM approvals")?;
+        stmt.query_map([], |r| r.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?
+    };
+    for id in ids {
+        Repository::new(tx).approval(&id)?;
+    }
     Ok(())
 }
 
@@ -590,6 +714,127 @@ pub struct Repository<'a> {
 impl<'a> Repository<'a> {
     pub fn new(conn: &'a Connection) -> Self {
         Self { conn }
+    }
+
+    pub(crate) fn approval_by_tool_call(
+        &self,
+        task_id: &str,
+        tool_call_id: &str,
+    ) -> Result<Option<crate::approval::ApprovalRecord>> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE task_id=?2 AND tool_call_id=?1",
+                rusqlite::params![tool_call_id, task_id],
+                approval_row,
+            )
+            .optional().map_err(|_| crate::approval::ApprovalError::CorruptState { id: tool_call_id.into() })?;
+        if let Some(record) = &row {
+            self.validate_approval(record)?;
+        }
+        Ok(row)
+    }
+
+    pub(crate) fn approval(&self, id: &str) -> Result<crate::approval::ApprovalRecord> {
+        let record = self.conn
+            .query_row(
+                "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE id=?1",
+                [id],
+                approval_row,
+            )
+            .optional().map_err(|_| crate::approval::ApprovalError::CorruptState { id: id.into() })?
+            .ok_or_else(|| crate::approval::ApprovalError::NotFound { id: id.to_owned() })?;
+        self.validate_approval(&record)?;
+        Ok(record)
+    }
+
+    pub(crate) fn approvals_for_task(
+        &self,
+        task_id: &str,
+    ) -> Result<Vec<crate::approval::ApprovalRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE task_id=?1 ORDER BY created_at, id",
+        )?;
+        let rows = stmt.query_map([task_id], approval_row)?;
+        let records: Vec<_> = rows
+            .collect::<rusqlite::Result<_>>()
+            .map_err(|_| crate::approval::ApprovalError::CorruptState { id: task_id.into() })?;
+        for record in &records {
+            self.validate_approval(record)?;
+        }
+        Ok(records)
+    }
+
+    fn validate_approval(&self, record: &crate::approval::ApprovalRecord) -> Result<()> {
+        use crate::approval::{ApprovalError, ExecutionState};
+        let corrupt = || ApprovalError::CorruptState {
+            id: record.id.clone(),
+        };
+        let (run, raw): (String, String) = self
+            .conn
+            .query_row(
+                "SELECT run_id,value FROM tasks WHERE id=?1",
+                [&record.task_id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .map_err(|_| corrupt())?;
+        let task: Task = serde_json::from_str(&raw).map_err(|_| corrupt())?;
+        let scope: Option<(String, String)> = self
+            .conn
+            .query_row(
+                "SELECT turn_id,session_id FROM turn_tasks WHERE legacy_task_id=?1",
+                [&record.task_id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()
+            .map_err(|_| corrupt())?;
+        if task.id != record.task_id
+            || task.run_id != run
+            || scope.as_ref().map(|v| &v.0) != record.turn_id.as_ref()
+            || scope.as_ref().map(|v| &v.1) != record.session_id.as_ref()
+        {
+            return Err(corrupt().into());
+        }
+        crate::approval::validate_call_history(&task.messages).map_err(|_| corrupt())?;
+        let call_exists = task
+            .messages
+            .iter()
+            .filter_map(|m| m["tool_calls"].as_array())
+            .flatten()
+            .any(|c| c["id"] == record.tool_call_id);
+        if !call_exists {
+            return Err(corrupt().into());
+        }
+        if record.execution_state == ExecutionState::Finished {
+            let message = task
+                .messages
+                .iter()
+                .find(|m| m["role"] == "tool" && m["tool_call_id"] == record.tool_call_id)
+                .ok_or_else(corrupt)?;
+            let content = message["content"].as_str().ok_or_else(corrupt)?;
+            let result = serde_json::from_str::<Value>(content)
+                .unwrap_or_else(|_| Value::String(content.into()));
+            let mut stmt = self
+                .conn
+                .prepare("SELECT data FROM events WHERE task_id=?1 AND kind='tool_result'")?;
+            let events = stmt
+                .query_map([&record.task_id], |r| r.get::<_, String>(0))?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let matches = events
+                .iter()
+                .filter_map(|s| serde_json::from_str::<Value>(s).ok())
+                .filter(|e| {
+                    e["approval_id"] == record.id
+                        && e["tool_call_id"] == record.tool_call_id
+                        && e["name"] == record.tool_name
+                        && e["result"] == result
+                })
+                .count();
+            if matches != 1 {
+                return Err(corrupt().into());
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn insert_project(&self, project: &Project) -> Result<()> {
@@ -1457,6 +1702,52 @@ fn classify_row<T>(result: rusqlite::Result<T>) -> Result<std::result::Result<T,
         }
         Err(error) => Err(error.into()),
     }
+}
+
+fn approval_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<crate::approval::ApprovalRecord> {
+    Ok(crate::approval::ApprovalRecord {
+        id: row.get(0)?,
+        tool_call_id: row.get(1)?,
+        task_id: row.get(2)?,
+        turn_id: row.get(3)?,
+        session_id: row.get(4)?,
+        tool_name: row.get(5)?,
+        args_digest: row.get(6)?,
+        binding_digest: row.get(7)?,
+        workspace: row.get(8)?,
+        write_scopes: serde_json::from_str(&row.get::<_, String>(9)?).map_err(|error| {
+            rusqlite::Error::FromSqlConversionFailure(
+                9,
+                rusqlite::types::Type::Text,
+                Box::new(error),
+            )
+        })?,
+        allow_commands: row.get::<_, i64>(10)? != 0,
+        preview: row.get(11)?,
+        status: {
+            let value: String = row.get(12)?;
+            crate::approval::ApprovalStatus::parse(&value).ok_or_else(|| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    12,
+                    rusqlite::types::Type::Text,
+                    "审批状态无效".into(),
+                )
+            })?
+        },
+        execution_state: {
+            let value: String = row.get(13)?;
+            crate::approval::ExecutionState::parse(&value).ok_or_else(|| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    13,
+                    rusqlite::types::Type::Text,
+                    "执行状态无效".into(),
+                )
+            })?
+        },
+        created_at: row.get(14)?,
+        decided_at: row.get(15)?,
+        decided_by: row.get(16)?,
+    })
 }
 
 fn session_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Session> {
