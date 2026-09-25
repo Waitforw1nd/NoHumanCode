@@ -125,12 +125,69 @@ fn assert_security(response: &Response) {
     );
 }
 
-async fn error(response: Response, status: StatusCode, retryable: bool) -> Value {
+async fn error(
+    response: Response,
+    status: StatusCode,
+    expected_message: &str,
+    retryable: bool,
+) -> Value {
     assert_eq!(response.status(), status);
     assert_security(&response);
     let body: Value = response.json().await.unwrap();
+    let (expected_code, expected_messages): (&str, &[&str]) = match status {
+        StatusCode::BAD_REQUEST
+        | StatusCode::PAYLOAD_TOO_LARGE
+        | StatusCode::UNSUPPORTED_MEDIA_TYPE => (
+            "request_failed",
+            &[
+                "JSON 请求无效",
+                "路径参数无效",
+                "审批标识无效",
+                "请求体超过 1 MiB 限制",
+                "JSON 接口需要 application/json Content-Type",
+            ],
+        ),
+        StatusCode::FORBIDDEN => (
+            "forbidden",
+            &[
+                "请通过启动地址访问本机服务",
+                "Origin 与本机服务地址不一致",
+                "拒绝跨站请求",
+                "写请求令牌缺失或不正确",
+            ],
+        ),
+        StatusCode::NOT_FOUND => ("not_found", &["审批不存在", "任务不存在"]),
+        StatusCode::CONFLICT => (
+            "conflict",
+            &[
+                "审批当前状态不能执行此操作",
+                "审批绑定不匹配",
+                "工具执行结果未知",
+            ],
+        ),
+        StatusCode::INTERNAL_SERVER_ERROR => (
+            "internal",
+            &[
+                "存储暂时不可用",
+                "审批持久状态损坏",
+                "审批请求处理失败",
+                "存储数据损坏",
+            ],
+        ),
+        _ => panic!("unlisted approval error status: {status}"),
+    };
+    assert_eq!(body["code"], expected_code);
     assert_eq!(body["error"], body["message"]);
     assert_eq!(body["retryable"], retryable);
+    let message = body["message"].as_str().unwrap();
+    assert_eq!(message, expected_message);
+    assert!(
+        expected_messages.contains(&message),
+        "unexpected or unsafe error message: {message}"
+    );
+    for forbidden in ["mock-http-secret", "SELECT", "SQL", "missing-parent"] {
+        assert!(!body.to_string().contains(forbidden));
+    }
     body
 }
 
@@ -205,6 +262,21 @@ fn event_count(h: &Harness, task: &Task, kind: &str) -> usize {
         .into_iter()
         .filter(|event| event.kind == kind)
         .count()
+}
+
+fn assert_rejected_without_effect(h: &Harness, task: &Task, approval_id: &str, events: usize) {
+    assert_eq!(
+        h.engine.store.approval(approval_id).unwrap().status,
+        ApprovalStatus::Pending
+    );
+    assert_eq!(
+        h.engine.store.events(&task.run_id, 0).unwrap().len(),
+        events
+    );
+    assert_eq!(event_count(h, task, "approval.resolved"), 0);
+    assert_eq!(event_count(h, task, "tool_start"), 0);
+    assert_eq!(event_count(h, task, "tool_result"), 0);
+    assert!(!h._dir.path().join("src/a").exists());
 }
 
 #[derive(Clone)]
@@ -617,6 +689,7 @@ async fn ah07_cancel_before_claim_and_after_real_command_claim() {
     error(
         http_decide(&cancelled, &approval.id, "approve").await,
         StatusCode::CONFLICT,
+        "审批当前状态不能执行此操作",
         false,
     )
     .await;
@@ -1054,6 +1127,49 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
         assert!(!body.to_string().contains(forbidden));
     }
 
+    assert_eq!(http_decide(&h, &a1, "deny").await.status(), StatusCode::OK);
+    let approval_events: Vec<_> = h
+        .engine
+        .store
+        .events(&a.run_id, 0)
+        .unwrap()
+        .into_iter()
+        .filter(|event| {
+            matches!(
+                event.kind.as_str(),
+                "approval.requested" | "approval.resolved"
+            )
+        })
+        .collect();
+    assert_eq!(approval_events.len(), 3);
+    for event in approval_events {
+        let fields: BTreeSet<_> = event.data.as_object().unwrap().keys().cloned().collect();
+        let expected = if event.kind == "approval.requested" {
+            [
+                "approval_id",
+                "preview",
+                "session_id",
+                "task_id",
+                "tool_call_id",
+                "tool_name",
+                "turn_id",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect()
+        } else {
+            ["approval_id", "decided_at", "decided_by", "status"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect()
+        };
+        assert_eq!(fields, expected);
+        let serialized = serde_json::to_string(&event).unwrap();
+        for forbidden in [secret, "content", "arguments"] {
+            assert!(!serialized.contains(forbidden));
+        }
+    }
+
     let single: Value = client()
         .get(format!("{}/api/approvals/{a1}", h.origin))
         .send()
@@ -1121,44 +1237,10 @@ async fn ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency() {
             .await
             .unwrap(),
         StatusCode::CONFLICT,
+        "审批当前状态不能执行此操作",
         false,
     )
     .await;
-    error(
-        client()
-            .post(&url)
-            .header("x-peachsh-token", &h.token)
-            .header("content-type", "application/json")
-            .body(format!(
-                r#"{{"decision":"approve","padding":"{}"}}"#,
-                "x".repeat(1_100_000)
-            ))
-            .send()
-            .await
-            .unwrap(),
-        StatusCode::PAYLOAD_TOO_LARGE,
-        false,
-    )
-    .await;
-    for (name, value) in [
-        ("host", "evil.example"),
-        ("origin", "http://evil.example"),
-        ("sec-fetch-site", "cross-site"),
-    ] {
-        error(
-            client()
-                .post(&url)
-                .header("x-peachsh-token", &h.token)
-                .header(name, value)
-                .json(&json!({"decision":"approve"}))
-                .send()
-                .await
-                .unwrap(),
-            StatusCode::FORBIDDEN,
-            false,
-        )
-        .await;
-    }
     assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
 
     let race = card(
@@ -1221,7 +1303,53 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
         json!({"path":"src/a","content":"x"}),
     );
     let before = event_count(&h, &task, "approval.resolved");
+    let events_before = h.engine.store.events(&task.run_id, 0).unwrap().len();
     let url = format!("{}/api/approvals/{id}/decision", h.origin);
+    error(
+        client()
+            .post(&url)
+            .header("x-peachsh-token", &h.token)
+            .header("content-type", "application/json")
+            .body(format!(
+                r#"{{"decision":"approve","padding":"{}"}}"#,
+                "x".repeat(1_100_000)
+            ))
+            .send()
+            .await
+            .unwrap(),
+        StatusCode::PAYLOAD_TOO_LARGE,
+        "请求体超过 1 MiB 限制",
+        false,
+    )
+    .await;
+    assert_rejected_without_effect(&h, &task, &id, events_before);
+    for (name, value) in [
+        ("host", "evil.example"),
+        ("origin", "http://evil.example"),
+        ("sec-fetch-site", "cross-site"),
+    ] {
+        let message = match name {
+            "host" => "请通过启动地址访问本机服务",
+            "origin" => "Origin 与本机服务地址不一致",
+            "sec-fetch-site" => "拒绝跨站请求",
+            _ => unreachable!(),
+        };
+        error(
+            client()
+                .post(&url)
+                .header("x-peachsh-token", &h.token)
+                .header(name, value)
+                .json(&json!({"decision":"approve"}))
+                .send()
+                .await
+                .unwrap(),
+            StatusCode::FORBIDDEN,
+            message,
+            false,
+        )
+        .await;
+        assert_rejected_without_effect(&h, &task, &id, events_before);
+    }
     for body in [
         "{}",
         r#"{"decision":"approve","decided_by":"attacker"}"#,
@@ -1241,9 +1369,11 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
                 .await
                 .unwrap(),
             StatusCode::BAD_REQUEST,
+            "JSON 请求无效",
             false,
         )
         .await;
+        assert_rejected_without_effect(&h, &task, &id, events_before);
     }
     error(
         client()
@@ -1254,9 +1384,11 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
             .await
             .unwrap(),
         StatusCode::UNSUPPORTED_MEDIA_TYPE,
+        "JSON 接口需要 application/json Content-Type",
         false,
     )
     .await;
+    assert_rejected_without_effect(&h, &task, &id, events_before);
     error(
         client()
             .post(&url)
@@ -1266,9 +1398,11 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
             .await
             .unwrap(),
         StatusCode::FORBIDDEN,
+        "写请求令牌缺失或不正确",
         false,
     )
     .await;
+    assert_rejected_without_effect(&h, &task, &id, events_before);
     error(
         client()
             .get(format!("{}/api/approvals/%00", h.origin))
@@ -1276,6 +1410,7 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
             .await
             .unwrap(),
         StatusCode::BAD_REQUEST,
+        "审批标识无效",
         false,
     )
     .await;
@@ -1286,6 +1421,7 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
             .await
             .unwrap(),
         StatusCode::NOT_FOUND,
+        "审批不存在",
         false,
     )
     .await;
@@ -1296,6 +1432,7 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
             .await
             .unwrap(),
         StatusCode::NOT_FOUND,
+        "任务不存在",
         false,
     )
     .await;
@@ -1320,6 +1457,7 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
             .await
             .unwrap(),
         StatusCode::INTERNAL_SERVER_ERROR,
+        "存储数据损坏",
         false,
     )
     .await;
@@ -1345,7 +1483,13 @@ async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
         .send()
         .await
         .unwrap();
-    error(response, StatusCode::INTERNAL_SERVER_ERROR, true).await;
+    error(
+        response,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "存储暂时不可用",
+        true,
+    )
+    .await;
     lock.execute_batch("ROLLBACK").unwrap();
     assert_eq!(
         h.engine.store.approval(&busy_id).unwrap().status,
@@ -1374,6 +1518,7 @@ async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
             .await
             .unwrap(),
         StatusCode::INTERNAL_SERVER_ERROR,
+        "审批持久状态损坏",
         false,
     )
     .await;
@@ -1419,6 +1564,7 @@ async fn ah14_unknown_is_visible_and_decision_remains_conflict() {
             .await
             .unwrap(),
         StatusCode::CONFLICT,
+        "审批当前状态不能执行此操作",
         false,
     )
     .await;
@@ -1652,6 +1798,7 @@ fn ah06_real_command_side_effect_then_shutdown_recovers_unknown() {
                 .await
                 .unwrap(),
             StatusCode::CONFLICT,
+            "审批当前状态不能执行此操作",
             false,
         )
         .await;
