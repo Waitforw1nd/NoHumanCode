@@ -1,4 +1,4 @@
-use crate::{domain::*, engine::Engine, provider, secrets, wasm};
+use crate::{approval, domain::*, engine::Engine, provider, secrets, wasm};
 use axum::{
     Json, Router,
     extract::{
@@ -14,7 +14,7 @@ use axum::{
     routing::{get, post, put},
 };
 use peachsh_protocol::{ErrorBody, ErrorCode};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
 
@@ -303,6 +303,9 @@ pub fn router(app: App) -> Router {
         .route("/api/wasm/run", post(wasm_run))
         .route("/api/tasks/{id}/resume", post(resume))
         .route("/api/tasks/{id}/cancel", post(cancel))
+        .route("/api/tasks/{id}/approvals", get(task_approvals))
+        .route("/api/approvals/{id}", get(approval))
+        .route("/api/approvals/{id}/decision", post(decide_approval))
         .route("/api/tasks/{id}/changes", get(changes))
         .route("/api/tasks/{id}/restore", post(restore))
         .layer(DefaultBodyLimit::max(1_048_576))
@@ -743,6 +746,154 @@ async fn cancel(
     let id = object_id(id)?;
     app.engine.cancel(&id)?;
     Ok(Json(json!({"ok":true})))
+}
+
+#[derive(Serialize)]
+struct ApprovalDto {
+    id: String,
+    task_id: String,
+    tool_call_id: String,
+    tool_name: String,
+    preview: String,
+    session_id: Option<String>,
+    turn_id: Option<String>,
+    decided_by: Option<String>,
+    status: approval::ApprovalStatus,
+    execution_state: approval::ExecutionState,
+    created_at: u64,
+    decided_at: Option<u64>,
+}
+
+impl From<approval::ApprovalRecord> for ApprovalDto {
+    fn from(record: approval::ApprovalRecord) -> Self {
+        Self {
+            id: record.id,
+            task_id: record.task_id,
+            tool_call_id: record.tool_call_id,
+            tool_name: record.tool_name,
+            preview: record.preview,
+            session_id: record.session_id,
+            turn_id: record.turn_id,
+            decided_by: record.decided_by,
+            status: record.status,
+            execution_state: record.execution_state,
+            created_at: record.created_at,
+            decided_at: record.decided_at,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ApprovalDecision {
+    Approve,
+    Deny,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ApprovalDecisionBody {
+    decision: ApprovalDecision,
+}
+
+fn approval_id(path: std::result::Result<Path<String>, PathRejection>) -> Result<String> {
+    let id = object_id(path)?;
+    if secrets::validate_persisted_id("approval_id", &id).is_err() {
+        return Err(ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("审批标识无效"),
+        ));
+    }
+    Ok(id)
+}
+
+fn approval_error(error: anyhow::Error) -> ApiError {
+    if let Some(typed) = error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<approval::ApprovalError>())
+    {
+        let (status, code, message) = match typed {
+            approval::ApprovalError::NotFound { .. } => {
+                (StatusCode::NOT_FOUND, ErrorCode::NotFound, "审批不存在")
+            }
+            approval::ApprovalError::Conflict { .. } => (
+                StatusCode::CONFLICT,
+                ErrorCode::Conflict,
+                "审批当前状态不能执行此操作",
+            ),
+            approval::ApprovalError::BindingConflict { .. } => {
+                (StatusCode::CONFLICT, ErrorCode::Conflict, "审批绑定不匹配")
+            }
+            approval::ApprovalError::UnknownResult { .. } => (
+                StatusCode::CONFLICT,
+                ErrorCode::Conflict,
+                "工具执行结果未知",
+            ),
+            approval::ApprovalError::CorruptState { .. } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorCode::Internal,
+                "审批持久状态损坏",
+            ),
+        };
+        return ApiError::with_code(status, code, false, anyhow::anyhow!(message));
+    }
+    let retryable = is_transient_store(&error);
+    ApiError::with_code(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        ErrorCode::Internal,
+        retryable,
+        anyhow::anyhow!(if retryable {
+            "存储暂时不可用"
+        } else {
+            "审批请求处理失败"
+        }),
+    )
+}
+
+async fn task_approvals(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<Value>> {
+    let task_id = approval_id(id)?;
+    app.engine.store.task(&task_id).map_err(read_error)?;
+    let approvals: Vec<ApprovalDto> = app
+        .engine
+        .store
+        .approvals_for_task(&task_id)
+        .map_err(approval_error)?
+        .into_iter()
+        .map(Into::into)
+        .collect();
+    Ok(Json(json!({"approvals":approvals})))
+}
+
+async fn approval(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<ApprovalDto>> {
+    let id = approval_id(id)?;
+    app.engine
+        .store
+        .approval(&id)
+        .map(ApprovalDto::from)
+        .map(Json)
+        .map_err(approval_error)
+}
+
+async fn decide_approval(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(body): ContractJson<ApprovalDecisionBody>,
+) -> Result<Json<ApprovalDto>> {
+    let id = approval_id(id)?;
+    let approved = matches!(body.decision, ApprovalDecision::Approve);
+    app.engine
+        .decide_approval(&id, approved, Some("user"))
+        .map(ApprovalDto::from)
+        .map(Json)
+        .map_err(approval_error)
 }
 async fn changes(
     State(app): State<App>,
@@ -1191,5 +1342,59 @@ mod tests {
         let mut spaced = HeaderMap::new();
         spaced.insert("idempotency-key", HeaderValue::from_static("has space"));
         assert!(required_idempotency_key(&spaced).is_err());
+    }
+
+    #[test]
+    fn approval_error_maps_typed_variants_through_context_and_source() {
+        use anyhow::Context as _;
+
+        let context = Err::<(), _>(approval::ApprovalError::BindingConflict {
+            id: "approval".into(),
+        })
+        .context("outer context")
+        .unwrap_err();
+        let mapped = approval_error(context);
+        assert_eq!(mapped.status, StatusCode::CONFLICT);
+        assert_eq!(mapped.code, ErrorCode::Conflict);
+        assert!(!mapped.retryable);
+        assert_eq!(mapped.error.to_string(), "审批绑定不匹配");
+
+        #[derive(Debug)]
+        struct Wrapped(approval::ApprovalError);
+        impl std::fmt::Display for Wrapped {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("wrapped")
+            }
+        }
+        impl std::error::Error for Wrapped {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                Some(&self.0)
+            }
+        }
+        let mapped = approval_error(anyhow::Error::new(Wrapped(
+            approval::ApprovalError::UnknownResult {
+                id: "approval".into(),
+            },
+        )));
+        assert_eq!(mapped.status, StatusCode::CONFLICT);
+        assert_eq!(mapped.code, ErrorCode::Conflict);
+        assert!(!mapped.retryable);
+        assert_eq!(mapped.error.to_string(), "工具执行结果未知");
+    }
+
+    #[test]
+    fn approval_error_keeps_corruption_500_and_busy_retryable() {
+        let corrupt = approval_error(anyhow::Error::new(approval::ApprovalError::CorruptState {
+            id: "approval".into(),
+        }));
+        assert_eq!(corrupt.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(!corrupt.retryable);
+
+        let busy = approval_error(anyhow::Error::from(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+            None,
+        )));
+        assert_eq!(busy.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(busy.retryable);
     }
 }
