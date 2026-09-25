@@ -1,0 +1,20 @@
+
+running 1 test
+test restore_http_crash_after_file_before_outcome_commit_is_unknown ... FAILED
+
+failures:
+
+---- restore_http_crash_after_file_before_outcome_commit_is_unknown stdout ----
+
+thread 'restore_http_crash_after_file_before_outcome_commit_is_unknown' (66120) panicked at tests\workspace_crash.rs:384:5:
+assertion `left == right` failed
+  left: "pending"
+ right: "unknown"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    restore_http_crash_after_file_before_outcome_commit_is_unknown
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.15s
+

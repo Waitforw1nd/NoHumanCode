@@ -1,0 +1,11 @@
+
+running 6 tests
+test crash_child_write ... ok
+test crash_child_restore_http ... ok
+test write_crash_after_file_before_finish_commit_is_unknown ... ok
+test write_crash_after_finish_commit_stays_finished ... ok
+test restore_http_crash_after_complete_commit_keeps_stable_receipt ... ok
+test restore_http_crash_after_file_before_outcome_commit_is_unknown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
