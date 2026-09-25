@@ -324,6 +324,163 @@ async fn ap08_cancel_pending_is_durable() {
     ));
 }
 
+#[test]
+fn ap08_restart_public_cancel_is_idempotent_without_active_runtime() {
+    for approve_before_restart in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (task, card) = runtime.block_on(async {
+            let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+            let e = setup(temp.path(), &base);
+            let task = start(&e, false).await;
+            let card = pending(&e, &task.id).await;
+            if approve_before_restart {
+                e.decide_approval(&card.id, true, None).unwrap();
+                assert_eq!(
+                    e.store.approval(&card.id).unwrap().execution_state,
+                    ExecutionState::NotStarted
+                );
+            }
+            (task, card)
+        });
+        runtime.shutdown_timeout(Duration::from_secs(2));
+
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(async {
+            let (base, _server) = server(vec![]).await;
+            let e = setup(temp.path(), &base);
+            e.store.recover().unwrap();
+            assert_eq!(e.store.task(&task.id).unwrap().status, "interrupted");
+
+            e.cancel(&task.id).unwrap();
+            e.cancel(&task.id).unwrap();
+            assert!(e.cancel("missing-task").is_err());
+
+            let cancelled = e.store.approval(&card.id).unwrap();
+            assert_eq!(
+                cancelled.status,
+                if approve_before_restart {
+                    ApprovalStatus::Approved
+                } else {
+                    ApprovalStatus::Cancelled
+                }
+            );
+            assert_eq!(cancelled.execution_state, ExecutionState::Cancelled);
+            assert_eq!(e.store.task(&task.id).unwrap().status, "interrupted");
+            assert_eq!(event_count(&e, &task, "approval.resolved"), 1);
+            assert_eq!(event_count(&e, &task, "tool_start"), 0);
+            assert!(!temp.path().join("src/a.txt").exists());
+
+            let mut persisted = e.store.task(&task.id).unwrap();
+            persisted.route.base_url = base;
+            db(temp.path())
+                .execute(
+                    "UPDATE tasks SET value=?2 WHERE id=?1",
+                    params![persisted.id, serde_json::to_string(&persisted).unwrap()],
+                )
+                .unwrap();
+            e.resume(&task.id, "continue").await.unwrap();
+            let done = settled(&e, &task.id).await;
+            assert_eq!(done.status, "completed");
+            assert!(done.messages.iter().any(|message| {
+                message["role"] == "tool"
+                    && message["content"] == approval::tool_error(ApprovalStatus::Cancelled)
+            }));
+            assert_eq!(event_count(&e, &task, "tool_start"), 0);
+            assert_eq!(event_count(&e, &task, "approval.resolved"), 1);
+        });
+        runtime.shutdown_timeout(Duration::from_secs(2));
+    }
+}
+
+#[test]
+fn redacted_command_result_stays_finished_across_restart() {
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (task, card) = runtime.block_on(async {
+        let command = "Add-Content -LiteralPath counter.txt -Value one; Write-Output 'bearer mock-redact-secret'; Write-Error 'ordinary failure' -ErrorAction Continue; exit 7";
+        let (base, _server) = server(vec![vec![call(
+            "cmd",
+            "run_command",
+            json!({"command":command}),
+        )]])
+        .await;
+        let e = setup(temp.path(), &base);
+        let task = start(&e, true).await;
+        let card = pending(&e, &task.id).await;
+        e.decide_approval(&card.id, true, None).unwrap();
+        let done = settled(&e, &task.id).await;
+        assert_eq!(done.status, "completed");
+        assert_eq!(
+            e.store.approval(&card.id).unwrap().execution_state,
+            ExecutionState::Finished
+        );
+        let message = done
+            .messages
+            .iter()
+            .find(|message| message["tool_call_id"] == "cmd")
+            .unwrap();
+        let result: Value = serde_json::from_str(message["content"].as_str().unwrap()).unwrap();
+        assert_eq!(result["exit_code"], 7);
+        assert!(result["stdout"].as_str().unwrap().contains("bearer [redacted]"));
+        assert!(result["stderr"].as_str().unwrap().contains("ordinary failure"));
+        let event = e
+            .store
+            .events(&task.run_id, 0)
+            .unwrap()
+            .into_iter()
+            .find(|event| event.kind == "tool_result")
+            .unwrap();
+        assert_eq!(event.data["result"], result);
+        assert_eq!(event_count(&e, &task, "tool_start"), 1);
+        (task, card)
+    });
+    runtime.shutdown_timeout(Duration::from_secs(2));
+
+    let raw = std::fs::read(temp.path().join("approval.db")).unwrap();
+    assert!(!String::from_utf8_lossy(&raw).contains("mock-redact-secret"));
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("counter.txt"))
+            .unwrap()
+            .lines()
+            .count(),
+        1
+    );
+
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    runtime.block_on(async {
+        let (base, _server) = server(vec![]).await;
+        let e = setup(temp.path(), &base);
+        e.store.recover().unwrap();
+        assert_eq!(
+            e.store.approval(&card.id).unwrap().execution_state,
+            ExecutionState::Finished
+        );
+        let mut persisted = e.store.task(&task.id).unwrap();
+        persisted.route.base_url = base;
+        db(temp.path())
+            .execute(
+                "UPDATE tasks SET value=?2 WHERE id=?1",
+                params![persisted.id, serde_json::to_string(&persisted).unwrap()],
+            )
+            .unwrap();
+        e.resume(&task.id, "continue").await.unwrap();
+        assert_eq!(settled(&e, &task.id).await.status, "completed");
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("counter.txt"))
+                .unwrap()
+                .lines()
+                .count(),
+            1
+        );
+        assert_eq!(event_count(&e, &task, "tool_start"), 1);
+    });
+    runtime.shutdown_timeout(Duration::from_secs(2));
+}
+
 #[tokio::test]
 async fn ap10_ap11_safe_previews_independent_calls() {
     let temp = tempfile::tempdir().unwrap();

@@ -846,8 +846,9 @@ impl Engine {
         };
         let serialized = result.to_string().replace(key, "[redacted]");
         if let Some(approval_id) = approval_id {
-            self.store
-                .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
+            let serialized =
+                self.store
+                    .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
             task.messages
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
             task.updated_at = now();
@@ -966,11 +967,9 @@ impl Engine {
     pub fn cancel(&self, id: &str) -> Result<()> {
         self.store.cancel_pending_approvals(id)?;
         let active = self.active.lock().unwrap();
-        active
-            .get(id)
-            .context("成员当前没有运行中的任务")?
-            .cancel
-            .cancel();
+        if let Some(active) = active.get(id) {
+            active.cancel.cancel();
+        }
         Ok(())
     }
     pub fn changes(&self, id: &str) -> Result<Vec<Value>> {

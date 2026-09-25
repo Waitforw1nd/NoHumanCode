@@ -1,8 +1,9 @@
 use crate::{approval, domain::*, repository, secrets};
 use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, OptionalExtension, params};
+use serde::Serialize;
 use serde_json::{Value, json};
-use std::{path::Path, sync::Mutex};
+use std::{io::Write, path::Path, sync::Mutex};
 
 pub const SCHEMA_VERSION: u32 = 7;
 
@@ -1045,7 +1046,7 @@ impl Store {
         result: &str,
         name: &str,
         tool_call_id: &str,
-    ) -> Result<()> {
+    ) -> Result<String> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let current = repository::Repository::new(&tx).approval(approval_id)?;
@@ -1062,14 +1063,16 @@ impl Store {
             current.execution_state == approval::ExecutionState::Claimed,
             "审批执行状态不是 claimed"
         );
+        let value = serde_json::from_str::<Value>(result)
+            .unwrap_or_else(|_| Value::String(result.to_owned()));
+        let value = secrets::redact_persisted(&value);
+        let result = stable_safe_json(&value)?;
         let mut updated_task = task.clone();
         updated_task
             .messages
             .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":result}));
         updated_task.updated_at = now();
         save_task_tx(&tx, &updated_task, false)?;
-        let value = serde_json::from_str::<Value>(result)
-            .unwrap_or_else(|_| Value::String(result.to_owned()));
         task_event_tx(
             &tx,
             &task.id,
@@ -1078,7 +1081,7 @@ impl Store {
         )?;
         tx.execute("UPDATE approvals SET execution_state='finished' WHERE id=?1 AND execution_state='claimed'", [&approval_id])?;
         tx.commit()?;
-        Ok(())
+        Ok(result)
     }
 
     /// Restart marks queued/running tasks interrupted. Pending approvals stay
@@ -1131,6 +1134,42 @@ impl Store {
         tx.commit()?;
         Ok(affected)
     }
+}
+
+struct UnicodeStringFormatter;
+
+impl serde_json::ser::Formatter for UnicodeStringFormatter {
+    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> std::io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        for unit in fragment.encode_utf16() {
+            write!(writer, "\\u{unit:04x}")?;
+        }
+        Ok(())
+    }
+}
+
+fn stable_safe_json(value: &Value) -> Result<String> {
+    let compact = value.to_string();
+    if secrets::redact_persisted(&Value::String(compact.clone())) == Value::String(compact.clone())
+    {
+        return Ok(compact);
+    }
+    // Encode string fragments only after structural redaction. This keeps a
+    // second task-level text redaction from consuming JSON delimiters while
+    // preserving the same parsed value for the event integrity check.
+    let mut bytes = Vec::new();
+    let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, UnicodeStringFormatter);
+    value.serialize(&mut serializer)?;
+    let encoded = String::from_utf8(bytes)?;
+    anyhow::ensure!(
+        serde_json::from_str::<Value>(&encoded)? == *value
+            && secrets::redact_persisted(&Value::String(encoded.clone()))
+                == Value::String(encoded.clone()),
+        "安全工具结果无法稳定序列化"
+    );
+    Ok(encoded)
 }
 
 fn command_message(task: &Task) -> String {
@@ -1775,6 +1814,28 @@ mod tests {
     use super::*;
     use crate::repository::MIGRATION_ID;
 
+    #[test]
+    fn safe_tool_result_json_is_stable_and_roundtrips_unicode() {
+        let ordinary = json!({"exit_code":0,"stdout":"ordinary output","stderr":""});
+        assert_eq!(stable_safe_json(&ordinary).unwrap(), ordinary.to_string());
+
+        let sensitive = json!({
+            "exit_code": 7,
+            "stdout": "bearer [redacted]\n普通🙂",
+            "stderr": "ordinary failure"
+        });
+        let encoded = stable_safe_json(&sensitive).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), sensitive);
+        assert_eq!(
+            secrets::redact_persisted(&Value::String(encoded.clone())),
+            Value::String(encoded)
+        );
+
+        let error = json!({"error":"path rejected"});
+        let encoded = stable_safe_json(&error).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), error);
+    }
+
     fn legacy_schema_5(path: &Path) {
         let db = Connection::open(path).unwrap();
         db.execute_batch(
@@ -1961,7 +2022,7 @@ mod tests {
             assert_eq!(marker, 0);
         }
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 6);
+        assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
         let projects = store.projects().unwrap();
         assert_eq!(projects.len(), 1);
         assert_eq!(projects[0].id.0, "partial");
@@ -1978,7 +2039,7 @@ mod tests {
         let version: u32 = db
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 6);
+        assert_eq!(version, SCHEMA_VERSION);
     }
 
     #[test]
