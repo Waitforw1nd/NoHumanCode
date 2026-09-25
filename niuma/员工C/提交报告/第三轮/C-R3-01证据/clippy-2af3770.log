@@ -1,0 +1,20 @@
+    Checking ring v0.17.14
+    Checking wasm-encoder v0.259.0
+    Checking peachsh-protocol v0.1.0 (../nhc-c-approval-http\NoManCode\rust-app\crates\protocol)
+    Checking libsqlite3-sys v0.35.0
+    Checking fastrand v2.5.0
+    Checking rusqlite v0.37.0
+    Checking tempfile v3.27.0
+    Checking peachsh-ui v0.1.0 (../nhc-c-approval-http\NoManCode\rust-app\crates\ui)
+    Checking wast v259.0.0
+    Checking rustls-webpki v0.103.15
+    Checking rustls v0.23.45
+    Checking tokio-rustls v0.26.5
+    Checking hyper-rustls v0.27.9
+    Checking reqwest v0.12.28
+    Checking wat v1.259.0
+    Checking wasmi v2.0.0
+    Checking peachsh v0.2.0 (../nhc-c-approval-http\NoManCode\rust-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.68s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`

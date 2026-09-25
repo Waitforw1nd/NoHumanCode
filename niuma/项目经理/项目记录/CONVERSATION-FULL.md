@@ -2155,3 +2155,7 @@ A复核发现两项、B修复和正式验证、C旧HTTP测试适配；固定组�
 ## 2026-09-26 NEXT-02D固定候选预审
 
 C交2af377026f83c0b8b3c6f24cf5a268bac07090ee，仅两授权源码文件，定向14/14；已保存一次未初始化MSVC环境失败101，成功重跑与最终门禁另列。经理与A固定候选核查确认AH09审批事件扫描、AH11固定错误结构和fresh pending拒绝的证据缺口，已交C原范围补证。经理review 1.0为CHANGES_REQUIRED（验收证据），未发现需要改生产实现的缺陷；不重开B层任务。待新SHA和最终门禁再复核，不将提交当验收。
+
+## 2026-09-26 NEXT-02D验收与整合完成
+
+C最终00a4c2b仅server.rs与approval_http.rs两文件，AH09/11补证由A第1.1关闭；check/test/fmt/clippy/wasm-check全0、222通过/0失败/1付费忽略、定向14/14。经理review 1.1 APPROVED先提交495baf1，再merge main 2e38a9f97c4cf3fd1ec603c881e53a6435e5c5ba；源码tree与受测输入相同。C报告补充逐项AH和错误可达边界，并作者更正AH07双HTTP可同时200、唯一性是持久决定/resolved一次。经理将28份日志资料中10份的本机路径相对化，原始副本留忽略.local、前后hash另表，未改变运行事实。主对话GPT-6、三员工gpt-5.6-sol；本轮任务全部结项。继承在途档案与旧工作树保留，未推送/发布/付费live/release build。后续Workspace/Diff→CLI待新有效派发。

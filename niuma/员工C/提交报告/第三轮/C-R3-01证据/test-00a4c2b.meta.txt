@@ -1,0 +1,5 @@
+command=.\build.ps1 -Action test
+sha=00a4c2bd675516ca61fac84c03734052ccb03660
+started=2026-09-26T02:26:48.6290661+08:00
+ended=2026-09-26T02:27:10.3319855+08:00
+exit_code=0

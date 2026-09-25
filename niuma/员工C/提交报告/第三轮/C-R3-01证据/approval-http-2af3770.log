@@ -1,0 +1,30 @@
+   Compiling ring v0.17.14
+   Compiling libsqlite3-sys v0.35.0
+   Compiling rusqlite v0.37.0
+   Compiling rustls-webpki v0.103.15
+   Compiling rustls v0.23.45
+   Compiling tokio-rustls v0.26.5
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.12.28
+   Compiling peachsh v0.2.0 (../nhc-c-approval-http\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.72s
+     Running tests\approval_http.rs (../nhc-c-approval-http-target\debug\deps\approval_http-1a90ddfe7a936964.exe)
+
+running 14 tests
+test ah14_unknown_is_visible_and_decision_remains_conflict ... ok
+test ah01_ah09_ah10_safe_dto_order_and_task_isolation ... ok
+test ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency ... ok
+test ah11_strict_inputs_guards_paths_and_safe_errors ... ok
+test ah06_denied_http_decision_survives_real_runtime_restart_without_execution ... ok
+test ah14_http_decision_does_not_claim_binding_validation ... ok
+test ah13_run_and_session_sse_resume_from_last_consumed_cursor ... ok
+test ah10_real_workers_with_same_call_id_do_not_borrow_decisions ... ok
+test ah05_shutdown_reopen_http_decision_without_worker_then_resume_once ... ok
+test ah07_barrier_cancel_and_http_decision_have_one_durable_resolution ... ok
+test ah06_real_command_side_effect_then_shutdown_recovers_unknown ... ok
+test ah07_cancel_before_claim_and_after_real_command_claim ... ok
+test ah02_ah03_ah04_real_tools_follow_http_decisions ... ok
+test ah11_real_busy_decision_is_retryable_and_corruption_is_not ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.10s
+

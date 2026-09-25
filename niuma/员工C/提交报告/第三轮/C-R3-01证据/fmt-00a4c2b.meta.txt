@@ -1,0 +1,5 @@
+command=.\build.ps1 -Action fmt
+sha=00a4c2bd675516ca61fac84c03734052ccb03660
+started=2026-09-26T02:27:10.3340852+08:00
+ended=2026-09-26T02:27:11.0024909+08:00
+exit_code=0
