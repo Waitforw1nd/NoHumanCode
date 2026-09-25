@@ -10,6 +10,7 @@ use rusqlite::{Connection, ErrorCode};
 use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
+    fs::File,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
@@ -214,13 +215,15 @@ fn spawn_restore_child(root: &Path, task_id: &str, complete: bool) -> ChildGuard
 }
 
 fn spawn_write_child(root: &Path) -> ChildGuard {
+    let stdout = File::create(root.join("write-child.stdout")).unwrap();
+    let stderr = File::create(root.join("write-child.stderr")).unwrap();
     let child = Command::new(std::env::current_exe().unwrap())
         .arg("--exact")
         .arg("crash_child_write")
         .arg("--nocapture")
         .env("NHC_CRASH_WRITE_ROOT", root)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(stdout)
+        .stderr(stderr)
         .spawn()
         .unwrap();
     ChildGuard(child)
@@ -272,7 +275,8 @@ async fn crash_child_write() {
         .unwrap()
         .tasks
         .remove(0);
-    std::fs::write(root.join("child-task-id"), &task.id).unwrap();
+    std::fs::write(root.join("child-task-id.tmp"), &task.id).unwrap();
+    std::fs::rename(root.join("child-task-id.tmp"), root.join("child-task-id")).unwrap();
     let deadline = Instant::now() + Duration::from_secs(15);
     loop {
         if let Some(approval) = engine
@@ -369,10 +373,16 @@ async fn restore_http_crash_after_file_before_outcome_commit_is_unknown() {
     assert_eq!(receipt.restore_id.as_deref(), Some(restore_id.as_str()));
     assert_eq!(receipt.status, RestoreStatus::Unknown);
     assert_eq!(receipt.restored, 0);
+    assert_eq!(receipt.outcomes.len(), 1);
+    assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
     assert_eq!(
         std::fs::read(root.join("src/a.txt")).unwrap(),
         BEFORE.as_bytes()
     );
+    let changes = engine.changes(&task_id).unwrap();
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].restore_state, "unknown");
+    assert!(!changes[0].restorable);
     let (origin, server) = http_host(engine.clone()).await;
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
     let get: Value = client
@@ -447,8 +457,25 @@ async fn restore_http_crash_after_complete_commit_keeps_stable_receipt() {
     assert_eq!(receipt.status, RestoreStatus::Complete);
     assert_eq!(receipt.restored, 1);
     assert!(receipt.restore_id.is_some());
+    assert_eq!(receipt.outcomes.len(), 1);
+    assert_eq!(receipt.outcomes[0].status, RestoreStatus::Complete);
     std::fs::write(root.join("src/a.txt"), "external-after-restore").unwrap();
-    assert_eq!(engine.restore(&task_id).await.unwrap(), receipt);
+    let (origin, server) = http_host(engine.clone()).await;
+    let repeat = reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .unwrap()
+        .post(format!("{origin}/api/tasks/{task_id}/restore"))
+        .header("x-peachsh-token", TOKEN)
+        .header("origin", &origin)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(repeat.status(), reqwest::StatusCode::OK);
+    let repeated: Value = repeat.json().await.unwrap();
+    assert_eq!(repeated["receipt"], serde_json::to_value(&receipt).unwrap());
+    assert_eq!(repeated["ok"], true);
+    server.abort();
     assert_eq!(
         std::fs::read_to_string(root.join("src/a.txt")).unwrap(),
         "external-after-restore"
@@ -469,11 +496,20 @@ async fn write_crash_case(block_finish: bool) {
     let deadline = Instant::now() + Duration::from_secs(20);
     let task_id = loop {
         if let Ok(id) = std::fs::read_to_string(root.join("child-task-id")) {
-            break id;
+            let known = Connection::open(&db_path)
+                .unwrap()
+                .query_row("SELECT count(*) FROM tasks WHERE id=?1", [&id], |row| {
+                    row.get::<_, i64>(0)
+                })
+                .unwrap_or(0);
+            if !id.is_empty() && known == 1 {
+                break id;
+            }
         }
         assert!(
             child.0.try_wait().unwrap().is_none(),
-            "write child exited early"
+            "write child exited early: {}",
+            std::fs::read_to_string(root.join("write-child.stderr")).unwrap()
         );
         assert!(Instant::now() < deadline, "child task ID not published");
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -500,9 +536,24 @@ async fn write_crash_case(block_finish: bool) {
         }
         assert!(
             child.0.try_wait().unwrap().is_none(),
-            "write child exited early"
+            "write child exited early: {}",
+            std::fs::read_to_string(root.join("write-child.stderr")).unwrap()
         );
-        assert!(Instant::now() < deadline, "write finish window not reached");
+        if Instant::now() >= deadline {
+            let db = Connection::open(&db_path).unwrap();
+            let state: Option<String> = db
+                .query_row(
+                    "SELECT state FROM workspace_changes WHERE task_id=?1",
+                    [&task_id],
+                    |row| row.get(0),
+                )
+                .ok();
+            panic!(
+                "write finish window not reached: file={:?}, state={state:?}, stderr={}",
+                std::fs::read(root.join("src/a.txt")).unwrap(),
+                std::fs::read_to_string(root.join("write-child.stderr")).unwrap()
+            );
+        }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     child.0.kill().unwrap();
@@ -523,6 +574,43 @@ async fn write_crash_case(block_finish: bool) {
         )
         .unwrap();
     assert_eq!(state, expected_state);
+    let approval_state: String = db
+        .query_row(
+            "SELECT execution_state FROM approvals WHERE task_id=?1",
+            [&task_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(approval_state, expected_state);
+    let tool_messages = engine
+        .store
+        .task(&task_id)
+        .unwrap()
+        .messages
+        .into_iter()
+        .filter(|message| message["role"] == "tool")
+        .count();
+    let tool_results: i64 = db
+        .query_row(
+            "SELECT count(*) FROM events WHERE task_id=?1 AND kind='tool_result'",
+            [&task_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let finished_events = {
+        let mut stmt = db
+            .prepare("SELECT data FROM events WHERE task_id=?1 AND kind='file_backup'")
+            .unwrap();
+        stmt.query_map([&task_id], |row| row.get::<_, String>(0))
+            .unwrap()
+            .map(|row| serde_json::from_str::<Value>(&row.unwrap()).unwrap())
+            .filter(|event| event["state"] == "finished")
+            .count()
+    };
+    let expected_count = usize::from(!block_finish);
+    assert_eq!(tool_messages, expected_count);
+    assert_eq!(tool_results, expected_count as i64);
+    assert_eq!(finished_events, expected_count);
     assert_eq!(
         std::fs::read(root.join("src/a.txt")).unwrap(),
         AFTER.as_bytes()
