@@ -261,18 +261,37 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
         let store = Store::open(&forged_path).unwrap();
         drop(store);
         let forged_db = Connection::open(&forged_path).unwrap();
-        let ddl: String = forged_db
-            .query_row(
-                "SELECT sql FROM sqlite_master WHERE type='table' AND name='workspace_changes'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        let replacement = ddl.replace(needle, forgery);
-        assert_ne!(replacement, ddl);
+        let schema = [
+            "workspace_changes",
+            "workspace_restores",
+            "workspace_restore_outcomes",
+            "workspace_changes_task_path",
+            "workspace_restores_task_complete",
+            "workspace_restore_outcomes_restore",
+        ]
+        .map(|name| {
+            forged_db
+                .query_row(
+                    "SELECT sql FROM sqlite_master WHERE name=?1",
+                    [name],
+                    |row| row.get::<_, String>(0),
+                )
+                .unwrap()
+        });
+        let replacement = schema[0].replace(needle, forgery);
+        assert_ne!(replacement, schema[0]);
         forged_db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes;").unwrap();
         forged_db.execute_batch(&replacement).unwrap();
-        assert!(Store::open(&forged_path).is_err());
+        for ddl in &schema[1..] {
+            forged_db.execute_batch(ddl).unwrap();
+        }
+        let error = Store::open(&forged_path)
+            .err()
+            .expect("forged constraint must fail");
+        assert!(
+            error.to_string().contains("workspace_changes") && error.to_string().contains("约束"),
+            "{error:?}"
+        );
     }
 }
 
@@ -806,6 +825,71 @@ async fn later_path_conflict_prevents_all_restore_writes() {
         "external"
     );
     assert!(engine.latest_restore(&task.id).unwrap().is_none());
+
+    std::fs::write(temp.path().join("src/b.txt"), "b-after").unwrap();
+    Connection::open(temp.path().join("workspace.db"))
+        .unwrap()
+        .execute(
+            "UPDATE workspace_changes SET before_blob=x'00' WHERE task_id=?1 AND path='src/b.txt'",
+            [&task.id],
+        )
+        .unwrap();
+    assert!(matches!(
+        engine
+            .restore(&task.id)
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Corrupt)
+    ));
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "a-after"
+    );
+    assert!(engine.latest_restore(&task.id).unwrap().is_none());
+}
+
+#[tokio::test]
+async fn missing_non_utf8_and_link_are_distinct_current_states() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let path = temp.path().join("src/a.txt");
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!(
+        engine.changes(&task_id).unwrap()[0].current,
+        CurrentState::Missing
+    );
+    assert!(engine.restore(&task_id).await.is_err());
+    std::fs::write(&path, [0xff, 0xfe]).unwrap();
+    assert_eq!(
+        engine.changes(&task_id).unwrap()[0].current,
+        CurrentState::Unreadable
+    );
+    assert!(engine.restore(&task_id).await.is_err());
+    std::fs::remove_file(&path).unwrap();
+    let outside = temp.path().join("outside.txt");
+    std::fs::write(&outside, "outside-sentinel").unwrap();
+    #[cfg(windows)]
+    let link_result = std::os::windows::fs::symlink_file(&outside, &path);
+    #[cfg(unix)]
+    let link_result = std::os::unix::fs::symlink(&outside, &path);
+    if link_result.is_ok() {
+        assert!(matches!(
+            engine.changes(&task_id).unwrap()[0].current,
+            CurrentState::Invalid | CurrentState::UnsafeLink
+        ));
+        assert!(engine.restore(&task_id).await.is_err());
+        assert_eq!(
+            std::fs::read_to_string(&outside).unwrap(),
+            "outside-sentinel"
+        );
+    } else {
+        eprintln!("symlink creation unavailable in this environment");
+    }
 }
 
 #[tokio::test]
