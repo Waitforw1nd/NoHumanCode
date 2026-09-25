@@ -911,6 +911,11 @@ async fn cl08_check_and_server_startup_remain_compatible() {
         .output()
         .unwrap();
     assert_eq!(second.status.code(), Some(1));
+    assert!(
+        stderr(&second).contains("此数据目录已有一个 🍑sh 实例正在运行"),
+        "{}",
+        stderr(&second)
+    );
     let connected = cli(p, &["task", "approvals", "locked-task"]);
     assert!(connected.status.success(), "{}", stderr(&connected));
     assert_eq!(
