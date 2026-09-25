@@ -1,0 +1,5 @@
+command=. .\build.ps1 -Action check; cargo test -p peachsh --locked --test cli -- --nocapture
+sha=0d4dc9af863458e3d6fe2ec7c8b380eebaaafdcc
+started=2026-09-26T03:19:07.5447928+08:00
+ended=2026-09-26T03:19:27.1723875+08:00
+exit_code=0

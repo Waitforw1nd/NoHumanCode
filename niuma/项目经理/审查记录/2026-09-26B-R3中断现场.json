@@ -1,0 +1,40 @@
+{
+  "captured_at": "2026-09-26T03:28:24.4060398+08:00",
+  "head": "dd57adfc9321454651bdcdabb3a081bc95091600",
+  "branch": "codex/b/workspace",
+  "worktree": "../nhc-b-workspace",
+  "snapshot": ".local/review-evidence/B-R3-01-interrupted-20260926-032824",
+  "reason": "employee model service returned HTTP 403 insufficient balance",
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "sha256": "B364C3C3E878C94F554E58136CB6FA8F37DB83593FF1DEAF8044B8208CE4E750",
+      "bytes": 56910
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "sha256": "9303BCE25BCFF7F06CE1DBD8392DBD4E426246B3C8B589B9A06B6B7A73BC0609",
+      "bytes": 49743
+    },
+    {
+      "path": "NoManCode/rust-app/src/store.rs",
+      "sha256": "B1EBE9644AC9774EAFB3EB08F7E3C40421C8DB81EC5644F9CA3425BF62898C2C",
+      "bytes": 111287
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace.rs",
+      "sha256": "B0FE71A11103CA26C175EE61EC136BEC8F07C37AD1DA10034640025A14F49630",
+      "bytes": 18684
+    },
+    {
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "sha256": "D9D79984DBB79E73132F8AE859BB52F2E17822465D82C19726FA2FF525EBFD0D",
+      "bytes": 46650
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_changes.rs",
+      "sha256": "6D69857F31866052F45E13347AFB33418B195C1C74B051EA96B9F702C1E6DE33",
+      "bytes": 15189
+    }
+  ]
+}

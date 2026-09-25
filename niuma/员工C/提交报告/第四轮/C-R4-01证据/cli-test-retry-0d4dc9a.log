@@ -1,0 +1,27 @@
+   Compiling ring v0.17.14
+   Compiling libsqlite3-sys v0.35.0
+   Compiling rusqlite v0.37.0
+   Compiling rustls-webpki v0.103.15
+   Compiling rustls v0.23.45
+   Compiling tokio-rustls v0.26.5
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.12.28
+   Compiling peachsh v0.2.0 (<source-worktree>/NoManCode/rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.08s
+     Running tests\cli.rs (<cargo-target>\debug\deps\cli-4ce997e9e06ba09e.exe)
+
+running 11 tests
+test cl03_remote_cli_does_not_initialize_local_state_or_execute_without_waiter ... ok
+test cl07_redirects_proxy_and_token_echo_do_not_leak_or_retry ... ok
+test cl02_real_cli_approve_executes_and_deny_does_not ... ok
+test cl09_unknown_state_is_truthful_and_help_has_no_secrets ... ok
+test cl09_escaped_token_is_rejected_in_success_and_error_fields ... ok
+test cl01_command_shape_is_fixed_for_list_get_approve_and_deny ... ok
+test cl04_http_errors_are_json_on_stderr_with_exit_one ... ok
+test cl01_list_get_human_json_and_empty ... ok
+test cl05_parse_errors_exit_two_without_files ... ok
+test cl08_check_and_server_startup_remain_compatible ... ok
+test cl06_invalid_bootstrap_json_and_connection_are_safe_without_post_retry ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.36s
+

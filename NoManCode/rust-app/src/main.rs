@@ -7,41 +7,93 @@ use peachsh::{
 };
 use std::{path::PathBuf, sync::Arc};
 
+mod cli;
+
 #[derive(Parser)]
 #[command(name = "peachsh", version, about = "🍑sh harness · Rust")]
 struct Args {
-    #[arg(long, default_value_t = 3090)]
+    #[arg(long, default_value_t = 3090, value_parser = nonzero_port)]
     port: u16,
-    #[arg(long, default_value = "../data-rust")]
-    data_dir: PathBuf,
-    #[arg(long, default_value = "../data")]
-    legacy_data: PathBuf,
-    #[arg(long, default_value = "../workspace")]
-    workspace: PathBuf,
+    #[arg(long)]
+    data_dir: Option<PathBuf>,
+    #[arg(long)]
+    legacy_data: Option<PathBuf>,
+    #[arg(long)]
+    workspace: Option<PathBuf>,
     #[arg(long)]
     check: bool,
+    #[arg(long)]
+    json: bool,
+    #[command(subcommand)]
+    command: Option<cli::Command>,
+}
+
+fn nonzero_port(value: &str) -> std::result::Result<u16, String> {
+    value
+        .parse::<u16>()
+        .ok()
+        .filter(|port| *port != 0)
+        .ok_or_else(|| "端口必须在 1..=65535".to_owned())
 }
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    std::fs::create_dir_all(&args.data_dir).context("无法创建数据目录")?;
+    if let Some(command) = args.command {
+        if args.check {
+            clap::Error::raw(
+                clap::error::ErrorKind::ArgumentConflict,
+                "--check 不能与 CLI 子命令同时使用",
+            )
+            .exit();
+        }
+        if args.data_dir.is_some() || args.legacy_data.is_some() || args.workspace.is_some() {
+            clap::Error::raw(
+                clap::error::ErrorKind::ArgumentConflict,
+                "CLI 子命令不能与服务数据路径参数同时使用",
+            )
+            .exit();
+        }
+        if !command.valid_ids() {
+            clap::Error::raw(clap::error::ErrorKind::ValueValidation, "标识无效").exit();
+        }
+        if let Err(error) = cli::execute(args.port, args.json, command).await {
+            error.print(args.json);
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+    if args.json {
+        clap::Error::raw(
+            clap::error::ErrorKind::MissingSubcommand,
+            "--json 需要 CLI 子命令",
+        )
+        .exit();
+    }
+    let data_dir = args
+        .data_dir
+        .unwrap_or_else(|| PathBuf::from("../data-rust"));
+    let legacy_data = args.legacy_data.unwrap_or_else(|| PathBuf::from("../data"));
+    let workspace = args
+        .workspace
+        .unwrap_or_else(|| PathBuf::from("../workspace"));
+    std::fs::create_dir_all(&data_dir).context("无法创建数据目录")?;
     let _instance_lock = if !args.check {
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(args.data_dir.join("instance.lock"))?;
+            .open(data_dir.join("instance.lock"))?;
         file.try_lock()
             .context("此数据目录已有一个 🍑sh 实例正在运行")?;
         Some(file)
     } else {
         None
     };
-    let store = Arc::new(Store::open(&args.data_dir.join("peachsh.sqlite3"))?);
+    let store = Arc::new(Store::open(&data_dir.join("peachsh.sqlite3"))?);
     let settings = match store.settings()? {
         Some(s) => s,
-        None => initial_settings(&store, &args.legacy_data, &args.workspace)?,
+        None => initial_settings(&store, &legacy_data, &workspace)?,
     };
     settings.validate()?;
     if args.check {
