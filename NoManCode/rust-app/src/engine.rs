@@ -822,28 +822,68 @@ impl Engine {
         let mut prepared = None;
         if name == "write_file" {
             let approval_id = approval_id.context("write_file 缺少审批执行权")?;
-            let path = args["path"].as_str().context("缺少 path")?;
-            let (target, path, path_key) = workspace::change_target(
-                std::path::Path::new(&task.workspace),
-                path,
-                &task.spec.write_scopes,
-            )?;
-            let before = workspace::read_safe_file(&target)?;
-            let change = self.store.prepare_workspace_change(
-                task,
-                tool_call_id,
-                &path,
-                &path_key,
-                before.as_deref(),
-            )?;
-            let rechecked = workspace::read_safe_file(&target)?;
-            if rechecked.as_deref().map(workspace_changes::digest)
-                != before.as_deref().map(workspace_changes::digest)
-            {
-                self.store.mark_workspace_change_failed(&change.id)?;
-                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            let preflight = (|| -> Result<PreparedChange> {
+                let args_text = args.to_string();
+                ensure!(
+                    secrets::redact_persisted(args) == *args
+                        && secrets::redact_persisted(&Value::String(args_text.clone()))
+                            == Value::String(args_text),
+                    "write_file 参数脱敏后无法安全绑定"
+                );
+                let path = args["path"].as_str().context("缺少 path")?;
+                let (target, path, path_key) = workspace::change_target(
+                    std::path::Path::new(&task.workspace),
+                    path,
+                    &task.spec.write_scopes,
+                )?;
+                let before = workspace::read_safe_file(&target)?;
+                let change = self.store.prepare_workspace_change(
+                    task,
+                    tool_call_id,
+                    &path,
+                    &path_key,
+                    before.as_deref(),
+                )?;
+                let rechecked = workspace::read_safe_file(&target)?;
+                if rechecked.as_deref().map(workspace_changes::digest)
+                    != before.as_deref().map(workspace_changes::digest)
+                {
+                    self.store.mark_workspace_change_failed(&change.id)?;
+                    return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+                }
+                Ok(change)
+            })();
+            match preflight {
+                Ok(change) => prepared = Some((approval_id.to_owned(), change)),
+                Err(error) => {
+                    if error.chain().any(|cause| cause.is::<rusqlite::Error>()) {
+                        return Err(error);
+                    }
+                    let message = if error.chain().any(|cause| {
+                        matches!(
+                            cause.downcast_ref::<WorkspaceChangeError>(),
+                            Some(WorkspaceChangeError::Unknown { .. })
+                        )
+                    }) {
+                        "write_file 结果未知；请检查文件后创建新任务"
+                    } else {
+                        "write_file 拒绝执行；文件未修改"
+                    };
+                    let serialized = self.store.finish_approval_with_change(
+                        task,
+                        approval_id,
+                        &json!({"error":message}).to_string(),
+                        name,
+                        tool_call_id,
+                        None,
+                    )?;
+                    task.messages.push(
+                        json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}),
+                    );
+                    task.updated_at = now();
+                    return Ok(());
+                }
             }
-            prepared = Some((approval_id.to_owned(), change));
         }
         let start_data = if let Some(approval_id) = approval_id {
             json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"args_digest":approval::args_digest(args)?})
@@ -886,11 +926,10 @@ impl Engine {
                     tool_call_id,
                     change,
                 )
-                .map_err(|error| {
+                .inspect_err(|_| {
                     if succeeded && let Some((_, change)) = &prepared {
                         let _ = self.store.mark_workspace_change_unknown(&change.id);
                     }
-                    error
                 })?;
             task.messages
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
@@ -1040,7 +1079,19 @@ impl Engine {
         let restore_exists = self.store.latest_restore(id)?.is_some();
         let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
             std::collections::BTreeMap::new();
-        for record in self.store.workspace_changes_for_task(id)? {
+        for record in self
+            .store
+            .workspace_changes_for_task(id)
+            .map_err(|_| WorkspaceChangeError::Corrupt)?
+        {
+            if record.state == ChangeState::Finished
+                && !record
+                    .after_digest
+                    .as_deref()
+                    .is_some_and(workspace_changes::valid_digest)
+            {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
             if record.state == ChangeState::Failed {
                 continue;
             }
@@ -1174,12 +1225,11 @@ impl Engine {
                 return Err(WorkspaceChangeError::Active.into());
             }
         }
-        if let Some(settings) = self.store.settings()? {
-            if std::path::Path::new(&settings.workspace).canonicalize()?
+        if let Some(settings) = self.store.settings()?
+            && std::path::Path::new(&settings.workspace).canonicalize()?
                 != std::path::Path::new(&task.workspace).canonicalize()?
-            {
-                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
-            }
+        {
+            return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
         }
         if let Some(receipt) = self.store.latest_restore(id)? {
             return if receipt.status == RestoreStatus::Complete {
@@ -1198,7 +1248,19 @@ impl Engine {
                 .into())
             };
         }
-        let records = self.store.workspace_changes_for_task(id)?;
+        let records = self
+            .store
+            .workspace_changes_for_task(id)
+            .map_err(|_| WorkspaceChangeError::Corrupt)?;
+        if records.iter().any(|record| {
+            record.state == ChangeState::Finished
+                && !record
+                    .after_digest
+                    .as_deref()
+                    .is_some_and(workspace_changes::valid_digest)
+        }) {
+            return Err(WorkspaceChangeError::Corrupt.into());
+        }
         if self.store.has_legacy_file_backup(id)? {
             return Err(WorkspaceChangeError::Unrestorable.into());
         }
@@ -1346,8 +1408,9 @@ impl Engine {
             .as_deref()
             .ok_or(WorkspaceChangeError::Corrupt)?
             .to_owned();
-        let mut completed = 0usize;
-        for ((change, target), original) in changes.iter().zip(targets).zip(originals) {
+        for (completed, ((change, target), original)) in
+            changes.iter().zip(targets).zip(originals).enumerate()
+        {
             let action = (|| -> Result<()> {
                 let checked = workspace::resolve(
                     std::path::Path::new(&task.workspace),
@@ -1407,7 +1470,6 @@ impl Engine {
                 }
                 .into());
             }
-            completed += 1;
         }
         match self
             .store

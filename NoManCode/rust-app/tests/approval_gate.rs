@@ -506,8 +506,14 @@ async fn ap10_ap11_safe_previews_independent_calls() {
     e.decide_approval(&b.id, false, None).unwrap();
     let done = settled(&e, &t.id).await;
     assert_eq!(done.status, "completed");
-    assert!(temp.path().join("src/a.txt").exists());
+    assert!(!temp.path().join("src/a.txt").exists());
     assert!(!temp.path().join("src/b.txt").exists());
+    assert!(e.changes(&t.id).unwrap().is_empty());
+    assert!(done.messages.iter().any(|message| message["role"] == "tool"
+        && message["tool_call_id"] == "w1"
+        && message["content"].as_str().is_some_and(
+            |content| content.contains("error") && !content.contains("mock-approval-secret")
+        )));
     let events = serde_json::to_string(&e.store.events(&t.run_id, 0).unwrap()).unwrap();
     assert!(!events.contains("mock-approval-secret"));
     let tool_ids: Vec<_> = done

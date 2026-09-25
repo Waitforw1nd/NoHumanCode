@@ -252,6 +252,28 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
     drop(store);
     db.execute_batch("DROP INDEX workspace_changes_task_path; CREATE INDEX workspace_changes_task_path ON workspace_changes(path_key,task_id,created_at);").unwrap();
     assert!(Store::open(&path).is_err());
+
+    for (needle, forgery) in [
+        ("'created','modified'", "'CREATED','MODIFIED'"),
+        ("'created','modified'", "'cre ated','modified'"),
+    ] {
+        let forged_path = temp.path().join(format!("forged-{}.db", forgery.len()));
+        let store = Store::open(&forged_path).unwrap();
+        drop(store);
+        let forged_db = Connection::open(&forged_path).unwrap();
+        let ddl: String = forged_db
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='workspace_changes'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let replacement = ddl.replace(needle, forgery);
+        assert_ne!(replacement, ddl);
+        forged_db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes;").unwrap();
+        forged_db.execute_batch(&replacement).unwrap();
+        assert!(Store::open(&forged_path).is_err());
+    }
 }
 
 #[tokio::test]
@@ -592,4 +614,224 @@ async fn parent_commit_failure_returns_unknown_receipt_and_seals_change() {
         RestoreStatus::Unknown
     );
     assert!(!engine.changes(&task_id).unwrap()[0].restorable);
+}
+
+#[tokio::test]
+async fn redacted_write_arguments_do_not_leave_an_unrestorable_success() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, _provider) = server("src/a.txt", "sk-workspace-test-secret").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let task = engine.store.task(&task_id).unwrap();
+    let changes = engine.changes(&task_id).unwrap();
+    assert_eq!(task.status, "completed");
+    assert!(changes.is_empty());
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "before"
+    );
+    assert!(task.messages.iter().any(|message| {
+        message["role"] == "tool"
+            && message["content"]
+                .as_str()
+                .is_some_and(|content| content.contains("error"))
+    }));
+}
+
+#[tokio::test]
+async fn finished_change_without_after_digest_is_corrupt_not_empty_restore() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    db.execute(
+        "UPDATE workspace_changes SET after_digest=NULL WHERE task_id=?1",
+        [&task_id],
+    )
+    .unwrap();
+    assert!(matches!(
+        engine
+            .restore(&task_id)
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Corrupt)
+    ));
+    assert!(matches!(
+        engine
+            .changes(&task_id)
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Corrupt)
+    ));
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "after"
+    );
+    assert!(engine.latest_restore(&task_id).unwrap().is_none());
+}
+
+#[tokio::test]
+async fn another_task_write_blocks_old_restore_and_hardlink_bytes_stay_unchanged() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("outside.txt"), "original").unwrap();
+    std::fs::hard_link(
+        temp.path().join("outside.txt"),
+        temp.path().join("src/a.txt"),
+    )
+    .unwrap();
+    let (base, _provider) = scripted_server(vec![
+        write_delta("w1", "src/a.txt", "first"),
+        json!({"content":"done"}),
+        write_delta("w2", "src/a.txt", "second"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let first = write_once(&engine).await;
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("outside.txt")).unwrap(),
+        "original"
+    );
+    let second = write_once(&engine).await;
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "second"
+    );
+    assert!(matches!(
+        engine
+            .restore(&first)
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Conflict { .. })
+    ));
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "second"
+    );
+    assert_eq!(
+        engine.restore(&second).await.unwrap().status,
+        RestoreStatus::Complete
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "first"
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("outside.txt")).unwrap(),
+        "original"
+    );
+}
+
+#[tokio::test]
+async fn later_path_conflict_prevents_all_restore_writes() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "a-before").unwrap();
+    std::fs::write(temp.path().join("src/b.txt"), "b-before").unwrap();
+    let (base, _provider) = scripted_server(vec![
+        write_delta("w1", "src/a.txt", "a-after"),
+        write_delta("w2", "src/b.txt", "b-after"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let task = engine
+        .start(RunRequest {
+            title: "two".into(),
+            kind: SessionKind::Team,
+            tasks: vec![TaskSpec {
+                name: "writer".into(),
+                role: "writer".into(),
+                route_id: "route".into(),
+                prompt: "write".into(),
+                depends_on: vec![],
+                write_scopes: vec!["src".into()],
+                tools: true,
+                allow_commands: false,
+                max_rounds: 5,
+            }],
+        })
+        .await
+        .unwrap()
+        .tasks
+        .remove(0);
+    for _ in 0..2 {
+        let approval = tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                if let Some(value) = engine
+                    .store
+                    .pending_approvals_for_task(&task.id)
+                    .unwrap()
+                    .into_iter()
+                    .next()
+                {
+                    break value;
+                }
+                tokio::task::yield_now().await
+            }
+        })
+        .await
+        .unwrap();
+        engine
+            .decide_approval(&approval.id, true, Some("test"))
+            .unwrap();
+    }
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            if !engine.is_busy() {
+                break;
+            }
+            tokio::task::yield_now().await
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(engine.changes(&task.id).unwrap().len(), 2);
+    std::fs::write(temp.path().join("src/b.txt"), "external").unwrap();
+    assert!(engine.restore(&task.id).await.is_err());
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "a-after"
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/b.txt")).unwrap(),
+        "external"
+    );
+    assert!(engine.latest_restore(&task.id).unwrap().is_none());
+}
+
+#[tokio::test]
+async fn dpapi_before_secret_roundtrips_without_plaintext_in_database() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    let before = b"sk-original-workspace-secret\r\n";
+    std::fs::write(temp.path().join("src/a.txt"), before).unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    let sealed: Vec<u8> = db
+        .query_row(
+            "SELECT before_blob FROM workspace_changes WHERE task_id=?1",
+            [&task_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(!sealed.windows(before.len()).any(|slice| slice == before));
+    assert_eq!(
+        engine.restore(&task_id).await.unwrap().status,
+        RestoreStatus::Complete
+    );
+    assert_eq!(
+        std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+        before
+    );
 }

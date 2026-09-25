@@ -816,7 +816,7 @@ impl Store {
         if let Some(expected) = latest {
             let actual = before
                 .map(digest)
-                .ok_or_else(|| WorkspaceChangeError::Conflict { receipt: None })?;
+                .ok_or(WorkspaceChangeError::Conflict { receipt: None })?;
             if actual != expected {
                 return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
             }
@@ -949,7 +949,7 @@ impl Store {
     }
 
     pub(crate) fn restore_receipt(&self, id: &str) -> Result<RestoreReceipt> {
-        restore_receipt(&*self.db.lock().unwrap(), id)
+        restore_receipt(&self.db.lock().unwrap(), id)
     }
     pub fn events(&self, run_id: &str, after: i64) -> Result<Vec<Event>> {
         let db = self.db.lock().unwrap();
@@ -1360,6 +1360,7 @@ impl Store {
             "UPDATE workspace_restores SET status='unknown',finished_at=?1 WHERE status='claimed'",
             [now()],
         )?;
+        tx.execute("UPDATE workspace_changes SET restore_state='unknown' WHERE id IN (SELECT change_id FROM workspace_restore_outcomes WHERE status='claimed')", [])?;
         tx.execute("UPDATE workspace_restore_outcomes SET status='unknown',updated_at=?1 WHERE status='claimed'", [now()])?;
         for previous in pending {
             if repository::Repository::new(&tx).turn(&previous.id)?.status != previous.status {
@@ -1374,6 +1375,29 @@ impl Store {
 fn workspace_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PreparedChange> {
     let kind: String = row.get(8)?;
     let state: String = row.get(12)?;
+    let invalid = |column, name| {
+        rusqlite::Error::FromSqlConversionFailure(
+            column,
+            rusqlite::types::Type::Text,
+            Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, name)),
+        )
+    };
+    let kind = match kind.as_str() {
+        "created" => ChangeKind::Created,
+        "modified" => ChangeKind::Modified,
+        _ => return Err(invalid(8, "invalid workspace change kind")),
+    };
+    let state = match state.as_str() {
+        "prepared" => ChangeState::Prepared,
+        "finished" => ChangeState::Finished,
+        "unknown" => ChangeState::Unknown,
+        "failed" => ChangeState::Failed,
+        _ => return Err(invalid(12, "invalid workspace change state")),
+    };
+    let restore_state: String = row.get(13)?;
+    if !matches!(restore_state.as_str(), "pending" | "restored" | "unknown") {
+        return Err(invalid(13, "invalid workspace restore state"));
+    }
     Ok(PreparedChange {
         id: row.get(0)?,
         task_id: row.get(1)?,
@@ -1383,21 +1407,12 @@ fn workspace_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PreparedCha
         write_scopes: row.get(5)?,
         path: row.get(6)?,
         path_key: row.get(7)?,
-        kind: if kind == "created" {
-            ChangeKind::Created
-        } else {
-            ChangeKind::Modified
-        },
+        kind,
         before_blob: row.get(9)?,
         before_digest: row.get(10)?,
         after_digest: row.get(11)?,
-        state: match state.as_str() {
-            "prepared" => ChangeState::Prepared,
-            "finished" => ChangeState::Finished,
-            "unknown" => ChangeState::Unknown,
-            _ => ChangeState::Failed,
-        },
-        restore_state: row.get(13)?,
+        state,
+        restore_state,
     })
 }
 
