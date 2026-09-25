@@ -2,7 +2,7 @@
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{OriginalUri, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -318,9 +318,26 @@ async fn cl01_list_get_human_json_and_empty() {
     assert!(list.status.success(), "{}", stderr(&list));
     let value: Value = serde_json::from_slice(&list.stdout).unwrap();
     assert_eq!(value["approvals"][0]["id"], id);
+    let list_human = cli(p, &["task", "approvals", &task.id]);
+    assert_eq!(stdout(&list_human), format!("{id}\tpending\tnot_started\n"));
     let get = cli(p, &["approval", "get", &id]);
     assert!(get.status.success());
     assert_eq!(stdout(&get), format!("{id}\tpending\tnot_started\n"));
+    let get_json = cli(p, &["--json", "approval", "get", &id]);
+    assert!(get_json.status.success());
+    let actual: Value = serde_json::from_slice(&get_json.stdout).unwrap();
+    let expected: Value = reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .unwrap()
+        .get(format!("{}/api/approvals/{id}", h.origin))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(actual, expected);
     let empty = seed_task(&h.engine.store, h._dir.path(), "empty-task");
     let empty = cli(p, &["task", "approvals", &empty.id]);
     assert_eq!(stdout(&empty), "没有审批请求\n");
@@ -373,9 +390,11 @@ async fn cl03_remote_cli_does_not_initialize_local_state_or_execute_without_wait
     let mut task = seed_task(&h.engine.store, h._dir.path(), "remote-task");
     let id = card(&h, &mut task, "write", "remote");
     let local = tempfile::tempdir().unwrap();
-    let output = cli_in(port(&h.origin), &["approval", "approve", &id], local.path());
+    let cwd = local.path().join("cwd");
+    std::fs::create_dir(&cwd).unwrap();
+    let output = cli_in(port(&h.origin), &["approval", "approve", &id], &cwd);
     assert!(output.status.success(), "{}", stderr(&output));
-    assert!(!local.path().join("../data-rust").exists());
+    assert!(!local.path().join("data-rust").exists());
     assert_eq!(h.provider_calls.load(Ordering::SeqCst), 0);
     assert!(!h._dir.path().join("src/write.txt").exists());
     assert_eq!(
@@ -396,9 +415,11 @@ async fn cl04_http_errors_are_json_on_stderr_with_exit_one() {
         json!({"code":"not_found","message":"审批不存在","retryable":false,"error":"审批不存在"})
     );
     let missing_task = cli(port(&h.origin), &["--json", "task", "approvals", "missing"]);
+    assert_eq!(missing_task.status.code(), Some(1));
+    assert!(missing_task.stdout.is_empty());
     assert_eq!(
-        serde_json::from_slice::<Value>(&missing_task.stderr).unwrap()["code"],
-        "not_found"
+        serde_json::from_slice::<Value>(&missing_task.stderr).unwrap(),
+        json!({"code":"not_found","message":"任务不存在","retryable":false,"error":"任务不存在"})
     );
     let mut task = seed_task(&h.engine.store, h._dir.path(), "conflict-task");
     let id = card(&h, &mut task, "write", "x");
@@ -409,9 +430,10 @@ async fn cl04_http_errors_are_json_on_stderr_with_exit_one() {
     );
     let conflict = cli(port(&h.origin), &["--json", "approval", "deny", &id]);
     assert_eq!(conflict.status.code(), Some(1));
+    assert!(conflict.stdout.is_empty());
     assert_eq!(
-        serde_json::from_slice::<Value>(&conflict.stderr).unwrap()["code"],
-        "conflict"
+        serde_json::from_slice::<Value>(&conflict.stderr).unwrap(),
+        json!({"code":"conflict","message":"审批当前状态不能执行此操作","retryable":false,"error":"审批当前状态不能执行此操作"})
     );
     assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
     let injected = cli(
@@ -426,11 +448,15 @@ async fn cl04_http_errors_are_json_on_stderr_with_exit_one() {
     assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
 }
 
-#[test]
-fn cl05_parse_errors_exit_two_without_files() {
+#[tokio::test(flavor = "multi_thread")]
+async fn cl05_parse_errors_exit_two_without_files() {
     let dir = tempfile::tempdir().unwrap().path().join("untouched");
+    let too_long = "x".repeat(129);
     for args in [
-        vec!["--data-dir", dir.to_str().unwrap(), "approval", "get", ".."],
+        vec!["approval", "get", "."],
+        vec!["approval", "get", ".."],
+        vec!["approval", "get", "bad\ncontrol"],
+        vec!["approval", "get", too_long.as_str()],
         vec![
             "--data-dir",
             dir.to_str().unwrap(),
@@ -458,6 +484,30 @@ fn cl05_parse_errors_exit_two_without_files() {
     let output = cli(1, &["approval", "get", sensitive]);
     assert_eq!(output.status.code(), Some(2));
     assert!(!stderr(&output).contains(sensitive));
+
+    let seen = Arc::new(Mutex::new(Vec::<String>::new()));
+    let captured = seen.clone();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let p = listener.local_addr().unwrap().port();
+    let app = Router::new().fallback(move |uri: OriginalUri| {
+        let captured = captured.clone();
+        async move {
+            captured.lock().unwrap().push(uri.to_string());
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({"code":"not_found","message":"审批不存在","retryable":false,"error":"审批不存在"})),
+            )
+        }
+    });
+    let _server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let boundary = "b".repeat(128);
+    for id in [&boundary, "a/b?c#d%2f"] {
+        let output = cli(p, &["--json", "approval", "get", id]);
+        assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    }
+    let seen = seen.lock().unwrap();
+    assert!(seen[0].ends_with(&boundary));
+    assert!(seen[1].contains("a%2Fb%3Fc%23d%252f"), "{}", seen[1]);
 }
 
 #[derive(Clone)]
@@ -504,6 +554,120 @@ fn approval(id: &str, status: &str, execution: &str) -> Value {
         "preview":"write src/a","session_id":null,"turn_id":null,"decided_by":"user",
         "status":status,"execution_state":execution,"created_at":1,"decided_at":2
     })
+}
+
+fn assert_invalid_response(output: &Output) {
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(error["code"], "internal");
+    assert_eq!(error["message"], "本机服务审批响应无效");
+    assert_eq!(error["error"], error["message"]);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cl01_command_shape_is_fixed_for_list_get_approve_and_deny() {
+    let posts = Arc::new(AtomicUsize::new(0));
+    let post_count = posts.clone();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let p = listener.local_addr().unwrap().port();
+    let single = approval("approval-shape", "pending", "not_started");
+    let app = Router::new()
+        .route(
+            "/api/tasks/{id}/approvals",
+            get({
+                let single = single.clone();
+                move || {
+                    let single = single.clone();
+                    async move { Json(single) }
+                }
+            }),
+        )
+        .route(
+            "/api/approvals/{id}",
+            get(|| async { Json(json!({"approvals":[]})) }),
+        )
+        .route(
+            "/api/bootstrap",
+            get(|| async { Json(json!({"token":"shape-token"})) }),
+        )
+        .route(
+            "/api/approvals/{id}/decision",
+            post(move || {
+                let post_count = post_count.clone();
+                async move {
+                    post_count.fetch_add(1, Ordering::SeqCst);
+                    Json(json!({"approvals":[]}))
+                }
+            }),
+        );
+    let _server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    assert_invalid_response(&cli(p, &["--json", "task", "approvals", "task-shape"]));
+    assert_invalid_response(&cli(p, &["--json", "approval", "get", "approval-shape"]));
+    assert_invalid_response(&cli(
+        p,
+        &["--json", "approval", "approve", "approval-shape"],
+    ));
+    assert_invalid_response(&cli(p, &["--json", "approval", "deny", "approval-shape"]));
+    assert_eq!(posts.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cl09_escaped_token_is_rejected_in_success_and_error_fields() {
+    let token = "quoted\"and\\backslash-token";
+    let boot = Arc::new(AtomicUsize::new(0));
+    let posts = Arc::new(AtomicUsize::new(0));
+    let mut success = approval("approval-token", "approved", "unknown");
+    success["preview"] = json!(format!("preview {token}"));
+    let (p, _server) = mock(MockState {
+        bootstrap: json!({"token":token}),
+        decision: success,
+        decision_status: StatusCode::OK,
+        bootstrap_calls: boot,
+        decision_calls: posts.clone(),
+        delay_ms: 0,
+        decision_delay_ms: 0,
+    })
+    .await;
+    for mode in [
+        vec!["approval", "approve", "approval-token"],
+        vec!["--json", "approval", "approve", "approval-token"],
+    ] {
+        let output = cli(p, &mode);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stdout.is_empty());
+        assert!(!stderr(&output).contains(token));
+    }
+    assert_eq!(posts.load(Ordering::SeqCst), 2);
+
+    let boot = Arc::new(AtomicUsize::new(0));
+    let posts = Arc::new(AtomicUsize::new(0));
+    let mut nested = serde_json::Map::new();
+    nested.insert(token.to_owned(), json!({"nested":token}));
+    let error = json!({
+        "code":"conflict","message":"safe conflict","retryable":false,"error":"safe conflict",
+        "extra": Value::Object(nested)
+    });
+    let (p, _server) = mock(MockState {
+        bootstrap: json!({"token":token}),
+        decision: error,
+        decision_status: StatusCode::CONFLICT,
+        bootstrap_calls: boot,
+        decision_calls: posts.clone(),
+        delay_ms: 0,
+        decision_delay_ms: 0,
+    })
+    .await;
+    for mode in [
+        vec!["approval", "deny", "approval-token"],
+        vec!["--json", "approval", "deny", "approval-token"],
+    ] {
+        let output = cli(p, &mode);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stdout.is_empty());
+        assert!(!stderr(&output).contains(token));
+    }
+    assert_eq!(posts.load(Ordering::SeqCst), 2);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -673,6 +837,34 @@ async fn cl08_check_and_server_startup_remain_compatible() {
     let p = listener.local_addr().unwrap().port();
     drop(listener);
     let server_data = dir.path().join("server-data");
+    let prepare = Command::new(BIN)
+        .args([
+            "--data-dir",
+            server_data.to_str().unwrap(),
+            "--legacy-data",
+            legacy.to_str().unwrap(),
+            "--workspace",
+            workspace.to_str().unwrap(),
+            "--check",
+        ])
+        .output()
+        .unwrap();
+    assert!(prepare.status.success());
+    let approval_id = {
+        let store = Store::open(&server_data.join("peachsh.sqlite3")).unwrap();
+        let mut task = seed_task(&store, &workspace, "locked-task");
+        let args = json!({"path":"src/locked.txt","content":"locked"});
+        task.messages.push(json!({
+            "role":"assistant",
+            "tool_calls":[{"id":"locked-call","type":"function","function":{"name":"write_file","arguments":args.to_string()}}]
+        }));
+        store.save_task(&task).unwrap();
+        store
+            .ensure_approval(&task, "locked-call", "write_file", &args)
+            .unwrap()
+            .0
+            .id
+    };
     let mut child = Command::new(BIN)
         .args([
             "--port",
@@ -704,6 +896,27 @@ async fn cl08_check_and_server_startup_remain_compatible() {
     })
     .await
     .unwrap();
+    let second_port = if p == u16::MAX { p - 1 } else { p + 1 };
+    let second = Command::new(BIN)
+        .args([
+            "--port",
+            &second_port.to_string(),
+            "--data-dir",
+            server_data.to_str().unwrap(),
+            "--legacy-data",
+            legacy.to_str().unwrap(),
+            "--workspace",
+            workspace.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(second.status.code(), Some(1));
+    let connected = cli(p, &["task", "approvals", "locked-task"]);
+    assert!(connected.status.success(), "{}", stderr(&connected));
+    assert_eq!(
+        stdout(&connected),
+        format!("{approval_id}\tpending\tnot_started\n")
+    );
     child.kill().unwrap();
     child.wait().unwrap();
 }

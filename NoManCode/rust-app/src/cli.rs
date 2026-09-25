@@ -133,28 +133,36 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
     let origin = Url::parse(&format!("http://127.0.0.1:{port}/"))
         .map_err(|_| Failure::fixed("internal", "本机服务地址无效", false))?;
 
-    let value = match command {
+    let (value, shape) = match command {
         Command::Task(task) => match task.command {
             TaskCommand::Approvals { task_id } => {
                 let url = endpoint(&origin, &["api", "tasks", &task_id, "approvals"])?;
-                request_json(client.get(url), false).await?
+                (
+                    request_json(client.get(url), false, None).await?,
+                    SuccessShape::List,
+                )
             }
         },
         Command::Approval(approval) => match approval.command {
             ApprovalCommand::Get { approval_id } => {
                 let url = endpoint(&origin, &["api", "approvals", &approval_id])?;
-                request_json(client.get(url), false).await?
+                (
+                    request_json(client.get(url), false, None).await?,
+                    SuccessShape::Single,
+                )
             }
-            ApprovalCommand::Approve { approval_id } => {
-                decide(&client, &origin, &approval_id, "approve").await?
-            }
-            ApprovalCommand::Deny { approval_id } => {
-                decide(&client, &origin, &approval_id, "deny").await?
-            }
+            ApprovalCommand::Approve { approval_id } => (
+                decide(&client, &origin, &approval_id, "approve").await?,
+                SuccessShape::Single,
+            ),
+            ApprovalCommand::Deny { approval_id } => (
+                decide(&client, &origin, &approval_id, "deny").await?,
+                SuccessShape::Single,
+            ),
         },
     };
 
-    let value = normalize_success(value)?;
+    let value = normalize_success(value, shape)?;
     if json_output {
         println!("{value}");
     } else if let Some(approvals) = value.get("approvals").and_then(Value::as_array) {
@@ -184,25 +192,15 @@ async fn decide(client: &Client, origin: &Url, id: &str, decision: &str) -> Resu
         ));
     }
     let url = endpoint(origin, &["api", "approvals", id, "decision"])?;
-    let result = request_json(
+    request_json(
         client
             .post(url)
             .header("x-peachsh-token", &bootstrap.token)
             .json(&json!({"decision":decision})),
         true,
+        Some(&bootstrap.token),
     )
-    .await;
-    match result {
-        Ok(value) if value.to_string().contains(&bootstrap.token) => {
-            Err(Failure::fixed("internal", "本机服务返回不安全响应", false))
-        }
-        Err(error) if error.message.contains(&bootstrap.token) => Err(Failure::fixed(
-            "internal",
-            "本机服务返回不安全错误响应",
-            false,
-        )),
-        other => other,
-    }
+    .await
 }
 
 async fn request_bootstrap(request: reqwest::RequestBuilder) -> Result<Value, Failure> {
@@ -238,6 +236,7 @@ fn endpoint(origin: &Url, segments: &[&str]) -> Result<Url, Failure> {
 async fn request_json(
     request: reqwest::RequestBuilder,
     decision_post: bool,
+    known_token: Option<&str>,
 ) -> Result<Value, Failure> {
     let response = request.send().await.map_err(|error| {
         if decision_post {
@@ -259,6 +258,9 @@ async fn request_json(
     })?;
     let value: Value = serde_json::from_slice(&bytes)
         .map_err(|_| Failure::fixed("internal", "本机服务返回无效 JSON", false))?;
+    if known_token.is_some_and(|token| contains_string(&value, token)) {
+        return Err(Failure::fixed("internal", "本机服务返回不安全响应", false));
+    }
     if status.is_success() {
         return Ok(value);
     }
@@ -329,8 +331,14 @@ async fn limited_body(response: reqwest::Response) -> Result<Vec<u8>, Failure> {
     Ok(body)
 }
 
-fn normalize_success(value: Value) -> Result<Value, Failure> {
-    if value.get("approvals").is_some() {
+#[derive(Clone, Copy)]
+enum SuccessShape {
+    List,
+    Single,
+}
+
+fn normalize_success(value: Value, shape: SuccessShape) -> Result<Value, Failure> {
+    if matches!(shape, SuccessShape::List) {
         let list: ApprovalList = serde_json::from_value(value)
             .map_err(|_| Failure::fixed("internal", "本机服务审批响应无效", false))?;
         for approval in &list.approvals {
@@ -344,6 +352,18 @@ fn normalize_success(value: Value) -> Result<Value, Failure> {
     validate_approval_fields(&approval)?;
     serde_json::to_value(approval)
         .map_err(|_| Failure::fixed("internal", "本机服务审批响应无效", false))
+}
+
+fn contains_string(value: &Value, needle: &str) -> bool {
+    match value {
+        Value::String(text) => text.contains(needle),
+        Value::Array(values) => values.iter().any(|value| contains_string(value, needle)),
+        Value::Object(values) => {
+            values.keys().any(|key| key.contains(needle))
+                || values.values().any(|value| contains_string(value, needle))
+        }
+        _ => false,
+    }
 }
 
 fn validate_approval(value: &Value) -> Result<(), Failure> {
