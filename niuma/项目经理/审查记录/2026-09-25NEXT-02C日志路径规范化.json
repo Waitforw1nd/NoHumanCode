@@ -1,0 +1,62 @@
+{
+  "at": "2026-09-25T14:20:11.4897418+08:00",
+  "author": "project-manager",
+  "scope": "log path normalization only; command results, exit codes and test counts unchanged",
+  "changes": [
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/approval-gate.final.log",
+      "before_sha256": "8139b65d3ee956069582105b8d50a1c57e4dc4f9f4946ae0bf0e105d4dcc5ac8",
+      "after_sha256": "fe8f6cadd48bd12a15f6125168aef5d2095d5384d321007fbc7660c1d686e469"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/approval-gate.log",
+      "before_sha256": "734f1c57ae721105f1695db1718210f5ab6f60fc43091978b2806afba0cf8842",
+      "after_sha256": "f1ee9c91012c5062c65cac82a6fdddaa4689ca48945afbef014ab13b5f2856b5"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/approval-gate.pre-redact.log",
+      "before_sha256": "d59c2d2fc25abd0744e39f93f518c719d1a529d9765269c9c0189c991b653c5a",
+      "after_sha256": "4e96cff962af7ced776f37a428249dca710693b8a1dfd1fb327b51af1a86dd0a"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/clippy.log",
+      "before_sha256": "10020ed85a1a361f3a315206b7dd5476f4975b7e3bcdcd092f4d959aafaa2b60",
+      "after_sha256": "077b10a8a9b1069f260d9268ac738321c271da9954673ee5b1e295dea65bd335"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/lib.final.log",
+      "before_sha256": "acb3231939bb1ceaca5d048348b7f01677443423c71cca61eb03c68d62fb7675",
+      "after_sha256": "b3964602fa246a4cec3f7a1d6f26a00acaf4ab430aeb56034e2f1fae6a787fd0"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/lib.initial-no-msvc.log",
+      "before_sha256": "fbe00fbef10471ac43e60491d9f0a006547a9270fc96b36bd0ae3c0b154f631b",
+      "after_sha256": "fc2f58a82070e0bf3e2b0c81af82cf29647d263c218208b412fa78c303674951"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/lib.log",
+      "before_sha256": "5958d3a86d80ca19c17c9bfda4c5dfabe84185b2e7cb7767c27ada6e5854f3d6",
+      "after_sha256": "7aaa6a7f4f00308b7b0dd03741a761e89226530ac94e50792a22ce7ea302017e"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/runtime.final.log",
+      "before_sha256": "502a7ed19af339017f5d4d225ee1891abe2252118937166828c8b42d83f0ca02",
+      "after_sha256": "9bfacae3d3bd797c2b360c5623a8728029de42100b12dcb356711430e107afa3"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.1轮证据/runtime.log",
+      "before_sha256": "7eb83e3b4399f1bb0718b19e7d9f389c5d483987ba26ef0a35cb28db73a6420c",
+      "after_sha256": "5c0260febae657fa30a794d1e99aafa2de22d3ec75b00bf2d0c9ca2921229450"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.2轮组合证据/clippy.log",
+      "before_sha256": "7d19f4e1d602e59e187e2fa5dc5498ba71cc01bab21c3714c3cd9da53b198e8c",
+      "after_sha256": "42512c4f844799c2fac3ee8eee59355341d771eebc543c0a8e87abe083b53212"
+    },
+    {
+      "path": "niuma/员工B/提交报告/第二轮/B-R2-01第1.2轮组合证据/test.log",
+      "before_sha256": "77c713bee4783f61f65b54683dd05695795fb6e911899c1efb6237de6b464481",
+      "after_sha256": "67c066a5946bc942078f57c5e2525570483ee2588ae4732597eb1323e4c297f8"
+    }
+  ]
+}

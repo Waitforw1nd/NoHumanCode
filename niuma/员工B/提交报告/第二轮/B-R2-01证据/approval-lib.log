@@ -1,0 +1,13 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.36s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+   Compiling peachsh v0.2.0 (../nhc-b-approval/NoManCode/rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.60s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-65a9b0539ea16e0f.exe)
+
+running 2 tests
+test approval::tests::classification_defaults_unknown_tools_to_approval_deny ... ok
+test approval::tests::digest_is_stable_and_preview_omits_secret_and_body ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.00s
+

@@ -1,0 +1,8 @@
+{
+  "command": "./build.ps1 -Action check; cargo test -p peachsh --locked --test runtime",
+  "exit_code": 0,
+  "bootstrap_exit_code": 0,
+  "working_directory": "NoManCode/rust-app",
+  "vsinstalldir_process_override": true,
+  "finished_at": "2026-09-25T14:04:27.7986488+08:00"
+}

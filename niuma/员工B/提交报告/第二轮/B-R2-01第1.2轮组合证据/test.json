@@ -1,0 +1,9 @@
+{
+  "command": "./build.ps1 -Action test",
+  "exit_code": 0,
+  "working_directory": "NoManCode/rust-app",
+  "commit": "0b44eda5ded2aeb2d5d5930df5775070dd270105",
+  "vsinstalldir_process_override": true,
+  "started_at": "2026-09-25T14:12:07.3359610+08:00",
+  "finished_at": "2026-09-25T14:12:32.0707350+08:00"
+}

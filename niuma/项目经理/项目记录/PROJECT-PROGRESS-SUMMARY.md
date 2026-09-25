@@ -1,23 +1,48 @@
+## 最新收口：2026-09-25 三员工并行已完成
+
+B修复7611683与C支持891263a组合0b44eda5ded2aeb2d5d5930df5775070dd270105，A独立复核两问题闭合；B实跑五标准门禁全0、206通过/0失败/1忽略。经理review 1.1范围APPROVED，审查提交477c5c2后整合main为ccbeefd4eb93020ad5323dbdc66b6ce81376e601，Rust源码tree与受测组合一致。[整合记录](../审查记录/2026-09-25NEXT-02C整合记录.md)、[经理报告](../提交报告/2026-09-25GPT5.6员工并行收口.md)。原候选/报告/失败日志保留；未推送/发布，不清理工作树。下一步完善C-R3正式任务，当前三个员工已完成且无新功能派发。下方启动/执行中描述为历史过程。
+
+# 最新交接：2026-09-25 GPT-5.6-sol员工并行收口
+
+用户指定主对话为经理，多个GPT-5.6-sol子代理作为员工；已启动B（原任务接续，store/runtime回归适配）、C（仅http_contract版本预期）、A（固定候选只读安全复核）。见[任务单](../任务/2026-09-25审批候选并行收口.md)及[现行任务板](../当前任务板.md)。本轮明确有限修订原禁止旧测试写权，安全断言不可削弱。B候选50de5456b8c0d412aff4e90821bdde221f066a2d已经交第1.0报告，AP12五失败待闭合；不是未收到修订2。C新HTTP草案仍未派发。
+
+B继续原工作树/分支和B-R2-01-20260925-0232；C新工作树../nhc-c-approval-regression、codex/c/approval-regression从同候选建立。各员工只写本人档案，经理保留共享main及所有已有未提交资料。下一步收实际报告、审查具体缺陷和旧安全断言，再安排固定组合门禁；暂未验收或整合。以下历史进度不覆盖本段。
+
+---
 
 # NoHumanCode 项目进度与模型自我述职摘要
 
-## 最新交接：2026-09-25
+## 最新交接：2026-09-25（接任、swarm 与契约收口）
 
-### NEXT-02B 已验收并整合入 main
+### 本轮事实
+
+- 用户要求接任项目经理，读完入口后直接启动 swarm。已按根入口必读，并实际使用两个 Grok 4.7 只读辅助审查审批风险与 API 设计；另一文档辅助只改经理档案。这些辅助不是员工实现者，不冒充 B 或 C。
+- 共享主树当前 HEAD `d8cd41c15b6f880b1b277ad58f9111257bde2ac0`，index 空。接任初态只有未提交的 B 身份接手卡。首次完整基线仍是 `b67fedfcd6ca35969363096ea64ddd5fb1290524`，与当前 HEAD 不是同一提交。
+- D builtin Host 已按范围验收并整合；A、D 无在途任务。C 旧任务按范围通过，不重开。
+- B-R2-01 修订1已由用户派发。唯一执行者 `B-R2-01-20260925-0232`；任务工作树 `../nhc-b-approval/`，分支 `codex/b/approval`，开发基线 `40da4903ab603d805bc1671a148b39aa86b0b7fc`。只读观察到该工作树已修改 engine/lib/repository/store 并新增 approval.rs，共五处，授权范围是六处。尚无 B 第二轮报告或正式候选，不重复派工，不覆盖在途修改。
+- 经理对照主树已验收旧工具循环与修订1契约做了补充审查，见 [契约补充审查](../审查记录/2026-09-25NEXT-02C契约补充审查.md)。已备 [修订2](../../员工B/任务/第二轮/审批网关契约补充修订2.md) 与 [安全补充提示词](../../员工B/任务/第二轮/员工B提示词-安全补充修订2.md)，待用户转交同一 B。未确认收到，不能写 B 已按修订2执行。
+- 收紧点：作用域绑定；防止脱敏后按错参执行；approved 与 execution_state 分离；claim 前提交；未知结果不重跑、不伪造；取消 CAS 与唤醒；schema 迁移。同任务、同一六处授权范围，经理不接管实现。
+- [审批 HTTP 契约草案](../../员工C/任务/第三轮/审批HTTP契约草案.md) 由独立辅助编写，标识 C-R3-01 / NEXT-02D。要等 B 安全实现通过整合且公开 API 冻结后，才有完整开发基线、工作树和分发。C 当前无新写权。
+- 本轮管理记录将为 [任务](../任务/2026-09-25审批契约接续与HTTP草案.md) 与 [报告](../提交报告/2026-09-25接任与审批契约收口.md)。本轮未跑产品测试；历史 172 通过、0 失败、1 付费忽略是 NEXT-02B 当次证据，不算本次。未 Git 提交、整合、推送或新建工作树。父代理文档验证尚未完成，不写最终检查全部通过。
+- 下一步：把修订2交给用户转交同一执行者。B 第二轮报告到达后绑定候选 SHA review，再按 §6 整合。此前不给 C 实现写权。
+
+下方 2026-09-25 的 NEXT-02B 整合段与 NEXT-02C“待分发、无执行者”段保留为当时事实，已被本节覆盖，不再代表当前派发状态。
+
+### NEXT-02B 已验收并整合入 main（历史，派发状态已被上方最新交接覆盖）
 
 - D-R2-01 / NEXT-02B（插件 Host 注册表与可撤销生命周期，builtin）由 SWE2max 员工D 交付：工作树 `../nhc-d-plugin-host` 分支 `codex/d/plugin-host` 候选 `1223f6b80591eb5c54e480f09991f67e525e3b08`，含 `src/plugin_host.rs`（1488 行）、`tests/plugin_host.rs`（2323 行，23 个集成测试）、`lib.rs` 一行导出；见 [第1.0轮报告](<../../员工D/提交报告/第二轮/员工D（插件Host注册表与生命周期 第1.0轮报告）.md>)。
 - 经理审查：候选 `git diff b67fedf..HEAD` 恰好授权三处、sha256 与证据 `candidate-sha256.txt` 一致、测试仅走公开 API；通读确认受限 PluginContext、provides 全覆盖校验、激活失败逆序回滚、DependentsActive/级联停、catch_unwind、pending_recovery 无残留均符合契约。独立实跑 `--test plugin_host` 23/23、模块单测 6/6、`cargo test --workspace --locked` 172 通过 0 失败 1 付费忽略、fmt/clippy/wasm-check 全绿。[D review 1.0](<../../员工D/审查记录/第二轮/员工D review 1.0.md>) 结论 **APPROVED**，含 4 条 P2 保留项，review 记录单独提交 `7cf8663`。
 - 整合：`git merge --no-ff codex/d/plugin-host` → merge commit `0fe73f3a8dfb940d1aaa71cb71ccdadad92d151c` 入 main；工作树与任务分支已清理；[整合记录](../审查记录/2026-09-25NEXT-02B整合记录.md)已写。未推送、无远程；`codex/manager/baseline` 标记分支保留。
 - 交付边界：builtin Host（注册表/受限 Context/effect 注册/五态+Failed 生命周期/pending_recovery）已在 main；wasm/process 执行、审批/capability、持久化、HTTP/CLI 接入仍不在范围。
-- 下一步：审批/capability→Workspace/Diff→CLI 主线；新任务单写明基线与唯一写入人。A/B/C 无新任务，D 无在途任务。
+- 下一步（当时）：审批/capability→Workspace/Diff→CLI 主线；新任务单写明基线与唯一写入人。当时记录 A/B/C 无新任务，D 无在途任务。该人员状态已被本节之前的最新交接覆盖。
 
-### NEXT-02C 审批网关任务包已备（最新）
+### NEXT-02C 审批网关任务包已备（2026-09-25 准备阶段，派发状态已被上方最新交接覆盖）
 
 - 按任务板"NEXT-02后续"完成审批/capability 切片准备：[B-R2-01 契约](../../员工B/任务/第二轮/审批与Capability网关契约.md)（ToolCall 逐次审批与 Capability 网关，Host 应用层）+ [提示词](../../员工B/任务/第二轮/员工B提示词.md) + [任务单](../任务/2026-09-25NEXT-02C审批网关任务包.md) + [自审](../审查记录/2026-09-25NEXT-02C任务包审查.md)。状态：待用户分发，无执行者，不宣称 B 已开工。
 - 契约固定语义：capability 纯函数分类（读与 run_wasm 直通、write_file/run_command 需审批、新工具默认需审批）；schema 7 `approvals` 表（`tool_call_id` 唯一+`args_digest` 参数摘要+脱敏 preview，pending/approved/denied/cancelled）；闸门在 definitions 白名单后、`file_backup`/`execute` 前；`decide_approval` 库级入口（行+事件同事务）；`recover` 保持 pending；`resume` 按审批行 reconcile 不再 interrupted 封口；审批一次性绑定参数快照。
 - 独立工作树 `../nhc-b-approval` 分支 `codex/b/approval` @ `40da490` 已建并核对；B 唯一写入六处（新 approval.rs、repository.rs、store.rs、engine.rs、lib.rs 一行、新 tests/approval_gate.rs）。
 - 推迟边界：审批 HTTP/CLI 传输面（后续 C 切片消费 `decide_approval`/`ApprovalRecord` 公开面）、插件化 capability、自动放行/持久授权、run_wasm 审批、超时过期、等待期释放并发许可。
-- 下一步：用户分发后 B 登记执行标识开工；报告到达后经理 review 候选 SHA 并按 §6 整合。之后顺序：Workspace/Diff→CLI。
+- 下一步（当时）：用户分发后 B 登记执行标识开工；报告到达后经理 review 候选 SHA 并按 §6 整合。之后顺序：Workspace/Diff→CLI。该“待分发、无执行者”描述只属于准备阶段，已被本节之前的最新交接覆盖：修订1已派发，修订2待转交。
 
 ### NEXT-02B 插件 Host 任务包已备（2026-09-23，已被上方更新）
 
@@ -292,4 +317,3 @@
 ## 并行开发提示
 
 在本轮记录提交后，发现 `rust-app` 已出现未提交的后端改动：`crates/protocol`、`src/domain.rs`、`src/lib.rs`、`src/store.rs` 和新增的 `src/repository.rs`。这些改动不是本轮记录机制创建的，已保持原样，没有回滚、覆盖或代为提交。后续由后端负责人先报告变更范围、测试结果和契约影响，再由项目总监决定是否纳入基线。
-

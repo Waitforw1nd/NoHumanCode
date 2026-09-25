@@ -1,0 +1,19 @@
+candidate_sha=50de5456b8c0d412aff4e90821bdde221f066a2d
+probe=niuma/员工A/提交报告/第二轮/A-AP12-AUDIT证据/audit_redaction_paths.rs
+source_snapshot=git archive of candidate SHA (temporary, removed from repository after run)
+target_dir=isolated temporary target outside the repository after run
+
+first_attempt=cargo test --test audit_redaction_paths -- --nocapture
+first_exit_code=1
+first_result=environment failure: linker link.exe was not loaded in PATH; no test ran
+
+effective_command=load Visual Studio x64 developer environment, set isolated CARGO_TARGET_DIR, then cargo test --test audit_redaction_paths -- --nocapture
+effective_exit_code=0
+
+running 1 test
+message_content="{\"status\":0,\"stderr\":\"\",\"stdout\":\"bearer [redacted]"
+message_result="{\"status\":0,\"stderr\":\"\",\"stdout\":\"bearer [redacted]"
+event_result={"status":0,"stderr":"","stdout":"bearer [redacted]\r\n"}
+test approved_command_bearer_output_diverges_between_finished_evidence_paths ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out

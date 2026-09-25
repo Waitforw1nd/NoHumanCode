@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-09-25T09:47:05.1028233+08:00",
+  "candidate": "50de5456b8c0d412aff4e90821bdde221f066a2d",
+  "baseline": "40da4903ab603d805bc1671a148b39aa86b0b7fc",
+  "execution_id": "B-R2-01-20260925-0232",
+  "source_hashes_match": true,
+  "document_links_exist": true,
+  "regression": {
+    "ignored": 1,
+    "failed": 5,
+    "passed": 198
+  },
+  "ap12": "failed_pending_manager_scope_review",
+  "accepted": false,
+  "merged": false,
+  "published": false
+}

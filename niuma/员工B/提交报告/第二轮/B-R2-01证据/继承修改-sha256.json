@@ -1,0 +1,22 @@
+[
+  {
+    "path": "NoManCode/rust-app/src/approval.rs",
+    "sha256": "3849CDDC23B2C00CA2F07E301F58BAAB4D99194514358ECE6823FA016214E41F"
+  },
+  {
+    "path": "NoManCode/rust-app/src/repository.rs",
+    "sha256": "D1BC7B7BE99EB77EF4AAC7742FB5358ECA72F5C5DE5EF11AEC06DC3A50426497"
+  },
+  {
+    "path": "NoManCode/rust-app/src/store.rs",
+    "sha256": "DE22B35196224F1A709871901BEC75B32D5FB4BF4AF495F83EFB27C0F781A156"
+  },
+  {
+    "path": "NoManCode/rust-app/src/engine.rs",
+    "sha256": "5196F4080562B683160F28C744C4BA01B56307D31F7FF368AC27BD5F5B6A4909"
+  },
+  {
+    "path": "NoManCode/rust-app/src/lib.rs",
+    "sha256": "1FCE7C206804E709B10ECBB02B503EE159589624241B6E44CD870790103F5683"
+  }
+]

@@ -1,0 +1,41 @@
+    Checking peachsh v0.2.0 (../nhc-b-approval/NoManCode/rust-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.15s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+   Compiling peachsh v0.2.0 (../nhc-b-approval/NoManCode/rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.26s
+     Running tests\approval_gate.rs (target\debug\deps\approval_gate-9d16801359d4f937.exe)
+
+running 29 tests
+test ap14_binding_changes_rejected_without_new_events ... ok
+test ap13_cross_task_same_call_isolated ... ok
+test ap20_public_query_order_and_corruption_distinct_from_missing ... ok
+test ap16_public_finish_failure_preserves_all_transaction_inputs ... ok
+test ap19_constraints_enforced_and_partial_ddl_retry ... ok
+test ap19_schema6_preservation_atomic_migration_and_forged_constraints ... ok
+test ap17_claim_cancel_order_and_stale_completed ... ok
+test ap08_cancel_pending_is_durable ... ok
+test ap13_empty_id_and_ambiguous_history_fail_closed ... ok
+test ap03_ap09_denied_and_decision_conflicts ... ok
+test ap04_read_tools_pass_through ... ok
+test ap14_redacted_arguments_cannot_resume_as_substitute ... ok
+test ap10_ap11_safe_previews_independent_calls ... ok
+test ap01_ap02_pending_then_approved_executes_once ... ok
+test ap15_claimed_before_execute_runtime_stops_then_unknown ... ok
+test ap16_finish_transaction_fault_rolls_back ... ok
+test ap18_cancel_before_new_waiter_resume_has_safe_cancel_result ... ok
+test ap13_duplicate_groups_have_no_effect ... ok
+test ap14_persisted_workspace_and_permission_changes_conflict ... ok
+test ap06_reconcile_preserves_order_with_pending_and_unapproved_calls ... ok
+test ap15_approved_before_claim_stopped_runtime_executes_once ... ok
+test ap16_finished_restart_never_reexecutes_and_missing_result_is_corrupt ... ok
+test ap06_ap07_ap18_runtime_restart_and_decide_before_waiter ... ok
+test ap18_decision_and_cancel_from_other_store_are_observed ... ok
+test ap15_real_command_effect_then_runtime_stop_unknown ... ok
+test ap05_command_waits_and_runs_once ... ok
+test ap17_multistore_cancel_claim_barrier ... ok
+test ap17_cancel_after_real_claim_preserves_real_result_and_stops_next_call ... ok
+test ap17_multistore_decision_cancel_race ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+

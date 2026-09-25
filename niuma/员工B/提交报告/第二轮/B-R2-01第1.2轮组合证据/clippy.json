@@ -1,0 +1,9 @@
+{
+  "command": "./build.ps1 -Action clippy",
+  "exit_code": 0,
+  "working_directory": "NoManCode/rust-app",
+  "commit": "0b44eda5ded2aeb2d5d5930df5775070dd270105",
+  "vsinstalldir_process_override": true,
+  "started_at": "2026-09-25T14:12:33.4584615+08:00",
+  "finished_at": "2026-09-25T14:12:34.7441980+08:00"
+}
