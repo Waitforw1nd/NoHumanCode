@@ -17,6 +17,39 @@ use std::{
 use tokio::sync::{Mutex as AsyncMutex, Semaphore, oneshot};
 use tokio_util::sync::CancellationToken;
 
+#[cfg(test)]
+mod crash_probe {
+    use std::{
+        path::PathBuf,
+        sync::{Mutex, OnceLock},
+        time::Duration,
+    };
+
+    type ArmedPhase = (String, &'static str, PathBuf);
+    static PHASE: OnceLock<Mutex<Option<ArmedPhase>>> = OnceLock::new();
+
+    pub(super) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
+        *PHASE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some((task_id, phase, signal));
+    }
+
+    pub(super) fn block(task_id: &str, phase: &'static str) {
+        let armed = PHASE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .unwrap()
+            .take();
+        if let Some((expected, at, signal)) = armed {
+            if expected == task_id && at == phase {
+                std::fs::write(signal, task_id).unwrap();
+                loop {
+                    std::thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+            *PHASE.get().unwrap().lock().unwrap() = Some((expected, at, signal));
+        }
+    }
+}
+
 fn route_secret_id(id: &str) -> String {
     format!("route::{id}")
 }
@@ -896,6 +929,10 @@ impl Engine {
             }
             return Err(error);
         }
+        #[cfg(test)]
+        if name == "write_file" {
+            crash_probe::block(&task.id, "write_pre_fs");
+        }
         let (result, succeeded) = match workspace::execute(task, name, args).await {
             Ok(value) => (value, true),
             Err(error) => (
@@ -1408,6 +1445,8 @@ impl Engine {
             .as_deref()
             .ok_or(WorkspaceChangeError::Corrupt)?
             .to_owned();
+        #[cfg(test)]
+        crash_probe::block(id, "restore_pre_fs");
         for (completed, ((change, target), original)) in
             changes.iter().zip(targets).zip(originals).enumerate()
         {
@@ -1549,4 +1588,200 @@ fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
         }
     }
     calls
+}
+
+#[cfg(test)]
+mod workspace_phase_tests {
+    use super::*;
+    use axum::{Json, Router, extract::State, routing::post};
+    use std::{
+        path::Path,
+        process::{Command, Stdio},
+        sync::atomic::{AtomicUsize, Ordering},
+        time::{Duration, Instant},
+    };
+
+    async fn provider_reply(
+        State(calls): State<Arc<AtomicUsize>>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        let delta = if calls.fetch_add(1, Ordering::SeqCst) == 0 {
+            json!({"tool_calls":[{"index":0,"id":"phase-write","type":"function","function":{
+                "name":"write_file","arguments":json!({"path":"src/a.txt","content":"after"}).to_string()
+            }}]})
+        } else {
+            json!({"content":"done"})
+        };
+        let chunk = json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+
+    async fn child(phase: &'static str, root: &Path) {
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src/a.txt"), "before").unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let app = Router::new()
+            .route("/v1/chat/completions", post(provider_reply))
+            .with_state(Arc::new(AtomicUsize::new(0)));
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let store = Arc::new(Store::open(&root.join("phase.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: root.to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 64,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route", "phase-test-key").unwrap();
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let task = engine
+            .start(RunRequest {
+                title: "phase".into(),
+                kind: SessionKind::Team,
+                tasks: vec![TaskSpec {
+                    name: "writer".into(),
+                    role: "writer".into(),
+                    route_id: "route".into(),
+                    prompt: "write".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["src".into()],
+                    tools: true,
+                    allow_commands: false,
+                    max_rounds: 4,
+                }],
+            })
+            .await
+            .unwrap()
+            .tasks
+            .remove(0);
+        let approval = tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                if let Some(value) = store
+                    .pending_approvals_for_task(&task.id)
+                    .unwrap()
+                    .into_iter()
+                    .next()
+                {
+                    break value;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        if phase == "write_pre_fs" {
+            crash_probe::arm(task.id.clone(), phase, root.join("phase.signal"));
+        }
+        engine
+            .decide_approval(&approval.id, true, Some("test"))
+            .unwrap();
+        if phase == "restore_pre_fs" {
+            tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if !engine.is_busy() {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(
+                std::fs::read_to_string(root.join("src/a.txt")).unwrap(),
+                "after"
+            );
+            crash_probe::arm(task.id.clone(), phase, root.join("phase.signal"));
+            let _ = engine.restore(&task.id).await;
+        } else {
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        }
+    }
+
+    fn parent(phase: &'static str, test_name: &str) {
+        if std::env::var("NHC_WORKSPACE_PHASE_CHILD").as_deref() == Ok(phase) {
+            let root = std::path::PathBuf::from(std::env::var("NHC_WORKSPACE_PHASE_ROOT").unwrap());
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(child(phase, &root));
+            panic!("phase child returned before termination");
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let mut process = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", test_name, "--nocapture"])
+            .env("NHC_WORKSPACE_PHASE_CHILD", phase)
+            .env("NHC_WORKSPACE_PHASE_ROOT", temp.path())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let signal = temp.path().join("phase.signal");
+        let deadline = Instant::now() + Duration::from_secs(12);
+        while !signal.exists() && Instant::now() < deadline {
+            assert!(
+                process.try_wait().unwrap().is_none(),
+                "child exited before phase signal"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(signal.exists(), "child did not reach {phase}");
+        let task_id = std::fs::read_to_string(&signal).unwrap();
+        process.kill().unwrap();
+        process.wait().unwrap();
+        let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
+        store.recover().unwrap();
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let bytes = std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap();
+        if phase == "write_pre_fs" {
+            assert_eq!(bytes, "before");
+            let records = store.workspace_changes_for_task(&task_id).unwrap();
+            assert_eq!(records.len(), 1);
+            assert_eq!(records[0].state, ChangeState::Unknown);
+            assert!(
+                engine
+                    .changes(&task_id)
+                    .unwrap()
+                    .iter()
+                    .all(|item| !item.restorable)
+            );
+        } else {
+            assert_eq!(bytes, "after");
+            let receipt = engine.latest_restore(&task_id).unwrap().unwrap();
+            assert_eq!(receipt.status, RestoreStatus::Unknown);
+            assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
+            let changes = engine.changes(&task_id).unwrap();
+            assert_eq!(changes[0].restore_state, "unknown");
+            assert!(!changes[0].restorable);
+        }
+    }
+
+    #[test]
+    fn write_prepare_before_fs_real_process_stop() {
+        parent(
+            "write_pre_fs",
+            "engine::workspace_phase_tests::write_prepare_before_fs_real_process_stop",
+        );
+    }
+
+    #[test]
+    fn restore_claim_before_fs_real_process_stop() {
+        parent(
+            "restore_pre_fs",
+            "engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop",
+        );
+    }
 }
