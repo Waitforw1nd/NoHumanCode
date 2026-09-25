@@ -1,3 +1,4 @@
+pub mod approval;
 pub mod domain;
 pub mod engine;
 pub mod plugin_catalog;

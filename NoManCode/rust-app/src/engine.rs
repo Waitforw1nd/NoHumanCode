@@ -1,4 +1,5 @@
 use crate::{
+    approval::{self, ApprovalStatus, PolicyDecision},
     domain::*,
     provider, secrets,
     store::{IdempotencyConflict, Store, TurnBundle},
@@ -12,7 +13,7 @@ use std::{
     hash::{Hash, Hasher},
     sync::{Arc, Mutex},
 };
-use tokio::sync::{Mutex as AsyncMutex, Semaphore};
+use tokio::sync::{Mutex as AsyncMutex, Semaphore, oneshot};
 use tokio_util::sync::CancellationToken;
 
 fn route_secret_id(id: &str) -> String {
@@ -37,6 +38,8 @@ pub struct Engine {
     active: Mutex<HashMap<String, Active>>,
     slots: Arc<Semaphore>,
     key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
+    approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
+    deferred_resume: Mutex<HashMap<String, String>>,
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
@@ -47,6 +50,8 @@ impl Engine {
             active: Mutex::new(HashMap::new()),
             slots: Arc::new(Semaphore::new(max_concurrency)),
             key_slots: Mutex::new(HashMap::new()),
+            approval_waiters: Mutex::new(HashMap::new()),
+            deferred_resume: Mutex::new(HashMap::new()),
         }))
     }
     pub fn key(&self, route: &Route) -> Result<String> {
@@ -579,6 +584,12 @@ impl Engine {
         task.status = "running".into();
         task.updated_at = now();
         self.store.save_task(task)?;
+        self.reconcile_open_tools(task, cancel, &key).await?;
+        if let Some(message) = self.deferred_resume.lock().unwrap().remove(&task.id) {
+            task.messages.push(json!({"role":"user","content":message}));
+            task.updated_at = now();
+            self.store.save_task(task)?;
+        }
         let tools = workspace::definitions(task);
         for _round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
@@ -611,6 +622,9 @@ impl Engine {
                     }
                 }
             }
+            if let Some(calls) = message["tool_calls"].as_array() {
+                validate_new_tool_group(&task.messages, calls)?;
+            }
             task.messages.push(message.clone());
             task.updated_at = now();
             self.store.save_task(task)?;
@@ -629,55 +643,243 @@ impl Engine {
                     tools.iter().any(|t| t["function"]["name"] == name),
                     "模型请求了未授权的工具"
                 );
-                // Record the old content before an authorized write, for recovery/audit.
-                if name == "write_file"
-                    && let Some(path) = args["path"].as_str()
-                    && let Ok(target) = workspace::resolve(
-                        std::path::Path::new(&task.workspace),
-                        path,
-                        true,
-                        &task.spec.write_scopes,
-                    )
-                {
-                    let old = if target.exists() {
-                        ensure!(
-                            std::fs::metadata(&target)?.len() <= 262_144,
-                            "原文件过大，禁止自动覆盖"
-                        );
-                        Some(std::fs::read_to_string(&target)?)
-                    } else {
-                        None
-                    };
-                    self.store.event(
-                        &task.id,
-                        "file_backup",
-                        json!({"path":path,"previous":old}),
-                    )?;
-                }
-                self.store.event(
-                    &task.id,
-                    "tool_start",
-                    json!({"name":name,"arguments":args}),
-                )?;
-                let result = match workspace::execute(task, name, &args).await {
-                    Ok(v) => v,
-                    Err(e) => json!({"error":secrets::scrub(&e.to_string(),&key)}),
-                };
-                // Avoid returning a provider secret should a tool echo it unexpectedly.
-                let serialized = result.to_string().replace(&key, "[redacted]");
-                self.store.event(
-                    &task.id,
-                    "tool_result",
-                    json!({"name":name,"result":serde_json::from_str::<Value>(&serialized)?}),
-                )?;
-                task.messages
-                    .push(json!({"role":"tool","tool_call_id":call["id"],"content":serialized}));
-                task.updated_at = now();
-                self.store.save_task(task)?;
+                self.execute_or_wait(task, call, name, &args, &key, cancel)
+                    .await?;
             }
         }
         anyhow::bail!("达到工具轮数上限；请检查结果后继续此成员")
     }
+    pub fn decide_approval(
+        &self,
+        approval_id: &str,
+        approved: bool,
+        decided_by: Option<&str>,
+    ) -> Result<approval::ApprovalRecord> {
+        let record =
+            self.store
+                .decide_approval(approval_id, approved, decided_by.unwrap_or("user"))?;
+        if let Some(waiter) = self.approval_waiters.lock().unwrap().remove(approval_id) {
+            let _ = waiter.send(record.status);
+        }
+        Ok(record)
+    }
+
+    async fn reconcile_open_tools(
+        &self,
+        task: &mut Task,
+        cancel: &CancellationToken,
+        key: &str,
+    ) -> Result<()> {
+        approval::validate_call_history(&task.messages)?;
+        let calls = unanswered_tool_calls(&task.messages);
+        for call in calls {
+            let name = call["function"]["name"].as_str().context("工具名称缺失")?;
+            let call_id = call["id"].as_str().context("工具调用缺少 id")?;
+            match self.store.approval_by_tool_call(&task.id, call_id)? {
+                None => {
+                    self.record_tool_result(task, call_id, name, "Execution was interrupted. Inspect files before repeating a write or command.", key)?;
+                    continue;
+                }
+                Some(record)
+                    if matches!(
+                        record.status,
+                        ApprovalStatus::Denied | ApprovalStatus::Cancelled
+                    ) || record.execution_state == approval::ExecutionState::Cancelled =>
+                {
+                    let status = if record.execution_state == approval::ExecutionState::Cancelled {
+                        ApprovalStatus::Cancelled
+                    } else {
+                        record.status
+                    };
+                    self.record_tool_result(
+                        task,
+                        call_id,
+                        name,
+                        &approval::tool_error(status),
+                        key,
+                    )?;
+                    continue;
+                }
+                Some(_) => {}
+            }
+            let args: Value = serde_json::from_str(
+                call["function"]["arguments"]
+                    .as_str()
+                    .context("工具参数缺失")?,
+            )?;
+            self.execute_or_wait(task, &call, name, &args, key, cancel)
+                .await?;
+        }
+        Ok(())
+    }
+
+    async fn execute_or_wait(
+        &self,
+        task: &mut Task,
+        call: &Value,
+        name: &str,
+        args: &Value,
+        key: &str,
+        cancel: &CancellationToken,
+    ) -> Result<()> {
+        let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
+        ensure!(
+            workspace::definitions(task)
+                .iter()
+                .any(|t| t["function"]["name"] == name),
+            "模型请求了未授权的工具"
+        );
+        ensure!(
+            self.store.task(&task.id)?.status != "cancelled" && !cancel.is_cancelled(),
+            "任务已停止"
+        );
+        match approval::evaluate(task, name) {
+            PolicyDecision::Allow => {
+                self.perform_tool(task, tool_call_id, name, args, key, None)
+                    .await
+            }
+            PolicyDecision::Deny { reason } => {
+                self.record_tool_result(task, tool_call_id, name, reason, key)?;
+                Ok(())
+            }
+            PolicyDecision::RequireApproval => {
+                let (record, _) = self.store.ensure_approval(task, tool_call_id, name, args)?;
+                let status = self.wait_for_approval(&record, cancel).await?;
+                match status {
+                    ApprovalStatus::Approved => {
+                        let claimed = self.store.claim_approval(task, tool_call_id, name, args)?;
+                        self.perform_tool(task, tool_call_id, name, args, key, Some(&claimed.id))
+                            .await
+                    }
+                    ApprovalStatus::Denied | ApprovalStatus::Cancelled => {
+                        self.record_tool_result(
+                            task,
+                            tool_call_id,
+                            name,
+                            &approval::tool_error(status),
+                            key,
+                        )?;
+                        if status == ApprovalStatus::Cancelled || cancel.is_cancelled() {
+                            anyhow::bail!("任务已停止");
+                        }
+                        Ok(())
+                    }
+                    ApprovalStatus::Pending => anyhow::bail!("审批仍在等待"),
+                }
+            }
+        }
+    }
+
+    async fn wait_for_approval(
+        &self,
+        record: &approval::ApprovalRecord,
+        cancel: &CancellationToken,
+    ) -> Result<ApprovalStatus> {
+        if record.status != ApprovalStatus::Pending {
+            return Ok(record.status);
+        }
+        let (sender, mut receiver) = oneshot::channel();
+        self.approval_waiters
+            .lock()
+            .unwrap()
+            .insert(record.id.clone(), sender);
+        loop {
+            let current = self.store.approval(&record.id)?;
+            if current.status != ApprovalStatus::Pending {
+                self.approval_waiters.lock().unwrap().remove(&record.id);
+                return Ok(current.status);
+            }
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => {
+                self.approval_waiters.lock().unwrap().remove(&record.id);
+                self.store.cancel_pending_approvals(&record.task_id)?;
+                anyhow::bail!("任务已停止")
+                }
+                _ = &mut receiver => { return Ok(self.store.approval(&record.id)?.status); }
+                // Other Store/Engine instances need no in-process waiter.
+                _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {}
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn perform_tool(
+        &self,
+        task: &mut Task,
+        tool_call_id: &str,
+        name: &str,
+        args: &Value,
+        key: &str,
+        approval_id: Option<&str>,
+    ) -> Result<()> {
+        if name == "write_file"
+            && let Some(path) = args["path"].as_str()
+            && let Ok(target) = workspace::resolve(
+                std::path::Path::new(&task.workspace),
+                path,
+                true,
+                &task.spec.write_scopes,
+            )
+        {
+            let old = if target.exists() {
+                ensure!(
+                    std::fs::metadata(&target)?.len() <= 262_144,
+                    "原文件过大，禁止自动覆盖"
+                );
+                Some(std::fs::read_to_string(&target)?)
+            } else {
+                None
+            };
+            self.store
+                .event(&task.id, "file_backup", json!({"path":path,"previous":old}))?;
+        }
+        let start_data = if let Some(approval_id) = approval_id {
+            json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"args_digest":approval::args_digest(args)?})
+        } else {
+            json!({"name":name,"arguments":args})
+        };
+        self.store.event(&task.id, "tool_start", start_data)?;
+        let result = match workspace::execute(task, name, args).await {
+            Ok(value) => value,
+            Err(error) => json!({"error":secrets::scrub(&error.to_string(), key)}),
+        };
+        let serialized = result.to_string().replace(key, "[redacted]");
+        if let Some(approval_id) = approval_id {
+            self.store
+                .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
+            task.messages
+                .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
+            task.updated_at = now();
+            Ok(())
+        } else {
+            self.record_tool_result(task, tool_call_id, name, &serialized, key)
+        }
+    }
+
+    fn record_tool_result(
+        &self,
+        task: &mut Task,
+        tool_call_id: &str,
+        name: &str,
+        content: &str,
+        key: &str,
+    ) -> Result<()> {
+        let content = content.replace(key, "[redacted]");
+        let result =
+            serde_json::from_str::<Value>(&content).unwrap_or(Value::String(content.clone()));
+        self.store.event(
+            &task.id,
+            "tool_result",
+            json!({"name":name,"result":result}),
+        )?;
+        task.messages
+            .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":content}));
+        task.updated_at = now();
+        self.store.save_task(task)?;
+        Ok(())
+    }
+
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
         let _gate = self.gate.lock().await;
         ensure!(
@@ -689,6 +891,16 @@ impl Engine {
             "成员仍在运行"
         );
         let mut task = self.store.task(id)?;
+        approval::validate_call_history(&task.messages)?;
+        // Verify all finished evidence too, including already answered calls.
+        for record in self.store.approvals_for_task(id)? {
+            if matches!(
+                record.execution_state,
+                approval::ExecutionState::Unknown | approval::ExecutionState::Claimed
+            ) {
+                return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
+            }
+        }
         self.key(&task.route)?;
         self.scope_conflicts(std::slice::from_ref(&task))?;
         // Complete interrupted tool-call groups before adding a new user message.
@@ -706,10 +918,43 @@ impl Engine {
             .filter(|id| !answered.contains(*id))
             .map(String::from)
             .collect();
+        let mut waiting_for_approval = false;
         for id in pending {
-            task.messages.push(json!({"role":"tool","tool_call_id":id,"content":"Execution was interrupted. Inspect files before repeating a write or command."}));
+            waiting_for_approval = true;
+            match self.store.approval_by_tool_call(&task.id, &id)? {
+                None => {}
+                Some(record)
+                    if matches!(
+                        record.status,
+                        ApprovalStatus::Denied | ApprovalStatus::Cancelled
+                    ) || record.execution_state == approval::ExecutionState::Cancelled =>
+                {
+                    // Reconcile every result in original call order after launch.
+                }
+                Some(_) => {
+                    let call = unanswered_tool_calls(&task.messages)
+                        .into_iter()
+                        .find(|c| c["id"] == id)
+                        .context("审批调用缺失")?;
+                    let name = call["function"]["name"].as_str().context("审批工具缺失")?;
+                    let args = serde_json::from_str(
+                        call["function"]["arguments"]
+                            .as_str()
+                            .context("审批参数缺失")?,
+                    )
+                    .map_err(|_| approval::ApprovalError::BindingConflict { id: id.clone() })?;
+                    self.store.ensure_approval(&task, &id, name, &args)?;
+                }
+            }
         }
-        task.messages.push(json!({"role":"user","content":message}));
+        if waiting_for_approval {
+            self.deferred_resume
+                .lock()
+                .unwrap()
+                .insert(task.id.clone(), message.to_owned());
+        } else {
+            task.messages.push(json!({"role":"user","content":message}));
+        }
         task.status = "queued".into();
         task.error = None;
         task.output.push_str("\n\n—— 继续 ——\n");
@@ -719,6 +964,7 @@ impl Engine {
         Ok(task)
     }
     pub fn cancel(&self, id: &str) -> Result<()> {
+        self.store.cancel_pending_approvals(id)?;
         let active = self.active.lock().unwrap();
         active
             .get(id)
@@ -791,8 +1037,50 @@ impl Engine {
         Ok(restored.len())
     }
     pub fn cancel_all(&self) {
-        for task in self.active.lock().unwrap().values() {
-            task.cancel.cancel();
+        for (id, task) in self.active.lock().unwrap().iter() {
+            if self.store.cancel_pending_approvals(id).is_ok() {
+                task.cancel.cancel();
+            }
         }
     }
+}
+
+fn validate_new_tool_group(previous: &[Value], calls: &[Value]) -> Result<()> {
+    approval::validate_call_history(previous)?;
+    let mut ids = std::collections::HashSet::new();
+    let historical: std::collections::HashSet<&str> = previous
+        .iter()
+        .filter_map(|message| message["tool_calls"].as_array())
+        .flatten()
+        .filter_map(|call| call["id"].as_str())
+        .collect();
+    for call in calls {
+        let id = call["id"].as_str().context("工具调用缺少 id")?;
+        ensure!(!id.is_empty(), "工具调用 id 不能为空");
+        secrets::validate_persisted_id("tool_call_id", id)?;
+        ensure!(ids.insert(id), "同一工具调用组含重复 id");
+        ensure!(
+            !historical.contains(id),
+            "同任务工具调用 id 已经使用，拒绝复用"
+        );
+    }
+    Ok(())
+}
+
+fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
+    let answered: std::collections::HashSet<String> = messages
+        .iter()
+        .filter_map(|message| message["tool_call_id"].as_str().map(str::to_owned))
+        .collect();
+    let mut calls = Vec::new();
+    for message in messages {
+        if let Some(tool_calls) = message["tool_calls"].as_array() {
+            for call in tool_calls {
+                if call["id"].as_str().is_some_and(|id| !answered.contains(id)) {
+                    calls.push(call.clone());
+                }
+            }
+        }
+    }
+    calls
 }
