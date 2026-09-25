@@ -768,6 +768,13 @@ impl Store {
         Ok(result)
     }
 
+    pub(crate) fn has_legacy_file_backup(&self, task_id: &str) -> Result<bool> {
+        Ok(self
+            .file_backups(task_id)?
+            .iter()
+            .any(|value| value.get("change_id").is_none()))
+    }
+
     pub(crate) fn prepare_workspace_change(
         &self,
         task: &Task,
@@ -795,6 +802,13 @@ impl Store {
         )?;
         if completed != 0 {
             return Err(WorkspaceChangeError::Unrestorable.into());
+        }
+        let uncertain: i64 = tx.query_row(
+            "SELECT count(*) FROM workspace_changes WHERE task_id=?1 AND state IN ('prepared','unknown')",
+            [&task.id], |row| row.get(0),
+        )?;
+        if uncertain != 0 {
+            return Err(WorkspaceChangeError::Unknown { receipt: None }.into());
         }
         let latest: Option<String> = tx.query_row(
             "SELECT after_digest FROM workspace_changes WHERE task_id=?1 AND path_key=?2 AND state='finished' ORDER BY created_at DESC, rowid DESC LIMIT 1",
@@ -845,6 +859,11 @@ impl Store {
 
     pub(crate) fn mark_workspace_change_failed(&self, id: &str) -> Result<()> {
         self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='failed',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
+        Ok(())
+    }
+
+    pub(crate) fn mark_workspace_change_unknown(&self, id: &str) -> Result<()> {
+        self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='unknown',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
         Ok(())
     }
 
@@ -907,7 +926,12 @@ impl Store {
         };
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
-        tx.execute("UPDATE workspace_restores SET status=?1,finished_at=?2 WHERE id=?3 AND status='claimed'", params![status,now(),restore_id])?;
+        let changed = tx.execute("UPDATE workspace_restores SET status=?1,finished_at=?2 WHERE id=?3 AND status='claimed'", params![status,now(),restore_id])?;
+        anyhow::ensure!(changed == 1, "恢复状态竞争失败");
+        if status != "complete" {
+            tx.execute("UPDATE workspace_changes SET restore_state='unknown' WHERE id IN (SELECT change_id FROM workspace_restore_outcomes WHERE restore_id=?1 AND status='claimed')", [restore_id])?;
+            tx.execute("UPDATE workspace_restore_outcomes SET status='unknown',updated_at=?2 WHERE restore_id=?1 AND status='claimed'", params![restore_id,now()])?;
+        }
         let task_id: String = tx.query_row(
             "SELECT task_id FROM workspace_restores WHERE id=?1",
             [restore_id],

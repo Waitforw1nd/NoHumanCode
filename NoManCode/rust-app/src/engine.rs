@@ -850,7 +850,12 @@ impl Engine {
         } else {
             json!({"name":name,"arguments":args})
         };
-        self.store.event(&task.id, "tool_start", start_data)?;
+        if let Err(error) = self.store.event(&task.id, "tool_start", start_data) {
+            if let Some((_, change)) = &prepared {
+                let _ = self.store.mark_workspace_change_failed(&change.id);
+            }
+            return Err(error);
+        }
         let (result, succeeded) = match workspace::execute(task, name, args).await {
             Ok(value) => (value, true),
             Err(error) => (
@@ -871,14 +876,22 @@ impl Engine {
             let change = prepared
                 .as_ref()
                 .and_then(|(_, change)| after.map(|bytes| (change.id.as_str(), bytes)));
-            let serialized = self.store.finish_approval_with_change(
-                task,
-                approval_id,
-                &serialized,
-                name,
-                tool_call_id,
-                change,
-            )?;
+            let serialized = self
+                .store
+                .finish_approval_with_change(
+                    task,
+                    approval_id,
+                    &serialized,
+                    name,
+                    tool_call_id,
+                    change,
+                )
+                .map_err(|error| {
+                    if succeeded && let Some((_, change)) = &prepared {
+                        let _ = self.store.mark_workspace_change_unknown(&change.id);
+                    }
+                    error
+                })?;
             task.messages
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
             task.updated_at = now();
@@ -1006,6 +1019,14 @@ impl Engine {
         let task = self.store.task(id).map_err(|error| {
             if error.chain().any(|cause| {
                 matches!(
+                    cause.downcast_ref::<approval::ApprovalError>(),
+                    Some(approval::ApprovalError::CorruptState { .. })
+                )
+            }) {
+                return anyhow::Error::from(WorkspaceChangeError::Corrupt);
+            }
+            if error.chain().any(|cause| {
+                matches!(
                     cause.downcast_ref::<rusqlite::Error>(),
                     Some(rusqlite::Error::QueryReturnedNoRows)
                 )
@@ -1016,16 +1037,26 @@ impl Engine {
             }
         })?;
         let root = std::path::Path::new(&task.workspace);
+        let restore_exists = self.store.latest_restore(id)?.is_some();
         let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
             std::collections::BTreeMap::new();
         for record in self.store.workspace_changes_for_task(id)? {
+            if record.state == ChangeState::Failed {
+                continue;
+            }
             grouped
                 .entry(record.path_key.clone())
                 .and_modify(|first| {
                     if record.state == ChangeState::Finished {
-                        first.after_digest = record.after_digest.clone();
+                        if first.state == ChangeState::Failed {
+                            *first = record.clone();
+                        } else {
+                            first.after_digest = record.after_digest.clone();
+                        }
                     } else {
-                        first.state = record.state;
+                        if record.state == ChangeState::Unknown {
+                            first.state = record.state;
+                        }
                     }
                     if record.restore_state != "pending" {
                         first.restore_state = record.restore_state.clone();
@@ -1084,7 +1115,8 @@ impl Engine {
                     state: record.state,
                     restore_state: record.restore_state.clone(),
                     current,
-                    restorable: record.state == ChangeState::Finished
+                    restorable: !restore_exists
+                        && record.state == ChangeState::Finished
                         && current == CurrentState::Matches
                         && record.restore_state == "pending",
                 })
@@ -1111,6 +1143,14 @@ impl Engine {
     pub async fn restore(&self, id: &str) -> Result<RestoreReceipt> {
         let _gate = self.gate.lock().await;
         let task = self.store.task(id).map_err(|error| {
+            if error.chain().any(|cause| {
+                matches!(
+                    cause.downcast_ref::<approval::ApprovalError>(),
+                    Some(approval::ApprovalError::CorruptState { .. })
+                )
+            }) {
+                return anyhow::Error::from(WorkspaceChangeError::Corrupt);
+            }
             if error.chain().any(|cause| {
                 matches!(
                     cause.downcast_ref::<rusqlite::Error>(),
@@ -1159,6 +1199,9 @@ impl Engine {
             };
         }
         let records = self.store.workspace_changes_for_task(id)?;
+        if self.store.has_legacy_file_backup(id)? {
+            return Err(WorkspaceChangeError::Unrestorable.into());
+        }
         if records.is_empty() {
             if self.store.file_backups(id)?.is_empty() {
                 return Ok(RestoreReceipt {
@@ -1173,9 +1216,22 @@ impl Engine {
         }
         if records
             .iter()
-            .any(|record| record.state != ChangeState::Finished || record.after_digest.is_none())
+            .any(|record| matches!(record.state, ChangeState::Unknown | ChangeState::Prepared))
         {
             return Err(WorkspaceChangeError::Unknown { receipt: None }.into());
+        }
+        let records: Vec<_> = records
+            .into_iter()
+            .filter(|record| record.state == ChangeState::Finished && record.after_digest.is_some())
+            .collect();
+        if records.is_empty() {
+            return Ok(RestoreReceipt {
+                restore_id: None,
+                task_id: id.to_owned(),
+                status: RestoreStatus::Complete,
+                restored: 0,
+                outcomes: vec![],
+            });
         }
         let workspace_digest = digest(task.workspace.as_bytes());
         let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
@@ -1191,12 +1247,59 @@ impl Engine {
             }
             let approval = self
                 .store
-                .approval_by_tool_call(id, &record.tool_call_id)?
+                .approval_by_tool_call(id, &record.tool_call_id)
+                .map_err(|_| WorkspaceChangeError::Corrupt)?
                 .ok_or(WorkspaceChangeError::Corrupt)?;
             if approval.binding_digest != record.binding_digest
                 || approval.workspace != task.workspace
             {
                 return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            let call = task
+                .messages
+                .iter()
+                .filter_map(|message| message["tool_calls"].as_array())
+                .flatten()
+                .find(|call| call["id"] == record.tool_call_id)
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            if call["function"]["name"] != "write_file" || approval.tool_name != "write_file" {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
+            let raw_args = call["function"]["arguments"]
+                .as_str()
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            let args: Value =
+                serde_json::from_str(raw_args).map_err(|_| WorkspaceChangeError::Corrupt)?;
+            let raw_path = args["path"].as_str().ok_or(WorkspaceChangeError::Corrupt)?;
+            let content = args["content"]
+                .as_str()
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            let (_, path, path_key) = workspace::change_target(
+                std::path::Path::new(&task.workspace),
+                raw_path,
+                &task.spec.write_scopes,
+            )
+            .map_err(|_| WorkspaceChangeError::Corrupt)?;
+            let expected = approval::binding_digest(
+                id,
+                approval.session_id.as_deref(),
+                approval.turn_id.as_deref(),
+                &record.tool_call_id,
+                "write_file",
+                &task.workspace,
+                &task.spec.write_scopes,
+                task.spec.allow_commands,
+                &args,
+            )
+            .map_err(|_| WorkspaceChangeError::Corrupt)?;
+            if path != record.path
+                || path_key != record.path_key
+                || Some(digest(content.as_bytes())) != record.after_digest
+                || expected != record.binding_digest
+                || approval.args_digest
+                    != approval::args_digest(&args).map_err(|_| WorkspaceChangeError::Corrupt)?
+            {
+                return Err(WorkspaceChangeError::Corrupt.into());
             }
             grouped
                 .entry(record.path_key.clone())
@@ -1276,8 +1379,10 @@ impl Engine {
                 } else {
                     RestoreStatus::Partial
                 };
-                let receipt = self.store.finish_restore(&restore_id, status)?;
-                return Err(if status == RestoreStatus::Partial {
+                let saved = self.store.finish_restore(&restore_id, status);
+                let failed_to_persist = saved.is_err();
+                let receipt = saved.unwrap_or_else(|_| self.unknown_restore_receipt(&receipt));
+                return Err(if status == RestoreStatus::Partial && !failed_to_persist {
                     WorkspaceChangeError::Conflict {
                         receipt: Some(receipt),
                     }
@@ -1288,11 +1393,52 @@ impl Engine {
                 }
                 .into());
             }
-            self.store.finish_restore_path(&restore_id, &change.id)?;
+            if self
+                .store
+                .finish_restore_path(&restore_id, &change.id)
+                .is_err()
+            {
+                let unknown = self
+                    .store
+                    .finish_restore(&restore_id, RestoreStatus::Unknown)
+                    .unwrap_or_else(|_| self.unknown_restore_receipt(&receipt));
+                return Err(WorkspaceChangeError::Unknown {
+                    receipt: Some(unknown),
+                }
+                .into());
+            }
             completed += 1;
         }
-        self.store
+        match self
+            .store
             .finish_restore(&restore_id, RestoreStatus::Complete)
+        {
+            Ok(value) => Ok(value),
+            Err(_) => {
+                let unknown = self
+                    .store
+                    .finish_restore(&restore_id, RestoreStatus::Unknown)
+                    .unwrap_or_else(|_| self.unknown_restore_receipt(&receipt));
+                Err(WorkspaceChangeError::Unknown {
+                    receipt: Some(unknown),
+                }
+                .into())
+            }
+        }
+    }
+    fn unknown_restore_receipt(&self, claimed: &RestoreReceipt) -> RestoreReceipt {
+        let mut receipt = claimed
+            .restore_id
+            .as_deref()
+            .and_then(|id| self.store.restore_receipt(id).ok())
+            .unwrap_or_else(|| claimed.clone());
+        receipt.status = RestoreStatus::Unknown;
+        for outcome in &mut receipt.outcomes {
+            if outcome.status == RestoreStatus::Claimed {
+                outcome.status = RestoreStatus::Unknown;
+            }
+        }
+        receipt
     }
     pub fn cancel_all(&self) {
         for (id, task) in self.active.lock().unwrap().iter() {

@@ -30,9 +30,18 @@ pub(crate) fn read_safe_file(path: &Path) -> Result<Option<Vec<u8>>> {
 }
 
 pub(crate) fn atomic_replace(path: &Path, bytes: &[u8]) -> Result<()> {
+    struct TempCleanup(PathBuf);
+    impl Drop for TempCleanup {
+        fn drop(&mut self) {
+            if !self.0.as_os_str().is_empty() {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+    }
     let parent = path.parent().context("文件没有父目录")?;
     std::fs::create_dir_all(parent)?;
     let temp = parent.join(format!(".peachsh-{}.tmp", uuid::Uuid::new_v4()));
+    let mut cleanup = TempCleanup(temp.clone());
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -44,10 +53,8 @@ pub(crate) fn atomic_replace(path: &Path, bytes: &[u8]) -> Result<()> {
     if path.exists() {
         let _ = read_safe_file(path)?;
     }
-    if let Err(error) = replace_path(&temp, path) {
-        let _ = std::fs::remove_file(&temp);
-        return Err(error.into());
-    }
+    replace_path(&temp, path)?;
+    cleanup.0.clear();
     Ok(())
 }
 

@@ -905,7 +905,7 @@ async fn changes(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Json<Value>> {
-    let id = object_id(id)?;
+    let id = workspace_task_id(id)?;
     let changes = app.engine.changes(&id).map_err(workspace_change_error)?;
     let restore = app
         .engine
@@ -917,7 +917,7 @@ async fn restore(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Response> {
-    let id = object_id(id)?;
+    let id = workspace_task_id(id)?;
     match app.engine.restore(&id).await {
         Ok(receipt) => Ok(Json(json!({"ok":receipt.status == RestoreStatus::Complete,"restored":receipt.restored,"status":receipt.status,"receipt":receipt})).into_response()),
         Err(error) => {
@@ -936,20 +936,45 @@ fn workspace_change_error(error: anyhow::Error) -> ApiError {
     let typed = error
         .chain()
         .find_map(|cause| cause.downcast_ref::<WorkspaceChangeError>());
-    let (status, code) = match typed {
-        Some(WorkspaceChangeError::NotFound) => (StatusCode::NOT_FOUND, ErrorCode::NotFound),
+    let (status, code, message) = match typed {
+        Some(WorkspaceChangeError::NotFound) => {
+            (StatusCode::NOT_FOUND, ErrorCode::NotFound, "任务不存在")
+        }
         Some(
             WorkspaceChangeError::Active
             | WorkspaceChangeError::Conflict { .. }
             | WorkspaceChangeError::Unrestorable
             | WorkspaceChangeError::Unknown { .. },
-        ) => (StatusCode::CONFLICT, ErrorCode::Conflict),
-        Some(WorkspaceChangeError::Corrupt | WorkspaceChangeError::Internal) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, ErrorCode::Internal)
-        }
-        None => (StatusCode::INTERNAL_SERVER_ERROR, ErrorCode::Internal),
+        ) => (
+            StatusCode::CONFLICT,
+            ErrorCode::Conflict,
+            "文件变更当前不可恢复",
+        ),
+        Some(WorkspaceChangeError::Corrupt | WorkspaceChangeError::Internal) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "文件变更服务失败",
+        ),
+        None => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "文件变更服务失败",
+        ),
     };
-    ApiError::with_code(status, code, false, error)
+    ApiError::with_code(status, code, false, anyhow::anyhow!(message))
+}
+
+fn workspace_task_id(path: std::result::Result<Path<String>, PathRejection>) -> Result<String> {
+    let id = object_id(path)?;
+    if secrets::validate_persisted_id("task_id", &id).is_err() {
+        return Err(ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("任务标识无效"),
+        ));
+    }
+    Ok(id)
 }
 async fn wasm_plugins(State(app): State<App>) -> Result<Json<Value>> {
     let settings = app

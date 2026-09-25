@@ -1,10 +1,13 @@
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
-    domain::{Route, RunRequest, SessionKind, Settings, TaskSpec},
+    domain::{Route, RunRequest, SessionKind, Settings, Task, TaskSpec},
     engine::Engine,
+    server::{self as host_server, App},
     store::Store,
+    workspace,
     workspace_changes::{CurrentState, RestoreStatus, WorkspaceChangeError},
 };
+use reqwest::StatusCode;
 use rusqlite::Connection;
 use serde_json::{Value, json};
 use std::{
@@ -48,6 +51,23 @@ async fn server(path: &str, content: &str) -> (String, tokio::task::JoinHandle<(
         axum::serve(listener, app).await.unwrap();
     });
     (base, handle)
+}
+
+async fn scripted_server(replies: Vec<Value>) -> (String, tokio::task::JoinHandle<()>) {
+    let script = Arc::new(Mutex::new(VecDeque::from(replies)));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/v1", listener.local_addr().unwrap());
+    let app = Router::new()
+        .route("/v1/chat/completions", post(response))
+        .with_state(script);
+    let handle = tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    (base, handle)
+}
+
+fn write_delta(id: &str, path: &str, content: &str) -> Value {
+    json!({"tool_calls":[{"index":0,"id":id,"type":"function","function":{"name":"write_file","arguments":json!({"path":path,"content":content}).to_string()}}]})
 }
 
 fn setup(root: &Path, base: &str) -> Arc<Engine> {
@@ -232,4 +252,344 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
     drop(store);
     db.execute_batch("DROP INDEX workspace_changes_task_path; CREATE INDEX workspace_changes_task_path ON workspace_changes(path_key,task_id,created_at);").unwrap();
     assert!(Store::open(&path).is_err());
+}
+
+#[tokio::test]
+async fn http_unknown_receipt_is_safe_after_outcome_persist_failure() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before-http-secret").unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task = write_once(&engine).await;
+    Connection::open(temp.path().join("workspace.db")).unwrap().execute_batch("CREATE TRIGGER fail_restore_outcome BEFORE UPDATE ON workspace_restore_outcomes BEGIN SELECT RAISE(ABORT,'SQL-private-trigger'); END;").unwrap();
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let origin = format!("http://{}", listener.local_addr().unwrap());
+    let token = "workspace-http-token".to_owned();
+    let app = host_server::router(App {
+        engine,
+        token: token.clone(),
+        origin: origin.clone(),
+    });
+    let _host = tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let response = client
+        .post(format!("{origin}/api/tasks/{task}/restore"))
+        .header("x-peachsh-token", &token)
+        .header("origin", &origin)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    let body: Value = response.json().await.unwrap();
+    assert_eq!(body["status"], "unknown");
+    assert!(body.pointer("/receipt/restore_id").unwrap().is_string());
+    let text = body.to_string();
+    for forbidden in ["SQL-private-trigger", "before-http-secret", "workspace.db"] {
+        assert!(!text.contains(forbidden));
+    }
+
+    let invalid = client
+        .get(format!("{origin}/api/tasks/bad%20id/changes"))
+        .header("x-peachsh-token", &token)
+        .header("origin", &origin)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+    assert!(!invalid.text().await.unwrap().contains("bad id"));
+}
+
+#[tokio::test]
+async fn failed_atomic_replace_cleans_plaintext_temp() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(temp.path().join("src/target")).unwrap();
+    let task = Task {
+        id: "task".into(),
+        run_id: "run".into(),
+        spec: TaskSpec {
+            name: "writer".into(),
+            role: "writer".into(),
+            route_id: "route".into(),
+            prompt: "write".into(),
+            depends_on: vec![],
+            write_scopes: vec!["src".into()],
+            tools: true,
+            allow_commands: false,
+            max_rounds: 1,
+        },
+        route: Route {
+            id: "route".into(),
+            name: "route".into(),
+            base_url: "http://127.0.0.1".into(),
+            model: "mock".into(),
+            max_tokens: 1,
+            parallel_limit: 1,
+            key_env: None,
+        },
+        workspace: temp.path().to_string_lossy().into(),
+        status: "running".into(),
+        output: String::new(),
+        error: None,
+        messages: vec![],
+        usage: Value::Null,
+        created_at: 0,
+        updated_at: 0,
+    };
+    assert!(
+        workspace::execute(
+            &task,
+            "write_file",
+            &json!({"path":"src/target","content":"plaintext-sentinel"})
+        )
+        .await
+        .is_err()
+    );
+    let names: Vec<_> = std::fs::read_dir(temp.path().join("src"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        !names
+            .iter()
+            .any(|name| name.starts_with(".peachsh-") && name.ends_with(".tmp"))
+    );
+}
+
+#[tokio::test]
+async fn repeated_path_restores_earliest_before_and_legacy_mix_is_rejected() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "first").unwrap();
+    let (base, _server) = scripted_server(vec![
+        write_delta("w1", "src/a.txt", "second"),
+        write_delta("w2", "src/a.txt", "third"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let task = engine
+        .start(RunRequest {
+            title: "repeat".into(),
+            kind: SessionKind::Team,
+            tasks: vec![TaskSpec {
+                name: "worker".into(),
+                role: "worker".into(),
+                route_id: "route".into(),
+                prompt: "write".into(),
+                depends_on: vec![],
+                write_scopes: vec!["src".into()],
+                tools: true,
+                allow_commands: false,
+                max_rounds: 5,
+            }],
+        })
+        .await
+        .unwrap()
+        .tasks
+        .remove(0);
+    for _ in 0..2 {
+        let approval = tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                if let Some(value) = engine
+                    .store
+                    .pending_approvals_for_task(&task.id)
+                    .unwrap()
+                    .into_iter()
+                    .next()
+                {
+                    break value;
+                }
+                tokio::task::yield_now().await
+            }
+        })
+        .await
+        .unwrap();
+        engine
+            .decide_approval(&approval.id, true, Some("test"))
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            if !engine.is_busy() {
+                break;
+            }
+            tokio::task::yield_now().await
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(engine.changes(&task.id).unwrap().len(), 1);
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "third"
+    );
+    let receipt = engine.restore(&task.id).await.unwrap();
+    assert_eq!(receipt.restored, 1);
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "first"
+    );
+
+    let temp2 = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp2.path().join("src")).unwrap();
+    std::fs::write(temp2.path().join("src/a.txt"), "before").unwrap();
+    let (base2, _server2) = server("src/a.txt", "after").await;
+    let engine2 = setup(temp2.path(), &base2);
+    let task2 = write_once(&engine2).await;
+    engine2
+        .store
+        .event(
+            &task2,
+            "file_backup",
+            json!({"path":"src/a.txt","previous":"legacy-placeholder"}),
+        )
+        .unwrap();
+    assert!(
+        engine2
+            .restore(&task2)
+            .await
+            .unwrap_err()
+            .chain()
+            .any(|cause| matches!(
+                cause.downcast_ref::<WorkspaceChangeError>(),
+                Some(WorkspaceChangeError::Unrestorable)
+            ))
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp2.path().join("src/a.txt")).unwrap(),
+        "after"
+    );
+}
+
+#[tokio::test]
+async fn restore_rejects_tampered_call_path_content_and_binding() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    let original: String = db
+        .query_row("SELECT value FROM tasks WHERE id=?1", [&task_id], |row| {
+            row.get(0)
+        })
+        .unwrap();
+
+    db.execute(
+        "UPDATE workspace_changes SET path='src/other.txt' WHERE task_id=?1",
+        [&task_id],
+    )
+    .unwrap();
+    let error = engine.restore(&task_id).await.unwrap_err();
+    assert!(
+        matches!(
+            error.downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Corrupt)
+        ),
+        "{error:?}"
+    );
+    db.execute(
+        "UPDATE workspace_changes SET path='src/a.txt',binding_digest='forged' WHERE task_id=?1",
+        [&task_id],
+    )
+    .unwrap();
+    assert!(engine.restore(&task_id).await.is_err());
+    let binding: String = db
+        .query_row(
+            "SELECT binding_digest FROM approvals WHERE task_id=?1",
+            [&task_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    db.execute(
+        "UPDATE workspace_changes SET binding_digest=?1 WHERE task_id=?2",
+        (&binding, &task_id),
+    )
+    .unwrap();
+
+    let mut value: Value = serde_json::from_str(&original).unwrap();
+    for message in value["messages"].as_array_mut().unwrap() {
+        if let Some(calls) = message["tool_calls"].as_array_mut() {
+            for call in calls {
+                if call["id"] == "write-1" {
+                    call["function"]["arguments"] = json!({"path":"src/a.txt","content":"forged"})
+                        .to_string()
+                        .into();
+                }
+            }
+        }
+    }
+    db.execute(
+        "UPDATE tasks SET value=?1 WHERE id=?2",
+        (value.to_string(), &task_id),
+    )
+    .unwrap();
+    let error = engine.restore(&task_id).await.unwrap_err();
+    assert!(
+        matches!(
+            error.downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Corrupt)
+        ),
+        "{error:?}"
+    );
+    db.execute(
+        "UPDATE tasks SET value=?1 WHERE id=?2",
+        (&original, &task_id),
+    )
+    .unwrap();
+    db.execute(
+        "UPDATE workspace_changes SET tool_call_id='forged-call' WHERE task_id=?1",
+        [&task_id],
+    )
+    .unwrap();
+    assert!(matches!(
+        engine
+            .restore(&task_id)
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Corrupt)
+    ));
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "after"
+    );
+    assert!(engine.latest_restore(&task_id).unwrap().is_none());
+}
+
+#[tokio::test]
+async fn parent_commit_failure_returns_unknown_receipt_and_seals_change() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_complete BEFORE UPDATE ON workspace_restores WHEN NEW.status='complete' BEGIN SELECT RAISE(ABORT,'private-parent-error'); END;").unwrap();
+    let error = engine.restore(&task_id).await.unwrap_err();
+    let Some(WorkspaceChangeError::Unknown {
+        receipt: Some(receipt),
+    }) = error.downcast_ref::<WorkspaceChangeError>()
+    else {
+        panic!("expected unknown receipt: {error}")
+    };
+    assert_eq!(receipt.status, RestoreStatus::Unknown);
+    assert_eq!(receipt.restored, 1);
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+        "before"
+    );
+    assert_eq!(
+        engine.latest_restore(&task_id).unwrap().unwrap().status,
+        RestoreStatus::Unknown
+    );
+    assert!(!engine.changes(&task_id).unwrap()[0].restorable);
 }
