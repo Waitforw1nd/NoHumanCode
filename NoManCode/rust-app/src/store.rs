@@ -529,14 +529,6 @@ impl Store {
     pub fn commit_turn_bundle(&self, bundle: TurnBundle<'_>, key: Option<&str>) -> Result<Turn> {
         self.commit_turn_bundle_inner(bundle, key, None)
     }
-    pub(crate) fn commit_turn_bundle_authorized(
-        &self,
-        bundle: TurnBundle<'_>,
-        key: Option<&str>,
-    ) -> Result<Turn> {
-        let revision = self.project_config(&bundle.project.id)?.revision;
-        self.commit_turn_bundle_inner(bundle, key, Some(revision))
-    }
     pub(crate) fn commit_turn_bundle_in_project(
         &self,
         bundle: TurnBundle<'_>,
@@ -2719,6 +2711,7 @@ impl Store {
                 r.get(0)
             })?;
         let current: Task = serde_json::from_str(&value).map_err(|_| CheckpointError::Corrupt)?;
+        crate::project_config::validate_task_tx(&tx, &current, false, false)?;
         if safe_task_value(&current)? != safe_task_value(task)? || current.status != "completed" {
             return Err(CheckpointError::Conflict.into());
         }

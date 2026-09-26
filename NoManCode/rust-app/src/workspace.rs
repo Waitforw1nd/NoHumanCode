@@ -219,6 +219,7 @@ pub fn definitions(task: &Task) -> Vec<Value> {
 pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
     ensure!(task.spec.tools, "当前任务未启用项目工具");
     let root = Path::new(&task.workspace);
+    crate::workspace_identity::verify_directory_policy(root)?;
     match name {
         "list_files" => {
             let relative = args["path"].as_str().unwrap_or(".");
@@ -274,6 +275,7 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
             let mut pending = vec![(dir, prefix)];
             let mut matches = vec![];
             while let Some((directory, prefix)) = pending.pop() {
+                crate::workspace_identity::verify_directory_policy(&directory)?;
                 for entry in std::fs::read_dir(&directory)? {
                     let entry = entry?;
                     let name = entry.file_name().to_string_lossy().into_owned();
@@ -288,6 +290,7 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
                     };
                     let file_type = entry.file_type()?;
                     if file_type.is_dir() {
+                        crate::workspace_identity::verify_directory_policy(&path)?;
                         pending.push((path, relative_path));
                         continue;
                     }
@@ -297,6 +300,7 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
                     {
                         continue;
                     }
+                    resolve(root, &relative_path, false, &[])?;
                     let Ok(content) = std::fs::read_to_string(&path) else {
                         continue;
                     };
