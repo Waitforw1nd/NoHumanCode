@@ -20,6 +20,175 @@ use std::{
 
 type Script = Arc<Mutex<VecDeque<Value>>>;
 
+#[tokio::test]
+async fn cross_project_restore_keeps_original_root_and_waits_for_host_command() {
+    use peachsh::workspace_changes::WorkspaceChangeError;
+    use peachsh::{
+        domain::{RunRequest, SessionKind, TaskSpec, id},
+        network_authorization::*,
+        project_config::*,
+    };
+    let a = tempfile::tempdir().unwrap();
+    let b = tempfile::tempdir().unwrap();
+    std::fs::create_dir(a.path().join("src")).unwrap();
+    std::fs::create_dir(b.path().join("src")).unwrap();
+    std::fs::write(a.path().join("src/a.txt"), "original-a").unwrap();
+    std::fs::write(b.path().join("src/a.txt"), "b-sentinel").unwrap();
+    let command = "Set-Content -LiteralPath command-started.txt -Value running; while (-not (Test-Path -LiteralPath command-release.txt)) { Start-Sleep -Milliseconds 10 }; Write-Output done";
+    let (base,server)=scripted_server(vec![write_delta("a-write","src/a.txt","after-a"),json!({"content":"done"}),json!({"tool_calls":[{"index":0,"id":"command","type":"function","function":{"name":"run_command","arguments":json!({"command":command}).to_string()}}]}),json!({"content":"done"})]).await;
+    let engine = setup(a.path(), &base);
+    let task = write_once(&engine).await;
+    let cp = engine
+        .create_checkpoint(&task, "a-checkpoint")
+        .await
+        .unwrap()
+        .checkpoint;
+    let project = engine
+        .register_project(RegisterProject {
+            name: "B".into(),
+            root_path: b.path().to_string_lossy().into(),
+            idempotency_key: id(),
+        })
+        .await
+        .unwrap();
+    engine
+        .configure_project(ConfigureProject {
+            project_id: project.id.clone(),
+            expected_revision: 1,
+            config: ProjectConfig {
+                allowed_route_ids: vec!["route".into()],
+                default_route_id: Some("route".into()),
+                tools: true,
+                write_scopes: vec!["src".into()],
+                allow_commands: true,
+            },
+        })
+        .await
+        .unwrap();
+    let selection = engine.current_project().unwrap();
+    engine
+        .select_project(SelectProject {
+            project_id: project.id.clone(),
+            expected_revision: selection.revision,
+        })
+        .await
+        .unwrap();
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: "route".into(),
+        project_id: Some(project.id.clone()),
+    };
+    let preview = engine.network_preview(subject.clone()).await.unwrap();
+    engine
+        .network_confirm(
+            subject,
+            ConfirmRequest {
+                config_revision: preview.config_revision,
+                credential_revision: preview.credential_revision,
+                binding_digest: preview.binding_digest,
+                purposes: vec![NetworkPurpose::Completion],
+            },
+            &id(),
+        )
+        .await
+        .unwrap();
+    let run = engine
+        .start_in_project(StartInProject {
+            project_id: project.id,
+            expected_config_revision: 2,
+            idempotency_key: id(),
+            request: RunRequest {
+                title: "command B".into(),
+                kind: SessionKind::Chat,
+                tasks: vec![TaskSpec {
+                    name: "command-worker".into(),
+                    role: "worker".into(),
+                    route_id: "route".into(),
+                    prompt: "run".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["src".into()],
+                    tools: true,
+                    allow_commands: true,
+                    max_rounds: 3,
+                }],
+            },
+        })
+        .await
+        .unwrap();
+    let pending = tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            if let Some(card) = engine
+                .store
+                .pending_approvals_for_task(&run.tasks[0].id)
+                .unwrap()
+                .into_iter()
+                .next()
+            {
+                break card;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    engine
+        .decide_approval_with_network_ack(&pending.id, true, None, true)
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(8), async {
+        while !b.path().join("command-started.txt").exists() {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    for result in [
+        engine.restore(&task).await,
+        engine.restore_checkpoint(&cp.checkpoint_id).await,
+    ] {
+        assert!(matches!(
+            result.unwrap_err().downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Active)
+        ));
+    }
+    assert!(engine.latest_restore(&task).unwrap().is_none());
+    assert_eq!(
+        std::fs::read(a.path().join("src/a.txt")).unwrap(),
+        b"after-a"
+    );
+    assert_eq!(
+        std::fs::read(b.path().join("src/a.txt")).unwrap(),
+        b"b-sentinel"
+    );
+    std::fs::write(b.path().join("command-release.txt"), "release").unwrap();
+    tokio::time::timeout(Duration::from_secs(8), async {
+        while engine.is_busy() {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        engine.store.task(&run.tasks[0].id).unwrap().status,
+        "completed"
+    );
+    let receipt = engine.restore_checkpoint(&cp.checkpoint_id).await.unwrap();
+    assert_eq!(receipt.status, RestoreStatus::Complete);
+    assert_eq!(
+        engine.restore(&task).await.unwrap().restore_id,
+        receipt.restore_id
+    );
+    assert_eq!(
+        std::fs::read(a.path().join("src/a.txt")).unwrap(),
+        b"original-a"
+    );
+    assert_eq!(
+        std::fs::read(b.path().join("src/a.txt")).unwrap(),
+        b"b-sentinel"
+    );
+    server.abort();
+    let _ = server.await;
+}
+
 async fn response(
     State(script): State<Script>,
     Json(_): Json<Value>,
@@ -507,7 +676,7 @@ fn k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints() {
         db.pragma_update(None, "user_version", version).unwrap();
         drop(db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 10);
+        assert_eq!(store.schema_version().unwrap(), 11);
         drop(store);
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
@@ -570,8 +739,33 @@ fn k05_fake_literal_and_missing_constraint_are_rejected() {
     }
 }
 
+fn all_schema10_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
+    let mut q=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_migrations','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys') ORDER BY name").unwrap();
+    let names = q
+        .query_map([], |r| r.get::<_, String>(0))
+        .unwrap()
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .unwrap();
+    names
+        .into_iter()
+        .map(|name| {
+            let mut q = db
+                .prepare(&format!("SELECT * FROM {name} ORDER BY rowid"))
+                .unwrap();
+            let rows = q
+                .query_map([], |r| {
+                    (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+                })
+                .unwrap()
+                .collect::<rusqlite::Result<_>>()
+                .unwrap();
+            (name, rows)
+        })
+        .collect()
+}
+
 fn business_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
-    let mut names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('checkpoints','schema_migrations','sqlite_sequence','network_subjects','network_authorizations','network_confirmations','task_network_bindings','network_calls','command_network_ack','network_events') ORDER BY name").unwrap();
+    let mut names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('checkpoints','schema_migrations','sqlite_sequence','network_subjects','network_authorizations','network_confirmations','task_network_bindings','network_calls','command_network_ack','network_events','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys') ORDER BY name").unwrap();
     names
         .query_map([], |r| r.get::<_, String>(0))
         .unwrap()
@@ -813,14 +1007,8 @@ async fn engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_bi
     let mut settings = engine.store.settings().unwrap().unwrap();
     settings.workspace = other.path().to_string_lossy().into();
     engine.store.save_settings(&settings).unwrap();
-    assert!(matches!(
-        engine
-            .git_diff(&task, request)
-            .await
-            .unwrap_err()
-            .downcast_ref::<WorkspaceChangeError>(),
-        Some(WorkspaceChangeError::Conflict { receipt: None })
-    ));
+    let original = engine.git_diff(&task, request).await.unwrap();
+    assert!(original.patch.unwrap().contains("disk"));
     server.abort();
 }
 
@@ -854,7 +1042,7 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
     };
     drop(db);
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 10);
+    assert_eq!(store.schema_version().unwrap(), 11);
     assert_eq!(store.network_calls_for_task(&task).unwrap().len(), 0);
     drop(store);
     drop(Store::open(&path).unwrap());
@@ -870,6 +1058,174 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
         .unwrap()
     };
     assert_eq!(after, checkpoints);
+    server.abort();
+    let _ = server.await;
+}
+
+#[tokio::test]
+async fn completed_restore_replays_after_legacy_migration_and_original_root_is_offline() {
+    use peachsh::project_config::*;
+    let temp = tempfile::tempdir().unwrap();
+    let other = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, server) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task = write_once(&engine).await;
+    let checkpoint = engine
+        .create_checkpoint(&task, "complete-replay")
+        .await
+        .unwrap()
+        .checkpoint;
+    let first = engine
+        .restore_checkpoint(&checkpoint.checkpoint_id)
+        .await
+        .unwrap();
+    assert_eq!(first.status, RestoreStatus::Complete);
+    let b = engine
+        .register_project(RegisterProject {
+            name: "B".into(),
+            root_path: other.path().to_string_lossy().into(),
+            idempotency_key: uuid::Uuid::new_v4().to_string(),
+        })
+        .await
+        .unwrap();
+    let selection = engine.current_project().unwrap();
+    engine
+        .select_project(SelectProject {
+            project_id: b.id,
+            expected_revision: selection.revision,
+        })
+        .await
+        .unwrap();
+    let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
+    network_fixture::project_fixture::drop_project_schema(&raw);
+    raw.pragma_update(None, "user_version", 10).unwrap();
+    let all_before = all_schema10_rows(&raw);
+    for table in [
+        "projects",
+        "sessions",
+        "turns",
+        "tasks",
+        "approvals",
+        "checkpoints",
+        "workspace_changes",
+        "workspace_restores",
+        "workspace_restore_outcomes",
+        "network_subjects",
+        "network_authorizations",
+        "network_calls",
+    ] {
+        assert!(
+            !all_before
+                .iter()
+                .find(|(name, _)| name == table)
+                .unwrap()
+                .1
+                .is_empty(),
+            "{table} must be nonempty"
+        );
+    }
+    drop(raw);
+    drop(engine);
+    server.abort();
+    let _ = server.await;
+    // Close every DB handle and move the complete directory. The original authenticated root is absent.
+    let moved = other.path().join("old-root");
+    std::fs::rename(temp.path(), &moved).unwrap();
+    assert!(!temp.path().exists());
+    let store = Arc::new(Store::open(&moved.join("workspace.db")).unwrap());
+    let engine = Engine::new(store, 2).unwrap();
+    let again = engine.restore(&task).await.unwrap();
+    assert_eq!(again.restore_id, first.restore_id);
+    assert_eq!(
+        engine
+            .restore_checkpoint(&checkpoint.checkpoint_id)
+            .await
+            .unwrap()
+            .restore_id,
+        first.restore_id
+    );
+    assert!(
+        engine
+            .create_checkpoint(&task, "complete-replay")
+            .await
+            .unwrap()
+            .replayed
+    );
+    assert_eq!(
+        engine
+            .changes(&task)
+            .unwrap_err()
+            .downcast_ref::<ProjectError>()
+            .unwrap()
+            .code(),
+        "project_legacy_unbound"
+    );
+    assert_eq!(std::fs::read(moved.join("src/a.txt")).unwrap(), b"before");
+    let raw = Connection::open(moved.join("workspace.db")).unwrap();
+    assert_eq!(all_schema10_rows(&raw), all_before);
+    assert_eq!(engine.store.schema_version().unwrap(), 11);
+}
+
+#[tokio::test]
+async fn schema10_unbound_checkpoint_is_history_only_and_cannot_restore() {
+    use peachsh::project_config::ProjectError;
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, server) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task = write_once(&engine).await;
+    let checkpoint = engine
+        .create_checkpoint(&task, "legacy-cp")
+        .await
+        .unwrap()
+        .checkpoint;
+    drop(engine);
+    let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
+    network_fixture::project_fixture::drop_project_schema(&raw);
+    raw.pragma_update(None, "user_version", 10).unwrap();
+    let before = business_rows(&raw);
+    drop(raw);
+    let store = Arc::new(Store::open(&temp.path().join("workspace.db")).unwrap());
+    let engine = Engine::new(store, 2).unwrap();
+    assert!(engine.task_project_binding(&task).unwrap().is_none());
+    assert_eq!(
+        engine
+            .checkpoint(&checkpoint.checkpoint_id)
+            .unwrap()
+            .checkpoint_id,
+        checkpoint.checkpoint_id
+    );
+    assert!(
+        engine
+            .create_checkpoint(&task, "legacy-cp")
+            .await
+            .unwrap()
+            .replayed
+    );
+    for error in [
+        engine.restore(&task).await.unwrap_err(),
+        engine
+            .restore_checkpoint(&checkpoint.checkpoint_id)
+            .await
+            .unwrap_err(),
+        engine.changes(&task).unwrap_err(),
+        engine.resume(&task, "resume").await.unwrap_err(),
+    ] {
+        assert_eq!(
+            error.downcast_ref::<ProjectError>().unwrap().code(),
+            "project_legacy_unbound"
+        );
+    }
+    assert!(engine.latest_restore(&task).unwrap().is_none());
+    assert_eq!(
+        std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+        b"after"
+    );
+    let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
+    assert_eq!(business_rows(&raw), before);
     server.abort();
     let _ = server.await;
 }

@@ -99,6 +99,50 @@ fn code(error: anyhow::Error, expected: &str) {
         expected
     );
 }
+
+#[cfg(windows)]
+#[tokio::test]
+async fn ordinary_root_search_rejects_case_sensitive_descendant() {
+    let temp = tempfile::tempdir().unwrap();
+    let child = temp.path().join("case");
+    std::fs::create_dir(&child).unwrap();
+    let output = std::process::Command::new("fsutil.exe")
+        .args(["file", "setCaseSensitiveInfo"])
+        .arg(&child)
+        .arg("enable")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "case-sensitive fixture must actually exist"
+    );
+    std::fs::write(child.join("secret.txt"), "unique-sensitive-sentinel").unwrap();
+    let task = Task {
+        id: id(),
+        run_id: id(),
+        spec: request().tasks.remove(0),
+        route: settings(temp.path(), "http://127.0.0.1:1").routes.remove(0),
+        workspace: temp.path().to_string_lossy().into(),
+        status: "running".into(),
+        output: String::new(),
+        error: None,
+        messages: vec![],
+        usage: serde_json::Value::Null,
+        created_at: 1,
+        updated_at: 1,
+    };
+    let error = peachsh::workspace::execute(
+        &task,
+        "search_files",
+        &serde_json::json!({"path":".","query":"unique-sensitive-sentinel"}),
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(
+        error.downcast_ref::<peachsh::workspace_identity::RootIdentityError>(),
+        Some(peachsh::workspace_identity::RootIdentityError::CaseSensitiveDirectory)
+    ));
+}
 async fn settled(engine: &Engine, task: &str) {
     tokio::time::timeout(Duration::from_secs(8), async {
         while engine.is_busy() {
@@ -368,6 +412,46 @@ async fn separate_grants_selection_and_old_session_follow_original_project() {
         )
         .unwrap();
     assert_eq!(old_binding, new_binding);
+    // Expansion changes the ceiling, never the frozen Task or approval permission digest.
+    let frozen = store
+        .task_project_binding(&next.task.legacy_task_id)
+        .unwrap()
+        .unwrap();
+    let mut expanded = store.project_config(&a.id).unwrap();
+    expanded.config.allow_commands = true;
+    expanded.config.write_scopes = vec!["*".into()];
+    store
+        .configure_project(ConfigureProject {
+            project_id: a.id.clone(),
+            expected_revision: expanded.revision,
+            config: expanded.config,
+        })
+        .unwrap();
+    let unchanged = store.task(&next.task.legacy_task_id).unwrap();
+    assert!(!unchanged.spec.allow_commands);
+    assert_eq!(unchanged.spec.write_scopes, vec!["src"]);
+    assert_eq!(
+        store
+            .task_project_binding(&unchanged.id)
+            .unwrap()
+            .unwrap()
+            .permission_digest,
+        frozen.permission_digest
+    );
+    let original = std::path::PathBuf::from(&a.root_path);
+    let moved = temp.path().join("a-moved");
+    std::fs::rename(&original, &moved).unwrap();
+    code(
+        engine.changes(&unchanged.id).unwrap_err(),
+        "project_root_unavailable",
+    );
+    std::fs::create_dir(&original).unwrap();
+    code(
+        engine.changes(&unchanged.id).unwrap_err(),
+        "project_root_changed",
+    );
+    std::fs::remove_dir(&original).unwrap();
+    std::fs::rename(&moved, &original).unwrap();
     let config = store.project_config(&a.id).unwrap();
     store
         .configure_project(ConfigureProject {

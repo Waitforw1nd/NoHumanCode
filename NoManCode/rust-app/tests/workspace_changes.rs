@@ -326,11 +326,31 @@ async fn changed_host_workspace_or_task_scopes_reject_restore_before_claim() {
         if change_host {
             let mut settings = engine.store.settings().unwrap().unwrap();
             settings.workspace = alternate.path().to_string_lossy().into();
-            engine.configure(settings).await.unwrap();
             assert_eq!(
+                engine
+                    .configure(settings)
+                    .await
+                    .unwrap_err()
+                    .downcast_ref::<peachsh::project_config::ProjectError>()
+                    .unwrap()
+                    .code(),
+                "workspace_selection_managed"
+            );
+            assert_ne!(
                 engine.store.settings().unwrap().unwrap().workspace,
                 alternate.path().to_string_lossy()
             );
+            // A refused global-workspace edit cannot retarget the original restore.
+            engine.restore(&task_id).await.unwrap();
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"before"
+            );
+            assert_eq!(
+                std::fs::read(alternate.path().join("src/a.txt")).unwrap(),
+                b"alternate sentinel"
+            );
+            continue;
         } else {
             let mut task = engine.store.task(&task_id).unwrap();
             task.spec.write_scopes.push("extra".into());
@@ -351,14 +371,16 @@ async fn changed_host_workspace_or_task_scopes_reject_restore_before_claim() {
                 vec!["src", "extra"]
             );
         }
-        assert!(matches!(
+        assert_eq!(
             engine
                 .restore(&task_id)
                 .await
                 .unwrap_err()
-                .downcast_ref::<WorkspaceChangeError>(),
-            Some(WorkspaceChangeError::Conflict { .. })
-        ));
+                .downcast_ref::<peachsh::project_config::ProjectError>()
+                .unwrap()
+                .code(),
+            "project_corrupt"
+        );
         assert_eq!(
             std::fs::read(temp.path().join("src/a.txt")).unwrap(),
             b"after"
@@ -368,10 +390,16 @@ async fn changed_host_workspace_or_task_scopes_reject_restore_before_claim() {
             b"alternate sentinel"
         );
         assert!(engine.latest_restore(&task_id).unwrap().is_none());
-        let changes_after = engine.changes(&task_id).unwrap();
-        assert_eq!(changes_after[0].change_id, changes_before[0].change_id);
-        assert_eq!(changes_after[0].state, ChangeState::Finished);
-        assert_eq!(changes_after[0].restore_state, "pending");
+        assert_eq!(
+            engine
+                .changes(&task_id)
+                .unwrap_err()
+                .downcast_ref::<peachsh::project_config::ProjectError>()
+                .unwrap()
+                .code(),
+            "project_corrupt"
+        );
+        assert_eq!(changes_before[0].state, ChangeState::Finished);
     }
 }
 
@@ -531,7 +559,7 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
     network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 10);
+    assert_eq!(store.schema_version().unwrap(), 11);
     assert!(store.settings().unwrap().is_some());
     drop(store);
     db.execute_batch("DROP INDEX workspace_changes_task_path; CREATE INDEX workspace_changes_task_path ON workspace_changes(path_key,task_id,created_at);").unwrap();
@@ -1285,7 +1313,7 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
     db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     drop(db);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 10);
+    assert_eq!(store.schema_version().unwrap(), 11);
     drop(store);
     let db = Connection::open(&db_path).unwrap();
     let task_after: String = db
@@ -1319,5 +1347,5 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
     assert_eq!(approvals_after, approvals);
     assert_eq!(events_after, events);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 10);
+    assert_eq!(store.schema_version().unwrap(), 11);
 }
