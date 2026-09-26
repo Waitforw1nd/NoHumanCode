@@ -13,9 +13,9 @@ use peachsh::{
     domain::{Event, Project, ProjectId, Run, Session, Task, Turn, TurnTask},
     workspace_changes::{RestoreReceipt, RestoreStatus, WorkspaceChange},
 };
-use reqwest::{redirect::Policy, Client, Url};
+use reqwest::{Client, Url, redirect::Policy};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     io::{self, Write},
     time::Duration,

@@ -1,7 +1,7 @@
 //! NEXT-07 real Host authorization admission and transport contracts; localhost only.
 use axum::{
-    routing::{get, post},
     Json, Router,
+    routing::{get, post},
 };
 use peachsh::{
     domain::{Account, Route, Settings},
@@ -9,12 +9,12 @@ use peachsh::{
     server::{self, App},
     store::Store,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
     time::Duration,
 };
@@ -496,11 +496,36 @@ async fn real_host_crash_case(block_finish: bool) {
         200,
     )
     .await;
+    let project = body(
+        client()
+            .post(format!("{origin}/api/projects"))
+            .header("x-peachsh-token", &token)
+            .header("Idempotency-Key", "crash-project")
+            .json(&json!({"name":"crash-project","root_path":root.path().join("workspace")}))
+            .send()
+            .await
+            .unwrap(),
+        201,
+    )
+    .await;
+    let project_id = project["id"].as_str().unwrap();
+    body(client().put(format!("{origin}/api/projects/{project_id}/config")).header("x-peachsh-token",&token).json(&json!({"expected_revision":1,"config":{"allowed_route_ids":["route-a"],"default_route_id":"route-a","tools":false,"write_scopes":[],"allow_commands":false}})).send().await.unwrap(),200).await;
+    body(
+        client()
+            .put(format!("{origin}/api/project-selection"))
+            .header("x-peachsh-token", &token)
+            .json(&json!({"project_id":project_id,"expected_revision":0}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
     let preview = body(
         client()
             .post(format!("{origin}/api/network/preview"))
             .header("x-peachsh-token", &token)
-            .json(&json!({"kind":"route","id":"route-a"}))
+            .json(&json!({"kind":"route","id":"route-a","project_id":project_id}))
             .send()
             .await
             .unwrap(),

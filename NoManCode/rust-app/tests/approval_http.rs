@@ -1221,8 +1221,9 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
 
 #[tokio::test]
 async fn ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency() {
-    let h = harness().await;
-    let mut task = seed_task(&h.engine.store, h._dir.path(), "decision-task");
+    let h = live_harness(vec![]).await;
+    let started = start_live(&h, true).await;
+    let mut task = settled(&h, &started.id).await;
     let id = card(
         &h,
         &mut task,
@@ -1543,15 +1544,17 @@ async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
 
 #[tokio::test]
 async fn ah14_unknown_is_visible_and_decision_remains_conflict() {
-    let h = harness().await;
-    let mut task = seed_task(&h.engine.store, h._dir.path(), "unknown-task");
-    let id = card(
-        &h,
-        &mut task,
+    let h = live_harness(vec![vec![tool_call(
         "command",
         "run_command",
         json!({"command":"exit 0"}),
-    );
+    )]])
+    .await;
+    let started = start_live(&h, true).await;
+    let approval = pending(&h, &started.id).await;
+    let task = h.engine.store.task(&started.id).unwrap();
+    let id = approval.id;
+    // Synchronous approve/claim/recover occurs before this current-thread runtime can resume its waiting worker.
     h.engine
         .store
         .decide_approval_with_network_ack(&id, true, "user", true)

@@ -279,12 +279,52 @@ async fn host(replies: Vec<Value>) -> Host {
         provider,
     };
     // Explicit test setup through the real CLI and Host; production never creates grants.
-    let preview = h.ok(&["network", "preview", "--route", "local"]).await;
+    let root = h.dir.path().join("workspace");
+    let project = h
+        .ok(&[
+            "project",
+            "create",
+            "--name",
+            "fixture",
+            "--root",
+            root.to_str().unwrap(),
+            "--key",
+            "fixture-project",
+        ])
+        .await;
+    let project_id = project["id"].as_str().unwrap();
+    let config = h.dir.path().join("project-config.json");
+    std::fs::write(&config,serde_json::to_vec(&json!({"allowed_route_ids":["local"],"default_route_id":"local","tools":true,"write_scopes":["*"],"allow_commands":true})).unwrap()).unwrap();
+    h.ok(&[
+        "project",
+        "config",
+        "set",
+        project_id,
+        "--expected-revision",
+        "1",
+        "--file",
+        config.to_str().unwrap(),
+    ])
+    .await;
+    h.ok(&["project", "select", project_id, "--expected-revision", "0"])
+        .await;
+    let preview = h
+        .ok(&[
+            "network",
+            "preview",
+            "--route",
+            "local",
+            "--project",
+            project_id,
+        ])
+        .await;
     h.ok(&[
         "network",
         "authorize",
         "--route",
         "local",
+        "--project",
+        project_id,
         "--config-revision",
         &preview["config_revision"].to_string(),
         "--credential-revision",

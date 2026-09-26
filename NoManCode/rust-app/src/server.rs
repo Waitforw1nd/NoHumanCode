@@ -13,22 +13,22 @@ use crate::{
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
 };
 use axum::{
+    Json, Router,
     extract::{
-        rejection::{JsonRejection, PathRejection},
         DefaultBodyLimit, FromRequest, Path, RawQuery, Request, State,
+        rejection::{JsonRejection, PathRejection},
     },
-    http::{header, HeaderMap, HeaderValue, StatusCode},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     middleware::{self, Next},
     response::{
-        sse::{Event as SseEvent, KeepAlive},
         Html, IntoResponse, Response, Sse,
+        sse::{Event as SseEvent, KeepAlive},
     },
     routing::{get, post, put},
-    Json, Router,
 };
 use peachsh_protocol::{ErrorBody, ErrorCode};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
 
 #[derive(Clone)]
@@ -794,10 +794,11 @@ async fn task_network_calls(
 async fn runs(State(app): State<App>, RawQuery(query): RawQuery) -> Result<Json<Value>> {
     if let Some(id) = project_query(query)? {
         let runs = app.engine.project_runs(&id).map_err(read_error)?;
-        return Ok(Json(json!(runs
-            .into_iter()
-            .map(|r| json!({"id":r.id,"title":r.title,"kind":r.kind,"created_at":r.created_at}))
-            .collect::<Vec<_>>())));
+        return Ok(Json(json!(
+            runs.into_iter()
+                .map(|r| json!({"id":r.id,"title":r.title,"kind":r.kind,"created_at":r.created_at}))
+                .collect::<Vec<_>>()
+        )));
     }
     Ok(Json(json!(app.engine.store.runs().map_err(read_error)?)))
 }

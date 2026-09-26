@@ -1,7 +1,7 @@
 //! NEXT-08 real Host project admission, CAS, isolation and CLI integration.
 use axum::{
-    routing::{get, post},
     Json, Router,
+    routing::{get, post},
 };
 use peachsh::{
     domain::{Route, Settings},
@@ -9,12 +9,12 @@ use peachsh::{
     server::{self, App},
     store::Store,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
     time::Duration,
 };
@@ -528,9 +528,7 @@ async fn p09_nested_json_rejected_before_any_project_write_or_network() {
         assert_eq!(h.get("/api/runs").await, json!([]));
         assert_eq!(h.calls.load(Ordering::SeqCst), 0);
     }
-    let duplicate = format!(
-        r#"{{"expected_revision":2,"config":{{"allowed_route_ids":[],"default_route_id":null,"tools":false,"tools":true,"write_scopes":[],"allow_commands":false}}}}"#
-    );
+    let duplicate = r#"{"expected_revision":2,"config":{"allowed_route_ids":[],"default_route_id":null,"tools":false,"tools":true,"write_scopes":[],"allow_commands":false}}"#;
     body(
         h.request(reqwest::Method::PUT, &config_path)
             .header("content-type", "application/json")
@@ -596,4 +594,64 @@ async fn p09_wasm_http_list_and_run_are_explicitly_unsupported() {
     assert_eq!(std::fs::read_dir(plugins).unwrap().count(), 1);
     assert_eq!(h.get("/api/runs").await, json!([]));
     assert_eq!(h.calls.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn p08_legacy_task_history_is_readable_but_live_operations_are_rejected() {
+    let h = Host::new().await;
+    let project = h.register("legacy-source").await;
+    let id = project["id"].as_str().unwrap();
+    h.configure(id).await;
+    h.grant(id).await;
+    let run = h.run(id, "native-source").await;
+    h.settle(run["id"].as_str().unwrap()).await;
+    // Build a legacy row through the existing legacy storage API, without a sidecar or forged root identity.
+    let mut old = h.engine.store.run(run["id"].as_str().unwrap()).unwrap();
+    old.id = "legacy-run".into();
+    old.tasks[0].id = "legacy-task".into();
+    old.tasks[0].run_id = old.id.clone();
+    h.engine.store.create_run(&old).unwrap();
+    let history = h.get("/api/runs/legacy-run").await;
+    let before = serde_json::to_value(&old.tasks[0]).unwrap();
+    assert_eq!(history["tasks"][0], before);
+    assert_eq!(
+        h.get("/api/tasks/legacy-task/project").await,
+        json!({"binding":null,"status":"legacy_unbound"})
+    );
+    let calls = h.calls.load(Ordering::SeqCst);
+    for (path, request) in [
+        (
+            "/api/tasks/legacy-task/resume",
+            json!({"message":"no adoption"}),
+        ),
+        (
+            "/api/tasks/legacy-task/git-diff",
+            json!({"path":"file.txt","view":"head"}),
+        ),
+        ("/api/tasks/legacy-task/checkpoints", json!({})),
+        ("/api/tasks/legacy-task/restore", json!({})),
+    ] {
+        let result = body(
+            h.request(reqwest::Method::POST, path)
+                .header("Idempotency-Key", "legacy-checkpoint")
+                .json(&request)
+                .send()
+                .await
+                .unwrap(),
+            409,
+        )
+        .await;
+        assert_eq!(result["code"], "project_legacy_unbound", "{path}: {result}");
+        assert_eq!(h.calls.load(Ordering::SeqCst), calls);
+        assert_eq!(
+            serde_json::to_value(h.engine.store.task("legacy-task").unwrap()).unwrap(),
+            before
+        );
+    }
+    body(
+        h.post("/api/tasks/legacy-task/cancel", json!({})).await,
+        200,
+    )
+    .await;
+    assert_eq!(h.calls.load(Ordering::SeqCst), calls);
 }

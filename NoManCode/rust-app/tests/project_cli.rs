@@ -1,12 +1,12 @@
 //! NEXT-08: real CLI processes validate project wire requests and hostile responses.
 use axum::{
+    Router,
     body::Bytes,
     extract::State,
     http::{HeaderMap, Method, StatusCode, Uri},
     response::IntoResponse,
-    Router,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     process::Output,
