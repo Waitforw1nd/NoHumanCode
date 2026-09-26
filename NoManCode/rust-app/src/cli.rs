@@ -1887,7 +1887,34 @@ async fn network_workflow_inner(
         }
         _ => unreachable!(),
     };
-    print_value(value, json_output)
+    // Preserve validated facts even if stdout closes after the Host completed a call.
+    // Management calls have no Task ID through which the user could rediscover them.
+    let calls = value
+        .get("calls")
+        .cloned()
+        .or_else(|| value.get("call_id").map(|_| json!([value.clone()])));
+    let details = calls.map(|calls| {
+        let states: Vec<_> = calls
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|c| c["state"].as_str())
+            .collect();
+        let dispatch_state = if states.iter().any(|s| matches!(*s, "unknown" | "claimed")) {
+            "unknown"
+        } else if states.is_empty() || states.iter().all(|s| *s == "not_sent") {
+            "not_sent"
+        } else {
+            "finished"
+        };
+        json!({"calls":calls,"dispatch_state":dispatch_state})
+    });
+    print_value(value, json_output).map_err(|mut error| {
+        if error.code == "output_failed" {
+            error.details = details;
+        }
+        error
+    })
 }
 
 const FRAME_LIMIT: usize = 1_048_576;

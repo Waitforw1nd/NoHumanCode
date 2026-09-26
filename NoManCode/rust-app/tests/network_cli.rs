@@ -270,3 +270,34 @@ async fn network_cli_models_success_and_task_call_binding_are_validated() {
         "internal"
     );
 }
+
+#[tokio::test]
+async fn network_cli_closed_stdout_keeps_known_call_receipt_on_stderr_once() {
+    let receipt = call("finished");
+    let host = Host::new(vec![(
+        200,
+        json!({"result":["mock-model"],"calls":[receipt.clone()]}),
+    )])
+    .await;
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"))
+        .arg("--port")
+        .arg(host.port.to_string())
+        .args(["--json", "route", "models", "route-a"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    drop(child.stdout.take());
+    let output = tokio::time::timeout(Duration::from_secs(10), child.wait_with_output())
+        .await
+        .unwrap()
+        .unwrap();
+    let failure = error(output);
+    assert_eq!(failure["code"], "output_failed");
+    assert_eq!(failure["dispatch_state"], "finished");
+    assert_eq!(failure["calls"], json!([receipt]));
+    let requests = host.state.requests.lock().unwrap();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].1, "/api/routes/route-a/models");
+}
