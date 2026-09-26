@@ -514,9 +514,9 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
         .unwrap();
     drop(store);
     let db = Connection::open(&path).unwrap();
-    db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; PRAGMA user_version=7;").unwrap();
+    db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 8);
+    assert_eq!(store.schema_version().unwrap(), 9);
     assert!(store.settings().unwrap().is_some());
     drop(store);
     db.execute_batch("DROP INDEX workspace_changes_task_path; CREATE INDEX workspace_changes_task_path ON workspace_changes(path_key,task_id,created_at);").unwrap();
@@ -1256,10 +1256,10 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
             .collect()
     };
     assert!(!approvals.is_empty() && !events.is_empty());
-    db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; PRAGMA user_version=7;").unwrap();
+    db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     drop(db);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 8);
+    assert_eq!(store.schema_version().unwrap(), 9);
     drop(store);
     let db = Connection::open(&db_path).unwrap();
     let task_after: String = db
@@ -1293,5 +1293,5 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
     assert_eq!(approvals_after, approvals);
     assert_eq!(events_after, events);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 8);
+    assert_eq!(store.schema_version().unwrap(), 9);
 }
