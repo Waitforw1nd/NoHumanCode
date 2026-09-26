@@ -1,3 +1,9 @@
+## 2026-09-27 NEXT-05 依赖组合与限定组件审查
+
+D组件3d00f121b0c66124cbb2afc2d6fdf0d1cf504c10经经理review1.0限定通过（模块6、plugin24、集成2，check/fmt/clippy0）；C HTTP依赖efa242f已检查check0/映射1项0，B WIP50826f4干净冻结后经理串行合C/D成3707dd1。详见[候选组合记录](../审查记录/2026-09-27NEXT-05候选组合记录.md)。三代理服务502/503后按原任务接续，在途8源码文件保全于00:36:08清单。
+
+联合只读审查确认B旧中断字符串例外会让缺少审批事实的未知历史追加新Task，已要求仅新append failclosed并补定向反例；未推翻旧resume兼容。B/C仍实现与联测，NEXT-05未验收/合main，经理无产品实现，未重跑产品测试。继承九档案保持。
+
 ## 2026-09-27T00:13:01+08:00 NEXT-05 并行开发已启动
 
 根据用户继续指令，经理完成[单Agent贯通契约](../任务/2026-09-27NEXT-05单Agent贯通契约.md)，基线5cf74319ea3b37af9c27821a6eaac944241473e4，新独立B/C/D工作树。GPT-6-astra B-R4工具Turn/事务/Engine、C-R6 CLI/HTTP/真实Host流程、D-R3 registry真实payload与撤销。原B-R3/C支持/D-R2验收保持，继承九档案不动。

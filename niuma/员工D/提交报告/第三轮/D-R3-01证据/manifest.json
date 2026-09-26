@@ -1,0 +1,62 @@
+{
+  "candidate": "3d00f121b0c66124cbb2afc2d6fdf0d1cf504c10",
+  "logs": [
+    {
+      "source": "../nhc-d-tool-runtime/.local/d-r3-evidence/check.log",
+      "published": "check.log",
+      "source_sha256": "7a7841db0b7bb1cf0c3ea37584ff65228f0d3182c57709ec94f901cc4b054630",
+      "published_sha256": "4fe30adcd2f573e7ca61b809a272d3b9d10e72f00d07b72486a2185cc48f729b",
+      "changes": "decode original output to UTF-8; replace workspace absolute prefix with relative path; original preserved; manager normalized generated CRCRLF/CRLF to LF and trailing blank lines before archive; original unchanged"
+    },
+    {
+      "source": "../nhc-d-tool-runtime/.local/d-r3-evidence/runtime-unit.log",
+      "published": "runtime-unit.log",
+      "source_sha256": "6ce90966e7d217eb59daa14d0069c53e2f0abfa252f0b4eb90a62272266595d0",
+      "published_sha256": "7953568bdd80ceecd2a68ad35db5e510d992548e445e5afab02f657ea5a5c99f",
+      "changes": "decode original output to UTF-8; replace workspace absolute prefix with relative path; original preserved; manager normalized generated CRCRLF/CRLF to LF and trailing blank lines before archive; original unchanged"
+    },
+    {
+      "source": "../nhc-d-tool-runtime/.local/d-r3-evidence/integration.log",
+      "published": "integration.log",
+      "source_sha256": "ce8e9512417b704944ef1bdaea8a7c7563c51eb58849bb3fd21786a5ae635702",
+      "published_sha256": "0bf19bc13828c29431c5f3d52ef1f1e39216bf2bc9a6c66ac5416687c22107d5",
+      "changes": "decode original output to UTF-8; replace workspace absolute prefix with relative path; original preserved; manager normalized generated CRCRLF/CRLF to LF and trailing blank lines before archive; original unchanged"
+    },
+    {
+      "source": "../nhc-d-tool-runtime/.local/d-r3-evidence/fmt.log",
+      "published": "fmt.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "changes": "decode original output to UTF-8; replace workspace absolute prefix with relative path; original preserved; manager normalized generated CRCRLF/CRLF to LF and trailing blank lines before archive; original unchanged"
+    },
+    {
+      "source": "../nhc-d-tool-runtime/.local/d-r3-evidence/clippy.log",
+      "published": "clippy.log",
+      "source_sha256": "7a8c0858158dafc7377f6706dc5646574cbabedba564f91017e906936deb862f",
+      "published_sha256": "2c5dc19a78b31002aeb684eff6a157c7d7b51a27d970c086dc19c5f3d91f0a10",
+      "changes": "decode original output to UTF-8; replace workspace absolute prefix with relative path; original preserved; manager normalized generated CRCRLF/CRLF to LF and trailing blank lines before archive; original unchanged"
+    }
+  ],
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "sha256": "36566d631dde4ff77476d051f80a63226f13a2b5c4aebd381cedd709f1ac0eec"
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_host.rs",
+      "sha256": "1051eddca4fae92c314c3da86e27c1344b9b0b2518dfac4b3f31be657dab7883"
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_runtime.rs",
+      "sha256": "8ec7ab388fdedd4d857b04007cc656249a788158ae72149b786b14bdec0c17f9"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_host.rs",
+      "sha256": "14b859876e05b33ddbe6c54bec1650ed46369bfbefdd89f054a0cdfc5d47dfc1"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_runtime.rs",
+      "sha256": "8defe98312f7866cbece1737d719114b54e16f6c4b9f91426b47c688afa88549"
+    }
+  ]
+}

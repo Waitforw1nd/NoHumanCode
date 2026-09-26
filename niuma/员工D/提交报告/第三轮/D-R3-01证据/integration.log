@@ -1,0 +1,39 @@
+   Compiling peachsh v0.2.0 (../nhc-d-tool-runtime\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.90s
+     Running tests\plugin_host.rs (../nhc-d-tool-runtime/.local/target\debug\deps\plugin_host-240185ae59a62fa3.exe)
+
+running 24 tests
+test h12_existing_surfaces_unaffected ... ok
+test failed_instances_reject_being_plan_members ... ok
+test ctx_rule_boundaries_reject_with_typed_errors ... ok
+test emit_rejects_non_event_undeclared_and_unknown_emitter ... ok
+test emit_inside_activate_is_allowed_and_never_backfills ... ok
+test h03_revocation_leaves_no_residue ... ok
+test rollback_records_deactivate_failures_without_replacing_the_start_error ... ok
+test h01_full_chain_register_start_bound_call ... ok
+test remove_descriptor_does_not_unload_running_instances ... ok
+test restart_after_stop_builds_a_fresh_object ... ok
+test h11_purity_determinism_and_display_name_not_identity ... ok
+test n08_host_typed_resolver_obeys_live_activation_binding_and_payload_type ... ok
+test h04_dependents_active_protects_provider ... ok
+test stop_subtree_records_every_deactivate_failure_in_teardown_order ... ok
+test start_reuses_active_non_root_members ... ok
+test h09_events_deliver_in_subscriber_id_order ... ok
+test h06_declaration_violations_are_typed_and_rolled_back ... ok
+test h07_runtime_gates ... ok
+test subscribers_receive_only_their_bound_providers_events ... ok
+test h10_recovery_list_records_incomplete_cleanup ... ok
+test h05_activation_failure_rolls_back_in_plan_reverse ... ok
+test panicking_subscriber_fails_alone_and_delivery_continues ... ok
+test h08_state_rules_and_scope_isolation ... ok
+test h02_topology_order_and_reverse_teardown ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\tool_runtime.rs (../nhc-d-tool-runtime/.local/target\debug\deps\tool_runtime-cf185f001982c73f.exe)
+
+running 2 tests
+test definitions_and_admission_obey_task_permission_ceiling ... ok
+test revoked_file_tools_never_reappear_through_compatibility_dispatch ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
