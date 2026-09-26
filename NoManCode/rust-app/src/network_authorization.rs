@@ -13,6 +13,8 @@ pub enum NetworkSubjectKind {
 pub struct NetworkSubject {
     pub kind: NetworkSubjectKind,
     pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_id: Option<crate::domain::ProjectId>,
 }
 impl NetworkSubject {
     pub(crate) fn key(&self) -> Result<String, NetworkError> {
@@ -20,9 +22,17 @@ impl NetworkSubject {
             NetworkSubjectKind::Route
                 if crate::domain::valid_name(&self.id) && self.id != "newapi-account" =>
             {
-                Ok(format!("route:{}", self.id))
+                match &self.project_id {
+                    Some(project) if crate::domain::valid_name(&project.0) => {
+                        Ok(format!("project-route:{}:{}", project.0, self.id))
+                    }
+                    Some(_) => Err(NetworkError::not_sent(NetworkErrorKind::Invalid)),
+                    None => Ok(format!("route:{}", self.id)),
+                }
             }
-            NetworkSubjectKind::Account if self.id == "newapi" => Ok("account:newapi".into()),
+            NetworkSubjectKind::Account if self.id == "newapi" && self.project_id.is_none() => {
+                Ok("account:newapi".into())
+            }
             _ => Err(NetworkError::not_sent(NetworkErrorKind::Invalid)),
         }
     }
@@ -119,6 +129,20 @@ pub struct NetworkResponse<T> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NetworkErrorKind {
+    ProjectInvalid,
+    ProjectNotFound,
+    ProjectRevisionConflict,
+    ProjectDuplicateRoot,
+    ProjectOverlappingRoot,
+    ProjectSelectionRequired,
+    ProjectLegacyUnbound,
+    ProjectRootChanged,
+    ProjectRootUnavailable,
+    ProjectPermissionRevoked,
+    ProjectOperationUnsupported,
+    ProjectCorrupt,
+    ProjectInternal,
+    WorkspaceSelectionManaged,
     Invalid,
     NotFound,
     Required,
@@ -153,8 +177,54 @@ impl NetworkError {
         }
     }
 }
+impl NetworkErrorKind {
+    pub fn project_code(&self) -> Option<&'static str> {
+        use crate::project_config::ProjectError;
+        Some(match self {
+            Self::ProjectInvalid => ProjectError::Invalid.code(),
+            Self::ProjectNotFound => ProjectError::NotFound.code(),
+            Self::ProjectRevisionConflict => ProjectError::RevisionConflict.code(),
+            Self::ProjectDuplicateRoot => ProjectError::DuplicateRoot.code(),
+            Self::ProjectOverlappingRoot => ProjectError::OverlappingRoot.code(),
+            Self::ProjectSelectionRequired => ProjectError::SelectionRequired.code(),
+            Self::ProjectLegacyUnbound => ProjectError::LegacyUnbound.code(),
+            Self::ProjectRootChanged => ProjectError::RootChanged.code(),
+            Self::ProjectRootUnavailable => ProjectError::RootUnavailable.code(),
+            Self::ProjectPermissionRevoked => ProjectError::PermissionRevoked.code(),
+            Self::ProjectOperationUnsupported => ProjectError::OperationUnsupported.code(),
+            Self::ProjectCorrupt => ProjectError::Corrupt.code(),
+            Self::ProjectInternal => ProjectError::Internal.code(),
+            Self::WorkspaceSelectionManaged => ProjectError::WorkspaceSelectionManaged.code(),
+            _ => return None,
+        })
+    }
+}
+impl From<crate::project_config::ProjectError> for NetworkError {
+    fn from(error: crate::project_config::ProjectError) -> Self {
+        use crate::project_config::ProjectError;
+        Self::not_sent(match error {
+            ProjectError::Invalid => NetworkErrorKind::ProjectInvalid,
+            ProjectError::NotFound => NetworkErrorKind::ProjectNotFound,
+            ProjectError::RevisionConflict => NetworkErrorKind::ProjectRevisionConflict,
+            ProjectError::DuplicateRoot => NetworkErrorKind::ProjectDuplicateRoot,
+            ProjectError::OverlappingRoot => NetworkErrorKind::ProjectOverlappingRoot,
+            ProjectError::SelectionRequired => NetworkErrorKind::ProjectSelectionRequired,
+            ProjectError::LegacyUnbound => NetworkErrorKind::ProjectLegacyUnbound,
+            ProjectError::RootChanged => NetworkErrorKind::ProjectRootChanged,
+            ProjectError::RootUnavailable => NetworkErrorKind::ProjectRootUnavailable,
+            ProjectError::PermissionRevoked => NetworkErrorKind::ProjectPermissionRevoked,
+            ProjectError::OperationUnsupported => NetworkErrorKind::ProjectOperationUnsupported,
+            ProjectError::Corrupt => NetworkErrorKind::ProjectCorrupt,
+            ProjectError::Internal => NetworkErrorKind::ProjectInternal,
+            ProjectError::WorkspaceSelectionManaged => NetworkErrorKind::WorkspaceSelectionManaged,
+        })
+    }
+}
 impl std::fmt::Display for NetworkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(code) = self.kind.project_code() {
+            return f.write_str(code);
+        }
         f.write_str(match self.kind {
             NetworkErrorKind::Invalid => "网络请求无效",
             NetworkErrorKind::NotFound => "网络对象不存在",
@@ -166,6 +236,7 @@ impl std::fmt::Display for NetworkError {
             NetworkErrorKind::Unknown => "网络调用结果未知",
             NetworkErrorKind::Internal => "网络授权操作失败",
             NetworkErrorKind::Upstream => "上游返回失败响应",
+            _ => "项目网络请求被拒绝",
         })
     }
 }
@@ -186,7 +257,13 @@ pub(crate) fn safe_error(error: anyhow::Error) -> NetworkError {
     error
         .downcast_ref::<NetworkError>()
         .cloned()
-        .unwrap_or_else(|| NetworkError::not_sent(NetworkErrorKind::Internal))
+        .unwrap_or_else(|| {
+            error
+                .downcast_ref::<crate::project_config::ProjectError>()
+                .copied()
+                .map(Into::into)
+                .unwrap_or_else(|| NetworkError::not_sent(NetworkErrorKind::Internal))
+        })
 }
 fn failure(kind: NetworkErrorKind) -> anyhow::Error {
     NetworkError::not_sent(kind).into()
@@ -220,6 +297,17 @@ fn read_secret(db: &Connection, id: &str) -> AnyResult<Option<String>> {
 }
 fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<CurrentSubject> {
     subject.key()?;
+    if subject.kind == NetworkSubjectKind::Route {
+        let project = subject
+            .project_id
+            .as_ref()
+            .ok_or(crate::project_config::ProjectError::SelectionRequired)?;
+        let config = crate::project_config::config_tx(db, project)?;
+        crate::project_config::workspace_tx(db, project)?;
+        if !config.config.allowed_route_ids.contains(&subject.id) {
+            return Err(crate::project_config::ProjectError::PermissionRevoked.into());
+        }
+    }
     let value: Option<String> = db
         .query_row("SELECT value FROM config WHERE id='settings'", [], |r| {
             r.get(0)
@@ -345,7 +433,7 @@ fn matches_current(
 }
 fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
     Ok(digest(&serde_json::to_vec(
-        &json!({"version":1,"subject":snapshot.subject,"config_revision":snapshot.config_revision,"credential_revision":snapshot.credential_revision,"origin":snapshot.origin,"base_url":snapshot.base_url,"identity":snapshot.identity,"credential_ref":snapshot.credential_ref}),
+        &json!({"version":if snapshot.subject.project_id.is_some() {2} else {1},"subject":snapshot.subject,"config_revision":snapshot.config_revision,"credential_revision":snapshot.credential_revision,"origin":snapshot.origin,"base_url":snapshot.base_url,"identity":snapshot.identity,"credential_ref":snapshot.credential_ref}),
     )?))
 }
 fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<SubjectSnapshot> {
@@ -393,11 +481,22 @@ fn authorization(db: &Connection, id: &str) -> AnyResult<NetworkAuthorization> {
         NetworkSubject {
             kind: NetworkSubjectKind::Route,
             id: id.into(),
+            project_id: None,
+        }
+    } else if let Some(rest) = key.strip_prefix("project-route:") {
+        let (project, id) = rest
+            .split_once(':')
+            .ok_or_else(|| failure(NetworkErrorKind::Corrupt))?;
+        NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: id.into(),
+            project_id: Some(crate::domain::ProjectId(project.into())),
         }
     } else if key == "account:newapi" {
         NetworkSubject {
             kind: NetworkSubjectKind::Account,
             id: "newapi".into(),
+            project_id: None,
         }
     } else {
         return Err(failure(NetworkErrorKind::Corrupt));
@@ -534,6 +633,12 @@ fn checked_authorization(
     purposes: &[NetworkPurpose],
     task: Option<&crate::domain::Task>,
 ) -> AnyResult<(NetworkAuthorization, CurrentSubject)> {
+    if let Some(task) = task {
+        let binding = crate::project_config::validate_task_tx(db, task, true, true)?;
+        if subject.project_id.as_ref() != Some(&binding.project_id) {
+            return Err(crate::project_config::ProjectError::PermissionRevoked.into());
+        }
+    }
     let grant = if let Some(task) = task {
         let binding: Option<(String,String)> = db.query_row("SELECT authorization_id,binding_digest FROM task_network_bindings WHERE task_id=?1", [&task.id], |r| Ok((r.get(0)?,r.get(1)?))).optional()?;
         let (id, binding) = binding.ok_or_else(|| failure(NetworkErrorKind::Required))?;
@@ -580,6 +685,7 @@ pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyRe
     let subject = NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: task.route.id.clone(),
+        project_id: Some(crate::project_config::validate_task_tx(db, task, true, true)?.project_id),
     };
     let (grant, current) =
         checked_authorization(db, &subject, &[NetworkPurpose::Completion], None)?;
@@ -590,6 +696,25 @@ pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyRe
     {
         return Err(failure(NetworkErrorKind::Stale));
     }
+    db.execute(
+        "INSERT INTO task_network_bindings VALUES (?1,?2,?3)",
+        params![task.id, grant.authorization_id, grant.binding_digest],
+    )?;
+    Ok(())
+}
+pub(crate) fn inherit_task_tx(
+    db: &Connection,
+    previous: &crate::domain::Task,
+    task: &crate::domain::Task,
+) -> AnyResult<()> {
+    let binding = crate::project_config::validate_task_tx(db, task, true, true)?;
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: task.route.id.clone(),
+        project_id: Some(binding.project_id),
+    };
+    let (grant, _) =
+        checked_authorization(db, &subject, &[NetworkPurpose::Completion], Some(previous))?;
     db.execute(
         "INSERT INTO task_network_bindings VALUES (?1,?2,?3)",
         params![task.id, grant.authorization_id, grant.binding_digest],
@@ -942,6 +1067,9 @@ impl Store {
                 .collect::<AnyResult<_>>()?
         };
         for subject in subjects {
+            if subject.kind == NetworkSubjectKind::Route && subject.project_id.is_none() {
+                continue;
+            }
             match current_subject(&tx, &subject) {
                 Ok(current) => {
                     refresh_subject(&tx, current)?;
@@ -955,6 +1083,13 @@ impl Store {
                                 | NetworkErrorKind::Invalid
                         )
                     }) =>
+                {
+                    tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
+                }
+                Err(error)
+                    if error
+                        .downcast_ref::<crate::project_config::ProjectError>()
+                        .is_some() =>
                 {
                     tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
                 }

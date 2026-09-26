@@ -20,6 +20,77 @@ use serde_json::Value;
 pub const MIGRATION_ID: &str = "project-session-turn-repository";
 pub const APPROVAL_MIGRATION_ID: &str = "tool-call-approval-repository";
 pub const WORKSPACE_CHANGE_MIGRATION_ID: &str = "workspace-change-repository";
+pub const PROJECT_CONFIG_MIGRATION_ID: &str = "project-config-root-binding-v1";
+
+const PROJECT_TABLES: &[(&str, &str)] = &[
+    (
+        "project_configs",
+        "CREATE TABLE IF NOT EXISTS project_configs (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), value TEXT NOT NULL, permission_digest TEXT NOT NULL)",
+    ),
+    (
+        "project_root_bindings",
+        "CREATE TABLE IF NOT EXISTS project_root_bindings (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), identity TEXT NOT NULL)",
+    ),
+    (
+        "project_selection",
+        "CREATE TABLE IF NOT EXISTS project_selection (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), project_id TEXT REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0), CHECK((revision=0 AND project_id IS NULL) OR (revision>0 AND project_id IS NOT NULL)))",
+    ),
+    (
+        "task_project_bindings",
+        "CREATE TABLE IF NOT EXISTS task_project_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), project_id TEXT NOT NULL REFERENCES project_configs(project_id), value TEXT NOT NULL, provenance TEXT NOT NULL CHECK(provenance='native_v1'))",
+    ),
+    (
+        "project_registration_keys",
+        "CREATE TABLE IF NOT EXISTS project_registration_keys (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_configs(project_id), request_hash TEXT NOT NULL)",
+    ),
+];
+pub fn apply_schema_11(tx: &Transaction<'_>) -> Result<()> {
+    for (_, sql) in PROJECT_TABLES {
+        tx.execute_batch(sql)?;
+    }
+    tx.execute(
+        "INSERT OR IGNORE INTO project_selection(id,project_id,revision) VALUES (1,NULL,0)",
+        [],
+    )?;
+    verify_schema_11(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![PROJECT_CONFIG_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 11)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_11(tx: &Transaction<'_>) -> Result<()> {
+    // Exact normalized DDL checks the actual PK/FK/CHECK constraints, not merely their names.
+    let normalize = |sql: &str| {
+        sql.replace("IF NOT EXISTS ", "")
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+    };
+    for (table, sql) in PROJECT_TABLES {
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "project schema constraint mismatch"
+        );
+    }
+    let count: u64 = tx.query_row(
+        "SELECT count(*) FROM project_selection WHERE id=1",
+        [],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(count == 1, "project selection missing");
+    let violation: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(violation.is_none(), "project foreign key violation");
+    Ok(())
+}
 
 const WORKSPACE_CHANGES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS workspace_changes (
   id TEXT NOT NULL PRIMARY KEY,
