@@ -1,3 +1,11 @@
+## 2026-09-26 22:46 当前：NEXT-03A已验收并整合main
+
+更新人：经理 GPT-6；登记时刻 2026-09-26T22:46:07.6290399+08:00。用户授权GPT-6-astra后，B/C已接续完成原任务，不再等待GPT-6-sol服务。B review1.4按范围APPROVED；受测组合5c5fcb6ef15398c7f01967e5805a4fd2a144961c经五标准门禁全0、270通过/0失败/1付费忽略，经理归档6d6a8a00b632be02c63e12cf5ecfdb1ccfc33184后无冲突合main为9d78987897b8a1278e3a55667275df4b5e658cf1。Rust tree 0d493bb20ba0c16e79dee2ee9693de394897bad9与受测版本完全相同。
+
+B-R3-01执行B-R3-01-20260926-024830、C-R5支持及只读审查已完成；F1～F10、review1.3四组、C-W09-E1闭合。经理核17份原始/发布hash，旧失败和各模型贡献保持；原工作树保留，继承3修改6未跟踪档案逐项hash不变。详见niuma/项目经理/审查记录/2026-09-26NEXT-03A整合记录.md与本轮交付报告。未推送、发布或付费live。
+
+新增主线能力：schema8、批准write_file的typed变更与安全恢复、稳定receipt及unknown不重试。范围限普通文件字节/存在性、<=256KiB UTF-8、单Host共享Engine；不包含Workspace CLI、Git diff/目录checkpoint、run_command回滚。F3独立write/sync故障未注入、W11采样列/静态校验和未做浏览器交互边界已披露；本轮无未闭合阻断。下一步第一操作：核项目书下一优先项、另定后续任务契约/基线与所有权，尚无新源码任务。下方为历史阶段。
+
 ## 2026-09-26 22:38 当前：Astra补证闭合，组合门禁进行中
 
 经理 GPT-6。B/C GPT-6-astra 接续成功；B 固定2578029682e18eea911d5fae99717fb8beafe2ae，原执行B-R3-01-20260926-024830保持。经理与C第1.3只读复核确认review1.3四组及C-W09-E1证据问题闭合，B定向phase7/7、workspace_changes21/21，首次scope夹具失败101保留；经理核8份原始/发布日志hash均相符。
