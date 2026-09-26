@@ -315,8 +315,18 @@ fn stored_subject(
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .optional()?;
-    row.map(|(s, b)| Ok((json::<SubjectSnapshot>(&s)?, b)))
-        .transpose()
+    row.map(|(s, b)| {
+        let snapshot = json::<SubjectSnapshot>(&s)?;
+        if snapshot.subject != *subject
+            || snapshot.config_revision == 0
+            || snapshot.credential_revision == 0
+            || snapshot.binding_digest != snapshot_digest(&snapshot)?
+        {
+            return Err(failure(NetworkErrorKind::Corrupt));
+        }
+        Ok((snapshot, b))
+    })
+    .transpose()
 }
 fn same_config(a: &SubjectSnapshot, b: &SubjectSnapshot) -> bool {
     a.subject == b.subject
@@ -333,6 +343,11 @@ fn matches_current(
     Ok(same_config(snapshot, &current.snapshot)
         && secrets::open(sealed)? == current.credential.as_bytes())
 }
+fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
+    Ok(digest(&serde_json::to_vec(
+        &json!({"version":1,"subject":snapshot.subject,"config_revision":snapshot.config_revision,"credential_revision":snapshot.credential_revision,"origin":snapshot.origin,"base_url":snapshot.base_url,"identity":snapshot.identity,"credential_ref":snapshot.credential_ref}),
+    )?))
+}
 fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<SubjectSnapshot> {
     let key = current.snapshot.subject.key()?;
     let old = stored_subject(db, &current.snapshot.subject)?;
@@ -342,17 +357,21 @@ fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<Subjec
         return Ok(snapshot.clone());
     }
     let mut snapshot = current.snapshot;
-    snapshot.config_revision = old
-        .as_ref()
-        .map(|(s, _)| s.config_revision + u64::from(!same_config(s, &snapshot)))
-        .unwrap_or(1);
-    snapshot.credential_revision = old
-        .as_ref()
-        .map(|(s, _)| s.credential_revision + 1)
-        .unwrap_or(1);
-    snapshot.binding_digest = digest(&serde_json::to_vec(
-        &json!({"version":1,"subject":snapshot.subject,"config_revision":snapshot.config_revision,"credential_revision":snapshot.credential_revision,"origin":snapshot.origin,"base_url":snapshot.base_url,"identity":snapshot.identity,"credential_ref":snapshot.credential_ref}),
-    )?);
+    snapshot.config_revision = if let Some((old, _)) = &old {
+        old.config_revision
+            .checked_add(u64::from(!same_config(old, &snapshot)))
+            .ok_or_else(|| failure(NetworkErrorKind::Corrupt))?
+    } else {
+        1
+    };
+    snapshot.credential_revision = if let Some((old, _)) = &old {
+        old.credential_revision
+            .checked_add(1)
+            .ok_or_else(|| failure(NetworkErrorKind::Corrupt))?
+    } else {
+        1
+    };
+    snapshot.binding_digest = snapshot_digest(&snapshot)?;
     db.execute(
         "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
         [&key],
@@ -607,16 +626,23 @@ fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
         }
         CallState::Finished => {
             value.finished_at.is_some()
-                && value.success.is_some()
-                && matches!(
-                    value.result,
-                    Some(
-                        CallResult::Success | CallResult::HttpFailure | CallResult::InvalidResponse
-                    )
-                )
+                && match (value.success, value.result, value.http_status) {
+                    (Some(true), Some(CallResult::Success), None) => true,
+                    (Some(true), Some(CallResult::Success), Some(status)) => {
+                        (200..300).contains(&status)
+                    }
+                    (Some(false), Some(CallResult::HttpFailure), Some(status)) => {
+                        (100..600).contains(&status) && !(200..300).contains(&status)
+                    }
+                    (Some(false), Some(CallResult::InvalidResponse), Some(status)) => {
+                        (200..300).contains(&status)
+                    }
+                    _ => false,
+                }
         }
         CallState::Unknown => {
-            value.success.is_none()
+            value.http_status.is_none()
+                && value.success.is_none()
                 && matches!(
                     value.result,
                     Some(
@@ -627,9 +653,35 @@ fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
                 )
         }
         CallState::NotSent => {
-            value.success.is_none() && value.result == Some(CallResult::PreflightRejected)
+            value.http_status.is_none()
+                && value.finished_at.is_some()
+                && value.success.is_none()
+                && value.result == Some(CallResult::PreflightRejected)
         }
     };
+    let canonical_origin = validate_target(&value.origin, value.purpose)
+        .map_err(|_| failure(NetworkErrorKind::Corrupt))?;
+    if canonical_origin.origin() != value.origin
+        || reqwest::Url::parse(&value.origin)
+            .map_err(|_| failure(NetworkErrorKind::Corrupt))?
+            .path()
+            != "/"
+    {
+        return Err(failure(NetworkErrorKind::Corrupt));
+    }
+    let grant = authorization(db, &value.authorization_id)?;
+    let method = if value.purpose == NetworkPurpose::Completion {
+        "POST"
+    } else {
+        "GET"
+    };
+    if !allowed(&value.subject).contains(&value.purpose)
+        || !grant.purposes.contains(&value.purpose)
+        || value.method != method
+        || value.finished_at.is_some_and(|at| at < value.claimed_at)
+    {
+        return Err(failure(NetworkErrorKind::Corrupt));
+    }
     if !valid {
         return Err(failure(NetworkErrorKind::Corrupt));
     }
@@ -718,6 +770,8 @@ impl Store {
                 http_status: None,
                 result: None,
             };
+            #[cfg(test)]
+            crate::engine::crash_probe::block(&subject.key()?, "network-before-claim", &id);
             tx.execute(
                 "INSERT INTO network_calls VALUES (?1,?2,?3,'claimed',?4)",
                 params![
@@ -736,15 +790,23 @@ impl Store {
                 )?;
             }
             tx.commit()?;
+            #[cfg(test)]
+            crate::engine::crash_probe::block(&subject.key()?, "network-after-claim", &id);
             let permit = crate::provider_transport::ProviderPermit::new(
                 target,
                 current.credential,
                 id,
                 model,
                 user,
-            )
-            .map_err(|_| failure(NetworkErrorKind::Internal))?;
-            Ok((permit, value))
+            );
+            drop(db);
+            match permit {
+                Ok(permit) => Ok((permit, value)),
+                Err(error) => Err(self
+                    .finish_network::<()>(value, Err(error))
+                    .unwrap_err()
+                    .into()),
+            }
         })()
         .map_err(safe_error)
     }

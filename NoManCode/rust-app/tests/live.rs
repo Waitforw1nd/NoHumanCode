@@ -1,4 +1,7 @@
-use peachsh::{domain::*, engine::Engine, provider, store::Store};
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+use peachsh::{domain::*, engine::Engine, store::Store};
 use std::{sync::Arc, time::Duration};
 
 // Explicit opt-in. The key stays in the parent environment; this test never saves it.
@@ -31,10 +34,10 @@ async fn xpeach_native_stream_and_coding_tool() {
             newapi: None,
         })
         .unwrap();
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 2).unwrap();
-    let models = provider::models(&engine.client, &routes[0], &engine.key(&routes[0]).unwrap())
-        .await
-        .unwrap();
+    let models = engine.route_models(&routes[0].id).await.unwrap();
+    let models = models.result;
     assert!(models.contains(&"gpt-5.6-sol".into()) && models.contains(&"gpt-6-astra".into()));
     let tasks = routes
         .iter()

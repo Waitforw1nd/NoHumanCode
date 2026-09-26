@@ -964,17 +964,21 @@ impl<'a> Repository<'a> {
 
     fn hydrate_network_ack(&self, record: &mut crate::approval::ApprovalRecord) -> Result<()> {
         use crate::approval::{ApprovalError, CommandNetworkAck, CommandNetworkNotice};
-        let sidecar:Option<(String,u32)>=self.conn.query_row("SELECT binding_digest,notice_version FROM command_network_ack WHERE approval_id=?1",[&record.id],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
-        if let Some((digest, version)) = &sidecar {
-            if record.tool_name != "run_command"
+        let sidecar: Option<(String, u32)> = if !migration_applied(self.conn, NETWORK_MIGRATION_ID)?
+        {
+            None
+        } else {
+            self.conn.query_row("SELECT binding_digest,notice_version FROM command_network_ack WHERE approval_id=?1",[&record.id],|r|Ok((r.get(0)?,r.get(1)?))).optional()?
+        };
+        if let Some((digest, version)) = &sidecar
+            && (record.tool_name != "run_command"
                 || digest != &record.binding_digest
-                || *version != 1
-            {
-                return Err(ApprovalError::CorruptState {
-                    id: record.id.clone(),
-                }
-                .into());
+                || *version != 1)
+        {
+            return Err(ApprovalError::CorruptState {
+                id: record.id.clone(),
             }
+            .into());
         }
         if record.tool_name == "run_command" {
             record.network_notice = Some(CommandNetworkNotice::default());
@@ -2129,7 +2133,31 @@ pub(crate) fn verify_schema_10(tx: &Transaction<'_>) -> Result<()> {
         }
         out
     }
+    type NetworkColumn = (String, String, i64, Option<String>, i64, i64);
+    fn columns(db: &Connection, table: &str) -> Result<Vec<NetworkColumn>> {
+        let mut statement = db.prepare(&format!("PRAGMA table_xinfo({table})"))?;
+        Ok(statement
+            .query_map([], |r| {
+                Ok((
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                ))
+            })?
+            .collect::<rusqlite::Result<_>>()?)
+    }
+    let expected = Connection::open_in_memory()?;
+    for (_, sql) in NETWORK_TABLES {
+        expected.execute_batch(sql)?;
+    }
     for (table, sql) in NETWORK_TABLES {
+        anyhow::ensure!(
+            columns(tx, table)? == columns(&expected, table)?,
+            "network column shape mismatch"
+        );
         let actual: String = tx.query_row(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
             [table],
