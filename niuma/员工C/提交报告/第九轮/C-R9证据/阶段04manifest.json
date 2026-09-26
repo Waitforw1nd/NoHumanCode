@@ -1,0 +1,14 @@
+[
+  {
+    "original": ".local/review-evidence/c-r9-combination-04.log",
+    "published": "c-r9-combination-04.log",
+    "original_sha256": "a488b8ece2e160d8e21a61c604adf9dc9204d9b626e4f6a427732c2397b4908a",
+    "published_sha256": "cba08d819286d44cbbbd7ba9ff773a5cfd0e08ad64ff8e377fc2db57bad493d3"
+  },
+  {
+    "original": ".local/review-evidence/c-r9-combination-04.json",
+    "published": "c-r9-combination-04.json",
+    "original_sha256": "aaea915d21ac1296c2e59986c624598fc15bab27e9262c5266b5ab0dcc11ed8e",
+    "published_sha256": "aaea915d21ac1296c2e59986c624598fc15bab27e9262c5266b5ab0dcc11ed8e"
+  }
+]

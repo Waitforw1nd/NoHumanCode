@@ -1,0 +1,25 @@
+   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
+error[E0369]: binary operation `==` cannot be applied to type `TaskProjectBinding`
+    --> tests\approval_gate.rs:1792:5
+     |
+1792 | /     assert_eq!(
+1793 | |         engine
+1794 | |             .store
+1795 | |             .task_project_binding(&task.id)
+...    |
+1798 | |         original
+1799 | |     );
+     | |     ^
+     | |     |
+     | |_____TaskProjectBinding
+     |       TaskProjectBinding
+     |
+note: `TaskProjectBinding` does not implement `PartialEq`
+    --> src\project_config.rs:67:1
+     |
+  67 | pub struct TaskProjectBinding {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `TaskProjectBinding` is defined in another crate
+
+For more information about this error, try `rustc --explain E0369`.
+error: could not compile `peachsh` (test "approval_gate") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

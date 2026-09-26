@@ -1,0 +1,14 @@
+{
+  "commit": "362d6c09daf6ca89f7f28ff97460a0018d5c4f56",
+  "nomancode_tree": "03ddb1383e41dff50173794e28f08896be32eb16",
+  "rust_tree": "d632533e96b050035bebb77b295a8535bfb87fd0",
+  "workspace": "E:/code/nhc-c-project-interface",
+  "clean_at_start": true,
+  "gates": [
+    {"name":"check","status":"passed","exit_code":0,"log":".local/review-evidence/c-r9-formal-check-362d6c0.log"},
+    {"name":"test","status":"failed","exit_code":101,"log":".local/review-evidence/c-r9-formal-test-362d6c0.log","failure":"h1_read_shapes_and_security_headers_stay: GET /api/projects returned 403"},
+    {"name":"fmt","status":"not_run"},
+    {"name":"clippy","status":"not_run"},
+    {"name":"wasm-check","status":"not_run"}
+  ]
+}

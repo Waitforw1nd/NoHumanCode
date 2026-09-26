@@ -1,0 +1,25 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.87s
+     Running tests\turn_http.rs (target\debug\deps\turn_http-86127e7de729d4e4.exe)
+
+running 17 tests
+test n05_body_and_id_validation ... ok
+test n17_regression_surface ... ok
+test n08_write_guard ... ok
+test n01_append_and_chain ... ok
+test n03_replay_variants ... ok
+test n04_key_binding_conflict ... ok
+test n14_config_faults_500_and_replay_first ... ok
+test n12_different_key_race ... ok
+test n16_real_restart_partial_replay_resume ... ok
+test n06_idempotency_header ... ok
+test n02_session_sse_stream ... ok
+test n11_same_key_concurrency ... ok
+test n09_session_shape_and_404 ... ok
+test n10_predecessor_states ... ok
+test n15_disconnect_mid_run ... ok
+test n13_storage_faults_safe_500 ... ok
+test n07_message_bounds_and_body_limit ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.53s
+

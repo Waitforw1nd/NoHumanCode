@@ -1,0 +1,14 @@
+[
+  {
+    "target": "approval_http",
+    "exit_code": 0
+  },
+  {
+    "target": "cli_workflow",
+    "exit_code": 101
+  },
+  {
+    "target": "project_http",
+    "exit_code": 0
+  }
+]

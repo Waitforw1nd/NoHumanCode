@@ -1,0 +1,64 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.44s
+     Running tests\cli_workflow.rs (target\debug\deps\cli_workflow-85c2503e3acf9303.exe)
+
+running 9 tests
+test n13_write_reply_transport_oversize_and_escaped_token_never_retry ... ok
+test n13_workflow_parse_gates_and_unknown_post_are_safe_and_single_attempt ... ok
+test n11_sse_split_utf8_crlf_comments_multiline_limit_and_failure_cursor ... ok
+test n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention ... FAILED
+test n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart ... FAILED
+test n10_cli_real_partial_receipt_preserves_both_path_facts ... FAILED
+test n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute ... FAILED
+test n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects ... FAILED
+test n11_sse_keepalive_exceeds_regular_timeout_and_ignores_proxy ... ok
+
+failures:
+
+---- n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention stdout ----
+
+thread 'n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention' (49568) panicked at tests\cli_workflow.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart stdout ----
+
+thread 'n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart' (53960) panicked at tests\cli_workflow.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+
+---- n10_cli_real_partial_receipt_preserves_both_path_facts stdout ----
+
+thread 'n10_cli_real_partial_receipt_preserves_both_path_facts' (26504) panicked at tests\cli_workflow.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+
+---- n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute stdout ----
+
+thread 'n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute' (38432) panicked at tests\cli_workflow.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+
+---- n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects stdout ----
+
+thread 'n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects' (23604) panicked at tests\cli_workflow.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+
+
+failures:
+    n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention
+    n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart
+    n10_cli_real_partial_receipt_preserves_both_path_facts
+    n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects
+    n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute
+
+test result: FAILED. 4 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.10s
+
+error: test failed, to rerun pass `--test cli_workflow`

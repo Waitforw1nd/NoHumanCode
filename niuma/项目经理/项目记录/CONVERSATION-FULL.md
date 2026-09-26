@@ -1,3 +1,17 @@
+## 2026-09-27 NEXT-08最终门禁在test停止，等待C最小fixture修复
+
+经理GPT-6。固定7adb53812f2e01b91bdd95dc1939230feb68b770（NoManCode93e47885f7801eb050f0adf80d83d25de3bf73d4，Rustb796e04a6fedc95f89a8b76b5dc615c97ec57e53）C唯一串行check exit0、test exit101；失败为既有tests/cli.rs cl03远程approve和cl04 HTTP错误用例，根因旧seed Task无schema11 sidecar仍期待live approve，非生产逻辑已证缺陷。fmt/clippy/wasm-check未运行，未放宽断言、未改源码、工作树clean，失败/日志双hash保留。
+
+经理已按C任务包唯一所有权将tests/cli.rs fixture适配交回原C：用真实register/configure/select/grant/Engine start原生Task，保留远程CLI只批准不claim/不联网和JSON错误断言；不得给legacy Task注入sidecar或改成legacy拒绝。当前不称APPROVED，不整合main；修订后从check重新五步串行。
+
+## 2026-09-27 NEXT-08第三组合与证据核验
+
+经理GPT-6。B0ef0与C6c57已实核clean并串行普通merge为40e68bed51edd5d509f0ecd2879118525ea569d3，NoManCode1f8c8868766cc503fa89160ad919d60120555f0e、Rust41a799d08cbe234a5a10b530a5ce12ee1d463dd9；B树ff到同基线继续矩阵，C产品冻结，仅此次project_http/project_cli/turn_http27/0/0，非最终五门禁。原执行者/执行ID不变，主产品仍NEXT-07，最新管理归档fbe115b。
+
+经理核B13对、C阶段03共56对原始/发布hash，C16源码与commit字节相同；D已有9对hash保持。B固定检查点包含直接10→11非空旧表全列与密文/恢复/网络保全，跨项目真实命令排他与A恢复/B哨兵，真实case-sensitive搜索拒绝。C03续聊unknown重复回合风险已修为固定请求快照，六组实际app.js行为通过。旧失败保留、分阶段测试不拼为一次全量。
+
+当前余项：B的P03配置撤权/claim先后及P02原Task等待执行时切默认项目证明、矩阵最终报告；经理继续review，收固定最终源码后才交C唯一串行五门禁。C已冻结，D仅有界只读支持，不接管B/C实现。下一第一操作收B剩余证据与最终候选，按验收收口表核缺项。经理仍只契约/review/整合，无release/live/push/reset/clean/stash；活动E盘及D冻结备份、旧树保持。
+
 ## 2026-09-27 NEXT-08第二开发组合与新Turn授权裁决
 
 经理GPT-6续核活动主仓HEAD28658e02655c7a3bed41a4d167ca4a6bb99fd7f9，产品仍NEXT-07的NoManCode tree0f01cd6c1621a16cef842a583028b91cc80f4e12、Rust treef303e198698c8b68f11f937b6ec405fe8db6a70a，主index空。原B/C GPT-6-astra继续原执行ID，D组件3452c67冻结，只读复核完成，不产生新执行者。
@@ -2461,3 +2475,6 @@ B-R6-01/C-R8-01/D-R5-01全部APPROVED结项，原GPT-6-astra贡献、失败证�
 下一第一操作：读取实际Project/Settings/Session/Task和Workspace/审批代码，制定NEXT-08多项目配置与权限快照契约，再登记新基线/独立树/唯一执行者并派发。当前没有新产品在途任务；不恢复旧B/C/D轮次。完整阶段一尚未完成，不扩Desktop/完整Team/MCP。
 
 活动仓库和target在E盘，D原件冻结备份；机器Rust/MSVC及OS临时目录未迁移。九份继承已按后续明确上传授权原字节专门归档c9154e5，最新hash9/9一致。此次本地主线整合不push/release/live。下方“待审/进行中/未整合”均为当时历史。
+## 2026-09-27 NEXT-08最终联合验收与门禁收口
+
+E盘候选`6361838aba4a480a63612800224a947a1a9bffc4`完成经理串行整合与P01–P11审查。C唯一执行check/test/fmt/clippy/wasm-check均exit0，431通过、0失败。860候选首次test=101的workspace_http时序失败、targeted repeat=1/1及后续从check重跑的全量证据均保留；最终结论只采用636组合。下一步是main普通merge前后tree核验；不release/live/push，不清理D盘、旧工作树、历史档案或生成target。

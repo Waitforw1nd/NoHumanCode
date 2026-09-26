@@ -1,0 +1,49 @@
+   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.91s
+     Running tests\checkpoint.rs (target\debug\deps\checkpoint-71f80bc2307595c4.exe)
+
+running 15 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test schema10_unbound_checkpoint_is_history_only_and_cannot_restore ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows ... ok
+test completed_restore_replays_after_legacy_migration_and_original_root_is_offline ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test cross_project_restore_keeps_original_root_and_waits_for_host_command ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 40.47s
+
+     Running tests\final_acceptance.rs (target\debug\deps\final_acceptance-6f5b0daea01548c0.exe)
+
+running 9 tests
+test bundle_commits_project_session_agent_turn_and_legacy_projection ... ok
+test invalid_dependency_or_missing_projection_rolls_back_everything ... ok
+test same_idempotency_key_replays_original_turn_without_new_objects ... ok
+test inconsistent_initial_state_and_forged_status_event_are_rejected ... ok
+test legacy_only_replay_returns_complete_tasks ... ok
+test state_updates_sync_new_projection_and_reject_backwards_transition ... ok
+test sqlite_trigger_failure_is_atomic ... ok
+test recovery_and_resume_events_roll_back_with_their_states ... ok
+test resume_keeps_task_identity_and_requeues_turn ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests\project_context.rs (target\debug\deps\project_context-7fc09c2ad130e33a.exe)
+
+running 5 tests
+test ordinary_root_search_rejects_case_sensitive_descendant ... ok
+test unavailable_legacy_root_does_not_block_registration_or_change_old_row ... ok
+test register_replay_precedes_root_access_and_failure_rolls_back_all_tables ... ok
+test safe_defaults_cas_restart_and_overlap_are_explicit ... ok
+test separate_grants_selection_and_old_session_follow_original_project ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+

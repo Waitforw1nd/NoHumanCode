@@ -1,0 +1,56 @@
+[
+  {
+    "original": "原始日志/d-r6-clippy-01.log",
+    "original_sha256": "9b92468c4267b007908e8da283cf0c588addf35941400fc1c69604ba5032b4a4",
+    "published": "发布日志/d-r6-clippy-01.log",
+    "published_sha256": "cc938444731309a55c3eb74a5b616432ed1f8394409ac12d5bf142db84f828b6"
+  },
+  {
+    "original": "原始日志/d-r6-clippy-02.log",
+    "original_sha256": "297e41934a52485bb2729f46e349bdca452414aa30b7273b8c326d35ed89dc6c",
+    "published": "发布日志/d-r6-clippy-02.log",
+    "published_sha256": "9a47fb290999beaa2309486244f7d36487a23c5a936e0df50931bed0eb2cc37e"
+  },
+  {
+    "original": "原始日志/d-r6-diff-01.log",
+    "original_sha256": "c1e97067c5f479a44a6f57297a0a8f87a59d181c3c529910f8bf059094bc3abb",
+    "published": "发布日志/d-r6-diff-01.log",
+    "published_sha256": "c1e97067c5f479a44a6f57297a0a8f87a59d181c3c529910f8bf059094bc3abb"
+  },
+  {
+    "original": "原始日志/d-r6-fmt-01.log",
+    "original_sha256": "c1e97067c5f479a44a6f57297a0a8f87a59d181c3c529910f8bf059094bc3abb",
+    "published": "发布日志/d-r6-fmt-01.log",
+    "published_sha256": "c1e97067c5f479a44a6f57297a0a8f87a59d181c3c529910f8bf059094bc3abb"
+  },
+  {
+    "original": "原始日志/d-r6-fmt-02.log",
+    "original_sha256": "c1e97067c5f479a44a6f57297a0a8f87a59d181c3c529910f8bf059094bc3abb",
+    "published": "发布日志/d-r6-fmt-02.log",
+    "published_sha256": "c1e97067c5f479a44a6f57297a0a8f87a59d181c3c529910f8bf059094bc3abb"
+  },
+  {
+    "original": "原始日志/d-r6-test-01.log",
+    "original_sha256": "8e7563bf79186e2844797cc1940c5109ce8dd9ce6c7dfeca0f580c2d445a1098",
+    "published": "发布日志/d-r6-test-01.log",
+    "published_sha256": "8e7563bf79186e2844797cc1940c5109ce8dd9ce6c7dfeca0f580c2d445a1098"
+  },
+  {
+    "original": "原始日志/d-r6-test-02.log",
+    "original_sha256": "f65c5d82a8f231fa1b13853e873572d4b5237c36654b236c88783168d0c9322e",
+    "published": "发布日志/d-r6-test-02.log",
+    "published_sha256": "f30cf06c2f80040c20078afba57802f06f5b116f976b93214e481af56c9e3fdc"
+  },
+  {
+    "original": "原始日志/d-r6-test-03.log",
+    "original_sha256": "db8348e8fa1f281a250ada80e7d7a1195e2a0f3a2a6b668fc5b451c064e40bf0",
+    "published": "发布日志/d-r6-test-03.log",
+    "published_sha256": "e3ec8fecfaf2bc7098d777e4afa978651a40471a90cf1b00a36bd47b9a01e823"
+  },
+  {
+    "original": "原始日志/d-r6-test-04.log",
+    "original_sha256": "390b1233101fd04f63b5ef72e53b5fbaf298bf22cb4882e295ca36c092b82db8",
+    "published": "发布日志/d-r6-test-04.log",
+    "published_sha256": "2139e326d7d4bae530d479f1669da06447c71bcc2dcba2366635fb6e74fde76a"
+  }
+]

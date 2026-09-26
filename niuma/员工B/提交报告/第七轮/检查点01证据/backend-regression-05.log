@@ -1,0 +1,15 @@
+   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
+error[E0425]: cannot find function `id` in this scope
+   --> tests\checkpoint.rs:895:30
+    |
+895 |             idempotency_key: id(),
+    |                              ^^ not found in this scope
+    |
+help: consider importing this function
+    |
+  4 + use std::process::id;
+    |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `peachsh` (test "checkpoint") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

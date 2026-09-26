@@ -1,0 +1,60 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.26
+   Compiling quote v1.0.47
+   Compiling windows-link v0.2.1
+   Compiling cfg-if v1.0.5
+   Compiling smallvec v1.16.1
+   Compiling itoa v1.0.18
+   Compiling stable_deref_trait v1.2.1
+   Compiling pin-project-lite v0.2.17
+   Compiling futures-core v0.3.34
+   Compiling bytes v1.12.1
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.13
+   Compiling parking_lot_core v0.9.12
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling serde_core v1.0.229
+   Compiling litemap v0.8.3
+   Compiling writeable v0.6.4
+   Compiling log v0.4.34
+   Compiling icu_properties_data v2.3.0
+   Compiling utf8_iter v1.0.4
+   Compiling icu_normalizer_data v2.3.0
+   Compiling percent-encoding v2.3.2
+   Compiling memchr v2.8.3
+   Compiling slab v0.4.12
+   Compiling serde v1.0.229
+   Compiling tower-service v0.3.3
+   Compiling httparse v1.10.1
+   Compiling futures-task v0.3.34
+   Compiling zeroize v1.9.0
+   Compiling version_check v0.9.5
+   Compiling windows-sys v0.61.2
+   Compiling getrandom v0.2.17
+   Compiling try-lock v0.2.5
+   Compiling zmij v1.0.23
+   Compiling lock_api v0.4.14
+   Compiling untrusted v0.9.0
+   Compiling libc v0.2.189
+error: linker `link.exe` not found
+  |
+  = note: program not found
+
+note: the msvc targets depend on the msvc linker but `link.exe` was not found
+
+note: please ensure that Visual Studio 2017 or later, or Build Tools for Visual Studio were installed with the Visual C++ option
+
+note: VS Code is a different product, and is not sufficient
+
+error: could not compile `icu_properties_data` (build script) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `icu_normalizer_data` (build script) due to 1 previous error
+error: could not compile `quote` (build script) due to 1 previous error
+error: could not compile `parking_lot_core` (build script) due to 1 previous error
+error: could not compile `proc-macro2` (build script) due to 1 previous error
+error: could not compile `serde_core` (build script) due to 1 previous error
+error: could not compile `zmij` (build script) due to 1 previous error
+error: could not compile `serde` (build script) due to 1 previous error
+error: could not compile `httparse` (build script) due to 1 previous error
+error: could not compile `libc` (build script) due to 1 previous error

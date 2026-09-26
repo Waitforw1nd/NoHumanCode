@@ -1,0 +1,19 @@
+# C-R9-01 Web续聊不确定结果review 0.3
+
+2026-09-27，经理GPT-6。固定6410b2f836d516efb1b6b938b52311bfbb7b9796的web/app.js；真实源码审查发现，经理未运行产品测试。N08-C03待修，已通知原C；不是把尚未全验收候选误称完成后回退。
+
+sendChat已有会话分支每次生成新的crypto.randomUUID()，并从可被SSE/loadChatTask刷新的chatContext提取当前latest_turn。首POST已在Host创建Turn但响应丢失时，UI保留消息；如果随后SSE推进context，用户再次点发送会取新key与新前驱，创建第二个Turn。服务器幂等与CAS无法判断它是上一消息的重试。新任务startDraft已有固定key/请求，续聊需同样冻结。
+
+修订：已有会话的提交快照固定session_id、agent_id、expected_last_turn_id、message、idempotency key；未知结果或409保留，不能因context刷新而改前驱/目标。成功才清理，显式另建走新草稿；修改待核对消息不能自动变成另一请求。不自动重发。
+
+验证：执行实际app.js行为测试，首发送模拟Host已受理后fetch/JSON失败；主动推进Session context，再次手动提交同一草稿，核原session/前驱/消息/key全部相同；改文案先拒绝且零新增请求，正常成功之后下一条新消息才新key。保留既有跨项目草稿和新Turn正向测试。
+
+只写C既有app.js和project-web测试范围，不触碰B领域与授权实现。最终联合验收前必须关闭。
+
+## 固定修订核对
+
+经理已实核6c57f850f668f59114d4283685e63833c9ac2247 HEAD/NoManCode/Rust tree/status，并逐段读sendChat/newChat/导航和project-web新增反例。N08-C03在本范围闭合：同Session刷新后的再次手动提交保持原key/body，改内容或打开另一Session拒绝且不丢pending，显式新对话提示历史核对，成功清理。实际app.js mock DOM/fetch六组通过；这不是浏览器渲染验收。
+
+阶段03的56对原始/发布SHA256全部经理核验，manifest为24152f23630dc35b452294caeec156d02768f50cf33e280608b3d538a9d43359；16份源码工作文件与固定commit逐字相同（无须换行归一化）。原HTTP/CLI正向fixture改经真实项目配置授权，新旧Task JSON不改，旧unknown/恢复/真进程crash断言保留。首次竞态、fixture和lint失败按原日志保留，不替换或改称成功。
+
+经理合B0ef0得到40e68bed51edd5d509f0ecd2879118525ea569d3，NoManCode1f8c8868766cc503fa89160ad919d60120555f0e、Rust41a799d08cbe234a5a10b530a5ce12ee1d463dd9，0无冲突/status空。C在该组合仅定向project_http6/project_cli4/turn_http17，报告27/0/0，源码仍冻结；最终五门禁尚未开始。

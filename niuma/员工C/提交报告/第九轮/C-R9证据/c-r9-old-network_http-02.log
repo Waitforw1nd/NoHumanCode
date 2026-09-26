@@ -1,0 +1,13 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 8.43s
+     Running tests\network_http.rs (target\debug\deps\network_http-04b79d2922eabbb2.exe)
+
+running 5 tests
+test network_http_account_save_is_local_and_revision_change_requires_new_preview ... ok
+test network_http_strict_json_auth_reads_and_invalid_requests_never_dispatch ... ok
+test network_http_local_save_preview_grant_replay_and_explicit_post ... ok
+test network_http_real_host_kill_after_send_retains_same_unknown_call_without_replay ... ok
+test network_http_real_host_full_response_finish_db_failure_then_kill_recovers_same_call ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.78s
+

@@ -1,0 +1,14 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.30s
+     Running tests\project_http.rs (target\debug\deps\project_http-096e4b72c53fe729.exe)
+
+running 6 tests
+test p09_wasm_http_list_and_run_are_explicitly_unsupported ... ok
+test p01_project_management_cas_strict_json_and_zero_network ... ok
+test p09_nested_json_rejected_before_any_project_write_or_network ... ok
+test p08_legacy_task_history_is_readable_but_live_operations_are_rejected ... ok
+test p02_project_route_isolation_old_replay_and_session_turn ... ok
+test p09_real_cli_against_project_host ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+

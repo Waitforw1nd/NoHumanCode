@@ -1,0 +1,22 @@
+   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
+error[E0425]: cannot find type `WorkspaceChangeError` in this scope
+   --> tests\checkpoint.rs:148:48
+    |
+148 |             result.unwrap_err().downcast_ref::<WorkspaceChangeError>(),
+    |                                                ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+ 24 | async fn cross_project_restore_keeps_original_root_and_waits_for_host_command<WorkspaceChangeError>() {
+    |                                                                              ++++++++++++++++++++++
+
+error[E0433]: cannot find type `WorkspaceChangeError` in this scope
+   --> tests\checkpoint.rs:149:18
+    |
+149 |             Some(WorkspaceChangeError::Active)
+    |                  ^^^^^^^^^^^^^^^^^^^^ use of undeclared type `WorkspaceChangeError`
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `peachsh` (test "checkpoint") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...

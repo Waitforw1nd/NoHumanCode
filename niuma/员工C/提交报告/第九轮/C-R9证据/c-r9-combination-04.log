@@ -1,0 +1,47 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 9.51s
+     Running tests\project_cli.rs (target\debug\deps\project_cli-6e918426e7d0ac9a.exe)
+
+running 4 tests
+test project_cli_network_project_rejection_preserves_finished_call_receipt ... ok
+test project_cli_config_arrays_missing_fields_duplicates_rejected_locally ... ok
+test project_cli_conflicts_and_forged_bindings_do_not_retry ... ok
+test project_cli_management_uses_token_put_cas_and_nested_config ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.02s
+
+     Running tests\project_http.rs (target\debug\deps\project_http-096e4b72c53fe729.exe)
+
+running 6 tests
+test p09_wasm_http_list_and_run_are_explicitly_unsupported ... ok
+test p01_project_management_cas_strict_json_and_zero_network ... ok
+test p09_nested_json_rejected_before_any_project_write_or_network ... ok
+test p08_legacy_task_history_is_readable_but_live_operations_are_rejected ... ok
+test p02_project_route_isolation_old_replay_and_session_turn ... ok
+test p09_real_cli_against_project_host ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running tests\turn_http.rs (target\debug\deps\turn_http-86127e7de729d4e4.exe)
+
+running 17 tests
+test n05_body_and_id_validation ... ok
+test n08_write_guard ... ok
+test n17_regression_surface ... ok
+test n03_replay_variants ... ok
+test n01_append_and_chain ... ok
+test n04_key_binding_conflict ... ok
+test n14_config_faults_500_and_replay_first ... ok
+test n12_different_key_race ... ok
+test n06_idempotency_header ... ok
+test n16_real_restart_partial_replay_resume ... ok
+test n11_same_key_concurrency ... ok
+test n02_session_sse_stream ... ok
+test n09_session_shape_and_404 ... ok
+test n10_predecessor_states ... ok
+test n15_disconnect_mid_run ... ok
+test n13_storage_faults_safe_500 ... ok
+test n07_message_bounds_and_body_limit ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.74s
+

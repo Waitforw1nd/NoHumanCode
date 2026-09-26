@@ -1,0 +1,9 @@
+# C-R9-01 最终门禁失败review 0.4
+
+2026-09-27，经理GPT-6。固定组合7adb53812f2e01b91bdd95dc1939230feb68b770（NoManCode93e47885f7801eb050f0adf80d83d25de3bf73d4，Rust b796e04a6fedc95f89a8b76b5dc615c97ec57e53）在C唯一串行门禁中check exit0，test exit101，随后fmt/clippy/wasm-check按规则未运行。开始与失败后产品树均clean；原始/发布日志已由C双hash保存。
+
+失败仅既有tests/cli.rs：cl03_remote_cli_does_not_initialize_local_state_or_execute_without_waiter在远程`approval approve`收到`internal: 本机服务返回无效错误响应`；cl04_http_errors_are_json_on_stderr_with_exit_one在同样旧seed Task的`approval approve`未成功。其他已运行Cargo目标此前结果原样保留（approval_http15、checkpoint15、项目/网络/HTTP等）；不能拼成全量五门禁。
+
+根因是NEXT-08兼容收紧后的测试fixture：两个用例用旧`seed_task`创建没有task_project_bindings的legacy_unbound Task，却仍期待live审批批准/执行。生产规则正确拒绝legacy实时操作；旧正向测试需要用真实schema11项目register/configure/select/grant和Engine启动建立原生Task，不能给旧Task测试旁路注入sidecar，也不能把正向保障替换成legacy拒绝。
+
+已交原C在其唯一tests/cli.rs所有权内做最小fixture适配，保留cl03远程CLI只持久批准、零本地初始化/零claim/零provider副作用，保留cl04缺失/冲突/路径错误JSON stderr断言。修复提交后必须从check重新按check→test→fmt→clippy→wasm-check串行；本失败轮的fmt/clippy/wasm未运行事实保留。未批准释放、付费live或push。

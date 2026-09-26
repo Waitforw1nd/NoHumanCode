@@ -1,0 +1,121 @@
+   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.83s
+     Running tests\assessment_adversarial.rs (target\debug\deps\assessment_adversarial-d30baed346925c97.exe)
+
+running 4 tests
+test wasm_rejects_unbounded_large_table ... ok
+test inference_route_cannot_read_account_secret ... ok
+test idempotency_storage_failure_leaves_no_orphan_run ... ok
+test idempotency_rejects_different_payload ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests\final_acceptance.rs (target\debug\deps\final_acceptance-6f5b0daea01548c0.exe)
+
+running 9 tests
+test invalid_dependency_or_missing_projection_rolls_back_everything ... ok
+test resume_keeps_task_identity_and_requeues_turn ... FAILED
+test inconsistent_initial_state_and_forged_status_event_are_rejected ... ok
+test bundle_commits_project_session_agent_turn_and_legacy_projection ... ok
+test same_idempotency_key_replays_original_turn_without_new_objects ... ok
+test legacy_only_replay_returns_complete_tasks ... ok
+test state_updates_sync_new_projection_and_reject_backwards_transition ... ok
+test sqlite_trigger_failure_is_atomic ... ok
+test recovery_and_resume_events_roll_back_with_their_states ... ok
+
+failures:
+
+---- resume_keeps_task_identity_and_requeues_turn stdout ----
+Error: project_legacy_unbound
+
+
+failures:
+    resume_keeps_task_identity_and_requeues_turn
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `--test final_acceptance`
+     Running tests\git_diff.rs (target\debug\deps\git_diff-087cae67fccc5226.exe)
+
+running 15 tests
+test malicious_environment_child ... ok
+test strict_request_and_safe_error_contract ... ok
+test bounded_runner_terminates_overflow_and_timeout ... ok
+test secrets_are_redacted_before_diff_prefixes_and_digests_are_raw ... ok
+test external_diff_textconv_filters_and_hooks_are_never_invoked ... ok
+test absent_promisor_object_is_unavailable_without_network_or_writes ... ok
+test inherited_git_redirection_and_config_are_cleared_in_child_process ... ok
+test root_boundaries_and_linked_worktree ... ok
+test unmerged_gitlink_and_git_symlink_are_unsupported ... ok
+test three_views_read_real_objects_and_preserve_crlf_and_eof ... ok
+test deterministic_head_index_and_work_changes_return_conflict ... ok
+test path_validation_literal_names_and_link_sentinel ... ok
+test deletion_and_rename_are_separate_paths ... ok
+test binary_large_patch_and_serialized_response_are_bounded ... ok
+test unborn_untracked_ignored_missing_and_empty_existence ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.72s
+
+     Running tests\plugin_catalog.rs (target\debug\deps\plugin_catalog-e9310ea519a8c76f.exe)
+
+running 17 tests
+test d12_existing_abi_and_modules_unaffected ... ok
+test d07_register_revalidates_direct_constructs_atomically ... ok
+test d08_duplicate_id_rules ... ok
+test d03_missing_version_and_kind_are_distinct ... ok
+test d07_scope_identity_is_validated ... ok
+test d04_ambiguous_provider_lists_sorted_ids ... ok
+test d07_duplicate_json_members_rejected_everywhere ... ok
+test d10_remove_and_replace_provider ... ok
+test d09_scope_kinds_and_instance_isolation ... ok
+test d01_full_chain_parse_register_resolve ... ok
+test d07_open_config_schema_and_boundaries ... ok
+test d05_cycles_report_real_closed_paths_only ... ok
+test d11_declarations_do_not_execute_and_errors_do_not_echo ... ok
+test d02_graph_orders_deterministically_and_dedups ... ok
+test d07_id_and_name_rules_with_boundaries ... ok
+test d06_reachability_and_root_rules ... ok
+test d07_structure_type_and_duplicate_declarations ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\plugin_host.rs (target\debug\deps\plugin_host-b25c1db2aaba9330.exe)
+
+running 24 tests
+test h12_existing_surfaces_unaffected ... ok
+test emit_rejects_non_event_undeclared_and_unknown_emitter ... ok
+test emit_inside_activate_is_allowed_and_never_backfills ... ok
+test h01_full_chain_register_start_bound_call ... ok
+test ctx_rule_boundaries_reject_with_typed_errors ... ok
+test h11_purity_determinism_and_display_name_not_identity ... ok
+test remove_descriptor_does_not_unload_running_instances ... ok
+test h03_revocation_leaves_no_residue ... ok
+test failed_instances_reject_being_plan_members ... ok
+test h10_recovery_list_records_incomplete_cleanup ... ok
+test h04_dependents_active_protects_provider ... ok
+test h08_state_rules_and_scope_isolation ... ok
+test h07_runtime_gates ... ok
+test h09_events_deliver_in_subscriber_id_order ... ok
+test h05_activation_failure_rolls_back_in_plan_reverse ... ok
+test n08_host_typed_resolver_obeys_live_activation_binding_and_payload_type ... ok
+test subscribers_receive_only_their_bound_providers_events ... ok
+test restart_after_stop_builds_a_fresh_object ... ok
+test rollback_records_deactivate_failures_without_replacing_the_start_error ... ok
+test h06_declaration_violations_are_typed_and_rolled_back ... ok
+test panicking_subscriber_fails_alone_and_delivery_continues ... ok
+test stop_subtree_records_every_deactivate_failure_in_teardown_order ... ok
+test start_reuses_active_non_root_members ... ok
+test h02_topology_order_and_reverse_teardown ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\tool_runtime.rs (target\debug\deps\tool_runtime-e27507283ff82f4d.exe)
+
+running 2 tests
+test definitions_and_admission_obey_task_permission_ceiling ... ok
+test revoked_file_tools_never_reappear_through_compatibility_dispatch ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: 1 target failed:
+    `--test final_acceptance`

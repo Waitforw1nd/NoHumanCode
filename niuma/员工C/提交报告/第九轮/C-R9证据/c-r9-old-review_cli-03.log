@@ -1,0 +1,14 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.31s
+     Running tests\review_cli.rs (target\debug\deps\review_cli-1b372853a9d2c2b3.exe)
+
+running 6 tests
+test t02_review_bad_cli_arguments_exit_two ... ok
+test t02_diff_status_projection_and_response_path_binding ... ok
+test t02_new_cli_malformed_oversize_token_redirect_single_post ... ok
+test t02_checkpoint_unknown_receipt_restart_no_retry ... ok
+test t02_checkpoint_real_partial_receipt ... ok
+test t01_real_diff_checkpoint_restore_restart_new_turn ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.41s
+

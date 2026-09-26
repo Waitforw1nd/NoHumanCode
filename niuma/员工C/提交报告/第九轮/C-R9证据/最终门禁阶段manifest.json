@@ -1,0 +1,26 @@
+[
+  {
+    "original": ".local/review-evidence/c-r9-final-check.log",
+    "published": "c-r9-final-check.log",
+    "original_sha256": "bb6ed6b7207da697bde1de560221600fad6e9a1c58fb39ee3679b71660c1e25e",
+    "published_sha256": "12ce5faa9a0946805ec7f7d1ab48686d1a22ab6edce6f7e713c25ab41d9d3f97"
+  },
+  {
+    "original": ".local/review-evidence/c-r9-final-check.json",
+    "published": "c-r9-final-check.json",
+    "original_sha256": "356344844ccef9c9f2e6d6183ec1f914455fe0205f3b042f565b6dd3ffe20f1d",
+    "published_sha256": "356344844ccef9c9f2e6d6183ec1f914455fe0205f3b042f565b6dd3ffe20f1d"
+  },
+  {
+    "original": ".local/review-evidence/c-r9-final-test.log",
+    "published": "c-r9-final-test.log",
+    "original_sha256": "703c86115ecdbb5662cd2062a56f16aa854d0d60c66bd03fd8a72ec7654fc228",
+    "published_sha256": "263565e5765054c84aa8666977ab406d56e16cf82551f3233bfdd5a6acf0aa34"
+  },
+  {
+    "original": ".local/review-evidence/c-r9-final-test.json",
+    "published": "c-r9-final-test.json",
+    "original_sha256": "b4c8d9639c8a707a280c5e339a235e91dd7fd4bb6dcf8c465e30a988b15213b3",
+    "published_sha256": "b4c8d9639c8a707a280c5e339a235e91dd7fd4bb6dcf8c465e30a988b15213b3"
+  }
+]

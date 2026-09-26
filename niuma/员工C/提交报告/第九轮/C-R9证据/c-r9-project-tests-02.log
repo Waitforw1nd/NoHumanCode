@@ -1,0 +1,64 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+warning: function `route_subject` is never used
+  --> src\engine.rs:61:4
+   |
+61 | fn route_subject(id: &str) -> NetworkSubject {
+   |    ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `commit_turn_bundle_authorized` is never used
+   --> src\store.rs:532:19
+    |
+ 30 | impl Store {
+    | ---------- method in this implementation
+...
+532 |     pub(crate) fn commit_turn_bundle_authorized(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `peachsh` (lib) generated 2 warnings
+    Finished `test` profile [unoptimized] target(s) in 8.83s
+     Running tests\project_cli.rs (target\debug\deps\project_cli-6e918426e7d0ac9a.exe)
+
+running 4 tests
+test project_cli_network_project_rejection_preserves_finished_call_receipt ... FAILED
+test project_cli_config_arrays_missing_fields_duplicates_rejected_locally ... FAILED
+test project_cli_conflicts_and_forged_bindings_do_not_retry ... FAILED
+test project_cli_management_uses_token_put_cas_and_nested_config ... ok
+
+failures:
+
+---- project_cli_network_project_rejection_preserves_finished_call_receipt stdout ----
+
+thread 'project_cli_network_project_rejection_preserves_finished_call_receipt' (14896) panicked at tests\project_cli.rs:259:5:
+assertion `left == right` failed
+  left: Null
+ right: Object {"authorization_id": String("grant-a"), "call_id": String("call-a"), "claimed_at": Number(1), "endpoint_digest": String("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), "finished_at": Number(2), "http_status": Number(200), "method": String("GET"), "origin": String("http://127.0.0.1:9001"), "purpose": String("models"), "result": String("success"), "state": String("finished"), "subject": Object {"id": String("route-a"), "kind": String("route"), "project_id": String("project-a")}, "success": Bool(true), "task_id": Null}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- project_cli_config_arrays_missing_fields_duplicates_rejected_locally stdout ----
+
+thread 'project_cli_config_arrays_missing_fields_duplicates_rejected_locally' (33692) panicked at tests\project_cli.rs:68:10:
+unexpected CLI request
+
+thread 'project_cli_config_arrays_missing_fields_duplicates_rejected_locally' (33692) panicked at tests\project_cli.rs:231:9:
+assertion `left == right` failed
+  left: String("operation_result_unknown")
+ right: "request_failed"
+
+---- project_cli_conflicts_and_forged_bindings_do_not_retry stdout ----
+
+thread 'project_cli_conflicts_and_forged_bindings_do_not_retry' (40692) panicked at tests\project_cli.rs:204:5:
+assertion `left == right` failed
+  left: String("internal")
+ right: "invalid_response"
+
+
+failures:
+    project_cli_config_arrays_missing_fields_duplicates_rejected_locally
+    project_cli_conflicts_and_forged_bindings_do_not_retry
+    project_cli_network_project_rejection_preserves_finished_call_receipt
+
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+error: test failed, to rerun pass `--test project_cli`

@@ -1,0 +1,70 @@
+{
+  "head": "6c57f850f668f59114d4283685e63833c9ac2247",
+  "rust_tree": "c1fd0171c460cd4a5a89cf819f2e69b037badb69",
+  "files": [
+    {
+      "path": "src/server.rs",
+      "sha256": "6b2f3ab7846f3e694317d52210df554d98f83ef801706703dad66578d6dcb503"
+    },
+    {
+      "path": "src/cli.rs",
+      "sha256": "deacb5b063d2b8328377afcd2a40da7466d65dc3c6a9a63c19249cb4b2eae6e7"
+    },
+    {
+      "path": "web/app.js",
+      "sha256": "6c26f05bdb6ff1ee90b8b6a620f402f83a6f932a1cae94689436f83288439a1f"
+    },
+    {
+      "path": "web/index.html",
+      "sha256": "f472c95b381315a75aeb903fc4cfe3b01719d4aee32533c8fdbfabe58b82a14e"
+    },
+    {
+      "path": "web/style.css",
+      "sha256": "eeffcf62a860e6f6972c566b8047cf8582f85cc423567b989d23e8068010e466"
+    },
+    {
+      "path": "tests/project_http.rs",
+      "sha256": "0c83d5235830e185d1f0b3c5dccb67e0263b9b98e1085a874851d30c96addd6f"
+    },
+    {
+      "path": "tests/project_cli.rs",
+      "sha256": "daba16ecc313e5bb94d282785fbb352713bb9522c91308b2f45628ae31fc8a6f"
+    },
+    {
+      "path": "tests/project-web.mjs",
+      "sha256": "e3aa69468fa7edbe14fdc1922308a7a675aa2e0cd085fc77d2a13b7f4bda8d7b"
+    },
+    {
+      "path": "tests/approval_http.rs",
+      "sha256": "e67911ee3b38c9072d306f1846c28b594b49b877dfaee6ad9b742fa2944a9056"
+    },
+    {
+      "path": "tests/checkpoint_http.rs",
+      "sha256": "0e577556b03e393c41f043e5d7b58313341f714a1dfe8b072dec59264ed41eaa"
+    },
+    {
+      "path": "tests/cli_workflow.rs",
+      "sha256": "eaf2bdaa859c2a3771244a21c1ca869896dab2a101b9baa67edb429831624e9d"
+    },
+    {
+      "path": "tests/http_contract.rs",
+      "sha256": "2fab5d704e7dd42b9e5e87e61a3a85c7f24198e786d8981a38158ace22879913"
+    },
+    {
+      "path": "tests/network_http.rs",
+      "sha256": "8877507fdba8674828fa6e67d1a7658c04b933cdb3b63ebeab6f2d0306c8f5d1"
+    },
+    {
+      "path": "tests/network_cli.rs",
+      "sha256": "717ec0ff1e6b1fdbc9025fb0a2a71b0e0ad7927dfd63eb82336bb7b3a8626133"
+    },
+    {
+      "path": "tests/review_cli.rs",
+      "sha256": "db6fb4f7cc5747e55d329592bff5a4ea9c35b0e5566990f641628c3c43cc0cbb"
+    },
+    {
+      "path": "tests/workspace_http.rs",
+      "sha256": "352013597c2cf207d47a42e8e9976dd71c9243cc5e691d530de7f5e41871fc4a"
+    }
+  ]
+}

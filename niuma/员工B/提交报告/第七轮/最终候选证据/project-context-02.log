@@ -1,0 +1,15 @@
+   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.59s
+     Running tests\project_context.rs (target\debug\deps\project_context-7fc09c2ad130e33a.exe)
+
+running 7 tests
+test ordinary_root_search_rejects_case_sensitive_descendant ... ok
+test unavailable_legacy_root_does_not_block_registration_or_change_old_row ... ok
+test register_replay_precedes_root_access_and_failure_rolls_back_all_tables ... ok
+test safe_default_admission_and_task_binding_failure_leave_no_execution_facts ... ok
+test safe_defaults_cas_restart_and_overlap_are_explicit ... ok
+test separate_grants_selection_and_old_session_follow_original_project ... ok
+test project_config_change_and_explicit_start_are_atomic_across_stores ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+

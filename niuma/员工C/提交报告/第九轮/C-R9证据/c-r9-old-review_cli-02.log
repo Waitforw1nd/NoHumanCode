@@ -1,0 +1,45 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.27s
+     Running tests\review_cli.rs (target\debug\deps\review_cli-1b372853a9d2c2b3.exe)
+
+running 6 tests
+test t02_review_bad_cli_arguments_exit_two ... ok
+test t02_diff_status_projection_and_response_path_binding ... ok
+test t02_checkpoint_real_partial_receipt ... FAILED
+test t01_real_diff_checkpoint_restore_restart_new_turn ... FAILED
+test t02_checkpoint_unknown_receipt_restart_no_retry ... FAILED
+test t02_new_cli_malformed_oversize_token_redirect_single_post ... ok
+
+failures:
+
+---- t02_checkpoint_real_partial_receipt stdout ----
+
+thread 't02_checkpoint_real_partial_receipt' (54420) panicked at tests\review_cli.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- t01_real_diff_checkpoint_restore_restart_new_turn stdout ----
+
+thread 't01_real_diff_checkpoint_restore_restart_new_turn' (46164) panicked at tests\review_cli.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+
+---- t02_checkpoint_unknown_receipt_restart_no_retry stdout ----
+
+thread 't02_checkpoint_unknown_receipt_restart_no_retry' (50224) panicked at tests\review_cli.rs:82:5:
+assertion `left == right` failed: stderr=error: 命令参数无效 stdout=
+  left: Some(2)
+ right: Some(0)
+
+
+failures:
+    t01_real_diff_checkpoint_restore_restart_new_turn
+    t02_checkpoint_real_partial_receipt
+    t02_checkpoint_unknown_receipt_restart_no_retry
+
+test result: FAILED. 3 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+
+error: test failed, to rerun pass `--test review_cli`

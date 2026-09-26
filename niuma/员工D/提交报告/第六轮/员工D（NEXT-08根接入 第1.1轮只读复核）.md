@@ -1,0 +1,11 @@
+# D-R6-01 对B固定0bda6c0根接入只读复核
+
+2026-09-27，员工D GPT-6-astra；同执行ID D-R6-01-20260927-E01，经理明确有界派发。只读输入0bda6c0bd372692f18665b446a565451c619bf87，git show固定源码；未读持续工作区作最终候选，未跑测试，未写产品。D3452c67源码仍暂停。
+
+1. workspace.rs:276–301 search_files递归从普通根直接read_dir、子目录pending.push、read_to_string，不经过verify_directory_policy。普通根下case-sensitive子目录内内容可被返回，但显式以同一子目录作为path会经resolve拒绝。应在每次递归进入目录时核策略，保留reparse/叶节点检查；这是契约§9拒绝大小写敏感子目录的直接旁路。
+2. engine.rs:1871–1883 Restore仅检查active Task同ID/同canonical根。A命令Task运行期间，对不重叠B旧Task恢复仍可claim/write。scope_conflicts的新Host命令全局排他只保护任务启动，未保护恢复副作用入口；命令可访问B导致恢复与命令竞写。应把活动command能力纳入恢复准入门禁并验证零claim/零恢复。
+3. engine.rs:1883先validate_project_task(task,true,false)，1884才读取latest_restore并返回Complete receipt。已完成旧Restore的纯历史重放被legacy_unbound拒绝；新绑定Task的Complete receipt也受根离线/替换/撤权影响。与契约保留纯历史回放不符。应在Checkpoint证据认证后优先返回已持久完成receipt，不重新准入副作用；首次恢复仍严格验证根/权限。
+
+没有重复经理已知的register失效legacy根问题。正常validate_task_tx→workspace_tx→RootIdentity.verify链确会比较持久根身份，未发现操作启动前同路径替换能直接通过的独立漏检。不将既有TOCTOU边界夸大为完整handle隔离保证。
+
+上述为源码可证实路径，未声称运行复现；供经理向B派返工与验收。下一第一操作等待经理明确反馈或固定修订复核，不改D冻结候选。

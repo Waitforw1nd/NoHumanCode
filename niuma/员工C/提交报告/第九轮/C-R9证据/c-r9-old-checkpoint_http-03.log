@@ -1,0 +1,11 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.24s
+     Running tests\checkpoint_http.rs (target\debug\deps\checkpoint_http-5efeb15715dac032.exe)
+
+running 3 tests
+test t02_checkpoint_http_strict_security_zero_effects ... ok
+test k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500 ... ok
+test k06_checkpoint_http_kill_after_effect_before_outcome ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.99s
+
