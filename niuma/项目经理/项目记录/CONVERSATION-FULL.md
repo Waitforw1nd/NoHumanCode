@@ -2415,3 +2415,13 @@ B报告定向去重180项、D17+4、C分阶段新旧回归有据；经理实核B
 N01–N10与B/C/D最终review已落盘，B-R6-01/C-R8-01/D-R5-01按本片APPROVED结项。首轮Clippy101及wasm未运行、全部历史失败/误绿fixture均保留，未改写为通过。人员和实现贡献仍原GPT-6-astra，经理仅review/串行整合。当前main尚未合产品，下一第一操作是员工最终档案冻结后按明确路径归档，再普通merge受测候选，核NoManCode/Rust tree相同并写整合记录。
 
 E盘活动仓库与所有旧树保留，D原件冻结。九继承已按后续用户明确上传授权原字节专门归档，不恢复旧未提交。此次不push/release/live。NEXT-08多项目配置与权限快照为下一经理契约，尚未派发；完整阶段一仍未完成，不扩Desktop/完整Team/MCP。
+
+## 2026-09-27 NEXT-07已验收并整合main，E盘继续
+
+经理GPT-6。产品整合6b7eab1d9fb60e0207bd343fa7711f9c807401a2，验收档案b4ef417ebb89423ef2d8652828700250bafc3743；受测9e5da7d2894ea2bbb1fa52383f2fff570116e8ea。NoManCode tree0f01cd6c1621a16cef842a583028b91cc80f4e12、Rust treef303e198698c8b68f11f937b6ec405fe8db6a70a均与受测候选完全一致，整合0无冲突、status/index空。C在E盘唯一串行五门禁全0，396通过/0失败/1付费live忽略；经理核33块统计、76对日志双hash和C14份源码hash。详情见NEXT-07联合验收与整合记录。
+
+B-R6-01/C-R8-01/D-R5-01全部APPROVED结项，原GPT-6-astra贡献、失败证据和旧树保留。新增schema10网络授权/Task绑定、固定permit与持久call、显式HTTP/CLI/web授权及command无OS出站沙箱ack已入main。批准和执行分离、先claim、unknown不自动重试、恢复后旧Task封存保持。没有新HTTP下载工具或OS网络沙箱。
+
+下一第一操作：读取实际Project/Settings/Session/Task和Workspace/审批代码，制定NEXT-08多项目配置与权限快照契约，再登记新基线/独立树/唯一执行者并派发。当前没有新产品在途任务；不恢复旧B/C/D轮次。完整阶段一尚未完成，不扩Desktop/完整Team/MCP。
+
+活动仓库和target在E盘，D原件冻结备份；机器Rust/MSVC及OS临时目录未迁移。九份继承已按后续明确上传授权原字节专门归档c9154e5，最新hash9/9一致。此次本地主线整合不push/release/live。下方“待审/进行中/未整合”均为当时历史。
