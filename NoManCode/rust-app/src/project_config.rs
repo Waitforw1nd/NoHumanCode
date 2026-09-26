@@ -377,7 +377,7 @@ impl Store {
         };
         ids.iter().map(|id| self.run(id)).collect()
     }
-    pub(crate) fn register_project(&self, request: RegisterProject) -> Result<Project> {
+    pub fn register_project(&self, request: RegisterProject) -> Result<Project> {
         secrets::validate_idempotency_key(&request.idempotency_key)
             .map_err(|_| ProjectError::Invalid)?;
         let hash = digest("register-project-v1", &(&request.name, &request.root_path))?;
@@ -422,7 +422,10 @@ impl Store {
                 .optional()?;
             let existing = match &bound {
                 Some(value) => parse(value)?,
-                None => RootIdentity::capture(Path::new(&project.root_path)).map_err(root_error)?,
+                None => match RootIdentity::capture(Path::new(&project.root_path)) {
+                    Ok(identity) => identity,
+                    Err(_) => continue,
+                },
             };
             match root.overlap(&existing).map_err(root_error)? {
                 RootOverlap::Disjoint => {}
@@ -462,10 +465,7 @@ impl Store {
         tx.commit()?;
         Ok(project)
     }
-    pub(crate) fn configure_project(
-        &self,
-        request: ConfigureProject,
-    ) -> Result<ProjectConfigSnapshot> {
+    pub fn configure_project(&self, request: ConfigureProject) -> Result<ProjectConfigSnapshot> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let old = config_tx(&tx, &request.project_id)?;
@@ -494,7 +494,7 @@ impl Store {
             permission_digest,
         })
     }
-    pub(crate) fn select_project(&self, request: SelectProject) -> Result<ProjectSelection> {
+    pub fn select_project(&self, request: SelectProject) -> Result<ProjectSelection> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         config_tx(&tx, &request.project_id)?;

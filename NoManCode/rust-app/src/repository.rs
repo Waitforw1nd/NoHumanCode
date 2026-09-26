@@ -61,14 +61,59 @@ pub fn apply_schema_11(tx: &Transaction<'_>) -> Result<()> {
     Ok(())
 }
 pub(crate) fn verify_schema_11(tx: &Transaction<'_>) -> Result<()> {
-    // Exact normalized DDL checks the actual PK/FK/CHECK constraints, not merely their names.
-    let normalize = |sql: &str| {
-        sql.replace("IF NOT EXISTS ", "")
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect::<String>()
-    };
+    fn normalize(sql: &str) -> String {
+        let mut out = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if let Some(q) = quote {
+                out.push(ch);
+                if ch == q {
+                    if chars.peek() == Some(&q) {
+                        out.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                out.push(ch);
+            } else if !ch.is_whitespace() {
+                out.push(ch.to_ascii_lowercase());
+            }
+        }
+        for prefix in ["createtable", "createuniqueindex", "createindex"] {
+            if let Some(rest) = out.strip_prefix(&format!("{prefix}ifnotexists")) {
+                return format!("{prefix}{rest}");
+            }
+        }
+        out
+    }
+    type NetworkColumn = (String, String, i64, Option<String>, i64, i64);
+    fn columns(db: &Connection, table: &str) -> Result<Vec<NetworkColumn>> {
+        let mut statement = db.prepare(&format!("PRAGMA table_xinfo({table})"))?;
+        Ok(statement
+            .query_map([], |r| {
+                Ok((
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                ))
+            })?
+            .collect::<rusqlite::Result<_>>()?)
+    }
+    let expected = Connection::open_in_memory()?;
+    for (_, sql) in PROJECT_TABLES {
+        expected.execute_batch(sql)?;
+    }
     for (table, sql) in PROJECT_TABLES {
+        anyhow::ensure!(
+            columns(tx, table)? == columns(&expected, table)?,
+            "project column shape mismatch"
+        );
         let actual: String = tx.query_row(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
             [table],

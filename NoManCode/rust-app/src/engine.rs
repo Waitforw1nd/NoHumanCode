@@ -58,6 +58,7 @@ impl Engine {
         }
     }
 }
+#[cfg(test)]
 fn route_subject(id: &str) -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Route,
@@ -1868,19 +1869,6 @@ impl Engine {
                 error
             }
         })?;
-        let active_ids: Vec<String> = self.active.lock().unwrap().keys().cloned().collect();
-        for active_id in active_ids {
-            if active_id == id {
-                return Err(WorkspaceChangeError::Active.into());
-            }
-            let active = self.store.task(&active_id)?;
-            if std::path::Path::new(&active.workspace).canonicalize()?
-                == std::path::Path::new(&task.workspace).canonicalize()?
-            {
-                return Err(WorkspaceChangeError::Active.into());
-            }
-        }
-        self.store.validate_project_task(&task, true, false)?;
         if let Some(receipt) = self.store.latest_restore(id)? {
             return if receipt.status == RestoreStatus::Complete {
                 Ok(receipt)
@@ -1897,6 +1885,20 @@ impl Engine {
                 }
                 .into())
             };
+        }
+        self.store.validate_project_task(&task, true, false)?;
+        let active_ids: Vec<String> = self.active.lock().unwrap().keys().cloned().collect();
+        for active_id in active_ids {
+            if active_id == id {
+                return Err(WorkspaceChangeError::Active.into());
+            }
+            let active = self.store.task(&active_id)?;
+            if active.spec.allow_commands
+                || std::path::Path::new(&active.workspace).canonicalize()?
+                    == std::path::Path::new(&task.workspace).canonicalize()?
+            {
+                return Err(WorkspaceChangeError::Active.into());
+            }
         }
         let records = self
             .store
@@ -1996,6 +1998,7 @@ impl Engine {
                     !crash_probe::take_restore_failure(id, &change.path),
                     "injected restore path failure"
                 );
+                self.store.validate_project_task(&task, false, false)?;
                 let checked = workspace::resolve(
                     std::path::Path::new(&task.workspace),
                     &change.path,
@@ -3342,11 +3345,11 @@ impl Engine {
                 error
             }
         })?;
+        self.store.validate_project_task(&task, false, false)?;
         let root = std::path::Path::new(&task.workspace);
         let canonical = root
             .canonicalize()
             .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
-        self.store.validate_project_task(&task, false, false)?;
         let active: Vec<_> = self
             .active
             .lock()
@@ -3403,9 +3406,9 @@ impl Engine {
         if task.status != "completed" {
             return Err(CheckpointError::Unrestorable.into());
         }
+        self.store.validate_project_task(&task, false, false)?;
         let root = std::path::Path::new(&task.workspace);
         let canonical = root.canonicalize().map_err(|_| CheckpointError::Conflict)?;
-        self.store.validate_project_task(&task, false, false)?;
         let active_ids: Vec<_> = self.active.lock().unwrap().keys().cloned().collect();
         for id in active_ids {
             if id == task_id
