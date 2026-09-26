@@ -10,3 +10,4 @@ pub mod server;
 pub mod store;
 pub mod wasm;
 pub mod workspace;
+pub mod workspace_changes;

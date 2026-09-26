@@ -19,6 +19,200 @@ use serde_json::Value;
 
 pub const MIGRATION_ID: &str = "project-session-turn-repository";
 pub const APPROVAL_MIGRATION_ID: &str = "tool-call-approval-repository";
+pub const WORKSPACE_CHANGE_MIGRATION_ID: &str = "workspace-change-repository";
+
+const WORKSPACE_CHANGES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS workspace_changes (
+  id TEXT NOT NULL PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES tasks(id),
+  tool_call_id TEXT NOT NULL,
+  workspace_digest TEXT NOT NULL,
+  binding_digest TEXT NOT NULL,
+  write_scopes TEXT NOT NULL,
+  path TEXT NOT NULL,
+  path_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('created','modified')),
+  before_blob BLOB,
+  before_digest TEXT,
+  after_digest TEXT,
+  state TEXT NOT NULL CHECK (state IN ('prepared','finished','unknown','failed')),
+  restore_state TEXT NOT NULL CHECK (restore_state IN ('pending','restored','unknown')),
+  created_at INTEGER NOT NULL,
+  finished_at INTEGER,
+  UNIQUE(task_id, tool_call_id, path_key),
+  CHECK ((kind='created' AND before_blob IS NULL AND before_digest IS NULL) OR
+         (kind='modified' AND before_blob IS NOT NULL AND before_digest IS NOT NULL))
+)";
+const WORKSPACE_RESTORES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS workspace_restores (
+  id TEXT NOT NULL PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES tasks(id),
+  status TEXT NOT NULL CHECK (status IN ('claimed','complete','conflict','partial','unknown')),
+  created_at INTEGER NOT NULL,
+  finished_at INTEGER
+)";
+const WORKSPACE_RESTORE_OUTCOMES_TABLE_SQL: &str =
+    "CREATE TABLE IF NOT EXISTS workspace_restore_outcomes (
+  restore_id TEXT NOT NULL REFERENCES workspace_restores(id),
+  change_id TEXT NOT NULL REFERENCES workspace_changes(id),
+  path TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('claimed','complete','conflict','unknown')),
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(restore_id, change_id)
+)";
+
+pub fn apply_schema_8(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(WORKSPACE_CHANGES_TABLE_SQL)?;
+    tx.execute_batch(WORKSPACE_RESTORES_TABLE_SQL)?;
+    tx.execute_batch(WORKSPACE_RESTORE_OUTCOMES_TABLE_SQL)?;
+    tx.execute_batch("CREATE INDEX IF NOT EXISTS workspace_changes_task_path ON workspace_changes(task_id, path_key, created_at);
+        CREATE UNIQUE INDEX IF NOT EXISTS workspace_restores_task_complete ON workspace_restores(task_id) WHERE status='complete';
+        CREATE INDEX IF NOT EXISTS workspace_restore_outcomes_restore ON workspace_restore_outcomes(restore_id);")?;
+    verify_schema_8(tx)?;
+    let applied = tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![WORKSPACE_CHANGE_MIGRATION_ID, now()],
+    )?;
+    anyhow::ensure!(
+        applied == 1 || migration_applied(tx, WORKSPACE_CHANGE_MIGRATION_ID)?,
+        "schema 8 迁移标记没有写入"
+    );
+    tx.pragma_update(None, "user_version", 8)?;
+    Ok(())
+}
+
+pub(crate) fn verify_schema_8(tx: &Transaction<'_>) -> Result<()> {
+    for table in [
+        "workspace_changes",
+        "workspace_restores",
+        "workspace_restore_outcomes",
+    ] {
+        anyhow::ensure!(table_exists(tx, table)?, "schema 8 缺少 {table} 表");
+    }
+    let expected = [
+        (
+            "workspace_changes",
+            vec![
+                "id",
+                "task_id",
+                "tool_call_id",
+                "workspace_digest",
+                "binding_digest",
+                "write_scopes",
+                "path",
+                "path_key",
+                "kind",
+                "before_blob",
+                "before_digest",
+                "after_digest",
+                "state",
+                "restore_state",
+                "created_at",
+                "finished_at",
+            ],
+        ),
+        (
+            "workspace_restores",
+            vec!["id", "task_id", "status", "created_at", "finished_at"],
+        ),
+        (
+            "workspace_restore_outcomes",
+            vec!["restore_id", "change_id", "path", "status", "updated_at"],
+        ),
+    ];
+    for (table, columns) in expected {
+        let mut stmt = tx.prepare(&format!("PRAGMA table_xinfo({table})"))?;
+        let actual = stmt
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        anyhow::ensure!(actual == columns, "schema 8 表 {table} 列不匹配");
+    }
+    let normalize = |sql: &str| {
+        let mut result = String::new();
+        let mut chars = sql.chars().peekable();
+        let mut quote = None;
+        while let Some(ch) = chars.next() {
+            if let Some(delimiter) = quote {
+                result.push(ch);
+                if ch == delimiter {
+                    if chars.peek() == Some(&delimiter) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                result.push(ch);
+            } else if !ch.is_whitespace() {
+                result.push(ch.to_ascii_lowercase());
+            }
+        }
+        result.replacen("createtableifnotexists", "createtable", 1)
+    };
+    for (table, expected) in [
+        ("workspace_changes", WORKSPACE_CHANGES_TABLE_SQL),
+        ("workspace_restores", WORKSPACE_RESTORES_TABLE_SQL),
+        (
+            "workspace_restore_outcomes",
+            WORKSPACE_RESTORE_OUTCOMES_TABLE_SQL,
+        ),
+    ] {
+        let ddl: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |row| row.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&ddl) == normalize(expected),
+            "schema 8 表 {table} 约束不完整或不兼容"
+        );
+    }
+    for (index, unique, partial, columns) in [
+        (
+            "workspace_changes_task_path",
+            false,
+            false,
+            &["task_id", "path_key", "created_at"][..],
+        ),
+        (
+            "workspace_restores_task_complete",
+            true,
+            true,
+            &["task_id"][..],
+        ),
+        (
+            "workspace_restore_outcomes_restore",
+            false,
+            false,
+            &["restore_id"][..],
+        ),
+    ] {
+        let (actual_unique, actual_partial): (i64,i64) = tx.query_row(
+            "SELECT [unique],partial FROM pragma_index_list((SELECT tbl_name FROM sqlite_master WHERE type='index' AND name=?1)) WHERE name=?1",
+            [index], |row| Ok((row.get(0)?,row.get(1)?)))?;
+        anyhow::ensure!(
+            (actual_unique != 0) == unique && (actual_partial != 0) == partial,
+            "schema 8 索引 {index} 属性不匹配"
+        );
+        anyhow::ensure!(
+            index_columns_match(tx, index, columns)?,
+            "schema 8 索引 {index} 列不匹配"
+        );
+    }
+    let partial_sql: String = tx.query_row("SELECT sql FROM sqlite_master WHERE type='index' AND name='workspace_restores_task_complete'", [], |row| row.get(0))?;
+    anyhow::ensure!(
+        normalize(&partial_sql)
+            == normalize(
+                "CREATE UNIQUE INDEX workspace_restores_task_complete ON workspace_restores(task_id) WHERE status='complete'"
+            ),
+        "schema 8 完成恢复索引谓词不匹配"
+    );
+    let violations: String = tx
+        .query_row("PRAGMA foreign_key_check", [], |row| row.get(0))
+        .optional()?
+        .unwrap_or_default();
+    anyhow::ensure!(violations.is_empty(), "schema 8 外键检查失败");
+    Ok(())
+}
 
 /// Tables and columns added on top of schema 5.  Applied only from inside
 /// the schema 6 transaction.  `CREATE IF NOT EXISTS` keeps a retried open

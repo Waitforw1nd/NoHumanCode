@@ -1,4 +1,10 @@
-use crate::{approval, domain::*, engine::Engine, provider, secrets, wasm};
+use crate::{
+    approval,
+    domain::*,
+    engine::Engine,
+    provider, secrets, wasm,
+    workspace_changes::{RestoreStatus, WorkspaceChangeError},
+};
 use axum::{
     Json, Router,
     extract::{
@@ -899,15 +905,76 @@ async fn changes(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Json<Value>> {
-    let id = object_id(id)?;
-    Ok(Json(json!({"changes":app.engine.changes(&id)?})))
+    let id = workspace_task_id(id)?;
+    let changes = app.engine.changes(&id).map_err(workspace_change_error)?;
+    let restore = app
+        .engine
+        .latest_restore(&id)
+        .map_err(workspace_change_error)?;
+    Ok(Json(json!({"changes":changes,"restore":restore})))
 }
 async fn restore(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
-) -> Result<Json<Value>> {
-    let id = object_id(id)?;
-    Ok(Json(json!({"ok":true,"restored":app.engine.restore(&id)?})))
+) -> Result<Response> {
+    let id = workspace_task_id(id)?;
+    match app.engine.restore(&id).await {
+        Ok(receipt) => Ok(Json(json!({"ok":receipt.status == RestoreStatus::Complete,"restored":receipt.restored,"status":receipt.status,"receipt":receipt})).into_response()),
+        Err(error) => {
+            let typed = error.chain().find_map(|cause| cause.downcast_ref::<WorkspaceChangeError>());
+            let receipt = match typed { Some(WorkspaceChangeError::Conflict { receipt }) | Some(WorkspaceChangeError::Unknown { receipt }) => receipt.clone(), _ => None };
+            if let Some(receipt) = receipt {
+                let message = typed.map(ToString::to_string).unwrap_or_else(|| "文件恢复失败".into());
+                return Ok((StatusCode::CONFLICT, Json(json!({"code":ErrorCode::Conflict,"message":message,"error":message,"retryable":false,"ok":false,"restored":receipt.restored,"status":receipt.status,"receipt":receipt}))).into_response());
+            }
+            Err(workspace_change_error(error))
+        }
+    }
+}
+
+fn workspace_change_error(error: anyhow::Error) -> ApiError {
+    let typed = error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<WorkspaceChangeError>());
+    let (status, code, message) = match typed {
+        Some(WorkspaceChangeError::NotFound) => {
+            (StatusCode::NOT_FOUND, ErrorCode::NotFound, "任务不存在")
+        }
+        Some(
+            WorkspaceChangeError::Active
+            | WorkspaceChangeError::Conflict { .. }
+            | WorkspaceChangeError::Unrestorable
+            | WorkspaceChangeError::Unknown { .. },
+        ) => (
+            StatusCode::CONFLICT,
+            ErrorCode::Conflict,
+            "文件变更当前不可恢复",
+        ),
+        Some(WorkspaceChangeError::Corrupt | WorkspaceChangeError::Internal) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "文件变更服务失败",
+        ),
+        None => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "文件变更服务失败",
+        ),
+    };
+    ApiError::with_code(status, code, false, anyhow::anyhow!(message))
+}
+
+fn workspace_task_id(path: std::result::Result<Path<String>, PathRejection>) -> Result<String> {
+    let id = object_id(path)?;
+    if secrets::validate_persisted_id("task_id", &id).is_err() {
+        return Err(ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("任务标识无效"),
+        ));
+    }
+    Ok(id)
 }
 async fn wasm_plugins(State(app): State<App>) -> Result<Json<Value>> {
     let settings = app
