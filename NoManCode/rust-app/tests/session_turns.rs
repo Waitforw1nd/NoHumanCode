@@ -198,6 +198,111 @@ async fn started() -> Harness {
     }
 }
 
+#[tokio::test]
+async fn run_context_uses_persisted_mapping_and_commit_order() {
+    let h = started().await;
+    let before = h
+        .engine
+        .store
+        .run_context(&h.session.legacy_run_id)
+        .unwrap();
+    assert_eq!(before.session, h.session);
+    assert_eq!(before.latest_turn, h.first.turn);
+    assert_eq!(before.tasks, vec![h.first.task.clone()]);
+    assert_eq!(before.project.id, h.session.project_id);
+    assert_ne!(before.run_id, before.session.id.0);
+    let next = h
+        .engine
+        .send_chat_turn(command(
+            &h.session.id,
+            &h.agent.id,
+            &h.first.turn.id,
+            "next",
+            "context-next",
+        ))
+        .await
+        .unwrap();
+    wait_task(&h.engine, &next.task.legacy_task_id).await;
+    h.engine
+        .store
+        .event(
+            &h.first.task.legacy_task_id,
+            "delta",
+            json!({"text":"late event"}),
+        )
+        .unwrap();
+    let after = h
+        .engine
+        .store
+        .run_context(&h.session.legacy_run_id)
+        .unwrap();
+    assert_eq!(after.latest_turn.id, next.turn.id);
+    assert_eq!(after.tasks.len(), 1);
+    assert_eq!(after.tasks[0].id, next.task.id);
+    assert_eq!(after.tasks[0].agent_id, h.agent.id);
+    assert!(
+        serde_json::to_value(after)
+            .unwrap()
+            .get("session")
+            .is_some()
+    );
+}
+
+#[tokio::test]
+async fn run_context_distinguishes_missing_unmapped_and_corrupt() {
+    let h = started().await;
+    assert_eq!(
+        h.engine
+            .store
+            .run_context("absent")
+            .unwrap_err()
+            .downcast_ref::<RunContextError>(),
+        Some(&RunContextError::NotFound)
+    );
+    let db = open_db(&h);
+    db.execute(
+        "INSERT INTO runs(id,title,kind,created_at) VALUES ('legacy-only','old','chat',1)",
+        [],
+    )
+    .unwrap();
+    assert_eq!(
+        h.engine
+            .store
+            .run_context("legacy-only")
+            .unwrap_err()
+            .downcast_ref::<RunContextError>(),
+        Some(&RunContextError::Unmapped)
+    );
+    db.execute(
+        "UPDATE tasks SET value=json_set(value,'$.status','failed') WHERE id=?1",
+        [&h.first.task.legacy_task_id],
+    )
+    .unwrap();
+    assert_eq!(
+        h.engine
+            .store
+            .run_context(&h.session.legacy_run_id)
+            .unwrap_err()
+            .downcast_ref::<RunContextError>(),
+        Some(&RunContextError::CorruptState)
+    );
+    db.execute(
+        "UPDATE tasks SET value=json_set(value,'$.status','completed') WHERE id=?1",
+        [&h.first.task.legacy_task_id],
+    )
+    .unwrap();
+    db.execute("DELETE FROM events WHERE turn_id=?1", [&h.first.turn.id.0])
+        .unwrap();
+    assert_eq!(
+        h.engine
+            .store
+            .run_context(&h.session.legacy_run_id)
+            .unwrap_err()
+            .downcast_ref::<RunContextError>(),
+        Some(&RunContextError::CorruptState)
+    );
+}
+
 fn open_db(harness: &Harness) -> Connection {
     Connection::open(harness._dir.path().join("turns.db")).unwrap()
 }
@@ -830,7 +935,7 @@ async fn t7_unsupported_and_invalid_inputs_add_nothing() {
     );
     let db = open_db(&harness);
     db.execute(
-        "UPDATE tasks SET value=json_set(value,'$.spec.tools',json('true')) WHERE id=?1",
+        "UPDATE tasks SET value=json_set(value,'$.spec.depends_on',json('[\"unsupported-dependency\"]')) WHERE id=?1",
         [&harness.first.task.legacy_task_id],
     )
     .unwrap();
@@ -1327,6 +1432,25 @@ async fn t11_route_workspace_and_context_limits_fail_closed() {
         .into();
     std::fs::create_dir_all(&settings.workspace).unwrap();
     harness.engine.store.save_settings(&settings).unwrap();
+    let moved_workspace = harness
+        .engine
+        .send_chat_turn(command(
+            &harness.session.id,
+            &harness.agent.id,
+            &harness.first.turn.id,
+            "目录变了",
+            "workspace-moved",
+        ))
+        .await;
+    assert_eq!(error_of(moved_workspace), ChatTurnError::UnsupportedSession);
+    assert_eq!(table_counts(&harness), objects_before);
+    settings.workspace = harness
+        .engine
+        .store
+        .project(&harness.session.project_id)
+        .unwrap()
+        .root_path;
+    harness.engine.store.save_settings(&settings).unwrap();
     let kept = harness
         .engine
         .send_chat_turn(command(
@@ -1352,7 +1476,7 @@ async fn t11_route_workspace_and_context_limits_fail_closed() {
             .unwrap()
             .root_path
     );
-    assert_ne!(task.workspace, settings.workspace);
+    assert_eq!(task.workspace, settings.workspace);
     let current = wait_task(&harness.engine, &kept.task.legacy_task_id).await;
     let mut prefix = current.messages.clone();
     prefix.push(json!({"role":"assistant","content":"x".repeat(1_450_000)}));

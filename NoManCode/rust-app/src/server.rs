@@ -296,6 +296,7 @@ pub fn router(app: App) -> Router {
         .route("/api/newapi/balance", get(balance))
         .route("/api/runs", get(runs).post(start))
         .route("/api/runs/{id}", get(run))
+        .route("/api/runs/{id}/context", get(run_context))
         .route("/api/runs/{id}/events", get(events))
         .route("/api/projects", get(projects))
         .route("/api/sessions/{id}", get(session))
@@ -627,6 +628,7 @@ fn turn_command_error(error: anyhow::Error) -> ApiError {
             ChatTurnError::NotFound => (StatusCode::NOT_FOUND, ErrorCode::NotFound),
             ChatTurnError::StalePredecessor
             | ChatTurnError::SessionBusy
+            | ChatTurnError::UnresolvedEffects
             | ChatTurnError::PredecessorChanged => (StatusCode::CONFLICT, ErrorCode::Conflict),
             ChatTurnError::CorruptState => (StatusCode::INTERNAL_SERVER_ERROR, ErrorCode::Internal),
         };
@@ -732,6 +734,54 @@ async fn run(
 ) -> Result<Json<Run>> {
     let id = object_id(id)?;
     app.engine.store.run(&id).map(Json).map_err(read_error)
+}
+async fn run_context(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<RunContext>> {
+    let id = object_id(id)?;
+    if secrets::validate_persisted_id("run_id", &id).is_err() {
+        return Err(ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("运行标识无效"),
+        ));
+    }
+    app.engine
+        .store
+        .run_context(&id)
+        .map(Json)
+        .map_err(context_error)
+}
+fn context_error(error: anyhow::Error) -> ApiError {
+    if let Some(typed) = error.downcast_ref::<RunContextError>() {
+        let (status, code, message) = match typed {
+            RunContextError::NotFound => (StatusCode::NOT_FOUND, ErrorCode::NotFound, "运行不存在"),
+            RunContextError::Unmapped => (
+                StatusCode::CONFLICT,
+                ErrorCode::Conflict,
+                "旧运行没有领域身份映射",
+            ),
+            RunContextError::CorruptState => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorCode::Internal,
+                "运行身份数据损坏",
+            ),
+        };
+        return ApiError::with_code(status, code, false, anyhow::anyhow!(message));
+    }
+    let retryable = is_transient_store(&error);
+    ApiError::with_code(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        ErrorCode::Internal,
+        retryable,
+        anyhow::anyhow!(if retryable {
+            "存储暂时不可用"
+        } else {
+            "运行身份读取失败"
+        }),
+    )
 }
 #[derive(Deserialize)]
 struct Resume {
@@ -1308,6 +1358,12 @@ mod tests {
                 false,
             ),
             (
+                ChatTurnError::UnresolvedEffects,
+                StatusCode::CONFLICT,
+                ErrorCode::Conflict,
+                false,
+            ),
+            (
                 ChatTurnError::PredecessorChanged,
                 StatusCode::CONFLICT,
                 ErrorCode::Conflict,
@@ -1327,6 +1383,36 @@ mod tests {
             assert_eq!(error.retryable, retryable, "{variant}");
             assert_eq!(error.error.to_string(), variant.to_string(), "{variant}");
         }
+    }
+
+    #[test]
+    fn run_context_error_preserves_typed_status_without_context_leaks() {
+        for (variant, status, code) in [
+            (
+                RunContextError::NotFound,
+                StatusCode::NOT_FOUND,
+                ErrorCode::NotFound,
+            ),
+            (
+                RunContextError::Unmapped,
+                StatusCode::CONFLICT,
+                ErrorCode::Conflict,
+            ),
+            (
+                RunContextError::CorruptState,
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorCode::Internal,
+            ),
+        ] {
+            let error = context_error(anyhow::Error::new(variant).context("private database path"));
+            assert_eq!(error.status, status);
+            assert_eq!(error.code, code);
+            assert!(!error.retryable);
+            assert!(!error.error.to_string().contains("private"));
+        }
+        let unknown = context_error(anyhow::anyhow!("SELECT secret FROM private"));
+        assert_eq!(unknown.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(unknown.error.to_string(), "运行身份读取失败");
     }
 
     #[test]

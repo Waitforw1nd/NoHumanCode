@@ -2321,3 +2321,101 @@ fn subscribers_receive_only_their_bound_providers_events() {
     assert_eq!(delivered, 1);
     assert_eq!(*inbox.lock().unwrap(), vec![2u64]);
 }
+
+#[test]
+fn n08_host_typed_resolver_obeys_live_activation_binding_and_payload_type() {
+    let mut host = builtin_host();
+    let service = Arc::new(CounterService {
+        hits: AtomicUsize::new(0),
+    });
+    let log = Arc::new(Mutex::new(vec![]));
+    register(
+        &mut host,
+        &manifest(
+            "svc.provider",
+            "provider",
+            "host",
+            "builtin",
+            provides_json(vec![key_json("service", "counter")]),
+            serde_json::json!([]),
+        ),
+    );
+    register(
+        &mut host,
+        &manifest(
+            "svc.consumer",
+            "consumer",
+            "host",
+            "builtin",
+            serde_json::json!([]),
+            provides_json(vec![key_json("service", "counter")]),
+        ),
+    );
+    let provider_service = service.clone();
+    let provider_log = log.clone();
+    host.with_factory("svc.provider", move || {
+        Box::new(SvcProvider {
+            key: svc("counter"),
+            service: provider_service.clone(),
+            log: provider_log.clone(),
+        })
+    });
+    let consumer_log = log.clone();
+    host.with_factory("svc.consumer", move || {
+        Box::new(SvcConsumer {
+            need: svc("counter"),
+            log: consumer_log.clone(),
+            captured: Arc::new(Mutex::new(vec![])),
+        })
+    });
+    host.start(&["svc.consumer".into()]).unwrap();
+    let resolved = host
+        .resolve_bound::<Arc<CounterService>>("svc.consumer", &svc("counter"))
+        .unwrap();
+    assert_eq!(resolved.provider_id, "svc.provider");
+    assert_eq!(resolved.key, svc("counter"));
+    assert!(Arc::ptr_eq(&resolved.payload, &service));
+    assert!(
+        host.effects()
+            .iter()
+            .any(|effect| effect.effect_id == resolved.effect_id)
+    );
+    resolved.payload.hit();
+    assert_eq!(service.hits(), 2);
+    assert!(
+        matches!(host.resolve_bound::<String>("svc.consumer", &svc("counter")),
+        Err(HostError::PayloadTypeMismatch { plugin_id, .. }) if plugin_id == "svc.provider")
+    );
+    let mut wrong_version = svc("counter");
+    wrong_version.version.major = 2;
+    for key in [wrong_version, svc("undeclared")] {
+        assert!(matches!(
+            host.resolve_bound::<Arc<CounterService>>("svc.consumer", &key),
+            Err(HostError::UnboundInterface { .. })
+        ));
+    }
+    // Removing declarations does not rebind the live activation snapshot.
+    host.catalog_mut()
+        .remove_descriptor("svc.provider")
+        .unwrap();
+    assert!(Arc::ptr_eq(
+        &host
+            .resolve_bound::<Arc<CounterService>>("svc.consumer", &svc("counter"))
+            .unwrap()
+            .payload,
+        &service
+    ));
+    host.stop_subtree("svc.provider").unwrap();
+    assert!(matches!(
+        host.resolve_bound::<Arc<CounterService>>("svc.consumer", &svc("counter")),
+        Err(HostError::InvalidState {
+            current: InstanceState::Stopped,
+            ..
+        })
+    ));
+    assert!(host.effects().is_empty());
+    assert!(matches!(
+        builtin_host().resolve_bound::<Arc<CounterService>>("svc.consumer", &svc("counter")),
+        Err(HostError::UnknownPlugin { .. })
+    ));
+}

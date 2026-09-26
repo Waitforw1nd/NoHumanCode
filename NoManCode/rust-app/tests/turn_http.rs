@@ -1709,9 +1709,10 @@ async fn n09_session_shape_and_404() {
         .execute("DELETE FROM agents WHERE id='second-agent'", [])
         .unwrap();
 
-    // Tool-shape faults: restore the predecessor task to its exact saved
+    // Dependency/history faults: restore the predecessor task to its exact saved
     // baseline before each injection, so every case is triggered by that
-    // fault alone and never by residue from the previous case.
+    // fault alone and never by residue from the previous case. Mutate this
+    // task's final assistant message; inherited prefix mutations are corruption.
     let latest = proved_task.legacy_task_id.clone();
     let original_value = scalar(
         &fixture.h.db_path,
@@ -1720,20 +1721,24 @@ async fn n09_session_shape_and_404() {
     );
     let mutations = [
         (
-            "UPDATE tasks SET value=json_set(value, '$.spec.tools', json('true')) WHERE id=?1",
-            "tools-on",
+            "UPDATE tasks SET value=json_set(value, '$.spec.depends_on', json('[\"foreign-task\"]')) WHERE id=?1",
+            "dependency-present",
         ),
         (
-            "UPDATE tasks SET value=json_set(value, '$.messages[0].role', 'tool') WHERE id=?1",
+            "UPDATE tasks SET value=json_set(value, '$.messages[#-1].role', 'tool') WHERE id=?1",
             "role-tool",
         ),
         (
-            "UPDATE tasks SET value=json_set(value, '$.messages[1].tool_calls', json('[{\"id\":\"c\"}]')) WHERE id=?1",
+            "UPDATE tasks SET value=json_set(value, '$.messages[#-1].tool_calls', json('[{\"id\":\"c\"}]')) WHERE id=?1",
             "calls-present",
         ),
         (
-            "UPDATE tasks SET value=json_set(value, '$.messages[1].tool_calls', json('\"yes\"')) WHERE id=?1",
+            "UPDATE tasks SET value=json_set(value, '$.messages[#-1].tool_calls', json('\"yes\"')) WHERE id=?1",
             "calls-text",
+        ),
+        (
+            "UPDATE tasks SET value=json_insert(value, '$.messages[#]', json('{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[{\"id\":\"forged\",\"type\":\"function\",\"function\":{\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\\\"src/a.txt\\\"}\"}}]}'), '$.messages[#]', json('{\"role\":\"tool\",\"tool_call_id\":\"forged\",\"content\":\"{}\"}')) WHERE id=?1",
+            "closed-calls-without-source-event",
         ),
     ];
     for (sql, key) in mutations {
@@ -1758,8 +1763,35 @@ async fn n09_session_shape_and_404() {
         assert_untouched(&injected, &fixture.h.db_path);
         assert_eq!(calls(&fixture.h), calls_before);
     }
-    // Positive: the same restored clean baseline (tools=false, first message
-    // role=user, no tool_calls residue) plus only an empty tool_calls array
+    // Inherited transcript is immutable even if the new message itself is valid.
+    open_db(&fixture.h.db_path)
+        .execute(
+            "UPDATE tasks SET value=?1 WHERE id=?2",
+            params![original_value, latest],
+        )
+        .unwrap();
+    open_db(&fixture.h.db_path)
+        .execute(
+            "UPDATE tasks SET value=json_set(value, '$.messages[0].role', 'tool') WHERE id=?1",
+            [&latest],
+        )
+        .unwrap();
+    let injected = snapshot(&fixture.h.db_path);
+    let calls_before = calls(&fixture.h);
+    let inherited = append(
+        &http,
+        &fixture,
+        proved_body["turn"]["id"].as_str().unwrap(),
+        "damaged inherited prefix",
+        "inherited-prefix-corrupt",
+    )
+    .await;
+    expect_status(inherited, 500, "internal", false).await;
+    assert_untouched(&injected, &fixture.h.db_path);
+    assert_eq!(calls(&fixture.h), calls_before);
+
+    // Positive: the same restored clean baseline (tools=false, valid message roles, no
+    // tool_calls residue) plus only an empty tool_calls array
     // must still append.
     open_db(&fixture.h.db_path)
         .execute(
@@ -1769,7 +1801,7 @@ async fn n09_session_shape_and_404() {
         .unwrap();
     open_db(&fixture.h.db_path)
         .execute(
-            "UPDATE tasks SET value=json_set(value, '$.messages[1].tool_calls', json('[]')) WHERE id=?1",
+            "UPDATE tasks SET value=json_set(value, '$.messages[#-1].tool_calls', json('[]')) WHERE id=?1",
             [&latest],
         )
         .unwrap();
