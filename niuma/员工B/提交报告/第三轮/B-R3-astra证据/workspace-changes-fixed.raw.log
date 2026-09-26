@@ -1,0 +1,29 @@
+   Compiling peachsh v0.2.0 (../nhc-b-workspace\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.70s
+     Running tests\workspace_changes.rs (target\debug\deps\workspace_changes-0e8aad60ce66fbb6.exe)
+
+running 21 tests
+test failed_atomic_replace_cleans_plaintext_temp ... ok
+test workspace_path_aliases_and_forbidden_spellings_are_rejected_or_coalesced ... ok
+test empty_restore_is_noop_without_operation ... ok
+test redacted_write_arguments_do_not_leave_an_unrestorable_success ... ok
+test external_edit_conflicts_without_overwrite ... ok
+test finished_change_without_after_digest_is_corrupt_not_empty_restore ... ok
+test approved_write_has_typed_metadata_and_restores_exact_bytes ... ok
+test dpapi_before_secret_roundtrips_without_plaintext_in_database ... ok
+test restore_rejects_tampered_call_path_content_and_binding ... ok
+test parent_commit_failure_returns_unknown_receipt_and_seals_change ... ok
+test schema7_migrates_and_forged_schema8_is_rejected ... ok
+test schema7_to8_preserves_existing_task_approval_and_event_rows ... ok
+test missing_non_utf8_and_link_are_distinct_current_states ... ok
+test http_unknown_receipt_is_safe_after_outcome_persist_failure ... ok
+test another_task_write_blocks_old_restore_and_hardlink_bytes_stay_unchanged ... ok
+test later_path_conflict_prevents_all_restore_writes ... ok
+test changed_host_workspace_or_task_scopes_reject_restore_before_claim ... ok
+test created_file_restore_deletes_only_unchanged_task_output ... ok
+test another_task_edit_blocks_resumed_write_without_absorbing_external_bytes ... ok
+test repeated_path_restores_earliest_before_and_legacy_mix_is_rejected ... ok
+test unsupported_new_content_and_before_bytes_have_no_file_effect ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+

@@ -1,0 +1,50 @@
+[
+  {
+    "raw_sha256": "5D7B4557A0C31710765B3143FFC4248A3B5ABB6CCE4EF3DD2E9836FAB2B7110E",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/check.raw.log",
+    "published_sha256": "B8E459DFFE2D180D9D6B39377CA92F6977E55F04B0260ADD78BFD2E6544DD13D",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/check.raw.log"
+  },
+  {
+    "raw_sha256": "2DFC87F42F2A7BA4F62A5D554FB9049B8FBD2B3A01BBA1929E50C2B1D467CEDB",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/clippy.raw.log",
+    "published_sha256": "D2D77F5DA5212E0BC8779C9DE9B6BDF213EA666A2901489AB7E3C84A86E1132C",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/clippy.raw.log"
+  },
+  {
+    "raw_sha256": "662308D91D27A5AA19C80B73A90F2374D7DD615A0D76DB2F2B4BF87E27B49B68",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/commands.jsonl",
+    "published_sha256": "662308D91D27A5AA19C80B73A90F2374D7DD615A0D76DB2F2B4BF87E27B49B68",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/commands.jsonl"
+  },
+  {
+    "raw_sha256": "530C965128DB8A0735545124B464DC5FAB7AC9B342790AE5D167CB6FF704394F",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/environment-recheck.raw.log",
+    "published_sha256": "530C965128DB8A0735545124B464DC5FAB7AC9B342790AE5D167CB6FF704394F",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/environment-recheck.raw.log"
+  },
+  {
+    "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/fmt.raw.log",
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/fmt.raw.log"
+  },
+  {
+    "raw_sha256": "35241267C59B46A0E3AD8824605C69A8304F3C48E18E7F446D8539F1303C7DA0",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/workspace-changes-fixed.raw.log",
+    "published_sha256": "B99C753CF7B2DD4511E537A35D21B994083CD86F591AF41EC078B0A4D2AF08BA",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/workspace-changes-fixed.raw.log"
+  },
+  {
+    "raw_sha256": "93DE5EDBF880303A46A8112BCA83E5A42F2144E464198C5B8A5883992550B010",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/workspace-changes.raw.log",
+    "published_sha256": "22C6E39BC81AF8239002B24B511AF51C3AD0C970E079F7C4A7C68848A1203986",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/workspace-changes.raw.log"
+  },
+  {
+    "raw_sha256": "5865A065C0BCFBF4917081ECB68EFC2A12C4862481B3E6646904D367187CF0D7",
+    "raw_path": ".local/verification/B-R3-astra-20260926-224100/workspace-phase.raw.log",
+    "published_sha256": "B215D5416A4F4E65137A6FBF79AEB3515905D25DC7355C204AFBB2FDB501FC8D",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-astra证据/workspace-phase.raw.log"
+  }
+]

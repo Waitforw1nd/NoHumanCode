@@ -1,0 +1,56 @@
+[
+  {
+    "published_sha256": "3E64EBFE6FAB091077BADB3A58CAE0245FA7AE65608C4073385EE317ED76B721",
+    "raw_sha256": "3E64EBFE6FAB091077BADB3A58CAE0245FA7AE65608C4073385EE317ED76B721",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/check.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/check.raw.log"
+  },
+  {
+    "published_sha256": "3DB29CBAFC5F616BC2F51993A403473F141DACAE860397EE005F5D978F213DB6",
+    "raw_sha256": "54E8DFA8BA8DDD3E18499B1C0AC937F114F9990BB69932D959AFA3CCDEE07304",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/clippy.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/clippy.raw.log"
+  },
+  {
+    "published_sha256": "8C9B993EE30D06A82943BC180237371D314AEDE04C9DD2B9BA1A1A5ED8DAD0FA",
+    "raw_sha256": "8C9B993EE30D06A82943BC180237371D314AEDE04C9DD2B9BA1A1A5ED8DAD0FA",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/commands.jsonl",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/commands.jsonl"
+  },
+  {
+    "published_sha256": "F5FD6C1D7761A73BBEC5BBCBF2CCFDE80F671C9C83C43308BEC5089425B7DC90",
+    "raw_sha256": "F5FD6C1D7761A73BBEC5BBCBF2CCFDE80F671C9C83C43308BEC5089425B7DC90",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/environment-recheck.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/environment-recheck.raw.log"
+  },
+  {
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/fmt.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/fmt.raw.log"
+  },
+  {
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/js.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/js.raw.log"
+  },
+  {
+    "published_sha256": "A4689A0645867EF69F95418A0AE34CA6684D68359C797DBC76266ADE13E1B32D",
+    "raw_sha256": "1969242F92D5202B4122ADF8370E9AF7F0D84CAC5E5814E4C10DC8B9FE13B31A",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/symlink.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/symlink.raw.log"
+  },
+  {
+    "published_sha256": "CBE125D1F7653B40EFED562CA2DC6CC351215D7B2DFD545B76C0D3EE8255E53A",
+    "raw_sha256": "4B99CD7A6E072DBD9C51EE7CD263B10350AC7F9192A94EA43FEE0C9A99164066",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/test.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/test.raw.log"
+  },
+  {
+    "published_sha256": "6E90877ACE1475AA290AB262F8936C5227C697E1364D162F7DF3F122FB7CFE2C",
+    "raw_sha256": "E2A9E78C1B4297537637AB4A7EB7E146FEC41F0D0FF8A76F56F9B5C2939C90B4",
+    "raw_path": ".local/verification/B-R3-combined-20260926-223900/wasm-check.raw.log",
+    "published_path": "niuma/员工B/提交报告/第三轮/B-R3-组合证据/wasm-check.raw.log"
+  }
+]

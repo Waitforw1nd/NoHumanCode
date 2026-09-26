@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-09-26T22:38:42.6662994+08:00",
+  "manager": "GPT-6",
+  "task": "B-R3-01 / NEXT-03A",
+  "employee_model": "GPT-6-astra",
+  "frozen_B": "2578029682e18eea911d5fae99717fb8beafe2ae",
+  "accepted_C_HTTP": "cf1a9c2c581985d1ce8a8907f04898df7c46c99f",
+  "combination": "5c5fcb6ef15398c7f01967e5805a4fd2a144961c",
+  "rust_tree": "0d493bb20ba0c16e79dee2ee9693de394897bad9",
+  "merge_exit_code": 0,
+  "merge_delta": "NoManCode/rust-app/tests/workspace_http.rs only",
+  "freeze": "B explicitly confirmed clean and frozen before manager merge",
+  "reviewed_tests": "C-W09-E1 and B review1.3 four groups closed by fixed diff and targeted evidence",
+  "main_integration": "not yet",
+  "final_gates": "running by B",
+  "raw_and_published_log_hashes": "8/8 pairs verified against B-R3-astra manifest",
+  "manager_product_tests_run": 0
+}

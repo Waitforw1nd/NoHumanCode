@@ -1,0 +1,15 @@
+   Compiling peachsh v0.2.0 (../nhc-b-workspace\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.15s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-65a9b0539ea16e0f.exe)
+
+running 7 tests
+test engine::workspace_phase_tests::recheck_io_failure_after_prepare_is_failed_without_file_effect ... ok
+test engine::workspace_phase_tests::write_prepare_before_fs_real_process_stop ... ok
+test engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop ... ok
+test engine::workspace_phase_tests::start_and_resume_wait_for_production_workspace_gate ... ok
+test engine::workspace_phase_tests::restore_gate_serializes_competitors_and_seals_resumed_writes ... ok
+test engine::workspace_phase_tests::failed_prepare_does_not_pollute_later_or_earlier_success ... ok
+test engine::workspace_phase_tests::partial_and_unknown_restore_histories_seal_resumed_writes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 64 filtered out; finished in 0.33s
+

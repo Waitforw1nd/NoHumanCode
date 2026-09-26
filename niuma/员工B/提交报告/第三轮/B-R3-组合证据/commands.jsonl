@@ -1,0 +1,8 @@
+{"ended":"2026-09-26T22:37:41.2630081+08:00","command":"build.ps1 -Action check","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","exit_code":0,"started":"2026-09-26T22:37:40.3168895+08:00"}
+{"ended":"2026-09-26T22:38:39.9622247+08:00","command":"build.ps1 -Action test","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","exit_code":0,"started":"2026-09-26T22:37:41.2789695+08:00"}
+{"ended":"2026-09-26T22:38:41.1224176+08:00","command":"build.ps1 -Action fmt","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","exit_code":0,"started":"2026-09-26T22:38:39.9683526+08:00"}
+{"ended":"2026-09-26T22:38:43.1467861+08:00","command":"build.ps1 -Action clippy","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","exit_code":0,"started":"2026-09-26T22:38:41.1246886+08:00"}
+{"ended":"2026-09-26T22:39:31.4452946+08:00","command":"build.ps1 -Action wasm-check","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","exit_code":0,"started":"2026-09-26T22:38:43.1498364+08:00"}
+{"command":"build.ps1 -Action check (environment bootstrap)","exit_code":0,"started":"2026-09-26T22:39:48.3721658+08:00","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","ended":"2026-09-26T22:39:49.2358602+08:00"}
+{"command":"cargo test --locked --test workspace_changes missing_non_utf8_and_link_are_distinct_current_states -- --exact --nocapture","exit_code":0,"started":"2026-09-26T22:39:49.2452358+08:00","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","ended":"2026-09-26T22:39:52.0571301+08:00"}
+{"command":"node --check web/app.js","exit_code":0,"started":"2026-09-26T22:39:52.0637692+08:00","commit":"5c5fcb6ef15398c7f01967e5805a4fd2a144961c","ended":"2026-09-26T22:39:52.2088650+08:00"}
