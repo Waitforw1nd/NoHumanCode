@@ -1,5 +1,8 @@
 //! NEXT-04A approval CLI contract tests. Every CLI assertion executes the real binary.
 
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+
 use axum::{
     Json, Router,
     extract::{OriginalUri, State},
@@ -237,6 +240,7 @@ async fn live_harness(path: &str) -> Harness {
         })
         .unwrap();
     store.put_secret("route", "synthetic").unwrap();
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 1).unwrap();
     serve(dir, engine, calls, Some(provider)).await
 }

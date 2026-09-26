@@ -111,8 +111,10 @@ impl Host {
     }
     async fn preview(&self, subject: Value) -> Value {
         let r = self.post("/api/network/preview", subject).await;
-        assert_eq!(r.status(), 200);
-        r.json().await.unwrap()
+        let status = r.status();
+        let value: Value = r.json().await.unwrap();
+        assert_eq!(status, 200, "{value}");
+        value
     }
     async fn authorize(&self, preview: &Value, purposes: Value, key: &str) -> reqwest::Response {
         self.request(reqwest::Method::POST,"/api/network/authorizations").header("Idempotency-Key",key).json(&json!({"subject":preview["subject"],"config_revision":preview["config_revision"],"credential_revision":preview["credential_revision"],"binding_digest":preview["binding_digest"],"purposes":purposes})).send().await.unwrap()
@@ -322,4 +324,189 @@ async fn network_http_account_save_is_local_and_revision_change_requires_new_pre
     assert_eq!(stale["error"]["code"], "stale");
     assert_eq!(stale["error"]["calls"], json!([]));
     assert_eq!(h.calls.load(Ordering::SeqCst), 1);
+}
+
+async fn launch_host(root: &std::path::Path, port: u16) -> tokio::process::Child {
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"))
+        .arg("--port")
+        .arg(port.to_string())
+        .arg("--data-dir")
+        .arg(root.join("data"))
+        .arg("--legacy-data")
+        .arg(root.join("absent-legacy"))
+        .arg("--workspace")
+        .arg(root.join("workspace"))
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            assert!(
+                child.try_wait().unwrap().is_none(),
+                "Host exited before readiness"
+            );
+            if let Ok(response) = client()
+                .get(format!("http://127.0.0.1:{port}/api/health"))
+                .send()
+                .await
+                && response.status().is_success()
+            {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    child
+}
+async fn bootstrap(origin: &str) -> String {
+    client()
+        .get(format!("{origin}/api/bootstrap"))
+        .send()
+        .await
+        .unwrap()
+        .json::<Value>()
+        .await
+        .unwrap()["token"]
+        .as_str()
+        .unwrap()
+        .to_owned()
+}
+#[tokio::test]
+async fn network_http_real_host_kill_after_send_retains_same_unknown_call_without_replay() {
+    use axum::{
+        body::Body,
+        response::{IntoResponse, Response},
+    };
+    use std::convert::Infallible;
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir(root.path().join("workspace")).unwrap();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let entered = Arc::new(tokio::sync::Notify::new());
+    let release = Arc::new(tokio::sync::Notify::new());
+    let (count, signal, barrier) = (calls.clone(), entered.clone(), release.clone());
+    let provider=Router::new().route("/v1/models",get(move||{let (count,signal,barrier)=(count.clone(),signal.clone(),barrier.clone());async move {
+  let attempt=count.fetch_add(1,Ordering::SeqCst);
+  if attempt==0 {return Json(json!({"data":[{"id":"mock-model"}]})).into_response();}
+  let stream=async_stream::stream! {yield Ok::<_,Infallible>(b"{\"data\":[".to_vec());signal.notify_one();barrier.notified().await;yield Ok(b"{\"id\":\"mock-model\"}]}".to_vec());};
+  Response::builder().header("content-type","application/json").body(Body::from_stream(stream)).unwrap()
+ }}));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let provider_origin = format!("http://{}", listener.local_addr().unwrap());
+    let provider = tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
+    let reserve = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = reserve.local_addr().unwrap().port();
+    drop(reserve);
+    let origin = format!("http://127.0.0.1:{port}");
+    let mut child = launch_host(root.path(), port).await;
+    let token = bootstrap(&origin).await;
+    let settings = Settings {
+        workspace: root.path().join("workspace").to_string_lossy().into(),
+        max_concurrency: 1,
+        routes: vec![Route {
+            id: "route-a".into(),
+            name: "Route".into(),
+            base_url: format!("{provider_origin}/v1"),
+            model: "mock-model".into(),
+            max_tokens: 128,
+            parallel_limit: 1,
+            key_env: None,
+        }],
+        newapi: None,
+    };
+    body(
+        client()
+            .put(format!("{origin}/api/settings"))
+            .header("x-peachsh-token", &token)
+            .json(&json!({"settings":settings,"keys":{"route-a":"synthetic-network-key"}}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let preview = body(
+        client()
+            .post(format!("{origin}/api/network/preview"))
+            .header("x-peachsh-token", &token)
+            .json(&json!({"kind":"route","id":"route-a"}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    body(client().post(format!("{origin}/api/network/authorizations")).header("x-peachsh-token",&token).header("Idempotency-Key","crash-grant").json(&json!({"subject":preview["subject"],"config_revision":preview["config_revision"],"credential_revision":preview["credential_revision"],"binding_digest":preview["binding_digest"],"purposes":["models"]})).send().await.unwrap(),201).await;
+    // Reachable positive control on this exact server, credential, grant and endpoint.
+    let positive = body(
+        client()
+            .post(format!("{origin}/api/routes/route-a/models"))
+            .header("x-peachsh-token", &token)
+            .json(&json!({}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(positive["calls"][0]["state"], "finished");
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    let request = client()
+        .post(format!("{origin}/api/routes/route-a/models"))
+        .header("x-peachsh-token", &token)
+        .json(&json!({}));
+    let pending = tokio::spawn(async move { request.send().await });
+    tokio::time::timeout(Duration::from_secs(5), entered.notified())
+        .await
+        .unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    let db_path = root.path().join("data/peachsh.sqlite3");
+    let db = rusqlite::Connection::open(&db_path).unwrap();
+    let (call_id, receipt): (String, String) = db
+        .query_row(
+            "SELECT id,receipt FROM network_calls WHERE state='claimed'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    let receipt: Value = serde_json::from_str(&receipt).unwrap();
+    assert_eq!(receipt["call_id"], call_id);
+    assert_eq!(receipt["state"], "claimed");
+    drop(db);
+    child.kill().await.unwrap();
+    assert!(!child.wait().await.unwrap().success());
+    assert!(pending.await.unwrap().is_err());
+    release.notify_one();
+    child = launch_host(root.path(), port).await;
+    let token = bootstrap(&origin).await;
+    let recovered = body(
+        client()
+            .get(format!("{origin}/api/network/calls/{call_id}"))
+            .header("x-peachsh-token", &token)
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(recovered["call_id"], call_id);
+    assert_eq!(recovered["state"], "unknown");
+    assert_eq!(recovered["success"], Value::Null);
+    let db = rusqlite::Connection::open(db_path).unwrap();
+    let rows: i64 = db
+        .query_row("SELECT count(*) FROM network_calls", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(rows, 2, "restart must not manufacture another claim");
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        2,
+        "restart and receipt reads must not resend"
+    );
+    child.kill().await.unwrap();
+    child.wait().await.unwrap();
+    provider.abort();
 }

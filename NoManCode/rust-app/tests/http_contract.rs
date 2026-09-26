@@ -3,6 +3,9 @@
 //! These tests use a temporary database and a localhost mock. They do not call
 //! a running user instance or a paid provider.
 
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+
 use peachsh::{
     domain::*,
     engine::Engine,
@@ -76,6 +79,7 @@ async fn harness() -> Harness {
     store
         .put_secret("route::route-1", "synthetic-test-key")
         .unwrap();
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 1).unwrap();
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let origin = format!("http://{}", listener.local_addr().unwrap());
@@ -482,7 +486,7 @@ async fn h1_read_shapes_and_security_headers_stay() {
     let health: Value = health.json().await.unwrap();
     assert_eq!(health["ok"], true);
     assert_eq!(health["runtime"], "rust");
-    assert_eq!(health["schema_version"], 9);
+    assert_eq!(health["schema_version"], 10);
     assert_ne!(health["schema_version"], 0);
 
     let projects: Vec<Project> = http
@@ -1042,6 +1046,7 @@ async fn h7_disconnect_does_not_cancel_running_task() {
     store
         .put_secret("route::route-1", "synthetic-test-key")
         .unwrap();
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 1).unwrap();
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let origin = format!("http://{}", listener.local_addr().unwrap());

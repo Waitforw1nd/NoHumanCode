@@ -1,5 +1,8 @@
 //! NEXT-02D approval HTTP contract tests.
 
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     approval::{ApprovalStatus, ExecutionState},
@@ -349,6 +352,7 @@ fn configure_live(store: &Store, root: &Path, base: &str) {
         })
         .unwrap();
     store.put_secret("route", "synthetic-key").unwrap();
+    network_fixture::authorize_routes(store);
 }
 
 async fn live_harness(groups: Vec<Vec<Value>>) -> Harness {
@@ -436,10 +440,15 @@ async fn settled(h: &Harness, task_id: &str) -> Task {
 }
 
 async fn http_decide(h: &Harness, id: &str, decision: &str) -> Response {
+    let ack = decision == "approve"
+        && h.engine
+            .store
+            .approval(id)
+            .is_ok_and(|a| a.tool_name == "run_command");
     client()
         .post(format!("{}/api/approvals/{id}/decision", h.origin))
         .header("x-peachsh-token", &h.token)
-        .json(&json!({"decision":decision}))
+        .json(&json!({"decision":decision,"acknowledge_command_network":ack}))
         .send()
         .await
         .unwrap()

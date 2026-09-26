@@ -1,3 +1,6 @@
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     domain::{Route, RunRequest, SessionKind, Settings, TaskSpec},
@@ -93,6 +96,7 @@ async fn harness(replies: Vec<Value>) -> Harness {
         })
         .unwrap();
     store.put_secret("route", "fake-http-key").unwrap();
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 2).unwrap();
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let origin = format!("http://{}", listener.local_addr().unwrap());
