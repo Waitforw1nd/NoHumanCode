@@ -1,15 +1,15 @@
 use axum::{
+    Json, Router,
     body::Body,
     extract::State,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
 };
 use peachsh::{
     domain::{Route, Settings},
     store::Store,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     convert::Infallible,
@@ -451,10 +451,12 @@ async fn t01_real_diff_checkpoint_restore_restart_new_turn() {
     assert_eq!(h.ok(&["task", "changes", next]).await["changes"], json!([]));
     let external = h.ok(&["task", "diff", next, "--path", "other.txt"]).await;
     assert_eq!(external["diff"]["status"], "text");
-    assert!(external["diff"]["patch"]
-        .as_str()
-        .unwrap()
-        .contains("+unrelated"));
+    assert!(
+        external["diff"]["patch"]
+            .as_str()
+            .unwrap()
+            .contains("+unrelated")
+    );
     assert_eq!(h.script.requests.lock().unwrap().len(), 4);
     assert!(!h.cwd().join("peachsh.sqlite3").exists());
     h.stop().await;

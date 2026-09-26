@@ -1,15 +1,15 @@
 use axum::{
+    Json, Router,
     body::Body,
     extract::State,
     response::{IntoResponse, Response},
     routing::post,
-    Json, Router,
 };
 use peachsh::{
     domain::{Route, Settings},
     store::Store,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     convert::Infallible,
@@ -761,9 +761,11 @@ async fn k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500() {
     ] {
         let error = assert_error(response, 500, "internal").await;
         assert!(!error.to_string().contains("Secret"));
-        assert!(!error
-            .to_string()
-            .contains(&h.dir.path().to_string_lossy().to_string()));
+        assert!(
+            !error
+                .to_string()
+                .contains(&h.dir.path().to_string_lossy().to_string())
+        );
     }
     assert_eq!(snapshot(&h), before);
     assert_eq!(
