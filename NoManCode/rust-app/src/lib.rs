@@ -3,6 +3,8 @@ pub mod checkpoint;
 pub mod domain;
 pub mod engine;
 pub mod git_diff;
+pub mod network_authorization;
+pub mod provider_transport;
 pub mod plugin_catalog;
 pub mod plugin_host;
 pub mod provider;
