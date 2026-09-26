@@ -878,6 +878,7 @@ async fn missing_non_utf8_and_link_are_distinct_current_states() {
     #[cfg(unix)]
     let link_result = std::os::unix::fs::symlink(&outside, &path);
     if link_result.is_ok() {
+        eprintln!("symlink creation succeeded");
         assert!(matches!(
             engine.changes(&task_id).unwrap()[0].current,
             CurrentState::Invalid | CurrentState::UnsafeLink
@@ -887,8 +888,35 @@ async fn missing_non_utf8_and_link_are_distinct_current_states() {
             std::fs::read_to_string(&outside).unwrap(),
             "outside-sentinel"
         );
-    } else {
-        eprintln!("symlink creation unavailable in this environment");
+    } else if let Err(error) = link_result {
+        eprintln!("symlink creation unavailable: {error:?}");
+    }
+}
+
+#[test]
+fn workspace_path_aliases_and_forbidden_spellings_are_rejected_or_coalesced() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "a").unwrap();
+    let scopes = vec!["src".to_owned()];
+    let lower = workspace::resolve(temp.path(), "src/a.txt", true, &scopes).unwrap();
+    #[cfg(windows)]
+    {
+        let upper = workspace::resolve(temp.path(), "SRC/A.TXT", true, &scopes).unwrap();
+        assert_eq!(lower.canonicalize().unwrap(), upper.canonicalize().unwrap());
+    }
+    assert!(lower.exists());
+    for path in [
+        "src/a.txt.",
+        "src/a.txt ",
+        "src/../a.txt",
+        "src/.env",
+        "src/CON",
+    ] {
+        assert!(
+            workspace::resolve(temp.path(), path, true, &scopes).is_err(),
+            "{path}"
+        );
     }
 }
 
@@ -918,4 +946,83 @@ async fn dpapi_before_secret_roundtrips_without_plaintext_in_database() {
         std::fs::read(temp.path().join("src/a.txt")).unwrap(),
         before
     );
+}
+
+#[tokio::test]
+async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+    let (base, _provider) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task_id = write_once(&engine).await;
+    let db_path = temp.path().join("workspace.db");
+    drop(engine);
+    let db = Connection::open(&db_path).unwrap();
+    let task: String = db
+        .query_row("SELECT value FROM tasks WHERE id=?1", [&task_id], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    let approvals: Vec<(String, String)> = {
+        let mut statement = db
+            .prepare("SELECT id,status FROM approvals WHERE task_id=?1 ORDER BY id")
+            .unwrap();
+        statement
+            .query_map([&task_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    let events: Vec<(i64, String, String)> = {
+        let mut statement = db
+            .prepare("SELECT seq,kind,data FROM events WHERE task_id=?1 ORDER BY seq")
+            .unwrap();
+        statement
+            .query_map([&task_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    assert!(!approvals.is_empty() && !events.is_empty());
+    db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; PRAGMA user_version=7;").unwrap();
+    drop(db);
+    let store = Store::open(&db_path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), 8);
+    drop(store);
+    let db = Connection::open(&db_path).unwrap();
+    let task_after: String = db
+        .query_row("SELECT value FROM tasks WHERE id=?1", [&task_id], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    let approvals_after: Vec<(String, String)> = {
+        let mut statement = db
+            .prepare("SELECT id,status FROM approvals WHERE task_id=?1 ORDER BY id")
+            .unwrap();
+        statement
+            .query_map([&task_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    let events_after: Vec<(i64, String, String)> = {
+        let mut statement = db
+            .prepare("SELECT seq,kind,data FROM events WHERE task_id=?1 ORDER BY seq")
+            .unwrap();
+        statement
+            .query_map([&task_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+    assert_eq!(task_after, task);
+    assert_eq!(approvals_after, approvals);
+    assert_eq!(events_after, events);
+    let store = Store::open(&db_path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), 8);
 }

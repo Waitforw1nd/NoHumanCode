@@ -20,6 +20,7 @@ use tokio_util::sync::CancellationToken;
 #[cfg(test)]
 mod crash_probe {
     use std::{
+        collections::HashSet,
         path::PathBuf,
         sync::{Mutex, OnceLock},
         time::Duration,
@@ -27,26 +28,22 @@ mod crash_probe {
 
     type ArmedPhase = (String, &'static str, PathBuf);
     static PHASE: OnceLock<Mutex<Option<ArmedPhase>>> = OnceLock::new();
-    static READ_FAILURE: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+    static READ_FAILURE: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
     pub(super) fn fail_recheck_once(task_id: String) {
-        *READ_FAILURE
-            .get_or_init(|| Mutex::new(None))
+        READ_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
             .lock()
-            .unwrap() = Some(task_id);
+            .unwrap()
+            .insert(task_id);
     }
 
     pub(super) fn take_recheck_failure(task_id: &str) -> bool {
-        let mut armed = READ_FAILURE
-            .get_or_init(|| Mutex::new(None))
+        READ_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
             .lock()
-            .unwrap();
-        if armed.as_deref() == Some(task_id) {
-            armed.take();
-            true
-        } else {
-            false
-        }
+            .unwrap()
+            .remove(task_id)
     }
 
     pub(super) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
@@ -1679,6 +1676,116 @@ mod workspace_phase_tests {
         )
     }
 
+    async fn two_write_reply(
+        State(calls): State<Arc<AtomicUsize>>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        let index = calls.fetch_add(1, Ordering::SeqCst);
+        let delta = if index < 2 || index == 3 {
+            json!({"tool_calls":[{"index":0,"id":format!("phase-{index}"),"type":"function","function":{
+                "name":"write_file","arguments":json!({"path":"src/a.txt","content":format!("after-{index}")}).to_string()
+            }}]})
+        } else {
+            json!({"content":"done"})
+        };
+        let chunk = json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+
+    async fn two_write_engine(root: &Path) -> (Arc<Engine>, String) {
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src/a.txt"), "before-a").unwrap();
+        std::fs::write(root.join("src/b.txt"), "before-b").unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let app = Router::new()
+            .route("/v1/chat/completions", post(two_write_reply))
+            .with_state(Arc::new(AtomicUsize::new(0)));
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let store = Arc::new(Store::open(&root.join("phase.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: root.to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 64,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route", "phase-test-key").unwrap();
+        let engine = Engine::new(store, 2).unwrap();
+        let task = engine
+            .start(RunRequest {
+                title: "two".into(),
+                kind: SessionKind::Team,
+                tasks: vec![TaskSpec {
+                    name: "writer".into(),
+                    role: "writer".into(),
+                    route_id: "route".into(),
+                    prompt: "write".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["src".into()],
+                    tools: true,
+                    allow_commands: false,
+                    max_rounds: 5,
+                }],
+            })
+            .await
+            .unwrap()
+            .tasks
+            .remove(0);
+        (engine, task.id)
+    }
+
+    async fn finish_two_writes(engine: &Arc<Engine>, task_id: &str, fail_at: usize) {
+        for index in 0..2 {
+            let approval = tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if let Some(value) = engine
+                        .store
+                        .pending_approvals_for_task(task_id)
+                        .unwrap()
+                        .into_iter()
+                        .next()
+                    {
+                        break value;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            if index == fail_at {
+                crash_probe::fail_recheck_once(task_id.to_owned());
+            }
+            engine
+                .decide_approval(&approval.id, true, Some("test"))
+                .unwrap();
+        }
+        tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                if !engine.is_busy() {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+    }
+
     async fn child(phase: &'static str, root: &Path) {
         std::fs::create_dir_all(root.join("src")).unwrap();
         std::fs::write(root.join("src/a.txt"), "before").unwrap();
@@ -1929,5 +2036,135 @@ mod workspace_phase_tests {
         tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(child("recheck_read_error", temp.path()));
+    }
+
+    #[test]
+    fn failed_prepare_does_not_pollute_later_or_earlier_success() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            for (fail_at, expected) in [(0usize, "after-1"), (1usize, "after-0")] {
+                let temp = tempfile::tempdir().unwrap();
+                let (engine, task_id) = two_write_engine(temp.path()).await;
+                finish_two_writes(&engine, &task_id, fail_at).await;
+                let records = engine.store.workspace_changes_for_task(&task_id).unwrap();
+                assert_eq!(records.len(), 2);
+                assert_eq!(records[fail_at].state, ChangeState::Failed);
+                assert_eq!(records[1 - fail_at].state, ChangeState::Finished);
+                assert_eq!(
+                    std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+                    expected
+                );
+                let changes = engine.changes(&task_id).unwrap();
+                assert_eq!(changes.len(), 1);
+                assert_eq!(changes[0].state, ChangeState::Finished);
+                assert!(changes[0].restorable);
+                assert_eq!(
+                    engine.restore(&task_id).await.unwrap().status,
+                    RestoreStatus::Complete
+                );
+                assert_eq!(
+                    std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+                    "before-a"
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn restore_gate_serializes_competitors_and_seals_resumed_writes() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, task_id) = two_write_engine(temp.path()).await;
+            finish_two_writes(&engine, &task_id, usize::MAX).await;
+            let guard = engine.gate.lock().await;
+            let (entered_a, ready_a) = tokio::sync::oneshot::channel();
+            let (entered_b, ready_b) = tokio::sync::oneshot::channel();
+            let first = {
+                let engine = engine.clone();
+                let task_id = task_id.clone();
+                tokio::spawn(async move {
+                    entered_a.send(()).unwrap();
+                    engine.restore(&task_id).await
+                })
+            };
+            let second = {
+                let engine = engine.clone();
+                let task_id = task_id.clone();
+                tokio::spawn(async move {
+                    entered_b.send(()).unwrap();
+                    engine.restore(&task_id).await
+                })
+            };
+            ready_a.await.unwrap();
+            ready_b.await.unwrap();
+            tokio::task::yield_now().await;
+            assert!(!first.is_finished() && !second.is_finished());
+            assert!(engine.latest_restore(&task_id).unwrap().is_none());
+            assert_eq!(
+                std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+                "after-1"
+            );
+            drop(guard);
+            let receipt_a = first.await.unwrap().unwrap();
+            let receipt_b = second.await.unwrap().unwrap();
+            assert_eq!(receipt_a, receipt_b);
+            assert_eq!(receipt_a.status, RestoreStatus::Complete);
+            assert_eq!(
+                std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+                "before-a"
+            );
+            let count: i64 = rusqlite::Connection::open(temp.path().join("phase.db"))
+                .unwrap()
+                .query_row(
+                    "SELECT count(*) FROM workspace_restores WHERE task_id=?1",
+                    [&task_id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1);
+
+            engine.resume(&task_id, "write again").await.unwrap();
+            let approval = tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if let Some(value) = engine
+                        .store
+                        .pending_approvals_for_task(&task_id)
+                        .unwrap()
+                        .into_iter()
+                        .next()
+                    {
+                        break value;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            engine
+                .decide_approval(&approval.id, true, Some("test"))
+                .unwrap();
+            tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if !engine.is_busy() {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(
+                std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+                "before-a"
+            );
+            assert_eq!(engine.latest_restore(&task_id).unwrap().unwrap(), receipt_a);
+            assert_eq!(
+                engine
+                    .store
+                    .workspace_changes_for_task(&task_id)
+                    .unwrap()
+                    .len(),
+                2
+            );
+        });
     }
 }
