@@ -2514,3 +2514,70 @@ mod task_identity_tests {
         }
     }
 }
+
+pub const CHECKPOINT_MIGRATION_ID: &str = "task-before-checkpoint-repository";
+const CHECKPOINT_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS checkpoints (
+  id TEXT NOT NULL PRIMARY KEY,
+  task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
+  creation_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind='task_before'),
+  generation INTEGER NOT NULL CHECK (generation=1),
+  created_at INTEGER NOT NULL CHECK (created_at>=0),
+  manifest_digest TEXT NOT NULL CHECK (length(manifest_digest)=64),
+  manifest TEXT NOT NULL
+)";
+
+pub fn apply_schema_9(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(CHECKPOINT_TABLE_SQL)?;
+    verify_schema_9(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![CHECKPOINT_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 9)?;
+    Ok(())
+}
+
+pub(crate) fn verify_schema_9(tx: &Transaction<'_>) -> Result<()> {
+    // Compare the full DDL, preserving literals: checking names alone accepts missing CHECK/FK/UNIQUE.
+    let ddl: String = tx.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='checkpoints'",
+        [],
+        |r| r.get(0),
+    )?;
+    let normalize = |sql: &str| {
+        let mut result = String::new();
+        let mut chars = sql.chars().peekable();
+        let mut quote = None;
+        while let Some(ch) = chars.next() {
+            if let Some(delimiter) = quote {
+                result.push(ch);
+                if ch == delimiter {
+                    if chars.peek() == Some(&delimiter) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                result.push(ch);
+            } else if !ch.is_whitespace() {
+                result.push(ch.to_ascii_lowercase());
+            }
+        }
+        result.replacen("createtableifnotexists", "createtable", 1)
+    };
+    anyhow::ensure!(
+        normalize(&ddl) == normalize(CHECKPOINT_TABLE_SQL),
+        "schema 9 checkpoint constraints differ"
+    );
+    let violations: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check(checkpoints)", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(
+        violations.is_none(),
+        "schema 9 checkpoint foreign key violation"
+    );
+    Ok(())
+}

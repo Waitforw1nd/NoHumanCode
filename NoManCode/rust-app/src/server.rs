@@ -1,7 +1,9 @@
 use crate::{
     approval,
+    checkpoint::CheckpointError,
     domain::*,
     engine::Engine,
+    git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
     provider, secrets, wasm,
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
 };
@@ -315,6 +317,10 @@ pub fn router(app: App) -> Router {
         .route("/api/approvals/{id}/decision", post(decide_approval))
         .route("/api/tasks/{id}/changes", get(changes))
         .route("/api/tasks/{id}/restore", post(restore))
+        .route("/api/tasks/{id}/git-diff", post(git_diff))
+        .route("/api/tasks/{id}/checkpoints", post(create_checkpoint))
+        .route("/api/checkpoints/{id}", get(checkpoint))
+        .route("/api/checkpoints/{id}/restore", post(restore_checkpoint))
         .layer(DefaultBodyLimit::max(1_048_576))
         .layer(middleware::from_fn_with_state(app.clone(), guard))
         .with_state(app)
@@ -951,6 +957,198 @@ async fn decide_approval(
         .map(Json)
         .map_err(approval_error)
 }
+struct GitDiffBody {
+    path: String,
+    view: GitDiffView,
+}
+impl<'de> Deserialize<'de> for GitDiffBody {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        struct BodyVisitor;
+        impl<'de> serde::de::Visitor<'de> for BodyVisitor {
+            type Value = GitDiffBody;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a Git diff request object")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Self::Value, A::Error> {
+                let (mut path, mut view) = (None, None);
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "path" if path.is_none() => path = Some(map.next_value()?),
+                        "view" if view.is_none() => view = Some(map.next_value()?),
+                        _ => {
+                            return Err(serde::de::Error::custom(
+                                "unknown or duplicate Git diff field",
+                            ));
+                        }
+                    }
+                }
+                Ok(GitDiffBody {
+                    path: path.ok_or_else(|| serde::de::Error::missing_field("path"))?,
+                    view: view.ok_or_else(|| serde::de::Error::missing_field("view"))?,
+                })
+            }
+        }
+        deserializer.deserialize_map(BodyVisitor)
+    }
+}
+struct EmptyBody;
+impl<'de> Deserialize<'de> for EmptyBody {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let value = Value::deserialize(deserializer)?;
+        if value.as_object().is_some_and(|object| object.is_empty()) {
+            Ok(Self)
+        } else {
+            Err(serde::de::Error::custom("expected an empty JSON object"))
+        }
+    }
+}
+async fn git_diff(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(body): ContractJson<GitDiffBody>,
+) -> Result<Json<Value>> {
+    let id = workspace_task_id(id)?;
+    let diff = app
+        .engine
+        .git_diff(
+            &id,
+            GitDiffRequest {
+                path: body.path,
+                view: body.view,
+            },
+        )
+        .await
+        .map_err(git_diff_error)?;
+    Ok(Json(json!({"diff":diff})))
+}
+async fn create_checkpoint(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
+    ContractJson(_body): ContractJson<EmptyBody>,
+) -> Result<Response> {
+    let id = workspace_task_id(id)?;
+    let key = required_idempotency_key(&headers)?;
+    let created = app
+        .engine
+        .create_checkpoint(&id, &key)
+        .await
+        .map_err(checkpoint_error)?;
+    let status = if created.replayed {
+        StatusCode::OK
+    } else {
+        StatusCode::CREATED
+    };
+    Ok((status, Json(created)).into_response())
+}
+async fn checkpoint(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<Value>> {
+    let id = checkpoint_id(id)?;
+    let checkpoint = app.engine.checkpoint(&id).map_err(checkpoint_error)?;
+    Ok(Json(json!({"checkpoint":checkpoint})))
+}
+fn checkpoint_id(path: std::result::Result<Path<String>, PathRejection>) -> Result<String> {
+    let id = object_id(path)?;
+    if secrets::validate_persisted_id("checkpoint_id", &id).is_err() {
+        return Err(ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("检查点标识无效"),
+        ));
+    }
+    Ok(id)
+}
+async fn restore_checkpoint(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(_body): ContractJson<EmptyBody>,
+) -> Result<Response> {
+    let id = checkpoint_id(id)?;
+    match app.engine.restore_checkpoint(&id).await {
+        Ok(receipt) => Ok(Json(json!({"ok":receipt.status == RestoreStatus::Complete,"restored":receipt.restored,"status":receipt.status,"receipt":receipt})).into_response()),
+        Err(error) => {
+            let receipt = match error.downcast_ref::<WorkspaceChangeError>() {
+                Some(WorkspaceChangeError::Conflict { receipt } | WorkspaceChangeError::Unknown { receipt }) => receipt.clone(), _ => None,
+            };
+            if let Some(receipt) = receipt {
+                let message = "检查点恢复未完整完成";
+                return Ok((StatusCode::CONFLICT, Json(json!({"code":ErrorCode::Conflict,"message":message,"error":message,"retryable":false,"ok":false,"restored":receipt.restored,"status":receipt.status,"receipt":receipt}))).into_response());
+            }
+            Err(checkpoint_error(error))
+        }
+    }
+}
+fn git_diff_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<WorkspaceChangeError>().is_some() {
+        return workspace_change_error(error);
+    }
+    let (status, code, message) = match error.downcast_ref::<GitDiffError>() {
+        Some(GitDiffError::InvalidPath) => (
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            "差异路径无效",
+        ),
+        Some(GitDiffError::Unavailable) => {
+            (StatusCode::CONFLICT, ErrorCode::Conflict, "Git差异不可用")
+        }
+        Some(GitDiffError::Unsupported) => {
+            (StatusCode::CONFLICT, ErrorCode::Conflict, "不支持此Git差异")
+        }
+        Some(GitDiffError::Conflict) => (
+            StatusCode::CONFLICT,
+            ErrorCode::Conflict,
+            "Git状态已变化，请重新查询",
+        ),
+        Some(GitDiffError::Internal) | None => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "Git差异服务失败",
+        ),
+    };
+    ApiError::with_code(status, code, false, anyhow::anyhow!(message))
+}
+fn checkpoint_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<WorkspaceChangeError>().is_some() {
+        return workspace_change_error(error);
+    }
+    let (status, code, message) = match error.downcast_ref::<CheckpointError>() {
+        Some(CheckpointError::Invalid) => (
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            "检查点请求无效",
+        ),
+        Some(CheckpointError::NotFound) => (
+            StatusCode::NOT_FOUND,
+            ErrorCode::NotFound,
+            "检查点或任务不存在",
+        ),
+        Some(CheckpointError::Conflict) => {
+            (StatusCode::CONFLICT, ErrorCode::Conflict, "检查点状态冲突")
+        }
+        Some(CheckpointError::Unrestorable) => (
+            StatusCode::CONFLICT,
+            ErrorCode::Conflict,
+            "任务不可创建或恢复检查点",
+        ),
+        Some(CheckpointError::Corrupt | CheckpointError::Internal) | None => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "检查点服务失败",
+        ),
+    };
+    ApiError::with_code(status, code, false, anyhow::anyhow!(message))
+}
+
 async fn changes(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
@@ -1549,5 +1747,65 @@ mod tests {
         )));
         assert_eq!(busy.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(busy.retryable);
+    }
+}
+
+#[cfg(test)]
+mod review_transport_tests {
+    use super::*;
+    #[test]
+    fn review_json_requires_exact_objects() {
+        for bad in ["[]", "null", "{\"extra\":1}", "true"] {
+            assert!(serde_json::from_str::<EmptyBody>(bad).is_err());
+        }
+        assert!(serde_json::from_str::<EmptyBody>("{}").is_ok());
+        for bad in [
+            r#"["src/a","head"]"#,
+            r#"{"path":"src/a","view":"head","extra":1}"#,
+            r#"{"path":"src/a","path":"src/b","view":"head"}"#,
+            r#"{"path":"src/a","view":"head","view":"staged"}"#,
+        ] {
+            assert!(serde_json::from_str::<GitDiffBody>(bad).is_err());
+        }
+    }
+    #[test]
+    fn review_typed_errors_are_static_and_nonretryable() {
+        for (error, status) in [
+            (GitDiffError::InvalidPath, 400),
+            (GitDiffError::Unavailable, 409),
+            (GitDiffError::Unsupported, 409),
+            (GitDiffError::Conflict, 409),
+            (GitDiffError::Internal, 500),
+        ] {
+            let result =
+                git_diff_error(anyhow::Error::new(error).context("private internal location"));
+            assert_eq!(result.status.as_u16(), status);
+            assert!(!result.retryable);
+            assert!(!result.error.to_string().contains("private"));
+        }
+        for (error, status) in [
+            (CheckpointError::Invalid, 400),
+            (CheckpointError::NotFound, 404),
+            (CheckpointError::Conflict, 409),
+            (CheckpointError::Unrestorable, 409),
+            (CheckpointError::Corrupt, 500),
+            (CheckpointError::Internal, 500),
+        ] {
+            let result =
+                checkpoint_error(anyhow::Error::new(error).context("private internal location"));
+            assert_eq!(result.status.as_u16(), status);
+            assert!(!result.retryable);
+            assert!(!result.error.to_string().contains("private"));
+        }
+        for mapping in [git_diff_error, checkpoint_error] {
+            let result = mapping(anyhow::anyhow!("private internal location"));
+            assert_eq!(result.status, StatusCode::INTERNAL_SERVER_ERROR);
+            assert!(!result.retryable);
+            assert!(!result.error.to_string().contains("private"));
+            let result = mapping(WorkspaceChangeError::NotFound.into());
+            assert_eq!(result.status, StatusCode::NOT_FOUND);
+            let result = mapping(WorkspaceChangeError::Active.into());
+            assert_eq!(result.status, StatusCode::CONFLICT);
+        }
     }
 }
