@@ -2325,3 +2325,12 @@ C最终00a4c2b仅server.rs与approval_http.rs两文件，AH09/11补证由A第1.1
 ## 2026-09-27T01:39:23.7984040+08:00 NEXT-06实际接收闭合与管理校验
 
 B/C/D三个GPT-6-astra新任务均已回报真实接收、完整基线HEAD及干净独立树，经理登记在NEXT-06执行记录。B提出创建事件注册依赖后，经理限定扩domain.rs事件allowlist写权并同步契约。七份新文档15条本地链接全存在、无本机绝对路径；git diff --check通过，主树产品源码diff与index为空，九继承档案hash全部保持。这是经理文档/基线核验，没有新增产品测试结果；员工实现继续。
+
+
+## 2026-09-27 迁E盘完成，NEXT-07契约1.1已冻结
+
+经理GPT-6。活动仓库/全部12旧树已完整复制并修复Git到E盘；303908文件/82253764676字节SHA256全一致，13树HEAD/status保持，九继承hash9/9相同未提交。D原目录因应用占用保留为冻结备份，不再开发；当前对话所有操作显式E盘。TEMP内两份本项目历史target另完整归档E盘.local/migration-external-temp，原件保留。详见[迁移核验](../审查记录/2026-09-27整项目迁E盘核验.md)。
+
+迁移产品基线cebcad49425665978e1cab542b16c717a1f104be，Rust tree b549de2e18d39c8e69e6607b9f430974895ee4b9。NEXT-06已验收，345/0/1为旧证据；本轮未跑产品测试。B/C/D完成NEXT-07只读预审，冻结[网络授权契约1.1](../任务/2026-09-27NEXT-07网络授权契约.md)，实现尚待正式基线/新树登记及派发，不恢复旧任务。
+
+下一第一操作：以本次管理归档HEAD建B-R6/C-R8/D-R5独立E盘树，直接派原GPT-6-astra并核接收；经理不代写产品。NEXT-07先收口已有Provider/管理出站授权与command ack，NEXT-08再多项目配置。旧approval-binding-v2和Checkpoint历史不重写，claim先于发送，unknown不重发。阶段一未完成，不扩Desktop/完整Team/MCP。下方记录为历史。
