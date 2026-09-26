@@ -732,33 +732,58 @@ mod network_tests {
         let Ok(mode) = std::env::var("NHC_D_PROXY_CHILD") else {
             return;
         };
-        if mode == "positive" {
-            let proxy = std::env::var("NHC_D_PROXY_URL").unwrap();
-            let response = reqwest::Client::builder()
-                .proxy(reqwest::Proxy::all(proxy).unwrap())
-                .timeout(std::time::Duration::from_secs(5))
-                .build()
-                .unwrap()
-                .get("http://provider.invalid/models")
-                .send()
-                .await
-                .unwrap();
-            assert_eq!(response.status(), 200);
-        } else {
-            let mock = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
+        let mock = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
+        let target = format!("{}/models", mock.base);
+        if mode != "explicit" {
+            // Same process, target, proxy environment and request: only no_proxy differs.
             assert_eq!(list(&mock).await.unwrap(), vec!["m"]);
             assert_eq!(mock.hits(), 1);
-            mock.stop().await;
         }
+        let mut builder = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(15))
+            .timeout(std::time::Duration::from_secs(180))
+            .redirect(reqwest::redirect::Policy::none())
+            .retry(reqwest::retry::never());
+        if mode == "explicit" {
+            builder = builder
+                .proxy(reqwest::Proxy::all(std::env::var("NHC_D_PROXY_URL").unwrap()).unwrap());
+        }
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            builder
+                .build()
+                .unwrap()
+                .get(&target)
+                .bearer_auth("fixture-secret-key")
+                .send(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(result.status(), 200);
+        assert_eq!(
+            result.json::<Value>().await.unwrap()["data"][0]["id"],
+            "proxy-sentinel"
+        );
+        assert_eq!(mock.hits(), usize::from(mode != "explicit"));
+        mock.stop().await;
     }
 
     #[tokio::test]
     async fn proxy_environment_isolated_process_has_zero_proxy_connections_with_positive_control() {
-        let proxy = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-        for mode in ["negative", "positive"] {
+        let proxy = Mock::start(
+            response(200, br#"{"data":[{"id":"proxy-sentinel"}]}"#, ""),
+            false,
+        )
+        .await;
+        for (index, mode) in ["paired-upper", "paired-lower", "explicit"]
+            .into_iter()
+            .enumerate()
+        {
             let url = proxy.base.clone();
             let status = tokio::task::spawn_blocking(move || {
-                std::process::Command::new(std::env::current_exe().unwrap())
+                let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+                command
                     .args([
                         "--exact",
                         "provider::network_tests::proxy_environment_child",
@@ -766,21 +791,47 @@ mod network_tests {
                     ])
                     .env("NHC_D_PROXY_CHILD", mode)
                     .env("NHC_D_PROXY_URL", &url)
-                    .env("HTTP_PROXY", &url)
-                    .env("HTTPS_PROXY", &url)
-                    .env("ALL_PROXY", &url)
-                    .env("NO_PROXY", "")
-                    .output()
-                    .unwrap()
+                    .env_remove("REQUEST_METHOD");
+                for name in [
+                    "HTTP_PROXY",
+                    "HTTPS_PROXY",
+                    "ALL_PROXY",
+                    "NO_PROXY",
+                    "http_proxy",
+                    "https_proxy",
+                    "all_proxy",
+                    "no_proxy",
+                ] {
+                    command.env_remove(name);
+                }
+                let names = if mode == "paired-lower" {
+                    ["http_proxy", "https_proxy", "all_proxy", "no_proxy"]
+                } else {
+                    ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY"]
+                };
+                for name in &names[..3] {
+                    command.env(name, &url);
+                }
+                command.env(
+                    names[3],
+                    if mode == "paired-lower" {
+                        "unrelated.invalid"
+                    } else {
+                        ""
+                    },
+                );
+                command.output().unwrap()
             })
             .await
             .unwrap();
             assert!(
                 status.status.success(),
-                "{}",
-                String::from_utf8_lossy(&status.stdout)
+                "{} {}",
+                String::from_utf8_lossy(&status.stdout),
+                String::from_utf8_lossy(&status.stderr)
             );
-            assert_eq!(proxy.hits(), usize::from(mode == "positive"));
+            assert_eq!(proxy.hits(), index + 1);
+            assert!(proxy.request().starts_with("GET http://127.0.0.1:"));
         }
         proxy.stop().await;
     }
