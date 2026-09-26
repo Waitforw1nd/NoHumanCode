@@ -3,6 +3,7 @@ use crate::{
     domain::*,
     provider, secrets,
     store::{IdempotencyConflict, Store, TurnBundle},
+    tool_runtime::{ToolLease, ToolRuntime},
     workspace,
     workspace_changes::{self, *},
 };
@@ -94,6 +95,7 @@ pub struct Engine {
     key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
+    tool_runtime: ToolRuntime,
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
@@ -106,7 +108,15 @@ impl Engine {
             key_slots: Mutex::new(HashMap::new()),
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
+            tool_runtime: ToolRuntime::builtin()?,
         }))
+    }
+    pub fn disable_builtin_files(&self) -> Result<()> {
+        self.tool_runtime.disable_builtin_files()
+    }
+
+    pub fn unload_builtin_files(&self) -> Result<()> {
+        self.tool_runtime.unload_builtin_files()
     }
     pub fn key(&self, route: &Route) -> Result<String> {
         ensure!(
@@ -440,6 +450,15 @@ impl Engine {
             _ => return Err(ChatTurnError::UnsupportedSession.into()),
         };
         let previous = self.store.task(&previous_task.legacy_task_id)?;
+        if self
+            .store
+            .latest_committed_turn(&session.id)?
+            .as_ref()
+            .map(|turn| &turn.id)
+            != Some(&previous_turn.id)
+        {
+            return Err(ChatTurnError::StalePredecessor.into());
+        }
         if previous.status != LifecycleStatus::Completed.as_str() {
             return Err(ChatTurnError::SessionBusy.into());
         }
@@ -650,9 +669,9 @@ impl Engine {
             task.updated_at = now();
             self.store.save_task(task)?;
         }
-        let tools = workspace::definitions(task);
         for _round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
+            let tools = self.tool_runtime.definitions(task)?;
             ensure!(
                 serde_json::to_vec(&task.messages)?.len() <= 1_500_000,
                 "任务上下文过长，请创建新任务并提供摘要"
@@ -784,7 +803,8 @@ impl Engine {
     ) -> Result<()> {
         let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
         ensure!(
-            workspace::definitions(task)
+            self.tool_runtime
+                .definitions(task)?
                 .iter()
                 .any(|t| t["function"]["name"] == name),
             "模型请求了未授权的工具"
@@ -795,7 +815,8 @@ impl Engine {
         );
         match approval::evaluate(task, name) {
             PolicyDecision::Allow => {
-                self.perform_tool(task, tool_call_id, name, args, key, None)
+                let (lease, ()) = self.tool_runtime.acquire(task, name, || Ok(()))?;
+                self.perform_tool(task, tool_call_id, name, args, key, None, lease)
                     .await
             }
             PolicyDecision::Deny { reason } => {
@@ -807,9 +828,19 @@ impl Engine {
                 let status = self.wait_for_approval(&record, cancel).await?;
                 match status {
                     ApprovalStatus::Approved => {
-                        let claimed = self.store.claim_approval(task, tool_call_id, name, args)?;
-                        self.perform_tool(task, tool_call_id, name, args, key, Some(&claimed.id))
-                            .await
+                        let (lease, claimed) = self.tool_runtime.acquire(task, name, || {
+                            self.store.claim_approval(task, tool_call_id, name, args)
+                        })?;
+                        self.perform_tool(
+                            task,
+                            tool_call_id,
+                            name,
+                            args,
+                            key,
+                            Some(&claimed.id),
+                            lease,
+                        )
+                        .await
                     }
                     ApprovalStatus::Denied | ApprovalStatus::Cancelled => {
                         self.record_tool_result(
@@ -872,6 +903,7 @@ impl Engine {
         args: &Value,
         key: &str,
         approval_id: Option<&str>,
+        lease: ToolLease,
     ) -> Result<()> {
         let _workspace_gate = if name == "write_file" {
             Some(self.gate.lock().await)
@@ -977,7 +1009,7 @@ impl Engine {
         if name == "write_file" {
             crash_probe::block(&task.id, "write_pre_fs", &prepared.as_ref().unwrap().1.id);
         }
-        let (result, succeeded) = match workspace::execute(task, name, args).await {
+        let (result, succeeded) = match lease.execute(task, args).await {
             Ok(value) => (value, true),
             Err(error) => (
                 json!({"error":secrets::scrub(&error.to_string(), key)}),
@@ -1647,6 +1679,130 @@ mod workspace_phase_tests {
 
     struct ChildGuard(Option<Child>);
 
+    #[tokio::test]
+    async fn n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease() {
+        for unload in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, task_id) = two_write_engine(temp.path()).await;
+            let approval = tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if let Some(record) = engine
+                        .store
+                        .pending_approvals_for_task(&task_id)
+                        .unwrap()
+                        .into_iter()
+                        .next()
+                    {
+                        break record;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            // Holding the real production workspace gate blocks perform_tool
+            // after acquire/claim but before prepare or any filesystem write.
+            let guard = engine.gate.lock().await;
+            engine
+                .decide_approval(&approval.id, true, Some("test"))
+                .unwrap();
+            tokio::time::timeout(Duration::from_secs(8), async {
+                while engine.store.approval(&approval.id).unwrap().execution_state
+                    != approval::ExecutionState::Claimed
+                {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            let mut task = engine.store.task(&task_id).unwrap();
+            let call = task
+                .messages
+                .iter()
+                .filter_map(|message| message["tool_calls"].as_array())
+                .flatten()
+                .find(|call| call["id"] == approval.tool_call_id)
+                .unwrap()
+                .clone();
+            let args: Value =
+                serde_json::from_str(call["function"]["arguments"].as_str().unwrap()).unwrap();
+            let duplicate = tokio::time::timeout(
+                Duration::from_secs(2),
+                engine.execute_or_wait(
+                    &mut task,
+                    &call,
+                    "write_file",
+                    &args,
+                    "phase-test-key",
+                    &CancellationToken::new(),
+                ),
+            )
+            .await
+            .unwrap();
+            assert!(duplicate.is_err());
+            assert!(
+                engine
+                    .store
+                    .workspace_changes_for_task(&task_id)
+                    .unwrap()
+                    .is_empty()
+            );
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"before-a"
+            );
+            if unload {
+                engine.unload_builtin_files().unwrap();
+            } else {
+                engine.disable_builtin_files().unwrap();
+            }
+            let definitions = engine.tool_runtime.definitions(&task).unwrap();
+            assert!(definitions.iter().all(|definition| !matches!(
+                definition["function"]["name"].as_str(),
+                Some("read_file" | "write_file")
+            )));
+            drop(guard);
+            tokio::time::timeout(Duration::from_secs(8), async {
+                while engine.is_busy() {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(
+                engine.store.approval(&approval.id).unwrap().execution_state,
+                approval::ExecutionState::Finished
+            );
+            assert_eq!(
+                engine
+                    .store
+                    .workspace_changes_for_task(&task_id)
+                    .unwrap()
+                    .len(),
+                1
+            );
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"after-0"
+            );
+            let events = engine.store.events(&task.run_id, 0).unwrap();
+            assert_eq!(
+                events
+                    .iter()
+                    .filter(|event| event.kind == "tool_start")
+                    .count(),
+                1
+            );
+            assert_eq!(
+                events
+                    .iter()
+                    .filter(|event| event.kind == "tool_result")
+                    .count(),
+                1
+            );
+        }
+    }
+
     impl ChildGuard {
         fn stop(&mut self) -> ExitStatus {
             let mut child = self.0.take().unwrap();
@@ -1670,6 +1826,85 @@ mod workspace_phase_tests {
             std::task::Poll::Ready(())
         })
         .await;
+    }
+
+    #[tokio::test]
+    async fn n07_send_and_restore_wait_on_same_production_gate() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, old_id) = two_write_engine_kind(temp.path(), SessionKind::Chat).await;
+        finish_two_writes(&engine, &old_id, usize::MAX).await;
+        let old = engine.store.task(&old_id).unwrap();
+        assert_eq!(old.status, "completed");
+        let context = engine.store.run_context(&old.run_id).unwrap();
+        let cmd = SendChatTurn {
+            session_id: context.session.id,
+            agent_id: context.tasks[0].agent_id.clone(),
+            expected_last_turn_id: context.latest_turn.id,
+            message: "continue after restore".into(),
+            idempotency_key: "gate-after-restore".into(),
+        };
+        let guard = engine.gate.lock().await;
+        let mut restore = std::pin::pin!(engine.restore(&old_id));
+        let mut send = std::pin::pin!(engine.send_chat_turn(cmd));
+        assert_gate_pending(restore.as_mut()).await;
+        assert_gate_pending(send.as_mut()).await;
+        assert!(engine.latest_restore(&old_id).unwrap().is_none());
+        assert_eq!(engine.store.run(&old.run_id).unwrap().tasks.len(), 1);
+        drop(guard);
+        let (restored, appended) = tokio::time::timeout(Duration::from_secs(8), async {
+            tokio::join!(restore, send)
+        })
+        .await
+        .unwrap();
+        assert_eq!(restored.unwrap().status, RestoreStatus::Complete);
+        let appended = appended.unwrap();
+        let pending = tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                if let Some(record) = engine
+                    .store
+                    .pending_approvals_for_task(&appended.task.legacy_task_id)
+                    .unwrap()
+                    .into_iter()
+                    .next()
+                {
+                    break record;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let next = engine.store.task(&appended.task.legacy_task_id).unwrap();
+        assert!(
+            next.messages[old.messages.len()]["content"]
+                .as_str()
+                .unwrap()
+                .contains("Host recovery fact")
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        engine
+            .decide_approval(&pending.id, true, Some("test"))
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine.is_busy() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(engine.store.task(&next.id).unwrap().status, "completed");
+        assert_eq!(engine.store.run(&old.run_id).unwrap().tasks.len(), 2);
+        assert_eq!(
+            engine
+                .store
+                .workspace_changes_for_task(&next.id)
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     async fn provider_reply(
@@ -1710,6 +1945,10 @@ mod workspace_phase_tests {
     }
 
     async fn two_write_engine(root: &Path) -> (Arc<Engine>, String) {
+        two_write_engine_kind(root, SessionKind::Team).await
+    }
+
+    async fn two_write_engine_kind(root: &Path, kind: SessionKind) -> (Arc<Engine>, String) {
         std::fs::create_dir_all(root.join("src")).unwrap();
         std::fs::write(root.join("src/a.txt"), "before-a").unwrap();
         std::fs::write(root.join("src/b.txt"), "before-b").unwrap();
@@ -1743,7 +1982,7 @@ mod workspace_phase_tests {
         let task = engine
             .start(RunRequest {
                 title: "two".into(),
-                kind: SessionKind::Team,
+                kind,
                 tasks: vec![TaskSpec {
                     name: "writer".into(),
                     role: "writer".into(),

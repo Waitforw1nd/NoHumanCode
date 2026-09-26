@@ -1432,6 +1432,25 @@ async fn t11_route_workspace_and_context_limits_fail_closed() {
         .into();
     std::fs::create_dir_all(&settings.workspace).unwrap();
     harness.engine.store.save_settings(&settings).unwrap();
+    let moved_workspace = harness
+        .engine
+        .send_chat_turn(command(
+            &harness.session.id,
+            &harness.agent.id,
+            &harness.first.turn.id,
+            "目录变了",
+            "workspace-moved",
+        ))
+        .await;
+    assert_eq!(error_of(moved_workspace), ChatTurnError::UnsupportedSession);
+    assert_eq!(table_counts(&harness), objects_before);
+    settings.workspace = harness
+        .engine
+        .store
+        .project(&harness.session.project_id)
+        .unwrap()
+        .root_path;
+    harness.engine.store.save_settings(&settings).unwrap();
     let kept = harness
         .engine
         .send_chat_turn(command(
@@ -1457,7 +1476,7 @@ async fn t11_route_workspace_and_context_limits_fail_closed() {
             .unwrap()
             .root_path
     );
-    assert_ne!(task.workspace, settings.workspace);
+    assert_eq!(task.workspace, settings.workspace);
     let current = wait_task(&harness.engine, &kept.task.legacy_task_id).await;
     let mut prefix = current.messages.clone();
     prefix.push(json!({"role":"assistant","content":"x".repeat(1_450_000)}));

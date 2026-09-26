@@ -1636,21 +1636,35 @@ fn closed_calls(messages: &[Value]) -> Result<Vec<ClosedCall<'_>>> {
     }
     let mut calls = Vec::new();
     let mut ids = std::collections::HashSet::new();
+    let mut saw_user = false;
     let mut index = 0;
     while index < messages.len() {
         let message = &messages[index];
         let role = message["role"].as_str().ok_or_else(unsupported)?;
+        saw_user |= role == "user";
         if !matches!(role, "system" | "user" | "assistant") || message.get("tool_call_id").is_some()
         {
             return Err(unsupported().into());
         }
-        let Some(group) = message.get("tool_calls") else {
-            if !message["content"].is_string() {
+        let group = message.get("tool_calls");
+        if group.is_none() || group.is_some_and(|group| group.as_array().is_some_and(Vec::is_empty))
+        {
+            let content = &message["content"];
+            if !(content.as_str().is_some_and(|text| !text.is_empty())
+                || content.as_array().is_some_and(|parts| {
+                    !parts.is_empty()
+                        && parts.iter().all(|part| {
+                            part["type"] == "text"
+                                && part["text"].as_str().is_some_and(|text| !text.is_empty())
+                        })
+                }))
+            {
                 return Err(unsupported().into());
             }
             index += 1;
             continue;
-        };
+        }
+        let group = group.ok_or_else(unsupported)?;
         let group = group.as_array().ok_or_else(unsupported)?;
         if role != "assistant"
             || group.is_empty()
@@ -1693,6 +1707,9 @@ fn closed_calls(messages: &[Value]) -> Result<Vec<ClosedCall<'_>>> {
             });
             index += 1;
         }
+    }
+    if !saw_user {
+        return Err(unsupported().into());
     }
     Ok(calls)
 }
@@ -1797,9 +1814,12 @@ fn chat_continuation_prefix_tx(
                 return Err(ChatTurnError::CorruptState.into());
             }
             if approval::evaluate(&task, call.name) == approval::PolicyDecision::RequireApproval
-                && !approvals.iter().any(|record| record.tool_call_id == call.id)
-                && call.result != Value::String("Execution was interrupted. Inspect files before repeating a write or command.".into())
-            { return Err(ChatTurnError::UnsupportedSession.into()); }
+                && !approvals
+                    .iter()
+                    .any(|record| record.tool_call_id == call.id)
+            {
+                return Err(ChatTurnError::UnresolvedEffects.into());
+            }
             owners.insert(call.id.into(), task.id.clone());
         }
         let mut restores = tx.prepare("SELECT id FROM workspace_restores WHERE task_id=?1 AND status='complete' ORDER BY created_at,rowid")?;
