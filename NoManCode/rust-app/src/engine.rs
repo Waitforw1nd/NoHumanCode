@@ -2473,6 +2473,18 @@ mod workspace_phase_tests {
     async fn checkpoint_creation_and_both_restore_routes_share_real_gate() {
         let temp = tempfile::tempdir().unwrap();
         let (engine, task) = two_write_engine(temp.path()).await;
+        let request = crate::git_diff::GitDiffRequest {
+            path: "src/a.txt".into(),
+            view: crate::git_diff::GitDiffView::Head,
+        };
+        assert!(matches!(
+            engine
+                .git_diff(&task, request.clone())
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Active)
+        ));
         finish_two_writes(&engine, &task, usize::MAX).await;
         let guard = engine.gate.lock().await;
         let mut first = std::pin::pin!(engine.create_checkpoint(&task, "gate"));
@@ -2488,8 +2500,10 @@ mod workspace_phase_tests {
         let guard = engine.gate.lock().await;
         let mut checkpoint = std::pin::pin!(engine.restore_checkpoint(&a.checkpoint.checkpoint_id));
         let mut compatibility = std::pin::pin!(engine.restore(&task));
+        let mut diff = std::pin::pin!(engine.git_diff(&task, request));
         assert_gate_pending(checkpoint.as_mut()).await;
         assert_gate_pending(compatibility.as_mut()).await;
+        assert_gate_pending(diff.as_mut()).await;
         assert!(engine.latest_restore(&task).unwrap().is_none());
         assert_eq!(
             std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
@@ -2497,6 +2511,12 @@ mod workspace_phase_tests {
         );
         drop(guard);
         assert_eq!(checkpoint.await.unwrap(), compatibility.await.unwrap());
+        assert!(matches!(
+            diff.await
+                .unwrap_err()
+                .downcast_ref::<crate::git_diff::GitDiffError>(),
+            Some(crate::git_diff::GitDiffError::Unavailable)
+        ));
     }
 
     #[tokio::test]
@@ -2856,6 +2876,58 @@ mod workspace_phase_tests {
 }
 
 impl Engine {
+    /// Review a single path in the workspace bound to this Task. The same gate
+    /// serializes reads with this Host's writes, starts, resumes and restores.
+    pub async fn git_diff(
+        &self,
+        task_id: &str,
+        request: crate::git_diff::GitDiffRequest,
+    ) -> Result<crate::git_diff::GitDiff> {
+        let _gate = self.gate.lock().await;
+        let task = self.store.task(task_id).map_err(|error| {
+            if error.chain().any(|cause| {
+                matches!(
+                    cause.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::QueryReturnedNoRows)
+                )
+            }) {
+                anyhow::Error::from(WorkspaceChangeError::NotFound)
+            } else {
+                error
+            }
+        })?;
+        let root = std::path::Path::new(&task.workspace);
+        let canonical = root
+            .canonicalize()
+            .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
+        if let Some(settings) = self.store.settings()?
+            && std::path::Path::new(&settings.workspace)
+                .canonicalize()
+                .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?
+                != canonical
+        {
+            return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+        }
+        let active: Vec<_> = self
+            .active
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(id, a)| (id.clone(), a.workspace.clone()))
+            .collect();
+        for (id, workspace) in active {
+            if id == task_id
+                || std::path::Path::new(&workspace)
+                    .canonicalize()
+                    .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?
+                    == canonical
+            {
+                return Err(WorkspaceChangeError::Active.into());
+            }
+        }
+        Ok(crate::git_diff::read_git_diff(root, request).await?)
+    }
+
     pub fn checkpoint(&self, checkpoint_id: &str) -> Result<crate::checkpoint::Checkpoint> {
         Ok(self.store.checkpoint_record(checkpoint_id)?.0)
     }

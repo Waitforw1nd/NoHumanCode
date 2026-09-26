@@ -203,6 +203,10 @@ async fn k01_exact_task_before_survives_reopen_and_restore_converges() {
     std::fs::create_dir(temp.path().join("src")).unwrap();
     std::fs::write(temp.path().join("src/a.txt"), b"original\r\nno newline").unwrap();
     std::fs::write(temp.path().join("outside.txt"), b"untouched").unwrap();
+    git(temp.path(), &["init", "-q"]);
+    git(temp.path(), &["add", "--", "outside.txt"]);
+    let git_index = std::fs::read(temp.path().join(".git/index")).unwrap();
+    let git_head = std::fs::read(temp.path().join(".git/HEAD")).unwrap();
     let (base, server) = scripted_server(vec![
         write_delta("w1", "src/a.txt", "middle"),
         write_delta("w2", "src/new.txt", "created"),
@@ -282,6 +286,14 @@ async fn k01_exact_task_before_survives_reopen_and_restore_converges() {
             .await
             .unwrap()
             .replayed
+    );
+    assert_eq!(
+        std::fs::read(temp.path().join(".git/index")).unwrap(),
+        git_index
+    );
+    assert_eq!(
+        std::fs::read(temp.path().join(".git/HEAD")).unwrap(),
+        git_head
     );
     let db = Connection::open(temp.path().join("workspace.db")).unwrap();
     assert_eq!(
@@ -708,5 +720,89 @@ async fn k04_multiple_paths_preflight_fails_before_any_write() {
         "after-a"
     );
     assert!(engine.latest_restore(&task).unwrap().is_none());
+    server.abort();
+}
+
+fn git(root: &Path, args: &[&str]) {
+    let output = std::process::Command::new("git")
+        .current_dir(root)
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "git fixture failed");
+}
+
+#[tokio::test]
+async fn engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding() {
+    use peachsh::git_diff::{GitDiffRequest, GitDiffStatus, GitDiffView};
+    use peachsh::workspace_changes::WorkspaceChangeError;
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    git(temp.path(), &["init", "-q"]);
+    std::fs::write(temp.path().join("src/review.txt"), "index\n").unwrap();
+    git(temp.path(), &["add", "--", "src/review.txt"]);
+    std::fs::write(temp.path().join("src/review.txt"), "disk\n").unwrap();
+    let (base, server) = scripted_server(vec![json!({"content":"done"})]).await;
+    let engine = setup(temp.path(), &base);
+    let task = complete_script(&engine, 0).await;
+    assert!(engine.changes(&task).unwrap().is_empty());
+    for (view, needle) in [
+        (GitDiffView::Staged, "+index"),
+        (GitDiffView::Unstaged, "-index"),
+        (GitDiffView::Head, "+disk"),
+    ] {
+        let diff = engine
+            .git_diff(
+                &task,
+                GitDiffRequest {
+                    path: "src/review.txt".into(),
+                    view,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(diff.status, GitDiffStatus::Text);
+        assert!(diff.patch.unwrap().contains(needle));
+    }
+    let request = GitDiffRequest {
+        path: "src/review.txt".into(),
+        view: GitDiffView::Head,
+    };
+    assert!(matches!(
+        engine
+            .git_diff("missing", request.clone())
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::NotFound)
+    ));
+    assert_eq!(
+        engine
+            .create_checkpoint(&task, "empty")
+            .await
+            .unwrap_err()
+            .downcast_ref::<CheckpointError>(),
+        Some(&CheckpointError::Unrestorable)
+    );
+    assert_eq!(
+        engine
+            .create_checkpoint(&task, "bad key")
+            .await
+            .unwrap_err()
+            .downcast_ref::<CheckpointError>(),
+        Some(&CheckpointError::Invalid)
+    );
+    let other = tempfile::tempdir().unwrap();
+    let mut settings = engine.store.settings().unwrap().unwrap();
+    settings.workspace = other.path().to_string_lossy().into();
+    engine.store.save_settings(&settings).unwrap();
+    assert!(matches!(
+        engine
+            .git_diff(&task, request)
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Conflict { receipt: None })
+    ));
     server.abort();
 }
