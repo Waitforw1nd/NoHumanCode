@@ -307,7 +307,7 @@ async fn n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart() {
         call("read-1","read_file",json!({"path":"src/a.txt"})),
         write_call("deny-1","src/denied.txt","denied"),
         write_call("write-1","src/a.txt","after"),
-        call("command-1","run_command",json!({"command":"if ((Get-Content -Raw 'src/a.txt') -ne 'after') { exit 7 }; Set-Content -NoNewline 'src/test-ok.txt' 'ok'"})),
+        call("command-1","run_command",json!({"command":"if ((Get-Content -Raw 'src/a.txt') -ne 'after') { exit 7 }; Set-Content -LiteralPath 'src/test-ok.txt' -Value 'ok' -NoNewline -ErrorAction Stop"})),
         json!({"content":"first complete"}),
         write_call("write-2","src/a.txt","continued"),json!({"content":"second complete"}),
         json!({"content":"after restart"}),
@@ -344,13 +344,28 @@ async fn n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart() {
     }
     let done = h.done(run_id, task).await;
     assert_eq!(done["allow_commands"], true);
+    let requests = h.script.requests.lock().unwrap().clone();
+    let command_message = requests[4]["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|message| message["role"] == "tool" && message["tool_call_id"] == "command-1")
+        .unwrap();
+    let command_result: Value =
+        serde_json::from_str(command_message["content"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        command_result["exit_code"], 0,
+        "command result: {command_result}"
+    );
     assert!(!h.workspace().join("src/denied.txt").exists());
     assert_eq!(
         std::fs::read(h.workspace().join("src/a.txt")).unwrap(),
         b"after"
     );
     assert_eq!(
-        std::fs::read(h.workspace().join("src/test-ok.txt")).unwrap(),
+        std::fs::read(h.workspace().join("src/test-ok.txt")).unwrap_or_else(|error| panic!(
+            "command marker missing: {error}; result={command_result}"
+        )),
         b"ok"
     );
     assert_eq!(h.script.requests.lock().unwrap().len(), 5);
@@ -720,6 +735,25 @@ async fn n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_ef
     let context = h.context(run_id).await;
     h.stop().await;
     h.restart().await;
+    assert_eq!(h.context(run_id).await, context);
+    let blocked = failure(
+        &h.command(&[
+            "session",
+            "send",
+            context["session"]["id"].as_str().unwrap(),
+            "--agent",
+            context["tasks"][0]["agent_id"].as_str().unwrap(),
+            "--after-turn",
+            context["latest_turn"]["id"].as_str().unwrap(),
+            "--message",
+            "must not continue unknown effects",
+            "--key",
+            "unknown-blocked",
+        ])
+        .await,
+    );
+    assert_eq!(blocked["code"], "conflict");
+    assert_eq!(blocked["retryable"], false);
     assert_eq!(h.context(run_id).await, context);
     assert_eq!(
         h.ok(&["task", "changes", task]).await["restore"],
