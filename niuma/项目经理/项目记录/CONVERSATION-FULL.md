@@ -2370,3 +2370,14 @@ C报告bce914a正确MSVC workspace check首次exit0（c-r8-api-check.log）；�
 用户另要求GitHub首页去掉旧Harness展示、保持本机环境，上传对话经第二独占窗口完成33e869ccbb8d36cc4f7ad1dd57c341a91aac1dc6，仅README+独立记录，普通push0并回报ls-remote一致。经理实核HEAD=origin/main=33e869、index空、NoManCode diff为空、Rust tree仍b549de2e18d39c8e69e6607b9f430974895ee4b9。README旧内容留Git历史，本机配置/脚本/实例未动；员工在途内容未上传。详见[首页清理记录](2026-09-27GitHub首页旧Harness展示清理.md)。main/index锁已归还本经理。九原档案已专门原字节归档c9154e5，非未提交；D备份继续保留，所有开发E盘。
 
 下一第一操作：收定向失败/证据，原文件所有者修复；新提交组成固定候选后再五门禁。阶段一未完成，NEXT-08多项目配置仍排后，不扩Desktop/完整Team/MCP。
+
+
+## 2026-09-27 NEXT-07第二批修复与定向证据核验
+
+经理GPT-6继续在E盘接续；实核main HEAD 2793286ddd185dcd4a68150ef2a4a7119390ca14，NoManCode tree 9d5d77c62ddd4f7696f6ffc937056593754815fb、Rust tree b549de2e18d39c8e69e6607b9f430974895ee4b9，index空。主线仍NEXT-06；NEXT-07未联合验收/整合。D原件冻结，九继承档案已按后续明确上传授权原字节归档，历史状态不恢复。
+
+B候选200964993fa72389c73ee1d88fc07575fb23a073修安全credential_ref及槽准入竞争，新增真实授权fixture；B继续B03确定性并发/迁移/ack/真崩溃和B05回执字段一致性返工。N07-B04在D公开Engine原样复跑4/4通过。D固定abfb64d10cb1c23cc38008e597cda7f8bbcb372d、Rust tree bef0e276008ed1793a0c6824e439097b4a274ee9：Provider17通过（含helper）、Engine4通过，fmt/diff0；限定Clippy101唯一store.rs collapsible_if已交原B。经理已核三源码SHA256及11份原始/发布日志双hash全一致；不是全组合APPROVED。
+
+经理把B200与D公开Engine测试串行合C，C当前be51dd5eee655f995d08e559e6e1bca4c257b960、Rust tree29f84835a7d3751d25f42dd63b8604c72bc3e883，merge0无冲突/status空；C已真实接收解冻，正确MSVC check及10组本人新旧定向在途，包含原失败network_http、Host真实kill+wait与CLI stdout回执。此前CLI6/6与HTTP0/3均保留，不提前写本候选通过。D新SSE精确4MB及超限未EOF测试尚待后续合C。
+
+三名原GPT-6-astra与执行ID保持唯一，人员档案仅共享niuma。下一第一操作：收B固定修复和C定向结果、审查矩阵缺口，稳定后经理串行组合再仅C跑五标准门禁。当前不运行最终门禁，不push/release/live；NEXT-08多项目配置排在本轮验收后，阶段一尚未完成。
