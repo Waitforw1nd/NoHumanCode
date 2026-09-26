@@ -129,3 +129,7 @@ NEXT-08随后做多项目配置/选择：稳定Project ID、canonical root、配
 ### v1.0接入补充（2026-09-27）
 
 B提出创建事件需要领域allowlist。经理核实际代码后明确事件名`checkpoint.created`，只由B在domain.rs的CORE列表及相关测试增加，已更新上表；payload仅checkpoint/task ID、计数、manifest摘要，创建事务内只一次，回放/GET不追加事件，恢复沿用原file_restore。manifest中的before密文可冻结其SHA-256而不复制；合法变化的restore_state/outcomes不参与不可变manifest比较，原source state/成员集合/根/scope/字节摘要仍必须一致。B先交不依赖git_diff模块的可编译Checkpoint固定候选，D合入后再加对应lib导出及Engine接入，禁止缺模块占位。
+
+创建幂等作用域为Task+checkpoint创建命令；不同Task可使用同一个合法key，不能设置creation_key全局唯一。Diff响应path规范为正斜杠的相对路径，CLI按相同规范比较请求绑定，不改变实际文件名大小写。只有HEAD与index均无对象的未跟踪路径才执行ignore拒绝，不能把已跟踪路径的暂存删除误判为不可审阅。
+
+对于已超256KiB而拒绝正文的文件，允许有界前缀+len/mtime复核；before/after_digest可为null表示未计算（不等于缺失），不承诺检测保持前缀/len/mtime的尾部外改。支持范围内仍完整字节双读。允许准确的全文件单hunk unified patch作为首片，不声称最小编辑hunk；上限、CRLF/EOF、redacted和真实Git对象要求不变。

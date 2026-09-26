@@ -1,0 +1,65 @@
+   Compiling peachsh v0.2.0 (../nhc-b-checkpoint\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 3.11s
+     Running tests\approval_gate.rs (target\debug\deps\approval_gate-3f0f202e4f926692.exe)
+
+running 31 tests
+test ap13_cross_task_same_call_isolated ... ok
+test ap14_binding_changes_rejected_without_new_events ... ok
+test ap20_public_query_order_and_corruption_distinct_from_missing ... ok
+test ap16_public_finish_failure_preserves_all_transaction_inputs ... ok
+test ap19_constraints_enforced_and_partial_ddl_retry ... ok
+test ap19_schema6_preservation_atomic_migration_and_forged_constraints ... ok
+test ap03_ap09_denied_and_decision_conflicts ... ok
+test ap17_claim_cancel_order_and_stale_completed ... ok
+test ap13_empty_id_and_ambiguous_history_fail_closed ... ok
+test ap08_cancel_pending_is_durable ... ok
+test ap01_ap02_pending_then_approved_executes_once ... ok
+test ap15_claimed_before_execute_runtime_stops_then_unknown ... ok
+test ap04_read_tools_pass_through ... ok
+test ap10_ap11_safe_previews_independent_calls ... ok
+test ap14_redacted_arguments_cannot_resume_as_substitute ... ok
+test ap16_finish_transaction_fault_rolls_back ... ok
+test ap18_cancel_before_new_waiter_resume_has_safe_cancel_result ... ok
+test ap16_finished_restart_never_reexecutes_and_missing_result_is_corrupt ... ok
+test ap15_approved_before_claim_stopped_runtime_executes_once ... ok
+test ap13_duplicate_groups_have_no_effect ... ok
+test ap06_reconcile_preserves_order_with_pending_and_unapproved_calls ... ok
+test ap14_persisted_workspace_and_permission_changes_conflict ... ok
+test ap06_ap07_ap18_runtime_restart_and_decide_before_waiter ... ok
+test ap08_restart_public_cancel_is_idempotent_without_active_runtime ... ok
+test ap18_decision_and_cancel_from_other_store_are_observed ... ok
+test ap15_real_command_effect_then_runtime_stop_unknown ... ok
+test ap05_command_waits_and_runs_once ... ok
+test ap17_cancel_after_real_claim_preserves_real_result_and_stops_next_call ... ok
+test ap17_multistore_cancel_claim_barrier ... ok
+test ap17_multistore_decision_cancel_race ... ok
+test redacted_command_result_stays_finished_across_restart ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+     Running tests\workspace_changes.rs (target\debug\deps\workspace_changes-e743907338f80a45.exe)
+
+running 21 tests
+test failed_atomic_replace_cleans_plaintext_temp ... ok
+test workspace_path_aliases_and_forbidden_spellings_are_rejected_or_coalesced ... ok
+test empty_restore_is_noop_without_operation ... ok
+test redacted_write_arguments_do_not_leave_an_unrestorable_success ... ok
+test external_edit_conflicts_without_overwrite ... ok
+test finished_change_without_after_digest_is_corrupt_not_empty_restore ... ok
+test restore_rejects_tampered_call_path_content_and_binding ... ok
+test parent_commit_failure_returns_unknown_receipt_and_seals_change ... ok
+test dpapi_before_secret_roundtrips_without_plaintext_in_database ... ok
+test http_unknown_receipt_is_safe_after_outcome_persist_failure ... ok
+test approved_write_has_typed_metadata_and_restores_exact_bytes ... ok
+test schema7_to8_preserves_existing_task_approval_and_event_rows ... ok
+test schema7_migrates_and_forged_schema8_is_rejected ... ok
+test missing_non_utf8_and_link_are_distinct_current_states ... ok
+test later_path_conflict_prevents_all_restore_writes ... ok
+test another_task_write_blocks_old_restore_and_hardlink_bytes_stay_unchanged ... ok
+test created_file_restore_deletes_only_unchanged_task_output ... ok
+test another_task_edit_blocks_resumed_write_without_absorbing_external_bytes ... ok
+test changed_host_workspace_or_task_scopes_reject_restore_before_claim ... ok
+test repeated_path_restores_earliest_before_and_legacy_mix_is_rejected ... ok
+test unsupported_new_content_and_before_bytes_have_no_file_effect ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.85s

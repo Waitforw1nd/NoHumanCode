@@ -1,0 +1,35 @@
+    Checking peachsh-protocol v0.1.0 (../nhc-c-review-cli\NoManCode\rust-app\crates\protocol)
+    Checking tempfile v3.27.0
+    Checking peachsh v0.2.0 (../nhc-c-review-cli\NoManCode\rust-app)
+    Checking peachsh-ui v0.1.0 (../nhc-c-review-cli\NoManCode\rust-app\crates\ui)
+error: items after a test module
+    --> src\store.rs:2498:1
+     |
+2498 |   mod tests {
+     |   ^^^^^^^^^
+...
+3228 |   impl Store {
+     |   ^^^^^^^^^^
+...
+3318 |   fn checkpoint_sources(db: &Connection, task_id: &str) -> Result<Vec<PreparedChange>> {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+3325 | / fn verify_checkpoint_sources(
+3326 | |     db: &Connection,
+3327 | |     manifest: &crate::checkpoint::Manifest,
+3328 | | ) -> Result<()> {
+     | |_______________^
+...
+3350 | / fn read_checkpoint(
+3351 | |     db: &Connection,
+3352 | |     id: &str,
+3353 | | ) -> Result<(crate::checkpoint::Checkpoint, crate::checkpoint::Manifest)> {
+     | |_________________________________________________________________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#items_after_test_module
+     = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+     = help: move the items to before the test module was defined
+
+error: could not compile `peachsh` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

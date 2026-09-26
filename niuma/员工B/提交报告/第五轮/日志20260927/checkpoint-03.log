@@ -1,0 +1,31 @@
+   Compiling peachsh v0.2.0 (../nhc-b-checkpoint\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 8.83s
+     Running tests\checkpoint.rs (target\debug\deps\checkpoint-6ccc5b17a2f072ed.exe)
+
+running 10 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... FAILED
+
+failures:
+
+---- k03_path_and_before_total_limits_leave_zero_new_facts stdout ----
+
+thread 'k03_path_and_before_total_limits_leave_zero_new_facts' (49848) panicked at tests\checkpoint.rs:184:10:
+called `Result::unwrap()` on an `Err` value: Elapsed(())
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    k03_path_and_before_total_limits_leave_zero_new_facts
+
+test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.10s
+
+error: test failed, to rerun pass `--test checkpoint`

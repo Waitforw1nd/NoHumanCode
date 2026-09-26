@@ -1,0 +1,196 @@
+[
+  {
+    "name": "check-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-01.log",
+    "raw_sha256": "BC5CA8184C0B82F0D55E817B0363A20921B37CB3FF1CDB7A6DBEB7BF5D6B5A11",
+    "published_sha256": "B678ABBABF1AA6E7E02EB74387BA4999F6CEE27C5738B41261B1BC5555236FD0",
+    "raw_finished_at": "2026-09-27T01:39:20.0773217+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-02.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-02.log",
+    "raw_sha256": "D095D475BFACBD788963A2E1ED64639FB24919D9CE8FD0FD30F3EA5931B520B1",
+    "published_sha256": "C7F5021E366CEAB79E5A30D36C6E097849D4392A2FE7CEC81ACA965398C1E5C8",
+    "raw_finished_at": "2026-09-27T01:43:12.373602+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-04.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-04.log",
+    "raw_sha256": "A454A38037BBA31FD750DA4C825C7B5E80F66F5F3A0E065BCAFF7C4F64294CF1",
+    "published_sha256": "76D7E5C66DFA0C9770CCE699D583815F10ADFF01D7C5FF06D9D5C0FC0B7AB724",
+    "raw_finished_at": "2026-09-27T01:48:41.0769804+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-05.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-05.log",
+    "raw_sha256": "5E60DBE6757D20BA095F6ABB7B53ED77C5B815DFD4240B054AA35DA3AAB97742",
+    "published_sha256": "66827D9D88E81BC35789F3718836DD47D1305E6FA0A2EEC6E18C11CF21D81671",
+    "raw_finished_at": "2026-09-27T01:58:22.6465308+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-06.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-06.log",
+    "raw_sha256": "CDF319D08A2EDA9F828978D46F16F9E63FFD34FFC53565436BBE94C433B69A9B",
+    "published_sha256": "475DAE155841BDB4E29A8D8AD6EA64EDE2EFC8CF266CE68ED6CE27CB8B0462A6",
+    "raw_finished_at": "2026-09-27T02:01:24.9833462+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-07.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-07.log",
+    "raw_sha256": "6B626127327DDB972FD6C6EF31B4901D38E45992CA1B8FD5833EBE8AD626FCA8",
+    "published_sha256": "7AD32EAF79FA9F14B0D894E044A7FBC0253E5ADAD470BF5C9A285C27E0ABC79B",
+    "raw_finished_at": "2026-09-27T02:03:57.8520465+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-08.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-08.log",
+    "raw_sha256": "A1B93016BA2106DB6E61E90934C0093F5B526165CE6A5FD5D7E80BED5DA9BF19",
+    "published_sha256": "0A4432E39357187A233814AAB40714522EA78007D145C8B60503A25FEEE76EFC",
+    "raw_finished_at": "2026-09-27T02:09:00.7097354+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-09.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/check-09.log",
+    "raw_sha256": "274DB4F6B39703CEB02D9B5479263CF4E95F3E78A0EFAC3C51C901CC572D8629",
+    "published_sha256": "833C619345A03F84AE087685224DDE2280A33D738661685DA1F97D077D704AC6",
+    "raw_finished_at": "2026-09-27T02:10:09.105281+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "checkpoint-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/checkpoint-01.log",
+    "raw_sha256": "27D1E6A25B019A6F705C6B5F8705396782F1AADE6F1BA2DDBDC9A090898CF677",
+    "published_sha256": "B0A87A712CE93A6266341FFE17928F751BB3C23E1950AEB5E11FC4F93211F744",
+    "raw_finished_at": "2026-09-27T01:43:34.0076769+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "checkpoint-03.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/checkpoint-03.log",
+    "raw_sha256": "0CFA6015C31348E8F1F5CF9EEB2FABB863D3F9F9754F2A36DE9BF53C97DF2C7A",
+    "published_sha256": "FB2B38B5806634A97D6B2EC3D998048B07F47C6036D41AFEC37F03F85F0F52E0",
+    "raw_finished_at": "2026-09-27T01:59:04.9615046+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "checkpoint-04.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/checkpoint-04.log",
+    "raw_sha256": "F9052F91D84E0CE146EF80EA9C306D2C69F6F561D192E8E599E9945F918EC663",
+    "published_sha256": "81018956C78C5D4EC92FDBB6BA5328B12C8FDB8C48710DAE3336B46E1397EC5A",
+    "raw_finished_at": "2026-09-27T02:02:06.8512649+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "checkpoint-05.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/checkpoint-05.log",
+    "raw_sha256": "49BBF3A40162CC9E0AA469D26C1160DC0FE9CD1C1FA01A7C8438B22D848F6DD4",
+    "published_sha256": "F29AE05F6D996BE67354FF80442261CFA6DF72AC998E3A1A82E489FFEFFCEEC3",
+    "raw_finished_at": "2026-09-27T02:09:33.4869539+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "checkpoint-unit-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/checkpoint-unit-01.log",
+    "raw_sha256": "45B48B7CAE7947B3A5738477D7FBA802F52ED3768B117D20B485A97F0E92F841",
+    "published_sha256": "16A30CBDDD5A420767A6676ACF1566151BB81A3A38CA7E35738F9B572BDFBC31",
+    "raw_finished_at": "2026-09-27T02:01:32.2973298+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "clippy-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/clippy-01.log",
+    "raw_sha256": "0CA644CC0055E52F4EC33E072FFED830D5E4DEB58D92AE7A866A76B2BEF69D77",
+    "published_sha256": "80469A6BF2299237C48BB80AA1D43B41A1D9EE69F1DF860D77C2B745F51EAD15",
+    "raw_finished_at": "2026-09-27T02:04:15.1853132+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "clippy-02.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/clippy-02.log",
+    "raw_sha256": "5AAC660FCB80E3277023E64025B763EE5FB7A82C796C5FA7F87AABD06E7EE6AD",
+    "published_sha256": "203936BD2FAE28621AD430FDC1D8FF8E13C01E225845865D40F07150BEE4527C",
+    "raw_finished_at": "2026-09-27T02:10:19.9059944+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "crash-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/crash-01.log",
+    "raw_sha256": "B58F36E9A450918EAA699F05834B5A9C77824B75A9A4E1E0E3E228A18AA122B0",
+    "published_sha256": "83CF1DEE2A96F13EF25FBDBBE1E6FA5D715019EC6E2C0912B98D4928F283EFE9",
+    "raw_finished_at": "2026-09-27T01:48:49.3581973+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "crash-02.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/crash-02.log",
+    "raw_sha256": "0297CECD8C6DCF66A349893B6B50FB4D428A1C3B72717E8A5423AA6700E05844",
+    "published_sha256": "16F02C46722DD98F046C2EB82299F4EB6C270B78ED9CDCE2C21703A8DA21C893",
+    "raw_finished_at": "2026-09-27T01:58:47.6515136+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "final-timing-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/final-timing-01.log",
+    "raw_sha256": "EC81231584652BD7FE3F3A1D5A698B1BE0473251089FB174168D967CFA0CD9C8",
+    "published_sha256": "B2058491755D5BEE03D39F392D34AEEEF2BC54A6D9D37EEF6CDF92810EE38B46",
+    "raw_finished_at": "2026-09-27T02:09:33.5079034+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "final-timing-02.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/final-timing-02.log",
+    "raw_sha256": "92FCB9AD9951378A931A6B9CDDF9E2A85A80F8BB6F901658D80A7D0621971426",
+    "published_sha256": "49C5E599FF9204D6138F7B9C59B5BEA6BFF68FDC4248E197D946A6311348CA0C",
+    "raw_finished_at": "2026-09-27T02:10:20.5804577+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "fmt-final.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/fmt-final.log",
+    "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_sha256": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B",
+    "raw_finished_at": "2026-09-27T02:10:19.9396527+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "legacy-01.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/legacy-01.log",
+    "raw_sha256": "83A108E14ABD53F418D5E191FB1F1D847850CEC6898D2E48C80935FFBE3FAB2A",
+    "published_sha256": "30B2D16C22D12B56A429C7E05454B4DA05D229F0605994C8872E089933532D11",
+    "raw_finished_at": "2026-09-27T02:04:05.3691173+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "lib-final.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/lib-final.log",
+    "raw_sha256": "D3DFFC2E40F0212A7C3078FDB99EB9731ECF6D609CB9AB8989C415E2DE35B987",
+    "published_sha256": "9E4F4D9AD76BB0C28FA0C884FD05AC3D1EEFA022F9A2B9C907EE35C8A44C351D",
+    "raw_finished_at": "2026-09-27T02:10:16.7706932+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained."
+  },
+  {
+    "name": "check-03.log",
+    "raw_source": ".local/temp/nhc-b-checkpoint-target/check-03.log",
+    "raw_sha256": "4E7E61590E3E78AD57D0A383F9459C4E86EDB4F7FB6142F6FD4358C45095F43F",
+    "published_sha256": "D432494747907EF406A4D0F3F266DD72537E78E621DAD8464D4C323EE531B32E",
+    "raw_finished_at": "2026-09-27T01:46:16.5219046+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained.",
+    "raw_source_alias": ".local/temp is a logical alias for the execution process TEMP environment variable, not a repository directory. Resolve the remaining suffix with Join-Path $env:TEMP; no fixed machine path is recorded."
+  },
+  {
+    "name": "checkpoint-02.log",
+    "raw_source": ".local/temp/nhc-b-checkpoint-target/checkpoint-02.log",
+    "raw_sha256": "FA18D5E5C680B11B9CF789D340A575967794258077E405C157FEF0A3D2C02ECB",
+    "published_sha256": "010ECAC33BBEDB39CB0E13B23BC8A4A7CEB36EC69E087A886CF127DCF39B52E4",
+    "raw_finished_at": "2026-09-27T01:46:38.383583+08:00",
+    "conversion": "Only machine path aliases and trailing blank line normalization; raw retained.",
+    "raw_source_alias": ".local/temp is a logical alias for the execution process TEMP environment variable, not a repository directory. Resolve the remaining suffix with Join-Path $env:TEMP; no fixed machine path is recorded."
+  }
+]

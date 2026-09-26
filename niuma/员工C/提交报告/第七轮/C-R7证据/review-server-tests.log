@@ -1,0 +1,10 @@
+   Compiling peachsh v0.2.0 (../nhc-c-review-cli\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 7.01s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 2 tests
+test server::review_transport_tests::review_json_requires_exact_objects ... ok
+test server::review_transport_tests::review_typed_errors_are_static_and_nonretryable ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 85 filtered out; finished in 0.00s
+

@@ -1,0 +1,9 @@
+   Compiling peachsh v0.2.0 (../nhc-d-git-diff\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.34s
+     Running tests\git_diff.rs (target\debug\deps\git_diff-ebb7d01939126dd8.exe)
+
+running 1 test
+test absent_promisor_object_is_unavailable_without_network_or_writes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.86s
+

@@ -1,0 +1,230 @@
+{
+  "task": "D-R4-01-20260927-N06",
+  "candidate": "1b80486f682d978162e056d4a8605f4074187c41",
+  "rust_tree": "b139550f6d7030c7edf66b9cd7809c7a77e26e8e",
+  "conversion": "UTF-8 without BOM; CRLF to LF; worktree and C-temp absolute prefixes replaced with repository-relative logical locations; original bytes kept in raw paths",
+  "logs": [
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-02-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-02.log",
+      "raw_sha256": "AB0C2C7124DC11DD00C3C34A2887DF96D5EA9538EF523499024AB9F010554948",
+      "published_sha256": "81612E93FE15ADF79C0CA050DF59A3064078FF75C915A006C3B89B1E623990FC",
+      "created_at": "2026-09-27T01:44:50.268422+08:00",
+      "last_write_at": "2026-09-27T01:44:51.013223+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-03-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-03.log",
+      "raw_sha256": "91822835B5DBAA371EBF0208E31B0984423E9894EF6C624F19724AF7EC1CFA5C",
+      "published_sha256": "2061C5D756069CC514077CD6515207C5843B99C56F196FF7E5E987001AC61B83",
+      "created_at": "2026-09-27T01:47:46.9411368+08:00",
+      "last_write_at": "2026-09-27T01:48:18.6224502+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-d-final-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-d-final.log",
+      "raw_sha256": "3DA9C6ED0EE283911607D75FCD9509752A7AD56FBEC1E8BA682F59BF2F9350B5",
+      "published_sha256": "2E8C135088C4F85F16B36B4CB8A1AF6B41DEF064CBA9DD451295CC07EC2393A4",
+      "created_at": "2026-09-27T01:57:59.9067452+08:00",
+      "last_write_at": "2026-09-27T01:58:37.3283675+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-final-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-final.log",
+      "raw_sha256": "BAD21E208552DEE7BA7282AF0F010DE9758CC96BE62A7F27B272FD72667C9ED4",
+      "published_sha256": "5E508CF39EDDBF9ABAE9F733BA66A2D593FAE2E68C8E2FCA55D0105C649DBAF9",
+      "created_at": "2026-09-27T01:49:36.5783181+08:00",
+      "last_write_at": "2026-09-27T01:49:37.5329528+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check.log",
+      "raw_sha256": "E5DDC585AE5167B6D23E4155345861DC290E2B8307E462697CE180F4950491ED",
+      "published_sha256": "87D0548A5681F0B88058252CB3112E6BA7D1F3716417FA081D905C5707B99B9F",
+      "created_at": "2026-09-27T01:43:22.6346698+08:00",
+      "last_write_at": "2026-09-27T01:43:23.5486915+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/clippy-d-final-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/clippy-d-final.log",
+      "raw_sha256": "4C3EF8554A863F7DEA1494BEDDD66A2BDBEEA6A5E8D820515F2CD09F7FF8B491",
+      "published_sha256": "7752149AFD9F16D0CC2A4C9947D4B8CD3B7B1C30D71FA5C22EDE430A01EE9554",
+      "created_at": "2026-09-27T01:59:20.6994442+08:00",
+      "last_write_at": "2026-09-27T01:59:30.6007078+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/clippy-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/clippy.log",
+      "raw_sha256": "65295A8E51CD9297666FC54FA46E040B1C8D0CB919EA0FA55055661528239A57",
+      "published_sha256": "6BCF5D7EE8AB53B95FB9F52AC349562E6EB6C064FD71152DC4002622E8C85EA6",
+      "created_at": "2026-09-27T01:50:01.7256421+08:00",
+      "last_write_at": "2026-09-27T01:50:11.1926126+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/fmt-d-final-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/fmt-d-final.log",
+      "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "created_at": "2026-09-27T01:59:30.6359153+08:00",
+      "last_write_at": "2026-09-27T01:59:30.6359153+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/fmt-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/fmt.log",
+      "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "created_at": "2026-09-27T01:50:11.2255425+08:00",
+      "last_write_at": "2026-09-27T01:50:11.2255425+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/test-01-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/test-01.log",
+      "raw_sha256": "6F03A6158FE9F391696D1048019518FA917BD53E4D3E2EBCBB432BBDD6338F83",
+      "published_sha256": "7749B373CC8B258A9611B8D1D778FAC1F10E1803B04E884871DECAE6C5D010E2",
+      "created_at": "2026-09-27T01:43:23.557802+08:00",
+      "last_write_at": "2026-09-27T01:43:37.9530981+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/test-02-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/test-02.log",
+      "raw_sha256": "E6F74F28025F129E91885D4F047B99266A04DA4F369F4268B6D4840220079B21",
+      "published_sha256": "0FC071125117170A39938744E202C655F7D521DAD18A0EECDD6EAC7AFAFF77DA",
+      "created_at": "2026-09-27T01:44:51.0212323+08:00",
+      "last_write_at": "2026-09-27T01:44:52.1146959+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/test-03-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/test-03.log",
+      "raw_sha256": "C929D42FF4E0BADC340FF45D07B4C5840E1B9370C851EC9AF5A1ECBC4F7BEFA4",
+      "published_sha256": "0E124D91A12F8D79B12CCF6781478BA2A29A72EAD81F9FCBFD733F755387ABF2",
+      "created_at": "2026-09-27T01:48:18.6564667+08:00",
+      "last_write_at": "2026-09-27T01:49:02.5743099+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/test-d-final-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/test-d-final.log",
+      "raw_sha256": "FCD9B4DB98C1D727457491C2F516A515E3B4B2C5D7E2DA3494A6FA5872AE866B",
+      "published_sha256": "B43DCEC2FAF60F812B1A7B45CA293AEDFB12CDC144EE5D56B0E4F21872A10BDB",
+      "created_at": "2026-09-27T01:58:37.3574685+08:00",
+      "last_write_at": "2026-09-27T01:59:20.6837629+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/test-final-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/test-final.log",
+      "raw_sha256": "123513D0C6C3345A71000540D89A7EA4360D68A6FA38999893415F986F683768",
+      "published_sha256": "9876B7A2516D13174C0C6BB8BC72260CB87BBD319506883F35543D20B398376C",
+      "created_at": "2026-09-27T01:49:37.5414382+08:00",
+      "last_write_at": "2026-09-27T01:50:01.7081315+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-offline-02-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-offline-02.log",
+      "raw_sha256": "BF721BB8281945C9BC27C84289AF89D1401ACA68A867B400FFD1D192370CE1F3",
+      "published_sha256": "E65FD2026C404956A818668B755A81CD29A5A648B6730B54F7E9CCC18F7AE416",
+      "created_at": "2026-09-27T02:03:38.4212007+08:00",
+      "last_write_at": "2026-09-27T02:03:42.8191997+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-offline-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-offline.log",
+      "raw_sha256": "065D782442EB6867DC1760D2EE9E53A58B6688979564D51E7DED93EB9F81A1B0",
+      "published_sha256": "37EFC63F50118E0B0B5AD0CF951DDD7BB9F8B6082F6678E3BF4A08D1D6FE6CF9",
+      "created_at": "2026-09-27T02:03:03.9904079+08:00",
+      "last_write_at": "2026-09-27T02:03:04.8137547+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/clippy-offline-02-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/clippy-offline-02.log",
+      "raw_sha256": "21F27547733961AEDEF8E93C4FAA7B6E27B2A4BA0776C05A9A66887BC71B01F2",
+      "published_sha256": "D8C1755BB4E3BBEFF446A4195FBF5DCB02795B68438A0825B24C3F68C98D0D3F",
+      "created_at": "2026-09-27T02:03:42.8453878+08:00",
+      "last_write_at": "2026-09-27T02:03:46.7255482+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/clippy-offline-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/clippy-offline.log",
+      "raw_sha256": "AD49C269EA3C7BC873067B0180917538A65C76F5A25EB0E7881AFC30DFC68F20",
+      "published_sha256": "DC6D329CD07EA3873353F77DBBC3C048078F12F4CA7CEFD75AA5D324D2C41DD2",
+      "created_at": "2026-09-27T02:03:24.1903399+08:00",
+      "last_write_at": "2026-09-27T02:03:24.8590267+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/fmt-offline-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/fmt-offline.log",
+      "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "created_at": "2026-09-27T02:03:07.5516932+08:00",
+      "last_write_at": "2026-09-27T02:03:07.5516932+08:00"
+    },
+    {
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/test-offline-raw.log",
+      "published": "niuma/员工D/提交报告/第四轮/证据/test-offline.log",
+      "raw_sha256": "C3708486E6E98B2C03C6C359AC1F4340D59E9BE9A144FCFDA4EAB86B48C34BE1",
+      "published_sha256": "B9CFF209870FA18775CC70BFB472CD292FAE86BA3336F4328DEB6C4207EF4392",
+      "created_at": "2026-09-27T02:03:04.8219163+08:00",
+      "last_write_at": "2026-09-27T02:03:07.5330774+08:00"
+    },
+    {
+      "raw_sha256": "BAAB349D9DE00A4593024ADD9871C3E153604C3F9AB1491B4671D33F1A059F1A",
+      "last_write_at": "2026-09-27T02:09:47.9914374+08:00",
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/check-helper-raw.log",
+      "published_sha256": "B2B909FEDEBF852F3C9CE75407B4BDBADABA78C49C177BB37BAB0467DD152F5C",
+      "created_at": "2026-09-27T02:09:43.6549767+08:00",
+      "published": "niuma/员工D/提交报告/第四轮/证据/check-helper.log"
+    },
+    {
+      "raw_sha256": "7FB86C520105046CD51894AAB35A69C1BC096E05332C8C852E9C871C4863588E",
+      "last_write_at": "2026-09-27T02:09:49.0285891+08:00",
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/clippy-helper-raw.log",
+      "published_sha256": "00A7014417AC8B38104CC9406F6DC1A346DE98C1FCD5860599E594B59FBD7319",
+      "created_at": "2026-09-27T02:09:48.0216294+08:00",
+      "published": "niuma/员工D/提交报告/第四轮/证据/clippy-helper.log"
+    },
+    {
+      "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "last_write_at": "2026-09-27T02:09:49.0705537+08:00",
+      "raw": "../nhc-d-git-diff/.local/d-r4-evidence/fmt-helper-raw.log",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "created_at": "2026-09-27T02:09:49.0705537+08:00",
+      "published": "niuma/员工D/提交报告/第四轮/证据/fmt-helper.log"
+    }
+  ],
+  "sources": [
+    {
+      "path": "NoManCode/rust-app/src/git_diff.rs",
+      "sha256": "DB5BD32F9B6A391E203587B55BBD4AE80245A29F8AC7DDBEEA1944208A109651"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/git_diff.rs",
+      "sha256": "FAB79980B0CACE34E481B7E9891260C0EF6B13C1FE449CDDC7DAA4CCC9D4C6DE"
+    }
+  ],
+  "previous_candidate": {
+    "rust_tree": "81ee9a89c23ef2d7fab7e6f9851abf7ae6465f8b",
+    "sha": "a5c2dd1e4979c88e7936bc90e572b8075753cad6",
+    "sources": [
+      {
+        "path": "NoManCode/rust-app/src/git_diff.rs",
+        "sha256": "78A087719E8BEC20324D0FBD5552427262613C7438EE9B5128C6A44A4B836E35"
+      },
+      {
+        "path": "NoManCode/rust-app/tests/git_diff.rs",
+        "sha256": "43E97D5D83473FC78A92A232CC27CE0F0B3E7FF34E4E9C85544D6E15C108514B"
+      }
+    ]
+  },
+  "offline_candidate": {
+    "sources": [
+      {
+        "path": "NoManCode/rust-app/src/git_diff.rs",
+        "sha256": "10B43565470090945D09DE83A4E714BBB624AA80B1548F80EF9D6ACCAE248FFF"
+      },
+      {
+        "path": "NoManCode/rust-app/tests/git_diff.rs",
+        "sha256": "FAB79980B0CACE34E481B7E9891260C0EF6B13C1FE449CDDC7DAA4CCC9D4C6DE"
+      }
+    ],
+    "sha": "0def34f75564437371f399b19330a206e06f8fd5",
+    "rust_tree": "edc94625763bad572d3af07862afbd0ea7f97736"
+  }
+}

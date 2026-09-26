@@ -1,0 +1,59 @@
+   Compiling peachsh v0.2.0 (../nhc-d-git-diff\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.72s
+     Running tests\git_diff.rs (target\debug\deps\git_diff-50ead3bf1510c6b2.exe)
+
+running 14 tests
+test binary_large_patch_and_serialized_response_are_bounded ... FAILED
+test bounded_runner_terminates_overflow_and_timeout ... ok
+test deletion_and_rename_are_separate_paths ... FAILED
+test deterministic_head_index_and_work_changes_return_conflict ... ok
+test external_diff_textconv_filters_and_hooks_are_never_invoked ... ok
+test inherited_git_redirection_and_config_are_cleared_in_child_process ... ok
+test malicious_environment_child ... ok
+test path_validation_literal_names_and_link_sentinel ... FAILED
+test root_boundaries_and_linked_worktree ... ok
+test secrets_are_redacted_before_diff_prefixes_and_digests_are_raw ... ok
+test strict_request_and_safe_error_contract ... ok
+test three_views_read_real_objects_and_preserve_crlf_and_eof ... ok
+test unborn_untracked_ignored_missing_and_empty_existence ... FAILED
+test unmerged_gitlink_and_git_symlink_are_unsupported ... FAILED
+
+failures:
+
+---- binary_large_patch_and_serialized_response_are_bounded stdout ----
+
+thread 'binary_large_patch_and_serialized_response_are_bounded' (22904) panicked at tests\git_diff.rs:55:48:
+called `Result::unwrap()` on an `Err` value: Unavailable
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- deletion_and_rename_are_separate_paths stdout ----
+
+thread 'deletion_and_rename_are_separate_paths' (47100) panicked at tests\git_diff.rs:55:48:
+called `Result::unwrap()` on an `Err` value: Unavailable
+
+---- path_validation_literal_names_and_link_sentinel stdout ----
+
+thread 'path_validation_literal_names_and_link_sentinel' (17220) panicked at tests\git_diff.rs:55:48:
+called `Result::unwrap()` on an `Err` value: Unavailable
+
+---- unborn_untracked_ignored_missing_and_empty_existence stdout ----
+
+thread 'unborn_untracked_ignored_missing_and_empty_existence' (48152) panicked at tests\git_diff.rs:55:48:
+called `Result::unwrap()` on an `Err` value: Unavailable
+
+---- unmerged_gitlink_and_git_symlink_are_unsupported stdout ----
+
+thread 'unmerged_gitlink_and_git_symlink_are_unsupported' (46536) panicked at tests\git_diff.rs:326:14:
+called `Result::unwrap_err()` on an `Ok` value: GitDiff { path: "a.txt", view: Head, base_oid: Some("eba230e8f811c4b88f3d68042419407a28cb7931"), index_oid: Some("25cebe580a688a2698c9bc6d7f6c4c1988211d9a"), before_digest: Some("45c624e3904fccefb14385ddaa2904cec07d3009c4e4faaaf4dfd582b37224e7"), after_digest: Some("45c624e3904fccefb14385ddaa2904cec07d3009c4e4faaaf4dfd582b37224e7"), status: Unchanged, patch: None, redacted: false }
+
+
+failures:
+    binary_large_patch_and_serialized_response_are_bounded
+    deletion_and_rename_are_separate_paths
+    path_validation_literal_names_and_link_sentinel
+    unborn_untracked_ignored_missing_and_empty_existence
+    unmerged_gitlink_and_git_symlink_are_unsupported
+
+test result: FAILED. 9 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.11s
+
+error: test failed, to rerun pass `--test git_diff`

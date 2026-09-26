@@ -1,0 +1,42 @@
+   Compiling peachsh v0.2.0 (../nhc-b-checkpoint\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 7.25s
+     Running unittests src\lib.rs (.local/temp/nhc-b-checkpoint-target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 3 tests
+test engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop ... FAILED
+test engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop ... FAILED
+test engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop ... FAILED
+
+failures:
+
+---- engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop stdout ----
+
+thread 'engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop' (45744) panicked at src\engine.rs:2354:9:
+assertion `left == right` failed
+  left: [97, 102, 116, 101, 114, 45, 49]
+ right: [97, 102, 116, 101, 114, 45, 48]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop stdout ----
+
+thread 'engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop' (33812) panicked at src\engine.rs:2354:9:
+assertion `left == right` failed
+  left: [97, 102, 116, 101, 114, 45, 49]
+ right: [97, 102, 116, 101, 114, 45, 48]
+
+---- engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop stdout ----
+
+thread 'engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop' (31968) panicked at src\engine.rs:2379:17:
+assertion `left == right` failed
+  left: Claimed
+ right: Unknown
+
+
+failures:
+    engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop
+    engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop
+    engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 80 filtered out; finished in 0.18s
+
+error: test failed, to rerun pass `--lib`

@@ -1,0 +1,8 @@
+   Compiling peachsh v0.2.0 (../nhc-d-git-diff\NoManCode\rust-app)
+rustc-LLVM ERROR: IO failure on output stream: no space on device
+error: could not compile `peachsh` (test "git_diff")
+
+Caused by:
+  failed to create file `../nhc-d-git-diff\NoManCode\rust-app\target\debug\.fingerprint\peachsh-50ead3bf1510c6b2\output-test-integration-test-git_diff`
+
+Caused by:

@@ -1,0 +1,18 @@
+   Compiling peachsh v0.2.0 (../nhc-b-checkpoint\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 7.63s
+     Running tests\checkpoint.rs (target\debug\deps\checkpoint-6ccc5b17a2f072ed.exe)
+
+running 11 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.00s

@@ -1,0 +1,23 @@
+[
+  {
+    "name": "revision-01-clippy.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/revision-01-clippy.log",
+    "raw_sha256": "E70C2871F0C64E383AB754AB97304F492AC3A16D29E34397A1135C41F451C12F",
+    "published_sha256": "DDAB4DA4B730180B69D50396A2861E0A8ECF2FED01313DCC9796309CDEE73B61",
+    "conversion": "Machine workspace prefix replaced by relative alias; trailing blank lines normalized; raw retained."
+  },
+  {
+    "name": "revision-01-fmt.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/revision-01-fmt.log",
+    "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_sha256": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B",
+    "conversion": "Machine workspace prefix replaced by relative alias; trailing blank lines normalized; raw retained."
+  },
+  {
+    "name": "revision-01-timing.log",
+    "raw_source": "../nhc-b-checkpoint/NoManCode/rust-app/.local/verification/revision-01-timing.log",
+    "raw_sha256": "E934C976C1742E87E24E098D5457E71D1927F432A1298D237630857313C67686",
+    "published_sha256": "932542607332E13E15255E9727C66A1B50A3725D756B05D25969C8D569433F94",
+    "conversion": "Machine workspace prefix replaced by relative alias; trailing blank lines normalized; raw retained."
+  }
+]

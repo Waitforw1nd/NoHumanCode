@@ -1,0 +1,5 @@
+    Checking tokio-rustls v0.26.5
+    Checking hyper-rustls v0.27.9
+    Checking reqwest v0.12.28
+    Checking peachsh v0.2.0 (../nhc-d-git-diff\NoManCode\rust-app)
+    Finished `dev` profile [unoptimized] target(s) in 3.71s

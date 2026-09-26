@@ -1,0 +1,77 @@
+{
+  "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+  "rust_tree": "b549de2e18d39c8e69e6607b9f430974895ee4b9",
+  "counts": {
+    "passed": 345,
+    "failed": 0,
+    "ignored": 1
+  },
+  "commands": [
+    {
+      "cargo_args": null,
+      "exit": 0,
+      "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+      "end": "2026-09-27T02:25:53.7740587+08:00",
+      "start": "2026-09-27T02:25:49.9524336+08:00",
+      "action": "check",
+      "test_debug": "0",
+      "target": "../nhc-c-review-cli\\NoManCode\\rust-app\\target",
+      "dev_debug": "0",
+      "name": "gate-complete-check",
+      "incremental": "0"
+    },
+    {
+      "cargo_args": null,
+      "exit": 0,
+      "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+      "end": "2026-09-27T02:27:15.2506445+08:00",
+      "start": "2026-09-27T02:25:53.8260045+08:00",
+      "action": "test",
+      "test_debug": "0",
+      "target": "../nhc-c-review-cli\\NoManCode\\rust-app\\target",
+      "dev_debug": "0",
+      "name": "gate-complete-test",
+      "incremental": "0"
+    },
+    {
+      "cargo_args": null,
+      "exit": 0,
+      "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+      "end": "2026-09-27T02:27:16.7173792+08:00",
+      "start": "2026-09-27T02:27:15.2930580+08:00",
+      "action": "fmt",
+      "test_debug": "0",
+      "target": "../nhc-c-review-cli\\NoManCode\\rust-app\\target",
+      "dev_debug": "0",
+      "name": "gate-complete-fmt",
+      "incremental": "0"
+    },
+    {
+      "cargo_args": null,
+      "exit": 0,
+      "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+      "end": "2026-09-27T02:27:22.2039867+08:00",
+      "start": "2026-09-27T02:27:16.7852019+08:00",
+      "action": "clippy",
+      "test_debug": "0",
+      "target": "../nhc-c-review-cli\\NoManCode\\rust-app\\target",
+      "dev_debug": "0",
+      "name": "gate-complete-clippy",
+      "incremental": "0"
+    },
+    {
+      "cargo_args": null,
+      "exit": 0,
+      "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+      "end": "2026-09-27T02:27:48.4857254+08:00",
+      "start": "2026-09-27T02:27:22.2458561+08:00",
+      "action": "wasm-check",
+      "test_debug": "0",
+      "target": "../nhc-c-review-cli\\NoManCode\\rust-app\\target",
+      "dev_debug": "0",
+      "name": "gate-complete-wasm-check",
+      "incremental": "0"
+    }
+  ],
+  "note": "Count only this full cargo test run. Prior targeted or gate runs are not added."
+}

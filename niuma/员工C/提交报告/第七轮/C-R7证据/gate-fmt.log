@@ -1,0 +1,72 @@
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\checkpoint_http.rs:1:
+ use axum::{
++    Json, Router,
+     body::Body,
+     extract::State,
+     response::{IntoResponse, Response},
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\checkpoint_http.rs:5:
+     routing::post,
+-    Json, Router,
+ };
+ use peachsh::{
+     domain::{Route, Settings},
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\checkpoint_http.rs:10:
+     store::Store,
+ };
+-use serde_json::{json, Value};
++use serde_json::{Value, json};
+ use std::{
+     collections::VecDeque,
+     convert::Infallible,
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\checkpoint_http.rs:761:
+     ] {
+         let error = assert_error(response, 500, "internal").await;
+         assert!(!error.to_string().contains("Secret"));
+-        assert!(!error
+-            .to_string()
+-            .contains(&h.dir.path().to_string_lossy().to_string()));
++        assert!(
++            !error
++                .to_string()
++                .contains(&h.dir.path().to_string_lossy().to_string())
++        );
+     }
+     assert_eq!(snapshot(&h), before);
+     assert_eq!(
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\review_cli.rs:1:
+ use axum::{
++    Json, Router,
+     body::Body,
+     extract::State,
+     response::{IntoResponse, Response},
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\review_cli.rs:5:
+     routing::{get, post},
+-    Json, Router,
+ };
+ use peachsh::{
+     domain::{Route, Settings},
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\review_cli.rs:10:
+     store::Store,
+ };
+-use serde_json::{json, Value};
++use serde_json::{Value, json};
+ use std::{
+     collections::VecDeque,
+     convert::Infallible,
+Diff in \\?\../nhc-c-review-cli\NoManCode\rust-app\tests\review_cli.rs:451:
+     assert_eq!(h.ok(&["task", "changes", next]).await["changes"], json!([]));
+     let external = h.ok(&["task", "diff", next, "--path", "other.txt"]).await;
+     assert_eq!(external["diff"]["status"], "text");
+-    assert!(external["diff"]["patch"]
+-        .as_str()
+-        .unwrap()
+-        .contains("+unrelated"));
++    assert!(
++        external["diff"]["patch"]
++            .as_str()
++            .unwrap()
++            .contains("+unrelated")
++    );
+     assert_eq!(h.script.requests.lock().unwrap().len(), 4);
+     assert!(!h.cwd().join("peachsh.sqlite3").exists());
+     h.stop().await;

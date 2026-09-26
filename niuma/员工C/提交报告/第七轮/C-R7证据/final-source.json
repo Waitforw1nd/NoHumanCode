@@ -1,0 +1,33 @@
+{
+  "head": "9f990648df3308dc7235b028123e5532a35a00f8",
+  "repository_tree": "977522640bbc38a0dc20d3200b03106fa84f45d2",
+  "source_tree": "9d5d77c62ddd4f7696f6ffc937056593754815fb",
+  "rust_tree": "b549de2e18d39c8e69e6607b9f430974895ee4b9",
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/cli.rs",
+      "sha256": "bf187d1f43651835c22c28b7a51c85ae4faadf5d6ec9c96b1d8e3bf07e0c6fa6",
+      "bytes": 51430
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "sha256": "d78f45c7626c4d56b7f8505a5121c4ae1520bf534ff28251a0362db89986e0ad",
+      "bytes": 62942
+    },
+    {
+      "path": "NoManCode/rust-app/tests/review_cli.rs",
+      "sha256": "e54055fd61d4418b9c530889a1e17b93f48f78203118a6d56cd599573b1625a8",
+      "bytes": 26662
+    },
+    {
+      "path": "NoManCode/rust-app/tests/checkpoint_http.rs",
+      "sha256": "ab4de216602edcd5a831ff57f9c629e31c48799e926def46c0e515c2a4868d86",
+      "bytes": 25498
+    },
+    {
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "sha256": "a0b8828fddaed9d913f1204a7c49467806408f47476b240dde0eaf9747578e4f",
+      "bytes": 48090
+    }
+  ]
+}

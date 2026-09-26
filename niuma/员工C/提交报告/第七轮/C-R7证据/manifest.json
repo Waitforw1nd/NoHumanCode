@@ -1,0 +1,182 @@
+[
+  {
+    "file": "commands.jsonl",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/commands.jsonl",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/commands.jsonl",
+    "original_sha256": "905f1c552d524ae5b6c037b9dacfe93347f07a394dcf71bf2545461f59bc5b8e",
+    "published_sha256": "ad2dbfc083434f5b080b7675cf9c49860d584282a8256c67e3fd7a75544c5909",
+    "original_bytes": 5532,
+    "published_bytes": 5404,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "final-gates.json",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/final-gates.json",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/final-gates.json",
+    "original_sha256": "621f484446dee4e5fc4337fa0a696b75515f3d01f0b3ef66ef58843ef024f85c",
+    "published_sha256": "2999a4637a0e54245c05eb0f85ed4c6caade227107a28b415e125ee240d9bfb5",
+    "original_bytes": 2519,
+    "published_bytes": 2407,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "final-source.json",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/final-source.json",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/final-source.json",
+    "original_sha256": "61ef8b8f9b96b845a1b5a4c3ea584f2850598e2754ba9071457b642ef465ccd0",
+    "published_sha256": "12e8711b5a1f86298173f2ae722188f0bc7178ae7a01da13b7f5705f219e97a9",
+    "original_bytes": 1155,
+    "published_bytes": 1122,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-check.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-check.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-check.log",
+    "original_sha256": "ddf38e016bc9288559f33f2942eb7071a5cfe75e82ff4f4ed505a50abea2b811",
+    "published_sha256": "19082b4973a0d3c8ae69bdd446579b6e2460965d94dfba52fc3d2a7aabe8c966",
+    "original_bytes": 6394,
+    "published_bytes": 6203,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-complete-check.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-complete-check.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-complete-check.log",
+    "original_sha256": "bfd85ed5ccc4bc3a85381453d69032c16b4235cadba407ce0899235399d84887",
+    "published_sha256": "725073147bd37531cf44f934f693a80c5d47ec62310b93c0f6823997787ef7ee",
+    "original_bytes": 393,
+    "published_bytes": 384,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-complete-clippy.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-complete-clippy.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-complete-clippy.log",
+    "original_sha256": "6072f82943968e2d86cf506d4d12596440fd0ba8874b3c68972074dbff855e48",
+    "published_sha256": "26314b4cb1fd38aba6a80e04107db3f325cbaab2c1279b05992e12e066b523de",
+    "original_bytes": 393,
+    "published_bytes": 384,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-complete-test.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-complete-test.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-complete-test.log",
+    "original_sha256": "79021eb18b67d2f31330502ec68e32e57a3ce89a0ca8ef761bc9181acdd8b444",
+    "published_sha256": "aad5a8c6d09d509cbf03e911afcf3f66bdb6aec74344415ac36eb10d36323cff",
+    "original_bytes": 29589,
+    "published_bytes": 29060,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-complete-wasm-check.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-complete-wasm-check.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-complete-wasm-check.log",
+    "original_sha256": "1ff1f0eac21c4379cf3240b272e4f6c8d5b4e83a476beb8a5ef8cd6d0490f681",
+    "published_sha256": "dfd2d809fa0b74cb51285cc6987e104e65ad8bf1fc439de51144ae461e3ff1b3",
+    "original_bytes": 4540,
+    "published_bytes": 4404,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-final-check.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-final-check.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-final-check.log",
+    "original_sha256": "6b626127327ddb972fd6c6ef31b4901d38e45992ca1b8fd5833ebe8ad626fca8",
+    "published_sha256": "8a012517324abd51745cddc6ebed73074f9c5000ff8afabd205012885eeb27a6",
+    "original_bytes": 318,
+    "published_bytes": 315,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-final-clippy.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-final-clippy.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-final-clippy.log",
+    "original_sha256": "7a84359a5cb0b1d20576fe59778e46f985aed2616b136de528bb2f5a38eb343d",
+    "published_sha256": "8962eb9058eaafb73560265a87d907c4bfc62aef9f01f30d2e5dea982cd4d64c",
+    "original_bytes": 1600,
+    "published_bytes": 1550,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-final-test.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-final-test.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-final-test.log",
+    "original_sha256": "67d5647ffa7fe6f363374d25a340a756193d9627379d1c6c21c761baa5522479",
+    "published_sha256": "c723b97379df5dc0c496cf8f65f8bafbf28e813a9c06aac9db896a5e81ba757d",
+    "original_bytes": 29588,
+    "published_bytes": 29059,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-fmt.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-fmt.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-fmt.log",
+    "original_sha256": "f763f3698fff779342c1621d04ab6d34a9be948675dcc63a7e7186d824e1ee03",
+    "published_sha256": "802f74d146f957cd5ce74f8a5988b33056251d3216fd3885e278ec964cd90b83",
+    "original_bytes": 2519,
+    "published_bytes": 2407,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "gate-test.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/gate-test.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/gate-test.log",
+    "original_sha256": "bc37285573129b0bf061f20f7f1a27b175c97a63f31ebf20483ff21b0c4a9d06",
+    "published_sha256": "5345283d5dce70757f4f8461ba9002225fea4da9b284349d72a25297d77486d3",
+    "original_bytes": 33143,
+    "published_bytes": 32501,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "orchestration-note.txt",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/orchestration-note.txt",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/orchestration-note.txt",
+    "original_sha256": "56d5281a2f07ac68619ca3302b044bb5783c3687deafb2d2814857518270bccb",
+    "published_sha256": "0a6a95bdd273c132750c34010304b168951d418513c1651019bf70f817be59b0",
+    "original_bytes": 435,
+    "published_bytes": 434,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "review-clippy.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/review-clippy.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/review-clippy.log",
+    "original_sha256": "d49c60ba4c56ac47246bcb37f12ed6d0d23308ada6773eb69e21ba564d4e14ae",
+    "published_sha256": "fd64909057b1e5d53b3de763b5c75043543ece3dc28f73b59981d1debbc95b7b",
+    "original_bytes": 4898,
+    "published_bytes": 4741,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "review-server-tests.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/review-server-tests.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/review-server-tests.log",
+    "original_sha256": "be910c74ab422a64fb38d12dccb81c9f97f418107a04e4ff8d20c570e7be459e",
+    "published_sha256": "d293e593144ecfff5790760d02ef653cd2d5e4442c7bb1f53d39d254cc133955",
+    "original_bytes": 513,
+    "published_bytes": 498,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "targeted-final.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/targeted-final.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/targeted-final.log",
+    "original_sha256": "2ba21e3e3af7cb792518a8216d6350aec090242fcfbe583369971b2a61b6995d",
+    "published_sha256": "357ec75b3d35ac77ba62386c338901ed560c197a51ba3e80d03382a5faf54a42",
+    "original_bytes": 1112,
+    "published_bytes": 1084,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  },
+  {
+    "file": "targeted-first.log",
+    "original_path": "../nhc-c-review-cli/.local/C-R7-evidence/targeted-first.log",
+    "published_path": "niuma/员工C/提交报告/第七轮/C-R7证据/targeted-first.log",
+    "original_sha256": "4127fc7df45515a79a24a5fad8897249e11783772e6feeb7cfa453553fe3a108",
+    "published_sha256": "5ce0125bbb345bcd6eef52078d5fd1822ba4fa7180c80b3105ba57dd91859d91",
+    "original_bytes": 6588,
+    "published_bytes": 6388,
+    "transformation": "UTF-8 without BOM; CRLF to LF; machine paths to portable aliases"
+  }
+]

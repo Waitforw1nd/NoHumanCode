@@ -1,0 +1,8 @@
+   Compiling ring v0.17.14
+   Compiling libsqlite3-sys v0.35.0
+    Checking rusqlite v0.37.0
+   Compiling rustls v0.23.45
+    Checking rustls-webpki v0.103.15
+    Finished `dev` profile [unoptimized] target(s) in 4.03s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`

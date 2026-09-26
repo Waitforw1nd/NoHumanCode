@@ -1,0 +1,101 @@
+   Compiling peachsh v0.2.0 (../nhc-b-checkpoint\NoManCode\rust-app)
+warning: function `transport_fixture_command` is never used
+   --> src\git_diff.rs:146:15
+    |
+146 | pub(crate) fn transport_fixture_command(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `peachsh` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized] target(s) in 6.59s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 85 tests
+test approval::tests::classification_defaults_unknown_tools_to_approval_deny ... ok
+test domain::tests::session_kind_is_explicit_and_name_independent ... ok
+test plugin_catalog::tests::register_failure_keeps_catalog_unchanged ... ok
+test domain::tests::project_session_turn_ids_do_not_follow_display_names ... ok
+test approval::tests::digest_is_stable_and_preview_omits_secret_and_body ... ok
+test plugin_catalog::tests::display_name_rules ... ok
+test plugin_catalog::tests::exact_version_orders_as_numeric_triple ... ok
+test plugin_catalog::tests::name_charset_rules ... ok
+test plugin_host::tests::invalid_scope_rejected ... ok
+test plugin_host::tests::unknown_ids_are_typed ... ok
+test plugin_catalog::tests::scope_identity_uses_persisted_id_rules ... ok
+test provider::tests::balance_validation ... ok
+test plugin_host::tests::scope_kind_is_enforced_by_catalog ... ok
+test plugin_host::tests::stop_without_dependents_succeeds_and_revokes ... ok
+test plugin_host::tests::effect_ids_increase_deterministically ... ok
+test plugin_host::tests::display_name_is_not_identity ... ok
+test domain::tests::paths_and_names ... ok
+test plugin_catalog::tests::strict_json_rejects_duplicate_members_everywhere ... ok
+test provider::tests::truncated_stream_fails ... ok
+test provider::tests::utf8_sse_and_fragmented_tools ... ok
+test repository::schema_tests::session_unique_constraint_cannot_be_replaced_by_a_partial_index ... ok
+test repository::schema_tests::current_marker_does_not_hide_missing_tables_or_bad_event_columns ... ok
+test repository::schema_tests::missing_index_repair_refuses_duplicate_and_crossed_task_ids ... ok
+test repository::schema_tests::failed_marker_write_rolls_back_all_schema_changes ... ok
+test repository::schema_tests::marked_schema_6_repairs_only_the_missing_legacy_unique_index ... ok
+test repository::task_identity_tests::event_resolution_rejects_preexisting_cross_table_identity_collision ... ok
+test repository::task_identity_tests::events_normalize_task_ids_and_preserve_session_and_project_scope ... ok
+test repository::schema_tests::partial_schema_with_missing_indexes_retries_atomically ... ok
+test repository::schema_tests::malformed_schema_never_advances_version_or_marker ... ok
+test repository::schema_tests::forged_named_indexes_are_rejected_even_with_valid_marker ... ok
+test secrets::tests::credential_fields_redact_independently_without_token_shaped_values ... ok
+test secrets::tests::authorization_assignments_redact_scheme_and_credential ... ok
+test secrets::tests::credential_text_is_checked_throughout_metadata ... ok
+test secrets::tests::identifier_key_and_path_limits_match_their_contracts ... ok
+test server::tests::approval_error_maps_typed_variants_through_context_and_source ... ok
+test server::tests::changing_newapi_origin_requires_new_token ... ok
+test secrets::tests::persisted_values_redact_nested_and_non_sk_tokens ... ok
+test server::tests::turn_command_error_keeps_typed_classification_inside_a_chain ... ok
+test secrets::tests::ordinary_metadata_and_code_are_preserved ... ok
+test secrets::tests::redaction ... ok
+test server::tests::approval_error_keeps_corruption_500_and_busy_retryable ... ok
+test server::tests::turn_command_error_maps_every_stable_variant ... ok
+test server::tests::required_idempotency_key_accepts_exactly_one_clean_value ... ok
+test server::tests::turn_command_error_never_turns_unknown_failures_into_4xx ... ok
+test secrets::tests::dpapi_roundtrip ... ok
+test server::tests::run_context_error_preserves_typed_status_without_context_leaks ... ok
+test store::tests::safe_tool_result_json_is_stable_and_roundtrips_unicode ... ok
+test tool_runtime::tests::lease_cannot_be_retargeted_to_another_task_or_permission_snapshot ... ok
+test tool_runtime::tests::n08_definition_and_execution_use_actual_registry_payload ... ok
+test tool_runtime::tests::n09_claim_failure_returns_no_lease_and_releases_lock_for_stop ... ok
+test repository::task_identity_tests::new_task_id_cannot_claim_an_unrelated_legacy_task ... ok
+test tool_runtime::tests::n09_admit_first_can_finish_after_stop_without_retaining_registry_effects ... ok
+test tool_runtime::tests::n09_stop_first_rejects_admission_and_unload_leaves_no_effects ... ok
+test repository::task_identity_tests::repository_uses_path_and_http_idempotency_limits ... ok
+test repository::task_identity_tests::legacy_replay_checks_relational_identity_and_redacts_historical_tasks ... ok
+test wasm::tests::manifest_rejects_imports ... ok
+test wasm::tests::echo_and_limits ... ok
+test workspace::tests::file_boundaries ... ok
+test workspace::tests::search_reports_project_matches ... ok
+test tool_runtime::tests::builtin_executes_existing_file_implementation_and_preserves_path_checks ... ok
+test provider::tests::done_does_not_wait_for_connection_close ... ok
+test store::tests::partial_schema_6_table_stops_before_user_version ... ok
+test store::tests::dependencies_are_same_turn_and_acyclic ... ok
+test store::tests::event_task_must_belong_to_turn_or_session ... ok
+test store::tests::legacy_create_run_redacts_prompt_messages_and_errors ... ok
+test store::tests::turn_identity_idempotency_and_rollback ... ok
+test engine::workspace_phase_tests::write_prepare_before_fs_real_process_stop ... ok
+test store::tests::review_fixes_redact_replay_and_real_legacy_run ... ok
+test store::tests::recover_marks_running_turn_interrupted ... ok
+test store::tests::interrupted_schema_6_retries_without_advancing_early ... ok
+test store::tests::schema_5_migrates_once_and_keeps_legacy_rows ... ok
+test engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop ... ok
+test engine::workspace_phase_tests::recheck_io_failure_after_prepare_is_failed_without_file_effect ... ok
+test store::tests::legacy_idempotency_replay_is_explicit ... ok
+test engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_partial_failure_keeps_single_receipt_and_blocks_new_turn ... ok
+test engine::workspace_phase_tests::checkpoint_creation_and_both_restore_routes_share_real_gate ... ok
+test engine::workspace_phase_tests::start_and_resume_wait_for_production_workspace_gate ... ok
+test engine::workspace_phase_tests::restore_gate_serializes_competitors_and_seals_resumed_writes ... ok
+test engine::workspace_phase_tests::n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease ... ok
+test engine::workspace_phase_tests::n07_send_and_restore_wait_on_same_production_gate ... ok
+test engine::workspace_phase_tests::failed_prepare_does_not_pollute_later_or_earlier_success ... ok
+test engine::workspace_phase_tests::partial_and_unknown_restore_histories_seal_resumed_writes ... ok
+
+test result: ok. 85 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s

@@ -1,0 +1,12 @@
+   Compiling peachsh v0.2.0 (../nhc-b-checkpoint\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 6.52s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 5 tests
+test engine::workspace_phase_tests::checkpoint_creation_and_both_restore_routes_share_real_gate ... ok
+test engine::workspace_phase_tests::checkpoint_partial_failure_keeps_single_receipt_and_blocks_new_turn ... ok
+test engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 80 filtered out; finished in 0.18s

@@ -1,0 +1,23 @@
+   Compiling peachsh v0.2.0 (../nhc-c-review-cli\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 2.03s
+     Running tests\checkpoint_http.rs (target\debug\deps\checkpoint_http-0f7363cf975187d7.exe)
+
+running 3 tests
+test k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500 ... ok
+test k06_checkpoint_http_kill_after_effect_before_outcome ... ok
+test t02_checkpoint_http_strict_security_zero_effects ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.17s
+
+     Running tests\review_cli.rs (target\debug\deps\review_cli-bfaf11cbb5e2bef7.exe)
+
+running 6 tests
+test t01_real_diff_checkpoint_restore_restart_new_turn ... ok
+test t02_checkpoint_real_partial_receipt ... ok
+test t02_checkpoint_unknown_receipt_restart_no_retry ... ok
+test t02_diff_status_projection_and_response_path_binding ... ok
+test t02_new_cli_malformed_oversize_token_redirect_single_post ... ok
+test t02_review_bad_cli_arguments_exit_two ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.60s
+
