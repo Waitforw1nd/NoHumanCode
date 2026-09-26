@@ -16,3 +16,9 @@
 | W13 | 真实 HTTP outcome 持久化失败返回安全 unknown；C 的 crash 测试覆盖重启后 GET receipt、重复 POST unknown/complete | 完整 DTO 与正常/partial 路由；Host/Origin/token/安全头拒绝；非法 persisted ID、未知 task 与空 task 区分；500 不泄 SQL/路径/秘密的独立故障输入 |
 
 上述是固定 SHA 和已有测试源码的证据盘点，不是新增生产缺陷断言。B 当前继续实现/测试中；最新门禁与 W 矩阵要等其固定新 SHA、报告和原始日志，C 不引用旧轮全量测试数。下一步只读审 `B-F10` 修复差异、更新的前 FS 夹具与缺口证据，交经理决定是否关闭。
+
+## 后续固定差异闭合：7422973
+
+经理另给 B 固定 `74229736ffca4f712a7564b3084110c51c58ea44`，C 只读核其相对 `50d406b` 的 engine/store 差异；没有以 C 自己的 HTTP 测试审 B 实现。B-F10 的第二次 `read_safe_file` 失败现在先对对应 durable prepared change 执行要求恰一行更新的 `mark_workspace_change_failed`，再走安全工具拒绝；私有一次性故障测试核文件 before 未变、change failed、工具错误以及 recover 后仍 failed。固定代码与定向夹具结构可关闭此缺陷，产品正式门禁仍归 B/经理。
+
+前 FS 私有 probe 改为同目录临时文件写满 `task_id/record_id` 后 rename 原子发布；parent 在 kill 前按 record_id 查询持久 prepared/claimed、核目标文件尚未发生副作用，ChildGuard 对异常路径 kill/wait；重开按同 change_id/restore_id 核 unknown 和不恢复。固定 `50d406b` 本报告前述不足在 `7422973` 的代码/夹具结构中得到补足。C 未独立重跑 B 单元测试，不把审阅写成测试执行结果。W09/W11 的其他矩阵仍待 B 固定证据；W13 已由 C 新任务另交，不改写本报告原时点缺口事实。
