@@ -1,0 +1,11 @@
+   Compiling ring v0.17.14
+   Compiling libsqlite3-sys v0.35.0
+   Compiling rusqlite v0.37.0
+   Compiling rustls-webpki v0.103.15
+   Compiling rustls v0.23.45
+   Compiling tokio-rustls v0.26.5
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.12.28
+   Compiling peachsh v0.2.0 (NoManCode/rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.08s
+     Running tests\workspace_http.rs (../nhc-c-workspace-crash/.local/target-crash\debug\deps\workspace_http-030a30494eff7222.exe)

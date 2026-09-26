@@ -1,0 +1,8 @@
+
+running 3 tests
+test internal_error_and_unknown_receipt_hide_database_details ... ok
+test normal_dto_auth_and_empty_task_are_distinct_and_safe ... ok
+test partial_restore_reports_completed_and_unattempted_paths ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.63s
+
