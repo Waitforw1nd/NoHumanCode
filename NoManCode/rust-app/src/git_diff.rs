@@ -143,9 +143,7 @@ fn git_command(root: &Path) -> Result<tokio::process::Command, GitDiffError> {
 }
 
 #[cfg(test)]
-pub(crate) fn transport_fixture_command(
-    root: &Path,
-) -> Result<tokio::process::Command, GitDiffError> {
+pub fn transport_fixture_command(root: &Path) -> Result<tokio::process::Command, GitDiffError> {
     git_command(root)
 }
 
