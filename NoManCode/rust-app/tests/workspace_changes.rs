@@ -5,7 +5,9 @@ use peachsh::{
     server::{self as host_server, App},
     store::Store,
     workspace,
-    workspace_changes::{CurrentState, RestoreStatus, WorkspaceChangeError},
+    workspace_changes::{
+        ChangeKind, ChangeState, CurrentState, RestoreStatus, WorkspaceChangeError,
+    },
 };
 use reqwest::StatusCode;
 use rusqlite::Connection;
@@ -187,6 +189,273 @@ async fn external_edit_conflicts_without_overwrite() {
         std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
         "external"
     );
+}
+
+#[tokio::test]
+async fn created_file_restore_deletes_only_unchanged_task_output() {
+    for external_edit in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(temp.path().join("src")).unwrap();
+        let target = temp.path().join("src/new.txt");
+        assert!(!target.exists());
+        let (base, _provider) = server("src/new.txt", "created by task\r\n").await;
+        let engine = setup(temp.path(), &base);
+        let task_id = write_once(&engine).await;
+        assert_eq!(std::fs::read(&target).unwrap(), b"created by task\r\n");
+        let changes = engine.changes(&task_id).unwrap();
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].kind, ChangeKind::Created);
+        assert_eq!(changes[0].before_digest, None);
+        assert_eq!(changes[0].state, ChangeState::Finished);
+        assert!(changes[0].restorable);
+        if external_edit {
+            std::fs::write(&target, "external edit").unwrap();
+            assert!(matches!(
+                engine
+                    .restore(&task_id)
+                    .await
+                    .unwrap_err()
+                    .downcast_ref::<WorkspaceChangeError>(),
+                Some(WorkspaceChangeError::Conflict { .. })
+            ));
+            assert_eq!(std::fs::read(&target).unwrap(), b"external edit");
+            assert!(engine.latest_restore(&task_id).unwrap().is_none());
+            assert_eq!(
+                engine.changes(&task_id).unwrap()[0].current,
+                CurrentState::Diverged
+            );
+        } else {
+            let receipt = engine.restore(&task_id).await.unwrap();
+            assert_eq!(receipt.status, RestoreStatus::Complete);
+            assert_eq!(receipt.restored, 1);
+            assert_eq!(receipt.outcomes.len(), 1);
+            assert_eq!(receipt.outcomes[0].status, RestoreStatus::Complete);
+            assert!(!target.exists());
+            assert_eq!(engine.restore(&task_id).await.unwrap(), receipt);
+            assert!(!target.exists());
+        }
+    }
+}
+
+#[tokio::test]
+async fn unsupported_new_content_and_before_bytes_have_no_file_effect() {
+    let oversized = "word ".repeat(52_429);
+    assert_eq!(oversized.len(), 262_145);
+    for (before, after, expect_empty) in [
+        (b"original".to_vec(), oversized.clone(), false),
+        (oversized.into_bytes(), "ordinary after".into(), true),
+        (vec![0xff, 0xfe, 0x80], "ordinary after".into(), true),
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(temp.path().join("src")).unwrap();
+        let target = temp.path().join("src/a.txt");
+        std::fs::write(&target, &before).unwrap();
+        let (base, _provider) = server("src/a.txt", &after).await;
+        let engine = setup(temp.path(), &base);
+        let task_id = write_once(&engine).await;
+        assert_eq!(std::fs::read(&target).unwrap(), before);
+        let changes = engine.changes(&task_id).unwrap();
+        assert!(
+            changes
+                .iter()
+                .all(|change| change.state == ChangeState::Failed)
+        );
+        let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+        let states: Vec<String> = db
+            .prepare("SELECT state FROM workspace_changes WHERE task_id=?1")
+            .unwrap()
+            .query_map([&task_id], |row| row.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        if expect_empty {
+            assert!(changes.is_empty());
+            assert!(states.is_empty());
+        } else {
+            assert_eq!(states, vec!["failed"]);
+        }
+        let task = engine.store.task(&task_id).unwrap();
+        assert_eq!(task.status, "completed");
+        assert!(task.messages.iter().any(|message| {
+            message["role"] == "tool"
+                && serde_json::from_str::<Value>(message["content"].as_str().unwrap())
+                    .unwrap()
+                    .get("error")
+                    .is_some()
+        }));
+        let approvals = engine.store.approvals_for_task(&task_id).unwrap();
+        assert_eq!(approvals.len(), 1);
+        assert_eq!(
+            approvals[0].status,
+            peachsh::approval::ApprovalStatus::Approved
+        );
+        assert_eq!(
+            approvals[0].execution_state,
+            peachsh::approval::ExecutionState::Finished
+        );
+        assert!(engine.latest_restore(&task_id).unwrap().is_none());
+        assert_eq!(
+            std::fs::read_dir(temp.path().join("src")).unwrap().count(),
+            1
+        );
+    }
+}
+
+#[tokio::test]
+async fn changed_host_workspace_or_task_scopes_reject_restore_before_claim() {
+    for change_host in [true, false] {
+        let temp = tempfile::tempdir().unwrap();
+        let alternate = tempfile::tempdir().unwrap();
+        std::fs::create_dir(temp.path().join("src")).unwrap();
+        std::fs::create_dir(alternate.path().join("src")).unwrap();
+        std::fs::write(temp.path().join("src/a.txt"), "before").unwrap();
+        std::fs::write(alternate.path().join("src/a.txt"), "alternate sentinel").unwrap();
+        let (base, _provider) = server("src/a.txt", "after").await;
+        let engine = setup(temp.path(), &base);
+        let task_id = write_once(&engine).await;
+        let changes_before = engine.changes(&task_id).unwrap();
+        if change_host {
+            let mut settings = engine.store.settings().unwrap().unwrap();
+            settings.workspace = alternate.path().to_string_lossy().into();
+            engine.configure(settings).await.unwrap();
+            assert_eq!(
+                engine.store.settings().unwrap().unwrap().workspace,
+                alternate.path().to_string_lossy()
+            );
+        } else {
+            let mut task = engine.store.task(&task_id).unwrap();
+            task.spec.write_scopes.push("extra".into());
+            // The ordinary Store API enforces immutable scopes; simulate persisted tampering
+            // to prove restore also checks the original successful change's permission snapshot.
+            assert!(engine.store.save_task(&task).is_err());
+            let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+            assert_eq!(
+                db.execute(
+                    "UPDATE tasks SET value=?1 WHERE id=?2",
+                    rusqlite::params![serde_json::to_string(&task).unwrap(), task_id]
+                )
+                .unwrap(),
+                1
+            );
+            assert_eq!(
+                engine.store.task(&task_id).unwrap().spec.write_scopes,
+                vec!["src", "extra"]
+            );
+        }
+        assert!(matches!(
+            engine
+                .restore(&task_id)
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Conflict { .. })
+        ));
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"after"
+        );
+        assert_eq!(
+            std::fs::read(alternate.path().join("src/a.txt")).unwrap(),
+            b"alternate sentinel"
+        );
+        assert!(engine.latest_restore(&task_id).unwrap().is_none());
+        let changes_after = engine.changes(&task_id).unwrap();
+        assert_eq!(changes_after[0].change_id, changes_before[0].change_id);
+        assert_eq!(changes_after[0].state, ChangeState::Finished);
+        assert_eq!(changes_after[0].restore_state, "pending");
+    }
+}
+
+#[tokio::test]
+async fn another_task_edit_blocks_resumed_write_without_absorbing_external_bytes() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    let target = temp.path().join("src/a.txt");
+    std::fs::write(&target, "original").unwrap();
+    let (base, _provider) = scripted_server(vec![
+        write_delta("a-first", "src/a.txt", "task a"),
+        json!({"content":"done"}),
+        write_delta("b-first", "src/a.txt", "task b"),
+        json!({"content":"done"}),
+        write_delta("a-second", "src/a.txt", "overwrite b"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let first = write_once(&engine).await;
+    let first_changes = engine.changes(&first).unwrap();
+    let second = write_once(&engine).await;
+    assert_eq!(std::fs::read(&target).unwrap(), b"task b");
+    engine.resume(&first, "write again").await.unwrap();
+    let pending = tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            if let Some(approval) = engine
+                .store
+                .pending_approvals_for_task(&first)
+                .unwrap()
+                .into_iter()
+                .next()
+            {
+                break approval;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(pending.tool_call_id, "a-second");
+    engine
+        .decide_approval(&pending.id, true, Some("test"))
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(8), async {
+        while engine.is_busy() {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(std::fs::read(&target).unwrap(), b"task b");
+    let changes = engine.changes(&first).unwrap();
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].change_id, first_changes[0].change_id);
+    assert_eq!(changes[0].before_digest, first_changes[0].before_digest);
+    assert_eq!(changes[0].after_digest, first_changes[0].after_digest);
+    let task = engine.store.task(&first).unwrap();
+    assert_eq!(task.status, "completed");
+    let answer = task
+        .messages
+        .iter()
+        .find(|message| message["tool_call_id"] == "a-second")
+        .unwrap();
+    assert!(
+        serde_json::from_str::<Value>(answer["content"].as_str().unwrap())
+            .unwrap()
+            .get("error")
+            .is_some()
+    );
+    assert_eq!(
+        engine.store.approval(&pending.id).unwrap().execution_state,
+        peachsh::approval::ExecutionState::Finished
+    );
+    assert!(engine.latest_restore(&first).unwrap().is_none());
+    assert!(matches!(
+        engine
+            .restore(&first)
+            .await
+            .unwrap_err()
+            .downcast_ref::<WorkspaceChangeError>(),
+        Some(WorkspaceChangeError::Conflict { .. })
+    ));
+    assert_eq!(
+        engine.restore(&second).await.unwrap().status,
+        RestoreStatus::Complete
+    );
+    assert_eq!(std::fs::read(&target).unwrap(), b"task a");
+    assert_eq!(
+        engine.restore(&first).await.unwrap().status,
+        RestoreStatus::Complete
+    );
+    assert_eq!(std::fs::read(&target).unwrap(), b"original");
 }
 
 #[tokio::test]

@@ -1658,6 +1658,14 @@ mod workspace_phase_tests {
         }
     }
 
+    async fn assert_gate_pending<F: std::future::Future>(mut future: std::pin::Pin<&mut F>) {
+        std::future::poll_fn(|cx| {
+            assert!(future.as_mut().poll(cx).is_pending());
+            std::task::Poll::Ready(())
+        })
+        .await;
+    }
+
     async fn provider_reply(
         State(calls): State<Arc<AtomicUsize>>,
         Json(_): Json<Value>,
@@ -2076,36 +2084,24 @@ mod workspace_phase_tests {
             let (engine, task_id) = two_write_engine(temp.path()).await;
             finish_two_writes(&engine, &task_id, usize::MAX).await;
             let guard = engine.gate.lock().await;
-            let (entered_a, ready_a) = tokio::sync::oneshot::channel();
-            let (entered_b, ready_b) = tokio::sync::oneshot::channel();
-            let first = {
-                let engine = engine.clone();
-                let task_id = task_id.clone();
-                tokio::spawn(async move {
-                    entered_a.send(()).unwrap();
-                    engine.restore(&task_id).await
-                })
-            };
-            let second = {
-                let engine = engine.clone();
-                let task_id = task_id.clone();
-                tokio::spawn(async move {
-                    entered_b.send(()).unwrap();
-                    engine.restore(&task_id).await
-                })
-            };
-            ready_a.await.unwrap();
-            ready_b.await.unwrap();
-            tokio::task::yield_now().await;
-            assert!(!first.is_finished() && !second.is_finished());
+            let mut first = std::pin::pin!(engine.restore(&task_id));
+            let mut second = std::pin::pin!(engine.restore(&task_id));
+            // Both production futures have reached the held gate and returned Pending.
+            assert_gate_pending(first.as_mut()).await;
+            assert_gate_pending(second.as_mut()).await;
             assert!(engine.latest_restore(&task_id).unwrap().is_none());
             assert_eq!(
                 std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
                 "after-1"
             );
             drop(guard);
-            let receipt_a = first.await.unwrap().unwrap();
-            let receipt_b = second.await.unwrap().unwrap();
+            let (receipt_a, receipt_b) = tokio::time::timeout(Duration::from_secs(8), async {
+                tokio::join!(first, second)
+            })
+            .await
+            .unwrap();
+            let receipt_a = receipt_a.unwrap();
+            let receipt_b = receipt_b.unwrap();
             assert_eq!(receipt_a, receipt_b);
             assert_eq!(receipt_a.status, RestoreStatus::Complete);
             assert_eq!(
@@ -2165,6 +2161,160 @@ mod workspace_phase_tests {
                     .len(),
                 2
             );
+        });
+    }
+
+    #[test]
+    fn partial_and_unknown_restore_histories_seal_resumed_writes() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            for status in [RestoreStatus::Partial, RestoreStatus::Unknown] {
+                let temp = tempfile::tempdir().unwrap();
+                let (engine, task_id) = two_write_engine(temp.path()).await;
+                finish_two_writes(&engine, &task_id, usize::MAX).await;
+                let records = engine.store.workspace_changes_for_task(&task_id).unwrap();
+                let original_ids: Vec<_> = records.iter().map(|record| record.id.clone()).collect();
+                let claimed = engine.store.claim_restore(&task_id, &records[..1]).unwrap();
+                let restore_id = claimed.restore_id.unwrap();
+                let receipt = engine.store.finish_restore(&restore_id, status).unwrap();
+                assert_eq!(receipt.status, status);
+                assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
+                assert!(!engine.changes(&task_id).unwrap()[0].restorable);
+
+                engine.resume(&task_id, "write again").await.unwrap();
+                let approval = tokio::time::timeout(Duration::from_secs(8), async {
+                    loop {
+                        if let Some(value) = engine
+                            .store
+                            .pending_approvals_for_task(&task_id)
+                            .unwrap()
+                            .into_iter()
+                            .next()
+                        {
+                            break value;
+                        }
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+                .unwrap();
+                assert_eq!(approval.tool_call_id, "phase-3");
+                engine
+                    .decide_approval(&approval.id, true, Some("test"))
+                    .unwrap();
+                tokio::time::timeout(Duration::from_secs(8), async {
+                    loop {
+                        if !engine.is_busy() {
+                            break;
+                        }
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+                .unwrap();
+                assert_eq!(
+                    std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+                    "after-1"
+                );
+                let records_after = engine.store.workspace_changes_for_task(&task_id).unwrap();
+                assert_eq!(
+                    records_after
+                        .iter()
+                        .map(|record| record.id.clone())
+                        .collect::<Vec<_>>(),
+                    original_ids
+                );
+                assert_eq!(engine.latest_restore(&task_id).unwrap().unwrap(), receipt);
+                let task = engine.store.task(&task_id).unwrap();
+                let result = task
+                    .messages
+                    .iter()
+                    .find(|message| message["tool_call_id"] == "phase-3")
+                    .unwrap();
+                assert!(
+                    serde_json::from_str::<Value>(result["content"].as_str().unwrap())
+                        .unwrap()
+                        .get("error")
+                        .is_some()
+                );
+                assert_eq!(
+                    engine.store.approval(&approval.id).unwrap().execution_state,
+                    approval::ExecutionState::Finished
+                );
+                let operations: i64 = rusqlite::Connection::open(temp.path().join("phase.db"))
+                    .unwrap()
+                    .query_row(
+                        "SELECT count(*) FROM workspace_restores WHERE task_id=?1",
+                        [&task_id],
+                        |row| row.get(0),
+                    )
+                    .unwrap();
+                assert_eq!(operations, 1);
+            }
+        });
+    }
+
+    #[test]
+    fn start_and_resume_wait_for_production_workspace_gate() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, task_id) = two_write_engine(temp.path()).await;
+            finish_two_writes(&engine, &task_id, usize::MAX).await;
+            let runs_before = engine.store.runs().unwrap();
+            let task_before = serde_json::to_value(engine.store.task(&task_id).unwrap()).unwrap();
+            let guard = engine.gate.lock().await;
+            let mut restore = std::pin::pin!(engine.restore(&task_id));
+            let mut start = std::pin::pin!(engine.start(RunRequest {
+                title: "next".into(),
+                kind: SessionKind::Team,
+                tasks: vec![TaskSpec {
+                    name: "reader".into(),
+                    role: "reader".into(),
+                    route_id: "route".into(),
+                    prompt: "done".into(),
+                    depends_on: vec![],
+                    write_scopes: vec![],
+                    tools: false,
+                    allow_commands: false,
+                    max_rounds: 1
+                }]
+            }));
+            let mut resume = std::pin::pin!(engine.resume(&task_id, "continue"));
+            assert_gate_pending(restore.as_mut()).await;
+            assert_gate_pending(start.as_mut()).await;
+            assert_gate_pending(resume.as_mut()).await;
+            assert_eq!(engine.store.runs().unwrap(), runs_before);
+            assert_eq!(
+                serde_json::to_value(engine.store.task(&task_id).unwrap()).unwrap(),
+                task_before
+            );
+            assert!(!engine.is_busy());
+            assert!(engine.latest_restore(&task_id).unwrap().is_none());
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"after-1"
+            );
+            drop(guard);
+            let (receipt, new_run, resumed) = tokio::time::timeout(Duration::from_secs(8), async {
+                tokio::join!(restore, start, resume)
+            })
+            .await
+            .unwrap();
+            assert_eq!(receipt.unwrap().status, RestoreStatus::Complete);
+            assert_eq!(new_run.unwrap().tasks.len(), 1);
+            assert_eq!(resumed.unwrap().id, task_id);
+            assert_eq!(engine.store.runs().unwrap().len(), runs_before.len() + 1);
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"before-a"
+            );
+            engine.cancel_all();
+            tokio::time::timeout(Duration::from_secs(8), async {
+                while engine.is_busy() {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
         });
     }
 }
