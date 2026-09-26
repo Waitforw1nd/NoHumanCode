@@ -1158,7 +1158,7 @@ async fn workflow_inner(
                     .await?,
                 )?;
                 let diff = &result.diff;
-                if diff.path != path
+                if diff.path != path.replace('\\', "/")
                     || diff.view != view
                     || !matches!(
                         diff.status.as_str(),

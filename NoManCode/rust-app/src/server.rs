@@ -957,15 +957,58 @@ async fn decide_approval(
         .map(Json)
         .map_err(approval_error)
 }
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct GitDiffBody {
     path: String,
     view: GitDiffView,
 }
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct EmptyBody {}
+impl<'de> Deserialize<'de> for GitDiffBody {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        struct BodyVisitor;
+        impl<'de> serde::de::Visitor<'de> for BodyVisitor {
+            type Value = GitDiffBody;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a Git diff request object")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Self::Value, A::Error> {
+                let (mut path, mut view) = (None, None);
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "path" if path.is_none() => path = Some(map.next_value()?),
+                        "view" if view.is_none() => view = Some(map.next_value()?),
+                        _ => {
+                            return Err(serde::de::Error::custom(
+                                "unknown or duplicate Git diff field",
+                            ));
+                        }
+                    }
+                }
+                Ok(GitDiffBody {
+                    path: path.ok_or_else(|| serde::de::Error::missing_field("path"))?,
+                    view: view.ok_or_else(|| serde::de::Error::missing_field("view"))?,
+                })
+            }
+        }
+        deserializer.deserialize_map(BodyVisitor)
+    }
+}
+struct EmptyBody;
+impl<'de> Deserialize<'de> for EmptyBody {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let value = Value::deserialize(deserializer)?;
+        if value.as_object().is_some_and(|object| object.is_empty()) {
+            Ok(Self)
+        } else {
+            Err(serde::de::Error::custom("expected an empty JSON object"))
+        }
+    }
+}
 async fn git_diff(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
@@ -1704,5 +1747,65 @@ mod tests {
         )));
         assert_eq!(busy.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(busy.retryable);
+    }
+}
+
+#[cfg(test)]
+mod review_transport_tests {
+    use super::*;
+    #[test]
+    fn review_json_requires_exact_objects() {
+        for bad in ["[]", "null", "{\"extra\":1}", "true"] {
+            assert!(serde_json::from_str::<EmptyBody>(bad).is_err());
+        }
+        assert!(serde_json::from_str::<EmptyBody>("{}").is_ok());
+        for bad in [
+            r#"["src/a","head"]"#,
+            r#"{"path":"src/a","view":"head","extra":1}"#,
+            r#"{"path":"src/a","path":"src/b","view":"head"}"#,
+            r#"{"path":"src/a","view":"head","view":"staged"}"#,
+        ] {
+            assert!(serde_json::from_str::<GitDiffBody>(bad).is_err());
+        }
+    }
+    #[test]
+    fn review_typed_errors_are_static_and_nonretryable() {
+        for (error, status) in [
+            (GitDiffError::InvalidPath, 400),
+            (GitDiffError::Unavailable, 409),
+            (GitDiffError::Unsupported, 409),
+            (GitDiffError::Conflict, 409),
+            (GitDiffError::Internal, 500),
+        ] {
+            let result =
+                git_diff_error(anyhow::Error::new(error).context("private internal location"));
+            assert_eq!(result.status.as_u16(), status);
+            assert!(!result.retryable);
+            assert!(!result.error.to_string().contains("private"));
+        }
+        for (error, status) in [
+            (CheckpointError::Invalid, 400),
+            (CheckpointError::NotFound, 404),
+            (CheckpointError::Conflict, 409),
+            (CheckpointError::Unrestorable, 409),
+            (CheckpointError::Corrupt, 500),
+            (CheckpointError::Internal, 500),
+        ] {
+            let result =
+                checkpoint_error(anyhow::Error::new(error).context("private internal location"));
+            assert_eq!(result.status.as_u16(), status);
+            assert!(!result.retryable);
+            assert!(!result.error.to_string().contains("private"));
+        }
+        for mapping in [git_diff_error, checkpoint_error] {
+            let result = mapping(anyhow::anyhow!("private internal location"));
+            assert_eq!(result.status, StatusCode::INTERNAL_SERVER_ERROR);
+            assert!(!result.retryable);
+            assert!(!result.error.to_string().contains("private"));
+            let result = mapping(WorkspaceChangeError::NotFound.into());
+            assert_eq!(result.status, StatusCode::NOT_FOUND);
+            let result = mapping(WorkspaceChangeError::Active.into());
+            assert_eq!(result.status, StatusCode::CONFLICT);
+        }
     }
 }

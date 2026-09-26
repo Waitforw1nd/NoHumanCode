@@ -482,7 +482,7 @@ async fn h1_read_shapes_and_security_headers_stay() {
     let health: Value = health.json().await.unwrap();
     assert_eq!(health["ok"], true);
     assert_eq!(health["runtime"], "rust");
-    assert_eq!(health["schema_version"], 8);
+    assert_eq!(health["schema_version"], 9);
     assert_ne!(health["schema_version"], 0);
 
     let projects: Vec<Project> = http

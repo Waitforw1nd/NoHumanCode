@@ -3,7 +3,7 @@ use axum::{
     body::Body,
     extract::State,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
 };
 use peachsh::{
     domain::{Route, Settings},
@@ -369,6 +369,9 @@ async fn t01_real_diff_checkpoint_restore_restart_new_turn() {
         assert!(patch.contains(&format!("-{before}")), "{patch}");
         assert!(patch.contains(&format!("+{after}")), "{patch}");
     }
+    let backslash = h.ok(&["task", "diff", task, "--path", r"src\a.txt"]).await;
+    assert_eq!(backslash["diff"]["path"], "src/a.txt");
+    assert_eq!(backslash["diff"]["view"], "head");
     let created = h
         .ok(&["task", "checkpoint", task, "--key", "checkpoint-key"])
         .await;
@@ -459,7 +462,7 @@ async fn t02_review_bad_cli_arguments_exit_two() {
         vec!["task", "checkpoint", "task"],
         vec!["task", "checkpoint", "task", "--key", "a,b"],
         vec!["checkpoint", "get", ".."],
-        vec!["checkpoint", "restore", "bad/id"],
+        vec!["checkpoint", "restore", "bad id"],
     ] {
         let output = cli(1, dir.path(), &args).await;
         assert_eq!(
@@ -470,4 +473,230 @@ async fn t02_review_bad_cli_arguments_exit_two() {
         );
         assert!(output.stdout.is_empty());
     }
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn t02_checkpoint_unknown_receipt_restart_no_retry() {
+    let mut h = host(vec![
+        write_call("w1", "src/a.txt", "after"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    std::fs::write(h.workspace().join("src/a.txt"), "before-private-value").unwrap();
+    let run = start(&h, "unknown-restore", true, false).await;
+    let task = run["tasks"][0]["id"].as_str().unwrap();
+    let run_id = run["id"].as_str().unwrap();
+    let pending = h.pending(task).await;
+    h.ok(&["approval", "approve", pending["id"].as_str().unwrap()])
+        .await;
+    h.done(run_id, task).await;
+    let created = h
+        .ok(&["task", "checkpoint", task, "--key", "restore-case"])
+        .await;
+    let checkpoint = created["checkpoint"]["checkpoint_id"].as_str().unwrap();
+    rusqlite::Connection::open(h.db()).unwrap().execute_batch("CREATE TRIGGER fail_outcome BEFORE UPDATE OF status ON workspace_restore_outcomes WHEN NEW.status='complete' BEGIN SELECT RAISE(ABORT,'SQL-private-value'); END;").unwrap();
+    let unknown = failure(&h.command(&["checkpoint", "restore", checkpoint]).await);
+    assert_eq!(unknown["status"], "unknown");
+    assert_eq!(unknown["receipt"]["status"], "unknown");
+    assert_eq!(unknown["receipt"]["outcomes"][0]["status"], "unknown");
+    assert_eq!(unknown["retryable"], false);
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/a.txt")).unwrap(),
+        b"before-private-value"
+    );
+    for forbidden in ["before-private-value", "SQL-private-value", "before_blob"] {
+        assert!(!unknown.to_string().contains(forbidden));
+    }
+    let context = h.context(run_id).await;
+    h.stop().await;
+    h.restart().await;
+    assert_eq!(h.context(run_id).await, context);
+    let blocked = failure(
+        &h.command(&[
+            "session",
+            "send",
+            context["session"]["id"].as_str().unwrap(),
+            "--agent",
+            context["tasks"][0]["agent_id"].as_str().unwrap(),
+            "--after-turn",
+            context["latest_turn"]["id"].as_str().unwrap(),
+            "--message",
+            "must not continue unknown effects",
+            "--key",
+            "unknown-blocked",
+        ])
+        .await,
+    );
+    assert_eq!(blocked["code"], "conflict");
+    assert_eq!(blocked["retryable"], false);
+    assert_eq!(h.context(run_id).await, context);
+    assert_eq!(
+        h.ok(&["task", "changes", task]).await["restore"],
+        unknown["receipt"]
+    );
+    std::fs::write(h.workspace().join("src/a.txt"), "later external edit").unwrap();
+    let repeated = failure(&h.command(&["checkpoint", "restore", checkpoint]).await);
+    assert_eq!(repeated["receipt"], unknown["receipt"]);
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/a.txt")).unwrap(),
+        b"later external edit"
+    );
+    assert_eq!(h.script.requests.lock().unwrap().len(), 2);
+    h.stop().await;
+}
+
+#[cfg(windows)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn t02_checkpoint_real_partial_receipt() {
+    use std::{fs::OpenOptions, os::windows::fs::OpenOptionsExt, time::Instant};
+    let mut h = host(vec![
+        write_call("w1", "src/a.txt", "a-after"),
+        write_call("w2", "src/b.txt", "b-after"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    std::fs::write(h.workspace().join("src/a.txt"), "a-before").unwrap();
+    std::fs::write(h.workspace().join("src/b.txt"), "b-before").unwrap();
+    let run = start(&h, "partial-restore", true, false).await;
+    let task = run["tasks"][0]["id"].as_str().unwrap();
+    let run_id = run["id"].as_str().unwrap();
+    for id in ["w1", "w2"] {
+        let pending = h.pending(task).await;
+        assert_eq!(pending["tool_call_id"], id);
+        h.ok(&["approval", "approve", pending["id"].as_str().unwrap()])
+            .await;
+    }
+    h.done(run_id, task).await;
+    let created = h
+        .ok(&["task", "checkpoint", task, "--key", "restore-case"])
+        .await;
+    let checkpoint = created["checkpoint"]["checkpoint_id"].as_str().unwrap();
+    let db = rusqlite::Connection::open(h.db()).unwrap();
+    db.execute_batch("CREATE TRIGGER pause_first_outcome BEFORE UPDATE OF status ON workspace_restore_outcomes WHEN NEW.status='complete' AND NEW.path='src/a.txt' BEGIN SELECT sum(x) FROM (WITH RECURSIVE seq(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM seq WHERE x<10000000) SELECT x FROM seq); END;").unwrap();
+    let port = h.port;
+    let cwd = h.cwd();
+    let id = checkpoint.to_owned();
+    let request =
+        tokio::spawn(async move { cli(port, &cwd, &["checkpoint", "restore", &id]).await });
+    let deadline = Instant::now() + Duration::from_secs(8);
+    loop {
+        let probe = rusqlite::Connection::open(h.db()).unwrap();
+        probe.busy_timeout(Duration::ZERO).unwrap();
+        let busy = matches!(probe.execute_batch("BEGIN IMMEDIATE; ROLLBACK;"),Err(rusqlite::Error::SqliteFailure(error,_)) if error.code==rusqlite::ErrorCode::DatabaseBusy);
+        if busy && std::fs::read(h.workspace().join("src/a.txt")).unwrap() == b"a-before" {
+            break;
+        }
+        assert!(
+            !request.is_finished(),
+            "restore finished before first path commit barrier"
+        );
+        assert!(Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    let lock = OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(h.workspace().join("src/b.txt"))
+        .unwrap();
+    let partial = failure(&request.await.unwrap());
+    assert_eq!(partial["status"], "partial");
+    assert_eq!(partial["restored"], 1);
+    assert_eq!(partial["receipt"]["outcomes"][0]["status"], "complete");
+    assert_eq!(partial["receipt"]["outcomes"][1]["status"], "unknown");
+    drop(lock);
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/b.txt")).unwrap(),
+        b"b-after"
+    );
+    assert_eq!(
+        failure(&h.command(&["checkpoint", "restore", checkpoint]).await)["receipt"],
+        partial["receipt"]
+    );
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/b.txt")).unwrap(),
+        b"b-after"
+    );
+    h.stop().await;
+}
+
+fn checkpoint_wire() -> Value {
+    json!({"checkpoint":{"checkpoint_id":"cp","task_id":"t","kind":"task_before","generation":1,"created_at":1,"manifest_digest":"a".repeat(64),"entries":[{"path":"src/a.txt","before_digest":null,"after_digest":"b".repeat(64)}]}})
+}
+#[tokio::test(flavor = "multi_thread")]
+async fn t02_new_cli_malformed_oversize_token_redirect_single_post() {
+    let cwd = tempfile::tempdir().unwrap();
+    let attempts = Arc::new(Mutex::new(0usize));
+    let mode = Arc::new(Mutex::new(0usize));
+    let state = (attempts.clone(), mode.clone());
+    let app=Router::new().route("/api/bootstrap",get(||async{Json(json!({"token":"review-private-token"}))})).route("/api/checkpoints/cp",get(||async{Json(checkpoint_wire())})).fallback(move |request:axum::extract::Request| {
+        let (attempts,mode)=state.clone(); async move {
+            assert_eq!(request.method(),axum::http::Method::POST); assert_eq!(request.headers()["x-peachsh-token"],"review-private-token");
+            *attempts.lock().unwrap()+=1;
+            match *mode.lock().unwrap() {
+                0 => "not json".into_response(),
+                1 => ([("content-length","1048577")],Body::from(vec![b'x';1_048_577])).into_response(),
+                2 => ([("content-type","application/json")],r#"{"extra":"review-private-\u0074oken"}"#).into_response(),
+                3 => (axum::http::StatusCode::TEMPORARY_REDIRECT,[("location","http://127.0.0.1:1/steal")],"redirect").into_response(),
+                _ => {let stream=async_stream::stream!{yield Ok::<_,std::io::Error>(b"{".to_vec()); tokio::task::yield_now().await;yield Err(std::io::Error::other("private transport"));}; Body::from_stream(stream).into_response()},
+            }
+        }
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let mut count = 0;
+    for current in 0..5 {
+        *mode.lock().unwrap() = current;
+        for args in [
+            vec!["task", "checkpoint", "t", "--key", "original"],
+            vec!["checkpoint", "restore", "cp"],
+            vec!["task", "diff", "t", "--path", "src/a.txt"],
+        ] {
+            let error = failure(&cli(port, cwd.path(), &args).await);
+            if args[1] != "diff" {
+                assert_eq!(error["code"], "operation_result_unknown");
+            } else {
+                assert_ne!(error["code"], "operation_result_unknown");
+            }
+            assert!(!error.to_string().contains("private"));
+            count += 1;
+            assert_eq!(*attempts.lock().unwrap(), count);
+        }
+    }
+    assert_eq!(std::fs::read_dir(cwd.path()).unwrap().count(), 0);
+    server.abort();
+    assert!(server.await.unwrap_err().is_cancelled());
+}
+#[tokio::test(flavor = "multi_thread")]
+async fn t02_diff_status_projection_and_response_path_binding() {
+    let mode = Arc::new(Mutex::new(0usize));
+    let state = mode.clone();
+    let app=Router::new().route("/api/bootstrap",get(||async{Json(json!({"token":"diff-token"}))})).route("/api/tasks/t/git-diff",post(move|Json(body):Json<Value>|{let mode=state.clone();async move{
+        assert_eq!(body["path"],"src/a.txt"); assert_eq!(body["view"],"head");
+        let n=*mode.lock().unwrap();let status=["binary","too_large","missing","unchanged","text","text"][n];
+        Json(json!({"diff":{"path":if n==5{"src/other.txt"}else{"src/a.txt"},"view":"head","base_oid":null,"index_oid":null,"before_digest":null,"after_digest":null,"status":status,"patch":if status=="text"{json!("--- a/src/a.txt\n+++ b/src/a.txt\n@@ -0,0 +1 @@\n+[REDACTED]\n")}else{Value::Null},"redacted":n==4}}))
+    }}));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let cwd = tempfile::tempdir().unwrap();
+    for n in 0..6 {
+        *mode.lock().unwrap() = n;
+        let output = cli(
+            port,
+            cwd.path(),
+            &["task", "diff", "t", "--path", "src/a.txt"],
+        )
+        .await;
+        if n == 5 {
+            assert_eq!(failure(&output)["code"], "internal");
+        } else {
+            let value = stdout(&output);
+            assert_eq!(
+                value["diff"]["status"],
+                ["binary", "too_large", "missing", "unchanged", "text"][n]
+            );
+        }
+    }
+    server.abort();
+    assert!(server.await.unwrap_err().is_cancelled());
 }

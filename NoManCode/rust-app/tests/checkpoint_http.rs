@@ -536,3 +536,223 @@ async fn t02_checkpoint_http_strict_security_zero_effects() {
     assert_eq!(snapshot(&h), before);
     h.stop().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn k06_checkpoint_http_kill_after_effect_before_outcome() {
+    let mut h = host(vec![
+        write_call("crash-write", "src/a.txt", "after"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    std::fs::write(h.workspace().join("src/a.txt"), "before-crash-secret").unwrap();
+    let run = start(&h, "checkpoint-crash", true, false).await;
+    let run_id = run["run_id"].as_str().unwrap();
+    let task = run["tasks"][0]["id"].as_str().unwrap();
+    let approval = h.pending(task).await;
+    h.ok(&["approval", "approve", approval["id"].as_str().unwrap()])
+        .await;
+    h.done(run_id, task).await;
+    let (c, origin, token) = auth(&h).await;
+    let create = c
+        .post(format!("{origin}/api/tasks/{task}/checkpoints"))
+        .header("x-peachsh-token", &token)
+        .header("idempotency-key", "crash-cp")
+        .json(&json!({}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(create.status(), reqwest::StatusCode::CREATED);
+    let created = create.json::<Value>().await.unwrap();
+    let cp = created["checkpoint"]["checkpoint_id"].as_str().unwrap();
+    let context = h.context(run_id).await;
+    let db = rusqlite::Connection::open(h.db()).unwrap();
+    db.execute_batch("CREATE TRIGGER pause_checkpoint_outcome BEFORE UPDATE OF status ON workspace_restore_outcomes WHEN NEW.status='complete' BEGIN SELECT sum(x) FROM (WITH RECURSIVE seq(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM seq WHERE x<100000000) SELECT x FROM seq); END;").unwrap();
+    let url = format!("{origin}/api/checkpoints/{cp}/restore");
+    let request = tokio::spawn(async move {
+        c.post(url)
+            .header("x-peachsh-token", token)
+            .json(&json!({}))
+            .send()
+            .await
+    });
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let probe = rusqlite::Connection::open(h.db()).unwrap();
+        probe.busy_timeout(Duration::ZERO).unwrap();
+        let busy = matches!(probe.execute_batch("BEGIN IMMEDIATE; ROLLBACK;"),Err(rusqlite::Error::SqliteFailure(error,_)) if error.code==rusqlite::ErrorCode::DatabaseBusy);
+        if busy && std::fs::read(h.workspace().join("src/a.txt")).unwrap() == b"before-crash-secret"
+        {
+            break;
+        }
+        assert!(
+            !request.is_finished(),
+            "restore completed before crash barrier"
+        );
+        assert!(std::time::Instant::now() < deadline);
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    let (restore_id, state): (String, String) = db
+        .query_row(
+            "SELECT id,status FROM workspace_restores WHERE task_id=?1",
+            [task],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(state, "claimed");
+    h.stop().await;
+    assert!(request.await.unwrap().is_err());
+    h.restart().await;
+    assert_eq!(
+        h.ok(&["checkpoint", "get", cp]).await["checkpoint"],
+        created["checkpoint"]
+    );
+    let receipt = h.ok(&["task", "changes", task]).await["restore"].clone();
+    assert_eq!(receipt["restore_id"], restore_id);
+    assert_eq!(receipt["status"], "unknown");
+    assert_eq!(receipt["restored"], 0);
+    std::fs::write(h.workspace().join("src/a.txt"), "external-after-crash").unwrap();
+    let retry = failure(&h.command(&["checkpoint", "restore", cp]).await);
+    assert_eq!(retry["receipt"], receipt);
+    assert_eq!(
+        failure(&h.command(&["task", "restore", task]).await)["receipt"],
+        receipt
+    );
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/a.txt")).unwrap(),
+        b"external-after-crash"
+    );
+    let blocked = failure(
+        &h.command(&[
+            "session",
+            "send",
+            context["session"]["id"].as_str().unwrap(),
+            "--agent",
+            context["tasks"][0]["agent_id"].as_str().unwrap(),
+            "--after-turn",
+            context["latest_turn"]["id"].as_str().unwrap(),
+            "--message",
+            "continue",
+            "--key",
+            "blocked-next",
+        ])
+        .await,
+    );
+    assert_eq!(blocked["code"], "conflict");
+    assert_eq!(h.context(run_id).await, context);
+    assert_eq!(h.script.requests.lock().unwrap().len(), 2);
+    assert!(!retry.to_string().contains("before-crash-secret"));
+    h.stop().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500() {
+    let mut h = host(vec![
+        write_call("safe-write", "src/a.txt", "after"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let secret = "api_key=checkpointBeforeSecret123456";
+    std::fs::write(h.workspace().join("src/a.txt"), secret).unwrap();
+    let run = start(&h, "safe-checkpoint", true, false).await;
+    let run_id = run["run_id"].as_str().unwrap();
+    let task = run["tasks"][0]["id"].as_str().unwrap();
+    let card = h.pending(task).await;
+    h.ok(&["approval", "approve", card["id"].as_str().unwrap()])
+        .await;
+    h.done(run_id, task).await;
+    let (c, origin, token) = auth(&h).await;
+    let endpoint = format!("{origin}/api/tasks/{task}/checkpoints");
+    let mut created = Value::Null;
+    for expected in [201, 200] {
+        let response = c
+            .post(&endpoint)
+            .header("x-peachsh-token", &token)
+            .header("idempotency-key", "safe-key")
+            .json(&json!({}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), expected);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let value = response.json::<Value>().await.unwrap();
+        assert_eq!(value["replayed"], expected == 200);
+        if expected == 201 {
+            created = value.clone();
+        } else {
+            assert_eq!(value["checkpoint"], created["checkpoint"]);
+        }
+        for forbidden in [
+            secret,
+            "checkpointBeforeSecret123456",
+            "before_blob",
+            "manifest\"",
+            &h.dir.path().to_string_lossy(),
+        ] {
+            assert!(!value.to_string().contains(forbidden));
+        }
+    }
+    let cp = created["checkpoint"]["checkpoint_id"].as_str().unwrap();
+    let get = c
+        .get(format!("{origin}/api/checkpoints/{cp}"))
+        .send()
+        .await
+        .unwrap()
+        .json::<Value>()
+        .await
+        .unwrap();
+    assert_eq!(get["checkpoint"], created["checkpoint"]);
+    let db = rusqlite::Connection::open(h.db()).unwrap();
+    let count: i64 = db
+        .query_row(
+            "SELECT count(*) FROM events WHERE run_id=?1",
+            [run_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(count > 0);
+    let events = h
+        .command(&["run", "events", run_id, "--limit", &count.to_string()])
+        .await;
+    assert_eq!(events.status.code(), Some(0));
+    let text = String::from_utf8(events.stdout).unwrap();
+    assert!(text.contains("checkpoint.created"));
+    assert!(!text.contains("checkpointBeforeSecret123456"));
+    assert!(!text.contains("before_blob"));
+    let before = snapshot(&h);
+    db.execute("UPDATE checkpoints SET manifest='{}' WHERE id=?1", [cp])
+        .unwrap();
+    for response in [
+        c.get(format!("{origin}/api/checkpoints/{cp}"))
+            .send()
+            .await
+            .unwrap(),
+        c.post(format!("{origin}/api/checkpoints/{cp}/restore"))
+            .header("x-peachsh-token", &token)
+            .json(&json!({}))
+            .send()
+            .await
+            .unwrap(),
+        c.post(&endpoint)
+            .header("x-peachsh-token", &token)
+            .header("idempotency-key", "safe-key")
+            .json(&json!({}))
+            .send()
+            .await
+            .unwrap(),
+    ] {
+        let error = assert_error(response, 500, "internal").await;
+        assert!(!error.to_string().contains("Secret"));
+        assert!(
+            !error
+                .to_string()
+                .contains(&h.dir.path().to_string_lossy().to_string())
+        );
+    }
+    assert_eq!(snapshot(&h), before);
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/a.txt")).unwrap(),
+        b"after"
+    );
+    assert_eq!(h.script.requests.lock().unwrap().len(), 2);
+    h.stop().await;
+}
