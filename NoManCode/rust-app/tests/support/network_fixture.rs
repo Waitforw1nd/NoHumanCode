@@ -22,6 +22,8 @@ pub fn authorize_routes(store: &Store) {
     }
 }
 
+// Each integration target compiles this module separately; only migration tests use this helper.
+#[allow(dead_code)]
 pub fn drop_network_schema(db: &rusqlite::Connection) {
     db.execute_batch("DROP TABLE IF EXISTS command_network_ack;DROP TABLE IF EXISTS network_calls;DROP TABLE IF EXISTS task_network_bindings;DROP TABLE IF EXISTS network_confirmations;DROP TABLE IF EXISTS network_authorizations;DROP TABLE IF EXISTS network_subjects;DROP TABLE IF EXISTS network_events;DELETE FROM schema_migrations WHERE id='network-authorization-repository';").unwrap();
 }
