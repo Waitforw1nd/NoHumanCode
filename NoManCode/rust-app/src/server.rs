@@ -4,7 +4,8 @@ use crate::{
     domain::*,
     engine::Engine,
     git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
-    provider, secrets, wasm,
+    network_authorization::{ConfirmRequest, NetworkError, NetworkErrorKind, NetworkSubject},
+    secrets, wasm,
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
 };
 use axum::{
@@ -61,6 +62,9 @@ impl ApiError {
 }
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        if let Some(error) = self.error.downcast_ref::<NetworkError>() {
+            return network_error(error.clone());
+        }
         let message = secrets::scrub(&self.error.to_string(), "");
         let body = ErrorBody {
             code: self.code,
@@ -82,6 +86,97 @@ impl IntoResponse for ApiError {
 /// 400, a missing or unsupported content type as 415, and the existing 1 MiB
 /// limit as 413.
 pub struct ContractJson<T>(pub T);
+
+/// Reject duplicate keys before DTO deserialization, including nested objects.
+/// `serde_json::Value` alone would silently keep the last duplicate value.
+struct StrictObject<T>(T);
+struct StrictValue(Value);
+impl<'de> Deserialize<'de> for StrictValue {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = StrictValue;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a JSON value without duplicate object keys")
+            }
+            fn visit_bool<E: serde::de::Error>(
+                self,
+                v: bool,
+            ) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(Value::Bool(v)))
+            }
+            fn visit_i64<E: serde::de::Error>(self, v: i64) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(v.into()))
+            }
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(v.into()))
+            }
+            fn visit_f64<E: serde::de::Error>(self, v: f64) -> std::result::Result<Self::Value, E> {
+                serde_json::Number::from_f64(v)
+                    .map(|n| StrictValue(Value::Number(n)))
+                    .ok_or_else(|| E::custom("invalid JSON number"))
+            }
+            fn visit_str<E: serde::de::Error>(
+                self,
+                v: &str,
+            ) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(Value::String(v.to_owned())))
+            }
+            fn visit_string<E: serde::de::Error>(
+                self,
+                v: String,
+            ) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(Value::String(v)))
+            }
+            fn visit_unit<E: serde::de::Error>(self) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(Value::Null))
+            }
+            fn visit_none<E: serde::de::Error>(self) -> std::result::Result<Self::Value, E> {
+                Ok(StrictValue(Value::Null))
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                mut seq: A,
+            ) -> std::result::Result<Self::Value, A::Error> {
+                let mut values = Vec::new();
+                while let Some(StrictValue(value)) = seq.next_element()? {
+                    values.push(value);
+                }
+                Ok(StrictValue(Value::Array(values)))
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Self::Value, A::Error> {
+                let mut values = serde_json::Map::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if values.contains_key(&key) {
+                        return Err(serde::de::Error::custom("duplicate JSON object key"));
+                    }
+                    let StrictValue(value) = map.next_value()?;
+                    values.insert(key, value);
+                }
+                Ok(StrictValue(Value::Object(values)))
+            }
+        }
+        deserializer.deserialize_any(Visitor)
+    }
+}
+impl<'de, T: serde::de::DeserializeOwned> Deserialize<'de> for StrictObject<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let StrictValue(value) = StrictValue::deserialize(deserializer)?;
+        if !value.is_object() {
+            return Err(serde::de::Error::custom("JSON object required"));
+        }
+        serde_json::from_value(value)
+            .map(Self)
+            .map_err(serde::de::Error::custom)
+    }
+}
 
 impl<S, T> FromRequest<S> for ContractJson<T>
 where
@@ -292,10 +387,25 @@ pub fn router(app: App) -> Router {
         .route("/api/health", get(health))
         .route("/api/bootstrap", get(bootstrap))
         .route("/api/settings", get(settings).put(save_settings))
-        .route("/api/routes/{id}/models", get(models))
+        .route(
+            "/api/routes/{id}/models",
+            get(network_get_moved).post(models),
+        )
         .route("/api/routes/{id}/check", post(check))
         .route("/api/newapi", put(account))
-        .route("/api/newapi/balance", get(balance))
+        .route("/api/newapi/balance", get(network_get_moved).post(balance))
+        .route("/api/network/preview", post(network_preview))
+        .route("/api/network/authorizations", post(network_confirm))
+        .route(
+            "/api/network/authorizations/{id}",
+            get(network_authorization),
+        )
+        .route(
+            "/api/network/authorizations/{id}/revoke",
+            post(network_revoke),
+        )
+        .route("/api/network/calls/{id}", get(network_call))
+        .route("/api/tasks/{id}/network-calls", get(task_network_calls))
         .route("/api/runs", get(runs).post(start))
         .route("/api/runs/{id}", get(run))
         .route("/api/runs/{id}/context", get(run_context))
@@ -339,10 +449,15 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
     if headers.get("sec-fetch-site").and_then(|v| v.to_str().ok()) == Some("cross-site") {
         return forbidden("拒绝跨站请求");
     }
-    if !matches!(
-        *request.method(),
-        axum::http::Method::GET | axum::http::Method::HEAD
-    ) && headers.get("x-peachsh-token").and_then(|v| v.to_str().ok()) != Some(&app.token)
+    let authenticated_read = request.uri().path().starts_with("/api/network/")
+        || (request.uri().path().starts_with("/api/tasks/")
+            && request.uri().path().ends_with("/network-calls"));
+    if (authenticated_read
+        || !matches!(
+            *request.method(),
+            axum::http::Method::GET | axum::http::Method::HEAD
+        ))
+        && headers.get("x-peachsh-token").and_then(|v| v.to_str().ok()) != Some(&app.token)
     {
         return forbidden("写请求令牌缺失或不正确");
     }
@@ -408,67 +523,54 @@ async fn save_settings(
         .await?;
     Ok(Json(json!({"ok":true})))
 }
-fn route(app: &App, id: &str) -> Result<Route> {
-    app.engine
-        .store
-        .settings()
-        .map_err(read_error)?
-        .ok_or_else(|| anyhow::anyhow!("缺少设置"))?
-        .routes
-        .into_iter()
-        .find(|r| r.id == id)
-        .ok_or_else(|| anyhow::anyhow!("路由不存在").into())
+async fn network_get_moved() -> Response {
+    let mut response = ApiError::with_code(
+        StatusCode::METHOD_NOT_ALLOWED,
+        ErrorCode::RequestFailed,
+        false,
+        anyhow::anyhow!("此接口需要使用带令牌的POST显式请求网络访问"),
+    )
+    .into_response();
+    response
+        .headers_mut()
+        .insert(header::ALLOW, HeaderValue::from_static("POST"));
+    response
 }
 async fn models(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
-) -> Result<Json<Value>> {
-    let id = object_id(id)?;
-    let route = route(&app, &id)?;
-    let key = app.engine.key(&route)?;
-    Ok(Json(
-        json!({"models":provider::models(&app.engine.client,&route,&key).await?}),
-    ))
+    ContractJson(_): ContractJson<EmptyBody>,
+) -> Response {
+    let id = match workspace_task_id(id) {
+        Ok(id) => id,
+        Err(error) => return error.into_response(),
+    };
+    match app.engine.route_models(&id).await {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
+    }
 }
 async fn check(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
-) -> Result<Json<Value>> {
-    let id = object_id(id)?;
-    let mut route = route(&app, &id)?;
-    route.max_tokens = 128;
-    let key = app.engine.key(&route)?;
-    let started = std::time::Instant::now();
-    let list = provider::models(&app.engine.client, &route, &key).await?;
-    if !list.contains(&route.model) {
-        return Err(anyhow::anyhow!(
-            "模型列表中没有 {}，可用模型：{}",
-            route.model,
-            list.join(", ")
-        )
-        .into());
+    ContractJson(_): ContractJson<EmptyBody>,
+) -> Response {
+    let id = match workspace_task_id(id) {
+        Ok(id) => id,
+        Err(error) => return error.into_response(),
+    };
+    match app.engine.route_check(&id).await {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
     }
-    let (message, usage) = provider::complete(
-        &app.engine.client,
-        &route,
-        &key,
-        &[json!({"role":"user","content":"Return only the result of 17 * 19."})],
-        &[],
-        |_| Ok(()),
-    )
-    .await?;
-    let correct = message["content"]
-        .as_str()
-        .is_some_and(|s| s.trim() == "323");
-    Ok(Json(
-        json!({"ok":correct,"model":route.model,"answer":message["content"],"usage":usage,"elapsed_ms":started.elapsed().as_millis()}),
-    ))
 }
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Bind {
     account: Account,
     token: Option<String>,
 }
+#[cfg(test)]
 fn select_account_token(
     previous: Option<&Account>,
     next: &Account,
@@ -485,51 +587,152 @@ fn select_account_token(
 }
 async fn account(
     State(app): State<App>,
-    ContractJson(body): ContractJson<Bind>,
-) -> Result<Json<Value>> {
-    let mut settings = app
-        .engine
-        .store
-        .settings()
-        .map_err(read_error)?
-        .ok_or_else(|| anyhow::anyhow!("缺少设置"))?;
-    let previous_account = settings.newapi.clone();
-    settings.newapi = Some(body.account);
-    settings.validate()?;
-    let token = select_account_token(
-        previous_account.as_ref(),
-        settings.newapi.as_ref().unwrap(),
-        body.token,
-        app.engine.store.secret("newapi-account")?,
-    )?;
-    let result = provider::balance(
-        &app.engine.client,
-        settings.newapi.as_ref().unwrap(),
-        &token,
-    )
-    .await?;
-    app.engine.configure(settings).await?;
-    app.engine.store.put_secret("newapi-account", &token)?;
-    Ok(Json(result))
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<Bind>>,
+) -> Response {
+    match app.engine.bind_account(body.account, body.token).await {
+        Ok(()) => Json(json!({"ok":true,"network_authorization_required":true})).into_response(),
+        Err(error) => network_error(error),
+    }
 }
-async fn balance(State(app): State<App>) -> Result<Json<Value>> {
-    let settings = app
+async fn balance(State(app): State<App>, ContractJson(_): ContractJson<EmptyBody>) -> Response {
+    match app.engine.account_balance().await {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
+    }
+}
+fn network_error(error: NetworkError) -> Response {
+    let (status, code, message) = match error.kind {
+        NetworkErrorKind::Invalid => (StatusCode::BAD_REQUEST, "invalid", "网络请求无效"),
+        NetworkErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found", "网络对象不存在"),
+        NetworkErrorKind::Required => (StatusCode::CONFLICT, "required", "需要明确网络授权"),
+        NetworkErrorKind::Stale => (
+            StatusCode::CONFLICT,
+            "stale",
+            "网络授权版本已失效，请重新查看并确认",
+        ),
+        NetworkErrorKind::Revoked => (StatusCode::CONFLICT, "revoked", "网络授权已撤销"),
+        NetworkErrorKind::Conflict => (StatusCode::CONFLICT, "conflict", "网络授权绑定冲突"),
+        NetworkErrorKind::Corrupt => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "corrupt",
+            "网络持久状态损坏",
+        ),
+        NetworkErrorKind::Unknown => (
+            StatusCode::CONFLICT,
+            "unknown",
+            "网络调用结果未知，请查询回执，不要自动重试",
+        ),
+        NetworkErrorKind::Internal => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "网络服务处理失败",
+        ),
+        NetworkErrorKind::Upstream => (StatusCode::BAD_GATEWAY, "upstream", "上游请求未成功完成"),
+    };
+    (status,Json(json!({"error":{"code":code,"message":message,"dispatch_state":error.dispatch_state,"calls":error.calls,"retryable":false}}))).into_response()
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NetworkConfirmBody {
+    subject: NetworkSubject,
+    config_revision: u64,
+    credential_revision: u64,
+    binding_digest: String,
+    purposes: Vec<crate::provider_transport::NetworkPurpose>,
+}
+async fn network_preview(
+    State(app): State<App>,
+    ContractJson(StrictObject(subject)): ContractJson<StrictObject<NetworkSubject>>,
+) -> Response {
+    match app.engine.network_preview(subject).await {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
+    }
+}
+async fn network_confirm(
+    State(app): State<App>,
+    headers: HeaderMap,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<NetworkConfirmBody>>,
+) -> Response {
+    let key = match required_idempotency_key(&headers) {
+        Ok(key) => key,
+        Err(error) => return error.into_response(),
+    };
+    let request = ConfirmRequest {
+        config_revision: body.config_revision,
+        credential_revision: body.credential_revision,
+        binding_digest: body.binding_digest,
+        purposes: body.purposes,
+    };
+    match app
         .engine
-        .store
-        .settings()
-        .map_err(read_error)?
-        .ok_or_else(|| anyhow::anyhow!("缺少设置"))?;
-    let account = settings
-        .newapi
-        .ok_or_else(|| anyhow::anyhow!("请先绑定 New API 账号"))?;
-    let token = app
-        .engine
-        .store
-        .secret("newapi-account")?
-        .ok_or_else(|| anyhow::anyhow!("缺少账号访问令牌"))?;
-    Ok(Json(
-        provider::balance(&app.engine.client, &account, &token).await?,
-    ))
+        .network_confirm(body.subject, request, &key)
+        .await
+    {
+        Ok(value) => (
+            if value.replayed {
+                StatusCode::OK
+            } else {
+                StatusCode::CREATED
+            },
+            Json(value),
+        )
+            .into_response(),
+        Err(error) => network_error(error),
+    }
+}
+async fn network_authorization(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Response {
+    let id = match workspace_task_id(id) {
+        Ok(id) => id,
+        Err(error) => return error.into_response(),
+    };
+    match app.engine.network_authorization(&id) {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
+    }
+}
+async fn network_revoke(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(_): ContractJson<EmptyBody>,
+) -> Response {
+    let id = match workspace_task_id(id) {
+        Ok(id) => id,
+        Err(error) => return error.into_response(),
+    };
+    match app.engine.network_revoke(&id).await {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
+    }
+}
+async fn network_call(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Response {
+    let id = match workspace_task_id(id) {
+        Ok(id) => id,
+        Err(error) => return error.into_response(),
+    };
+    match app.engine.network_call(&id) {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => network_error(error),
+    }
+}
+async fn task_network_calls(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Response {
+    let id = match workspace_task_id(id) {
+        Ok(id) => id,
+        Err(error) => return error.into_response(),
+    };
+    match app.engine.network_calls_for_task(&id) {
+        Ok(value) => Json(json!({"calls":value})).into_response(),
+        Err(error) => network_error(error),
+    }
 }
 async fn runs(State(app): State<App>) -> Result<Json<Value>> {
     Ok(Json(json!(app.engine.store.runs().map_err(read_error)?)))
@@ -616,6 +819,9 @@ fn required_idempotency_key(headers: &HeaderMap) -> Result<String> {
 /// local fixed message instead of the raw anyhow text. Only the typed
 /// NotFound maps to 404 — a raw missing row inside the command is a 500.
 fn turn_command_error(error: anyhow::Error) -> ApiError {
+    if error.is::<NetworkError>() {
+        return ApiError::from(error);
+    }
     // anyhow::Error::downcast_ref also sees through `context()` layers; a
     // `chain()` element for a context is a wrapper that fails `is::<T>`.
     if error.is::<crate::store::IdempotencyConflict>() {
@@ -824,6 +1030,8 @@ struct ApprovalDto {
     execution_state: approval::ExecutionState,
     created_at: u64,
     decided_at: Option<u64>,
+    network_notice: Option<approval::CommandNetworkNotice>,
+    command_network_ack: approval::CommandNetworkAck,
 }
 
 impl From<approval::ApprovalRecord> for ApprovalDto {
@@ -841,6 +1049,8 @@ impl From<approval::ApprovalRecord> for ApprovalDto {
             execution_state: record.execution_state,
             created_at: record.created_at,
             decided_at: record.decided_at,
+            network_notice: record.network_notice,
+            command_network_ack: record.command_network_ack,
         }
     }
 }
@@ -856,6 +1066,8 @@ enum ApprovalDecision {
 #[serde(deny_unknown_fields)]
 struct ApprovalDecisionBody {
     decision: ApprovalDecision,
+    #[serde(default)]
+    acknowledge_command_network: bool,
 }
 
 fn approval_id(path: std::result::Result<Path<String>, PathRejection>) -> Result<String> {
@@ -877,6 +1089,11 @@ fn approval_error(error: anyhow::Error) -> ApiError {
         .find_map(|cause| cause.downcast_ref::<approval::ApprovalError>())
     {
         let (status, code, message) = match typed {
+            approval::ApprovalError::NetworkAcknowledgementRequired { .. } => (
+                StatusCode::CONFLICT,
+                ErrorCode::Conflict,
+                "此命令可能访问任意网络，当前没有OS出站沙箱；请显式确认",
+            ),
             approval::ApprovalError::NotFound { .. } => {
                 (StatusCode::NOT_FOUND, ErrorCode::NotFound, "审批不存在")
             }
@@ -947,12 +1164,28 @@ async fn approval(
 async fn decide_approval(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
-    ContractJson(body): ContractJson<ApprovalDecisionBody>,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<ApprovalDecisionBody>>,
 ) -> Result<Json<ApprovalDto>> {
     let id = approval_id(id)?;
     let approved = matches!(body.decision, ApprovalDecision::Approve);
+    if body.acknowledge_command_network {
+        let approval = app.engine.store.approval(&id).map_err(approval_error)?;
+        if approval.tool_name != "run_command" || !approved {
+            return Err(ApiError::with_code(
+                StatusCode::BAD_REQUEST,
+                ErrorCode::RequestFailed,
+                false,
+                anyhow::anyhow!("此审批不接受命令联网确认"),
+            ));
+        }
+    }
     app.engine
-        .decide_approval(&id, approved, Some("user"))
+        .decide_approval_with_network_ack(
+            &id,
+            approved,
+            Some("user"),
+            body.acknowledge_command_network,
+        )
         .map(ApprovalDto::from)
         .map(Json)
         .map_err(approval_error)
