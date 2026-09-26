@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
             .exit();
         }
         if !command.valid_ids() {
-            clap::Error::raw(clap::error::ErrorKind::ValueValidation, "标识无效").exit();
+            clap::Error::raw(clap::error::ErrorKind::ValueValidation, "命令参数无效").exit();
         }
         if let Err(error) = cli::execute(args.port, args.json, command).await {
             error.print(args.json);
