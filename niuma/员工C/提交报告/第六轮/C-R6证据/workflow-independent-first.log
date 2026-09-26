@@ -1,0 +1,31 @@
+   Compiling peachsh v0.2.0 (.\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.85s
+     Running tests\cli_workflow.rs (target\debug\deps\cli_workflow-2de5cd1c7d2592fe.exe)
+
+running 6 tests
+test n13_workflow_parse_gates_and_unknown_post_are_safe_and_single_attempt ... ok
+test n11_sse_split_utf8_crlf_comments_multiline_limit_and_failure_cursor ... ok
+
+thread 'n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention' (44952) panicked at tests\cli_workflow.rs:849:6:
+called `Result::unwrap()` on an `Err` value: SqliteFailure(Error { code: ConstraintViolation, extended_code: 787 }, Some("FOREIGN KEY constraint failed"))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention ... FAILED
+
+thread 'n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute' (33868) panicked at tests\cli_workflow.rs:82:5:
+assertion `left == right` failed: stderr={"code":"operation_result_unknown","error":"继续结果未知，请查询原任务所在 run status，不要自动重复继续","message":"继续结果未知，请查询原任务所在 run status，不要自动重复继续","retryable":false}
+ stdout=
+  left: Some(1)
+ right: Some(0)
+test n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute ... FAILED
+test n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects ... ok
+test n10_cli_real_partial_receipt_preserves_both_path_facts ... ok
+
+failures:
+
+failures:
+    n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention
+    n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 1 filtered out; finished in 2.96s
+
+error: test failed, to rerun pass `--test cli_workflow`

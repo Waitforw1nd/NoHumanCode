@@ -1,0 +1,376 @@
+{
+  "candidate": "1a3f3e0840331d54e3419b5826b845d3667feed0",
+  "rust_tree": "ba569b4e5c4365d5e71a3075ecc7fafe48373bfa",
+  "raw_unchanged": true,
+  "transformations": [
+    "发布副本将工作树绝对路径前缀替换为工作树根相对标记 .，保留后续模块路径。",
+    "诊断第3次消息中的临时绝对workspace位置替换为 ./workspace (temporary test workspace)，不改工具调用或结果。",
+    "发布副本统一UTF-8无BOM、LF，移除文件尾多余空行，非空文件保留一个终止换行。"
+  ],
+  "files": [
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/approval-cli-regression.raw.log",
+      "published_path": "approval-cli-regression.log",
+      "raw_sha256": "c47f06013aa81b0ee0b25db93c81c3afd8dd4c746bee4bf80b9df37edf9051d2",
+      "published_sha256": "f428fbcc94c33a82e7447b6e258b81937871b35140ac87b6d683166457402385",
+      "raw_bytes": 1083,
+      "published_bytes": 1038,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/approval-regression-check.raw.log",
+      "published_path": "approval-regression-check.log",
+      "raw_sha256": "e5ddc585ae5167b6d23e4155345861dc290e2b8307e462697ce180f4950491ed",
+      "published_sha256": "87d0548a5681f0b88058252cb3112e6ba7d1f3716417fa081d905c5707b99b9f",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/checkpoint-check-final.raw.log",
+      "published_path": "checkpoint-check-final.log",
+      "raw_sha256": "11c913f0763d307851cf2feca29d192f597671ff66a5bce3bad5930007dab02f",
+      "published_sha256": "079b09b4b17fdad0b0a7f82607275a2656e1c039b0c1eeaf611e7e904af81e64",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/checkpoint-check.raw.log",
+      "published_path": "checkpoint-check.log",
+      "raw_sha256": "cbf83311de6aa3fce06510038b0d7eeedbc867e31c3797da031813e021fd1651",
+      "published_sha256": "3e334b302357569746d280539363d4bc21fe12a77f7ff267f7829c5e4f4f819b",
+      "raw_bytes": 9742,
+      "published_bytes": 9388,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/cli-stage-check-final.raw.log",
+      "published_path": "cli-stage-check-final.log",
+      "raw_sha256": "53c8101ef334e3b83482b5e8ee2f7a483768e075ed4b4c645e066a90c980828a",
+      "published_sha256": "6e51333b394a6981983f9ed258e93637b162d286a2fe2aabf28bb7f4247ebfab",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/cli-stage-check.raw.log",
+      "published_path": "cli-stage-check.log",
+      "raw_sha256": "be2def60434fa52f89583b146e27c53e3a2df9b4be2b969b566b68c8c74d88cc",
+      "published_sha256": "9f5a8064bc5445935a4386b03fee751cd5e81884695454d27b7ff0d3d68d8f60",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/cli-stage-clippy-first.raw.log",
+      "published_path": "cli-stage-clippy-first.log",
+      "raw_sha256": "2e5013233c55edad9432c148113965b30d3c35c1d4505f8a6b2732a8ca4fbbb2",
+      "published_sha256": "f29ef79a37436b2b0189d453b16d977678d2a5e2a0d2f6f5e75e6a61291692fa",
+      "raw_bytes": 2628,
+      "published_bytes": 2507,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/cli-stage-clippy-fixed.raw.log",
+      "published_path": "cli-stage-clippy-fixed.log",
+      "raw_sha256": "6e1a617b92392f446d35c9b9578af533d83856ae4a88ad01910b10bd973b7186",
+      "published_sha256": "904b15c0eb6fe4516854af7fd550c96e45d3fa5e4f8040b9a0c111a2a3467fa1",
+      "raw_bytes": 150,
+      "published_bytes": 123,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/combined-directed-check.raw.log",
+      "published_path": "combined-directed-check.log",
+      "raw_sha256": "c063d404e695964c876b26e54a742128a77595edad71d33af4e78f945022a206",
+      "published_sha256": "c4a8f6d8e631dfc34473fe99ff573d59296a8a6f6ef4c8b147fd27fc7de0af1e",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/combined-first-check.raw.log",
+      "published_path": "combined-first-check.log",
+      "raw_sha256": "67084269e8cdcf289e23181b0366744276b41535d437c8d957b476c22dbab1b2",
+      "published_sha256": "a04f5a012f9d0ee646d34096275f5fbe2ebb357909ac2e9ce380ae16f996787e",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/combined-n09-final.raw.log",
+      "published_path": "combined-n09-final.log",
+      "raw_sha256": "78176e0a5b3887daac11c2562bd95a749b56fe49c3a75079c817c11ee7e17395",
+      "published_sha256": "03147b7290bca4b1f1837a9dec86a2f54f08effb6f654b853f87507dc4ea6318",
+      "raw_bytes": 392,
+      "published_bytes": 357,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/combined-precommit-check.raw.log",
+      "published_path": "combined-precommit-check.log",
+      "raw_sha256": "995a2a3c5f26c56ca8b650288e5405ca68dc1c6f05d55f2b8ef62b2e461c728f",
+      "published_sha256": "5403378695e19c3998cdafda6e194cf2c8a71bad57fe6fcf84038171295fc922",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/combined-workflow-turn-first.raw.log",
+      "published_path": "combined-workflow-turn-first.log",
+      "raw_sha256": "bc0fbcfaa6e135a765759c3b18dab808059831cda302cba54e708b474a677f8d",
+      "published_sha256": "ebdf99b413e25ce175d53d056fb81fa558e0c9d5334618fac83267a71726e970",
+      "raw_bytes": 2575,
+      "published_bytes": 2497,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/combined-workflow-turn-fixed.raw.log",
+      "published_path": "combined-workflow-turn-fixed.log",
+      "raw_sha256": "fd7a79d8ae9f41541d8286d56a019440260c82167cdaf64b734b64012d43d692",
+      "published_sha256": "f526aa36e9c99106d3a33dabb5414af20ee61def0c5d6cadda50d366330993fe",
+      "raw_bytes": 2050,
+      "published_bytes": 1983,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/commands.jsonl",
+      "published_path": "commands.jsonl",
+      "raw_sha256": "2db935429533c8a53296a5e9ea0bcd890b54fedcd32a004d5a07a1f21c38acb7",
+      "published_sha256": "1fa38d3a907808984f98e7ab68a3f7101df6966a221ae1134ea2dc2c6d4a57e3",
+      "raw_bytes": 5351,
+      "published_bytes": 5328,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/context-mapping.raw.log",
+      "published_path": "context-mapping.log",
+      "raw_sha256": "3f922d9c2fed655a0ad037d4d9e5659bd095f859287a45a9cb7cfd71275bd139",
+      "published_sha256": "36af724d6009850611244c78f68c23c265059feed6c42d2b96c3f7c2ba3abba0",
+      "raw_bytes": 5675,
+      "published_bytes": 5456,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/gate-check.raw.log",
+      "published_path": "gate-check.log",
+      "raw_sha256": "c063d404e695964c876b26e54a742128a77595edad71d33af4e78f945022a206",
+      "published_sha256": "c4a8f6d8e631dfc34473fe99ff573d59296a8a6f6ef4c8b147fd27fc7de0af1e",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/gate-clippy.raw.log",
+      "published_path": "gate-clippy.log",
+      "raw_sha256": "8ab326b32cd582aa94d11f6208e3c2c72981276371e16b8cf6c06b35afd27635",
+      "published_sha256": "67b7af856e9d57d7c884f0540af1f4eb270ae5d37f1288879f3f21d120ec7229",
+      "raw_bytes": 630,
+      "published_bytes": 548,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/gate-test.raw.log",
+      "published_path": "gate-test.log",
+      "raw_sha256": "010cff61cdc42fae31374a2aedb342dc719818d729ab4bc323fb6b5bcc1c102b",
+      "published_sha256": "3a533f6f2224b2fa82ef0a494eec408b6b7ccc38c5de9494a7f389ac584920d8",
+      "raw_bytes": 31437,
+      "published_bytes": 30743,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/gate-wasm-check.raw.log",
+      "published_path": "gate-wasm-check.log",
+      "raw_sha256": "ea131effdf65fb6780d57f8a9acb7be801db2007b8b3d2e3ed1711264e12d798",
+      "published_sha256": "cfd6335cbacdcfa7acc439ba8743bedccafa70871275a43ec4eca06405a63bab",
+      "raw_bytes": 6463,
+      "published_bytes": 6234,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/n13-first.raw.log",
+      "published_path": "n13-first.log",
+      "raw_sha256": "326994c6d841196225c0c110aeac1aac0798d013f5cd02814ed7d62cc98adc14",
+      "published_sha256": "b15da17518ba926c14b67a87f0c6a1d59f790e48d58b0129b54b93aec58c5594",
+      "raw_bytes": 804,
+      "published_bytes": 757,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-check-2.raw.log",
+      "published_path": "workflow-check-2.log",
+      "raw_sha256": "b17fbb5308af3441f425028fceb27ec6f6cf538428d88f40b274cb9dc310a098",
+      "published_sha256": "3415fab6816633bc79d9d75b7b9909d4bc6385a295a27e785a0f4a1416abb888",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-check-3.raw.log",
+      "published_path": "workflow-check-3.log",
+      "raw_sha256": "55a3d124736a10c7a42eb44186aa4438675339eeae41fd4156611526df76fbdc",
+      "published_sha256": "2648400c72d436c2d64c549344cd2d0f2cf0f04e303f873a4bdba15bb26c2eeb",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-check-4.raw.log",
+      "published_path": "workflow-check-4.log",
+      "raw_sha256": "c45ef84ca36baf4469a262d1da22b11807855dff2cce4f39a825eca43fafc9f6",
+      "published_sha256": "4a0b3efa3fe1468ee38d687ec87a233201f5e4371ea2af55ef7eb84ed9c067cb",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-check.raw.log",
+      "published_path": "workflow-check.log",
+      "raw_sha256": "8802e2695879d7906c87638f3203f9a3edf13883286b0faadb38271d140b6a45",
+      "published_sha256": "08dc1f5388b768e0289ba9d34009eb8191996038a33e965f5e773dcba031c1f6",
+      "raw_bytes": 407,
+      "published_bytes": 378,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-command-diagnostic-2.raw.log",
+      "published_path": "workflow-command-diagnostic-2.log",
+      "raw_sha256": "56449da369fee0227d7cfe7d6398b15d0d3a832eef2e19597b4e690bcffd8e93",
+      "published_sha256": "038288f27221d0a67725b3680eaac532b18468ea2c1722c46f416a32911f398c",
+      "raw_bytes": 908,
+      "published_bytes": 864,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-command-diagnostic-3.raw.log",
+      "published_path": "workflow-command-diagnostic-3.log",
+      "raw_sha256": "cea560ed411ae1b411740d179f81d270151d47443c3d6b48436e021c307e5b1a",
+      "published_sha256": "5f7abbd6ccd324939724021c06bd24f59a362eea63106e1861ce3d0e0a3264c8",
+      "raw_bytes": 2748,
+      "published_bytes": 2666,
+      "path_changes": [
+        "worktree prefix to .",
+        "temporary fixture workspace prefix"
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-command-diagnostic.raw.log",
+      "published_path": "workflow-command-diagnostic.log",
+      "raw_sha256": "61b30ae5aee4eafa2c2a8e8b92c68cd55ae0705f26c1e54bafebcb238a58e52e",
+      "published_sha256": "2e3be75abafb0791b308ccc88c0de3620a168453785bd8dfe2c68d1dd0aa8b32",
+      "raw_bytes": 911,
+      "published_bytes": 867,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-diagnostic-2-check.raw.log",
+      "published_path": "workflow-diagnostic-2-check.log",
+      "raw_sha256": "4095f309633250cac8e558a7c2fbb746a87b38d03c4b5d0f4a173157a258cecc",
+      "published_sha256": "2008a7b67e247cffada0bec5946ce1b99b0739bb187db13f796beceed1e9c928",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-diagnostic-check.raw.log",
+      "published_path": "workflow-diagnostic-check.log",
+      "raw_sha256": "c063d404e695964c876b26e54a742128a77595edad71d33af4e78f945022a206",
+      "published_sha256": "c4a8f6d8e631dfc34473fe99ff573d59296a8a6f6ef4c8b147fd27fc7de0af1e",
+      "raw_bytes": 330,
+      "published_bytes": 327,
+      "path_changes": []
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-full-first.raw.log",
+      "published_path": "workflow-full-first.log",
+      "raw_sha256": "f953de07e7782eaa84ddddd2bfb854aea0527109d5ce225a0a176c88b5927c52",
+      "published_sha256": "ceca7c8e356f8ccbc2d4e2a737ef230f59c09727393b8db13bd7de095468ba19",
+      "raw_bytes": 1562,
+      "published_bytes": 1510,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-independent-8.raw.log",
+      "published_path": "workflow-independent-8.log",
+      "raw_sha256": "6a661b0a4269de65c81f933de592bc3dc0bda12e0c3380f304e9fa4387d5b3f8",
+      "published_sha256": "fe645bcaf31bf8aa26c0dc79218159a65c97ffe182d500f481b0e70adc7aa552",
+      "raw_bytes": 1008,
+      "published_bytes": 966,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-independent-first.raw.log",
+      "published_path": "workflow-independent-first.log",
+      "raw_sha256": "066a12b696768095670a627d7e33d0406b6b65c11ee73a9736138880aeef011e",
+      "published_sha256": "e4ac2f7cea2a9cd5ed7a5da9e41ff29ac60669351f8c371d2d9522b2bb3c72c4",
+      "raw_bytes": 1948,
+      "published_bytes": 1892,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    },
+    {
+      "raw_path": "../../../../../../nhc-c-cli-workflow/.local/C-R6-evidence/workflow-independent-fixed.raw.log",
+      "published_path": "workflow-independent-fixed.log",
+      "raw_sha256": "b43fe28f20549321a628f227ff2a5f27113f133931e2c42631678a73a7f3952c",
+      "published_sha256": "4c413e6bff760c00de1392f2f2ccd09d8ce71c54c8c5d3680091cb01a035534a",
+      "raw_bytes": 857,
+      "published_bytes": 817,
+      "path_changes": [
+        "worktree prefix to ."
+      ]
+    }
+  ],
+  "no_output_log_files": [
+    "cli-stage-fmt.raw.log",
+    "gate-fmt.raw.log"
+  ],
+  "no_output_explanation": "上述fmt命令无输出，Tee-Object没有创建原始日志文件；退出码和已有时间保存在commands.jsonl。不补造原始文件或hash。"
+}

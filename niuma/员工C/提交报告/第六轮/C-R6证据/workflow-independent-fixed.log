@@ -1,0 +1,13 @@
+   Compiling peachsh v0.2.0 (.\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.45s
+     Running tests\cli_workflow.rs (target\debug\deps\cli_workflow-2de5cd1c7d2592fe.exe)
+
+running 6 tests
+test n13_workflow_parse_gates_and_unknown_post_are_safe_and_single_attempt ... ok
+test n11_sse_split_utf8_crlf_comments_multiline_limit_and_failure_cursor ... ok
+test n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention ... ok
+test n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects ... ok
+test n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute ... ok
+test n10_cli_real_partial_receipt_preserves_both_path_facts ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 3.45s

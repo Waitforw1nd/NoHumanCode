@@ -1,0 +1,19 @@
+   Compiling peachsh v0.2.0 (.\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.89s
+     Running tests\cli_workflow.rs (target\debug\deps\cli_workflow-2de5cd1c7d2592fe.exe)
+
+running 1 test
+
+thread 'n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart' (44520) panicked at tests\cli_workflow.rs:366:62:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "系统找不到指定的文件。" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart ... FAILED
+
+failures:
+
+failures:
+    n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 1.46s
+
+error: test failed, to rerun pass `--test cli_workflow`

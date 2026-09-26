@@ -1,0 +1,27 @@
+   Compiling peachsh v0.2.0 (.\NoManCode\rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.78s
+     Running tests\cli_workflow.rs (target\debug\deps\cli_workflow-2de5cd1c7d2592fe.exe)
+
+running 9 tests
+test n13_write_reply_transport_oversize_and_escaped_token_never_retry ... ok
+test n13_workflow_parse_gates_and_unknown_post_are_safe_and_single_attempt ... ok
+test n11_sse_split_utf8_crlf_comments_multiline_limit_and_failure_cursor ... ok
+test n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention ... ok
+test n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute ... ok
+test n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects ... ok
+
+thread 'n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart' (38464) panicked at tests\cli_workflow.rs:353:62:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "系统找不到指定的文件。" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart ... FAILED
+test n10_cli_real_partial_receipt_preserves_both_path_facts ... ok
+test n11_sse_keepalive_exceeds_regular_timeout_and_ignores_proxy ... ok
+
+failures:
+
+failures:
+    n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart
+
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.69s
+
+error: test failed, to rerun pass `--test cli_workflow`
