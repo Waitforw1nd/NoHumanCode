@@ -274,6 +274,74 @@ impl Store {
         )?;
         Ok(stmt.query_map([], |r| Ok(json!({"id":r.get::<_,String>(0)?,"title":r.get::<_,String>(1)?,"kind":r.get::<_,String>(2)?,"created_at":r.get::<_,u64>(3)?})))?.collect::<rusqlite::Result<Vec<_>>>()?)
     }
+
+    /// Read actual domain identities in one SQLite read snapshot. No legacy IDs are guessed.
+    pub fn run_context(&self, run_id: &str) -> Result<RunContext> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM runs WHERE id=?1)",
+            [run_id],
+            |row| row.get(0),
+        )?;
+        if !exists {
+            return Err(RunContextError::NotFound.into());
+        }
+        let session_ids: Vec<String> = tx
+            .prepare("SELECT id FROM sessions WHERE legacy_run_id=?1")?
+            .query_map([run_id], |row| row.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        let session_id = match session_ids.as_slice() {
+            [] => return Err(RunContextError::Unmapped.into()),
+            [only] => SessionId(only.clone()),
+            _ => return Err(RunContextError::CorruptState.into()),
+        };
+        let repo = repository::Repository::new(&tx);
+        let session = repo.session(&session_id).map_err(run_context_error)?;
+        let project = repo
+            .project(&session.project_id)
+            .map_err(run_context_error)?;
+        let latest_turn = repo
+            .latest_committed_turn(&session.id)
+            .map_err(run_context_error)?
+            .ok_or(RunContextError::CorruptState)?;
+        let tasks = repo
+            .turn_tasks(&latest_turn.id)
+            .map_err(run_context_error)?;
+        if session.id != session_id
+            || session.legacy_run_id != run_id
+            || project.id != session.project_id
+            || latest_turn.session_id != session.id
+            || latest_turn.project_id != project.id
+            || tasks.is_empty()
+        {
+            return Err(RunContextError::CorruptState.into());
+        }
+        for task in &tasks {
+            let agent = repo.agent(&task.agent_id).map_err(run_context_error)?;
+            let legacy = legacy_task_row(&tx, &task.legacy_task_id).map_err(run_context_error)?;
+            if task.turn_id != latest_turn.id
+                || task.session_id != session.id
+                || agent.session_id != session.id
+                || legacy.run_id != run_id
+                || legacy.status != task.status.as_str()
+                || task
+                    .depends_on
+                    .iter()
+                    .any(|id| !tasks.iter().any(|candidate| &candidate.id == id))
+            {
+                return Err(RunContextError::CorruptState.into());
+            }
+        }
+        tx.commit()?;
+        Ok(RunContext {
+            run_id: run_id.to_owned(),
+            project,
+            session,
+            latest_turn,
+            tasks,
+        })
+    }
     pub fn event(&self, task_id: &str, kind: &str, data: Value) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
@@ -1501,6 +1569,23 @@ fn command_message(task: &Task) -> String {
         .and_then(|message| message["content"].as_str())
         .unwrap_or_default()
         .to_owned()
+}
+
+fn run_context_error(error: anyhow::Error) -> anyhow::Error {
+    if let Some(sqlite) = error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<rusqlite::Error>())
+    {
+        match sqlite {
+            rusqlite::Error::QueryReturnedNoRows
+            | rusqlite::Error::InvalidColumnType(..)
+            | rusqlite::Error::FromSqlConversionFailure(..)
+            | rusqlite::Error::IntegralValueOutOfRange(..) => {}
+            // Preserve busy/locked and other operational database causes for HTTP classification.
+            _ => return error,
+        }
+    }
+    RunContextError::CorruptState.into()
 }
 
 fn same_project_path(left: &str, right: &str) -> bool {

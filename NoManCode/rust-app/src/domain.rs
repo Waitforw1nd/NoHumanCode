@@ -453,6 +453,35 @@ pub struct TurnTask {
     pub updated_at: u64,
 }
 
+/// Actual persisted identities for a run, with tasks of its latest committed turn.
+#[derive(Clone, Debug, Serialize)]
+pub struct RunContext {
+    pub run_id: String,
+    pub project: Project,
+    pub session: Session,
+    pub latest_turn: Turn,
+    pub tasks: Vec<TurnTask>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RunContextError {
+    NotFound,
+    Unmapped,
+    CorruptState,
+}
+
+impl std::fmt::Display for RunContextError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::NotFound => "任务运行不存在",
+            Self::Unmapped => "历史运行没有会话身份映射",
+            Self::CorruptState => "运行会话身份数据损坏",
+        })
+    }
+}
+
+impl std::error::Error for RunContextError {}
+
 /// The only Task JSON that persistence may store.
 ///
 /// `create_run`, idempotent creation, turn commit, task updates, and recovery
@@ -528,6 +557,8 @@ pub enum ChatTurnError {
     NotFound,
     /// A required row exists but cannot be decoded, or ordering evidence is missing.
     CorruptState,
+    /// A prior task in this session has unresolved tool or recovery effects.
+    UnresolvedEffects,
 }
 
 impl std::fmt::Display for ChatTurnError {
@@ -540,6 +571,7 @@ impl std::fmt::Display for ChatTurnError {
             Self::InvalidInput => "连续对话请求无效",
             Self::NotFound => "连续对话所需对象不存在",
             Self::CorruptState => "连续对话持久状态损坏，不能判断归属或顺序",
+            Self::UnresolvedEffects => "会话存在未决工具或恢复结果，不能追加新回合",
         })
     }
 }
