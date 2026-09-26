@@ -2494,6 +2494,185 @@ pub fn initial_settings(store: &Store, legacy: &Path, workspace: &Path) -> Resul
     Ok(settings)
 }
 
+impl Store {
+    pub(crate) fn checkpoint_for_task(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<(crate::checkpoint::Checkpoint, String)>> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        let row: Option<(String, String)> = tx
+            .query_row(
+                "SELECT id,creation_key FROM checkpoints WHERE task_id=?1",
+                [task_id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?;
+        row.map(|(id, key)| Ok((read_checkpoint(&tx, &id)?.0, key)))
+            .transpose()
+    }
+
+    pub(crate) fn checkpoint_record(
+        &self,
+        id: &str,
+    ) -> Result<(crate::checkpoint::Checkpoint, crate::checkpoint::Manifest)> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        read_checkpoint(&tx, id)
+    }
+
+    pub(crate) fn commit_checkpoint(
+        &self,
+        task: &Task,
+        key: &str,
+        manifest: &crate::checkpoint::Manifest,
+    ) -> Result<crate::checkpoint::CheckpointCreated> {
+        use crate::checkpoint::{Checkpoint, CheckpointCreated, CheckpointError};
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if let Some((id, old_key)) = tx
+            .query_row(
+                "SELECT id,creation_key FROM checkpoints WHERE task_id=?1",
+                [&task.id],
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+            )
+            .optional()?
+        {
+            if old_key != key {
+                return Err(CheckpointError::Conflict.into());
+            }
+            return Ok(CheckpointCreated {
+                checkpoint: read_checkpoint(&tx, &id)?.0,
+                replayed: true,
+            });
+        }
+        let value: String =
+            tx.query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {
+                r.get(0)
+            })?;
+        let current: Task = serde_json::from_str(&value).map_err(|_| CheckpointError::Corrupt)?;
+        if safe_task_value(&current)? != safe_task_value(task)? || current.status != "completed" {
+            return Err(CheckpointError::Conflict.into());
+        }
+        let unsafe_state: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM workspace_restores WHERE task_id=?1) OR EXISTS(SELECT 1 FROM approvals WHERE task_id=?1 AND (status='pending' OR execution_state IN ('claimed','unknown') OR (status='approved' AND execution_state!='finished'))) OR EXISTS(SELECT 1 FROM workspace_changes WHERE task_id=?1 AND (state IN ('prepared','unknown') OR restore_state!='pending'))",[&task.id],|r|r.get(0))?;
+        if unsafe_state {
+            return Err(CheckpointError::Unrestorable.into());
+        }
+        verify_checkpoint_sources(&tx, manifest)?;
+        let serialized = serde_json::to_string(manifest)?;
+        let checkpoint = Checkpoint {
+            checkpoint_id: uuid::Uuid::new_v4().to_string(),
+            task_id: task.id.clone(),
+            kind: "task_before".into(),
+            generation: 1,
+            created_at: now(),
+            manifest_digest: digest(serialized.as_bytes()),
+            entries: manifest.entries.clone(),
+        };
+        tx.execute("INSERT INTO checkpoints(id,task_id,creation_key,kind,generation,created_at,manifest_digest,manifest) VALUES (?1,?2,?3,'task_before',1,?4,?5,?6)",params![checkpoint.checkpoint_id,task.id,key,checkpoint.created_at,checkpoint.manifest_digest,serialized])?;
+        task_event_tx(
+            &tx,
+            &task.id,
+            "checkpoint.created",
+            json!({"checkpoint_id":checkpoint.checkpoint_id,"task_id":task.id,"count":checkpoint.entries.len(),"manifest_digest":checkpoint.manifest_digest}),
+        )?;
+        tx.commit()?;
+        Ok(CheckpointCreated {
+            checkpoint,
+            replayed: false,
+        })
+    }
+}
+
+fn checkpoint_sources(db: &Connection, task_id: &str) -> Result<Vec<PreparedChange>> {
+    let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY created_at,rowid")?;
+    Ok(stmt
+        .query_map([task_id], workspace_change_row)?
+        .collect::<rusqlite::Result<_>>()?)
+}
+
+fn verify_checkpoint_sources(
+    db: &Connection,
+    manifest: &crate::checkpoint::Manifest,
+) -> Result<()> {
+    use crate::checkpoint::CheckpointError;
+    let value: String = db
+        .query_row(
+            "SELECT value FROM tasks WHERE id=?1",
+            [&manifest.task_id],
+            |r| r.get(0),
+        )
+        .map_err(|_| CheckpointError::Corrupt)?;
+    let task: Task = serde_json::from_str(&value).map_err(|_| CheckpointError::Corrupt)?;
+    let records =
+        checkpoint_sources(db, &manifest.task_id).map_err(|_| CheckpointError::Corrupt)?;
+    if task.id != manifest.task_id
+        || task.workspace != manifest.workspace
+        || task.spec.write_scopes != manifest.write_scopes
+        || crate::checkpoint::source_digest(&records)? != manifest.source_digest
+    {
+        return Err(CheckpointError::Corrupt.into());
+    }
+    Ok(())
+}
+
+fn read_checkpoint(
+    db: &Connection,
+    id: &str,
+) -> Result<(crate::checkpoint::Checkpoint, crate::checkpoint::Manifest)> {
+    use crate::checkpoint::{Checkpoint, CheckpointError, Manifest};
+    let row: Option<(String,String,u32,u64,String,String,String)> = db.query_row("SELECT task_id,kind,generation,created_at,manifest_digest,manifest,creation_key FROM checkpoints WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?))).optional().map_err(|_|CheckpointError::Corrupt)?;
+    let (task_id, kind, generation, created_at, manifest_digest, serialized, key) =
+        row.ok_or(CheckpointError::NotFound)?;
+    let manifest: Manifest =
+        serde_json::from_str(&serialized).map_err(|_| CheckpointError::Corrupt)?;
+    if uuid::Uuid::parse_str(id).is_err()
+        || kind != "task_before"
+        || generation != 1
+        || digest(serialized.as_bytes()) != manifest_digest
+        || task_id != manifest.task_id
+        || manifest.entries.is_empty()
+        || manifest.entries.len() > 128
+        || secrets::validate_idempotency_key(&key).is_err()
+    {
+        return Err(CheckpointError::Corrupt.into());
+    }
+    verify_checkpoint_sources(db, &manifest)?;
+    let records = checkpoint_sources(db, &task_id).map_err(|_| CheckpointError::Corrupt)?;
+    let mut expected = std::collections::BTreeMap::new();
+    for record in records.iter().filter(|r| r.state == ChangeState::Finished) {
+        let after = record
+            .after_digest
+            .clone()
+            .filter(|s| valid_digest(s))
+            .ok_or(CheckpointError::Corrupt)?;
+        let entry =
+            expected
+                .entry(record.path_key.clone())
+                .or_insert(crate::checkpoint::CheckpointEntry {
+                    path: record.path.clone(),
+                    before_digest: record.before_digest.clone(),
+                    after_digest: after.clone(),
+                });
+        entry.after_digest = after;
+    }
+    if expected.into_values().collect::<Vec<_>>() != manifest.entries {
+        return Err(CheckpointError::Corrupt.into());
+    }
+    Ok((
+        Checkpoint {
+            checkpoint_id: id.into(),
+            task_id,
+            kind,
+            generation,
+            created_at,
+            manifest_digest,
+            entries: manifest.entries.clone(),
+        },
+        manifest,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3223,183 +3402,4 @@ mod tests {
         );
         assert_eq!(store.runs().unwrap().len(), 1);
     }
-}
-
-impl Store {
-    pub(crate) fn checkpoint_for_task(
-        &self,
-        task_id: &str,
-    ) -> Result<Option<(crate::checkpoint::Checkpoint, String)>> {
-        let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
-        let row: Option<(String, String)> = tx
-            .query_row(
-                "SELECT id,creation_key FROM checkpoints WHERE task_id=?1",
-                [task_id],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .optional()?;
-        row.map(|(id, key)| Ok((read_checkpoint(&tx, &id)?.0, key)))
-            .transpose()
-    }
-
-    pub(crate) fn checkpoint_record(
-        &self,
-        id: &str,
-    ) -> Result<(crate::checkpoint::Checkpoint, crate::checkpoint::Manifest)> {
-        let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
-        read_checkpoint(&tx, id)
-    }
-
-    pub(crate) fn commit_checkpoint(
-        &self,
-        task: &Task,
-        key: &str,
-        manifest: &crate::checkpoint::Manifest,
-    ) -> Result<crate::checkpoint::CheckpointCreated> {
-        use crate::checkpoint::{Checkpoint, CheckpointCreated, CheckpointError};
-        let mut db = self.db.lock().unwrap();
-        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        if let Some((id, old_key)) = tx
-            .query_row(
-                "SELECT id,creation_key FROM checkpoints WHERE task_id=?1",
-                [&task.id],
-                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
-            )
-            .optional()?
-        {
-            if old_key != key {
-                return Err(CheckpointError::Conflict.into());
-            }
-            return Ok(CheckpointCreated {
-                checkpoint: read_checkpoint(&tx, &id)?.0,
-                replayed: true,
-            });
-        }
-        let value: String =
-            tx.query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {
-                r.get(0)
-            })?;
-        let current: Task = serde_json::from_str(&value).map_err(|_| CheckpointError::Corrupt)?;
-        if safe_task_value(&current)? != safe_task_value(task)? || current.status != "completed" {
-            return Err(CheckpointError::Conflict.into());
-        }
-        let unsafe_state: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM workspace_restores WHERE task_id=?1) OR EXISTS(SELECT 1 FROM approvals WHERE task_id=?1 AND (status='pending' OR execution_state IN ('claimed','unknown') OR (status='approved' AND execution_state!='finished'))) OR EXISTS(SELECT 1 FROM workspace_changes WHERE task_id=?1 AND (state IN ('prepared','unknown') OR restore_state!='pending'))",[&task.id],|r|r.get(0))?;
-        if unsafe_state {
-            return Err(CheckpointError::Unrestorable.into());
-        }
-        verify_checkpoint_sources(&tx, manifest)?;
-        let serialized = serde_json::to_string(manifest)?;
-        let checkpoint = Checkpoint {
-            checkpoint_id: uuid::Uuid::new_v4().to_string(),
-            task_id: task.id.clone(),
-            kind: "task_before".into(),
-            generation: 1,
-            created_at: now(),
-            manifest_digest: digest(serialized.as_bytes()),
-            entries: manifest.entries.clone(),
-        };
-        tx.execute("INSERT INTO checkpoints(id,task_id,creation_key,kind,generation,created_at,manifest_digest,manifest) VALUES (?1,?2,?3,'task_before',1,?4,?5,?6)",params![checkpoint.checkpoint_id,task.id,key,checkpoint.created_at,checkpoint.manifest_digest,serialized])?;
-        task_event_tx(
-            &tx,
-            &task.id,
-            "checkpoint.created",
-            json!({"checkpoint_id":checkpoint.checkpoint_id,"task_id":task.id,"count":checkpoint.entries.len(),"manifest_digest":checkpoint.manifest_digest}),
-        )?;
-        tx.commit()?;
-        Ok(CheckpointCreated {
-            checkpoint,
-            replayed: false,
-        })
-    }
-}
-
-fn checkpoint_sources(db: &Connection, task_id: &str) -> Result<Vec<PreparedChange>> {
-    let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY created_at,rowid")?;
-    Ok(stmt
-        .query_map([task_id], workspace_change_row)?
-        .collect::<rusqlite::Result<_>>()?)
-}
-
-fn verify_checkpoint_sources(
-    db: &Connection,
-    manifest: &crate::checkpoint::Manifest,
-) -> Result<()> {
-    use crate::checkpoint::CheckpointError;
-    let value: String = db
-        .query_row(
-            "SELECT value FROM tasks WHERE id=?1",
-            [&manifest.task_id],
-            |r| r.get(0),
-        )
-        .map_err(|_| CheckpointError::Corrupt)?;
-    let task: Task = serde_json::from_str(&value).map_err(|_| CheckpointError::Corrupt)?;
-    let records =
-        checkpoint_sources(db, &manifest.task_id).map_err(|_| CheckpointError::Corrupt)?;
-    if task.id != manifest.task_id
-        || task.workspace != manifest.workspace
-        || task.spec.write_scopes != manifest.write_scopes
-        || crate::checkpoint::source_digest(&records)? != manifest.source_digest
-    {
-        return Err(CheckpointError::Corrupt.into());
-    }
-    Ok(())
-}
-
-fn read_checkpoint(
-    db: &Connection,
-    id: &str,
-) -> Result<(crate::checkpoint::Checkpoint, crate::checkpoint::Manifest)> {
-    use crate::checkpoint::{Checkpoint, CheckpointError, Manifest};
-    let row: Option<(String,String,u32,u64,String,String,String)> = db.query_row("SELECT task_id,kind,generation,created_at,manifest_digest,manifest,creation_key FROM checkpoints WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?))).optional().map_err(|_|CheckpointError::Corrupt)?;
-    let (task_id, kind, generation, created_at, manifest_digest, serialized, key) =
-        row.ok_or(CheckpointError::NotFound)?;
-    let manifest: Manifest =
-        serde_json::from_str(&serialized).map_err(|_| CheckpointError::Corrupt)?;
-    if uuid::Uuid::parse_str(id).is_err()
-        || kind != "task_before"
-        || generation != 1
-        || digest(serialized.as_bytes()) != manifest_digest
-        || task_id != manifest.task_id
-        || manifest.entries.is_empty()
-        || manifest.entries.len() > 128
-        || secrets::validate_idempotency_key(&key).is_err()
-    {
-        return Err(CheckpointError::Corrupt.into());
-    }
-    verify_checkpoint_sources(db, &manifest)?;
-    let records = checkpoint_sources(db, &task_id).map_err(|_| CheckpointError::Corrupt)?;
-    let mut expected = std::collections::BTreeMap::new();
-    for record in records.iter().filter(|r| r.state == ChangeState::Finished) {
-        let after = record
-            .after_digest
-            .clone()
-            .filter(|s| valid_digest(s))
-            .ok_or(CheckpointError::Corrupt)?;
-        let entry =
-            expected
-                .entry(record.path_key.clone())
-                .or_insert(crate::checkpoint::CheckpointEntry {
-                    path: record.path.clone(),
-                    before_digest: record.before_digest.clone(),
-                    after_digest: after.clone(),
-                });
-        entry.after_digest = after;
-    }
-    if expected.into_values().collect::<Vec<_>>() != manifest.entries {
-        return Err(CheckpointError::Corrupt.into());
-    }
-    Ok((
-        Checkpoint {
-            checkpoint_id: id.into(),
-            task_id,
-            kind,
-            generation,
-            created_at,
-            manifest_digest,
-            entries: manifest.entries.clone(),
-        },
-        manifest,
-    ))
 }
