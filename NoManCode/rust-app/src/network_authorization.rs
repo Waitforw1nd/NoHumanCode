@@ -453,30 +453,453 @@ impl Store {
         mut request: ConfirmRequest,
         key: &str,
     ) -> Result<NetworkDecision, NetworkError> {
-        (||->AnyResult<_>{
-        secrets::validate_idempotency_key(key).map_err(|_|failure(NetworkErrorKind::Invalid))?;let subject_key=subject.key()?;
-        request.purposes.sort();request.purposes.dedup();if request.purposes.is_empty() || request.purposes.iter().any(|p|!allowed(&subject).contains(p)){return Err(failure(NetworkErrorKind::Invalid));}
-        let request_digest=digest(&serde_json::to_vec(&request)?);
-        let mut db=self.db.lock().unwrap();let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        let existing:Option<(String,String)>=tx.query_row("SELECT request_digest,authorization_id FROM network_confirmations WHERE subject=?1 AND creation_key=?2",params![subject_key,key],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
-        if let Some((hash,id))=existing {if hash!=request_digest{return Err(failure(NetworkErrorKind::Conflict));}return Ok(NetworkDecision{authorization:authorization(&tx,&id)?,replayed:true});}
-        let (snapshot,sealed)=stored_subject(&tx,&subject)?.ok_or_else(||failure(NetworkErrorKind::Required))?;
-        let current=current_subject(&tx,&subject)?;
-        if !matches_current(&snapshot,&sealed,&current)? || request.config_revision!=snapshot.config_revision || request.credential_revision!=snapshot.credential_revision || request.binding_digest!=snapshot.binding_digest {return Err(failure(NetworkErrorKind::Stale));}
-        let active=active_authorization(&tx,&subject)?;
-        let (id,replayed)=if let Some(active)=active.filter(|a|a.binding_digest==snapshot.binding_digest && a.purposes==request.purposes){(active.authorization_id,true)}else{
-            tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[&subject_key])?;
-            let id=uuid::Uuid::new_v4().to_string();tx.execute("INSERT INTO network_authorizations VALUES (?1,?2,?3,?4,?5,?6,'active',?7)",params![id,subject_key,snapshot.config_revision,snapshot.credential_revision,snapshot.binding_digest,serde_json::to_string(&request.purposes)?,now()])?;
-            tx.execute("INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'confirmed',?2,?3)",params![subject_key,id,now()])?;(id,false)
-        };
-        tx.execute("INSERT INTO network_confirmations VALUES (?1,?2,?3,?4)",params![subject_key,key,request_digest,id])?;
-        let result=authorization(&tx,&id)?;tx.commit()?;Ok(NetworkDecision{authorization:result,replayed})
-    })().map_err(safe_error)
+        (|| -> AnyResult<_> {
+            secrets::validate_idempotency_key(key).map_err(|_|failure(NetworkErrorKind::Invalid))?;
+            let subject_key=subject.key()?;
+            request.purposes.sort();
+            request.purposes.dedup();
+            if request.purposes.is_empty() || request.purposes.iter().any(|p|!allowed(&subject).contains(p)) {return Err(failure(NetworkErrorKind::Invalid));}
+            let request_digest=digest(&serde_json::to_vec(&request)?);
+            let mut db=self.db.lock().unwrap();
+            let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let existing:Option<(String,String)>=tx.query_row(
+                "SELECT request_digest,authorization_id FROM network_confirmations WHERE subject=?1 AND creation_key=?2",
+                params![subject_key,key],|r|Ok((r.get(0)?,r.get(1)?))
+            ).optional()?;
+            if let Some((hash,id))=existing {
+                if hash!=request_digest {return Err(failure(NetworkErrorKind::Conflict));}
+                let original=authorization(&tx,&id)?;
+                if original.subject!=subject || original.config_revision!=request.config_revision || original.credential_revision!=request.credential_revision || original.binding_digest!=request.binding_digest || original.purposes!=request.purposes {return Err(failure(NetworkErrorKind::Corrupt));}
+                return Ok(NetworkDecision{authorization:original,replayed:true});
+            }
+            let (snapshot,sealed)=stored_subject(&tx,&subject)?.ok_or_else(||failure(NetworkErrorKind::Required))?;
+            let current=current_subject(&tx,&subject)?;
+            if !matches_current(&snapshot,&sealed,&current)? || request.config_revision!=snapshot.config_revision || request.credential_revision!=snapshot.credential_revision || request.binding_digest!=snapshot.binding_digest {return Err(failure(NetworkErrorKind::Stale));}
+            let active=active_authorization(&tx,&subject)?;
+            let (id,replayed)=if let Some(active)=active.filter(|a|a.binding_digest==snapshot.binding_digest && a.purposes==request.purposes) {
+                (active.authorization_id,true)
+            } else {
+                tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[&subject_key])?;
+                let id=uuid::Uuid::new_v4().to_string();
+                tx.execute("INSERT INTO network_authorizations VALUES (?1,?2,?3,?4,?5,?6,'active',?7)",params![id,subject_key,snapshot.config_revision,snapshot.credential_revision,snapshot.binding_digest,serde_json::to_string(&request.purposes)?,now()])?;
+                tx.execute("INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'confirmed',?2,?3)",params![subject_key,id,now()])?;
+                (id,false)
+            };
+            tx.execute("INSERT INTO network_confirmations VALUES (?1,?2,?3,?4)",params![subject_key,key,request_digest,id])?;
+            let result=authorization(&tx,&id)?;
+            tx.commit()?;
+            Ok(NetworkDecision{authorization:result,replayed})
+        })().map_err(safe_error)
     }
     pub fn network_authorization(&self, id: &str) -> Result<NetworkAuthorization, NetworkError> {
         authorization(&self.db.lock().unwrap(), id).map_err(safe_error)
     }
     pub fn network_revoke(&self, id: &str) -> Result<NetworkAuthorization, NetworkError> {
-        (||->AnyResult<_>{let mut db=self.db.lock().unwrap();let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;let current=authorization(&tx,id)?;if current.state!=AuthorizationState::Revoked {tx.execute("UPDATE network_authorizations SET state='revoked' WHERE id=?1",[id])?;tx.execute("INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'revoked',?2,?3)",params![current.subject.key()?,id,now()])?;}let result=authorization(&tx,id)?;tx.commit()?;Ok(result)})().map_err(safe_error)
+        (|| -> AnyResult<_> {
+            let mut db=self.db.lock().unwrap();
+            let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let current=authorization(&tx,id)?;
+            if current.state!=AuthorizationState::Revoked {
+                tx.execute("UPDATE network_authorizations SET state='revoked' WHERE id=?1",[id])?;
+                tx.execute("INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'revoked',?2,?3)",params![current.subject.key()?,id,now()])?;
+            }
+            let result=authorization(&tx,id)?;
+            tx.commit()?;
+            Ok(result)
+        })().map_err(safe_error)
+    }
+}
+fn checked_authorization(
+    db: &Connection,
+    subject: &NetworkSubject,
+    purposes: &[NetworkPurpose],
+    task: Option<&crate::domain::Task>,
+) -> AnyResult<(NetworkAuthorization, CurrentSubject)> {
+    let grant = if let Some(task) = task {
+        let binding: Option<(String,String)> = db.query_row("SELECT authorization_id,binding_digest FROM task_network_bindings WHERE task_id=?1", [&task.id], |r| Ok((r.get(0)?,r.get(1)?))).optional()?;
+        let (id, binding) = binding.ok_or_else(|| failure(NetworkErrorKind::Required))?;
+        let grant = authorization(db, &id)?;
+        if grant.binding_digest != binding || &grant.subject != subject {
+            return Err(failure(NetworkErrorKind::Corrupt));
+        }
+        grant
+    } else {
+        active_authorization(db, subject)?.ok_or_else(|| failure(NetworkErrorKind::Required))?
+    };
+    match grant.state {
+        AuthorizationState::Revoked => return Err(failure(NetworkErrorKind::Revoked)),
+        AuthorizationState::Stale => return Err(failure(NetworkErrorKind::Stale)),
+        AuthorizationState::Active => {}
+    }
+    if purposes.iter().any(|p| !grant.purposes.contains(p)) {
+        return Err(failure(NetworkErrorKind::Required));
+    }
+    let (snapshot, sealed) =
+        stored_subject(db, subject)?.ok_or_else(|| failure(NetworkErrorKind::Corrupt))?;
+    let current = current_subject(db, subject)?;
+    if !matches_current(&snapshot, &sealed, &current)?
+        || snapshot.binding_digest != grant.binding_digest
+        || snapshot.config_revision != grant.config_revision
+        || snapshot.credential_revision != grant.credential_revision
+    {
+        return Err(failure(NetworkErrorKind::Stale));
+    }
+    if let Some(task) = task {
+        let target = validate_target(&task.route.base_url, NetworkPurpose::Completion)
+            .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+        if task.route.id != subject.id
+            || task.route.model != snapshot.identity
+            || target.base_url() != snapshot.base_url
+            || target.origin() != snapshot.origin
+        {
+            return Err(failure(NetworkErrorKind::Stale));
+        }
+    }
+    Ok((grant, current))
+}
+pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyResult<()> {
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: task.route.id.clone(),
+    };
+    let (grant, current) =
+        checked_authorization(db, &subject, &[NetworkPurpose::Completion], None)?;
+    let target = validate_target(&task.route.base_url, NetworkPurpose::Completion)
+        .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+    if target.base_url() != current.snapshot.base_url
+        || task.route.model != current.snapshot.identity
+    {
+        return Err(failure(NetworkErrorKind::Stale));
+    }
+    db.execute(
+        "INSERT INTO task_network_bindings VALUES (?1,?2,?3)",
+        params![task.id, grant.authorization_id, grant.binding_digest],
+    )?;
+    Ok(())
+}
+fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
+    let row: Option<(String, String, Option<String>, String)> = db
+        .query_row(
+            "SELECT receipt,authorization_id,task_id,state FROM network_calls WHERE id=?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .optional()?;
+    let (raw, grant, task, state) = row.ok_or_else(|| failure(NetworkErrorKind::NotFound))?;
+    let value: CallReceipt = json(&raw)?;
+    let expected_state = serde_json::to_value(value.state)?;
+    if value.call_id != id
+        || value.authorization_id != grant
+        || value.task_id != task
+        || expected_state.as_str() != Some(&state)
+        || uuid::Uuid::parse_str(id).is_err()
+        || !crate::workspace_changes::valid_digest(&value.endpoint_digest)
+        || authorization(db, &grant)?.subject != value.subject
+    {
+        return Err(failure(NetworkErrorKind::Corrupt));
+    }
+    let valid = match value.state {
+        CallState::Claimed => {
+            value.finished_at.is_none()
+                && value.success.is_none()
+                && value.result.is_none()
+                && value.http_status.is_none()
+        }
+        CallState::Finished => {
+            value.finished_at.is_some()
+                && value.success.is_some()
+                && matches!(
+                    value.result,
+                    Some(
+                        CallResult::Success | CallResult::HttpFailure | CallResult::InvalidResponse
+                    )
+                )
+        }
+        CallState::Unknown => {
+            value.success.is_none()
+                && matches!(
+                    value.result,
+                    Some(
+                        CallResult::TransportUnknown
+                            | CallResult::Interrupted
+                            | CallResult::PersistenceUnknown
+                    )
+                )
+        }
+        CallState::NotSent => {
+            value.success.is_none() && value.result == Some(CallResult::PreflightRejected)
+        }
+    };
+    if !valid {
+        return Err(failure(NetworkErrorKind::Corrupt));
+    }
+    Ok(value)
+}
+fn save_receipt(db: &rusqlite::Transaction<'_>, value: &CallReceipt) -> AnyResult<()> {
+    let state = serde_json::to_value(value.state)?;
+    db.execute(
+        "UPDATE network_calls SET state=?2,receipt=?3 WHERE id=?1",
+        params![value.call_id, state.as_str(), serde_json::to_string(value)?],
+    )?;
+    if let Some(task) = &value.task_id {
+        crate::store::task_event_tx(
+            db,
+            task,
+            "network.call",
+            json!({"call_id":value.call_id,"state":value.state}),
+        )?;
+    }
+    Ok(())
+}
+pub(crate) fn recover_calls_tx(db: &rusqlite::Transaction<'_>) -> AnyResult<usize> {
+    let ids: Vec<String> = {
+        let mut s = db.prepare("SELECT id FROM network_calls WHERE state='claimed'")?;
+        s.query_map([], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?
+    };
+    for id in &ids {
+        let mut value = receipt(db, id)?;
+        value.state = CallState::Unknown;
+        value.result = Some(CallResult::Interrupted);
+        value.finished_at = Some(now());
+        save_receipt(db, &value)?;
+    }
+    Ok(ids.len())
+}
+impl Store {
+    pub(crate) fn network_preflight(
+        &self,
+        subject: &NetworkSubject,
+        purposes: &[NetworkPurpose],
+        task: Option<&crate::domain::Task>,
+    ) -> Result<(), NetworkError> {
+        checked_authorization(&self.db.lock().unwrap(), subject, purposes, task)
+            .map(|_| ())
+            .map_err(safe_error)
+    }
+    pub(crate) fn network_admit(
+        &self,
+        subject: &NetworkSubject,
+        purpose: NetworkPurpose,
+        task: Option<&crate::domain::Task>,
+    ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
+        (|| -> AnyResult<_> {
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let (grant, current) = checked_authorization(&tx, subject, &[purpose], task)?;
+            let target = validate_target(&current.snapshot.base_url, purpose)
+                .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+            let id = uuid::Uuid::new_v4().to_string();
+            let (model, user) = match subject.kind {
+                NetworkSubjectKind::Route => (Some(current.snapshot.identity.clone()), None),
+                NetworkSubjectKind::Account => (None, Some(current.snapshot.identity.clone())),
+            };
+            validate_permit_inputs(
+                &target,
+                &current.credential,
+                &id,
+                model.as_deref(),
+                user.as_deref(),
+            )
+            .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+            let value = CallReceipt {
+                call_id: id.clone(),
+                authorization_id: grant.authorization_id,
+                subject: subject.clone(),
+                task_id: task.map(|t| t.id.clone()),
+                purpose,
+                method: target.method().into(),
+                origin: target.origin().into(),
+                endpoint_digest: digest(target.endpoint().as_bytes()),
+                state: CallState::Claimed,
+                claimed_at: now(),
+                finished_at: None,
+                success: None,
+                http_status: None,
+                result: None,
+            };
+            tx.execute(
+                "INSERT INTO network_calls VALUES (?1,?2,?3,'claimed',?4)",
+                params![
+                    id,
+                    value.authorization_id,
+                    value.task_id,
+                    serde_json::to_string(&value)?
+                ],
+            )?;
+            if let Some(task) = task {
+                crate::store::task_event_tx(
+                    &tx,
+                    &task.id,
+                    "network.call",
+                    json!({"call_id":id,"state":"claimed"}),
+                )?;
+            }
+            tx.commit()?;
+            let permit = crate::provider_transport::ProviderPermit::new(
+                target,
+                current.credential,
+                id,
+                model,
+                user,
+            )
+            .map_err(|_| failure(NetworkErrorKind::Internal))?;
+            Ok((permit, value))
+        })()
+        .map_err(safe_error)
+    }
+    pub fn network_call(&self, id: &str) -> Result<CallReceipt, NetworkError> {
+        receipt(&self.db.lock().unwrap(), id).map_err(safe_error)
+    }
+    pub fn network_calls_for_task(&self, task_id: &str) -> Result<Vec<CallReceipt>, NetworkError> {
+        (|| -> AnyResult<_> {
+            let db = self.db.lock().unwrap();
+            let exists: bool = db.query_row(
+                "SELECT EXISTS(SELECT 1 FROM tasks WHERE id=?1)",
+                [task_id],
+                |r| r.get(0),
+            )?;
+            if !exists {
+                return Err(failure(NetworkErrorKind::NotFound));
+            }
+            let ids: Vec<String> = {
+                let mut s =
+                    db.prepare("SELECT id FROM network_calls WHERE task_id=?1 ORDER BY rowid")?;
+                s.query_map([task_id], |r| r.get(0))?
+                    .collect::<rusqlite::Result<_>>()?
+            };
+            ids.iter().map(|id| receipt(&db, id)).collect()
+        })()
+        .map_err(safe_error)
+    }
+    pub(crate) fn finish_network<T>(
+        &self,
+        mut value: CallReceipt,
+        result: Result<T, crate::provider_transport::TransportError>,
+    ) -> Result<NetworkResponse<T>, NetworkError> {
+        use crate::provider_transport::TransportError;
+        value.finished_at = Some(now());
+        let kind = match &result {
+            Ok(_) => {
+                value.state = CallState::Finished;
+                value.success = Some(true);
+                value.result = Some(CallResult::Success);
+                None
+            }
+            Err(TransportError::Response { status }) => {
+                value.state = CallState::Finished;
+                value.success = Some(false);
+                value.http_status = Some(*status);
+                value.result = Some(CallResult::HttpFailure);
+                Some(NetworkErrorKind::Upstream)
+            }
+            Err(TransportError::InvalidResponse { status }) => {
+                value.state = CallState::Finished;
+                value.success = Some(false);
+                value.http_status = Some(*status);
+                value.result = Some(CallResult::InvalidResponse);
+                Some(NetworkErrorKind::Upstream)
+            }
+            Err(TransportError::Invalid) => {
+                value.state = CallState::NotSent;
+                value.result = Some(CallResult::PreflightRejected);
+                Some(NetworkErrorKind::Invalid)
+            }
+            Err(TransportError::Unknown) => {
+                value.state = CallState::Unknown;
+                value.result = Some(CallResult::TransportUnknown);
+                Some(NetworkErrorKind::Unknown)
+            }
+        };
+        let saved = (|| -> AnyResult<()> {
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let old = receipt(&tx, &value.call_id)?;
+            if old.state != CallState::Claimed {
+                return Err(failure(NetworkErrorKind::Conflict));
+            }
+            save_receipt(&tx, &value)?;
+            tx.commit()?;
+            Ok(())
+        })();
+        if saved.is_err() {
+            value.state = CallState::Unknown;
+            value.success = None;
+            value.http_status = None;
+            value.result = Some(CallResult::PersistenceUnknown);
+            return Err(NetworkError {
+                kind: NetworkErrorKind::Unknown,
+                dispatch_state: DispatchState::Unknown,
+                calls: vec![value],
+            });
+        }
+        if let Some(kind) = kind {
+            let dispatch_state = match value.state {
+                CallState::Finished => DispatchState::Finished,
+                CallState::NotSent => DispatchState::NotSent,
+                _ => DispatchState::Unknown,
+            };
+            return Err(NetworkError {
+                kind,
+                dispatch_state,
+                calls: vec![value],
+            });
+        }
+        Ok(NetworkResponse {
+            result: result.map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?,
+            calls: vec![value],
+        })
+    }
+}
+
+impl Store {
+    pub(crate) fn save_network_configuration(
+        &self,
+        settings: &Settings,
+        keys: &std::collections::HashMap<String, String>,
+    ) -> AnyResult<()> {
+        settings.validate()?;
+        let sealed: Vec<_> = keys
+            .iter()
+            .map(|(id, key)| Ok((id.clone(), secrets::seal(key.as_bytes())?)))
+            .collect::<AnyResult<_>>()?;
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        tx.execute("INSERT INTO config VALUES ('settings',?1) ON CONFLICT(id) DO UPDATE SET value=excluded.value",[serde_json::to_string(settings)?])?;
+        for (id, blob) in sealed {
+            tx.execute("INSERT INTO secrets VALUES (?1,?2) ON CONFLICT(id) DO UPDATE SET value=excluded.value",params![id,blob])?;
+        }
+        let subjects: Vec<NetworkSubject> = {
+            let mut stmt = tx.prepare("SELECT snapshot FROM network_subjects")?;
+            let values: Vec<String> = stmt
+                .query_map([], |r| r.get(0))?
+                .collect::<rusqlite::Result<_>>()?;
+            values
+                .iter()
+                .map(|v| Ok(json::<SubjectSnapshot>(v)?.subject))
+                .collect::<AnyResult<_>>()?
+        };
+        for subject in subjects {
+            match current_subject(&tx, &subject) {
+                Ok(current) => {
+                    refresh_subject(&tx, current)?;
+                }
+                Err(error)
+                    if error.downcast_ref::<NetworkError>().is_some_and(|e| {
+                        matches!(
+                            e.kind,
+                            NetworkErrorKind::NotFound
+                                | NetworkErrorKind::Required
+                                | NetworkErrorKind::Invalid
+                        )
+                    }) =>
+                {
+                    tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
+                }
+                Err(error) => return Err(error),
+            }
+        }
+        tx.commit()?;
+        Ok(())
     }
 }

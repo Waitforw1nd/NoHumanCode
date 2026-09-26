@@ -915,7 +915,7 @@ impl<'a> Repository<'a> {
         task_id: &str,
         tool_call_id: &str,
     ) -> Result<Option<crate::approval::ApprovalRecord>> {
-        let row = self
+        let mut row = self
             .conn
             .query_row(
                 "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE task_id=?2 AND tool_call_id=?1",
@@ -923,14 +923,15 @@ impl<'a> Repository<'a> {
                 approval_row,
             )
             .optional().map_err(|_| crate::approval::ApprovalError::CorruptState { id: tool_call_id.into() })?;
-        if let Some(record) = &row {
+        if let Some(record) = &mut row {
+            self.hydrate_network_ack(record)?;
             self.validate_approval(record)?;
         }
         Ok(row)
     }
 
     pub(crate) fn approval(&self, id: &str) -> Result<crate::approval::ApprovalRecord> {
-        let record = self.conn
+        let mut record = self.conn
             .query_row(
                 "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE id=?1",
                 [id],
@@ -938,6 +939,7 @@ impl<'a> Repository<'a> {
             )
             .optional().map_err(|_| crate::approval::ApprovalError::CorruptState { id: id.into() })?
             .ok_or_else(|| crate::approval::ApprovalError::NotFound { id: id.to_owned() })?;
+        self.hydrate_network_ack(&mut record)?;
         self.validate_approval(&record)?;
         Ok(record)
     }
@@ -950,15 +952,43 @@ impl<'a> Repository<'a> {
             "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE task_id=?1 ORDER BY created_at, id",
         )?;
         let rows = stmt.query_map([task_id], approval_row)?;
-        let records: Vec<_> = rows
+        let mut records: Vec<_> = rows
             .collect::<rusqlite::Result<_>>()
             .map_err(|_| crate::approval::ApprovalError::CorruptState { id: task_id.into() })?;
-        for record in &records {
+        for record in &mut records {
+            self.hydrate_network_ack(record)?;
             self.validate_approval(record)?;
         }
         Ok(records)
     }
 
+    fn hydrate_network_ack(&self, record: &mut crate::approval::ApprovalRecord) -> Result<()> {
+        use crate::approval::{ApprovalError, CommandNetworkAck, CommandNetworkNotice};
+        let sidecar:Option<(String,u32)>=self.conn.query_row("SELECT binding_digest,notice_version FROM command_network_ack WHERE approval_id=?1",[&record.id],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+        if let Some((digest, version)) = &sidecar {
+            if record.tool_name != "run_command"
+                || digest != &record.binding_digest
+                || *version != 1
+            {
+                return Err(ApprovalError::CorruptState {
+                    id: record.id.clone(),
+                }
+                .into());
+            }
+        }
+        if record.tool_name == "run_command" {
+            record.network_notice = Some(CommandNetworkNotice::default());
+            record.command_network_ack = if sidecar.is_some() {
+                CommandNetworkAck::Acknowledged
+            } else {
+                CommandNetworkAck::Required
+            };
+        } else {
+            record.network_notice = None;
+            record.command_network_ack = CommandNetworkAck::NotRequired;
+        }
+        Ok(())
+    }
     fn validate_approval(&self, record: &crate::approval::ApprovalRecord) -> Result<()> {
         use crate::approval::{ApprovalError, ExecutionState};
         let corrupt = || ApprovalError::CorruptState {
@@ -1900,6 +1930,8 @@ fn classify_row<T>(result: rusqlite::Result<T>) -> Result<std::result::Result<T,
 
 fn approval_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<crate::approval::ApprovalRecord> {
     Ok(crate::approval::ApprovalRecord {
+        network_notice: None,
+        command_network_ack: Default::default(),
         id: row.get(0)?,
         tool_call_id: row.get(1)?,
         task_id: row.get(2)?,
@@ -2090,7 +2122,12 @@ pub(crate) fn verify_schema_10(tx: &Transaction<'_>) -> Result<()> {
                 out.push(ch.to_ascii_lowercase());
             }
         }
-        out.replacen("ifnotexists", "", 1)
+        for prefix in ["createtable", "createuniqueindex", "createindex"] {
+            if let Some(rest) = out.strip_prefix(&format!("{prefix}ifnotexists")) {
+                return format!("{prefix}{rest}");
+            }
+        }
+        out
     }
     for (table, sql) in NETWORK_TABLES {
         let actual: String = tx.query_row(

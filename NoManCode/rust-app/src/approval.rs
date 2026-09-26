@@ -90,7 +90,35 @@ impl ApprovalStatus {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommandNetworkNotice {
+    pub version: u32,
+    pub may_access_network: bool,
+    pub outbound_sandbox: bool,
+}
+impl Default for CommandNetworkNotice {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            may_access_network: true,
+            outbound_sandbox: false,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CommandNetworkAck {
+    #[default]
+    NotRequired,
+    Required,
+    Acknowledged,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ApprovalRecord {
+    #[serde(default)]
+    pub network_notice: Option<CommandNetworkNotice>,
+    #[serde(default)]
+    pub command_network_ack: CommandNetworkAck,
     pub id: String,
     pub tool_call_id: String,
     pub task_id: String,
@@ -112,6 +140,8 @@ pub struct ApprovalRecord {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ApprovalError {
+    NetworkAcknowledgementRequired { id: String },
+    InvalidNetworkAcknowledgement { id: String },
     NotFound { id: String },
     Conflict { id: String, status: String },
     BindingConflict { id: String },
@@ -122,6 +152,10 @@ pub enum ApprovalError {
 impl fmt::Display for ApprovalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::NetworkAcknowledgementRequired { .. } => {
+                f.write_str("命令可能访问任意网络，必须明确确认当前没有OS出站沙箱")
+            }
+            Self::InvalidNetworkAcknowledgement { .. } => f.write_str("此审批不接受命令联网确认"),
             Self::NotFound { .. } => f.write_str("审批不存在"),
             Self::Conflict { .. } => f.write_str("审批当前状态不能执行此操作"),
             Self::BindingConflict { .. } => f.write_str("审批绑定不匹配，工具未执行。"),

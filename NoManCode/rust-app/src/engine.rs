@@ -1,3 +1,4 @@
+use crate::network_authorization::*;
 use crate::{
     approval::{self, ApprovalStatus, PolicyDecision},
     domain::*,
@@ -17,6 +18,230 @@ use std::{
 };
 use tokio::sync::{Mutex as AsyncMutex, Semaphore, oneshot};
 use tokio_util::sync::CancellationToken;
+
+fn route_subject(id: &str) -> NetworkSubject {
+    NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: id.into(),
+    }
+}
+impl Engine {
+    pub async fn network_preview(
+        &self,
+        subject: NetworkSubject,
+    ) -> std::result::Result<NetworkPreview, NetworkError> {
+        let _gate = self.gate.lock().await;
+        self.store.network_preview(subject)
+    }
+    pub async fn network_confirm(
+        &self,
+        subject: NetworkSubject,
+        request: ConfirmRequest,
+        key: &str,
+    ) -> std::result::Result<NetworkDecision, NetworkError> {
+        let _gate = self.gate.lock().await;
+        self.store.network_confirm(subject, request, key)
+    }
+    pub async fn network_revoke(
+        &self,
+        id: &str,
+    ) -> std::result::Result<NetworkAuthorization, NetworkError> {
+        let _gate = self.gate.lock().await;
+        self.store.network_revoke(id)
+    }
+    pub fn network_authorization(
+        &self,
+        id: &str,
+    ) -> std::result::Result<NetworkAuthorization, NetworkError> {
+        self.store.network_authorization(id)
+    }
+    pub fn network_call(&self, id: &str) -> std::result::Result<CallReceipt, NetworkError> {
+        self.store.network_call(id)
+    }
+    pub fn network_calls_for_task(
+        &self,
+        id: &str,
+    ) -> std::result::Result<Vec<CallReceipt>, NetworkError> {
+        self.store.network_calls_for_task(id)
+    }
+    fn network_route(&self, id: &str) -> std::result::Result<Route, NetworkError> {
+        self.store
+            .settings()
+            .map_err(safe_error)?
+            .and_then(|s| s.routes.into_iter().find(|r| r.id == id))
+            .ok_or_else(|| NetworkError::not_sent(NetworkErrorKind::NotFound))
+    }
+    pub async fn route_models(
+        &self,
+        id: &str,
+    ) -> std::result::Result<NetworkResponse<Vec<String>>, NetworkError> {
+        let _slot = self
+            .slots
+            .acquire()
+            .await
+            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        let (route, permit, receipt) = {
+            let _gate = self.gate.lock().await;
+            let route = self.network_route(id)?;
+            let (permit, receipt) =
+                self.store
+                    .network_admit(&route_subject(id), NetworkPurpose::Models, None)?;
+            (route, permit, receipt)
+        };
+        self.store.finish_network(
+            receipt,
+            provider::models(&self.client, permit, &route).await,
+        )
+    }
+    pub async fn route_check(
+        &self,
+        id: &str,
+    ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
+        let started = std::time::Instant::now();
+        let _slot = self
+            .slots
+            .acquire()
+            .await
+            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        let (mut route, permit, receipt) = {
+            let _gate = self.gate.lock().await;
+            let route = self.network_route(id)?;
+            self.store.network_preflight(
+                &route_subject(id),
+                &[NetworkPurpose::Models, NetworkPurpose::Completion],
+                None,
+            )?;
+            let (permit, receipt) =
+                self.store
+                    .network_admit(&route_subject(id), NetworkPurpose::Models, None)?;
+            (route, permit, receipt)
+        };
+        let models = self.store.finish_network(
+            receipt,
+            provider::models(&self.client, permit, &route).await,
+        )?;
+        if !models.result.contains(&route.model) {
+            return Err(NetworkError {
+                kind: NetworkErrorKind::Upstream,
+                dispatch_state: DispatchState::Finished,
+                calls: models.calls,
+            });
+        }
+        let next = {
+            let _gate = self.gate.lock().await;
+            self.store
+                .network_admit(&route_subject(id), NetworkPurpose::Completion, None)
+        };
+        let (permit, receipt) = next.map_err(|mut e| {
+            e.calls.splice(0..0, models.calls.clone());
+            e
+        })?;
+        route.max_tokens = 128;
+        let completion = self
+            .store
+            .finish_network(
+                receipt,
+                provider::complete(
+                    &self.client,
+                    permit,
+                    &route,
+                    &[json!({"role":"user","content":"Return only the result of 17 * 19."})],
+                    &[],
+                    |_| Ok(()),
+                )
+                .await,
+            )
+            .map_err(|mut e| {
+                e.calls.splice(0..0, models.calls.clone());
+                e
+            })?;
+        let (message, usage) = completion.result;
+        let correct = message["content"]
+            .as_str()
+            .is_some_and(|s| s.trim() == "323");
+        let mut calls = models.calls;
+        calls.extend(completion.calls);
+        Ok(NetworkResponse {
+            result: json!({"ok":correct,"model":route.model,"answer":message["content"],"usage":usage,"elapsed_ms":started.elapsed().as_millis()}),
+            calls,
+        })
+    }
+    pub async fn account_balance(
+        &self,
+    ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
+        let _slot = self
+            .slots
+            .acquire()
+            .await
+            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        let (account, permit, receipt) = {
+            let _gate = self.gate.lock().await;
+            let account = self
+                .store
+                .settings()
+                .map_err(safe_error)?
+                .and_then(|s| s.newapi)
+                .ok_or_else(|| NetworkError::not_sent(NetworkErrorKind::NotFound))?;
+            let (permit, receipt) = self.store.network_admit(
+                &NetworkSubject {
+                    kind: NetworkSubjectKind::Account,
+                    id: "newapi".into(),
+                },
+                NetworkPurpose::Balance,
+                None,
+            )?;
+            (account, permit, receipt)
+        };
+        self.store.finish_network(
+            receipt,
+            provider::balance(&self.client, permit, &account).await,
+        )
+    }
+    pub async fn bind_account(
+        &self,
+        account: Account,
+        token: Option<String>,
+    ) -> std::result::Result<(), NetworkError> {
+        let _gate = self.gate.lock().await;
+        let mut settings = self
+            .store
+            .settings()
+            .map_err(safe_error)?
+            .ok_or_else(|| NetworkError::not_sent(NetworkErrorKind::Required))?;
+        let token = if let Some(token) = token.filter(|s| !s.is_empty()) {
+            token
+        } else {
+            if settings.newapi.as_ref() != Some(&account) {
+                return Err(NetworkError::not_sent(NetworkErrorKind::Invalid));
+            }
+            self.store
+                .secret("newapi-account")
+                .map_err(safe_error)?
+                .ok_or_else(|| NetworkError::not_sent(NetworkErrorKind::Required))?
+        };
+        let target =
+            crate::provider_transport::validate_target(&account.base_url, NetworkPurpose::Balance)
+                .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
+        crate::provider_transport::validate_permit_inputs(
+            &target,
+            &token,
+            "preflight",
+            None,
+            Some(&account.user_id),
+        )
+        .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
+        settings.newapi = Some(account);
+        settings
+            .validate()
+            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
+        self.store
+            .save_network_configuration(
+                &settings,
+                &HashMap::from([("newapi-account".into(), token)]),
+            )
+            .map_err(safe_error)
+    }
+}
 
 #[cfg(test)]
 mod crash_probe {
@@ -105,7 +330,7 @@ struct Active {
 }
 pub struct Engine {
     pub store: Arc<Store>,
-    pub client: reqwest::Client,
+    pub client: crate::provider_transport::ProviderClient,
     gate: AsyncMutex<()>,
     active: Mutex<HashMap<String, Active>>,
     slots: Arc<Semaphore>,
@@ -188,9 +413,11 @@ impl Engine {
             );
             ensure!(!key.trim().is_empty() && key.len() < 4096, "Key 为空或过长");
         }
-        for (id, key) in &keys {
-            self.store.put_secret(&route_secret_id(id), key)?;
-        }
+        let secrets = keys
+            .into_iter()
+            .map(|(id, key)| (route_secret_id(&id), key))
+            .collect();
+        self.store.save_network_configuration(&settings, &secrets)?;
         let current = self.slots.available_permits();
         if settings.max_concurrency > current {
             self.slots.add_permits(settings.max_concurrency - current);
@@ -199,7 +426,7 @@ impl Engine {
                 .forget_permits(current - settings.max_concurrency);
         }
         self.key_slots.lock().unwrap().clear();
-        self.store.save_settings(&settings)
+        Ok(())
     }
     fn scope_conflicts(&self, tasks: &[Task]) -> Result<()> {
         let active = self.active.lock().unwrap();
@@ -384,7 +611,7 @@ impl Engine {
             updated_at: created,
         };
         let key = idempotency.as_ref().map(|(key, _)| *key);
-        let committed = self.store.commit_turn_bundle(
+        let committed = self.store.commit_turn_bundle_authorized(
             TurnBundle {
                 project: &project,
                 session: &session,
@@ -550,7 +777,7 @@ impl Engine {
             created_at: created,
             updated_at: created,
         };
-        let receipt = self.store.append_chat_turn(
+        let receipt = self.store.append_chat_turn_authorized(
             &turn,
             &task,
             &legacy,
@@ -694,10 +921,18 @@ impl Engine {
                 "任务上下文过长，请创建新任务并提供摘要"
             );
             let mut text = String::new();
+            let (permit, receipt) = {
+                let _gate = self.gate.lock().await;
+                self.store.network_admit(
+                    &route_subject(&task.route.id),
+                    NetworkPurpose::Completion,
+                    Some(task),
+                )?
+            };
             let call = provider::complete(
                 &self.client,
+                permit,
                 &task.route,
-                &key,
                 &task.messages,
                 &tools,
                 |delta| {
@@ -705,9 +940,10 @@ impl Engine {
                     self.store.event(&task.id, "delta", json!({"text":delta}))
                 },
             );
-            let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(anyhow::anyhow!("任务已停止")) };
+            let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
+            let result = self.store.finish_network(receipt, result);
             task.output.push_str(&text);
-            let (message, usage) = result?;
+            let (message, usage) = result?.result;
             if usage.is_object() {
                 if !task.usage.is_object() {
                     task.usage = json!({});
@@ -751,9 +987,21 @@ impl Engine {
         approved: bool,
         decided_by: Option<&str>,
     ) -> Result<approval::ApprovalRecord> {
-        let record =
-            self.store
-                .decide_approval(approval_id, approved, decided_by.unwrap_or("user"))?;
+        self.decide_approval_with_network_ack(approval_id, approved, decided_by, false)
+    }
+    pub fn decide_approval_with_network_ack(
+        &self,
+        approval_id: &str,
+        approved: bool,
+        decided_by: Option<&str>,
+        acknowledge_command_network: bool,
+    ) -> Result<approval::ApprovalRecord> {
+        let record = self.store.decide_approval_with_network_ack(
+            approval_id,
+            approved,
+            decided_by.unwrap_or("user"),
+            acknowledge_command_network,
+        )?;
         if let Some(waiter) = self.approval_waiters.lock().unwrap().remove(approval_id) {
             let _ = waiter.send(record.status);
         }
@@ -883,34 +1131,28 @@ impl Engine {
         record: &approval::ApprovalRecord,
         cancel: &CancellationToken,
     ) -> Result<ApprovalStatus> {
-        if record.status != ApprovalStatus::Pending {
-            return Ok(record.status);
-        }
-        let (sender, mut receiver) = oneshot::channel();
-        self.approval_waiters
-            .lock()
-            .unwrap()
-            .insert(record.id.clone(), sender);
         loop {
+            let (sender, mut receiver) = oneshot::channel();
+            self.approval_waiters
+                .lock()
+                .unwrap()
+                .insert(record.id.clone(), sender);
             let current = self.store.approval(&record.id)?;
-            if current.status != ApprovalStatus::Pending {
+            let waiting = current.status == ApprovalStatus::Pending
+                || (current.status == ApprovalStatus::Approved
+                    && current.command_network_ack == approval::CommandNetworkAck::Required);
+            if !waiting {
                 self.approval_waiters.lock().unwrap().remove(&record.id);
                 return Ok(current.status);
             }
             tokio::select! {
                 biased;
-                _ = cancel.cancelled() => {
-                self.approval_waiters.lock().unwrap().remove(&record.id);
-                self.store.cancel_pending_approvals(&record.task_id)?;
-                anyhow::bail!("任务已停止")
-                }
-                _ = &mut receiver => { return Ok(self.store.approval(&record.id)?.status); }
-                // Other Store/Engine instances need no in-process waiter.
-                _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {}
+                _=cancel.cancelled()=>{self.approval_waiters.lock().unwrap().remove(&record.id);self.store.cancel_pending_approvals(&record.task_id)?;anyhow::bail!("任务已停止")},
+                _=&mut receiver=>{},
+                _=tokio::time::sleep(std::time::Duration::from_millis(100))=>{},
             }
         }
     }
-
     #[allow(clippy::too_many_arguments)]
     async fn perform_tool(
         &self,
@@ -1114,7 +1356,11 @@ impl Engine {
                 return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
             }
         }
-        self.key(&task.route)?;
+        self.store.network_preflight(
+            &route_subject(&task.route.id),
+            &[NetworkPurpose::Completion],
+            Some(&task),
+        )?;
         self.scope_conflicts(std::slice::from_ref(&task))?;
         // Complete interrupted tool-call groups before adding a new user message.
         let answered: std::collections::HashSet<String> = task
