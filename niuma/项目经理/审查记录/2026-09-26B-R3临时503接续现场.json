@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-09-26T20:40:06.5305873+08:00",
+  "head": "50d406b0c796eff4c3e77dec7755eda1cb196aa2",
+  "worktree": "../nhc-b-workspace",
+  "branch": "codex/b/workspace",
+  "reason": "GPT-6-sol temporary HTTP 503; user requested continuation",
+  "snapshot": ".local/review-evidence/B-R3-503-20260926-204006",
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "sha256": "06B088D082B2B2EB4606242EE2BA7AC2C6E1F7D09AB25D26166F6250E159F950",
+      "bytes": 74212
+    },
+    {
+      "path": "NoManCode/rust-app/src/store.rs",
+      "sha256": "B1D13473D697AEFB5309CEB8D8E71FA8B0A646818BEE788C2AACA31CF973B7F6",
+      "bytes": 113194
+    }
+  ]
+}
