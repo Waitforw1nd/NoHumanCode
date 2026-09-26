@@ -1,7 +1,9 @@
 use crate::{
     approval,
+    checkpoint::CheckpointError,
     domain::*,
     engine::Engine,
+    git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
     provider, secrets, wasm,
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
 };
@@ -315,6 +317,10 @@ pub fn router(app: App) -> Router {
         .route("/api/approvals/{id}/decision", post(decide_approval))
         .route("/api/tasks/{id}/changes", get(changes))
         .route("/api/tasks/{id}/restore", post(restore))
+        .route("/api/tasks/{id}/git-diff", post(git_diff))
+        .route("/api/tasks/{id}/checkpoints", post(create_checkpoint))
+        .route("/api/checkpoints/{id}", get(checkpoint))
+        .route("/api/checkpoints/{id}/restore", post(restore_checkpoint))
         .layer(DefaultBodyLimit::max(1_048_576))
         .layer(middleware::from_fn_with_state(app.clone(), guard))
         .with_state(app)
@@ -951,6 +957,155 @@ async fn decide_approval(
         .map(Json)
         .map_err(approval_error)
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GitDiffBody {
+    path: String,
+    view: GitDiffView,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EmptyBody {}
+async fn git_diff(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(body): ContractJson<GitDiffBody>,
+) -> Result<Json<Value>> {
+    let id = workspace_task_id(id)?;
+    let diff = app
+        .engine
+        .git_diff(
+            &id,
+            GitDiffRequest {
+                path: body.path,
+                view: body.view,
+            },
+        )
+        .await
+        .map_err(git_diff_error)?;
+    Ok(Json(json!({"diff":diff})))
+}
+async fn create_checkpoint(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
+    ContractJson(_body): ContractJson<EmptyBody>,
+) -> Result<Response> {
+    let id = workspace_task_id(id)?;
+    let key = required_idempotency_key(&headers)?;
+    let created = app
+        .engine
+        .create_checkpoint(&id, &key)
+        .await
+        .map_err(checkpoint_error)?;
+    let status = if created.replayed {
+        StatusCode::OK
+    } else {
+        StatusCode::CREATED
+    };
+    Ok((status, Json(created)).into_response())
+}
+async fn checkpoint(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<Value>> {
+    let id = checkpoint_id(id)?;
+    let checkpoint = app.engine.checkpoint(&id).map_err(checkpoint_error)?;
+    Ok(Json(json!({"checkpoint":checkpoint})))
+}
+fn checkpoint_id(path: std::result::Result<Path<String>, PathRejection>) -> Result<String> {
+    let id = object_id(path)?;
+    if secrets::validate_persisted_id("checkpoint_id", &id).is_err() {
+        return Err(ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("检查点标识无效"),
+        ));
+    }
+    Ok(id)
+}
+async fn restore_checkpoint(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(_body): ContractJson<EmptyBody>,
+) -> Result<Response> {
+    let id = checkpoint_id(id)?;
+    match app.engine.restore_checkpoint(&id).await {
+        Ok(receipt) => Ok(Json(json!({"ok":receipt.status == RestoreStatus::Complete,"restored":receipt.restored,"status":receipt.status,"receipt":receipt})).into_response()),
+        Err(error) => {
+            let receipt = match error.downcast_ref::<WorkspaceChangeError>() {
+                Some(WorkspaceChangeError::Conflict { receipt } | WorkspaceChangeError::Unknown { receipt }) => receipt.clone(), _ => None,
+            };
+            if let Some(receipt) = receipt {
+                let message = "检查点恢复未完整完成";
+                return Ok((StatusCode::CONFLICT, Json(json!({"code":ErrorCode::Conflict,"message":message,"error":message,"retryable":false,"ok":false,"restored":receipt.restored,"status":receipt.status,"receipt":receipt}))).into_response());
+            }
+            Err(checkpoint_error(error))
+        }
+    }
+}
+fn git_diff_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<WorkspaceChangeError>().is_some() {
+        return workspace_change_error(error);
+    }
+    let (status, code, message) = match error.downcast_ref::<GitDiffError>() {
+        Some(GitDiffError::InvalidPath) => (
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            "差异路径无效",
+        ),
+        Some(GitDiffError::Unavailable) => {
+            (StatusCode::CONFLICT, ErrorCode::Conflict, "Git差异不可用")
+        }
+        Some(GitDiffError::Unsupported) => {
+            (StatusCode::CONFLICT, ErrorCode::Conflict, "不支持此Git差异")
+        }
+        Some(GitDiffError::Conflict) => (
+            StatusCode::CONFLICT,
+            ErrorCode::Conflict,
+            "Git状态已变化，请重新查询",
+        ),
+        Some(GitDiffError::Internal) | None => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "Git差异服务失败",
+        ),
+    };
+    ApiError::with_code(status, code, false, anyhow::anyhow!(message))
+}
+fn checkpoint_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<WorkspaceChangeError>().is_some() {
+        return workspace_change_error(error);
+    }
+    let (status, code, message) = match error.downcast_ref::<CheckpointError>() {
+        Some(CheckpointError::Invalid) => (
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            "检查点请求无效",
+        ),
+        Some(CheckpointError::NotFound) => (
+            StatusCode::NOT_FOUND,
+            ErrorCode::NotFound,
+            "检查点或任务不存在",
+        ),
+        Some(CheckpointError::Conflict) => {
+            (StatusCode::CONFLICT, ErrorCode::Conflict, "检查点状态冲突")
+        }
+        Some(CheckpointError::Unrestorable) => (
+            StatusCode::CONFLICT,
+            ErrorCode::Conflict,
+            "任务不可创建或恢复检查点",
+        ),
+        Some(CheckpointError::Corrupt | CheckpointError::Internal) | None => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorCode::Internal,
+            "检查点服务失败",
+        ),
+    };
+    ApiError::with_code(status, code, false, anyhow::anyhow!(message))
+}
+
 async fn changes(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,

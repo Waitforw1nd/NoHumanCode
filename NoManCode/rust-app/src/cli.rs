@@ -1,4 +1,4 @@
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 use futures_util::StreamExt;
 use peachsh::{approval::ApprovalStatus, secrets};
 use peachsh::{
@@ -22,6 +22,7 @@ pub enum Command {
     Session(SessionArgs),
     Task(TaskArgs),
     Approval(ApprovalArgs),
+    Checkpoint(CheckpointArgs),
 }
 
 fn valid_id(id: &str) -> bool {
@@ -68,10 +69,21 @@ impl Command {
             },
             Self::Task(task) => match &task.command {
                 TaskCommand::Approvals { task_id } => valid_id(task_id),
+                TaskCommand::Diff { id, path, .. } => {
+                    valid_id(id) && peachsh::domain::scope_path(path).is_ok()
+                }
+                TaskCommand::Checkpoint { id, key } => {
+                    valid_id(id)
+                        && secrets::validate_idempotency_key(key).is_ok()
+                        && !key.contains(',')
+                }
                 TaskCommand::Cancel { id }
                 | TaskCommand::Changes { id }
                 | TaskCommand::Restore { id } => valid_id(id),
                 TaskCommand::Resume { id, message } => valid_id(id) && valid_message(message),
+            },
+            Self::Checkpoint(args) => match &args.command {
+                CheckpointCommand::Get { id } | CheckpointCommand::Restore { id } => valid_id(id),
             },
             Self::Approval(approval) => match &approval.command {
                 ApprovalCommand::Get { approval_id }
@@ -173,6 +185,20 @@ pub struct TaskArgs {
 }
 #[derive(Subcommand)]
 enum TaskCommand {
+    /// Review a real Git patch; redacted patches are not applicable.
+    Diff {
+        id: String,
+        #[arg(long)]
+        path: String,
+        #[arg(long, value_enum, default_value = "head")]
+        view: DiffView,
+    },
+    /// Save this completed task's original file bytes, not a directory snapshot.
+    Checkpoint {
+        id: String,
+        #[arg(long)]
+        key: String,
+    },
     Approvals {
         task_id: String,
     },
@@ -191,6 +217,24 @@ enum TaskCommand {
         id: String,
     },
 }
+#[derive(Clone, Copy, ValueEnum, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+enum DiffView {
+    Staged,
+    Unstaged,
+    Head,
+}
+#[derive(Args)]
+pub struct CheckpointArgs {
+    #[command(subcommand)]
+    command: CheckpointCommand,
+}
+#[derive(Subcommand)]
+enum CheckpointCommand {
+    Get { id: String },
+    Restore { id: String },
+}
+
 #[derive(Args)]
 pub struct ApprovalArgs {
     #[command(subcommand)]
@@ -678,6 +722,84 @@ struct RestoreView {
     status: RestoreStatus,
     receipt: RestoreReceipt,
 }
+#[derive(Deserialize, Serialize)]
+struct DiffViewResponse {
+    diff: DiffDto,
+}
+#[derive(Deserialize, Serialize)]
+struct DiffDto {
+    path: String,
+    view: DiffView,
+    base_oid: Option<String>,
+    index_oid: Option<String>,
+    before_digest: Option<String>,
+    after_digest: Option<String>,
+    status: String,
+    patch: Option<String>,
+    redacted: bool,
+}
+#[derive(Deserialize, Serialize)]
+struct CheckpointDto {
+    checkpoint_id: String,
+    task_id: String,
+    kind: String,
+    generation: u32,
+    created_at: u64,
+    manifest_digest: String,
+    entries: Vec<CheckpointEntryDto>,
+}
+#[derive(Deserialize, Serialize)]
+struct CheckpointEntryDto {
+    path: String,
+    before_digest: Option<String>,
+    after_digest: String,
+}
+#[derive(Deserialize, Serialize)]
+struct CheckpointView {
+    checkpoint: CheckpointDto,
+}
+#[derive(Deserialize, Serialize)]
+struct CheckpointCreatedView {
+    checkpoint: CheckpointDto,
+    replayed: bool,
+}
+fn valid_digest(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
+}
+fn validate_checkpoint(cp: &CheckpointDto) -> Result<(), Failure> {
+    if !valid_id(&cp.checkpoint_id)
+        || !valid_id(&cp.task_id)
+        || cp.kind != "task_before"
+        || cp.generation != 1
+        || !valid_digest(&cp.manifest_digest)
+        || cp.entries.is_empty()
+        || cp.entries.len() > 128
+        || cp.entries.iter().any(|entry| {
+            peachsh::domain::scope_path(&entry.path).is_err()
+                || !valid_digest(&entry.after_digest)
+                || entry
+                    .before_digest
+                    .as_deref()
+                    .is_some_and(|v| !valid_digest(v))
+        })
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+async fn get_checkpoint(
+    client: &Client,
+    origin: &Url,
+    id: &str,
+) -> Result<CheckpointView, Failure> {
+    let result: CheckpointView =
+        decode(workflow_request(client, origin, &["api", "checkpoints", id], None, None).await?)?;
+    validate_checkpoint(&result.checkpoint)?;
+    if result.checkpoint.checkpoint_id != id {
+        return Err(invalid_response());
+    }
+    Ok(result)
+}
 fn validate_receipt(receipt: &RestoreReceipt, task: &str) -> Result<(), Failure> {
     if receipt.task_id != task
         || !valid_id(task)
@@ -721,6 +843,10 @@ fn operation_unknown(operation: &str) -> Failure {
         "send" => "新回合结果未知，请查询 session turns；仅可用原参数和原 key 手动重放",
         "resume" => "继续结果未知，请查询原任务所在 run status，不要自动重复继续",
         "cancel" => "取消结果未知，请查询原任务所在 run status",
+        "checkpoint" => "检查点创建结果未知，请仅用原任务和原 key 手动查询式重放",
+        "restore-checkpoint" => {
+            "检查点恢复结果未知，请用 task changes 查询原任务回执，不要自动重做"
+        }
         "restore" => "恢复结果未知，请用 task changes 查询持久回执，不要自动重做",
         _ => "操作结果未知，请查询持久状态",
     };
@@ -755,8 +881,21 @@ async fn workflow_request(
     write: Option<(&str, Value)>,
     key: Option<&str>,
 ) -> Result<Value, Failure> {
+    workflow_request_bound(client, origin, segments, write, key, None).await
+}
+async fn workflow_request_bound(
+    client: &Client,
+    origin: &Url,
+    segments: &[&str],
+    write: Option<(&str, Value)>,
+    key: Option<&str>,
+    restore_task: Option<&str>,
+) -> Result<Value, Failure> {
     let mut token = None;
-    let operation = write.as_ref().map(|(operation, _)| *operation);
+    let operation = write
+        .as_ref()
+        .map(|(operation, _)| *operation)
+        .filter(|op| *op != "diff");
     let url = endpoint(origin, segments)?;
     let request = if let Some((_, body)) = write {
         let bootstrap: Bootstrap =
@@ -796,14 +935,19 @@ async fn workflow_request(
         return Ok(value);
     }
     let mut failure = http_failure(value.clone())?;
-    if operation == Some("restore") && value.get("receipt").is_some() {
+    if matches!(operation, Some("restore" | "restore-checkpoint")) && value.get("receipt").is_some()
+    {
         if status != reqwest::StatusCode::CONFLICT
             || failure.code != "conflict"
             || failure.retryable
         {
             return Err(invalid_response());
         }
-        failure.details = Some(restore_projection(value, segments[2], false)?);
+        failure.details = Some(restore_projection(
+            value,
+            restore_task.unwrap_or(segments[2]),
+            false,
+        )?);
         if !safe_strings(failure.details.as_ref().unwrap()) {
             return Err(invalid_response());
         }
@@ -832,6 +976,12 @@ async fn workflow(
         Command::Task(TaskArgs {
             command: TaskCommand::Restore { .. },
         }) => Some("restore"),
+        Command::Task(TaskArgs {
+            command: TaskCommand::Checkpoint { .. },
+        }) => Some("checkpoint"),
+        Command::Checkpoint(CheckpointArgs {
+            command: CheckpointCommand::Restore { .. },
+        }) => Some("restore-checkpoint"),
         _ => None,
     };
     workflow_inner(client, origin, json_output, command)
@@ -975,7 +1125,69 @@ async fn workflow_inner(
                 return observe(origin, "sessions", args, json_output).await;
             }
         },
+        Command::Checkpoint(args) => match args.command {
+            CheckpointCommand::Get { id } => encoded(get_checkpoint(client, origin, &id).await?)?,
+            CheckpointCommand::Restore { id } => {
+                let checkpoint = get_checkpoint(client, origin, &id).await?;
+                let task = &checkpoint.checkpoint.task_id;
+                restore_projection(
+                    workflow_request_bound(
+                        client,
+                        origin,
+                        &["api", "checkpoints", &id, "restore"],
+                        Some(("restore-checkpoint", json!({}))),
+                        None,
+                        Some(task),
+                    )
+                    .await?,
+                    task,
+                    true,
+                )?
+            }
+        },
         Command::Task(args) => match args.command {
+            TaskCommand::Diff { id, path, view } => {
+                let result: DiffViewResponse = decode(
+                    workflow_request(
+                        client,
+                        origin,
+                        &["api", "tasks", &id, "git-diff"],
+                        Some(("diff", json!({"path":path,"view":view}))),
+                        None,
+                    )
+                    .await?,
+                )?;
+                let diff = &result.diff;
+                if diff.path != path
+                    || diff.view != view
+                    || !matches!(
+                        diff.status.as_str(),
+                        "text" | "unchanged" | "binary" | "too_large" | "missing"
+                    )
+                    || (diff.status == "text") != diff.patch.is_some()
+                    || diff.patch.as_ref().is_some_and(|p| p.len() > 524288)
+                {
+                    return Err(invalid_response());
+                }
+                encoded(result)?
+            }
+            TaskCommand::Checkpoint { id, key } => {
+                let result: CheckpointCreatedView = decode(
+                    workflow_request(
+                        client,
+                        origin,
+                        &["api", "tasks", &id, "checkpoints"],
+                        Some(("checkpoint", json!({}))),
+                        Some(&key),
+                    )
+                    .await?,
+                )?;
+                validate_checkpoint(&result.checkpoint)?;
+                if result.checkpoint.task_id != id {
+                    return Err(invalid_response());
+                }
+                encoded(result)?
+            }
             TaskCommand::Resume { id, message } => {
                 let task: Task = decode(
                     workflow_request(
