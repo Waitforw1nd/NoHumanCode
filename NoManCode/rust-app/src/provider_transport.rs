@@ -244,6 +244,11 @@ impl ProviderClient {
         if (permit.target.purpose == NetworkPurpose::Completion) != body.is_some() {
             return Err(TransportError::Invalid);
         }
+        if let Some(body) = body
+            && body.get("model").and_then(Value::as_str) != permit.model.as_deref()
+        {
+            return Err(TransportError::Invalid);
+        }
         let method = reqwest::Method::from_bytes(permit.target.method.as_bytes())
             .map_err(|_| TransportError::Invalid)?;
         let mut builder = self
@@ -262,5 +267,116 @@ impl ProviderClient {
             .execute(request)
             .await
             .map_err(|_| TransportError::Unknown)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn targets_have_one_canonical_origin_and_preserve_base_path() {
+        let a = validate_target("HTTPS://Example.COM/v1///", NetworkPurpose::Completion).unwrap();
+        let b = validate_target("https://example.com:443/v1", NetworkPurpose::Completion).unwrap();
+        assert_eq!(a, b);
+        assert_eq!(a.origin(), "https://example.com:443");
+        assert_eq!(a.base_url(), "https://example.com:443/v1");
+        assert_eq!(a.endpoint(), "https://example.com:443/v1/chat/completions");
+        assert_eq!(a.method(), "POST");
+        let ip = validate_target("http://[::1]/", NetworkPurpose::Balance).unwrap();
+        assert_eq!(ip.origin(), "http://[::1]:80");
+        assert_eq!(ip.endpoint(), "http://[::1]:80/api/user/self");
+        assert_eq!(ip.method(), "GET");
+        assert_eq!(
+            serde_json::to_string(&NetworkPurpose::Completion).unwrap(),
+            "\"completion\""
+        );
+    }
+
+    #[test]
+    fn targets_reject_ambiguity_before_url_parser_normalizes_it() {
+        for base in [
+            "file:///x",
+            "https:///example.com",
+            "http://",
+            "http://user@localhost",
+            "http://@localhost",
+            "http://localhost?x",
+            "http://localhost#x",
+            "http://localhost/a\\b",
+            " http://localhost",
+            "http://local\thost",
+            "http://localhost/a/../b",
+            "http://localhost/./b",
+            "http://localhost/%2e",
+            "http://localhost/.%2E/b",
+            "http://localhost/%2E%2e/b",
+            "http://localhost/a%2fb",
+            "http://localhost/a%5Cb",
+            "http://localhost/%",
+            "http://localhost/%2",
+            "http://localhost/%zz",
+        ] {
+            assert_eq!(
+                validate_target(base, NetworkPurpose::Models),
+                Err(TransportError::Invalid),
+                "{base}"
+            );
+        }
+        assert!(validate_target("http://localhost/a..b/%252e", NetworkPurpose::Models).is_ok());
+        assert_ne!(
+            validate_target("http://localhost/v1", NetworkPurpose::Models).unwrap(),
+            validate_target("http://localhost/v10", NetworkPurpose::Models).unwrap()
+        );
+    }
+
+    #[test]
+    fn permit_rejects_header_injection_and_wrong_identity_shape() {
+        let route = || validate_target("http://localhost", NetworkPurpose::Models).unwrap();
+        let account = || validate_target("http://localhost", NetworkPurpose::Balance).unwrap();
+        for key in ["", " ", "key\r\ninjected: secret"] {
+            assert!(matches!(
+                ProviderPermit::new(route(), key.into(), "c".into(), Some("m".into()), None),
+                Err(TransportError::Invalid)
+            ));
+        }
+        assert!(matches!(
+            ProviderPermit::new(route(), "k".into(), "c".into(), None, None),
+            Err(TransportError::Invalid)
+        ));
+        assert!(matches!(
+            ProviderPermit::new(
+                account(),
+                "k".into(),
+                "c".into(),
+                None,
+                Some("u\r\nx: y".into())
+            ),
+            Err(TransportError::Invalid)
+        ));
+        assert!(matches!(
+            ProviderPermit::new(
+                account(),
+                "k".into(),
+                "c".into(),
+                Some("m".into()),
+                Some("u".into())
+            ),
+            Err(TransportError::Invalid)
+        ));
+    }
+
+    #[test]
+    fn transport_errors_never_retain_upstream_sources() {
+        use std::error::Error;
+        for error in [
+            TransportError::Invalid,
+            TransportError::Response { status: 307 },
+            TransportError::InvalidResponse { status: 200 },
+            TransportError::Unknown,
+        ] {
+            assert!(error.source().is_none());
+            assert!(!format!("{error:?} {error}").contains("http"));
+        }
     }
 }
