@@ -225,6 +225,65 @@ async fn absent_promisor_object_is_unavailable_without_network_or_writes() {
         std::fs::read(root.join("a.txt")).unwrap(),
         b"missing object\n"
     );
+    // Prove the empty allowlist denies a custom helper even when local config
+    // explicitly allows it. A permissive fixture control first proves this
+    // local-only helper is executable; it merely writes a sentinel and exits.
+    let helper_dir = tempfile::tempdir().unwrap();
+    let marker = helper_dir.path().join("invoked");
+    let helper = helper_dir.path().join("git-remote-nhcfixture");
+    let escaped = marker
+        .to_string_lossy()
+        .replace('\\', "/")
+        .replace('\'', "'\\''");
+    std::fs::write(
+        &helper,
+        format!("#!/bin/sh\nprintf invoked > '{escaped}'\nexit 1\n"),
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    git(root, &["config", "protocol.nhcfixture.allow", "always"]);
+    let path = std::env::join_paths(
+        std::iter::once(helper_dir.path().to_path_buf())
+            .chain(std::env::split_paths(&std::env::var_os("PATH").unwrap())),
+    )
+    .unwrap();
+    let mut control = git_diff::transport_fixture_command(root).unwrap();
+    control
+        .env("PATH", &path)
+        .env("GIT_ALLOW_PROTOCOL", "nhcfixture")
+        .args(["ls-remote", "nhcfixture://local-fixture"]);
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(3), control.output())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        marker.exists(),
+        "local helper control must actually execute"
+    );
+    std::fs::remove_file(&marker).unwrap();
+    let mut denied = git_diff::transport_fixture_command(root).unwrap();
+    assert!(
+        denied
+            .as_std()
+            .get_envs()
+            .any(|(key, value)| key == "GIT_ALLOW_PROTOCOL" && value.is_some_and(|v| v.is_empty()))
+    );
+    denied
+        .env("PATH", &path)
+        .args(["ls-remote", "nhcfixture://local-fixture"]);
+    let denied = tokio::time::timeout(std::time::Duration::from_secs(3), denied.output())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!denied.status.success());
+    assert!(
+        !marker.exists(),
+        "custom transport bypassed the empty allowlist"
+    );
 }
 
 #[tokio::test]

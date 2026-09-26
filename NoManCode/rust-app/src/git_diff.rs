@@ -103,6 +103,8 @@ fn git_command(root: &Path) -> Result<tokio::process::Command, GitDiffError> {
         )
         .env("GIT_ATTR_NOSYSTEM", "1")
         .env("GIT_TERMINAL_PROMPT", "0")
+        // An empty allowlist also denies repository-configured custom helpers.
+        .env("GIT_ALLOW_PROTOCOL", "")
         .env("GIT_NO_LAZY_FETCH", "1")
         .env("GIT_NO_REPLACE_OBJECTS", "1")
         .env("GIT_OPTIONAL_LOCKS", "0")
@@ -138,6 +140,13 @@ fn git_command(root: &Path) -> Result<tokio::process::Command, GitDiffError> {
         .stderr(Stdio::piped())
         .kill_on_drop(true);
     Ok(command)
+}
+
+#[cfg(test)]
+pub(crate) fn transport_fixture_command(
+    root: &Path,
+) -> Result<tokio::process::Command, GitDiffError> {
+    git_command(root)
 }
 
 async fn bounded_read(
