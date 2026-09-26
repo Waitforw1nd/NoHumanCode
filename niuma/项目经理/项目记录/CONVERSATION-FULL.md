@@ -2359,3 +2359,14 @@ B安全DTO候选4b26377308fa1fb431082ce6fbff8f8b82dc8195与D transport首提77d0
 NEXT-07仍原三GPT-6-astra/执行ID/唯一所有权。B Store/schema初版0cce2bd已在干净窗口合D43fc6ee为36e96a6f3f603ba6f73bfb304d43a06adb8ddb3c；C首批server/CLI7b5fb0a已合B36e96a及D代理补强3ac33d9为6bd6725a4105b939efa7e3a3420e6a30b49c9143、Rust tree70d086e4629e1e6bd7c1b432a2fb7d2f6dd529be，合并均0无冲突。B继续Engine/Task/call/ack，C继续web/真实测试，D等待完整依赖并只读交叉审查B。
 
 经理已发现/确认N07-C01默认端口origin校验错误（C已接修）、N07-B-D01 SQL约束归一化误删字面量及D02确认回放归属未核（B已接修）。全部是候选开发问题，尚无功能APPROVED。B首check在MSVC link.exe环境阶段失败、未到源码；C正确MSVC环境首次check已exit101，19项均为尚未接齐的Engine/Provider/Approval接口；日志保留，C继续本人web/测试，未跨改依赖。没有NEXT-07五门禁通过，旧345/0/1不当本轮证据。下一第一操作收修复及B实际Engine候选、组合真实编译后审N01–N10，固定组合最终五门禁仅C。NEXT-08多项目配置在后，阶段一未完成。
+
+
+## 2026-09-27 首个完整NEXT-07组合已check通过，定向验证中
+
+经理GPT-6。B真实API9be2bddb618314c51373080362af3fc72fe78a18、C接入f90bf7344dacafee5f9f32d9f740a5dc3eef3428（含origin修复3ded766）、D传输3ac33d9af8ca2b31ca2cca7cfaff794474bfe8a0经经理核三树干净后，普通merge于B并ff同步C/D，统一bce914a17883378cd53aefdecf75cc51ab04abdf、Rust treece78b10708fe9ae2af52c85e1edc890829e654eb，合并全0无冲突。三原GPT-6-astra已继续本人范围：B补事务/准入/ack/迁移/真崩溃证明；D开始传输定向与公开Engine集成；C网络HTTP/CLI定向及旧夹具。
+
+C报告bce914a正确MSVC workspace check首次exit0（c-r8-api-check.log）；这不等于五门禁通过。C随后修stdout失败保留回执N07-C-D01并正运行network_cli/network_http，结果未到；B/D无正式通过结果。B DDL归一化/confirm错链修复已入9be，待反例验；经理另指出N07-B03管理网络在途同max配置会以available_permits扩增并发容量，已派原B修。当前不APPROVED，不合main，完整验收仍N01–N10，最终五标准门禁仅C固定组合串行。
+
+用户另要求GitHub首页去掉旧Harness展示、保持本机环境，上传对话经第二独占窗口完成33e869ccbb8d36cc4f7ad1dd57c341a91aac1dc6，仅README+独立记录，普通push0并回报ls-remote一致。经理实核HEAD=origin/main=33e869、index空、NoManCode diff为空、Rust tree仍b549de2e18d39c8e69e6607b9f430974895ee4b9。README旧内容留Git历史，本机配置/脚本/实例未动；员工在途内容未上传。详见[首页清理记录](2026-09-27GitHub首页旧Harness展示清理.md)。main/index锁已归还本经理。九原档案已专门原字节归档c9154e5，非未提交；D备份继续保留，所有开发E盘。
+
+下一第一操作：收定向失败/证据，原文件所有者修复；新提交组成固定候选后再五门禁。阶段一未完成，NEXT-08多项目配置仍排后，不扩Desktop/完整Team/MCP。
