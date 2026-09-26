@@ -46,6 +46,10 @@ impl Store {
             version,
             SCHEMA_VERSION
         );
+        anyhow::ensure!(
+            version < 9 || repository::migration_applied(&db, repository::CHECKPOINT_MIGRATION_ID)?,
+            "schema 9 checkpoint marker missing"
+        );
         if version < 2 {
             db.execute_batch("CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), created_at INTEGER NOT NULL);
               CREATE INDEX IF NOT EXISTS idempotency_run ON idempotency(run_id);")?;
@@ -3272,14 +3276,6 @@ impl Store {
                 checkpoint: read_checkpoint(&tx, &id)?.0,
                 replayed: true,
             });
-        }
-        let key_used: bool = tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM checkpoints WHERE creation_key=?1)",
-            [key],
-            |r| r.get(0),
-        )?;
-        if key_used {
-            return Err(CheckpointError::Conflict.into());
         }
         let value: String =
             tx.query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {

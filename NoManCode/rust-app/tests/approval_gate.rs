@@ -942,7 +942,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     drop(s);
     // Restore exactly schema 6: the only removed objects are schema 7 objects.
     let conn = db(temp.path());
-    conn.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DROP TABLE approvals; DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); PRAGMA user_version=6;").unwrap();
+    conn.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DROP TABLE approvals; DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
     let old: String = conn
         .query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r.get(0))
         .unwrap();
@@ -964,7 +964,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     );
     conn.execute_batch("DROP TRIGGER migration_fault;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 8);
+    assert_eq!(s.schema_version().unwrap(), 9);
     assert_eq!(s.task("a").unwrap().id, t.id);
     assert_eq!(
         conn.query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r
@@ -1205,9 +1205,9 @@ fn ap19_constraints_enforced_and_partial_ddl_retry() {
         );
     }
     drop(s);
-    conn.execute_batch("DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); PRAGMA user_version=6;").unwrap();
+    conn.execute_batch("DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 8);
+    assert_eq!(s.schema_version().unwrap(), 9);
     assert_eq!(s.approval(&record.id).unwrap(), record);
     drop(s);
     conn.execute_batch("DROP INDEX approvals_task_call_unique; CREATE INDEX approvals_task_call_unique ON approvals(task_id,tool_call_id);").unwrap();

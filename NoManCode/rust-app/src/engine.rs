@@ -30,6 +30,23 @@ mod crash_probe {
     type ArmedPhase = (String, &'static str, PathBuf);
     static PHASE: OnceLock<Mutex<Option<ArmedPhase>>> = OnceLock::new();
     static READ_FAILURE: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    static RESTORE_FAILURE: OnceLock<Mutex<HashSet<(String, String)>>> = OnceLock::new();
+
+    pub(super) fn fail_restore_path(task_id: String, path: String) {
+        RESTORE_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .insert((task_id, path));
+    }
+
+    pub(super) fn take_restore_failure(task_id: &str, path: &str) -> bool {
+        RESTORE_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .remove(&(task_id.to_owned(), path.to_owned()))
+    }
 
     pub(super) fn fail_recheck_once(task_id: String) {
         READ_FAILURE
@@ -1327,6 +1344,11 @@ impl Engine {
                 .approval_by_tool_call(id, &record.tool_call_id)
                 .map_err(|_| WorkspaceChangeError::Corrupt)?
                 .ok_or(WorkspaceChangeError::Corrupt)?;
+            if approval.status != ApprovalStatus::Approved
+                || approval.execution_state != approval::ExecutionState::Finished
+            {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
             if approval.binding_digest != record.binding_digest
                 || approval.workspace != task.workspace
             {
@@ -1393,6 +1415,8 @@ impl Engine {
     }
 
     fn restore_locked(&self, id: &str) -> Result<RestoreReceipt> {
+        // The compatibility Task route must not bypass a damaged checkpoint manifest.
+        self.store.checkpoint_for_task(id)?;
         let task = self.store.task(id).map_err(|error| {
             if error.chain().any(|cause| {
                 matches!(
@@ -1541,6 +1565,11 @@ impl Engine {
             changes.iter().zip(targets).zip(originals).enumerate()
         {
             let action = (|| -> Result<()> {
+                #[cfg(test)]
+                anyhow::ensure!(
+                    !crash_probe::take_restore_failure(id, &change.path),
+                    "injected restore path failure"
+                );
                 let checked = workspace::resolve(
                     std::path::Path::new(&task.workspace),
                     &change.path,
@@ -1585,6 +1614,8 @@ impl Engine {
                 }
                 .into());
             }
+            #[cfg(test)]
+            crash_probe::block(id, "restore_post_fs", &restore_id);
             if self
                 .store
                 .finish_restore_path(&restore_id, &change.id)
@@ -1943,10 +1974,12 @@ mod workspace_phase_tests {
         State(calls): State<Arc<AtomicUsize>>,
         Json(_): Json<Value>,
     ) -> ([(&'static str, &'static str); 1], String) {
-        let index = calls.fetch_add(1, Ordering::SeqCst);
+        let raw_index = calls.fetch_add(1, Ordering::SeqCst);
+        let multiple_paths = raw_index >= 100;
+        let index = raw_index % 100;
         let delta = if index < 2 || index == 3 {
             json!({"tool_calls":[{"index":0,"id":format!("phase-{index}"),"type":"function","function":{
-                "name":"write_file","arguments":json!({"path":"src/a.txt","content":format!("after-{index}")}).to_string()
+                "name":"write_file","arguments":json!({"path":if multiple_paths && index==1 {"src/b.txt"} else {"src/a.txt"},"content":format!("after-{index}")}).to_string()
             }}]})
         } else {
             json!({"content":"done"})
@@ -1963,6 +1996,14 @@ mod workspace_phase_tests {
     }
 
     async fn two_write_engine_kind(root: &Path, kind: SessionKind) -> (Arc<Engine>, String) {
+        two_write_engine_paths(root, kind, false).await
+    }
+
+    async fn two_write_engine_paths(
+        root: &Path,
+        kind: SessionKind,
+        multiple_paths: bool,
+    ) -> (Arc<Engine>, String) {
         std::fs::create_dir_all(root.join("src")).unwrap();
         std::fs::write(root.join("src/a.txt"), "before-a").unwrap();
         std::fs::write(root.join("src/b.txt"), "before-b").unwrap();
@@ -1970,7 +2011,11 @@ mod workspace_phase_tests {
         let base = format!("http://{}/v1", listener.local_addr().unwrap());
         let app = Router::new()
             .route("/v1/chat/completions", post(two_write_reply))
-            .with_state(Arc::new(AtomicUsize::new(0)));
+            .with_state(Arc::new(AtomicUsize::new(if multiple_paths {
+                100
+            } else {
+                0
+            })));
         tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
         });
@@ -2281,6 +2326,258 @@ mod workspace_phase_tests {
         }
     }
 
+    fn checkpoint_crash(phase: &'static str, test_name: &str) {
+        if std::env::var("NHC_CHECKPOINT_CHILD").as_deref() == Ok(phase) {
+            let root = std::path::PathBuf::from(std::env::var("NHC_CHECKPOINT_ROOT").unwrap());
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                let (engine, task) = two_write_engine_kind(&root, SessionKind::Chat).await;
+                finish_two_writes(&engine, &task, usize::MAX).await;
+                let cp = engine.create_checkpoint(&task, "crash-key").await.unwrap();
+                crash_probe::arm(task, phase, root.join("phase.signal"));
+                let _ = engine
+                    .restore_checkpoint(&cp.checkpoint.checkpoint_id)
+                    .await;
+            });
+            panic!("child returned before stop");
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let mut process = ChildGuard(Some(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", test_name, "--nocapture"])
+                .env("NHC_CHECKPOINT_CHILD", phase)
+                .env("NHC_CHECKPOINT_ROOT", temp.path())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap(),
+        ));
+        let deadline = Instant::now() + Duration::from_secs(15);
+        let signal = temp.path().join("phase.signal");
+        while !signal.exists() && Instant::now() < deadline {
+            assert!(
+                process.0.as_mut().unwrap().try_wait().unwrap().is_none(),
+                "checkpoint child exited early"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(signal.exists(), "checkpoint child never reached {phase}");
+        let db = rusqlite::Connection::open(temp.path().join("phase.db")).unwrap();
+        let (checkpoint_id, task_id): (String, String) = db
+            .query_row("SELECT id,task_id FROM checkpoints", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        let count: i64 = db
+            .query_row("SELECT count(*) FROM workspace_restores", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(
+            count,
+            if phase == "checkpoint_pre_claim" {
+                0
+            } else {
+                1
+            }
+        );
+        if count == 1 {
+            assert_eq!(
+                db.query_row("SELECT status FROM workspace_restores", [], |r| r
+                    .get::<_, String>(0))
+                    .unwrap(),
+                "claimed"
+            );
+        }
+        let before_stop = std::fs::read(temp.path().join("src/a.txt")).unwrap();
+        assert_eq!(
+            before_stop,
+            if phase == "restore_post_fs" {
+                b"before-a".as_slice()
+            } else {
+                b"after-1".as_slice()
+            }
+        );
+        assert!(!process.stop().success());
+        let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        store.recover().unwrap();
+        assert_eq!(engine.checkpoint(&checkpoint_id).unwrap().task_id, task_id);
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            if phase == "checkpoint_pre_claim" {
+                assert!(engine.latest_restore(&task_id).unwrap().is_none());
+                assert_eq!(
+                    engine
+                        .restore_checkpoint(&checkpoint_id)
+                        .await
+                        .unwrap()
+                        .status,
+                    RestoreStatus::Complete
+                );
+            } else {
+                let receipt = engine.latest_restore(&task_id).unwrap().unwrap();
+                assert_eq!(receipt.status, RestoreStatus::Unknown);
+                assert!(matches!(
+                    engine
+                        .restore_checkpoint(&checkpoint_id)
+                        .await
+                        .unwrap_err()
+                        .downcast_ref(),
+                    Some(WorkspaceChangeError::Unknown { .. })
+                ));
+                assert_eq!(
+                    std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                    before_stop
+                );
+                assert!(engine.resume(&task_id, "must not retry").await.is_err());
+                let task = store.task(&task_id).unwrap();
+                let context = store.run_context(&task.run_id).unwrap();
+                let error = engine
+                    .send_chat_turn(SendChatTurn {
+                        session_id: context.session.id,
+                        agent_id: context.tasks[0].agent_id.clone(),
+                        expected_last_turn_id: context.latest_turn.id,
+                        message: "blocked by unknown".into(),
+                        idempotency_key: "after-checkpoint-crash".into(),
+                    })
+                    .await
+                    .unwrap_err();
+                assert!(matches!(
+                    error.downcast_ref::<ChatTurnError>(),
+                    Some(ChatTurnError::UnresolvedEffects)
+                ));
+            }
+        });
+    }
+
+    #[test]
+    fn checkpoint_before_claim_real_process_stop() {
+        checkpoint_crash(
+            "checkpoint_pre_claim",
+            "engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop",
+        );
+    }
+    #[test]
+    fn checkpoint_after_claim_real_process_stop() {
+        checkpoint_crash(
+            "restore_pre_fs",
+            "engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop",
+        );
+    }
+    #[test]
+    fn checkpoint_after_effect_real_process_stop() {
+        checkpoint_crash(
+            "restore_post_fs",
+            "engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop",
+        );
+    }
+
+    #[tokio::test]
+    async fn checkpoint_creation_and_both_restore_routes_share_real_gate() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task) = two_write_engine(temp.path()).await;
+        let request = crate::git_diff::GitDiffRequest {
+            path: "src/a.txt".into(),
+            view: crate::git_diff::GitDiffView::Head,
+        };
+        assert!(matches!(
+            engine
+                .git_diff(&task, request.clone())
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Active)
+        ));
+        finish_two_writes(&engine, &task, usize::MAX).await;
+        let guard = engine.gate.lock().await;
+        let mut first = std::pin::pin!(engine.create_checkpoint(&task, "gate"));
+        let mut second = std::pin::pin!(engine.create_checkpoint(&task, "gate"));
+        assert_gate_pending(first.as_mut()).await;
+        assert_gate_pending(second.as_mut()).await;
+        assert!(engine.store.checkpoint_for_task(&task).unwrap().is_none());
+        drop(guard);
+        let a = first.await.unwrap();
+        let b = second.await.unwrap();
+        assert!(!a.replayed && b.replayed);
+        assert_eq!(a.checkpoint, b.checkpoint);
+        let guard = engine.gate.lock().await;
+        let mut checkpoint = std::pin::pin!(engine.restore_checkpoint(&a.checkpoint.checkpoint_id));
+        let mut compatibility = std::pin::pin!(engine.restore(&task));
+        let mut diff = std::pin::pin!(engine.git_diff(&task, request));
+        assert_gate_pending(checkpoint.as_mut()).await;
+        assert_gate_pending(compatibility.as_mut()).await;
+        assert_gate_pending(diff.as_mut()).await;
+        assert!(engine.latest_restore(&task).unwrap().is_none());
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+            "after-1"
+        );
+        drop(guard);
+        assert_eq!(checkpoint.await.unwrap(), compatibility.await.unwrap());
+        assert!(matches!(
+            diff.await
+                .unwrap_err()
+                .downcast_ref::<crate::git_diff::GitDiffError>(),
+            Some(crate::git_diff::GitDiffError::Unavailable)
+        ));
+    }
+
+    #[tokio::test]
+    async fn checkpoint_partial_failure_keeps_single_receipt_and_blocks_new_turn() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task) = two_write_engine_paths(temp.path(), SessionKind::Chat, true).await;
+        finish_two_writes(&engine, &task, usize::MAX).await;
+        let cp = engine
+            .create_checkpoint(&task, "partial")
+            .await
+            .unwrap()
+            .checkpoint;
+        assert_eq!(cp.entries.len(), 2);
+        crash_probe::fail_restore_path(task.clone(), "src/b.txt".into());
+        let error = engine
+            .restore_checkpoint(&cp.checkpoint_id)
+            .await
+            .unwrap_err();
+        let Some(WorkspaceChangeError::Conflict {
+            receipt: Some(receipt),
+        }) = error.downcast_ref::<WorkspaceChangeError>()
+        else {
+            panic!("unexpected {error}");
+        };
+        assert_eq!(receipt.status, RestoreStatus::Partial);
+        assert_eq!(receipt.restored, 1);
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+            "before-a"
+        );
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("src/b.txt")).unwrap(),
+            "after-1"
+        );
+        assert_eq!(
+            engine.latest_restore(&task).unwrap().as_ref(),
+            Some(receipt)
+        );
+        let replay = engine.restore(&task).await.unwrap_err();
+        assert!(
+            matches!(replay.downcast_ref::<WorkspaceChangeError>(),Some(WorkspaceChangeError::Conflict{receipt:Some(other)}) if other==receipt)
+        );
+        let context = engine
+            .store
+            .run_context(&engine.store.task(&task).unwrap().run_id)
+            .unwrap();
+        assert!(matches!(
+            engine
+                .send_chat_turn(SendChatTurn {
+                    session_id: context.session.id,
+                    agent_id: context.tasks[0].agent_id.clone(),
+                    expected_last_turn_id: context.latest_turn.id,
+                    message: "no new turn".into(),
+                    idempotency_key: "after-partial".into()
+                })
+                .await
+                .unwrap_err()
+                .downcast_ref::<ChatTurnError>(),
+            Some(ChatTurnError::UnresolvedEffects)
+        ));
+    }
     #[test]
     fn write_prepare_before_fs_real_process_stop() {
         parent(
@@ -2579,6 +2876,58 @@ mod workspace_phase_tests {
 }
 
 impl Engine {
+    /// Review a single path in the workspace bound to this Task. The same gate
+    /// serializes reads with this Host's writes, starts, resumes and restores.
+    pub async fn git_diff(
+        &self,
+        task_id: &str,
+        request: crate::git_diff::GitDiffRequest,
+    ) -> Result<crate::git_diff::GitDiff> {
+        let _gate = self.gate.lock().await;
+        let task = self.store.task(task_id).map_err(|error| {
+            if error.chain().any(|cause| {
+                matches!(
+                    cause.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::QueryReturnedNoRows)
+                )
+            }) {
+                anyhow::Error::from(WorkspaceChangeError::NotFound)
+            } else {
+                error
+            }
+        })?;
+        let root = std::path::Path::new(&task.workspace);
+        let canonical = root
+            .canonicalize()
+            .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
+        if let Some(settings) = self.store.settings()?
+            && std::path::Path::new(&settings.workspace)
+                .canonicalize()
+                .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?
+                != canonical
+        {
+            return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+        }
+        let active: Vec<_> = self
+            .active
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(id, a)| (id.clone(), a.workspace.clone()))
+            .collect();
+        for (id, workspace) in active {
+            if id == task_id
+                || std::path::Path::new(&workspace)
+                    .canonicalize()
+                    .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?
+                    == canonical
+            {
+                return Err(WorkspaceChangeError::Active.into());
+            }
+        }
+        Ok(crate::git_diff::read_git_diff(root, request).await?)
+    }
+
     pub fn checkpoint(&self, checkpoint_id: &str) -> Result<crate::checkpoint::Checkpoint> {
         Ok(self.store.checkpoint_record(checkpoint_id)?.0)
     }

@@ -2,6 +2,7 @@ pub mod approval;
 pub mod checkpoint;
 pub mod domain;
 pub mod engine;
+pub mod git_diff;
 pub mod plugin_catalog;
 pub mod plugin_host;
 pub mod provider;
