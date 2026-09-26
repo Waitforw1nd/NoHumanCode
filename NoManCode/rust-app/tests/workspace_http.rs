@@ -201,6 +201,24 @@ fn rows(db: &Connection, table: &str) -> i64 {
     .unwrap()
 }
 
+fn private_absent(text: &str, root: &Path, sealed: &[u8]) {
+    let path = root.to_string_lossy();
+    let hex = sealed
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    assert!(!text.contains(BEFORE_SECRET));
+    assert!(!text.contains(path.as_ref()));
+    assert!(!text.contains(&path.replace('\\', "\\\\")));
+    assert!(!text.contains(&hex));
+    assert!(
+        !text
+            .as_bytes()
+            .windows(sealed.len())
+            .any(|part| part == sealed)
+    );
+}
+
 #[tokio::test]
 async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
     let h = harness(vec![
@@ -216,6 +234,13 @@ async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
         rows(&db, "workspace_changes"),
         rows(&db, "workspace_restores"),
     );
+    let sealed: Vec<u8> = db
+        .query_row(
+            "SELECT before_blob FROM workspace_changes WHERE task_id=?1",
+            [&task],
+            |row| row.get(0),
+        )
+        .unwrap();
     for response in [
         c.get(h.changes_url(&task))
             .header("host", "invalid.local")
@@ -235,6 +260,12 @@ async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
             .unwrap(),
         c.post(h.restore_url(&task))
             .header("origin", "http://invalid.local")
+            .header("x-peachsh-token", TOKEN)
+            .send()
+            .await
+            .unwrap(),
+        c.post(h.restore_url(&task))
+            .header("host", "invalid.local")
             .header("x-peachsh-token", TOKEN)
             .send()
             .await
@@ -306,12 +337,7 @@ async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
         64
     );
     assert!(changes["restore"].is_null());
-    assert!(!changes.to_string().contains(BEFORE_SECRET));
-    assert!(
-        !changes
-            .to_string()
-            .contains(&h.dir.path().to_string_lossy().to_string())
-    );
+    private_absent(&changes.to_string(), h.dir.path(), &sealed);
     let restored = body(
         c.post(h.restore_url(&task))
             .header("x-peachsh-token", TOKEN)
@@ -326,6 +352,7 @@ async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
     assert_eq!(restored["receipt"]["status"], "complete");
     assert_eq!(restored["receipt"]["restored"], 1);
     assert_eq!(restored["receipt"]["outcomes"][0]["status"], "complete");
+    private_absent(&restored.to_string(), h.dir.path(), &sealed);
     let restore_id = restored["receipt"]["restore_id"].as_str().unwrap();
     assert!(!restore_id.is_empty());
     assert_eq!(
@@ -339,11 +366,11 @@ async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
     .await;
     assert_eq!(after["restore"], restored["receipt"]);
     assert_eq!(after["changes"][0]["restore_state"], "restored");
-    assert!(!after.to_string().contains(BEFORE_SECRET));
+    private_absent(&after.to_string(), h.dir.path(), &sealed);
     let run_id = h.engine.store.task(&task).unwrap().run_id;
     let persisted = h.engine.store.events(&run_id, 0).unwrap();
     let events = serde_json::to_string(&persisted).unwrap();
-    assert!(!events.contains(BEFORE_SECRET));
+    private_absent(&events, h.dir.path(), &sealed);
     let mut stream = c
         .get(format!("{}/api/runs/{run_id}/events", h.origin))
         .send()
@@ -360,7 +387,7 @@ async fn normal_dto_auth_and_empty_task_are_distinct_and_safe() {
     })
     .await
     .unwrap();
-    assert!(!frames.contains(BEFORE_SECRET));
+    private_absent(&frames, h.dir.path(), &sealed);
     let empty = start_task(&h, &[]).await;
     let noop = body(
         c.post(h.restore_url(&empty))
