@@ -567,29 +567,38 @@ async fn check(
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Bind {
-    account: Account,
+    account: BindAccount,
     token: Option<String>,
 }
-#[cfg(test)]
-fn select_account_token(
-    previous: Option<&Account>,
-    next: &Account,
-    provided: Option<String>,
-    stored: Option<String>,
-) -> anyhow::Result<String> {
-    if let Some(token) = provided.filter(|s| !s.is_empty()) {
-        return Ok(token);
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BindAccount {
+    base_url: String,
+    user_id: String,
+    #[serde(default = "default_quota_unit")]
+    quota_per_unit: f64,
+}
+fn default_quota_unit() -> f64 {
+    500_000.0
+}
+impl From<BindAccount> for Account {
+    fn from(value: BindAccount) -> Self {
+        Self {
+            base_url: value.base_url,
+            user_id: value.user_id,
+            quota_per_unit: value.quota_per_unit,
+        }
     }
-    if previous != Some(next) {
-        anyhow::bail!("更换 New API 地址或用户后必须重新填写账号令牌");
-    }
-    stored.ok_or_else(|| anyhow::anyhow!("请填写 New API 账号访问令牌"))
 }
 async fn account(
     State(app): State<App>,
     ContractJson(StrictObject(body)): ContractJson<StrictObject<Bind>>,
 ) -> Response {
-    match app.engine.bind_account(body.account, body.token).await {
+    match app
+        .engine
+        .bind_account(body.account.into(), body.token)
+        .await
+    {
         Ok(()) => Json(json!({"ok":true,"network_authorization_required":true})).into_response(),
         Err(error) => network_error(error),
     }
@@ -1748,15 +1757,45 @@ mod tests {
         }
     }
 
-    #[test]
-    fn changing_newapi_origin_requires_new_token() {
+    #[tokio::test]
+    async fn changing_newapi_origin_requires_new_token() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(crate::store::Store::open(&dir.path().join("account.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: dir.path().to_string_lossy().into(),
+                max_concurrency: 1,
+                routes: vec![],
+                newapi: None,
+            })
+            .unwrap();
+        let engine = Engine::new(store, 1).unwrap();
         let old = account("https://old.example", "1");
+        engine
+            .bind_account(old.clone(), Some("old".into()))
+            .await
+            .unwrap();
         let next = account("https://new.example", "1");
-        assert!(select_account_token(Some(&old), &next, None, Some("old".into())).is_err());
+        assert!(engine.bind_account(next.clone(), None).await.is_err());
+        assert_eq!(engine.store.settings().unwrap().unwrap().newapi, Some(old));
         assert_eq!(
-            select_account_token(Some(&old), &next, Some("new".into()), Some("old".into()))
-                .unwrap(),
-            "new"
+            engine.store.secret("newapi-account").unwrap().as_deref(),
+            Some("old")
+        );
+        engine
+            .bind_account(next.clone(), Some("new".into()))
+            .await
+            .unwrap();
+        assert_eq!(
+            engine.store.secret("newapi-account").unwrap().as_deref(),
+            Some("new")
+        );
+        let mut quota = next;
+        quota.quota_per_unit = 100_000.0;
+        engine.bind_account(quota.clone(), None).await.unwrap();
+        assert_eq!(
+            engine.store.settings().unwrap().unwrap().newapi,
+            Some(quota)
         );
     }
 

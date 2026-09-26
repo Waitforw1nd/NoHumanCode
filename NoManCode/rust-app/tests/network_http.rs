@@ -199,7 +199,19 @@ async fn network_http_local_save_preview_grant_replay_and_explicit_post() {
     )
     .await;
     let revoked = body(h.post("/api/routes/route-a/models", json!({})).await, 409).await;
-    assert_eq!(revoked["error"]["code"], "revoked");
+    assert_eq!(revoked["error"]["code"], "required");
+    let revoked_grant = body(
+        h.request(
+            reqwest::Method::GET,
+            &format!("/api/network/authorizations/{id}"),
+        )
+        .send()
+        .await
+        .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(revoked_grant["state"], "revoked");
     assert_eq!(h.calls.load(Ordering::SeqCst), 3);
 }
 #[tokio::test]
@@ -250,6 +262,19 @@ async fn network_http_strict_json_auth_reads_and_invalid_requests_never_dispatch
             .unwrap();
         let v = body(response, 400).await;
         assert!(v["error"].is_string());
+    }
+    for request in [
+        r#"{"account":{"base_url":"https://example.com","user_id":"7","extra":true},"token":"synthetic"}"#,
+        r#"{"account":{"base_url":"https://example.com","user_id":"7","user_id":"8"},"token":"synthetic"}"#,
+    ] {
+        let response = h
+            .request(reqwest::Method::PUT, "/api/newapi")
+            .header("content-type", "application/json")
+            .body(request)
+            .send()
+            .await
+            .unwrap();
+        body(response, 400).await;
     }
     let preview = h.preview(json!({"kind":"route","id":"route-a"})).await;
     let no_key=h.request(reqwest::Method::POST,"/api/network/authorizations").json(&json!({"subject":preview["subject"],"config_revision":preview["config_revision"],"credential_revision":preview["credential_revision"],"binding_digest":preview["binding_digest"],"purposes":["models"]})).send().await.unwrap();
@@ -378,6 +403,13 @@ async fn bootstrap(origin: &str) -> String {
 }
 #[tokio::test]
 async fn network_http_real_host_kill_after_send_retains_same_unknown_call_without_replay() {
+    real_host_crash_case(false).await;
+}
+#[tokio::test]
+async fn network_http_real_host_full_response_finish_db_failure_then_kill_recovers_same_call() {
+    real_host_crash_case(true).await;
+}
+async fn real_host_crash_case(block_finish: bool) {
     use axum::{
         body::Body,
         response::{IntoResponse, Response},
@@ -459,7 +491,8 @@ async fn network_http_real_host_kill_after_send_retains_same_unknown_call_withou
         .post(format!("{origin}/api/routes/route-a/models"))
         .header("x-peachsh-token", &token)
         .json(&json!({}));
-    let pending = tokio::spawn(async move { request.send().await });
+    let pending =
+        tokio::spawn(async move { request.timeout(Duration::from_secs(12)).send().await });
     tokio::time::timeout(Duration::from_secs(5), entered.notified())
         .await
         .unwrap();
@@ -476,11 +509,38 @@ async fn network_http_real_host_kill_after_send_retains_same_unknown_call_withou
     let receipt: Value = serde_json::from_str(&receipt).unwrap();
     assert_eq!(receipt["call_id"], call_id);
     assert_eq!(receipt["state"], "claimed");
+    if block_finish {
+        // The claim is already durable. Hold an external write transaction while
+        // releasing the complete valid provider response. Host's typed
+        // persistence_unknown receipt proves it reached finish and could not commit.
+        db.execute_batch("BEGIN IMMEDIATE").unwrap();
+        release.notify_one();
+        let failure = body(pending.await.unwrap().unwrap(), 409).await;
+        assert_eq!(failure["error"]["code"], "unknown");
+        assert_eq!(failure["error"]["dispatch_state"], "unknown");
+        assert_eq!(failure["error"]["calls"][0]["call_id"], call_id);
+        assert_eq!(
+            failure["error"]["calls"][0]["result"],
+            "persistence_unknown"
+        );
+        let persisted: String = db
+            .query_row(
+                "SELECT state FROM network_calls WHERE id=?1",
+                [&call_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(persisted, "claimed");
+        child.kill().await.unwrap();
+        assert!(!child.wait().await.unwrap().success());
+        db.execute_batch("ROLLBACK").unwrap();
+    } else {
+        child.kill().await.unwrap();
+        assert!(!child.wait().await.unwrap().success());
+        assert!(pending.await.unwrap().is_err());
+        release.notify_one();
+    }
     drop(db);
-    child.kill().await.unwrap();
-    assert!(!child.wait().await.unwrap().success());
-    assert!(pending.await.unwrap().is_err());
-    release.notify_one();
     child = launch_host(root.path(), port).await;
     let token = bootstrap(&origin).await;
     let recovered = body(

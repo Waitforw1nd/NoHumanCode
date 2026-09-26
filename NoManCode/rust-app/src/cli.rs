@@ -281,6 +281,7 @@ enum ApprovalCommand {
     },
     Approve {
         approval_id: String,
+        /// 此命令可能访问任意网络，当前没有OS出站沙箱；明确确认此风险。
         #[arg(long)]
         acknowledge_command_network: bool,
     },

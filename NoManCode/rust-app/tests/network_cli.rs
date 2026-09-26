@@ -14,10 +14,12 @@ use std::{
     time::Duration,
 };
 
+type RecordedRequest = (String, String, Value, bool, Option<String>);
+
 #[derive(Clone)]
 struct Mock {
     replies: Arc<Mutex<VecDeque<(u16, Value)>>>,
-    requests: Arc<Mutex<Vec<(String, String, Value, bool, Option<String>)>>>,
+    requests: Arc<Mutex<Vec<RecordedRequest>>>,
 }
 struct Host {
     port: u16,
