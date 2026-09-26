@@ -1,3 +1,23 @@
+## 2026-09-27 NEXT-08第二开发组合与新Turn授权裁决
+
+经理GPT-6续核活动主仓HEAD28658e02655c7a3bed41a4d167ca4a6bb99fd7f9，产品仍NEXT-07的NoManCode tree0f01cd6c1621a16cef842a583028b91cc80f4e12、Rust treef303e198698c8b68f11f937b6ec405fe8db6a70a，主index空。原B/C GPT-6-astra继续原执行ID，D组件3452c67冻结，只读复核完成，不产生新执行者。
+
+B工作树已有经理组合c793c797bb471168543d950ccb4b649aab70e9f4（a7修订+C消费端），本人报告project_context4/0/0，迁移/正向fixture/竞态与跨项目恢复仍在补。D第1.2源码复核B02/B03/B05限定闭合，第1.3确认公共Store配置与Task/claim/admit同Immediate事务复核当前权限，没有运行竞态测试。C保存6410b2f836d516efb1b6b938b52311bfbb7b9796后，经理核clean并普通merge a7，无冲突；新组合e2f965e43a3a679850849f1e5fec1e85a7e1928a，Rust treee1e5e85a845b2804169967d8c1a8d3d943cb4d42，status/index空。C已被通知核收继续本人测试。
+
+C报告HTTP5/5、CLI4/4、network_cli7/7和Web四组行为通过；network_http3/5两项真进程crash fixture仍需适配，原失败保留；这些是员工定向事实，经理尚未核完整固定源码/日志清单，非最终五门禁。经理已读C严格DTO/WASM拒绝及反例源码，记录开发review0.2。
+
+契约补充明确沿用NEXT-07：completed Session显式新Turn可创建新Task并绑定原项目兼容当前grant；旧Task/resume不可换绑，原项目/root/route/spec继承，unknown/恢复partial/封存等阻断保持。B负责修正，不以旧测试失败为由删除正向保证。
+
+下一第一操作：收B新grant与P03/P07/P10具体证据，收C真Host旧回归与固定候选；经理按P01–P11收口并串行合并，最后仅C固定五门禁。尚未最终验收/产品整合。E盘/D备份/旧树保持，无release/live/push/reset/clean/stash；经理未写产品、未跑正式测试。
+
+## 2026-09-27 NEXT-08首组合编译通过，开发检查点审查中
+
+经理GPT-6。D固定3452c67根身份组件9/0/0、定向Clippy/fmt通过，经理核9对日志hash及3源码字节，组件review0.1允许作开发依赖（未最终结项）。B检查点0bda6c0、C消费端47457d均真实提交，经理先合D→B为1ab34a0，再合B+D→C为f026417（Rust tree148d3808ce901472a605fab5769784b030ca5d75），两次0无冲突/clean。C报告此组合标准check0，首次环境失败保留；产品test与固定五门禁尚未完成。
+
+B开发review0.1登记N08-B01–B05：失效无binding历史目录阻断登记、搜索递归目录策略、Restore跨项目命令排他、schema11真实约束校验、Complete恢复纯历史回放顺序。原B继续唯一修订；D只读接入复核已交，源码仍3452c67冻结。C继续本人HTTP/CLI/Web定向与旧fixture适配，不跨写。三任务执行ID/新树不变，主线仅管理归档28658e0，产品仍已验收NEXT-07，不能称NEXT-08已验收。
+
+下一第一操作：收B关闭项固定SHA并合C消费依赖回B，收C真实功能证据，按P01–P11收口后才固定最终五门禁。经理未跑产品测试/未接管实现；E盘/历史/D备份保持，无release/live/push/reset/clean/stash。
+
 ## 2026-09-27 NEXT-08三名员工已真实接收并开始
 
 经理GPT-6。冻结契约1.0管理提交与完整开发基线80480c90fba51ec8aeadc01b2d8f184ae0bd1d5a；产品tree仍NEXT-07，经理未改产品/未跑产品测试。E盘三新树已建立并核基线HEAD/tree/status空，原GPT-6-astra B/C/D均已返回实际接收；非仅发出提示词。B-R7-01-20260927-E01在../nhc-b-project-context实现配置/schema11/事务；C-R9-01-20260927-E01在../nhc-c-project-interface实现HTTP/CLI/web；D-R6-01-20260927-E01在../nhc-d-workspace-identity实现目录身份模块。精确所有权、分支和报告位置见本人新轮任务包及经理派发记录。
