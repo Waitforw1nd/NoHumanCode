@@ -1,12 +1,12 @@
 //! NEXT-07: real CLI processes against a bounded local Host response fixture.
 use axum::{
+    Router,
     body::Bytes,
     extract::State,
     http::{HeaderMap, Method, StatusCode, Uri},
     response::IntoResponse,
-    Router,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     process::Output,
@@ -178,9 +178,11 @@ async fn network_cli_default_ports_ipv6_and_case_follow_host_target_contract() {
     );
     let requests = host.state.requests.lock().unwrap();
     assert_eq!(requests.len(), 6);
-    assert!(requests
-        .iter()
-        .all(|r| r.0 == "POST" && r.1 == "/api/network/preview" && r.3));
+    assert!(
+        requests
+            .iter()
+            .all(|r| r.0 == "POST" && r.1 == "/api/network/preview" && r.3)
+    );
 }
 #[tokio::test]
 async fn network_cli_authorize_uses_only_supplied_snapshot_and_deduplicates_purposes() {
@@ -243,9 +245,11 @@ async fn network_cli_preserves_partial_finished_and_unknown_receipts_without_ret
     assert_eq!(second["calls"], json!([unknown]));
     let requests = host.state.requests.lock().unwrap();
     assert_eq!(requests.len(), 2);
-    assert!(requests
-        .iter()
-        .all(|r| r.0 == "POST" && r.2 == json!({"project_id":"project-a"}) && r.3));
+    assert!(
+        requests
+            .iter()
+            .all(|r| r.0 == "POST" && r.2 == json!({"project_id":"project-a"}) && r.3)
+    );
 }
 #[tokio::test]
 async fn network_cli_authenticated_get_guard_failure_stays_read_only_and_rejects_token_echo() {
@@ -258,9 +262,11 @@ async fn network_cli_authenticated_get_guard_failure_stays_read_only_and_rejects
     assert!(!second.to_string().contains("local-test-token"));
     let requests = host.state.requests.lock().unwrap();
     assert_eq!(requests.len(), 2);
-    assert!(requests
-        .iter()
-        .all(|r| r.0 == "GET" && r.2.is_null() && r.3));
+    assert!(
+        requests
+            .iter()
+            .all(|r| r.0 == "GET" && r.2.is_null() && r.3)
+    );
 }
 #[tokio::test]
 async fn network_cli_models_success_and_task_call_binding_are_validated() {

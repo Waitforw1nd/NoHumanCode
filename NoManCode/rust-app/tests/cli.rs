@@ -4,11 +4,11 @@
 mod network_fixture;
 
 use axum::{
+    Json, Router,
     extract::{OriginalUri, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 use peachsh::{
     approval::{ApprovalStatus, ExecutionState},
@@ -17,14 +17,14 @@ use peachsh::{
     server::{self, App},
     store::Store,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     path::Path,
     process::{Command, Output, Stdio},
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
     time::Duration,
 };
@@ -496,9 +496,11 @@ async fn cl04_http_errors_are_json_on_stderr_with_exit_one() {
     let h_live = live_harness("src/conflict.txt").await;
     let task = start_live(&h_live).await;
     let id = pending(&h_live, &task.id).await.id;
-    assert!(cli(port(&h_live.origin), &["approval", "approve", &id])
-        .status
-        .success());
+    assert!(
+        cli(port(&h_live.origin), &["approval", "approve", &id])
+            .status
+            .success()
+    );
     let conflict = cli(port(&h_live.origin), &["--json", "approval", "deny", &id]);
     assert_eq!(conflict.status.code(), Some(1));
     assert!(conflict.stdout.is_empty());
@@ -1055,8 +1057,10 @@ async fn cl09_unknown_state_is_truthful_and_help_has_no_secrets() {
     .await;
     let output = cli(p, &["--json", "approval", "approve", "approval-3"]);
     assert!(output.status.success(), "{}", stderr(&output));
-    assert!(serde_json::from_slice::<Value>(&output.stdout)
-        .unwrap()
-        .get("future_field")
-        .is_none());
+    assert!(
+        serde_json::from_slice::<Value>(&output.stdout)
+            .unwrap()
+            .get("future_field")
+            .is_none()
+    );
 }
