@@ -19,6 +19,41 @@ use std::{
 use tokio::sync::{Mutex as AsyncMutex, Semaphore, oneshot};
 use tokio_util::sync::CancellationToken;
 
+struct NetworkSlot {
+    permit: Option<tokio::sync::OwnedSemaphorePermit>,
+    notify: Arc<tokio::sync::Notify>,
+}
+impl Drop for NetworkSlot {
+    fn drop(&mut self) {
+        drop(self.permit.take());
+        self.notify.notify_waiters();
+    }
+}
+impl Engine {
+    async fn acquire_network_slot(&self) -> std::result::Result<NetworkSlot, NetworkError> {
+        loop {
+            let notified = self.slot_notify.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            {
+                let _gate = self.gate.lock().await;
+                match self.slots.clone().try_acquire_owned() {
+                    Ok(permit) => {
+                        return Ok(NetworkSlot {
+                            permit: Some(permit),
+                            notify: self.slot_notify.clone(),
+                        });
+                    }
+                    Err(tokio::sync::TryAcquireError::Closed) => {
+                        return Err(NetworkError::not_sent(NetworkErrorKind::Internal));
+                    }
+                    Err(tokio::sync::TryAcquireError::NoPermits) => {}
+                }
+            }
+            notified.await;
+        }
+    }
+}
 fn route_subject(id: &str) -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Route,
@@ -75,11 +110,7 @@ impl Engine {
         &self,
         id: &str,
     ) -> std::result::Result<NetworkResponse<Vec<String>>, NetworkError> {
-        let _slot = self
-            .slots
-            .acquire()
-            .await
-            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        let _slot = self.acquire_network_slot().await?;
         let (route, permit, receipt) = {
             let _gate = self.gate.lock().await;
             let route = self.network_route(id)?;
@@ -98,11 +129,7 @@ impl Engine {
         id: &str,
     ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
         let started = std::time::Instant::now();
-        let _slot = self
-            .slots
-            .acquire()
-            .await
-            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        let _slot = self.acquire_network_slot().await?;
         let (mut route, permit, receipt) = {
             let _gate = self.gate.lock().await;
             let route = self.network_route(id)?;
@@ -169,11 +196,7 @@ impl Engine {
     pub async fn account_balance(
         &self,
     ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
-        let _slot = self
-            .slots
-            .acquire()
-            .await
-            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        let _slot = self.acquire_network_slot().await?;
         let (account, permit, receipt) = {
             let _gate = self.gate.lock().await;
             let account = self
@@ -211,7 +234,22 @@ impl Engine {
         let token = if let Some(token) = token.filter(|s| !s.is_empty()) {
             token
         } else {
-            if settings.newapi.as_ref() != Some(&account) {
+            if !settings.newapi.as_ref().is_some_and(|old| {
+                old.user_id == account.user_id
+                    && crate::provider_transport::validate_target(
+                        &old.base_url,
+                        NetworkPurpose::Balance,
+                    )
+                    .ok()
+                    .zip(
+                        crate::provider_transport::validate_target(
+                            &account.base_url,
+                            NetworkPurpose::Balance,
+                        )
+                        .ok(),
+                    )
+                    .is_some_and(|(old, new)| old.base_url() == new.base_url())
+            }) {
                 return Err(NetworkError::not_sent(NetworkErrorKind::Invalid));
             }
             self.store
@@ -334,6 +372,8 @@ pub struct Engine {
     gate: AsyncMutex<()>,
     active: Mutex<HashMap<String, Active>>,
     slots: Arc<Semaphore>,
+    slot_capacity: Mutex<usize>,
+    slot_notify: Arc<tokio::sync::Notify>,
     key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
@@ -347,6 +387,8 @@ impl Engine {
             gate: AsyncMutex::new(()),
             active: Mutex::new(HashMap::new()),
             slots: Arc::new(Semaphore::new(max_concurrency)),
+            slot_capacity: Mutex::new(max_concurrency),
+            slot_notify: Arc::new(tokio::sync::Notify::new()),
             key_slots: Mutex::new(HashMap::new()),
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
@@ -405,6 +447,10 @@ impl Engine {
             !self.is_busy(),
             "任务运行期间不能修改配置，请等待完成或停止任务"
         );
+        ensure!(
+            self.slots.available_permits() == *self.slot_capacity.lock().unwrap(),
+            "网络调用在途时不能修改配置"
+        );
         settings.validate()?;
         for (id, key) in &keys {
             ensure!(
@@ -425,6 +471,8 @@ impl Engine {
             self.slots
                 .forget_permits(current - settings.max_concurrency);
         }
+        *self.slot_capacity.lock().unwrap() = settings.max_concurrency;
+        self.slot_notify.notify_waiters();
         self.key_slots.lock().unwrap().clear();
         Ok(())
     }
@@ -903,7 +951,7 @@ impl Engine {
             .or_insert_with(|| Arc::new(Semaphore::new(key_limit)))
             .clone();
         let _key_permit = tokio::select! { p=key_slots.acquire_owned()=>p?, _=cancel.cancelled()=>anyhow::bail!("任务已停止") };
-        let _permit = tokio::select! { p=self.slots.clone().acquire_owned()=>p?, _=cancel.cancelled()=>anyhow::bail!("任务已停止") };
+        let _permit = tokio::select! { p=self.acquire_network_slot()=>p?, _=cancel.cancelled()=>anyhow::bail!("任务已停止") };
         task.status = "running".into();
         task.updated_at = now();
         self.store.save_task(task)?;

@@ -237,18 +237,18 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
                 std::env::var(name)
                     .ok()
                     .filter(|v| !v.trim().is_empty())
-                    .map(|value| (format!("env:{name}"), value))
+                    .map(|value| (format!("env/{name}"), value))
             });
             let selected = if let Some(env) = env {
                 Some(env)
             } else if let Some(key) =
                 read_secret(db, &format!("route::{}", route.id))?.filter(|v| !v.trim().is_empty())
             {
-                Some((format!("secret:route::{}", route.id), key))
+                Some((format!("stored/route/{}", route.id), key))
             } else {
                 read_secret(db, &route.id)?
                     .filter(|v| !v.trim().is_empty())
-                    .map(|key| (format!("secret:{}", route.id), key))
+                    .map(|key| (format!("stored/legacy/{}", route.id), key))
             };
             let (reference, key) = selected.ok_or_else(|| failure(NetworkErrorKind::Required))?;
             (
@@ -269,7 +269,7 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
             (
                 account.base_url,
                 account.user_id,
-                "secret:newapi-account".into(),
+                "stored/account/newapi".into(),
                 key,
                 NetworkPurpose::Balance,
             )
