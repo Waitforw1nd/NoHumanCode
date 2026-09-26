@@ -140,6 +140,11 @@ pub enum HostError {
         plugin_id: String,
         key: InterfaceKey,
     },
+    /// Live bound effect has a different concrete payload type.
+    PayloadTypeMismatch {
+        plugin_id: String,
+        key: InterfaceKey,
+    },
     /// Same plugin registering the same provides key twice.
     DuplicateEffect {
         plugin_id: String,
@@ -201,6 +206,9 @@ impl fmt::Display for HostError {
             }
             HostError::UndeclaredInterface { plugin_id, key } => {
                 write!(f, "插件 {plugin_id} 使用了未声明的接口：{key}")
+            }
+            HostError::PayloadTypeMismatch { plugin_id, key } => {
+                write!(f, "插件 {plugin_id} 的接口 payload 类型不匹配：{key}")
             }
             HostError::DuplicateEffect { plugin_id, key } => {
                 write!(f, "插件 {plugin_id} 重复注册接口：{key}")
@@ -314,6 +322,15 @@ impl<'a> BoundInterface<'a> {
     pub fn payload(&self) -> &'a dyn Any {
         self.payload
     }
+}
+
+/// An owned, typed snapshot of a live activation-plan binding.
+/// Cloning a payload does not itself grant permission to perform host effects.
+pub struct ResolvedPayload<T> {
+    pub provider_id: String,
+    pub effect_id: EffectId,
+    pub key: InterfaceKey,
+    pub payload: T,
 }
 
 /// Event subscription callback; receives the emitted value as `&dyn Any`.
@@ -666,6 +683,71 @@ impl PluginHost {
     /// Resolve the current catalog snapshot without executing anything.
     pub fn resolve(&self, roots: &[String]) -> Result<ResolutionPlan, HostError> {
         self.catalog.resolve(roots).map_err(HostError::Catalog)
+    }
+
+    /// Resolve only the consumer's active, declared, activation-time binding.
+    /// No global provider search, catalog re-resolution, or scope fallback occurs.
+    pub fn resolve_bound<T: Any + Clone>(
+        &self,
+        consumer_id: &str,
+        key: &InterfaceKey,
+    ) -> Result<ResolvedPayload<T>, HostError> {
+        let consumer = self
+            .instances
+            .get(consumer_id)
+            .ok_or_else(|| HostError::UnknownPlugin {
+                id: consumer_id.to_owned(),
+            })?;
+        if consumer.state != InstanceState::Active {
+            return Err(HostError::InvalidState {
+                plugin_id: consumer_id.to_owned(),
+                current: consumer.state,
+            });
+        }
+        let unbound = || HostError::UnboundInterface {
+            plugin_id: consumer_id.to_owned(),
+            key: key.clone(),
+        };
+        if !consumer.manifest.requires.contains(key) {
+            return Err(unbound());
+        }
+        let binding = consumer
+            .plan
+            .bindings
+            .iter()
+            .find(|binding| binding.consumer_id == consumer_id && binding.requirement == *key)
+            .ok_or_else(unbound)?;
+        let provider = self
+            .instances
+            .get(&binding.provider_id)
+            .ok_or_else(unbound)?;
+        if provider.state != InstanceState::Active {
+            return Err(HostError::InvalidState {
+                plugin_id: binding.provider_id.clone(),
+                current: provider.state,
+            });
+        }
+        let entry = self
+            .provides
+            .values()
+            .find(|entry| entry.owner == binding.provider_id && entry.key == *key)
+            .ok_or_else(unbound)?;
+        let EffectKind::Provide(payload) = &entry.kind else {
+            return Err(unbound());
+        };
+        let payload = payload
+            .downcast_ref::<T>()
+            .ok_or_else(|| HostError::PayloadTypeMismatch {
+                plugin_id: binding.provider_id.clone(),
+                key: key.clone(),
+            })?
+            .clone();
+        Ok(ResolvedPayload {
+            provider_id: entry.owner.clone(),
+            effect_id: entry.id,
+            key: entry.key.clone(),
+            payload,
+        })
     }
 
     fn next_effect_id(&self) -> EffectId {
