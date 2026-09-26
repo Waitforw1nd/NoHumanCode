@@ -138,8 +138,8 @@ fn confirm_request(p: &NetworkPreview, purposes: Vec<NetworkPurpose>) -> Confirm
     }
 }
 async fn grant(e: &Engine, purposes: Vec<NetworkPurpose>) -> NetworkAuthorization {
-    let p = e.network_preview(subject(&e)).await.unwrap();
-    e.network_confirm(subject(&e), confirm_request(&p, purposes), &id())
+    let p = e.network_preview(subject(e)).await.unwrap();
+    e.network_confirm(subject(e), confirm_request(&p, purposes), &id())
         .await
         .unwrap()
         .authorization

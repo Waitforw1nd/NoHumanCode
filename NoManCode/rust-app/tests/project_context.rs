@@ -481,3 +481,172 @@ async fn separate_grants_selection_and_old_session_follow_original_project() {
     server.abort();
     let _ = server.await;
 }
+
+#[tokio::test]
+async fn safe_default_admission_and_task_binding_failure_leave_no_execution_facts() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("db");
+    let store = Arc::new(Store::open(&path).unwrap());
+    store
+        .save_settings(&settings(temp.path(), "http://127.0.0.1:1"))
+        .unwrap();
+    store.put_secret("route", "fixture-key").unwrap();
+    let engine = Engine::new(store.clone(), 4).unwrap();
+    code(
+        engine.start(request()).await.unwrap_err(),
+        "project_selection_required",
+    );
+    let project = register(&store, temp.path(), "safe");
+    store
+        .select_project(SelectProject {
+            project_id: project.id.clone(),
+            expected_revision: 0,
+        })
+        .unwrap();
+    code(
+        engine.start(request()).await.unwrap_err(),
+        "project_permission_revoked",
+    );
+    configure(&store, &project.id);
+    grant(&store, &project.id);
+    let raw = Connection::open(&path).unwrap();
+    let tables = [
+        "runs",
+        "sessions",
+        "agents",
+        "turns",
+        "turn_tasks",
+        "tasks",
+        "task_project_bindings",
+        "task_network_bindings",
+        "network_calls",
+        "events",
+    ];
+    for target in ["task_project_bindings", "task_network_bindings"] {
+        let before: Vec<u64> = tables
+            .iter()
+            .map(|t| {
+                raw.query_row(&format!("SELECT count(*) FROM {t}"), [], |r| r.get(0))
+                    .unwrap()
+            })
+            .collect();
+        raw.execute_batch(&format!("CREATE TRIGGER stop_task_binding BEFORE INSERT ON {target} BEGIN SELECT RAISE(ABORT,'fixture task rollback'); END;")).unwrap();
+        assert!(
+            engine
+                .start(request())
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("fixture task rollback")
+        );
+        let after: Vec<u64> = tables
+            .iter()
+            .map(|t| {
+                raw.query_row(&format!("SELECT count(*) FROM {t}"), [], |r| r.get(0))
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(after, before, "{target}");
+        raw.execute_batch("DROP TRIGGER stop_task_binding").unwrap();
+    }
+    assert!(!engine.is_busy());
+}
+
+#[test]
+fn project_config_change_and_explicit_start_are_atomic_across_stores() {
+    for _ in 0..8 {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("db");
+        let store = Arc::new(Store::open(&path).unwrap());
+        store
+            .save_settings(&settings(temp.path(), "http://127.0.0.1:1"))
+            .unwrap();
+        store.put_secret("route", "fixture-key").unwrap();
+        let project = register(&store, temp.path(), "race");
+        configure(&store, &project.id);
+        let grant = grant(&store, &project.id);
+        let config = store.project_config(&project.id).unwrap();
+        let engine = Engine::new(store.clone(), 4).unwrap();
+        let other = Store::open(&path).unwrap();
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let start_barrier = barrier.clone();
+        let command = StartInProject {
+            project_id: project.id.clone(),
+            expected_config_revision: config.revision,
+            request: request(),
+            idempotency_key: id(),
+        };
+        let started = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            start_barrier.wait();
+            let result = runtime.block_on(engine.start_in_project(command));
+            // Do not poll the queued worker: this test observes the atomic admission only.
+            drop(runtime);
+            result
+        });
+        let revoked = std::thread::spawn(move || {
+            barrier.wait();
+            other.configure_project(ConfigureProject {
+                project_id: project.id,
+                expected_revision: config.revision,
+                config: ProjectConfig::default(),
+            })
+        });
+        let result = started.join().unwrap();
+        revoked.join().unwrap().unwrap();
+        let raw = Connection::open(&path).unwrap();
+        match result {
+            Ok(run) => {
+                assert_eq!(run.tasks.len(), 1);
+                let task = &run.tasks[0];
+                let binding = store.task_project_binding(&task.id).unwrap().unwrap();
+                assert_eq!(binding.config_revision, 2);
+                assert!(task.spec.tools);
+                assert_eq!(task.spec.write_scopes, vec!["src"]);
+                let actual: String = raw
+                    .query_row(
+                        "SELECT authorization_id FROM task_network_bindings WHERE task_id=?1",
+                        [&task.id],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                assert_eq!(actual, grant.authorization_id);
+                let mut resumed = task.clone();
+                resumed.status = "queued".into();
+                assert!(store.resume_task(&resumed, "retry").is_err());
+            }
+            Err(error) => {
+                assert!(
+                    matches!(
+                        error.downcast_ref::<ProjectError>(),
+                        Some(ProjectError::RevisionConflict | ProjectError::PermissionRevoked)
+                    ),
+                    "{error:#}"
+                );
+                for table in [
+                    "runs",
+                    "sessions",
+                    "turns",
+                    "turn_tasks",
+                    "tasks",
+                    "task_project_bindings",
+                    "task_network_bindings",
+                ] {
+                    let count: u64 = raw
+                        .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                        .unwrap();
+                    assert_eq!(count, 0, "{table}");
+                }
+            }
+        }
+        assert_eq!(
+            raw.query_row("SELECT count(*) FROM network_calls", [], |r| r
+                .get::<_, u64>(0))
+                .unwrap(),
+            0
+        );
+    }
+}

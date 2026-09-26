@@ -1737,3 +1737,119 @@ fn command_legacy_approved_ack_is_sidecar_only_and_unknown_cannot_be_acknowledge
         Some(ApprovalError::UnknownResult { .. })
     ));
 }
+
+#[tokio::test]
+async fn pending_command_keeps_original_cwd_after_default_project_switch() {
+    use peachsh::project_config::{RegisterProject, SelectProject};
+    let temp = tempfile::tempdir().unwrap();
+    let a = temp.path().join("a");
+    let b = temp.path().join("b");
+    std::fs::create_dir(&a).unwrap();
+    std::fs::create_dir(&b).unwrap();
+    std::fs::write(b.join("sentinel.txt"), "B unchanged").unwrap();
+    let command = call(
+        "cwd",
+        "run_command",
+        json!({"command":"[System.IO.File]::WriteAllText((Join-Path (Get-Location) 'sentinel.txt'), 'A command')"}),
+    );
+    let (base, server) = server(&a, vec![vec![command], vec![]]).await;
+    let engine = setup(&a, &base);
+    let task = start(&engine, true).await;
+    let original = engine
+        .store
+        .task_project_binding(&task.id)
+        .unwrap()
+        .unwrap();
+    let approval = pending(&engine, &task.id).await;
+    let other = engine
+        .store
+        .register_project(RegisterProject {
+            name: "B".into(),
+            root_path: b.to_string_lossy().into(),
+            idempotency_key: id(),
+        })
+        .unwrap();
+    let current = engine.store.current_project().unwrap();
+    engine
+        .store
+        .select_project(SelectProject {
+            project_id: other.id.clone(),
+            expected_revision: current.revision,
+        })
+        .unwrap();
+    engine
+        .decide_approval_with_network_ack(&approval.id, true, None, true)
+        .unwrap();
+    assert_eq!(settled(&engine, &task.id).await.status, "completed");
+    assert_eq!(
+        std::fs::read_to_string(a.join("sentinel.txt")).unwrap(),
+        "A command"
+    );
+    assert_eq!(
+        std::fs::read_to_string(b.join("sentinel.txt")).unwrap(),
+        "B unchanged"
+    );
+    assert_eq!(
+        engine
+            .store
+            .task_project_binding(&task.id)
+            .unwrap()
+            .unwrap()
+            .project_id,
+        original.project_id
+    );
+    assert_eq!(
+        engine.store.current_project().unwrap().project_id,
+        Some(other.id)
+    );
+    assert_eq!(
+        engine.store.approval(&approval.id).unwrap().execution_state,
+        ExecutionState::Finished
+    );
+    server.abort();
+}
+
+#[test]
+fn schema10_unbound_pending_approval_can_deny_or_cancel_but_not_approve() {
+    for deny in [true, false] {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("approval.db");
+        let store = Store::open(&path).unwrap();
+        let call = write("legacy", "src/a.txt");
+        let task = seed(&store, temp.path(), "legacy", vec![call.clone()], false);
+        let (card, _) = store
+            .ensure_approval(&task, "legacy", "write_file", &args(&call))
+            .unwrap();
+        drop(store);
+        let raw = Connection::open(&path).unwrap();
+        network_fixture::project_fixture::drop_project_schema(&raw);
+        raw.pragma_update(None, "user_version", 10).unwrap();
+        drop(raw);
+        let store = Store::open(&path).unwrap();
+        let before = store.approval(&card.id).unwrap();
+        assert_eq!(
+            store
+                .decide_approval(&card.id, true, "user")
+                .unwrap_err()
+                .downcast_ref::<peachsh::project_config::ProjectError>()
+                .unwrap()
+                .code(),
+            "project_legacy_unbound"
+        );
+        assert_eq!(store.approval(&card.id).unwrap(), before);
+        if deny {
+            store.decide_approval(&card.id, false, "user").unwrap();
+            assert_eq!(
+                store.approval(&card.id).unwrap().status,
+                ApprovalStatus::Denied
+            );
+        } else {
+            store.cancel_pending_approvals(&task.id).unwrap();
+            assert_eq!(
+                store.approval(&card.id).unwrap().execution_state,
+                ExecutionState::Cancelled
+            );
+        }
+        assert!(!temp.path().join("src/a.txt").exists());
+    }
+}
