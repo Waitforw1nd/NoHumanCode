@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 10;
+pub const SCHEMA_VERSION: u32 = 11;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -53,6 +53,11 @@ impl Store {
         anyhow::ensure!(
             version < 10 || repository::migration_applied(&db, repository::NETWORK_MIGRATION_ID)?,
             "schema 10 marker missing"
+        );
+        anyhow::ensure!(
+            version < 11
+                || repository::migration_applied(&db, repository::PROJECT_CONFIG_MIGRATION_ID)?,
+            "schema 11 marker missing"
         );
         if version < 2 {
             db.execute_batch("CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), created_at INTEGER NOT NULL);
@@ -164,9 +169,23 @@ impl Store {
             tx.commit()?;
         } else {
             let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
-            anyhow::ensure!(current == SCHEMA_VERSION, "network schema version mismatch");
+            anyhow::ensure!(
+                (10..=SCHEMA_VERSION).contains(&current),
+                "network schema version mismatch"
+            );
             let tx = db.transaction()?;
             repository::verify_schema_10(&tx)?;
+            tx.commit()?;
+        }
+        if !repository::migration_applied(&db, repository::PROJECT_CONFIG_MIGRATION_ID)? {
+            let tx = db.transaction()?;
+            repository::apply_schema_11(&tx)?;
+            tx.commit()?;
+        } else {
+            let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
+            anyhow::ensure!(current == SCHEMA_VERSION, "project schema version mismatch");
+            let tx = db.transaction()?;
+            repository::verify_schema_11(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -284,6 +303,7 @@ impl Store {
         if sealed {
             return Err(crate::checkpoint::CheckpointError::Conflict.into());
         }
+        crate::project_config::validate_task_tx(&tx, task, true, true)?;
         ensure_resume_targets_latest_chat_turn(&tx, &task.id)?;
         save_task_tx(&tx, task, true)?;
         task_event_tx(&tx, &task.id, "delta", json!({"text": "\n\n—— 继续 ——\n"}))?;
@@ -507,20 +527,29 @@ impl Store {
     }
 
     pub fn commit_turn_bundle(&self, bundle: TurnBundle<'_>, key: Option<&str>) -> Result<Turn> {
-        self.commit_turn_bundle_inner(bundle, key, false)
+        self.commit_turn_bundle_inner(bundle, key, None)
     }
     pub(crate) fn commit_turn_bundle_authorized(
         &self,
         bundle: TurnBundle<'_>,
         key: Option<&str>,
     ) -> Result<Turn> {
-        self.commit_turn_bundle_inner(bundle, key, true)
+        let revision = self.project_config(&bundle.project.id)?.revision;
+        self.commit_turn_bundle_inner(bundle, key, Some(revision))
+    }
+    pub(crate) fn commit_turn_bundle_in_project(
+        &self,
+        bundle: TurnBundle<'_>,
+        key: Option<&str>,
+        revision: u64,
+    ) -> Result<Turn> {
+        self.commit_turn_bundle_inner(bundle, key, Some(revision))
     }
     fn commit_turn_bundle_inner(
         &self,
         bundle: TurnBundle<'_>,
         key: Option<&str>,
-        authorize: bool,
+        project_revision: Option<u64>,
     ) -> Result<Turn> {
         let TurnBundle {
             project,
@@ -576,8 +605,9 @@ impl Store {
         if let Some(existing) = self.commit_turn_in_tx(&tx, turn, tasks, key, legacy_tasks)? {
             return Ok(existing);
         }
-        if authorize {
+        if let Some(revision) = project_revision {
             for task in legacy_tasks {
+                crate::project_config::bind_task_tx(&tx, task, &project.id, revision)?;
                 crate::network_authorization::bind_task_tx(&tx, task)?;
             }
         }
@@ -857,14 +887,8 @@ impl Store {
         if !same_project_path(&previous_legacy.workspace, &project.root_path) {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
-        let settings: String =
-            tx.query_row("SELECT value FROM config WHERE id='settings'", [], |row| {
-                row.get(0)
-            })?;
-        let settings: Settings =
-            serde_json::from_str(&settings).map_err(|_| ChatTurnError::CorruptState)?;
-        if !same_project_path(&settings.workspace, &previous_legacy.workspace) {
-            return Err(ChatTurnError::UnsupportedSession.into());
+        if authorize {
+            crate::project_config::validate_task_tx(&tx, &previous_legacy, true, true)?;
         }
         let prefix = chat_continuation_prefix_tx(&tx, &session.id, &previous_legacy)?;
         if !candidate_continues_snapshot(
@@ -895,7 +919,14 @@ impl Store {
             return Err(IdempotencyConflict.into());
         }
         if authorize {
-            crate::network_authorization::bind_task_tx(&tx, legacy_task)?;
+            let config = crate::project_config::config_tx(&tx, &turn.project_id)?;
+            crate::project_config::bind_task_tx(
+                &tx,
+                legacy_task,
+                &turn.project_id,
+                config.revision,
+            )?;
+            crate::network_authorization::inherit_task_tx(&tx, &previous_legacy, legacy_task)?;
         }
         tx.commit()?;
         Ok(ChatTurnReceipt {
@@ -1060,6 +1091,7 @@ impl Store {
         if let Some(id) = tx.query_row("SELECT id FROM workspace_restores WHERE task_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1", [task_id], |row| row.get::<_, String>(0)).optional()? {
             return restore_receipt(&tx, &id);
         }
+        crate::project_config::validate_task_tx(&tx, &legacy_task_row(&tx, task_id)?, true, false)?;
         let id = uuid::Uuid::new_v4().to_string();
         tx.execute("INSERT INTO workspace_restores(id,task_id,status,created_at,finished_at) VALUES (?1,?2,'claimed',?3,NULL)", params![id,task_id,now()])?;
         for change in changes {
@@ -1286,6 +1318,14 @@ impl Store {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let current = repository::Repository::new(&tx).approval(approval_id)?;
+        if approved {
+            crate::project_config::validate_task_tx(
+                &tx,
+                &legacy_task_row(&tx, &current.task_id)?,
+                true,
+                false,
+            )?;
+        }
         if acknowledge_command_network && current.tool_name != "run_command" {
             return Err(
                 approval::ApprovalError::InvalidNetworkAcknowledgement { id: current.id }.into(),
@@ -1474,6 +1514,7 @@ impl Store {
                 approval::ApprovalError::NetworkAcknowledgementRequired { id: current.id }.into(),
             );
         }
+        crate::project_config::validate_task_tx(&tx, task, true, false)?;
         let changed = tx.execute(
             "UPDATE approvals SET execution_state='claimed' WHERE id=?1 AND status='approved' AND execution_state='not_started'",
             [&current.id],

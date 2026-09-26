@@ -123,12 +123,16 @@ pub fn resolve(root: &Path, relative: &str, writing: bool, scopes: &[String]) ->
             "写入超出当前成员范围"
         );
     }
+    crate::workspace_identity::verify_directory_policy(root)?;
     let root = root.canonicalize().context("工作目录不存在")?;
     let relative = relative.replace('\\', "/");
     let mut target = root.clone();
     for part in relative.split('/') {
         target.push(part);
         if let Ok(meta) = std::fs::symlink_metadata(&target) {
+            if meta.is_dir() {
+                crate::workspace_identity::verify_directory_policy(&target)?;
+            }
             #[cfg(windows)]
             {
                 use std::os::windows::fs::MetadataExt;
