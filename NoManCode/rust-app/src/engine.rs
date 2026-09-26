@@ -1304,8 +1304,95 @@ impl Engine {
         self.store.latest_restore(id)
     }
 
+    fn validated_restore_changes(
+        &self,
+        task: &Task,
+        records: Vec<PreparedChange>,
+    ) -> Result<Vec<PreparedChange>> {
+        let id = task.id.as_str();
+        let workspace_digest = digest(task.workspace.as_bytes());
+        let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
+            std::collections::BTreeMap::new();
+        for record in records {
+            if record.workspace_digest != workspace_digest {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
+            let original_scopes: Vec<String> = serde_json::from_str(&record.write_scopes)
+                .map_err(|_| WorkspaceChangeError::Corrupt)?;
+            if original_scopes != task.spec.write_scopes {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            let approval = self
+                .store
+                .approval_by_tool_call(id, &record.tool_call_id)
+                .map_err(|_| WorkspaceChangeError::Corrupt)?
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            if approval.binding_digest != record.binding_digest
+                || approval.workspace != task.workspace
+            {
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+            let call = task
+                .messages
+                .iter()
+                .filter_map(|message| message["tool_calls"].as_array())
+                .flatten()
+                .find(|call| call["id"] == record.tool_call_id)
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            if call["function"]["name"] != "write_file" || approval.tool_name != "write_file" {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
+            let raw_args = call["function"]["arguments"]
+                .as_str()
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            let args: Value =
+                serde_json::from_str(raw_args).map_err(|_| WorkspaceChangeError::Corrupt)?;
+            let raw_path = args["path"].as_str().ok_or(WorkspaceChangeError::Corrupt)?;
+            let content = args["content"]
+                .as_str()
+                .ok_or(WorkspaceChangeError::Corrupt)?;
+            let (_, path, path_key) = workspace::change_target(
+                std::path::Path::new(&task.workspace),
+                raw_path,
+                &task.spec.write_scopes,
+            )
+            .map_err(|_| WorkspaceChangeError::Corrupt)?;
+            let expected = approval::binding_digest(
+                id,
+                approval.session_id.as_deref(),
+                approval.turn_id.as_deref(),
+                &record.tool_call_id,
+                "write_file",
+                &task.workspace,
+                &task.spec.write_scopes,
+                task.spec.allow_commands,
+                &args,
+            )
+            .map_err(|_| WorkspaceChangeError::Corrupt)?;
+            if path != record.path
+                || path_key != record.path_key
+                || Some(digest(content.as_bytes())) != record.after_digest
+                || expected != record.binding_digest
+                || approval.args_digest
+                    != approval::args_digest(&args).map_err(|_| WorkspaceChangeError::Corrupt)?
+            {
+                return Err(WorkspaceChangeError::Corrupt.into());
+            }
+            grouped
+                .entry(record.path_key.clone())
+                .and_modify(|first| first.after_digest = record.after_digest.clone())
+                .or_insert(record);
+        }
+        let changes: Vec<_> = grouped.into_values().collect();
+        Ok(changes)
+    }
+
     pub async fn restore(&self, id: &str) -> Result<RestoreReceipt> {
         let _gate = self.gate.lock().await;
+        self.restore_locked(id)
+    }
+
+    fn restore_locked(&self, id: &str) -> Result<RestoreReceipt> {
         let task = self.store.task(id).map_err(|error| {
             if error.chain().any(|cause| {
                 matches!(
@@ -1408,80 +1495,7 @@ impl Engine {
                 outcomes: vec![],
             });
         }
-        let workspace_digest = digest(task.workspace.as_bytes());
-        let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
-            std::collections::BTreeMap::new();
-        for record in records {
-            if record.workspace_digest != workspace_digest {
-                return Err(WorkspaceChangeError::Corrupt.into());
-            }
-            let original_scopes: Vec<String> = serde_json::from_str(&record.write_scopes)
-                .map_err(|_| WorkspaceChangeError::Corrupt)?;
-            if original_scopes != task.spec.write_scopes {
-                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
-            }
-            let approval = self
-                .store
-                .approval_by_tool_call(id, &record.tool_call_id)
-                .map_err(|_| WorkspaceChangeError::Corrupt)?
-                .ok_or(WorkspaceChangeError::Corrupt)?;
-            if approval.binding_digest != record.binding_digest
-                || approval.workspace != task.workspace
-            {
-                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
-            }
-            let call = task
-                .messages
-                .iter()
-                .filter_map(|message| message["tool_calls"].as_array())
-                .flatten()
-                .find(|call| call["id"] == record.tool_call_id)
-                .ok_or(WorkspaceChangeError::Corrupt)?;
-            if call["function"]["name"] != "write_file" || approval.tool_name != "write_file" {
-                return Err(WorkspaceChangeError::Corrupt.into());
-            }
-            let raw_args = call["function"]["arguments"]
-                .as_str()
-                .ok_or(WorkspaceChangeError::Corrupt)?;
-            let args: Value =
-                serde_json::from_str(raw_args).map_err(|_| WorkspaceChangeError::Corrupt)?;
-            let raw_path = args["path"].as_str().ok_or(WorkspaceChangeError::Corrupt)?;
-            let content = args["content"]
-                .as_str()
-                .ok_or(WorkspaceChangeError::Corrupt)?;
-            let (_, path, path_key) = workspace::change_target(
-                std::path::Path::new(&task.workspace),
-                raw_path,
-                &task.spec.write_scopes,
-            )
-            .map_err(|_| WorkspaceChangeError::Corrupt)?;
-            let expected = approval::binding_digest(
-                id,
-                approval.session_id.as_deref(),
-                approval.turn_id.as_deref(),
-                &record.tool_call_id,
-                "write_file",
-                &task.workspace,
-                &task.spec.write_scopes,
-                task.spec.allow_commands,
-                &args,
-            )
-            .map_err(|_| WorkspaceChangeError::Corrupt)?;
-            if path != record.path
-                || path_key != record.path_key
-                || Some(digest(content.as_bytes())) != record.after_digest
-                || expected != record.binding_digest
-                || approval.args_digest
-                    != approval::args_digest(&args).map_err(|_| WorkspaceChangeError::Corrupt)?
-            {
-                return Err(WorkspaceChangeError::Corrupt.into());
-            }
-            grouped
-                .entry(record.path_key.clone())
-                .and_modify(|first| first.after_digest = record.after_digest.clone())
-                .or_insert(record);
-        }
-        let changes: Vec<_> = grouped.into_values().collect();
+        let changes = self.validated_restore_changes(&task, records)?;
         let mut targets = Vec::new();
         let mut originals = Vec::new();
         for change in &changes {
@@ -2561,5 +2575,156 @@ mod workspace_phase_tests {
             .await
             .unwrap();
         });
+    }
+}
+
+impl Engine {
+    pub fn checkpoint(&self, checkpoint_id: &str) -> Result<crate::checkpoint::Checkpoint> {
+        Ok(self.store.checkpoint_record(checkpoint_id)?.0)
+    }
+
+    pub async fn create_checkpoint(
+        &self,
+        task_id: &str,
+        key: &str,
+    ) -> Result<crate::checkpoint::CheckpointCreated> {
+        use crate::checkpoint::{CheckpointCreated, CheckpointEntry, CheckpointError, Manifest};
+        secrets::validate_idempotency_key(key).map_err(|_| CheckpointError::Invalid)?;
+        let _gate = self.gate.lock().await;
+        if let Some((checkpoint, old_key)) = self.store.checkpoint_for_task(task_id)? {
+            if old_key != key {
+                return Err(CheckpointError::Conflict.into());
+            }
+            return Ok(CheckpointCreated {
+                checkpoint,
+                replayed: true,
+            });
+        }
+        let task = self.store.task(task_id).map_err(|error| {
+            if error.chain().any(|c| {
+                matches!(
+                    c.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::QueryReturnedNoRows)
+                )
+            }) {
+                CheckpointError::NotFound
+            } else {
+                CheckpointError::Corrupt
+            }
+        })?;
+        if task.status != "completed" {
+            return Err(CheckpointError::Unrestorable.into());
+        }
+        let root = std::path::Path::new(&task.workspace);
+        let canonical = root.canonicalize().map_err(|_| CheckpointError::Conflict)?;
+        if let Some(settings) = self.store.settings()?
+            && std::path::Path::new(&settings.workspace)
+                .canonicalize()
+                .map_err(|_| CheckpointError::Conflict)?
+                != canonical
+        {
+            return Err(CheckpointError::Conflict.into());
+        }
+        let active_ids: Vec<_> = self.active.lock().unwrap().keys().cloned().collect();
+        for id in active_ids {
+            if id == task_id
+                || std::path::Path::new(&self.store.task(&id)?.workspace)
+                    .canonicalize()
+                    .map_err(|_| CheckpointError::Conflict)?
+                    == canonical
+            {
+                return Err(CheckpointError::Conflict.into());
+            }
+        }
+        if self.store.latest_restore(task_id)?.is_some()
+            || self.store.has_legacy_file_backup(task_id)?
+        {
+            return Err(CheckpointError::Unrestorable.into());
+        }
+        let records = self
+            .store
+            .workspace_changes_for_task(task_id)
+            .map_err(|_| CheckpointError::Corrupt)?;
+        if records.iter().any(|r| {
+            matches!(r.state, ChangeState::Unknown | ChangeState::Prepared)
+                || r.restore_state != "pending"
+        }) {
+            return Err(CheckpointError::Unrestorable.into());
+        }
+        let finished: Vec<_> = records
+            .iter()
+            .filter(|r| r.state == ChangeState::Finished)
+            .cloned()
+            .collect();
+        if finished.is_empty() {
+            return Err(CheckpointError::Unrestorable.into());
+        }
+        // Authenticate every protected before, including intermediate writes, before committing any fact.
+        let mut total = 0usize;
+        for record in &finished {
+            match record.kind {
+                ChangeKind::Created
+                    if record.before_blob.is_none() && record.before_digest.is_none() => {}
+                ChangeKind::Modified => {
+                    let bytes = secrets::open(
+                        record
+                            .before_blob
+                            .as_deref()
+                            .ok_or(CheckpointError::Corrupt)?,
+                    )
+                    .map_err(|_| CheckpointError::Corrupt)?;
+                    if Some(digest(&bytes)) != record.before_digest {
+                        return Err(CheckpointError::Corrupt.into());
+                    }
+                    total = total
+                        .checked_add(bytes.len())
+                        .ok_or(CheckpointError::Unrestorable)?;
+                    if total > 8 * 1024 * 1024 {
+                        return Err(CheckpointError::Unrestorable.into());
+                    }
+                }
+                _ => return Err(CheckpointError::Corrupt.into()),
+            }
+        }
+        let changes = self
+            .validated_restore_changes(&task, finished)
+            .map_err(|e| match e.downcast_ref::<WorkspaceChangeError>() {
+                Some(WorkspaceChangeError::Conflict { .. }) => CheckpointError::Conflict,
+                _ => CheckpointError::Corrupt,
+            })?;
+        if changes.len() > 128 {
+            return Err(CheckpointError::Unrestorable.into());
+        }
+        let mut entries = Vec::new();
+        for change in changes {
+            let path = workspace::resolve(root, &change.path, true, &task.spec.write_scopes)
+                .map_err(|_| CheckpointError::Conflict)?;
+            let current =
+                workspace::read_safe_file(&path).map_err(|_| CheckpointError::Conflict)?;
+            if current.as_deref().map(digest) != change.after_digest {
+                return Err(CheckpointError::Conflict.into());
+            }
+            entries.push(CheckpointEntry {
+                path: change.path,
+                before_digest: change.before_digest,
+                after_digest: change.after_digest.ok_or(CheckpointError::Corrupt)?,
+            });
+        }
+        let manifest = Manifest {
+            task_id: task_id.into(),
+            workspace: task.workspace.clone(),
+            write_scopes: task.spec.write_scopes.clone(),
+            source_digest: crate::checkpoint::source_digest(&records)?,
+            entries,
+        };
+        self.store.commit_checkpoint(&task, key, &manifest)
+    }
+
+    pub async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<RestoreReceipt> {
+        let _gate = self.gate.lock().await;
+        let (checkpoint, _) = self.store.checkpoint_record(checkpoint_id)?;
+        #[cfg(test)]
+        crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
+        self.restore_locked(&checkpoint.task_id)
     }
 }
