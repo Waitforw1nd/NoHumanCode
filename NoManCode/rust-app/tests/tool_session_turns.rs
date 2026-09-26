@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::domain::{LifecycleStatus, TaskId, Turn, TurnId, TurnTask, send_chat_turn_hash};
 use peachsh::{
@@ -84,7 +87,12 @@ impl Harness {
             loop {
                 for approval in self.engine.store.pending_approvals_for_task(id).unwrap() {
                     self.engine
-                        .decide_approval(&approval.id, approve, Some("test"))
+                        .decide_approval_with_network_ack(
+                            &approval.id,
+                            approve,
+                            Some("test"),
+                            approval.tool_name == "run_command",
+                        )
                         .unwrap();
                 }
                 let task = self.engine.store.task(id).unwrap();
@@ -149,6 +157,7 @@ async fn start(replies: Vec<Value>) -> Harness {
         })
         .unwrap();
     store.put_secret("route", "fake-tool-session-key").unwrap();
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 2).unwrap();
     let run = engine
         .start_idempotent(
@@ -476,7 +485,12 @@ async fn n09_stop_before_approval_claim_has_no_write_or_claim() {
             h.engine.disable_builtin_files().unwrap();
         }
         h.engine
-            .decide_approval(&pending.id, true, Some("test"))
+            .decide_approval_with_network_ack(
+                &pending.id,
+                true,
+                Some("test"),
+                pending.tool_name == "run_command",
+            )
             .unwrap();
         assert_eq!(h.settle(&h.first, true).await.status, "failed");
         assert_eq!(

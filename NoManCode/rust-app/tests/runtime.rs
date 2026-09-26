@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use axum::{
     Json, Router,
     body::{Body, to_bytes},
@@ -115,6 +118,7 @@ fn setup(dir: &std::path::Path, base: &str) -> Arc<Engine> {
             )
             .unwrap();
     }
+    network_fixture::authorize_routes(&store);
     Engine::new(store, 2).unwrap()
 }
 fn task(name: &str, route: &str, prompt: &str, scopes: &[&str]) -> TaskSpec {
@@ -167,7 +171,12 @@ async fn approve_pending_write(engine: &Engine, task_id: &str) {
     .expect("known write approval did not become pending");
     assert_eq!(approval.tool_name, "write_file");
     engine
-        .decide_approval(&approval.id, true, Some("runtime-test"))
+        .decide_approval_with_network_ack(
+            &approval.id,
+            true,
+            Some("runtime-test"),
+            approval.tool_name == "run_command",
+        )
         .unwrap();
 }
 
@@ -400,9 +409,7 @@ async fn multiple_keys_limits_identity_and_resume() {
                 .any(|c| c["body"]["model"] == "model-b" && c["key"] == "Bearer fake-key-b")
         );
     }
-    let mut settings = e.store.settings().unwrap().unwrap();
-    settings.routes[0].model = "changed-after-run".into();
-    e.configure(settings).await.unwrap();
+
     let before = &r.tasks[0];
     e.resume(&before.id, "continue").await.unwrap();
     let after = settled(&e, &r.id).await;
@@ -411,6 +418,26 @@ async fn multiple_keys_limits_identity_and_resume() {
     assert_eq!(before.spec.role, after.spec.role);
     assert_eq!(after.route.model, "model-a");
     assert_eq!(after.usage["total_tokens"], 22);
+    let mut settings = e.store.settings().unwrap().unwrap();
+    settings.routes[0].model = "changed-after-run".into();
+    e.configure(settings).await.unwrap();
+    let calls_before = e.store.network_calls_for_task(&before.id).unwrap().len();
+    let error = e
+        .resume(&before.id, "model must invalidate")
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error
+            .downcast_ref::<peachsh::network_authorization::NetworkError>()
+            .unwrap()
+            .kind,
+        peachsh::network_authorization::NetworkErrorKind::Stale
+    );
+    assert_eq!(
+        e.store.network_calls_for_task(&before.id).unwrap().len(),
+        calls_before
+    );
+
     let mut changed = e.store.settings().unwrap().unwrap();
     changed.routes[0].base_url = "https://changed.invalid/v1".into();
     e.configure(changed).await.unwrap();

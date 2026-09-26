@@ -282,7 +282,7 @@ impl Engine {
 }
 
 #[cfg(test)]
-mod crash_probe {
+pub(crate) mod crash_probe {
     use std::{
         collections::HashSet,
         path::PathBuf,
@@ -331,7 +331,7 @@ mod crash_probe {
         *PHASE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some((task_id, phase, signal));
     }
 
-    pub(super) fn block(task_id: &str, phase: &'static str, record_id: &str) {
+    pub(crate) fn block(task_id: &str, phase: &'static str, record_id: &str) {
         let armed = PHASE
             .get_or_init(|| Mutex::new(None))
             .lock()
@@ -2007,6 +2007,24 @@ fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
 
 #[cfg(test)]
 mod workspace_phase_tests {
+    fn authorize_fixture(store: &crate::store::Store) {
+        for route in store.settings().unwrap().unwrap().routes {
+            let subject = super::route_subject(&route.id);
+            let p = store.network_preview(subject.clone()).unwrap();
+            store
+                .network_confirm(
+                    subject,
+                    crate::network_authorization::ConfirmRequest {
+                        config_revision: p.config_revision,
+                        credential_revision: p.credential_revision,
+                        binding_digest: p.binding_digest,
+                        purposes: vec![crate::network_authorization::NetworkPurpose::Completion],
+                    },
+                    &crate::domain::id(),
+                )
+                .unwrap();
+        }
+    }
     use super::*;
     use axum::{Json, Router, extract::State, routing::post};
     use std::{
@@ -2331,6 +2349,7 @@ mod workspace_phase_tests {
             })
             .unwrap();
         store.put_secret("route", "phase-test-key").unwrap();
+        authorize_fixture(&store);
         let engine = Engine::new(store, 2).unwrap();
         let task = engine
             .start(RunRequest {
@@ -2421,6 +2440,7 @@ mod workspace_phase_tests {
             })
             .unwrap();
         store.put_secret("route", "phase-test-key").unwrap();
+        authorize_fixture(&store);
         let engine = Engine::new(store.clone(), 2).unwrap();
         let task = engine
             .start(RunRequest {
@@ -3369,5 +3389,226 @@ impl Engine {
         #[cfg(test)]
         crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
         self.restore_locked(&checkpoint.task_id)
+    }
+}
+
+#[cfg(test)]
+mod network_gate_tests {
+    use super::*;
+    use std::{
+        future::Future,
+        task::{Context as TaskContext, Poll},
+        time::Duration,
+    };
+    fn setup(root: &std::path::Path, base: &str) -> Arc<Engine> {
+        let store = Arc::new(Store::open(&root.join("network-gate.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: root.to_string_lossy().into(),
+                max_concurrency: 1,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "Route".into(),
+                    base_url: base.into(),
+                    model: "mock".into(),
+                    max_tokens: 128,
+                    parallel_limit: 1,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route", "fixture-gate-key").unwrap();
+        let p = store.network_preview(route_subject("route")).unwrap();
+        store
+            .network_confirm(
+                route_subject("route"),
+                ConfirmRequest {
+                    config_revision: p.config_revision,
+                    credential_revision: p.credential_revision,
+                    binding_digest: p.binding_digest,
+                    purposes: vec![NetworkPurpose::Models, NetworkPurpose::Completion],
+                },
+                "gate-grant",
+            )
+            .unwrap();
+        Engine::new(store, 1).unwrap()
+    }
+    fn pending<F: Future>(future: std::pin::Pin<&mut F>) {
+        let waker = futures_util::task::noop_waker();
+        assert!(matches!(
+            future.poll(&mut TaskContext::from_waker(&waker)),
+            Poll::Pending
+        ));
+    }
+    #[tokio::test]
+    async fn slot_acquisition_is_gate_serialized_and_wait_registration_cannot_lose_release() {
+        let dir = tempfile::tempdir().unwrap();
+        let e = setup(dir.path(), "http://127.0.0.1:9");
+        let gate = e.gate.lock().await;
+        let acquire = e.acquire_network_slot();
+        tokio::pin!(acquire);
+        pending(acquire.as_mut());
+        assert_eq!(e.slots.available_permits(), 1);
+        drop(gate);
+        let first = acquire.await.unwrap();
+        assert_eq!(e.slots.available_permits(), 0);
+        let second = e.acquire_network_slot();
+        tokio::pin!(second);
+        pending(second.as_mut());
+        let settings = e.store.settings().unwrap().unwrap();
+        assert!(e.configure(settings).await.is_err());
+        assert_eq!(*e.slot_capacity.lock().unwrap(), 1);
+        drop(first);
+        let second = tokio::time::timeout(Duration::from_secs(1), second)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(e.slots.available_permits(), 0);
+        drop(second);
+        // A cancelled waiter owns no permit; later release remains available.
+        let held = e.acquire_network_slot().await.unwrap();
+        {
+            let cancelled = e.acquire_network_slot();
+            tokio::pin!(cancelled);
+            pending(cancelled.as_mut());
+        }
+        drop(held);
+        assert_eq!(e.slots.available_permits(), 1);
+        let mut settings = e.store.settings().unwrap().unwrap();
+        settings.max_concurrency = 2;
+        e.configure(settings.clone()).await.unwrap();
+        let gate = e.gate.lock().await;
+        settings.max_concurrency = 1;
+        let configure = e.configure(settings);
+        tokio::pin!(configure);
+        pending(configure.as_mut());
+        let waiting = e.acquire_network_slot();
+        tokio::pin!(waiting);
+        pending(waiting.as_mut());
+        assert_eq!(e.slots.available_permits(), 2);
+        drop(gate);
+        configure.await.unwrap();
+        let one = waiting.await.unwrap();
+        let extra = e.acquire_network_slot();
+        tokio::pin!(extra);
+        pending(extra.as_mut());
+        drop(one);
+
+        assert_eq!(e.slots.available_permits(), 1);
+    }
+    #[tokio::test]
+    async fn queued_management_rechecks_revocation_before_creating_a_call() {
+        let dir = tempfile::tempdir().unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let e = setup(dir.path(), &base);
+        let p = e.network_preview(route_subject("route")).await.unwrap();
+        let held = e.acquire_network_slot().await.unwrap();
+        let request = e.route_models("route");
+        tokio::pin!(request);
+        pending(request.as_mut());
+        e.network_revoke(&p.authorization.unwrap().authorization_id)
+            .await
+            .unwrap();
+        drop(held);
+        let error = request.await.unwrap_err();
+        assert_eq!(error.dispatch_state, DispatchState::NotSent);
+        assert!(error.calls.is_empty());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(30), listener.accept())
+                .await
+                .is_err()
+        );
+        let db = rusqlite::Connection::open(dir.path().join("network-gate.db")).unwrap();
+        assert_eq!(
+            db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                axum::Router::new().route(
+                    "/models",
+                    axum::routing::get(|| async { axum::Json(json!({"data":[{"id":"mock"}]})) }),
+                ),
+            )
+            .await
+            .unwrap();
+        });
+        let preview = e.network_preview(route_subject("route")).await.unwrap();
+        e.network_confirm(
+            route_subject("route"),
+            ConfirmRequest {
+                config_revision: preview.config_revision,
+                credential_revision: preview.credential_revision,
+                binding_digest: preview.binding_digest,
+                purposes: vec![NetworkPurpose::Models],
+            },
+            "positive-after-revoke",
+        )
+        .await
+        .unwrap();
+        assert_eq!(e.route_models("route").await.unwrap().result, vec!["mock"]);
+        server.abort();
+        let _ = server.await;
+    }
+    #[tokio::test]
+    async fn real_process_kill_before_and_after_network_claim_recovers_without_resend() {
+        if let Ok(phase) = std::env::var("NHC_NETWORK_CHILD") {
+            let root = std::path::PathBuf::from(std::env::var("NHC_NETWORK_ROOT").unwrap());
+            let store = Arc::new(Store::open(&root.join("network-gate.db")).unwrap());
+            let e = Engine::new(store, 1).unwrap();
+            let at = if phase == "before" {
+                "network-before-claim"
+            } else {
+                "network-after-claim"
+            };
+            crash_probe::arm("route:route".into(), at, root.join("signal"));
+            let _ = e.route_models("route").await;
+            panic!("child should block");
+        }
+        for phase in ["before", "after"] {
+            let dir = tempfile::tempdir().unwrap();
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let base = format!("http://{}", listener.local_addr().unwrap());
+            let e = setup(dir.path(), &base);
+            drop(e);
+            let mut child=std::process::Command::new(std::env::current_exe().unwrap()).args(["--exact","engine::network_gate_tests::real_process_kill_before_and_after_network_claim_recovers_without_resend","--nocapture"]).env("NHC_NETWORK_CHILD",phase).env("NHC_NETWORK_ROOT",dir.path()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().unwrap();
+            tokio::time::timeout(Duration::from_secs(10), async {
+                while !dir.path().join("signal").exists() {
+                    assert!(child.try_wait().unwrap().is_none());
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await
+            .unwrap();
+            let signal = std::fs::read_to_string(dir.path().join("signal")).unwrap();
+            child.kill().unwrap();
+            let status = child.wait().unwrap();
+            assert!(!status.success());
+            let store = Store::open(&dir.path().join("network-gate.db")).unwrap();
+            store.recover().unwrap();
+            let call = signal.lines().nth(1).unwrap();
+            if phase == "after" {
+                let receipt = store.network_call(call).unwrap();
+                assert_eq!(receipt.state, CallState::Unknown);
+                assert_eq!(receipt.result, Some(CallResult::Interrupted));
+                store.recover().unwrap();
+                assert_eq!(store.network_call(call).unwrap(), receipt);
+            } else {
+                assert_eq!(
+                    store.network_call(call).unwrap_err().kind,
+                    NetworkErrorKind::NotFound
+                );
+            }
+            assert!(
+                tokio::time::timeout(Duration::from_millis(40), listener.accept())
+                    .await
+                    .is_err()
+            );
+        }
     }
 }

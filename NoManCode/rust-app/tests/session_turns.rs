@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use anyhow::Result;
 use axum::{Json, Router, body::Body, extract::State, response::IntoResponse, routing::post};
 use peachsh::{
@@ -100,6 +103,7 @@ fn engine_at(dir: &Path, base: &str) -> Arc<Engine> {
     store
         .put_secret("route::chat-route", "synthetic-chat-key")
         .unwrap();
+    network_fixture::authorize_routes(&store);
     Engine::new(store, 2).unwrap()
 }
 

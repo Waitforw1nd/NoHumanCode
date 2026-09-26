@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::checkpoint::CheckpointError;
 use peachsh::{
@@ -87,6 +90,7 @@ fn setup(root: &Path, base: &str) -> Arc<Engine> {
         })
         .unwrap();
     store.put_secret("route", "fake-workspace-key").unwrap();
+    network_fixture::authorize_routes(&store);
     Engine::new(store, 2).unwrap()
 }
 
@@ -128,7 +132,12 @@ async fn write_once(engine: &Arc<Engine>) -> String {
     .await
     .unwrap();
     engine
-        .decide_approval(&approval.id, true, Some("test"))
+        .decide_approval_with_network_ack(
+            &approval.id,
+            true,
+            Some("test"),
+            approval.tool_name == "run_command",
+        )
         .unwrap();
     tokio::time::timeout(Duration::from_secs(8), async {
         loop {
@@ -183,7 +192,12 @@ async fn complete_script(engine: &Arc<Engine>, count: usize) -> String {
         .await
         .unwrap();
         engine
-            .decide_approval(&pending.id, true, Some("test"))
+            .decide_approval_with_network_ack(
+                &pending.id,
+                true,
+                Some("test"),
+                pending.tool_name == "run_command",
+            )
             .unwrap();
     }
     tokio::time::timeout(Duration::from_secs(8), async {
@@ -482,6 +496,7 @@ fn k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints() {
         let path = temp.path().join("db.sqlite");
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
+        network_fixture::drop_network_schema(&db);
         db.execute_batch("INSERT INTO config VALUES ('sentinel','original-bytes'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository';").unwrap();
         if version < 8 {
             db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository';").unwrap();
@@ -492,7 +507,7 @@ fn k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints() {
         db.pragma_update(None, "user_version", version).unwrap();
         drop(db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 9);
+        assert_eq!(store.schema_version().unwrap(), 10);
         drop(store);
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
@@ -556,7 +571,7 @@ fn k05_fake_literal_and_missing_constraint_are_rejected() {
 }
 
 fn business_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
-    let mut names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('checkpoints','schema_migrations','sqlite_sequence') ORDER BY name").unwrap();
+    let mut names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('checkpoints','schema_migrations','sqlite_sequence','network_subjects','network_authorizations','network_confirmations','task_network_bindings','network_calls','command_network_ack','network_events') ORDER BY name").unwrap();
     names
         .query_map([], |r| r.get::<_, String>(0))
         .unwrap()
@@ -593,6 +608,7 @@ async fn k05_real_schema8_migration_preserves_every_business_value_and_ciphertex
     drop(engine);
     let path = temp.path().join("workspace.db");
     let db = Connection::open(&path).unwrap();
+    network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=8;").unwrap();
     let old_rows = business_rows(&db);
     let before_blob: Vec<u8> = db
@@ -621,6 +637,7 @@ fn k05_version9_without_marker_is_not_silently_repaired() {
     let path = temp.path().join("fake.db");
     drop(Store::open(&path).unwrap());
     let db = Connection::open(&path).unwrap();
+    network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository';").unwrap();
     drop(db);
     assert!(Store::open(&path).is_err());
@@ -805,4 +822,54 @@ async fn engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_bi
         Some(WorkspaceChangeError::Conflict { receipt: None })
     ));
     server.abort();
+}
+
+#[tokio::test]
+async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "protected-original").unwrap();
+    let (base, server) = server("src/a.txt", "after").await;
+    let engine = setup(temp.path(), &base);
+    let task = write_once(&engine).await;
+    engine
+        .create_checkpoint(&task, "migration-proof")
+        .await
+        .unwrap();
+    engine.restore(&task).await.unwrap();
+    drop(engine);
+    let path = temp.path().join("workspace.db");
+    let db = Connection::open(&path).unwrap();
+    network_fixture::drop_network_schema(&db);
+    db.pragma_update(None, "user_version", 9).unwrap();
+    let before = business_rows(&db);
+    let checkpoints: Vec<Vec<rusqlite::types::Value>> = {
+        let mut s = db.prepare("SELECT * FROM checkpoints ORDER BY id").unwrap();
+        s.query_map([], |r| {
+            (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap()
+    };
+    drop(db);
+    let store = Store::open(&path).unwrap();
+    assert_eq!(store.schema_version().unwrap(), 10);
+    assert_eq!(store.network_calls_for_task(&task).unwrap().len(), 0);
+    drop(store);
+    drop(Store::open(&path).unwrap());
+    let db = Connection::open(&path).unwrap();
+    assert_eq!(business_rows(&db), before);
+    let after: Vec<Vec<rusqlite::types::Value>> = {
+        let mut s = db.prepare("SELECT * FROM checkpoints ORDER BY id").unwrap();
+        s.query_map([], |r| {
+            (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap()
+    };
+    assert_eq!(after, checkpoints);
+    server.abort();
+    let _ = server.await;
 }

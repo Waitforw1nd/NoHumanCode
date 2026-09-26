@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     domain::{Route, RunRequest, SessionKind, Settings, Task, TaskSpec},
@@ -91,6 +94,7 @@ fn setup(root: &Path, base: &str) -> Arc<Engine> {
         })
         .unwrap();
     store.put_secret("route", "fake-workspace-key").unwrap();
+    network_fixture::authorize_routes(&store);
     Engine::new(store, 2).unwrap()
 }
 
@@ -132,7 +136,12 @@ async fn write_once(engine: &Arc<Engine>) -> String {
     .await
     .unwrap();
     engine
-        .decide_approval(&approval.id, true, Some("test"))
+        .decide_approval_with_network_ack(
+            &approval.id,
+            true,
+            Some("test"),
+            approval.tool_name == "run_command",
+        )
         .unwrap();
     tokio::time::timeout(Duration::from_secs(8), async {
         loop {
@@ -405,7 +414,12 @@ async fn another_task_edit_blocks_resumed_write_without_absorbing_external_bytes
     .unwrap();
     assert_eq!(pending.tool_call_id, "a-second");
     engine
-        .decide_approval(&pending.id, true, Some("test"))
+        .decide_approval_with_network_ack(
+            &pending.id,
+            true,
+            Some("test"),
+            pending.tool_name == "run_command",
+        )
         .unwrap();
     tokio::time::timeout(Duration::from_secs(8), async {
         while engine.is_busy() {
@@ -514,9 +528,10 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
         .unwrap();
     drop(store);
     let db = Connection::open(&path).unwrap();
+    network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 9);
+    assert_eq!(store.schema_version().unwrap(), 10);
     assert!(store.settings().unwrap().is_some());
     drop(store);
     db.execute_batch("DROP INDEX workspace_changes_task_path; CREATE INDEX workspace_changes_task_path ON workspace_changes(path_key,task_id,created_at);").unwrap();
@@ -720,7 +735,12 @@ async fn repeated_path_restores_earliest_before_and_legacy_mix_is_rejected() {
         .await
         .unwrap();
         engine
-            .decide_approval(&approval.id, true, Some("test"))
+            .decide_approval_with_network_ack(
+                &approval.id,
+                true,
+                Some("test"),
+                approval.tool_name == "run_command",
+            )
             .unwrap();
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
@@ -1069,7 +1089,12 @@ async fn later_path_conflict_prevents_all_restore_writes() {
         .await
         .unwrap();
         engine
-            .decide_approval(&approval.id, true, Some("test"))
+            .decide_approval_with_network_ack(
+                &approval.id,
+                true,
+                Some("test"),
+                approval.tool_name == "run_command",
+            )
             .unwrap();
     }
     tokio::time::timeout(Duration::from_secs(8), async {
@@ -1256,10 +1281,11 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
             .collect()
     };
     assert!(!approvals.is_empty() && !events.is_empty());
+    network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     drop(db);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 9);
+    assert_eq!(store.schema_version().unwrap(), 10);
     drop(store);
     let db = Connection::open(&db_path).unwrap();
     let task_after: String = db
@@ -1293,5 +1319,5 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
     assert_eq!(approvals_after, approvals);
     assert_eq!(events_after, events);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 9);
+    assert_eq!(store.schema_version().unwrap(), 10);
 }

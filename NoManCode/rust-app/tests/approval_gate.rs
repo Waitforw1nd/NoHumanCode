@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     approval::{self, ApprovalError, ApprovalRecord, ApprovalStatus, ExecutionState},
@@ -55,8 +58,24 @@ async fn response(
     )
 }
 
-async fn server(groups: Vec<Vec<Value>>) -> (String, tokio::task::JoinHandle<()>) {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+async fn server(root: &Path, groups: Vec<Vec<Value>>) -> (String, tokio::task::JoinHandle<()>) {
+    let address = if root.join("approval.db").exists() {
+        let store = Store::open(&root.join("approval.db")).unwrap();
+        store
+            .settings()
+            .unwrap()
+            .map(|s| {
+                reqwest::Url::parse(&s.routes[0].base_url)
+                    .unwrap()
+                    .socket_addrs(|| None)
+                    .unwrap()[0]
+                    .to_string()
+            })
+            .unwrap_or_else(|| "127.0.0.1:0".into())
+    } else {
+        "127.0.0.1:0".into()
+    };
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     let base = format!("http://{}/v1", listener.local_addr().unwrap());
     let app = Router::new()
         .route("/v1/chat/completions", post(response))
@@ -104,6 +123,7 @@ fn setup(path: &Path, base: &str) -> Arc<Engine> {
         })
         .unwrap();
     store.put_secret("route", "fake-key-approval").unwrap();
+    network_fixture::authorize_routes(&store);
     Engine::new(store, 4).unwrap()
 }
 async fn start(e: &Arc<Engine>, commands: bool) -> Task {
@@ -197,7 +217,7 @@ fn seed(store: &Store, root: &Path, id: &str, calls: Vec<Value>, commands: bool)
 #[tokio::test]
 async fn ap01_ap02_pending_then_approved_executes_once() {
     let temp = tempfile::tempdir().unwrap();
-    let (base, _server) = server(vec![vec![write("w1", "src/a.txt")]]).await;
+    let (base, _server) = server(temp.path(), vec![vec![write("w1", "src/a.txt")]]).await;
     let e = setup(temp.path(), &base);
     let t = start(&e, false).await;
     let card = pending(&e, &t.id).await;
@@ -207,7 +227,9 @@ async fn ap01_ap02_pending_then_approved_executes_once() {
     assert_eq!(event_count(&e, &t, "file_backup"), 0);
     assert_eq!(card.execution_state, ExecutionState::NotStarted);
     assert_eq!(event_count(&e, &t, "approval.requested"), 1);
-    let approved = e.decide_approval(&card.id, true, None).unwrap();
+    let approved = e
+        .decide_approval_with_network_ack(&card.id, true, None, card.tool_name == "run_command")
+        .unwrap();
     assert_eq!(approved.decided_by.as_deref(), Some("user"));
     assert!(approved.decided_at.is_some());
     let done = settled(&e, &t.id).await;
@@ -231,7 +253,7 @@ async fn ap01_ap02_pending_then_approved_executes_once() {
 #[tokio::test]
 async fn ap03_ap09_denied_and_decision_conflicts() {
     let temp = tempfile::tempdir().unwrap();
-    let (base, _server) = server(vec![vec![write("w1", "src/a.txt")]]).await;
+    let (base, _server) = server(temp.path(), vec![vec![write("w1", "src/a.txt")]]).await;
     let e = setup(temp.path(), &base);
     let t = start(&e, false).await;
     let card = pending(&e, &t.id).await;
@@ -241,7 +263,15 @@ async fn ap03_ap09_denied_and_decision_conflicts() {
     ));
     e.decide_approval(&card.id, false, None).unwrap();
     assert!(matches!(
-        error_kind(&e.decide_approval(&card.id, true, None).unwrap_err()),
+        error_kind(
+            &e.decide_approval_with_network_ack(
+                &card.id,
+                true,
+                None,
+                card.tool_name == "run_command"
+            )
+            .unwrap_err()
+        ),
         ApprovalError::Conflict { .. }
     ));
     let done = settled(&e, &t.id).await;
@@ -258,11 +288,14 @@ async fn ap03_ap09_denied_and_decision_conflicts() {
 async fn ap04_read_tools_pass_through() {
     let temp = tempfile::tempdir().unwrap();
     std::fs::write(temp.path().join("input.txt"), "hello").unwrap();
-    let (base, _server) = server(vec![vec![
-        call("r1", "list_files", json!({"path":"."})),
-        call("r2", "read_file", json!({"path":"input.txt"})),
-        call("r3", "search_files", json!({"query":"hello"})),
-    ]])
+    let (base, _server) = server(
+        temp.path(),
+        vec![vec![
+            call("r1", "list_files", json!({"path":"."})),
+            call("r2", "read_file", json!({"path":"input.txt"})),
+            call("r3", "search_files", json!({"query":"hello"})),
+        ]],
+    )
     .await;
     let e = setup(temp.path(), &base);
     let t = start(&e, false).await;
@@ -276,17 +309,26 @@ async fn ap04_read_tools_pass_through() {
 async fn ap05_command_waits_and_runs_once() {
     for approved in [true, false] {
         let temp = tempfile::tempdir().unwrap();
-        let (base, _server) = server(vec![vec![call(
-            "cmd",
-            "run_command",
-            json!({"command":"Add-Content -LiteralPath counter.txt -Value one"}),
-        )]])
+        let (base, _server) = server(
+            temp.path(),
+            vec![vec![call(
+                "cmd",
+                "run_command",
+                json!({"command":"Add-Content -LiteralPath counter.txt -Value one"}),
+            )]],
+        )
         .await;
         let e = setup(temp.path(), &base);
         let t = start(&e, true).await;
         let card = pending(&e, &t.id).await;
         assert!(!temp.path().join("counter.txt").exists());
-        e.decide_approval(&card.id, approved, None).unwrap();
+        e.decide_approval_with_network_ack(
+            &card.id,
+            approved,
+            None,
+            card.tool_name == "run_command",
+        )
+        .unwrap();
         assert_eq!(settled(&e, &t.id).await.status, "completed");
         if approved {
             assert_eq!(
@@ -306,7 +348,7 @@ async fn ap05_command_waits_and_runs_once() {
 #[tokio::test]
 async fn ap08_cancel_pending_is_durable() {
     let temp = tempfile::tempdir().unwrap();
-    let (base, _server) = server(vec![vec![write("w1", "src/a.txt")]]).await;
+    let (base, _server) = server(temp.path(), vec![vec![write("w1", "src/a.txt")]]).await;
     let e = setup(temp.path(), &base);
     let t = start(&e, false).await;
     let card = pending(&e, &t.id).await;
@@ -319,7 +361,15 @@ async fn ap08_cancel_pending_is_durable() {
     assert!(!temp.path().join("src/a.txt").exists());
     assert_eq!(event_count(&e, &t, "approval.resolved"), 1);
     assert!(matches!(
-        error_kind(&e.decide_approval(&card.id, true, None).unwrap_err()),
+        error_kind(
+            &e.decide_approval_with_network_ack(
+                &card.id,
+                true,
+                None,
+                card.tool_name == "run_command"
+            )
+            .unwrap_err()
+        ),
         ApprovalError::Conflict { .. }
     ));
 }
@@ -333,12 +383,18 @@ fn ap08_restart_public_cancel_is_idempotent_without_active_runtime() {
             .build()
             .unwrap();
         let (task, card) = runtime.block_on(async {
-            let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+            let (base, _server) = server(temp.path(), vec![vec![write("w", "src/a.txt")]]).await;
             let e = setup(temp.path(), &base);
             let task = start(&e, false).await;
             let card = pending(&e, &task.id).await;
             if approve_before_restart {
-                e.decide_approval(&card.id, true, None).unwrap();
+                e.decide_approval_with_network_ack(
+                    &card.id,
+                    true,
+                    None,
+                    card.tool_name == "run_command",
+                )
+                .unwrap();
                 assert_eq!(
                     e.store.approval(&card.id).unwrap().execution_state,
                     ExecutionState::NotStarted
@@ -350,7 +406,7 @@ fn ap08_restart_public_cancel_is_idempotent_without_active_runtime() {
 
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(async {
-            let (base, _server) = server(vec![]).await;
+            let (base, _server) = server(temp.path(), vec![]).await;
             let e = setup(temp.path(), &base);
             e.store.recover().unwrap();
             assert_eq!(e.store.task(&task.id).unwrap().status, "interrupted");
@@ -402,7 +458,7 @@ fn redacted_command_result_stays_finished_across_restart() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (task, card) = runtime.block_on(async {
         let command = "Add-Content -LiteralPath counter.txt -Value one; Write-Output 'bearer mock-redact-secret'; Write-Error 'ordinary failure' -ErrorAction Continue; exit 7";
-        let (base, _server) = server(vec![vec![call(
+        let (base, _server) = server(temp.path(),vec![vec![call(
             "cmd",
             "run_command",
             json!({"command":command}),
@@ -411,7 +467,7 @@ fn redacted_command_result_stays_finished_across_restart() {
         let e = setup(temp.path(), &base);
         let task = start(&e, true).await;
         let card = pending(&e, &task.id).await;
-        e.decide_approval(&card.id, true, None).unwrap();
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name=="run_command").unwrap();
         let done = settled(&e, &task.id).await;
         assert_eq!(done.status, "completed");
         assert_eq!(
@@ -452,7 +508,7 @@ fn redacted_command_result_stays_finished_across_restart() {
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
-        let (base, _server) = server(vec![]).await;
+        let (base, _server) = server(temp.path(), vec![]).await;
         let e = setup(temp.path(), &base);
         e.store.recover().unwrap();
         assert_eq!(
@@ -490,7 +546,7 @@ async fn ap10_ap11_safe_previews_independent_calls() {
         "write_file",
         json!({"path":"src/a.txt","content":secret,"env":{"API_KEY":secret}}),
     );
-    let (base, _server) = server(vec![vec![c, write("w2", "src/b.txt")]]).await;
+    let (base, _server) = server(temp.path(), vec![vec![c, write("w2", "src/b.txt")]]).await;
     let e = setup(temp.path(), &base);
     let t = start(&e, false).await;
     let a = pending(&e, &t.id).await;
@@ -500,7 +556,8 @@ async fn ap10_ap11_safe_previews_independent_calls() {
             .contains("mock-approval-secret")
     );
     assert!(!a.preview.contains("Bearer"));
-    e.decide_approval(&a.id, true, None).unwrap();
+    e.decide_approval_with_network_ack(&a.id, true, None, a.tool_name == "run_command")
+        .unwrap();
     let b = pending(&e, &t.id).await;
     assert_ne!(a.id, b.id);
     e.decide_approval(&b.id, false, None).unwrap();
@@ -543,12 +600,18 @@ async fn ap13_duplicate_groups_have_no_effect() {
         } else {
             vec![vec![write("dup", "src/a.txt"), write("dup", "src/b.txt")]]
         };
-        let (base, _server) = server(groups).await;
+        let (base, _server) = server(temp.path(), groups).await;
         let e = setup(temp.path(), &base);
         let t = start(&e, false).await;
         if later {
             let card = pending(&e, &t.id).await;
-            e.decide_approval(&card.id, true, None).unwrap();
+            e.decide_approval_with_network_ack(
+                &card.id,
+                true,
+                None,
+                card.tool_name == "run_command",
+            )
+            .unwrap();
         }
         assert_eq!(settled(&e, &t.id).await.status, "failed");
         let n = usize::from(later);
@@ -574,7 +637,8 @@ fn ap13_cross_task_same_call_isolated() {
         .ensure_approval(&b, "same", "write_file", &args(&c))
         .unwrap();
     assert_ne!(ar.id, br.id);
-    s.decide_approval(&ar.id, true, "user").unwrap();
+    s.decide_approval_with_network_ack(&ar.id, true, "user", ar.tool_name == "run_command")
+        .unwrap();
     assert_eq!(s.approval(&br.id).unwrap().status, ApprovalStatus::Pending);
     assert!(
         s.claim_approval(&b, "same", "write_file", &args(&c))
@@ -591,7 +655,8 @@ fn ap14_binding_changes_rejected_without_new_events() {
     let c = write("w", "src/a.txt");
     let t = seed(&s, temp.path(), "a", vec![c.clone()], false);
     let (card, _) = s.ensure_approval(&t, "w", "write_file", &args(&c)).unwrap();
-    s.decide_approval(&card.id, true, "user").unwrap();
+    s.decide_approval_with_network_ack(&card.id, true, "user", card.tool_name == "run_command")
+        .unwrap();
     let events = s.events(&t.run_id, 0).unwrap().len();
     for n in 0..4 {
         let mut task = t.clone();
@@ -671,7 +736,8 @@ fn ap17_claim_cancel_order_and_stale_completed() {
         let c = write("w", "src/a.txt");
         let mut t = seed(&s, temp.path(), "a", vec![c.clone()], false);
         let (card, _) = s.ensure_approval(&t, "w", "write_file", &args(&c)).unwrap();
-        s.decide_approval(&card.id, true, "user").unwrap();
+        s.decide_approval_with_network_ack(&card.id, true, "user", card.tool_name == "run_command")
+            .unwrap();
         if claim_first {
             s.claim_approval(&t, "w", "write_file", &args(&c)).unwrap();
         }
@@ -708,7 +774,7 @@ fn ap06_ap07_ap18_runtime_restart_and_decide_before_waiter() {
         let temp = tempfile::tempdir().unwrap();
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let (task, card) = runtime.block_on(async {
-            let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+            let (base, _server) = server(temp.path(), vec![vec![write("w", "src/a.txt")]]).await;
             let e = setup(temp.path(), &base);
             let t = start(&e, false).await;
             let c = pending(&e, &t.id).await;
@@ -717,7 +783,7 @@ fn ap06_ap07_ap18_runtime_restart_and_decide_before_waiter() {
         runtime.shutdown_timeout(Duration::from_secs(2));
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(async {
-            let (base, _server) = server(vec![]).await;
+            let (base, _server) = server(temp.path(), vec![]).await;
             let e = setup(temp.path(), &base);
             e.store.recover().unwrap();
             // Preserve the same route endpoint in the task by updating the mock
@@ -735,7 +801,13 @@ fn ap06_ap07_ap18_runtime_restart_and_decide_before_waiter() {
                 e.store.approval(&card.id).unwrap().status,
                 ApprovalStatus::Pending
             );
-            e.decide_approval(&card.id, approved, None).unwrap();
+            e.decide_approval_with_network_ack(
+                &card.id,
+                approved,
+                None,
+                card.tool_name == "run_command",
+            )
+            .unwrap();
             assert!(!e.is_busy());
             assert!(!temp.path().join("src/a.txt").exists());
             e.resume(&task.id, "continue").await.unwrap();
@@ -758,7 +830,7 @@ fn ap14_redacted_arguments_cannot_resume_as_substitute() {
             "write_file",
             json!({"path":"src/a.txt","content":"Bearer mock-secret-value"}),
         );
-        let (base, _server) = server(vec![vec![c]]).await;
+        let (base, _server) = server(temp.path(), vec![vec![c]]).await;
         let e = setup(temp.path(), &base);
         let t = start(&e, false).await;
         let card = pending(&e, &t.id).await;
@@ -770,7 +842,8 @@ fn ap14_redacted_arguments_cannot_resume_as_substitute() {
         let s = Arc::new(Store::open(&temp.path().join("approval.db")).unwrap());
         s.recover().unwrap();
         let e = Engine::new(s, 4).unwrap();
-        e.decide_approval(&card.id, true, None).unwrap();
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name == "run_command")
+            .unwrap();
         assert!(matches!(
             error_kind(&e.resume(&t.id, "continue").await.unwrap_err()),
             ApprovalError::BindingConflict { .. }
@@ -791,9 +864,9 @@ fn ap15_claimed_before_execute_runtime_stops_then_unknown() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (t,card)=runtime.block_on(async {
-        let (base,_server)=server(vec![vec![write("w","src/a.txt")]]).await; let e=setup(temp.path(),&base); let t=start(&e,false).await; let card=pending(&e,&t.id).await;
+        let (base,_server)=server(temp.path(),vec![vec![write("w","src/a.txt")]]).await; let e=setup(temp.path(),&base); let t=start(&e,false).await; let card=pending(&e,&t.id).await;
         db(temp.path()).execute_batch("CREATE TRIGGER stop_before_execute BEFORE INSERT ON events WHEN NEW.kind='file_backup' BEGIN SELECT RAISE(ABORT,'injected pre-execute stop'); END;").unwrap();
-        e.decide_approval(&card.id,true,None).unwrap(); assert_eq!(settled(&e,&t.id).await.status,"failed"); assert_eq!(e.store.approval(&card.id).unwrap().execution_state,ExecutionState::Claimed); (t,card)
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name=="run_command").unwrap(); assert_eq!(settled(&e,&t.id).await.status,"failed"); assert_eq!(e.store.approval(&card.id).unwrap().execution_state,ExecutionState::Claimed); (t,card)
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
     let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -821,7 +894,7 @@ fn ap15_real_command_effect_then_runtime_stop_unknown() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (t,card)=runtime.block_on(async {
         let c=call("cmd","run_command",json!({"command":"Add-Content -LiteralPath counter.txt -Value one; Start-Sleep -Seconds 120", "timeout_seconds":180}));
-        let (base,_server)=server(vec![vec![c]]).await; let e=setup(temp.path(),&base); let t=start(&e,true).await; let card=pending(&e,&t.id).await; e.decide_approval(&card.id,true,None).unwrap();
+        let (base,_server)=server(temp.path(),vec![vec![c]]).await; let e=setup(temp.path(),&base); let t=start(&e,true).await; let card=pending(&e,&t.id).await; e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name=="run_command").unwrap();
         until(|| std::fs::read_to_string(temp.path().join("counter.txt")).ok().filter(|s| s.lines().count()==1)).await; assert_eq!(event_count(&e,&t,"tool_result"),0); (t,card)
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
@@ -856,9 +929,9 @@ fn ap16_finish_transaction_fault_rolls_back() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (t,card)=runtime.block_on(async {
-        let (base,_server)=server(vec![vec![write("w","src/a.txt")]]).await; let e=setup(temp.path(),&base); let t=start(&e,false).await; let card=pending(&e,&t.id).await;
+        let (base,_server)=server(temp.path(),vec![vec![write("w","src/a.txt")]]).await; let e=setup(temp.path(),&base); let t=start(&e,false).await; let card=pending(&e,&t.id).await;
         db(temp.path()).execute_batch("CREATE TRIGGER stop_finished BEFORE UPDATE OF execution_state ON approvals WHEN NEW.execution_state='finished' BEGIN SELECT RAISE(ABORT,'injected finish fault'); END;").unwrap();
-        e.decide_approval(&card.id,true,None).unwrap(); let done=settled(&e,&t.id).await; assert_eq!(done.status,"failed"); assert!(temp.path().join("src/a.txt").exists()); assert_eq!(event_count(&e,&t,"tool_result"),0); assert!(!done.messages.iter().any(|m|m["role"]=="tool"));
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name=="run_command").unwrap(); let done=settled(&e,&t.id).await; assert_eq!(done.status,"failed"); assert!(temp.path().join("src/a.txt").exists()); assert_eq!(event_count(&e,&t,"tool_result"),0); assert!(!done.messages.iter().any(|m|m["role"]=="tool"));
         assert_eq!(e.store.approval(&card.id).unwrap().execution_state,ExecutionState::Claimed);
         let projected:String=db(temp.path()).query_row("SELECT status FROM turn_tasks WHERE legacy_task_id=?1",[&t.id],|r|r.get(0)).unwrap(); assert_eq!(projected,"failed"); (t,card)
     });
@@ -884,18 +957,19 @@ fn ap16_finished_restart_never_reexecutes_and_missing_result_is_corrupt() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (t, card) = runtime.block_on(async {
-        let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+        let (base, _server) = server(temp.path(), vec![vec![write("w", "src/a.txt")]]).await;
         let e = setup(temp.path(), &base);
         let t = start(&e, false).await;
         let card = pending(&e, &t.id).await;
-        e.decide_approval(&card.id, true, None).unwrap();
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name == "run_command")
+            .unwrap();
         settled(&e, &t.id).await;
         (t, card)
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
-        let (base, _server) = server(vec![]).await;
+        let (base, _server) = server(temp.path(), vec![]).await;
         let e = setup(temp.path(), &base);
         e.store.recover().unwrap();
         let mut task = e.store.task(&t.id).unwrap();
@@ -942,6 +1016,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     drop(s);
     // Restore exactly schema 6: the only removed objects are schema 7 objects.
     let conn = db(temp.path());
+    network_fixture::drop_network_schema(&conn);
     conn.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DROP TABLE approvals; DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
     let old: String = conn
         .query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r.get(0))
@@ -964,7 +1039,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     );
     conn.execute_batch("DROP TRIGGER migration_fault;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 9);
+    assert_eq!(s.schema_version().unwrap(), 10);
     assert_eq!(s.task("a").unwrap().id, t.id);
     assert_eq!(
         conn.query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r
@@ -1029,7 +1104,15 @@ fn ap20_public_query_order_and_corruption_distinct_from_missing() {
         ApprovalError::CorruptState { .. }
     ));
     assert!(matches!(
-        error_kind(&s.decide_approval(&ar.id, true, "user").unwrap_err()),
+        error_kind(
+            &s.decide_approval_with_network_ack(
+                &ar.id,
+                true,
+                "user",
+                ar.tool_name == "run_command"
+            )
+            .unwrap_err()
+        ),
         ApprovalError::CorruptState { .. }
     ));
     assert_eq!(s.approval(&br.id).unwrap().status, ApprovalStatus::Pending);
@@ -1043,13 +1126,14 @@ fn ap15_approved_before_claim_stopped_runtime_executes_once() {
         .build()
         .unwrap();
     let (task, card) = runtime.block_on(async {
-        let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+        let (base, _server) = server(temp.path(), vec![vec![write("w", "src/a.txt")]]).await;
         let e = setup(temp.path(), &base);
         let task = start(&e, false).await;
         let card = pending(&e, &task.id).await;
         // No await after decide: this single-thread runtime cannot poll the
         // worker between the committed approval and shutdown.
-        e.decide_approval(&card.id, true, None).unwrap();
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name == "run_command")
+            .unwrap();
         assert_eq!(
             e.store.approval(&card.id).unwrap().execution_state,
             ExecutionState::NotStarted
@@ -1060,7 +1144,7 @@ fn ap15_approved_before_claim_stopped_runtime_executes_once() {
     assert!(!temp.path().join("src/a.txt").exists());
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
-        let (base, _server) = server(vec![]).await;
+        let (base, _server) = server(temp.path(), vec![]).await;
         let e = setup(temp.path(), &base);
         e.store.recover().unwrap();
         let mut t = e.store.task(&task.id).unwrap();
@@ -1086,14 +1170,21 @@ fn ap15_approved_before_claim_stopped_runtime_executes_once() {
 async fn ap18_decision_and_cancel_from_other_store_are_observed() {
     for approve in [true, false] {
         let temp = tempfile::tempdir().unwrap();
-        let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+        let (base, _server) = server(temp.path(), vec![vec![write("w", "src/a.txt")]]).await;
         let e = setup(temp.path(), &base);
         let task = start(&e, false).await;
         let card = pending(&e, &task.id).await;
         // Public Store updates intentionally do not touch Engine's waiter map.
         let other = Store::open(&temp.path().join("approval.db")).unwrap();
         if approve {
-            other.decide_approval(&card.id, true, "user").unwrap();
+            other
+                .decide_approval_with_network_ack(
+                    &card.id,
+                    true,
+                    "user",
+                    card.tool_name == "run_command",
+                )
+                .unwrap();
         } else {
             other.cancel_pending_approvals(&task.id).unwrap();
         }
@@ -1109,7 +1200,7 @@ fn ap18_cancel_before_new_waiter_resume_has_safe_cancel_result() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let task = runtime.block_on(async {
-        let (base, _server) = server(vec![vec![write("w", "src/a.txt")]]).await;
+        let (base, _server) = server(temp.path(), vec![vec![write("w", "src/a.txt")]]).await;
         let e = setup(temp.path(), &base);
         let task = start(&e, false).await;
         pending(&e, &task.id).await;
@@ -1118,7 +1209,7 @@ fn ap18_cancel_before_new_waiter_resume_has_safe_cancel_result() {
     runtime.shutdown_timeout(Duration::from_secs(2));
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
-        let (base, _server) = server(vec![]).await;
+        let (base, _server) = server(temp.path(), vec![]).await;
         let e = setup(temp.path(), &base);
         e.store.cancel_pending_approvals(&task.id).unwrap();
         let mut t = e.store.task(&task.id).unwrap();
@@ -1148,7 +1239,8 @@ async fn ap16_public_finish_failure_preserves_all_transaction_inputs() {
     let (card, _) = s
         .ensure_approval(&task, "w", "write_file", &args(&c))
         .unwrap();
-    s.decide_approval(&card.id, true, "user").unwrap();
+    s.decide_approval_with_network_ack(&card.id, true, "user", card.tool_name == "run_command")
+        .unwrap();
     s.claim_approval(&task, "w", "write_file", &args(&c))
         .unwrap();
     let result = peachsh::workspace::execute(&task, "write_file", &args(&c))
@@ -1205,9 +1297,10 @@ fn ap19_constraints_enforced_and_partial_ddl_retry() {
         );
     }
     drop(s);
+    network_fixture::drop_network_schema(&conn);
     conn.execute_batch("DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 9);
+    assert_eq!(s.schema_version().unwrap(), 10);
     assert_eq!(s.approval(&record.id).unwrap(), record);
     drop(s);
     conn.execute_batch("DROP INDEX approvals_task_call_unique; CREATE INDEX approvals_task_call_unique ON approvals(task_id,tool_call_id);").unwrap();
@@ -1228,7 +1321,8 @@ fn ap14_persisted_workspace_and_permission_changes_conflict() {
         let (card, _) = s
             .ensure_approval(&t, "cmd", "run_command", &args(&c))
             .unwrap();
-        s.decide_approval(&card.id, true, "user").unwrap();
+        s.decide_approval_with_network_ack(&card.id, true, "user", card.tool_name == "run_command")
+            .unwrap();
         let mut changed = t.clone();
         match mode {
             0 => changed.workspace.push_str("/changed"),
@@ -1269,11 +1363,16 @@ async fn ap17_cancel_after_real_claim_preserves_real_result_and_stops_next_call(
         "run_command",
         json!({"command":"Add-Content -LiteralPath counter.txt -Value one; while (-not (Test-Path -LiteralPath release.txt)) { Start-Sleep -Milliseconds 10 }; Write-Output done"}),
     );
-    let (base, _server) = server(vec![vec![command, write("next", "src/next.txt")]]).await;
+    let (base, _server) = server(
+        temp.path(),
+        vec![vec![command, write("next", "src/next.txt")]],
+    )
+    .await;
     let e = setup(temp.path(), &base);
     let task = start(&e, true).await;
     let card = pending(&e, &task.id).await;
-    e.decide_approval(&card.id, true, None).unwrap();
+    e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name == "run_command")
+        .unwrap();
     until(|| {
         std::fs::read_to_string(temp.path().join("counter.txt"))
             .ok()
@@ -1301,10 +1400,10 @@ async fn ap17_cancel_after_real_claim_preserves_real_result_and_stops_next_call(
 #[tokio::test]
 async fn ap13_empty_id_and_ambiguous_history_fail_closed() {
     let temp = tempfile::tempdir().unwrap();
-    let (base, _server) = server(vec![vec![
-        write("first", "src/a.txt"),
-        write("", "src/b.txt"),
-    ]])
+    let (base, _server) = server(
+        temp.path(),
+        vec![vec![write("first", "src/a.txt"), write("", "src/b.txt")]],
+    )
     .await;
     let e = setup(temp.path(), &base);
     let task = start(&e, false).await;
@@ -1337,7 +1436,8 @@ fn ap17_multistore_cancel_claim_barrier() {
         let (card, _) = s
             .ensure_approval(&task, "w", "write_file", &args(&c))
             .unwrap();
-        s.decide_approval(&card.id, true, "user").unwrap();
+        s.decide_approval_with_network_ack(&card.id, true, "user", card.tool_name == "run_command")
+            .unwrap();
         let claim_store = Store::open(&path).unwrap();
         let cancel_store = Store::open(&path).unwrap();
         let barrier = Arc::new(Barrier::new(2));
@@ -1381,10 +1481,13 @@ fn ap06_reconcile_preserves_order_with_pending_and_unapproved_calls() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (task, card) = runtime.block_on(async {
-        let (base, _server) = server(vec![vec![
-            write("first", "src/a.txt"),
-            write("second", "src/b.txt"),
-        ]])
+        let (base, _server) = server(
+            temp.path(),
+            vec![vec![
+                write("first", "src/a.txt"),
+                write("second", "src/b.txt"),
+            ]],
+        )
         .await;
         let e = setup(temp.path(), &base);
         let task = start(&e, false).await;
@@ -1394,7 +1497,7 @@ fn ap06_reconcile_preserves_order_with_pending_and_unapproved_calls() {
     runtime.shutdown_timeout(Duration::from_secs(2));
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
-        let (base, _server) = server(vec![]).await;
+        let (base, _server) = server(temp.path(), vec![]).await;
         let e = setup(temp.path(), &base);
         e.store.recover().unwrap();
         let mut t = e.store.task(&task.id).unwrap();
@@ -1405,7 +1508,8 @@ fn ap06_reconcile_preserves_order_with_pending_and_unapproved_calls() {
                 params![t.id, serde_json::to_string(&t).unwrap()],
             )
             .unwrap();
-        e.decide_approval(&card.id, true, None).unwrap();
+        e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name == "run_command")
+            .unwrap();
         e.resume(&task.id, "continue").await.unwrap();
         let done = settled(&e, &task.id).await;
         assert_eq!(done.status, "completed");
@@ -1421,4 +1525,74 @@ fn ap06_reconcile_preserves_order_with_pending_and_unapproved_calls() {
         assert_eq!(done.messages.last().unwrap()["role"], "assistant");
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
+}
+
+#[test]
+fn command_legacy_approved_ack_is_sidecar_only_and_unknown_cannot_be_acknowledged() {
+    let temp = tempfile::tempdir().unwrap();
+    let s = Store::open(&temp.path().join("approval.db")).unwrap();
+    let c = call("cmd", "run_command", json!({"command":"Write-Output test"}));
+    let task = seed(&s, temp.path(), "ack-sidecar", vec![c.clone()], true);
+    let (card, _) = s
+        .ensure_approval(&task, "cmd", "run_command", &args(&c))
+        .unwrap();
+    let approved = s
+        .decide_approval_with_network_ack(&card.id, true, "original-user", true)
+        .unwrap();
+    let conn = db(temp.path());
+    conn.execute(
+        "DELETE FROM command_network_ack WHERE approval_id=?1",
+        [&card.id],
+    )
+    .unwrap();
+    let old = s.approval(&card.id).unwrap();
+    assert_eq!(
+        old.command_network_ack,
+        approval::CommandNetworkAck::Required
+    );
+    let before: Vec<rusqlite::types::Value> = conn
+        .query_row("SELECT * FROM approvals WHERE id=?1", [&card.id], |r| {
+            (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+        })
+        .unwrap();
+    assert!(matches!(
+        s.claim_approval(&task, "cmd", "run_command", &args(&c))
+            .unwrap_err()
+            .downcast_ref::<ApprovalError>(),
+        Some(ApprovalError::NetworkAcknowledgementRequired { .. })
+    ));
+    let result = s
+        .decide_approval_with_network_ack(&card.id, true, "new-user", true)
+        .unwrap();
+    assert_eq!(result.decided_by, approved.decided_by);
+    assert_eq!(result.decided_at, approved.decided_at);
+    assert_eq!(result.binding_digest, approved.binding_digest);
+    let after: Vec<rusqlite::types::Value> = conn
+        .query_row("SELECT * FROM approvals WHERE id=?1", [&card.id], |r| {
+            (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+        })
+        .unwrap();
+    assert_eq!(after, before);
+    let event_count: i64 = conn
+        .query_row("SELECT count(*) FROM events", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(
+        s.decide_approval_with_network_ack(&card.id, true, "again", true)
+            .unwrap(),
+        result
+    );
+    assert_eq!(
+        conn.query_row("SELECT count(*) FROM events", [], |r| r.get::<_, i64>(0))
+            .unwrap(),
+        event_count
+    );
+    s.claim_approval(&task, "cmd", "run_command", &args(&c))
+        .unwrap();
+    s.recover().unwrap();
+    assert!(matches!(
+        s.decide_approval_with_network_ack(&card.id, true, "again", true)
+            .unwrap_err()
+            .downcast_ref::<ApprovalError>(),
+        Some(ApprovalError::UnknownResult { .. })
+    ));
 }
