@@ -2514,3 +2514,53 @@ mod task_identity_tests {
         }
     }
 }
+
+pub const CHECKPOINT_MIGRATION_ID: &str = "task-before-checkpoint-repository";
+const CHECKPOINT_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS checkpoints (
+  id TEXT NOT NULL PRIMARY KEY,
+  task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
+  creation_key TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL CHECK (kind='task_before'),
+  generation INTEGER NOT NULL CHECK (generation=1),
+  created_at INTEGER NOT NULL CHECK (created_at>=0),
+  manifest_digest TEXT NOT NULL CHECK (length(manifest_digest)=64),
+  manifest TEXT NOT NULL
+)";
+
+pub fn apply_schema_9(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(CHECKPOINT_TABLE_SQL)?;
+    verify_schema_9(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![CHECKPOINT_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 9)?;
+    Ok(())
+}
+
+pub(crate) fn verify_schema_9(tx: &Transaction<'_>) -> Result<()> {
+    // Compare the full DDL, preserving literals: checking names alone accepts missing CHECK/FK/UNIQUE.
+    let ddl: String = tx.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='checkpoints'",
+        [],
+        |r| r.get(0),
+    )?;
+    let normalize = |s: &str| {
+        s.replace(" IF NOT EXISTS", "")
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+    };
+    anyhow::ensure!(
+        normalize(&ddl) == normalize(CHECKPOINT_TABLE_SQL),
+        "schema 9 checkpoint constraints differ"
+    );
+    let violations: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check(checkpoints)", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(
+        violations.is_none(),
+        "schema 9 checkpoint foreign key violation"
+    );
+    Ok(())
+}

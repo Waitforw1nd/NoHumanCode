@@ -681,6 +681,7 @@ pub fn validate_event_kind(kind: &str) -> Result<()> {
         "resume",
     ];
     const CORE: &[&str] = &[
+        "checkpoint.created",
         "turn.created",
         "turn.status",
         "task.created",
