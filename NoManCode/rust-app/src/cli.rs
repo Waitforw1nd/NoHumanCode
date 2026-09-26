@@ -63,6 +63,7 @@ impl Command {
                     [id, agent, after_turn].iter().all(|id| valid_id(id))
                         && valid_message(message)
                         && secrets::validate_idempotency_key(key).is_ok()
+                        && !key.contains(',')
                 }
             },
             Self::Task(task) => match &task.command {
@@ -597,11 +598,11 @@ fn encoded<T: Serialize>(value: T) -> Result<Value, Failure> {
 }
 fn safe_strings(value: &Value) -> bool {
     match value {
-        Value::String(text) => secrets::scrub(text, "") == *text,
+        Value::String(_) => secrets::redact_persisted(value) == *value,
         Value::Array(items) => items.iter().all(safe_strings),
-        Value::Object(items) => items
-            .iter()
-            .all(|(key, item)| secrets::scrub(key, "") == *key && safe_strings(item)),
+        Value::Object(items) => items.iter().all(|(key, item)| {
+            secrets::redact_persisted(&json!(key)) == json!(key) && safe_strings(item)
+        }),
         _ => true,
     }
 }
@@ -781,13 +782,9 @@ async fn workflow_request(
             .unwrap_or_else(|| Failure::fixed("unavailable", "无法连接或读取本机服务", true))
     })?;
     let status = response.status();
-    let bytes = limited_body(response).await.map_err(|error| {
-        if error.code == "unavailable" {
-            operation.map(operation_unknown).unwrap_or(error)
-        } else {
-            error
-        }
-    })?;
+    let bytes = limited_body(response)
+        .await
+        .map_err(|error| operation.map(operation_unknown).unwrap_or(error))?;
     let value: Value = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
     if token
         .as_deref()
@@ -814,6 +811,45 @@ async fn workflow_request(
     Err(failure)
 }
 async fn workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: Command,
+) -> Result<(), Failure> {
+    let operation = match &command {
+        Command::Run(RunArgs {
+            command: RunCommand::Start(_),
+        }) => Some("start"),
+        Command::Session(SessionArgs {
+            command: SessionCommand::Send { .. },
+        }) => Some("send"),
+        Command::Task(TaskArgs {
+            command: TaskCommand::Resume { .. },
+        }) => Some("resume"),
+        Command::Task(TaskArgs {
+            command: TaskCommand::Cancel { .. },
+        }) => Some("cancel"),
+        Command::Task(TaskArgs {
+            command: TaskCommand::Restore { .. },
+        }) => Some("restore"),
+        _ => None,
+    };
+    workflow_inner(client, origin, json_output, command)
+        .await
+        .map_err(|error| {
+            // An invalid/unprintable reply cannot prove whether a write took effect.
+            // Known bootstrap/HTTP failures retain their classification; no request is replayed.
+            if (error.code == "output_failed"
+                || (error.code == "internal" && error.message == invalid_response().message))
+                && error.details.is_none()
+                && let Some(operation) = operation
+            {
+                return operation_unknown(operation);
+            }
+            error
+        })
+}
+async fn workflow_inner(
     client: &Client,
     origin: &Url,
     json_output: bool,
