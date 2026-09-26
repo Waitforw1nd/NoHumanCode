@@ -1,15 +1,15 @@
 use axum::{
-    Json, Router,
     body::Body,
     extract::State,
     response::{IntoResponse, Response},
     routing::post,
+    Json, Router,
 };
 use peachsh::{
     domain::{Route, Settings},
     store::Store,
 };
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     collections::VecDeque,
     convert::Infallible,
@@ -533,6 +533,25 @@ async fn t02_checkpoint_http_strict_security_zero_effects() {
         )
         .await;
     }
+    for endpoint in ["/api/checkpoints/bad%20id", "/api/checkpoints/bad%0Aid"] {
+        assert_error(
+            c.get(format!("{origin}{endpoint}")).send().await.unwrap(),
+            400,
+            "request_failed",
+        )
+        .await;
+    }
+    assert_error(
+        c.post(format!("{origin}/api/tasks/nonexistent/git-diff"))
+            .header("x-peachsh-token", &token)
+            .json(&json!({"path":"src/a.txt","view":"head"}))
+            .send()
+            .await
+            .unwrap(),
+        404,
+        "not_found",
+    )
+    .await;
     assert_eq!(snapshot(&h), before);
     h.stop().await;
 }
@@ -704,7 +723,7 @@ async fn k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500() {
     let db = rusqlite::Connection::open(h.db()).unwrap();
     let count: i64 = db
         .query_row(
-            "SELECT count(*) FROM events WHERE run_id=?1",
+            "SELECT count(*) FROM events e JOIN tasks t ON t.id=e.task_id WHERE t.run_id=?1",
             [run_id],
             |r| r.get(0),
         )
@@ -742,11 +761,9 @@ async fn k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500() {
     ] {
         let error = assert_error(response, 500, "internal").await;
         assert!(!error.to_string().contains("Secret"));
-        assert!(
-            !error
-                .to_string()
-                .contains(&h.dir.path().to_string_lossy().to_string())
-        );
+        assert!(!error
+            .to_string()
+            .contains(&h.dir.path().to_string_lossy().to_string()));
     }
     assert_eq!(snapshot(&h), before);
     assert_eq!(
