@@ -1,6 +1,13 @@
 use clap::{Args, Subcommand, ValueEnum};
 use futures_util::StreamExt;
-use peachsh::{approval::ApprovalStatus, secrets};
+use peachsh::network_authorization::{
+    CallReceipt, CallResult, CallState, DispatchState, NetworkAuthorization, NetworkDecision,
+    NetworkPreview, NetworkPurpose, NetworkSubject, NetworkSubjectKind,
+};
+use peachsh::{
+    approval::{ApprovalStatus, CommandNetworkAck, CommandNetworkNotice},
+    secrets,
+};
 use peachsh::{
     domain::{Event, Project, Run, Session, Task, Turn, TurnTask},
     workspace_changes::{RestoreReceipt, RestoreStatus, WorkspaceChange},
@@ -23,6 +30,9 @@ pub enum Command {
     Task(TaskArgs),
     Approval(ApprovalArgs),
     Checkpoint(CheckpointArgs),
+    Network(NetworkArgs),
+    Route(RouteArgs),
+    Account(AccountArgs),
 }
 
 fn valid_id(id: &str) -> bool {
@@ -34,7 +44,27 @@ fn valid_message(message: &str) -> bool {
 impl Command {
     pub fn valid_ids(&self) -> bool {
         match self {
-            Self::Project(_) => true,
+            Self::Project(_) | Self::Account(_) => true,
+            Self::Route(args) => match &args.command {
+                RouteCommand::Models { id } | RouteCommand::Check { id } => valid_id(id),
+            },
+            Self::Network(args) => match &args.command {
+                NetworkCommand::Preview(subject) => subject.valid(),
+                NetworkCommand::Authorize {
+                    subject,
+                    binding,
+                    key,
+                    ..
+                } => {
+                    subject.valid()
+                        && valid_digest(binding)
+                        && secrets::validate_idempotency_key(key).is_ok()
+                        && !key.contains(',')
+                }
+                NetworkCommand::Get { id }
+                | NetworkCommand::Revoke { id }
+                | NetworkCommand::Call { id } => valid_id(id),
+            },
             Self::Run(args) => match &args.command {
                 RunCommand::List => true,
                 RunCommand::Start(start) => {
@@ -69,6 +99,7 @@ impl Command {
             },
             Self::Task(task) => match &task.command {
                 TaskCommand::Approvals { task_id } => valid_id(task_id),
+                TaskCommand::NetworkCalls { id } => valid_id(id),
                 TaskCommand::Diff { id, path, .. } => {
                     valid_id(id) && peachsh::domain::scope_path(path).is_ok()
                 }
@@ -87,7 +118,7 @@ impl Command {
             },
             Self::Approval(approval) => match &approval.command {
                 ApprovalCommand::Get { approval_id }
-                | ApprovalCommand::Approve { approval_id }
+                | ApprovalCommand::Approve { approval_id, .. }
                 | ApprovalCommand::Deny { approval_id } => valid_id(approval_id),
             },
         }
@@ -185,6 +216,9 @@ pub struct TaskArgs {
 }
 #[derive(Subcommand)]
 enum TaskCommand {
+    NetworkCalls {
+        id: String,
+    },
     /// Review a real Git patch; redacted patches are not applicable.
     Diff {
         id: String,
@@ -242,9 +276,101 @@ pub struct ApprovalArgs {
 }
 #[derive(Subcommand)]
 enum ApprovalCommand {
-    Get { approval_id: String },
-    Approve { approval_id: String },
-    Deny { approval_id: String },
+    Get {
+        approval_id: String,
+    },
+    Approve {
+        approval_id: String,
+        #[arg(long)]
+        acknowledge_command_network: bool,
+    },
+    Deny {
+        approval_id: String,
+    },
+}
+
+#[derive(Args)]
+pub struct NetworkArgs {
+    #[command(subcommand)]
+    command: NetworkCommand,
+}
+#[derive(Args)]
+#[group(required = true, multiple = false)]
+struct SubjectArgs {
+    #[arg(long)]
+    route: Option<String>,
+    #[arg(long)]
+    account: bool,
+}
+impl SubjectArgs {
+    fn valid(&self) -> bool {
+        self.route.as_deref().is_none_or(valid_id) && (self.route.is_some() != self.account)
+    }
+    fn subject(self) -> NetworkSubject {
+        match self.route {
+            Some(id) => NetworkSubject {
+                kind: NetworkSubjectKind::Route,
+                id,
+            },
+            None => NetworkSubject {
+                kind: NetworkSubjectKind::Account,
+                id: "newapi".into(),
+            },
+        }
+    }
+}
+#[derive(Clone, Copy, ValueEnum, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum PurposeArg {
+    Models,
+    Completion,
+    Balance,
+}
+#[derive(Subcommand)]
+enum NetworkCommand {
+    Preview(SubjectArgs),
+    Authorize {
+        #[command(flatten)]
+        subject: SubjectArgs,
+        #[arg(long)]
+        config_revision: u64,
+        #[arg(long)]
+        credential_revision: u64,
+        #[arg(long)]
+        binding: String,
+        #[arg(long, value_enum, required = true)]
+        purpose: Vec<PurposeArg>,
+        #[arg(long)]
+        key: String,
+    },
+    Get {
+        id: String,
+    },
+    Revoke {
+        id: String,
+    },
+    Call {
+        id: String,
+    },
+}
+#[derive(Args)]
+pub struct RouteArgs {
+    #[command(subcommand)]
+    command: RouteCommand,
+}
+#[derive(Subcommand)]
+enum RouteCommand {
+    Models { id: String },
+    Check { id: String },
+}
+#[derive(Args)]
+pub struct AccountArgs {
+    #[command(subcommand)]
+    command: AccountCommand,
+}
+#[derive(Subcommand)]
+enum AccountCommand {
+    Balance,
 }
 
 #[derive(Debug)]
@@ -270,7 +396,14 @@ impl Failure {
     pub fn print(&self, json_output: bool) {
         let mut value = json!({"code":self.code,"message":self.message,"retryable":self.retryable,"error":self.message});
         if let Some(details) = &self.details {
-            for field in ["receipt", "status", "restored", "ok"] {
+            for field in [
+                "receipt",
+                "status",
+                "restored",
+                "ok",
+                "dispatch_state",
+                "calls",
+            ] {
                 if let Some(item) = details.get(field) {
                     value[field] = item.clone();
                 }
@@ -321,6 +454,10 @@ struct ApprovalDto {
     execution_state: String,
     created_at: u64,
     decided_at: Option<u64>,
+    #[serde(default)]
+    network_notice: Option<CommandNetworkNotice>,
+    #[serde(default)]
+    command_network_ack: CommandNetworkAck,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -340,6 +477,12 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         .map_err(|_| Failure::fixed("internal", "本机服务地址无效", false))?;
 
     let command = match command {
+        Command::Network(_)
+        | Command::Route(_)
+        | Command::Account(_)
+        | Command::Task(TaskArgs {
+            command: TaskCommand::NetworkCalls { .. },
+        }) => return network_workflow(&client, &origin, json_output, command).await,
         Command::Approval(args) => Command::Approval(args),
         Command::Task(TaskArgs {
             command: TaskCommand::Approvals { task_id },
@@ -367,12 +510,22 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
                     SuccessShape::Single,
                 )
             }
-            ApprovalCommand::Approve { approval_id } => (
-                decide(&client, &origin, &approval_id, "approve").await?,
+            ApprovalCommand::Approve {
+                approval_id,
+                acknowledge_command_network,
+            } => (
+                decide(
+                    &client,
+                    &origin,
+                    &approval_id,
+                    "approve",
+                    acknowledge_command_network,
+                )
+                .await?,
                 SuccessShape::Single,
             ),
             ApprovalCommand::Deny { approval_id } => (
-                decide(&client, &origin, &approval_id, "deny").await?,
+                decide(&client, &origin, &approval_id, "deny", false).await?,
                 SuccessShape::Single,
             ),
         },
@@ -396,7 +549,13 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
     Ok(())
 }
 
-async fn decide(client: &Client, origin: &Url, id: &str, decision: &str) -> Result<Value, Failure> {
+async fn decide(
+    client: &Client,
+    origin: &Url,
+    id: &str,
+    decision: &str,
+    acknowledge_command_network: bool,
+) -> Result<Value, Failure> {
     let bootstrap = endpoint(origin, &["api", "bootstrap"])?;
     let value = request_bootstrap(client.get(bootstrap)).await?;
     let bootstrap: Bootstrap = serde_json::from_value(value)
@@ -413,7 +572,7 @@ async fn decide(client: &Client, origin: &Url, id: &str, decision: &str) -> Resu
         client
             .post(url)
             .header("x-peachsh-token", &bootstrap.token)
-            .json(&json!({"decision":decision})),
+            .json(&json!({"decision":decision,"acknowledge_command_network":acknowledge_command_network})),
         true,
         Some(&bootstrap.token),
     )
@@ -480,6 +639,9 @@ async fn request_json(
     }
     if status.is_success() {
         return Ok(value);
+    }
+    if value.get("error").is_some_and(Value::is_object) {
+        return Err(http_failure(value)?);
     }
     let error: HttpError = serde_json::from_value(value)
         .map_err(|_| Failure::fixed("internal", "本机服务返回无效错误响应", false))?;
@@ -622,6 +784,12 @@ fn validate_approval_fields(value: &ApprovalDto) -> Result<(), Failure> {
 
 fn print_approval(value: &Value) -> Result<(), Failure> {
     validate_approval(value)?;
+    if value["tool_name"] == "run_command" {
+        println!(
+            "此命令可能访问任意网络，当前没有OS出站沙箱；确认状态：{}",
+            value["command_network_ack"]
+        );
+    }
     println!(
         "{}\t{}\t{}",
         value["id"].as_str().unwrap(),
@@ -853,6 +1021,9 @@ fn operation_unknown(operation: &str) -> Failure {
     Failure::fixed("operation_result_unknown", message, false)
 }
 fn http_failure(value: Value) -> Result<Failure, Failure> {
+    if value.get("error").is_some_and(Value::is_object) {
+        return network_http_failure(value);
+    }
     let error: HttpError = decode(value)?;
     if error.error != error.message || !safe_strings(&json!(error.message)) {
         return Err(invalid_response());
@@ -1253,9 +1424,468 @@ async fn workflow_inner(
                 &id,
                 true,
             )?,
-            TaskCommand::Approvals { .. } => unreachable!(),
+            TaskCommand::Approvals { .. } | TaskCommand::NetworkCalls { .. } => unreachable!(),
         },
-        Command::Approval(_) => unreachable!(),
+        Command::Approval(_) | Command::Network(_) | Command::Route(_) | Command::Account(_) => {
+            unreachable!()
+        }
+    };
+    print_value(value, json_output)
+}
+
+fn validate_subject(subject: &NetworkSubject) -> Result<(), Failure> {
+    if !valid_id(&subject.id)
+        || (subject.kind == NetworkSubjectKind::Account && subject.id != "newapi")
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+fn validate_authorization(value: &NetworkAuthorization) -> Result<(), Failure> {
+    validate_subject(&value.subject)?;
+    if !valid_id(&value.authorization_id)
+        || !valid_digest(&value.binding_digest)
+        || value.config_revision == 0
+        || value.credential_revision == 0
+        || value.purposes.is_empty()
+    {
+        return Err(invalid_response());
+    }
+    validate_purposes(&value.subject, &value.purposes)
+}
+fn validate_purposes(subject: &NetworkSubject, purposes: &[NetworkPurpose]) -> Result<(), Failure> {
+    if purposes.iter().any(|p| match subject.kind {
+        NetworkSubjectKind::Route => matches!(p, NetworkPurpose::Balance),
+        NetworkSubjectKind::Account => !matches!(p, NetworkPurpose::Balance),
+    }) {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+fn validate_network_calls(calls: &[CallReceipt]) -> Result<(), Failure> {
+    let mut ids = std::collections::HashSet::new();
+    for call in calls {
+        validate_subject(&call.subject)?;
+        validate_purposes(&call.subject, &[call.purpose])?;
+        let url = Url::parse(&call.origin).map_err(|_| invalid_response())?;
+        if !valid_id(&call.call_id)
+            || !ids.insert(&call.call_id)
+            || !valid_id(&call.authorization_id)
+            || !valid_digest(&call.endpoint_digest)
+            || call.task_id.as_deref().is_some_and(|id| !valid_id(id))
+            || !matches!(url.scheme(), "http" | "https")
+            || !url.username().is_empty()
+            || url.password().is_some()
+            || url.query().is_some()
+            || url.fragment().is_some()
+            || !matches!(call.method.as_str(), "GET" | "POST")
+            || call.http_status.is_some_and(|s| !(100..=599).contains(&s))
+            || call.finished_at.is_some_and(|t| t < call.claimed_at)
+            || (call.state == CallState::Claimed
+                && (call.finished_at.is_some()
+                    || call.success.is_some()
+                    || call.result.is_some()
+                    || call.http_status.is_some()))
+            || (call.state == CallState::Finished
+                && (call.finished_at.is_none() || call.success.is_none() || call.result.is_none()))
+            || (call.success == Some(true)
+                && (call.state != CallState::Finished || call.result != Some(CallResult::Success)))
+        {
+            return Err(invalid_response());
+        }
+    }
+    if !safe_strings(&encoded(calls)?) {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NetworkHttpError {
+    code: String,
+    message: String,
+    dispatch_state: DispatchState,
+    calls: Vec<CallReceipt>,
+    retryable: bool,
+}
+fn network_http_failure(value: Value) -> Result<Failure, Failure> {
+    let error: NetworkHttpError =
+        decode(value.get("error").cloned().ok_or_else(invalid_response)?)?;
+    validate_network_calls(&error.calls)?;
+    if error.retryable
+        || !safe_strings(&json!(error.message))
+        || (error.dispatch_state == DispatchState::Unknown
+            && !error
+                .calls
+                .iter()
+                .any(|c| matches!(c.state, CallState::Unknown | CallState::Claimed)))
+        || (error.dispatch_state == DispatchState::Finished && error.calls.is_empty())
+    {
+        return Err(invalid_response());
+    }
+    let code = match error.code.as_str() {
+        "invalid" => "invalid",
+        "not_found" => "not_found",
+        "required" => "required",
+        "stale" => "stale",
+        "revoked" => "revoked",
+        "conflict" => "conflict",
+        "corrupt" => "corrupt",
+        "unknown" => "unknown",
+        "internal" => "internal",
+        "upstream" => "upstream",
+        _ => return Err(invalid_response()),
+    };
+    Ok(Failure {
+        code,
+        message: error.message,
+        retryable: false,
+        details: Some(json!({"dispatch_state":error.dispatch_state,"calls":error.calls})),
+        after: None,
+    })
+}
+async fn network_request(
+    client: &Client,
+    origin: &Url,
+    segments: &[&str],
+    body: Option<Value>,
+    key: Option<&str>,
+    mutation: bool,
+) -> Result<Value, Failure> {
+    let bootstrap: Bootstrap =
+        decode(request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?)).await?)?;
+    if bootstrap.token.is_empty() || bootstrap.token.len() > 4096 {
+        return Err(invalid_response());
+    }
+    let url = endpoint(origin, segments)?;
+    let mut request = match body {
+        Some(body) => client.post(url).json(&body),
+        None => client.get(url),
+    }
+    .header("x-peachsh-token", &bootstrap.token);
+    if let Some(key) = key {
+        request = request.header("idempotency-key", key);
+    }
+    let unknown = || {
+        if mutation {
+            operation_unknown("network")
+        } else {
+            Failure::fixed("unavailable", "无法连接或读取本机服务", true)
+        }
+    };
+    let response = request.send().await.map_err(|_| unknown())?;
+    let status = response.status();
+    let bytes = limited_body(response).await.map_err(|_| unknown())?;
+    let invalid = || {
+        if mutation {
+            operation_unknown("network")
+        } else {
+            invalid_response()
+        }
+    };
+    let value: Value = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
+    if contains_string(&value, &bootstrap.token) || !safe_strings(&value) {
+        return Err(invalid());
+    }
+    if status.is_success() {
+        return Ok(value);
+    }
+    let failure = http_failure(value).map_err(|_| invalid())?;
+    let expected = match failure.code {
+        "invalid" => 400,
+        "not_found" => 404,
+        "required" | "stale" | "revoked" | "conflict" | "unknown" => 409,
+        "corrupt" | "internal" => 500,
+        "upstream" => 502,
+        _ => status.as_u16(),
+    };
+    if failure.details.is_some() && expected != status.as_u16() {
+        return Err(invalid());
+    }
+    Err(failure)
+}
+async fn network_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: Command,
+) -> Result<(), Failure> {
+    let mutation = matches!(
+        &command,
+        Command::Network(NetworkArgs {
+            command: NetworkCommand::Authorize { .. } | NetworkCommand::Revoke { .. }
+        }) | Command::Route(_)
+            | Command::Account(_)
+    );
+    let result = network_workflow_inner(client, origin, json_output, command).await;
+    result.map_err(|e| {
+        if mutation
+            && e.details.is_none()
+            && (e.code == "output_failed"
+                || (e.code == "internal" && e.message == invalid_response().message))
+        {
+            operation_unknown("network")
+        } else {
+            e
+        }
+    })
+}
+async fn network_workflow_inner(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: Command,
+) -> Result<(), Failure> {
+    let value = match command {
+        Command::Network(args) => match args.command {
+            NetworkCommand::Preview(subject) => {
+                let subject = subject.subject();
+                let preview: NetworkPreview = decode(
+                    network_request(
+                        client,
+                        origin,
+                        &["api", "network", "preview"],
+                        Some(json!(subject)),
+                        None,
+                        false,
+                    )
+                    .await?,
+                )?;
+                validate_subject(&preview.subject)?;
+                validate_purposes(&preview.subject, &preview.purposes)?;
+                if preview.subject != subject
+                    || !valid_digest(&preview.binding_digest)
+                    || preview.config_revision == 0
+                    || preview.credential_revision == 0
+                {
+                    return Err(invalid_response());
+                }
+                let purpose = match subject.kind {
+                    NetworkSubjectKind::Route => NetworkPurpose::Models,
+                    NetworkSubjectKind::Account => NetworkPurpose::Balance,
+                };
+                let target =
+                    peachsh::provider_transport::validate_target(&preview.base_url, purpose)
+                        .map_err(|_| invalid_response())?;
+                if target.origin() != preview.origin {
+                    return Err(invalid_response());
+                }
+                if let Some(auth) = &preview.authorization {
+                    validate_authorization(auth)?;
+                    if auth.subject != subject {
+                        return Err(invalid_response());
+                    }
+                }
+                encoded(preview)?
+            }
+            NetworkCommand::Authorize {
+                subject,
+                config_revision,
+                credential_revision,
+                binding,
+                purpose,
+                key,
+            } => {
+                let subject = subject.subject();
+                let mut purposes: Vec<String> = purpose
+                    .into_iter()
+                    .map(|p| {
+                        match p {
+                            PurposeArg::Models => "models",
+                            PurposeArg::Completion => "completion",
+                            PurposeArg::Balance => "balance",
+                        }
+                        .to_owned()
+                    })
+                    .collect();
+                purposes.sort();
+                purposes.dedup();
+                let request = json!({"subject":subject,"config_revision":config_revision,"credential_revision":credential_revision,"binding_digest":binding,"purposes":purposes});
+                let decision: NetworkDecision = decode(
+                    network_request(
+                        client,
+                        origin,
+                        &["api", "network", "authorizations"],
+                        Some(request),
+                        Some(&key),
+                        true,
+                    )
+                    .await?,
+                )?;
+                validate_authorization(&decision.authorization)?;
+                let auth = &decision.authorization;
+                let mut actual: Vec<String> = auth
+                    .purposes
+                    .iter()
+                    .map(|p| {
+                        serde_json::to_value(p)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_owned()
+                    })
+                    .collect();
+                actual.sort();
+                actual.dedup();
+                if auth.subject != subject
+                    || auth.config_revision != config_revision
+                    || auth.credential_revision != credential_revision
+                    || auth.binding_digest != binding
+                    || actual != purposes
+                {
+                    return Err(invalid_response());
+                }
+                encoded(decision)?
+            }
+            NetworkCommand::Get { id } => {
+                let auth: NetworkAuthorization = decode(
+                    network_request(
+                        client,
+                        origin,
+                        &["api", "network", "authorizations", &id],
+                        None,
+                        None,
+                        false,
+                    )
+                    .await?,
+                )?;
+                validate_authorization(&auth)?;
+                if auth.authorization_id != id {
+                    return Err(invalid_response());
+                }
+                encoded(auth)?
+            }
+            NetworkCommand::Revoke { id } => {
+                let auth: NetworkAuthorization = decode(
+                    network_request(
+                        client,
+                        origin,
+                        &["api", "network", "authorizations", &id, "revoke"],
+                        Some(json!({})),
+                        None,
+                        true,
+                    )
+                    .await?,
+                )?;
+                validate_authorization(&auth)?;
+                if auth.authorization_id != id
+                    || auth.state != peachsh::network_authorization::AuthorizationState::Revoked
+                {
+                    return Err(invalid_response());
+                }
+                encoded(auth)?
+            }
+            NetworkCommand::Call { id } => {
+                let call: CallReceipt = decode(
+                    network_request(
+                        client,
+                        origin,
+                        &["api", "network", "calls", &id],
+                        None,
+                        None,
+                        false,
+                    )
+                    .await?,
+                )?;
+                validate_network_calls(std::slice::from_ref(&call))?;
+                if call.call_id != id {
+                    return Err(invalid_response());
+                }
+                encoded(call)?
+            }
+        },
+        Command::Task(TaskArgs {
+            command: TaskCommand::NetworkCalls { id },
+        }) => {
+            #[derive(Deserialize, Serialize)]
+            #[serde(deny_unknown_fields)]
+            struct Calls {
+                calls: Vec<CallReceipt>,
+            }
+            let calls: Calls = decode(
+                network_request(
+                    client,
+                    origin,
+                    &["api", "tasks", &id, "network-calls"],
+                    None,
+                    None,
+                    false,
+                )
+                .await?,
+            )?;
+            validate_network_calls(&calls.calls)?;
+            if calls
+                .calls
+                .iter()
+                .any(|c| c.task_id.as_deref() != Some(id.as_str()))
+            {
+                return Err(invalid_response());
+            }
+            encoded(calls)?
+        }
+        Command::Route(args) => {
+            let (id, action, purposes) = match args.command {
+                RouteCommand::Models { id } => (id, "models", vec![NetworkPurpose::Models]),
+                RouteCommand::Check { id } => (
+                    id,
+                    "check",
+                    vec![NetworkPurpose::Models, NetworkPurpose::Completion],
+                ),
+            };
+            let response: peachsh::network_authorization::NetworkResponse<Value> = decode(
+                network_request(
+                    client,
+                    origin,
+                    &["api", "routes", &id, action],
+                    Some(json!({})),
+                    None,
+                    true,
+                )
+                .await?,
+            )?;
+            validate_network_calls(&response.calls)?;
+            if response.calls.len() != purposes.len()
+                || response.calls.iter().zip(purposes).any(|(c, p)| {
+                    c.subject.kind != NetworkSubjectKind::Route
+                        || c.subject.id != id
+                        || c.purpose != p
+                        || c.success != Some(true)
+                        || c.task_id.is_some()
+                })
+            {
+                return Err(invalid_response());
+            }
+            if action == "models" {
+                let _: Vec<String> = decode(response.result.clone())?;
+            }
+            encoded(response)?
+        }
+        Command::Account(_) => {
+            let response: peachsh::network_authorization::NetworkResponse<Value> = decode(
+                network_request(
+                    client,
+                    origin,
+                    &["api", "newapi", "balance"],
+                    Some(json!({})),
+                    None,
+                    true,
+                )
+                .await?,
+            )?;
+            validate_network_calls(&response.calls)?;
+            if response.calls.len() != 1
+                || response.calls.iter().any(|c| {
+                    c.subject.kind != NetworkSubjectKind::Account
+                        || c.purpose != NetworkPurpose::Balance
+                        || c.success != Some(true)
+                        || c.task_id.is_some()
+                })
+            {
+                return Err(invalid_response());
+            }
+            encoded(response)?
+        }
+        _ => unreachable!(),
     };
     print_value(value, json_output)
 }
