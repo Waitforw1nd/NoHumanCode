@@ -1,0 +1,7 @@
+   Compiling peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
+    Finished `test` profile [unoptimized] target(s) in 5.82s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 3 tests
+test engine::network_gate_tests::queued_management_rechecks_revocation_before_creating_a_call ... ok
+test engine::network_gate_tests::real_process_kill_before_and_after_network_claim_recovers_without_resend ... ok

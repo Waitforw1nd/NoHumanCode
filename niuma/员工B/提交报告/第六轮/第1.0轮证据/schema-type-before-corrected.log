@@ -1,0 +1,22 @@
+   Compiling peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.41s
+     Running tests\network_authorization.rs (target\debug\deps\network_authorization-e0cf26483d3c5d5d.exe)
+
+running 1 test
+test schema10_rejects_nullable_column_disguised_as_fused_type_keyword ... FAILED
+
+failures:
+
+---- schema10_rejects_nullable_column_disguised_as_fused_type_keyword stdout ----
+
+thread 'schema10_rejects_nullable_column_disguised_as_fused_type_keyword' (53516) panicked at tests\network_authorization.rs:746:5:
+assertion failed: Store::open(&path).is_err()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    schema10_rejects_nullable_column_disguised_as_fused_type_keyword
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `--test network_authorization`

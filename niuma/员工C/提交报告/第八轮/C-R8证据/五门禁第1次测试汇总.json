@@ -1,0 +1,12 @@
+{
+  "head": "fa249ede75f5dabbe1b0f0598282e416d259d537",
+  "rust_tree": "694faaa2eb4d1b75345b77a87dd098697cf01633",
+  "summary_blocks": 33,
+  "passed": 396,
+  "failed": 0,
+  "ignored": 1,
+  "ignored_tests": [
+    "test xpeach_native_stream_and_coding_tool ... ignored, requires PEACHSH_TEST_KEY; makes small paid model calls"
+  ],
+  "helper_note": "Cargo top-level summary includes proxy_environment_child, malicious_environment_child, crash_child_write and crash_child_restore_http helper entry tests; child invocation counts not added separately."
+}

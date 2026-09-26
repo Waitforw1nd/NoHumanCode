@@ -1,0 +1,80 @@
+{
+  "candidate": "abfb64d10cb1c23cc38008e597cda7f8bbcb372d",
+  "logs": [
+    {
+      "raw_sha256": "2122339843ed8175b0cc5c2fab1b47ded4a5b38f6d6967ba6747c8e96845997f",
+      "name": "d-r5-check-01.log",
+      "raw_path": ".local/review-evidence/d-r5-check-01.log",
+      "published_sha256": "c6b40592f2401293d5244a759886305aaf5158c82dbdef273d46ce9e2b773f9b"
+    },
+    {
+      "raw_sha256": "74bbd5554b47236f7efb253b3a601fae3ab7788ae06bf9617f6325eee6a7a284",
+      "name": "d-r5-clippy-01.log",
+      "raw_path": ".local/review-evidence/d-r5-clippy-01.log",
+      "published_sha256": "1088b1f81c487d71968f1fa87b5312684f91698b62b8359b22311546c4d094bc"
+    },
+    {
+      "raw_sha256": "49836261181a1c220481b5716d5539e4bc0f530bf860af02c160fb55b8cbcd90",
+      "name": "d-r5-diff-check-01.log",
+      "raw_path": ".local/review-evidence/d-r5-diff-check-01.log",
+      "published_sha256": "49836261181a1c220481b5716d5539e4bc0f530bf860af02c160fb55b8cbcd90"
+    },
+    {
+      "raw_sha256": "2095d5302e465922147e220c0389f7a923ea0c1509a23097f04b3c220798aef8",
+      "name": "d-r5-diff-check-02.log",
+      "raw_path": ".local/review-evidence/d-r5-diff-check-02.log",
+      "published_sha256": "2095d5302e465922147e220c0389f7a923ea0c1509a23097f04b3c220798aef8"
+    },
+    {
+      "raw_sha256": "2095d5302e465922147e220c0389f7a923ea0c1509a23097f04b3c220798aef8",
+      "name": "d-r5-fmt-01.log",
+      "raw_path": ".local/review-evidence/d-r5-fmt-01.log",
+      "published_sha256": "2095d5302e465922147e220c0389f7a923ea0c1509a23097f04b3c220798aef8"
+    },
+    {
+      "raw_sha256": "a7661e9f935d3235d1e05294383a337a4a87d3356eda8ca0bc94615ad35e50db",
+      "name": "d-r5-network-01.log",
+      "raw_path": ".local/review-evidence/d-r5-network-01.log",
+      "published_sha256": "052fa2844f4eae3ec5de34eb3c2cdb9f2b27c1cd7eeadab043305c86ada2a7e9"
+    },
+    {
+      "raw_sha256": "f53b6eff297bb38c462db694800aa4b28302acddb713b069f06221afef4cf6d8",
+      "name": "d-r5-network-02.log",
+      "raw_path": ".local/review-evidence/d-r5-network-02.log",
+      "published_sha256": "4f6446ae2adc039789cb990584091648d70afe815f15780b4f4e39658dbc72b3"
+    },
+    {
+      "raw_sha256": "f305145cac7845dcc0254481ff79318c65937bdd6fce22bf448d4c020a875753",
+      "name": "d-r5-network-03.log",
+      "raw_path": ".local/review-evidence/d-r5-network-03.log",
+      "published_sha256": "96609039df0ff638ca399823371e6ebf2294c422c502f90d3985f0c787b437ad"
+    },
+    {
+      "raw_sha256": "36eef0aaadb00f1a387441c235fbad061f60f43bcba74c00f93503a0e37459d7",
+      "name": "d-r5-provider-01.log",
+      "raw_path": ".local/review-evidence/d-r5-provider-01.log",
+      "published_sha256": "28273df07d440f759bfddb85c2c4d94f14a1a41dc924589494ae3f16b7ec3a15"
+    },
+    {
+      "raw_sha256": "2c45d5af5f3dc81979347e424f07be0e6e36dbeb0c81338fdde44bb3b9e9a422",
+      "name": "d-r5-provider-02.log",
+      "raw_path": ".local/review-evidence/d-r5-provider-02.log",
+      "published_sha256": "ef2c341d3cf2adaa1f07ed98854f3c0c7501bbaf843426376309f7a4a258b9ce"
+    }
+  ],
+  "rust_tree": "bef0e276008ed1793a0c6824e439097b4a274ee9",
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/provider.rs",
+      "sha256": "61570f2794f95b92ff727a63b49d838fa3cee7fedfc20bb84e631dcf373bf978"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_transport.rs",
+      "sha256": "f204b257777b19628dc8a8ce140b72621f30b8364be11d681ed1b9e160b9aeb0"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/provider_network.rs",
+      "sha256": "7707dd6c3116c64adb231e4bdcc95e7705b78ade29920cbfe0684805f1ad80a5"
+    }
+  ]
+}

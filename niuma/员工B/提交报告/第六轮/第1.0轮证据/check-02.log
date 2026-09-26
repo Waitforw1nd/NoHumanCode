@@ -1,0 +1,732 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.26
+    Checking pin-project-lite v0.2.17
+    Checking memchr v2.8.3
+    Checking cfg-if v1.0.5
+    Checking futures-core v0.3.34
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.229
+    Checking futures-sink v0.3.34
+    Checking once_cell v1.21.4
+    Checking windows-link v0.2.1
+    Checking slab v0.4.12
+    Checking futures-task v0.3.34
+    Checking futures-io v0.3.34
+   Compiling serde v1.0.229
+   Compiling semver v1.0.28
+    Checking itoa v1.0.18
+    Checking smallvec v1.16.1
+   Compiling wasm-bindgen-shared v0.2.128
+   Compiling thiserror v2.0.20
+    Checking stable_deref_trait v1.2.1
+    Checking bytes v1.12.1
+   Compiling rustversion v1.0.23
+   Compiling bumpalo v3.20.3
+   Compiling find-msvc-tools v0.1.13
+   Compiling shlex v2.0.1
+    Checking percent-encoding v2.3.2
+    Checking litemap v0.8.3
+   Compiling parking_lot_core v0.9.12
+   Compiling zmij v1.0.23
+    Checking writeable v0.6.4
+   Compiling icu_normalizer_data v2.3.0
+    Checking utf8_iter v1.0.4
+    Checking windows-sys v0.61.2
+   Compiling serde_json v1.0.151
+    Checking futures-channel v0.3.34
+    Checking scopeguard v1.2.0
+   Compiling icu_properties_data v2.3.0
+   Compiling unicode-segmentation v1.13.3
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.2
+    Checking tracing-core v0.1.36
+   Compiling paste v1.0.15
+    Checking form_urlencoded v1.2.2
+    Checking lock_api v0.4.14
+   Compiling unicode-xid v0.2.6
+   Compiling anyhow v1.0.104
+    Checking or_poisoned v0.1.0
+    Checking parking v2.2.1
+   Compiling rustc_version v0.4.1
+   Compiling generic-array v0.14.7
+   Compiling proc-macro2-diagnostics v0.10.1
+    Checking log v0.4.34
+    Checking base64 v0.22.1
+   Compiling getrandom v0.4.3
+   Compiling slotmap v1.1.1
+    Checking event-listener v5.4.2
+    Checking throw_error v0.3.1
+    Checking zeroize v1.9.0
+   Compiling konst_macro_rules v0.2.19
+   Compiling typenum v1.20.1
+   Compiling httparse v1.10.1
+   Compiling cc v1.4.7
+   Compiling convert_case v0.11.0
+    Checking tracing v0.1.44
+    Checking tower-service v0.3.3
+    Checking event-listener-strategy v0.5.4
+    Checking rustls-pki-types v1.15.1
+    Checking http v1.5.0
+   Compiling konst v0.2.20
+   Compiling server_fn_macro v0.8.10
+   Compiling reactive_graph v0.2.14
+    Checking send_wrapper v0.6.0
+    Checking indexmap v2.14.2
+    Checking getrandom v0.2.17
+   Compiling camino v1.2.6
+   Compiling libc v0.2.189
+    Checking untrusted v0.9.0
+    Checking try-lock v0.2.5
+    Checking async-lock v3.4.2
+    Checking http-body v1.1.0
+    Checking sync_wrapper v1.0.2
+   Compiling xxhash-rust v0.8.18
+   Compiling ring v0.17.14
+    Checking socket2 v0.6.5
+    Checking mio v1.2.3
+    Checking bitflags v2.13.2
+   Compiling libm v0.2.16
+    Checking httpdate v1.0.3
+   Compiling thiserror v1.0.69
+    Checking want v0.3.1
+    Checking guardian v1.3.0
+    Checking either v1.18.0
+   Compiling rustls v0.23.45
+    Checking atomic-waker v1.1.2
+    Checking tower-layer v0.3.3
+    Checking rustc-hash v2.1.3
+   Compiling tachys v0.2.18
+   Compiling pkg-config v0.3.34
+    Checking parking_lot v0.12.5
+    Checking once_cell_polyfill v1.70.2
+    Checking anstyle v1.0.14
+   Compiling yansi v1.0.1
+    Checking ipnet v2.12.2
+    Checking subtle v2.6.1
+    Checking winnow v1.0.4
+    Checking utf8parse v0.2.2
+    Checking leb128fmt v0.1.0
+    Checking ryu v1.0.23
+   Compiling vcpkg v0.2.15
+    Checking itertools v0.14.0
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling prettyplease v0.2.37
+    Checking anstyle-parse v1.0.0
+    Checking http-body-util v0.1.5
+    Checking wasm-encoder v0.259.0
+    Checking anstyle-wincon v3.0.11
+    Checking winapi-util v0.1.11
+    Checking anstyle-query v1.1.5
+   Compiling server_fn v0.8.13
+    Checking aho-corasick v1.1.5
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+    Checking syn v2.0.119
+    Checking either_of v0.1.9
+   Compiling cpufeatures v0.2.17
+    Checking const_str_slice_concat v0.1.0
+    Checking next_tuple v0.1.0
+   Compiling syn v3.0.6
+   Compiling wasm-bindgen v0.2.128
+   Compiling proc-macro-utils v0.10.0
+   Compiling proc-macro-error-attr2 v2.0.0
+   Compiling const_format_proc_macros v0.2.34
+   Compiling libsqlite3-sys v0.35.0
+    Checking toml_parser v1.1.3+spec-1.1.0
+   Compiling interpolator v0.5.0
+    Checking unicode-width v0.2.2
+    Checking toml_datetime v1.1.1+spec-1.1.0
+   Compiling digest v0.10.7
+    Checking serde_spanned v1.1.1
+   Compiling wasmparser v0.228.0
+   Compiling wasmi_ir v2.0.0
+   Compiling collection_literals v1.0.3
+    Checking drain_filter_polyfill v0.1.3
+    Checking erased v0.1.2
+    Checking colorchoice v1.0.5
+    Checking regex-syntax v0.8.11
+   Compiling same-file v1.0.6
+    Checking html-escape v0.2.15
+    Checking is_terminal_polyfill v1.70.2
+    Checking foldhash v0.1.5
+   Compiling sha2 v0.10.9
+   Compiling manyhow-macros v0.11.4
+    Checking wast v259.0.0
+    Checking webpki-roots v1.0.9
+   Compiling leptos_macro v0.8.17
+    Checking anstream v1.0.0
+    Checking toml v1.1.6+spec-1.1.0
+   Compiling walkdir v2.5.0
+    Checking hashbrown v0.15.5
+   Compiling heck v0.5.0
+    Checking pathdiff v0.2.3
+    Checking mime v0.3.17
+    Checking clap_lex v1.1.1
+    Checking convert_case v0.6.0
+    Checking strsim v0.11.1
+   Compiling base16 v0.2.1
+    Checking wasmi_core v2.0.0
+   Compiling const_format v0.2.36
+    Checking const-str v1.1.0
+   Compiling wasmi v2.0.0
+   Compiling uuid v1.26.1
+    Checking windows-targets v0.52.6
+    Checking serde_path_to_error v0.1.20
+    Checking axum-core v0.5.6
+   Compiling convert_case_extras v0.2.0
+    Checking clap_builder v4.6.7
+   Compiling leptos v0.8.15
+    Checking wasmi_collections v2.0.0
+    Checking fallible-iterator v0.3.0
+    Checking matchit v0.8.4
+    Checking fallible-streaming-iterator v0.1.9
+    Checking unsafe-libyaml v0.2.11
+    Checking spin v0.9.9
+    Checking async-once-cell v0.5.4
+    Checking regex-automata v0.4.18
+    Checking config v0.15.26
+    Checking windows-sys v0.59.0
+    Checking hashlink v0.10.0
+    Checking rustls-webpki v0.103.15
+    Checking rusqlite v0.37.0
+   Compiling proc-macro-error2 v2.0.1
+   Compiling manyhow v0.11.4
+   Compiling synstructure v0.14.0
+   Compiling wasm-bindgen-macro-support v0.2.128
+   Compiling syn_derive v0.2.0
+   Compiling thiserror-impl v1.0.69
+   Compiling quote-use-macros v0.8.4
+   Compiling reactive_stores_macro v0.4.3
+   Compiling pin-project-internal v1.1.13
+   Compiling server_fn_macro_default v0.8.5
+   Compiling typed-builder-macro v0.23.2
+   Compiling wasm_split_macros v0.2.2
+   Compiling async-stream-impl v0.3.6
+   Compiling futures-macro v0.3.34
+   Compiling serde_derive v1.0.229
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.3
+   Compiling thiserror-impl v2.0.20
+   Compiling zerovec-derive v0.11.6
+   Compiling displaydoc v0.2.7
+   Compiling tokio-macros v2.7.2
+   Compiling derive-where v1.7.0
+   Compiling async-trait v0.1.92
+   Compiling clap_derive v4.6.7
+    Checking wat v1.259.0
+    Checking regex v1.13.1
+   Compiling quote-use v0.8.4
+    Checking async-stream v0.3.6
+    Checking wasm_split_helpers v0.2.3
+   Compiling attribute-derive-macro v0.10.5
+    Checking tokio v1.53.1
+    Checking pin-project v1.1.13
+    Checking futures-util v0.3.34
+    Checking zerofrom v0.1.8
+    Checking typed-builder v0.23.2
+    Checking yoke v0.8.3
+    Checking zerovec v0.11.8
+    Checking zerotrie v0.2.5
+   Compiling rstml v0.12.1
+    Checking clap v4.6.7
+   Compiling attribute-derive v0.10.5
+    Checking tinystr v0.8.4
+    Checking potential_utf v0.1.6
+    Checking icu_collections v2.3.0
+    Checking icu_locale_core v2.3.0
+    Checking icu_provider v2.3.1
+    Checking oco_ref v0.2.1
+    Checking serde_urlencoded v0.7.1
+    Checking serde_qs v0.15.0
+    Checking codee v0.3.5
+    Checking peachsh-protocol v0.1.0 (../nhc-b-network-authorization/NoManCode/rust-app\crates\protocol)
+    Checking leptos_config v0.8.10
+    Checking leptos_hot_reload v0.8.6
+    Checking serde_yaml v0.9.34+deprecated
+   Compiling wasm-bindgen-macro v0.2.128
+    Checking icu_properties v2.3.0
+    Checking icu_normalizer v2.3.0
+    Checking futures-executor v0.3.34
+    Checking futures v0.3.34
+    Checking hydration_context v0.3.1
+    Checking idna_adapter v1.2.2
+    Checking idna v1.1.0
+    Checking url v2.5.8
+    Checking hyper v1.11.1
+    Checking tower v0.5.3
+    Checking tokio-rustls v0.26.5
+    Checking tokio-util v0.7.19
+    Checking js-sys v0.3.105
+    Checking tower-http v0.6.11
+    Checking hyper-util v0.1.20
+    Checking hyper-rustls v0.27.9
+    Checking axum v0.8.9
+    Checking reqwest v0.12.28
+    Checking peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
+    Checking wasm-bindgen-futures v0.4.78
+    Checking web-sys v0.3.105
+    Checking any_spawner v0.3.0
+error[E0432]: unresolved imports `crate::approval::CommandNetworkAck`, `crate::approval::CommandNetworkNotice`
+   --> src\repository.rs:963:46
+    |
+963 |         use crate::approval::{ApprovalError, CommandNetworkAck, CommandNetworkNotice};
+    |                                              ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^ no `CommandNetworkNotice` in `approval`
+    |                                              |
+    |                                              no `CommandNetworkAck` in `approval`
+
+error[E0433]: cannot find `CommandNetworkAck` in `approval`
+    --> src\engine.rs:1133:65
+     |
+1133 |                     && current.command_network_ack == approval::CommandNetworkAck::Required);
+     |                                                                 ^^^^^^^^^^^^^^^^^ could not find `CommandNetworkAck` in `approval`
+
+error[E0433]: cannot find `CommandNetworkNotice` in `approval`
+    --> src\store.rs:1228:33
+     |
+1228 |                 .then(approval::CommandNetworkNotice::default),
+     |                                 ^^^^^^^^^^^^^^^^^^^^ could not find `CommandNetworkNotice` in `approval`
+
+error[E0433]: cannot find `CommandNetworkAck` in `approval`
+    --> src\store.rs:1230:27
+     |
+1230 |                 approval::CommandNetworkAck::Required
+     |                           ^^^^^^^^^^^^^^^^^ could not find `CommandNetworkAck` in `approval`
+
+error[E0433]: cannot find `CommandNetworkAck` in `approval`
+    --> src\store.rs:1232:27
+     |
+1232 |                 approval::CommandNetworkAck::NotRequired
+     |                           ^^^^^^^^^^^^^^^^^ could not find `CommandNetworkAck` in `approval`
+
+error[E0433]: cannot find `CommandNetworkAck` in `approval`
+    --> src\store.rs:1315:61
+     |
+1315 |                 if current.command_network_ack != approval::CommandNetworkAck::Acknowledged {
+     |                                                             ^^^^^^^^^^^^^^^^^ could not find `CommandNetworkAck` in `approval`
+
+error[E0433]: cannot find `CommandNetworkAck` in `approval`
+    --> src\store.rs:1471:57
+     |
+1471 |             && current.command_network_ack != approval::CommandNetworkAck::Acknowledged
+     |                                                         ^^^^^^^^^^^^^^^^^ could not find `CommandNetworkAck` in `approval`
+
+error[E0425]: cannot find value `receipt` in this scope
+   --> src\engine.rs:934:52
+    |
+934 |             let result = self.store.finish_network(receipt, result);
+    |                                                    ^^^^^^^ not found in this scope
+    |
+note: function `crate::network_authorization::receipt` exists but is inaccessible
+   --> src\network_authorization.rs:552:1
+    |
+552 | fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0308]: arguments to this function are incorrect
+   --> src\engine.rs:922:24
+    |
+922 |             let call = provider::complete(
+    |                        ^^^^^^^^^^^^^^^^^^
+923 |                 &self.client,
+924 |                 &task.route,
+    |                 ----------- argument #2 of type `ProviderPermit` is missing
+925 |                 &key,
+    |                 ---- unexpected argument #3 of type `&std::string::String`
+    |
+note: function defined here
+   --> src\provider.rs:189:14
+    |
+189 | pub async fn complete(
+    |              ^^^^^^^^
+190 |     client: &ProviderClient,
+191 |     permit: ProviderPermit,
+    |     ----------------------
+help: did you mean
+    |
+922 ~             let call = provider::complete(
+923 +                 &self.client,
+924 +                 /* ProviderPermit */,
+925 +                 &task.route,
+926 +                 &task.messages,
+927 +                 &tools,
+928 +                 |delta| {
+929 +                     text.push_str(delta);
+930 +                     self.store.event(&task.id, "delta", json!({"text":delta}))
+931 +                 },
+932 ~             );
+    |
+
+error[E0609]: no field `command_network_ack` on type `ApprovalRecord`
+    --> src\engine.rs:1133:32
+     |
+1133 |                     && current.command_network_ack == approval::CommandNetworkAck::Required);
+     |                                ^^^^^^^^^^^^^^^^^^^ unknown field
+     |
+     = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+error[E0308]: arguments to this function are incorrect
+   --> src\server.rs:430:25
+    |
+430 |         json!({"models":provider::models(&app.engine.client,&route,&key).await?}),
+    |                         ^^^^^^^^^^^^^^^^                    ------ ---- unexpected argument #3 of type `&std::string::String`
+    |                                                             |
+    |                                                             argument #2 of type `ProviderPermit` is missing
+    |
+note: function defined here
+   --> src\provider.rs:45:14
+    |
+ 45 | pub async fn models(
+    |              ^^^^^^
+ 46 |     client: &ProviderClient,
+ 47 |     permit: ProviderPermit,
+    |     ----------------------
+help: did you mean
+    |
+430 -         json!({"models":provider::models(&app.engine.client,&route,&key).await?}),
+430 +         json!({"models":provider::models(&app.engine.client, /* ProviderPermit */, &route).await?}),
+    |
+
+error[E0277]: `?` couldn't convert the error to `ApiError`
+   --> src\server.rs:430:79
+    |
+430 |         json!({"models":provider::models(&app.engine.client,&route,&key).await?}),
+    |                         ------------------------------------------------------^ the trait `From<TransportError>` is not implemented for `ApiError`
+    |                         |
+    |                         this can't be annotated with `?` because it has type `Result<_, TransportError>`
+    |
+note: `ApiError` needs to implement `From<TransportError>`
+   --> src\server.rs:36:1
+    |
+ 36 | pub struct ApiError {
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<TransportError>` is not implemented for `ApiError`
+      but trait `From<anyhow::Error>` is implemented for it
+   --> src\server.rs:42:1
+    |
+ 42 | impl From<anyhow::Error> for ApiError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for that trait implementation, expected `anyhow::Error`, found `TransportError`
+
+error[E0308]: arguments to this function are incorrect
+   --> src\server.rs:442:16
+    |
+442 |     let list = provider::models(&app.engine.client, &route, &key).await?;
+    |                ^^^^^^^^^^^^^^^^                     ------  ---- unexpected argument #3 of type `&std::string::String`
+    |                                                     |
+    |                                                     argument #2 of type `ProviderPermit` is missing
+    |
+note: function defined here
+   --> src\provider.rs:45:14
+    |
+ 45 | pub async fn models(
+    |              ^^^^^^
+ 46 |     client: &ProviderClient,
+ 47 |     permit: ProviderPermit,
+    |     ----------------------
+help: did you mean
+    |
+442 -     let list = provider::models(&app.engine.client, &route, &key).await?;
+442 +     let list = provider::models(&app.engine.client, /* ProviderPermit */, &route).await?;
+    |
+
+error[E0277]: `?` couldn't convert the error to `ApiError`
+   --> src\server.rs:442:72
+    |
+442 |     let list = provider::models(&app.engine.client, &route, &key).await?;
+    |                --------------------------------------------------------^ the trait `From<TransportError>` is not implemented for `ApiError`
+    |                |
+    |                this can't be annotated with `?` because it has type `Result<_, TransportError>`
+    |
+note: `ApiError` needs to implement `From<TransportError>`
+   --> src\server.rs:36:1
+    |
+ 36 | pub struct ApiError {
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<TransportError>` is not implemented for `ApiError`
+      but trait `From<anyhow::Error>` is implemented for it
+   --> src\server.rs:42:1
+    |
+ 42 | impl From<anyhow::Error> for ApiError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for that trait implementation, expected `anyhow::Error`, found `TransportError`
+
+error[E0308]: arguments to this function are incorrect
+   --> src\server.rs:451:28
+    |
+451 |     let (message, usage) = provider::complete(
+    |                            ^^^^^^^^^^^^^^^^^^
+452 |         &app.engine.client,
+453 |         &route,
+    |         ------ argument #2 of type `ProviderPermit` is missing
+454 |         &key,
+    |         ---- unexpected argument #3 of type `&std::string::String`
+    |
+note: function defined here
+   --> src\provider.rs:189:14
+    |
+189 | pub async fn complete(
+    |              ^^^^^^^^
+190 |     client: &ProviderClient,
+191 |     permit: ProviderPermit,
+    |     ----------------------
+help: did you mean
+    |
+451 ~     let (message, usage) = provider::complete(
+452 +         &app.engine.client,
+453 +         /* ProviderPermit */,
+454 +         &route,
+455 +         &[json!({"role":"user","content":"Return only the result of 17 * 19."})],
+456 +         &[],
+457 +         |_| Ok(()),
+458 +     )
+    |
+
+error[E0277]: `?` couldn't convert the error to `ApiError`
+   --> src\server.rs:459:11
+    |
+451 |       let (message, usage) = provider::complete(
+    |  ____________________________-
+452 | |         &app.engine.client,
+453 | |         &route,
+454 | |         &key,
+...   |
+459 | |     .await?;
+    | |          -^ the trait `From<TransportError>` is not implemented for `ApiError`
+    | |__________|
+    |            this can't be annotated with `?` because it has type `Result<_, TransportError>`
+    |
+note: `ApiError` needs to implement `From<TransportError>`
+   --> src\server.rs:36:1
+    |
+ 36 | pub struct ApiError {
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<TransportError>` is not implemented for `ApiError`
+      but trait `From<anyhow::Error>` is implemented for it
+   --> src\server.rs:42:1
+    |
+ 42 | impl From<anyhow::Error> for ApiError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for that trait implementation, expected `anyhow::Error`, found `TransportError`
+
+error[E0308]: arguments to this function are incorrect
+   --> src\server.rs:505:18
+    |
+505 |     let result = provider::balance(
+    |                  ^^^^^^^^^^^^^^^^^
+506 |         &app.engine.client,
+507 |         settings.newapi.as_ref().unwrap(),
+    |         --------------------------------- argument #2 of type `ProviderPermit` is missing
+508 |         &token,
+    |         ------ unexpected argument #3 of type `&std::string::String`
+    |
+note: function defined here
+   --> src\provider.rs:247:14
+    |
+247 | pub async fn balance(
+    |              ^^^^^^^
+248 |     client: &ProviderClient,
+249 |     permit: ProviderPermit,
+    |     ----------------------
+help: did you mean
+    |
+505 ~     let result = provider::balance(
+506 +         &app.engine.client,
+507 +         /* ProviderPermit */,
+508 +         settings.newapi.as_ref().unwrap(),
+509 +     )
+    |
+
+error[E0277]: `?` couldn't convert the error to `ApiError`
+   --> src\server.rs:510:11
+    |
+505 |       let result = provider::balance(
+    |  __________________-
+506 | |         &app.engine.client,
+507 | |         settings.newapi.as_ref().unwrap(),
+508 | |         &token,
+509 | |     )
+510 | |     .await?;
+    | |          -^ the trait `From<TransportError>` is not implemented for `ApiError`
+    | |__________|
+    |            this can't be annotated with `?` because it has type `Result<_, TransportError>`
+    |
+note: `ApiError` needs to implement `From<TransportError>`
+   --> src\server.rs:36:1
+    |
+ 36 | pub struct ApiError {
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<TransportError>` is not implemented for `ApiError`
+      but trait `From<anyhow::Error>` is implemented for it
+   --> src\server.rs:42:1
+    |
+ 42 | impl From<anyhow::Error> for ApiError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for that trait implementation, expected `anyhow::Error`, found `TransportError`
+
+error[E0308]: arguments to this function are incorrect
+   --> src\server.rs:531:9
+    |
+531 |         provider::balance(&app.engine.client, &account, &token).await?,
+    |         ^^^^^^^^^^^^^^^^^                     --------  ------ unexpected argument #3 of type `&std::string::String`
+    |                                               |
+    |                                               argument #2 of type `ProviderPermit` is missing
+    |
+note: function defined here
+   --> src\provider.rs:247:14
+    |
+247 | pub async fn balance(
+    |              ^^^^^^^
+248 |     client: &ProviderClient,
+249 |     permit: ProviderPermit,
+    |     ----------------------
+help: did you mean
+    |
+531 -         provider::balance(&app.engine.client, &account, &token).await?,
+531 +         provider::balance(&app.engine.client, /* ProviderPermit */, &account).await?,
+    |
+
+error[E0277]: `?` couldn't convert the error to `ApiError`
+   --> src\server.rs:531:70
+    |
+531 |         provider::balance(&app.engine.client, &account, &token).await?,
+    |         -------------------------------------------------------------^ the trait `From<TransportError>` is not implemented for `ApiError`
+    |         |
+    |         this can't be annotated with `?` because it has type `Result<_, TransportError>`
+    |
+note: `ApiError` needs to implement `From<TransportError>`
+   --> src\server.rs:36:1
+    |
+ 36 | pub struct ApiError {
+    | ^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+help: the trait `From<TransportError>` is not implemented for `ApiError`
+      but trait `From<anyhow::Error>` is implemented for it
+   --> src\server.rs:42:1
+    |
+ 42 | impl From<anyhow::Error> for ApiError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for that trait implementation, expected `anyhow::Error`, found `TransportError`
+
+    Checking reactive_stores v0.4.3
+error[E0609]: no field `network_notice` on type `&mut ApprovalRecord`
+   --> src\repository.rs:977:20
+    |
+977 |             record.network_notice = Some(CommandNetworkNotice::default());
+    |                    ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+error[E0609]: no field `command_network_ack` on type `&mut ApprovalRecord`
+   --> src\repository.rs:978:20
+    |
+978 |             record.command_network_ack = if sidecar.is_some() {
+    |                    ^^^^^^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+error[E0609]: no field `network_notice` on type `&mut ApprovalRecord`
+   --> src\repository.rs:984:20
+    |
+984 |             record.network_notice = None;
+    |                    ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+error[E0609]: no field `command_network_ack` on type `&mut ApprovalRecord`
+   --> src\repository.rs:985:20
+    |
+985 |             record.command_network_ack = CommandNetworkAck::NotRequired;
+    |                    ^^^^^^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+error[E0560]: struct `ApprovalRecord` has no field named `network_notice`
+    --> src\repository.rs:1930:9
+     |
+1930 |         network_notice: None,
+     |         ^^^^^^^^^^^^^^ `ApprovalRecord` does not have this field
+     |
+     = note: all struct fields are already assigned
+
+error[E0560]: struct `ApprovalRecord` has no field named `command_network_ack`
+    --> src\repository.rs:1931:9
+     |
+1931 |         command_network_ack: Default::default(),
+     |         ^^^^^^^^^^^^^^^^^^^ `ApprovalRecord` does not have this field
+     |
+     = note: all struct fields are already assigned
+
+error[E0560]: struct `ApprovalRecord` has no field named `network_notice`
+    --> src\store.rs:1227:13
+     |
+1227 |             network_notice: (tool_name == "run_command")
+     |             ^^^^^^^^^^^^^^ `ApprovalRecord` does not have this field
+     |
+     = note: all struct fields are already assigned
+
+error[E0560]: struct `ApprovalRecord` has no field named `command_network_ack`
+    --> src\store.rs:1229:13
+     |
+1229 |             command_network_ack: if tool_name == "run_command" {
+     |             ^^^^^^^^^^^^^^^^^^^ `ApprovalRecord` does not have this field
+     |
+     = note: all struct fields are already assigned
+
+error[E0609]: no field `command_network_ack` on type `ApprovalRecord`
+    --> src\store.rs:1315:28
+     |
+1315 |                 if current.command_network_ack != approval::CommandNetworkAck::Acknowledged {
+     |                            ^^^^^^^^^^^^^^^^^^^ unknown field
+     |
+     = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+error[E0609]: no field `command_network_ack` on type `ApprovalRecord`
+    --> src\store.rs:1471:24
+     |
+1471 |             && current.command_network_ack != approval::CommandNetworkAck::Acknowledged
+     |                        ^^^^^^^^^^^^^^^^^^^ unknown field
+     |
+     = note: available fields are: `id`, `tool_call_id`, `task_id`, `turn_id`, `session_id` ... and 12 others
+
+warning: variable does not need to be mutable
+   --> src\repository.rs:953:13
+    |
+953 |         let mut records: Vec<_> = rows
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0004]: non-exhaustive patterns: `&ApprovalError::NetworkAcknowledgementRequired { .. }` and `&ApprovalError::InvalidNetworkAcknowledgement { .. }` not covered
+   --> src\server.rs:879:45
+    |
+879 |         let (status, code, message) = match typed {
+    |                                             ^^^^^ patterns `&ApprovalError::NetworkAcknowledgementRequired { .. }` and `&ApprovalError::InvalidNetworkAcknowledgement { .. }` not covered
+    |
+note: `ApprovalError` defined here
+   --> src\approval.rs:114:10
+    |
+114 | pub enum ApprovalError {
+    |          ^^^^^^^^^^^^^
+115 |     NetworkAcknowledgementRequired { id: String },
+    |     ------------------------------ not covered
+116 |     InvalidNetworkAcknowledgement { id: String },
+    |     ----------------------------- not covered
+    = note: the matched value is of type `&ApprovalError`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+    |
+900 ~             ),
+901 ~             &ApprovalError::NetworkAcknowledgementRequired { .. } | &ApprovalError::InvalidNetworkAcknowledgement { .. } => todo!(),
+    |
+
+Some errors have detailed explanations: E0004, E0277, E0308, E0425, E0432, E0433, E0560, E0609.
+For more information about an error, try `rustc --explain E0004`.
+warning: `peachsh` (lib) generated 1 warning
+error: could not compile `peachsh` (lib) due to 31 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...

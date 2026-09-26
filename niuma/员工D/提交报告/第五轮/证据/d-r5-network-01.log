@@ -1,0 +1,35 @@
+   Compiling peachsh v0.2.0 (<D_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 9.07s
+     Running tests\provider_network.rs (target\debug\deps\provider_network-74a9aa6850b05512.exe)
+
+running 4 tests
+
+thread 'account_binding_is_local_and_identity_changes_need_separate_confirmation' (45268) panicked at tests\provider_network.rs:152:65:
+called `Result::unwrap()` on an `Err` value: NetworkError { kind: Invalid, dispatch_state: NotSent, calls: [] }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'management_requires_whole_check_scope_and_persists_real_calls' (8400) panicked at tests\provider_network.rs:152:65:
+called `Result::unwrap()` on an `Err` value: NetworkError { kind: Invalid, dispatch_state: NotSent, calls: [] }
+
+thread 'redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reopen' (46928) panicked at tests\provider_network.rs:152:65:
+called `Result::unwrap()` on an `Err` value: NetworkError { kind: Invalid, dispatch_state: NotSent, calls: [] }
+
+thread 'target_path_model_and_raw_credential_changes_never_reuse_old_authorization' (16688) panicked at tests\provider_network.rs:152:65:
+called `Result::unwrap()` on an `Err` value: NetworkError { kind: Invalid, dispatch_state: NotSent, calls: [] }
+test account_binding_is_local_and_identity_changes_need_separate_confirmation ... FAILED
+test redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reopen ... FAILED
+test management_requires_whole_check_scope_and_persists_real_calls ... FAILED
+test target_path_model_and_raw_credential_changes_never_reuse_old_authorization ... FAILED
+
+failures:
+
+failures:
+    account_binding_is_local_and_identity_changes_need_separate_confirmation
+    management_requires_whole_check_scope_and_persists_real_calls
+    redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reopen
+    target_path_model_and_raw_credential_changes_never_reuse_old_authorization
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+error: test failed, to rerun pass `--test provider_network`
+exit=101

@@ -1,0 +1,53 @@
+{
+  "source_status": [],
+  "environment": {
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "target": "NoManCode/rust-app/target",
+    "CARGO_INCREMENTAL": "0"
+  },
+  "gates": [
+    {
+      "log": "c-r8-final-gates-01-check.log",
+      "exit_code": 0,
+      "finished_at": "2026-09-27T04:06:58.2285468+08:00",
+      "status": "executed",
+      "gate": "check",
+      "started_at": "2026-09-27T04:06:57.2005133+08:00",
+      "command": "build.ps1 check"
+    },
+    {
+      "log": "c-r8-final-gates-01-test.log",
+      "exit_code": 0,
+      "finished_at": "2026-09-27T04:08:47.3808069+08:00",
+      "status": "executed",
+      "gate": "test",
+      "started_at": "2026-09-27T04:06:58.2313519+08:00",
+      "command": "build.ps1 test"
+    },
+    {
+      "log": "c-r8-final-gates-01-fmt.log",
+      "exit_code": 0,
+      "finished_at": "2026-09-27T04:08:48.6566804+08:00",
+      "status": "executed",
+      "gate": "fmt",
+      "started_at": "2026-09-27T04:08:47.3818636+08:00",
+      "command": "build.ps1 fmt"
+    },
+    {
+      "log": "c-r8-final-gates-01-clippy.log",
+      "exit_code": 101,
+      "finished_at": "2026-09-27T04:08:54.5640791+08:00",
+      "status": "executed",
+      "gate": "clippy",
+      "started_at": "2026-09-27T04:08:48.6571756+08:00",
+      "command": "build.ps1 clippy"
+    },
+    {
+      "gate": "wasm-check",
+      "status": "not_run"
+    }
+  ],
+  "rust_tree": "694faaa2eb4d1b75345b77a87dd098697cf01633",
+  "head": "fa249ede75f5dabbe1b0f0598282e416d259d537"
+}

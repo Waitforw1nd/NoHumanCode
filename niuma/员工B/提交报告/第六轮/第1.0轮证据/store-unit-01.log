@@ -1,0 +1,19 @@
+   Compiling peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
+    Finished `test` profile [unoptimized] target(s) in 7.34s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 11 tests
+test store::tests::safe_tool_result_json_is_stable_and_roundtrips_unicode ... ok
+test store::tests::event_task_must_belong_to_turn_or_session ... ok
+test store::tests::dependencies_are_same_turn_and_acyclic ... ok
+test store::tests::legacy_create_run_redacts_prompt_messages_and_errors ... ok
+test store::tests::review_fixes_redact_replay_and_real_legacy_run ... ok
+test store::tests::turn_identity_idempotency_and_rollback ... ok
+test store::tests::recover_marks_running_turn_interrupted ... ok
+test store::tests::partial_schema_6_table_stops_before_user_version ... ok
+test store::tests::schema_5_migrates_once_and_keeps_legacy_rows ... ok
+test store::tests::interrupted_schema_6_retries_without_advancing_early ... ok
+test store::tests::legacy_idempotency_replay_is_explicit ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 91 filtered out; finished in 0.09s
+

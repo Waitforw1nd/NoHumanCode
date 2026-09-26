@@ -1,0 +1,49 @@
+   Compiling peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
+    Finished `test` profile [unoptimized] target(s) in 8.13s
+     Running tests\checkpoint.rs (target\debug\deps\checkpoint-6ccc5b17a2f072ed.exe)
+
+running 12 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.22s
+
+     Running tests\network_authorization.rs (target\debug\deps\network_authorization-e0cf26483d3c5d5d.exe)
+
+running 11 tests
+test fake_unique_index_literal_is_rejected_and_active_uniqueness_is_real ... ok
+test account_quota_change_is_local_and_preserves_identity_grant ... ok
+test account_save_is_local_and_requires_new_token_when_identity_changes ... ok
+test idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corruption ... ok
+test confirm_failure_rolls_back_authorization_confirmation_and_event ... ok
+test raw_secret_and_settings_changes_cannot_bypass_bound_snapshot ... ok
+test receipt_contradictions_are_corrupt_and_result_commit_failure_keeps_same_unknown_id ... ok
+test binding_insert_failure_rolls_back_new_task_turn_and_idempotency ... ok
+test old_task_keeps_revoked_grant_while_new_task_binds_replacement_and_replay_is_local ... ok
+test no_grant_purpose_or_revocation_has_zero_tcp_with_real_positive_control ... ok
+test command_requires_ack_then_really_contacts_listener_without_outbound_sandbox ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+     Running tests\workspace_crash.rs (target\debug\deps\workspace_crash-a34615653ab29121.exe)
+
+running 6 tests
+test crash_child_restore_http ... ok
+test crash_child_write ... ok
+test write_crash_after_finish_commit_stays_finished ... ok
+test write_crash_after_file_before_finish_commit_is_unknown ... ok
+test restore_http_crash_after_complete_commit_keeps_stable_receipt ... ok
+test restore_http_crash_after_file_before_outcome_commit_is_unknown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+

@@ -1,0 +1,28 @@
+   Compiling peachsh v0.2.0 (../nhc-c-network-interface\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 9.27s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 8 tests
+test server::tests::approval_error_keeps_corruption_500_and_busy_retryable ... ok
+test server::tests::approval_error_maps_typed_variants_through_context_and_source ... ok
+test server::tests::turn_command_error_keeps_typed_classification_inside_a_chain ... ok
+test server::tests::turn_command_error_maps_every_stable_variant ... ok
+test server::tests::run_context_error_preserves_typed_status_without_context_leaks ... ok
+test server::tests::turn_command_error_never_turns_unknown_failures_into_4xx ... ok
+test server::tests::required_idempotency_key_accepts_exactly_one_clean_value ... ok
+test server::tests::changing_newapi_origin_requires_new_token ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 91 filtered out; finished in 0.03s
+
+     Running tests\network_cli.rs (target\debug\deps\network_cli-a8357b2ae2b59909.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests\network_http.rs (target\debug\deps\network_http-3135810140b52cf3.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+

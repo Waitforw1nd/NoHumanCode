@@ -1,0 +1,26 @@
+   Compiling peachsh v0.2.0 (<D_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 7.01s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-2d79ad28e6278d18.exe)
+
+running 17 tests
+test provider::tests::balance_validation ... ok
+test provider::tests::truncated_stream_fails ... ok
+test provider::tests::utf8_sse_and_fragmented_tools ... ok
+test provider_transport::tests::transport_errors_never_retain_upstream_sources ... ok
+test provider_transport::tests::targets_reject_ambiguity_before_url_parser_normalizes_it ... ok
+test provider_transport::tests::targets_have_one_canonical_origin_and_preserve_base_path ... ok
+test provider_transport::tests::permit_rejects_header_injection_and_wrong_identity_shape ... ok
+test provider::network_tests::proxy_environment_child ... ok
+test provider::tests::done_does_not_wait_for_connection_close ... ok
+test provider::network_tests::account_uses_only_bound_header_and_target ... ok
+test provider::network_tests::response_errors_distinguish_complete_invalid_and_truncated ... ok
+test provider::network_tests::mismatched_target_model_user_or_purpose_is_invalid_and_zero_connections ... ok
+test provider::network_tests::all_redirect_statuses_do_not_reach_second_origin_or_replay_post ... ok
+test provider::network_tests::sse_requires_finish_and_complete_done_and_never_ignores_read_failure ... ok
+test provider::network_tests::json_limit_is_enforced_before_eof_and_exact_limit_succeeds ... ok
+test provider::network_tests::sse_exact_limit_finishes_and_over_limit_fails_before_eof ... ok
+test provider::network_tests::proxy_environment_isolated_process_has_zero_proxy_connections_with_positive_control ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 83 filtered out; finished in 0.18s
+
+exit=0

@@ -1,0 +1,199 @@
+   Compiling peachsh v0.2.0 (../nhc-c-network-interface\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 10.76s
+     Running tests\approval_http.rs (target\debug\deps\approval_http-a1455f0b4d796b9e.exe)
+
+running 14 tests
+test ah14_unknown_is_visible_and_decision_remains_conflict ... FAILED
+test ah01_ah09_ah10_safe_dto_order_and_task_isolation ... FAILED
+test ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency ... ok
+test ah06_real_command_side_effect_then_shutdown_recovers_unknown ... FAILED
+test ah11_strict_inputs_guards_paths_and_safe_errors ... ok
+test ah14_http_decision_does_not_claim_binding_validation ... ok
+test ah05_shutdown_reopen_http_decision_without_worker_then_resume_once ... FAILED
+test ah06_denied_http_decision_survives_real_runtime_restart_without_execution ... ok
+test ah13_run_and_session_sse_resume_from_last_consumed_cursor ... ok
+test ah10_real_workers_with_same_call_id_do_not_borrow_decisions ... ok
+test ah07_barrier_cancel_and_http_decision_have_one_durable_resolution ... ok
+test ah07_cancel_before_claim_and_after_real_command_claim ... ok
+test ah02_ah03_ah04_real_tools_follow_http_decisions ... ok
+test ah11_real_busy_decision_is_retryable_and_corruption_is_not ... ok
+
+failures:
+
+---- ah14_unknown_is_visible_and_decision_remains_conflict stdout ----
+
+thread 'ah14_unknown_is_visible_and_decision_remains_conflict' (48632) panicked at tests\approval_http.rs:1547:55:
+called `Result::unwrap()` on an `Err` value: 命令可能访问任意网络，必须明确确认当前没有OS出站沙箱
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- ah01_ah09_ah10_safe_dto_order_and_task_isolation stdout ----
+
+thread 'ah01_ah09_ah10_safe_dto_order_and_task_isolation' (18928) panicked at tests\approval_http.rs:1108:5:
+assertion `left == right` failed
+  left: {"command_network_ack", "created_at", "decided_at", "decided_by", "execution_state", "id", "network_notice", "preview", "session_id", "status", "task_id", "tool_call_id", "tool_name", "turn_id"}
+ right: {"created_at", "decided_at", "decided_by", "execution_state", "id", "preview", "session_id", "status", "task_id", "tool_call_id", "tool_name", "turn_id"}
+
+---- ah06_real_command_side_effect_then_shutdown_recovers_unknown stdout ----
+
+thread 'ah06_real_command_side_effect_then_shutdown_recovers_unknown' (47556) panicked at tests\approval_http.rs:1770:9:
+assertion `left == right` failed
+  left: 409
+ right: 200
+
+---- ah05_shutdown_reopen_http_decision_without_worker_then_resume_once stdout ----
+
+thread 'ah05_shutdown_reopen_http_decision_without_worker_then_resume_once' (43404) panicked at tests\approval_http.rs:1680:51:
+called `Result::unwrap()` on an `Err` value: 网络授权绑定已变化
+
+
+failures:
+    ah01_ah09_ah10_safe_dto_order_and_task_isolation
+    ah05_shutdown_reopen_http_decision_without_worker_then_resume_once
+    ah06_real_command_side_effect_then_shutdown_recovers_unknown
+    ah14_unknown_is_visible_and_decision_remains_conflict
+
+test result: FAILED. 10 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.13s
+
+error: test failed, to rerun pass `--test approval_http`
+     Running tests\checkpoint_http.rs (target\debug\deps\checkpoint_http-0f7363cf975187d7.exe)
+
+running 3 tests
+test t02_checkpoint_http_strict_security_zero_effects ... ok
+test k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500 ... ok
+test k06_checkpoint_http_kill_after_effect_before_outcome ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.79s
+
+     Running tests\cli.rs (target\debug\deps\cli-7ba8abda14f704de.exe)
+
+running 11 tests
+test cl03_remote_cli_does_not_initialize_local_state_or_execute_without_waiter ... ok
+test cl07_redirects_proxy_and_token_echo_do_not_leak_or_retry ... ok
+test cl02_real_cli_approve_executes_and_deny_does_not ... ok
+test cl09_escaped_token_is_rejected_in_success_and_error_fields ... ok
+test cl01_command_shape_is_fixed_for_list_get_approve_and_deny ... ok
+test cl09_unknown_state_is_truthful_and_help_has_no_secrets ... ok
+test cl04_http_errors_are_json_on_stderr_with_exit_one ... ok
+test cl01_list_get_human_json_and_empty ... ok
+test cl05_parse_errors_exit_two_without_files ... ok
+test cl08_check_and_server_startup_remain_compatible ... ok
+test cl06_invalid_bootstrap_json_and_connection_are_safe_without_post_retry ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.36s
+
+     Running tests\cli_workflow.rs (target\debug\deps\cli_workflow-5e2c0be5b1a1a2c5.exe)
+
+running 9 tests
+test n13_write_reply_transport_oversize_and_escaped_token_never_retry ... ok
+test n13_workflow_parse_gates_and_unknown_post_are_safe_and_single_attempt ... ok
+test n11_sse_split_utf8_crlf_comments_multiline_limit_and_failure_cursor ... ok
+test n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention ... ok
+test n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute ... ok
+test n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects ... ok
+test n10_cli_real_partial_receipt_preserves_both_path_facts ... ok
+test n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart ... ok
+test n11_sse_keepalive_exceeds_regular_timeout_and_ignores_proxy ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.10s
+
+     Running tests\http_contract.rs (target\debug\deps\http_contract-db740cd4712dfddb.exe)
+
+running 11 tests
+test h1_read_shapes_and_security_headers_stay ... ok
+test h6_sse_frame_matches_persisted_event ... ok
+test h8_sessions_do_not_cross_and_seq_may_gap ... ok
+test h3_guard_rejections_are_structured_and_do_not_execute ... ok
+test h4_json_input_failures_do_not_enter_engine ... ok
+test h2_missing_is_404_and_corruption_is_500 ... ok
+test h11_existing_run_idempotency_and_bad_key_stay ... ok
+test h7_disconnect_does_not_cancel_running_task ... ok
+test h10_stream_failure_keeps_last_sent_cursor_and_writes_nothing ... ok
+test h9_idle_and_future_cursor_do_not_replay ... ok
+test h5_cursor_inputs_reject_ambiguity ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+     Running tests\network_cli.rs (target\debug\deps\network_cli-a8357b2ae2b59909.exe)
+
+running 6 tests
+test network_cli_closed_stdout_keeps_known_call_receipt_on_stderr_once ... ok
+test network_cli_authorize_uses_only_supplied_snapshot_and_deduplicates_purposes ... ok
+test network_cli_authenticated_get_guard_failure_stays_read_only_and_rejects_token_echo ... ok
+test network_cli_preserves_partial_finished_and_unknown_receipts_without_retry ... ok
+test network_cli_models_success_and_task_call_binding_are_validated ... ok
+test network_cli_default_ports_ipv6_and_case_follow_host_target_contract ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests\network_http.rs (target\debug\deps\network_http-3135810140b52cf3.exe)
+
+running 4 tests
+test network_http_account_save_is_local_and_revision_change_requires_new_preview ... ok
+test network_http_local_save_preview_grant_replay_and_explicit_post ... FAILED
+test network_http_strict_json_auth_reads_and_invalid_requests_never_dispatch ... ok
+test network_http_real_host_kill_after_send_retains_same_unknown_call_without_replay ... ok
+
+failures:
+
+---- network_http_local_save_preview_grant_replay_and_explicit_post stdout ----
+
+thread 'network_http_local_save_preview_grant_replay_and_explicit_post' (33968) panicked at tests\network_http.rs:202:5:
+assertion `left == right` failed
+  left: String("required")
+ right: "revoked"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    network_http_local_save_preview_grant_replay_and_explicit_post
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+
+error: test failed, to rerun pass `--test network_http`
+     Running tests\review_cli.rs (target\debug\deps\review_cli-bfaf11cbb5e2bef7.exe)
+
+running 6 tests
+test t02_review_bad_cli_arguments_exit_two ... ok
+test t02_diff_status_projection_and_response_path_binding ... ok
+test t02_new_cli_malformed_oversize_token_redirect_single_post ... ok
+test t02_checkpoint_unknown_receipt_restart_no_retry ... ok
+test t02_checkpoint_real_partial_receipt ... ok
+test t01_real_diff_checkpoint_restore_restart_new_turn ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.33s
+
+     Running tests\turn_http.rs (target\debug\deps\turn_http-62bdc7ed92f796f6.exe)
+
+running 17 tests
+test n05_body_and_id_validation ... ok
+test n17_regression_surface ... ok
+test n08_write_guard ... ok
+test n01_append_and_chain ... ok
+test n03_replay_variants ... ok
+test n04_key_binding_conflict ... ok
+test n12_different_key_race ... ok
+test n14_config_faults_500_and_replay_first ... ok
+test n06_idempotency_header ... ok
+test n16_real_restart_partial_replay_resume ... ok
+test n11_same_key_concurrency ... ok
+test n09_session_shape_and_404 ... ok
+test n02_session_sse_stream ... ok
+test n10_predecessor_states ... ok
+test n15_disconnect_mid_run ... ok
+test n13_storage_faults_safe_500 ... ok
+test n07_message_bounds_and_body_limit ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.41s
+
+     Running tests\workspace_http.rs (target\debug\deps\workspace_http-b73ee9bf384f74d3.exe)
+
+running 3 tests
+test internal_error_and_unknown_receipt_hide_database_details ... ok
+test normal_dto_auth_and_empty_task_are_distinct_and_safe ... ok
+test partial_restore_reports_completed_and_unattempted_paths ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.11s
+
+error: 2 targets failed:
+    `--test approval_http`
+    `--test network_http`

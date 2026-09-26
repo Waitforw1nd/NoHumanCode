@@ -1,0 +1,23 @@
+   Compiling peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.40s
+     Running tests\network_authorization.rs (target\debug\deps\network_authorization-e0cf26483d3c5d5d.exe)
+
+running 15 tests
+test fake_unique_index_literal_is_rejected_and_active_uniqueness_is_real ... ok
+test schema10_rejects_nullable_column_disguised_as_fused_type_keyword ... ok
+test account_save_is_local_and_requires_new_token_when_identity_changes ... ok
+test confirm_failure_rolls_back_authorization_confirmation_and_event ... ok
+test account_quota_change_is_local_and_preserves_identity_grant ... ok
+test admitted_call_finishes_after_revoke_while_config_is_rejected_and_next_admission_stops ... ok
+test idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corruption ... ok
+test receipt_contradictions_are_corrupt_and_result_commit_failure_keeps_same_unknown_id ... ok
+test raw_secret_and_settings_changes_cannot_bypass_bound_snapshot ... ok
+test revoke_after_task_permit_allows_only_inflight_round_and_stops_next_model_round ... ok
+test binding_insert_failure_rolls_back_new_task_turn_and_idempotency ... ok
+test old_task_keeps_revoked_grant_while_new_task_binds_replacement_and_replay_is_local ... ok
+test no_grant_purpose_or_revocation_has_zero_tcp_with_real_positive_control ... ok
+test environment_credential_reference_and_value_are_rechecked_across_real_processes ... ok
+test command_requires_ack_then_really_contacts_listener_without_outbound_sandbox ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+

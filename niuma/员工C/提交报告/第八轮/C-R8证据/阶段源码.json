@@ -1,0 +1,63 @@
+{
+  "head": "575f26b7aacde69c417378bbafd1cb40b72e07de",
+  "rust_tree": "94baf16feaefe59f71e4048bcd180153bc15b11e",
+  "status": "clean",
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "sha256": "dd83b8df8a114acf0e9657392445e21ca4bbfba69e39ef5f215ce9f78067177e"
+    },
+    {
+      "path": "NoManCode/rust-app/src/cli.rs",
+      "sha256": "a6bd882e16eb07bcbc5e26cf09c22110a5df8c3e2a35b6825d140f709f21244d"
+    },
+    {
+      "path": "NoManCode/rust-app/web/app.js",
+      "sha256": "e396035e6cbed5fd0440a245e7833dab6e175b91b3440a331adee66c076ee5f5"
+    },
+    {
+      "path": "NoManCode/rust-app/web/index.html",
+      "sha256": "8e51d2d124cc4480b781102a84e9f30d473870afdf2c9634aec9d3edbbb038e2"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_http.rs",
+      "sha256": "9ca7bc3e7915e09b824673d51a37e008755c90c435478d8e3b5701948568ae85"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_cli.rs",
+      "sha256": "2bba81f94d607a5aef5ff9cc359b4d1118445ca79bc630f9e3dbb014ee873a3e"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_http.rs",
+      "sha256": "746589a5aa065903a3d063f76f91952a02ae187fa45bc770d762505592f52ebd"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/cli.rs",
+      "sha256": "66cd485a431555b46bc0a3c7bc44a9df9af0c0571dbd6bfeaeb9aa766bee09cc"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/cli_workflow.rs",
+      "sha256": "c06e0184767bb8c58e9b87d09369dd04ed8772aecc18a6905d7aba0dbf5c31ba"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "sha256": "bbc33279a54e48cd248609b027cb15f7ace1f5090e87a547aea70f6ad0cc1062"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/turn_http.rs",
+      "sha256": "18b9cf6579475b3bb2622e729659da7fdc88dcd6849c1cc32a9cbf8d3bfd3ccd"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_http.rs",
+      "sha256": "e1dcbd1990dc44e4ca54f90997dc55a553ae9d40f7b63d62e266d0f295bef1f9"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/checkpoint_http.rs",
+      "sha256": "fcb667b58d8eafc864867654c8948b53309f5e465e6e28fac73782e12eb7a7b0"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/review_cli.rs",
+      "sha256": "6f3c04b32cb69a1459d1fcee1d26dc81f55aff344c3dce9813baec00b9b9fadd"
+    }
+  ]
+}
