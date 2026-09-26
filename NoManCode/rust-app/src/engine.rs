@@ -27,12 +27,33 @@ mod crash_probe {
 
     type ArmedPhase = (String, &'static str, PathBuf);
     static PHASE: OnceLock<Mutex<Option<ArmedPhase>>> = OnceLock::new();
+    static READ_FAILURE: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+    pub(super) fn fail_recheck_once(task_id: String) {
+        *READ_FAILURE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .unwrap() = Some(task_id);
+    }
+
+    pub(super) fn take_recheck_failure(task_id: &str) -> bool {
+        let mut armed = READ_FAILURE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .unwrap();
+        if armed.as_deref() == Some(task_id) {
+            armed.take();
+            true
+        } else {
+            false
+        }
+    }
 
     pub(super) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
         *PHASE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some((task_id, phase, signal));
     }
 
-    pub(super) fn block(task_id: &str, phase: &'static str) {
+    pub(super) fn block(task_id: &str, phase: &'static str, record_id: &str) {
         let armed = PHASE
             .get_or_init(|| Mutex::new(None))
             .lock()
@@ -40,7 +61,9 @@ mod crash_probe {
             .take();
         if let Some((expected, at, signal)) = armed {
             if expected == task_id && at == phase {
-                std::fs::write(signal, task_id).unwrap();
+                let staging = signal.with_extension("tmp");
+                std::fs::write(&staging, format!("{task_id}\n{record_id}\n")).unwrap();
+                std::fs::rename(staging, signal).unwrap();
                 loop {
                     std::thread::park_timeout(Duration::from_secs(1));
                 }
@@ -877,7 +900,25 @@ impl Engine {
                     &path_key,
                     before.as_deref(),
                 )?;
-                let rechecked = workspace::read_safe_file(&target)?;
+                #[cfg(test)]
+                let recheck = if crash_probe::take_recheck_failure(&task.id) {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        "test recheck failure",
+                    )
+                    .into())
+                } else {
+                    workspace::read_safe_file(&target)
+                };
+                #[cfg(not(test))]
+                let recheck = workspace::read_safe_file(&target);
+                let rechecked = match recheck {
+                    Ok(value) => value,
+                    Err(error) => {
+                        self.store.mark_workspace_change_failed(&change.id)?;
+                        return Err(error);
+                    }
+                };
                 if rechecked.as_deref().map(workspace_changes::digest)
                     != before.as_deref().map(workspace_changes::digest)
                 {
@@ -931,7 +972,7 @@ impl Engine {
         }
         #[cfg(test)]
         if name == "write_file" {
-            crash_probe::block(&task.id, "write_pre_fs");
+            crash_probe::block(&task.id, "write_pre_fs", &prepared.as_ref().unwrap().1.id);
         }
         let (result, succeeded) = match workspace::execute(task, name, args).await {
             Ok(value) => (value, true),
@@ -1446,7 +1487,7 @@ impl Engine {
             .ok_or(WorkspaceChangeError::Corrupt)?
             .to_owned();
         #[cfg(test)]
-        crash_probe::block(id, "restore_pre_fs");
+        crash_probe::block(id, "restore_pre_fs", &restore_id);
         for (completed, ((change, target), original)) in
             changes.iter().zip(targets).zip(originals).enumerate()
         {
@@ -1596,10 +1637,29 @@ mod workspace_phase_tests {
     use axum::{Json, Router, extract::State, routing::post};
     use std::{
         path::Path,
-        process::{Command, Stdio},
+        process::{Child, Command, ExitStatus, Stdio},
         sync::atomic::{AtomicUsize, Ordering},
         time::{Duration, Instant},
     };
+
+    struct ChildGuard(Option<Child>);
+
+    impl ChildGuard {
+        fn stop(&mut self) -> ExitStatus {
+            let mut child = self.0.take().unwrap();
+            child.kill().unwrap();
+            child.wait().unwrap()
+        }
+    }
+
+    impl Drop for ChildGuard {
+        fn drop(&mut self) {
+            if let Some(mut child) = self.0.take() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+        }
+    }
 
     async fn provider_reply(
         State(calls): State<Arc<AtomicUsize>>,
@@ -1686,6 +1746,8 @@ mod workspace_phase_tests {
         .unwrap();
         if phase == "write_pre_fs" {
             crash_probe::arm(task.id.clone(), phase, root.join("phase.signal"));
+        } else if phase == "recheck_read_error" {
+            crash_probe::fail_recheck_once(task.id.clone());
         }
         engine
             .decide_approval(&approval.id, true, Some("test"))
@@ -1707,6 +1769,42 @@ mod workspace_phase_tests {
             );
             crash_probe::arm(task.id.clone(), phase, root.join("phase.signal"));
             let _ = engine.restore(&task.id).await;
+        } else if phase == "recheck_read_error" {
+            tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if !engine.is_busy() {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            let changes = store.workspace_changes_for_task(&task.id).unwrap();
+            assert_eq!(changes.len(), 1);
+            assert_eq!(changes[0].state, ChangeState::Failed);
+            assert_eq!(
+                std::fs::read_to_string(root.join("src/a.txt")).unwrap(),
+                "before"
+            );
+            assert!(
+                engine
+                    .store
+                    .task(&task.id)
+                    .unwrap()
+                    .messages
+                    .iter()
+                    .any(|message| message["role"] == "tool"
+                        && message["content"]
+                            .as_str()
+                            .is_some_and(|value| value.contains("error")))
+            );
+            drop(engine);
+            store.recover().unwrap();
+            assert_eq!(
+                store.workspace_changes_for_task(&task.id).unwrap()[0].state,
+                ChangeState::Failed
+            );
         } else {
             tokio::time::sleep(Duration::from_secs(30)).await;
         }
@@ -1721,27 +1819,65 @@ mod workspace_phase_tests {
             panic!("phase child returned before termination");
         }
         let temp = tempfile::tempdir().unwrap();
-        let mut process = Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", test_name, "--nocapture"])
-            .env("NHC_WORKSPACE_PHASE_CHILD", phase)
-            .env("NHC_WORKSPACE_PHASE_ROOT", temp.path())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .unwrap();
+        let mut process = ChildGuard(Some(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", test_name, "--nocapture"])
+                .env("NHC_WORKSPACE_PHASE_CHILD", phase)
+                .env("NHC_WORKSPACE_PHASE_ROOT", temp.path())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap(),
+        ));
         let signal = temp.path().join("phase.signal");
         let deadline = Instant::now() + Duration::from_secs(12);
         while !signal.exists() && Instant::now() < deadline {
             assert!(
-                process.try_wait().unwrap().is_none(),
+                process.0.as_mut().unwrap().try_wait().unwrap().is_none(),
                 "child exited before phase signal"
             );
             std::thread::sleep(Duration::from_millis(20));
         }
         assert!(signal.exists(), "child did not reach {phase}");
-        let task_id = std::fs::read_to_string(&signal).unwrap();
-        process.kill().unwrap();
-        process.wait().unwrap();
+        let signal_text = std::fs::read_to_string(&signal).unwrap();
+        let mut lines = signal_text.lines();
+        let task_id = lines
+            .next()
+            .filter(|value| !value.is_empty())
+            .unwrap()
+            .to_owned();
+        let record_id = lines
+            .next()
+            .filter(|value| !value.is_empty())
+            .unwrap()
+            .to_owned();
+        let db = rusqlite::Connection::open(temp.path().join("phase.db")).unwrap();
+        let (query, expected) = if phase == "write_pre_fs" {
+            (
+                "SELECT state FROM workspace_changes WHERE id=?1",
+                "prepared",
+            )
+        } else {
+            (
+                "SELECT status FROM workspace_restores WHERE id=?1",
+                "claimed",
+            )
+        };
+        let state: String = db.query_row(query, [&record_id], |row| row.get(0)).unwrap();
+        assert_eq!(state, expected);
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
+            if phase == "write_pre_fs" {
+                "before"
+            } else {
+                "after"
+            }
+        );
+        let status = process.stop();
+        assert!(
+            !status.success(),
+            "phase child exited successfully before kill"
+        );
         let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
         store.recover().unwrap();
         let engine = Engine::new(store.clone(), 2).unwrap();
@@ -1750,6 +1886,7 @@ mod workspace_phase_tests {
             assert_eq!(bytes, "before");
             let records = store.workspace_changes_for_task(&task_id).unwrap();
             assert_eq!(records.len(), 1);
+            assert_eq!(records[0].id, record_id);
             assert_eq!(records[0].state, ChangeState::Unknown);
             assert!(
                 engine
@@ -1761,6 +1898,7 @@ mod workspace_phase_tests {
         } else {
             assert_eq!(bytes, "after");
             let receipt = engine.latest_restore(&task_id).unwrap().unwrap();
+            assert_eq!(receipt.restore_id.as_deref(), Some(record_id.as_str()));
             assert_eq!(receipt.status, RestoreStatus::Unknown);
             assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
             let changes = engine.changes(&task_id).unwrap();
@@ -1783,5 +1921,13 @@ mod workspace_phase_tests {
             "restore_pre_fs",
             "engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop",
         );
+    }
+
+    #[test]
+    fn recheck_io_failure_after_prepare_is_failed_without_file_effect() {
+        let temp = tempfile::tempdir().unwrap();
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(child("recheck_read_error", temp.path()));
     }
 }

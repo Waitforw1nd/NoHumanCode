@@ -858,7 +858,8 @@ impl Store {
     }
 
     pub(crate) fn mark_workspace_change_failed(&self, id: &str) -> Result<()> {
-        self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='failed',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
+        let changed = self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='failed',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
+        anyhow::ensure!(changed == 1, "文件变更失败状态竞争");
         Ok(())
     }
 
