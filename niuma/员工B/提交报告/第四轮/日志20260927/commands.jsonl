@@ -1,0 +1,5 @@
+{"exit_code":101,"command":"build.ps1 -Action check","ended":"2026-09-27T00:14:27.4975235+08:00","started":"2026-09-27T00:13:53.0405541+08:00"}
+{"exit_code":101,"started":"2026-09-27T00:44:12.5559524+08:00","command":"cargo test --locked --test session_turns --test tool_session_turns","ended":"2026-09-27T00:44:42.9401930+08:00"}
+{"exit_code":0,"started":"2026-09-27T00:50:45.7843169+08:00","ended":"2026-09-27T00:50:58.9001267+08:00","command":"cargo test --locked --test session_turns --test tool_session_turns --lib"}
+{"started":"2026-09-27T00:51:33.5369779+08:00","exit_code":0,"ended":"2026-09-27T00:51:46.2329729+08:00","command":"cargo clippy --workspace --all-targets --locked -- -D warnings"}
+{"command":"cargo test --locked --test approval_gate --test approval_http --test workspace_changes --test workspace_crash --test workspace_http --test runtime","started":"2026-09-27T00:52:22.0372083+08:00","ended":"2026-09-27T00:52:43.8572149+08:00","exit_code":0}

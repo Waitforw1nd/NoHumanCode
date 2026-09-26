@@ -1,0 +1,44 @@
+[
+  {
+    "file": "checkpoint-check.raw.log",
+    "raw_path": ".local/verification/B-R4-20260927-001121/checkpoint-check.raw.log",
+    "raw_sha256": "EA1FEE5C19B9D2DC9FACE87D22070F5A8F5EEA26E72DAB5981A662A9D1B03CC3",
+    "published_sha256": "0B18457AEE8F26DD7A695418B522CCCC4E3C37EA50D61B8FB867FBD5C51D915B",
+    "transformation": "Published copy: local worktree/repository path normalization; originals retained."
+  },
+  {
+    "file": "commands.jsonl",
+    "raw_path": ".local/verification/B-R4-20260927-001121/commands.jsonl",
+    "raw_sha256": "27C9D16388FF71F001C69FD74CBD2E65AA1BF18CB1B804376B97A3577C7D5851",
+    "published_sha256": "27C9D16388FF71F001C69FD74CBD2E65AA1BF18CB1B804376B97A3577C7D5851",
+    "transformation": "Published copy: local worktree/repository path normalization; originals retained."
+  },
+  {
+    "file": "tool-session-clippy.raw.log",
+    "raw_path": ".local/verification/B-R4-20260927-001121/tool-session-clippy.raw.log",
+    "raw_sha256": "408FD208A4770EF66B1D3457F55876E50ED31B5EAE9E6F141CAA130D40CDE7B5",
+    "published_sha256": "420E5E988653B824AD9BCAA5C31E9E18BE6A64BD108FA25B0D2731E25AF91D2A",
+    "transformation": "Published copy: local worktree/repository path normalization; originals retained."
+  },
+  {
+    "file": "tool-session-first.raw.log",
+    "raw_path": ".local/verification/B-R4-20260927-001121/tool-session-first.raw.log",
+    "raw_sha256": "CC555C84028F7B14159C7C3289F75509D3FF84B0FBE9B7E7B847597110DCD61B",
+    "published_sha256": "648DEDC7AE3C8D58B9F70D9D6555C20DF259703EEB111F16B97454F237D21E55",
+    "transformation": "Published copy: local worktree/repository path normalization; originals retained."
+  },
+  {
+    "file": "tool-session-regression.raw.log",
+    "raw_path": ".local/verification/B-R4-20260927-001121/tool-session-regression.raw.log",
+    "raw_sha256": "78F88C0CDD90E12DBD7F6AB11D586F24015CC220CC56533822276A4429B7FB78",
+    "published_sha256": "B4629BC6B7409BC0BA72B92685684A746A28407E4610A71BF1F1A522809A465C",
+    "transformation": "Published copy: local worktree/repository path normalization; originals retained. Manager trimmed generated trailing blank lines in this unpublished copy before archive; original unchanged."
+  },
+  {
+    "file": "tool-session-second.raw.log",
+    "raw_path": ".local/verification/B-R4-20260927-001121/tool-session-second.raw.log",
+    "raw_sha256": "93D40B64F290A6EBFC15F17D4B85D146B047A7B4CAD2B69AD5FFC0E697CEA957",
+    "published_sha256": "D8F564F5AB5C92A17EA642FDDA724AEE5288E76838F212510144066A8FC3A4C4",
+    "transformation": "Published copy: local worktree/repository path normalization; originals retained. Manager trimmed generated trailing blank lines in this unpublished copy before archive; original unchanged."
+  }
+]

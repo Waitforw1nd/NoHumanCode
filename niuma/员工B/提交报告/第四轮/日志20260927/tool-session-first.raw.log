@@ -1,0 +1,213 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling windows-link v0.2.1
+   Compiling cfg-if v1.0.5
+   Compiling smallvec v1.16.1
+   Compiling pin-project-lite v0.2.17
+   Compiling stable_deref_trait v1.2.1
+   Compiling itoa v1.0.18
+   Compiling bytes v1.12.1
+   Compiling futures-core v0.3.34
+   Compiling once_cell v1.21.4
+   Compiling scopeguard v1.2.0
+   Compiling serde_core v1.0.229
+   Compiling litemap v0.8.3
+   Compiling writeable v0.6.4
+   Compiling percent-encoding v2.3.2
+   Compiling utf8_iter v1.0.4
+   Compiling log v0.4.34
+   Compiling slab v0.4.12
+   Compiling tower-service v0.3.3
+   Compiling zeroize v1.9.0
+   Compiling memchr v2.8.3
+   Compiling futures-task v0.3.34
+   Compiling quote v1.0.47
+   Compiling serde v1.0.229
+   Compiling try-lock v0.2.5
+   Compiling icu_normalizer_data v2.3.0
+   Compiling icu_properties_data v2.3.0
+   Compiling untrusted v0.9.0
+   Compiling httparse v1.10.1
+   Compiling httpdate v1.0.3
+   Compiling atomic-waker v1.1.2
+   Compiling bitflags v2.13.2
+   Compiling windows-sys v0.61.2
+   Compiling getrandom v0.2.17
+   Compiling lock_api v0.4.14
+   Compiling want v0.3.1
+   Compiling sync_wrapper v1.0.2
+   Compiling parking_lot_core v0.9.12
+   Compiling http v1.5.0
+   Compiling tracing-core v0.1.36
+   Compiling rustls-pki-types v1.15.1
+   Compiling ring v0.17.14
+   Compiling form_urlencoded v1.2.2
+   Compiling futures-channel v0.3.34
+   Compiling typenum v1.20.1
+   Compiling tower-layer v0.3.3
+   Compiling libc v0.2.189
+   Compiling zmij v1.0.23
+   Compiling base64 v0.22.1
+   Compiling anstyle v1.0.14
+   Compiling ipnet v2.12.2
+   Compiling utf8parse v0.2.2
+   Compiling once_cell_polyfill v1.70.2
+   Compiling leb128fmt v0.1.0
+   Compiling ryu v1.0.23
+   Compiling subtle v2.6.1
+   Compiling libm v0.2.16
+   Compiling colorchoice v1.0.5
+   Compiling unicode-width v0.2.2
+   Compiling foldhash v0.1.5
+   Compiling bumpalo v3.20.3
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling getrandom v0.4.3
+   Compiling parking_lot v0.12.5
+   Compiling strsim v0.11.1
+   Compiling mime v0.3.17
+   Compiling wasm-encoder v0.259.0
+   Compiling anstyle-parse v1.0.0
+   Compiling hashbrown v0.15.5
+   Compiling futures-sink v0.3.34
+   Compiling http-body v1.1.0
+   Compiling tracing v0.1.44
+   Compiling webpki-roots v1.0.9
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.2
+   Compiling clap_lex v1.1.1
+   Compiling windows-targets v0.52.6
+   Compiling libsqlite3-sys v0.35.0
+   Compiling wasmparser v0.228.0
+   Compiling fallible-iterator v0.3.0
+   Compiling wasmi_collections v2.0.0
+   Compiling matchit v0.8.4
+   Compiling unsafe-libyaml v0.2.11
+   Compiling http-body-util v0.1.5
+   Compiling spin v0.9.9
+   Compiling cpufeatures v0.2.17
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling anyhow v1.0.104
+   Compiling uuid v1.26.1
+   Compiling windows-sys v0.59.0
+   Compiling fastrand v2.5.0
+   Compiling generic-array v0.14.7
+   Compiling mio v1.2.3
+   Compiling socket2 v0.6.5
+   Compiling anstyle-query v1.1.5
+   Compiling anstyle-wincon v3.0.11
+   Compiling axum-core v0.5.6
+   Compiling hashlink v0.10.0
+   Compiling tempfile v3.27.0
+   Compiling wasmi_core v2.0.0
+   Compiling anstream v1.0.0
+   Compiling syn v3.0.6
+   Compiling syn v2.0.119
+   Compiling rusqlite v0.37.0
+   Compiling indexmap v2.14.2
+   Compiling clap_builder v4.6.7
+   Compiling wast v259.0.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling wasmi_ir v2.0.0
+   Compiling sha2 v0.10.9
+   Compiling rustls-webpki v0.103.15
+   Compiling rustls v0.23.45
+   Compiling serde_json v1.0.151
+   Compiling serde_path_to_error v0.1.20
+   Compiling async-stream-impl v0.3.6
+   Compiling synstructure v0.14.0
+   Compiling async-stream v0.3.6
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.3
+   Compiling zerovec-derive v0.11.6
+   Compiling displaydoc v0.2.7
+   Compiling tokio-macros v2.7.2
+   Compiling futures-macro v0.3.34
+   Compiling serde_derive v1.0.229
+   Compiling clap_derive v4.6.7
+   Compiling tokio v1.53.1
+   Compiling futures-util v0.3.34
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.3
+   Compiling zerovec v0.11.8
+   Compiling zerotrie v0.2.5
+   Compiling wat v1.259.0
+   Compiling clap v4.6.7
+   Compiling tinystr v0.8.4
+   Compiling potential_utf v0.1.6
+   Compiling wasmi v2.0.0
+   Compiling icu_collections v2.3.0
+   Compiling icu_locale_core v2.3.0
+   Compiling icu_provider v2.3.1
+   Compiling serde_urlencoded v0.7.1
+   Compiling peachsh-protocol v0.1.0 (NoManCode/rust-app\crates\protocol)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling icu_normalizer v2.3.0
+   Compiling icu_properties v2.3.0
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling hyper v1.11.1
+   Compiling tower v0.5.3
+   Compiling tokio-rustls v0.26.5
+   Compiling tokio-util v0.7.19
+   Compiling tower-http v0.6.11
+   Compiling hyper-util v0.1.20
+   Compiling hyper-rustls v0.27.9
+   Compiling axum v0.8.9
+   Compiling reqwest v0.12.28
+   Compiling peachsh v0.2.0 (NoManCode/rust-app)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 27.46s
+     Running tests\session_turns.rs (target\debug\deps\session_turns-3bf8834db2d7f374.exe)
+
+running 19 tests
+test run_context_distinguishes_missing_unmapped_and_corrupt ... ok
+test run_context_uses_persisted_mapping_and_commit_order ... ok
+test t7_unsupported_and_invalid_inputs_add_nothing ... ok
+test t11_route_removal_uses_a_valid_short_prefix ... ok
+test t4_workspace_guard_is_independent_of_agent_count ... ok
+test t5_two_store_connections_allow_only_one_successor ... ok
+test t8_event_insert_failure_rolls_back_append ... ok
+test t12_session_events_stay_ordered_across_turns ... ok
+test t6_same_second_uuid_order_does_not_decide_latest ... ok
+test t10_running_resume_blocks_append ... ok
+test t4_changed_key_inputs_and_legacy_key_conflict ... ok
+test t1_t2_three_turns_keep_identity_and_independent_results ... ok
+test session_and_turn_decode_failures_are_corrupt_not_missing ... ok
+test t10_historical_resume_loses_to_a_newer_turn ... ok
+test t3_same_key_replay_does_not_relaunch_or_grow ... ok
+test t7_busy_non_chat_corrupt_order_and_unpaired_tools_are_refused ... ok
+test t7_each_prefix_fault_is_the_only_reason ... ok
+test t9_cancel_restart_and_resume_boundaries ... ok
+test t11_route_workspace_and_context_limits_fail_closed ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+
+     Running tests\tool_session_turns.rs (target\debug\deps\tool_session_turns-128201ca1b6548a1.exe)
+
+running 6 tests
+test n03_denied_write_history_can_continue_without_inheriting_approval ... ok
+test n06_malformed_and_changed_origin_history_cannot_append ... ok
+test n09_stop_before_approval_claim_has_no_write_or_claim ... ok
+test n04_restore_then_new_task_uses_restored_bytes_and_host_fact ... FAILED
+test n03_closed_history_inherits_permissions_and_creates_fresh_approval ... ok
+test n05_all_historical_unresolved_states_block_but_replay_survives ... ok
+
+failures:
+
+---- n04_restore_then_new_task_uses_restored_bytes_and_host_fact stdout ----
+
+thread 'n04_restore_then_new_task_uses_restored_bytes_and_host_fact' (44752) panicked at tests\tool_session_turns.rs:277:5:
+assertion `left == right` failed
+  left: [1, 0, 0, 0, 208, 140, 157, 223, 1, 21, 209, 17, 140, 122, 0, 192, 79, 194, 151, 235, 1, 0, 0, 0, 206, 139, 230, 184, 196, 141, 63, 73, 171, 28, 82, 251, 90, 211, 203, 79, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 16, 102, 0, 0, 0, 1, 0, 0, 32, 0, 0, 0, 248, 0, 58, 206, 233, 26, 1, 91, 60, 109, 5, 42, 115, 88, 46, 93, 246, 15, 39, 71, 65, 2, 10, 240, 75, 107, 45, 126, 140, 153, 31, 50, 0, 0, 0, 0, 14, 128, 0, 0, 0, 2, 0, 0, 32, 0, 0, 0, 30, 133, 204, 139, 189, 243, 163, 73, 107, 130, 113, 58, 201, 164, 112, 237, 45, 36, 165, 95, 133, 115, 144, 36, 213, 68, 88, 247, 21, 86, 66, 209, 16, 0, 0, 0, 167, 63, 190, 194, 2, 169, 19, 8, 22, 24, 9, 129, 5, 223, 190, 211, 64, 0, 0, 0, 56, 182, 177, 137, 139, 212, 241, 58, 61, 28, 165, 196, 211, 165, 105, 154, 98, 143, 15, 72, 55, 1, 170, 111, 130, 160, 189, 114, 212, 94, 239, 83, 160, 194, 37, 39, 27, 153, 42, 76, 33, 142, 188, 152, 29, 194, 201, 230, 118, 115, 93, 11, 93, 207, 163, 91, 102, 182, 71, 24, 75, 205, 220, 131]
+ right: [98, 101, 102, 111, 114, 101]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    n04_restore_then_new_task_uses_restored_bytes_and_host_fact
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+error: test failed, to rerun pass `--test tool_session_turns`
