@@ -702,25 +702,6 @@ pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyRe
     )?;
     Ok(())
 }
-pub(crate) fn inherit_task_tx(
-    db: &Connection,
-    previous: &crate::domain::Task,
-    task: &crate::domain::Task,
-) -> AnyResult<()> {
-    let binding = crate::project_config::validate_task_tx(db, task, true, true)?;
-    let subject = NetworkSubject {
-        kind: NetworkSubjectKind::Route,
-        id: task.route.id.clone(),
-        project_id: Some(binding.project_id),
-    };
-    let (grant, _) =
-        checked_authorization(db, &subject, &[NetworkPurpose::Completion], Some(previous))?;
-    db.execute(
-        "INSERT INTO task_network_bindings VALUES (?1,?2,?3)",
-        params![task.id, grant.authorization_id, grant.binding_digest],
-    )?;
-    Ok(())
-}
 fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
     let row: Option<(String, String, Option<String>, String)> = db
         .query_row(

@@ -59,12 +59,49 @@ impl Engine {
     }
 }
 #[cfg(test)]
-fn route_subject(id: &str) -> NetworkSubject {
+fn route_subject(store: &Store, id: &str) -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: id.into(),
-        project_id: None,
+        project_id: store.current_project().unwrap().project_id,
     }
+}
+#[cfg(test)]
+fn configure_fixture_project(store: &Store) {
+    let settings = store.settings().unwrap().unwrap();
+    let current = store.current_project().unwrap();
+    let project = if let Some(id) = current.project_id {
+        id
+    } else {
+        let project = store
+            .register_project(RegisterProject {
+                name: "fixture".into(),
+                root_path: settings.workspace,
+                idempotency_key: id(),
+            })
+            .unwrap();
+        store
+            .select_project(SelectProject {
+                project_id: project.id.clone(),
+                expected_revision: current.revision,
+            })
+            .unwrap();
+        project.id
+    };
+    let old = store.project_config(&project).unwrap();
+    store
+        .configure_project(ConfigureProject {
+            project_id: project,
+            expected_revision: old.revision,
+            config: crate::project_config::ProjectConfig {
+                allowed_route_ids: settings.routes.iter().map(|r| r.id.clone()).collect(),
+                default_route_id: settings.routes.first().map(|r| r.id.clone()),
+                tools: true,
+                write_scopes: vec!["*".into()],
+                allow_commands: true,
+            },
+        })
+        .unwrap();
 }
 impl Engine {
     pub fn project_config(&self, id: &ProjectId) -> Result<ProjectConfigSnapshot> {
@@ -2143,8 +2180,9 @@ fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
 #[cfg(test)]
 mod workspace_phase_tests {
     fn authorize_fixture(store: &crate::store::Store) {
+        super::configure_fixture_project(store);
         for route in store.settings().unwrap().unwrap().routes {
-            let subject = super::route_subject(&route.id);
+            let subject = super::route_subject(store, &route.id);
             let p = store.network_preview(subject.clone()).unwrap();
             store
                 .network_confirm(
@@ -3540,10 +3578,13 @@ mod network_gate_tests {
             })
             .unwrap();
         store.put_secret("route", "fixture-gate-key").unwrap();
-        let p = store.network_preview(route_subject("route")).unwrap();
+        super::configure_fixture_project(&store);
+        let p = store
+            .network_preview(route_subject(&store, "route"))
+            .unwrap();
         store
             .network_confirm(
-                route_subject("route"),
+                route_subject(&store, "route"),
                 ConfirmRequest {
                     config_revision: p.config_revision,
                     credential_revision: p.credential_revision,
@@ -3624,7 +3665,10 @@ mod network_gate_tests {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("http://{}", listener.local_addr().unwrap());
         let e = setup(dir.path(), &base);
-        let p = e.network_preview(route_subject("route")).await.unwrap();
+        let p = e
+            .network_preview(route_subject(&e.store, "route"))
+            .await
+            .unwrap();
         let held = e.acquire_network_slot().await.unwrap();
         let request = e.route_models("route");
         tokio::pin!(request);
@@ -3659,9 +3703,12 @@ mod network_gate_tests {
             .await
             .unwrap();
         });
-        let preview = e.network_preview(route_subject("route")).await.unwrap();
+        let preview = e
+            .network_preview(route_subject(&e.store, "route"))
+            .await
+            .unwrap();
         e.network_confirm(
-            route_subject("route"),
+            route_subject(&e.store, "route"),
             ConfirmRequest {
                 config_revision: preview.config_revision,
                 credential_revision: preview.credential_revision,
@@ -3687,7 +3734,11 @@ mod network_gate_tests {
             } else {
                 "network-after-claim"
             };
-            crash_probe::arm("route:route".into(), at, root.join("signal"));
+            crash_probe::arm(
+                route_subject(&e.store, "route").key().unwrap(),
+                at,
+                root.join("signal"),
+            );
             let _ = e.route_models("route").await;
             panic!("child should block");
         }

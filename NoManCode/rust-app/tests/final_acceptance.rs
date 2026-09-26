@@ -260,8 +260,29 @@ fn state_updates_sync_new_projection_and_reject_backwards_transition() -> Result
 
 #[test]
 fn resume_keeps_task_identity_and_requeues_turn() -> Result<()> {
-    let (_file, store, project, session, agent, turn, task, legacy) = fixture();
-    commit(&store, &project, &session, &agent, &turn, &task, &legacy)?;
+    let root = tempfile::tempdir()?;
+    let store = std::sync::Arc::new(Store::open(&root.path().join("resume.db"))?);
+    store.save_settings(&Settings {
+        workspace: root.path().to_string_lossy().into(),
+        max_concurrency: 1,
+        routes: vec![route()],
+        newapi: None,
+    })?;
+    store.put_secret("main", "fake-key-acceptance")?;
+    network_fixture::authorize_routes(&store);
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let engine = peachsh::engine::Engine::new(store.clone(), 1)?;
+    let run = runtime.block_on(engine.start(RunRequest {
+        title: "resume".into(),
+        kind: SessionKind::Team,
+        tasks: vec![task_spec("worker")],
+    }))?;
+    // Shutdown before the queued runner can dispatch a model request.
+    drop(runtime);
+    let legacy = run.tasks[0].clone();
+    let turn = store.run_context(&run.id)?.latest_turn;
     let mut running = legacy.clone();
     running.status = "running".into();
     running.updated_at = 2;

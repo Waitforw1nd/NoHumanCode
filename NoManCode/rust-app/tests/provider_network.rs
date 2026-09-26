@@ -1,4 +1,7 @@
-//! Public Engine authorization paths; no test permit or transport bypass.
+#[path = "support/project_fixture.rs"]
+#[allow(dead_code)]
+mod project_fixture;
+// Public Engine authorization paths; no test permit or transport bypass.
 use peachsh::{
     domain::{Account, Route, Settings},
     engine::Engine,
@@ -103,16 +106,18 @@ impl Endpoint {
         let _ = self.task.await;
     }
 }
-fn subject() -> NetworkSubject {
+fn subject(engine: &Engine) -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: "route".into(),
+        project_id: engine.current_project().unwrap().project_id,
     }
 }
 fn account_subject() -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Account,
         id: "newapi".into(),
+        project_id: None,
     }
 }
 fn settings(dir: &std::path::Path, base: &str) -> Settings {
@@ -141,6 +146,7 @@ async fn engine(dir: &std::path::Path, base: &str, key: &str) -> Arc<Engine> {
         )
         .await
         .unwrap();
+    project_fixture::configured_project(&engine.store);
     engine
 }
 async fn authorize(
@@ -184,7 +190,7 @@ async fn management_requires_whole_check_scope_and_persists_real_calls() {
     assert_eq!(endpoint.counts(), (0, 0));
     let narrow = authorize(
         &engine,
-        subject(),
+        subject(&engine),
         vec![NetworkPurpose::Models],
         "models-only",
     )
@@ -196,7 +202,7 @@ async fn management_requires_whole_check_scope_and_persists_real_calls() {
     assert_eq!(endpoint.counts(), (0, 0));
     let full = authorize(
         &engine,
-        subject(),
+        subject(&engine),
         vec![NetworkPurpose::Models, NetworkPurpose::Completion],
         "check-both",
     )
@@ -235,7 +241,7 @@ async fn target_path_model_and_raw_credential_changes_never_reuse_old_authorizat
     let b = Endpoint::start(None).await;
     let dir = tempfile::tempdir_in("target").unwrap();
     let engine = engine(dir.path(), &a.base, "fixture-key-a").await;
-    authorize(&engine, subject(), vec![NetworkPurpose::Models], "a").await;
+    authorize(&engine, subject(&engine), vec![NetworkPurpose::Models], "a").await;
     assert_eq!(
         engine.route_models("route").await.unwrap().result,
         vec!["m"]
@@ -252,7 +258,7 @@ async fn target_path_model_and_raw_credential_changes_never_reuse_old_authorizat
         NetworkErrorKind::Required,
     );
     assert_eq!(b.counts(), (0, 0));
-    authorize(&engine, subject(), vec![NetworkPurpose::Models], "b").await;
+    authorize(&engine, subject(&engine), vec![NetworkPurpose::Models], "b").await;
     engine.route_models("route").await.unwrap();
     assert!(b.last().starts_with("GET /v2/models "));
     assert!(b.last().contains("Bearer fixture-key-b"));
@@ -266,7 +272,13 @@ async fn target_path_model_and_raw_credential_changes_never_reuse_old_authorizat
         NetworkErrorKind::Required,
     );
     assert_eq!(b.counts(), (1, 1));
-    authorize(&engine, subject(), vec![NetworkPurpose::Models], "b-v3").await;
+    authorize(
+        &engine,
+        subject(&engine),
+        vec![NetworkPurpose::Models],
+        "b-v3",
+    )
+    .await;
     engine.route_models("route").await.unwrap();
     assert!(b.last().starts_with("GET /v3/models "));
     // Raw secret storage is not authorization. This must be rejected at actual admission.
@@ -281,7 +293,7 @@ async fn target_path_model_and_raw_credential_changes_never_reuse_old_authorizat
     assert_eq!(b.counts(), (2, 2));
     authorize(
         &engine,
-        subject(),
+        subject(&engine),
         vec![NetworkPurpose::Models],
         "new-credential",
     )
@@ -301,7 +313,7 @@ async fn account_binding_is_local_and_identity_changes_need_separate_confirmatio
     let engine = engine(dir.path(), &endpoint.base, "fixture-route-key").await;
     authorize(
         &engine,
-        subject(),
+        subject(&engine),
         vec![NetworkPurpose::Models],
         "route-only",
     )
@@ -381,7 +393,7 @@ async fn redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reop
     ] {
         let a = Endpoint::start(Some(wire)).await; let dir = tempfile::tempdir_in("target").unwrap();
         let engine = engine(dir.path(), &a.base, "fixture-key").await;
-        authorize(&engine, subject(), vec![NetworkPurpose::Models], "one-call").await;
+        authorize(&engine, subject(&engine), vec![NetworkPurpose::Models], "one-call").await;
         let error = engine.route_models("route").await.unwrap_err(); assert_eq!(error.kind, kind); assert_eq!(error.calls.len(), 1);
         let call = error.calls[0].clone(); assert_eq!(call.state, state); assert_eq!(call.result, Some(result));
         assert_eq!(a.counts(), (1, 1)); assert_eq!(b.counts(), (0, 0)); drop(engine);
@@ -393,7 +405,7 @@ async fn redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reop
     let engine = engine(dir.path(), &b.base, "fixture-b-key").await;
     authorize(
         &engine,
-        subject(),
+        subject(&engine),
         vec![NetworkPurpose::Models],
         "reachable-b",
     )

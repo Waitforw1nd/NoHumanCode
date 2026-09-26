@@ -918,7 +918,7 @@ impl Store {
                 &turn.project_id,
                 config.revision,
             )?;
-            crate::network_authorization::inherit_task_tx(&tx, &previous_legacy, legacy_task)?;
+            crate::network_authorization::bind_task_tx(&tx, legacy_task)?;
         }
         tx.commit()?;
         Ok(ChatTurnReceipt {

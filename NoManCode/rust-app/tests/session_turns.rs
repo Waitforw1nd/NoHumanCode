@@ -1436,25 +1436,8 @@ async fn t11_route_workspace_and_context_limits_fail_closed() {
         .into();
     std::fs::create_dir_all(&settings.workspace).unwrap();
     harness.engine.store.save_settings(&settings).unwrap();
-    let moved_workspace = harness
-        .engine
-        .send_chat_turn(command(
-            &harness.session.id,
-            &harness.agent.id,
-            &harness.first.turn.id,
-            "目录变了",
-            "workspace-moved",
-        ))
-        .await;
-    assert_eq!(error_of(moved_workspace), ChatTurnError::UnsupportedSession);
-    assert_eq!(table_counts(&harness), objects_before);
-    settings.workspace = harness
-        .engine
-        .store
-        .project(&harness.session.project_id)
-        .unwrap()
-        .root_path;
-    harness.engine.store.save_settings(&settings).unwrap();
+    // Legacy Settings.workspace is no longer an authority for an existing Session.
+    // The following new Turn must retain the project's original verified root.
     let kept = harness
         .engine
         .send_chat_turn(command(
@@ -1480,7 +1463,7 @@ async fn t11_route_workspace_and_context_limits_fail_closed() {
             .unwrap()
             .root_path
     );
-    assert_eq!(task.workspace, settings.workspace);
+    assert_ne!(task.workspace, settings.workspace);
     let current = wait_task(&harness.engine, &kept.task.legacy_task_id).await;
     let mut prefix = current.messages.clone();
     prefix.push(json!({"role":"assistant","content":"x".repeat(1_450_000)}));
@@ -1778,7 +1761,14 @@ async fn t7_busy_non_chat_corrupt_order_and_unpaired_tools_are_refused() {
             "workspace-mismatch",
         ))
         .await;
-    assert_eq!(error_of(mismatch), ChatTurnError::UnsupportedSession);
+    assert_eq!(
+        mismatch
+            .unwrap_err()
+            .downcast_ref::<peachsh::project_config::ProjectError>()
+            .unwrap()
+            .code(),
+        "project_root_unavailable"
+    );
     assert_eq!(table_counts(&multi).4, before_multi.4);
     assert_eq!(calls(&harness), calls_before);
     assert_eq!(table_counts(&harness), objects_before);
@@ -1951,7 +1941,14 @@ async fn t4_workspace_guard_is_independent_of_agent_count() {
             "workspace-engine",
         ))
         .await;
-    assert_eq!(error_of(engine_error), ChatTurnError::UnsupportedSession);
+    assert_eq!(
+        engine_error
+            .unwrap_err()
+            .downcast_ref::<peachsh::project_config::ProjectError>()
+            .unwrap()
+            .code(),
+        "project_root_unavailable"
+    );
     let mut candidate = broken.clone();
     candidate.id = "workspace-candidate".into();
     candidate.status = "queued".into();
