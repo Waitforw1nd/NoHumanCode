@@ -5,13 +5,17 @@ use crate::{
     engine::Engine,
     git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
     network_authorization::{ConfirmRequest, NetworkError, NetworkErrorKind, NetworkSubject},
-    secrets, wasm,
+    project_config::{
+        ConfigureProject, ProjectConfig, ProjectConfigSnapshot, ProjectError, ProjectSelection,
+        RegisterProject, SelectProject, StartInProject,
+    },
+    secrets,
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
 };
 use axum::{
     Json, Router,
     extract::{
-        DefaultBodyLimit, FromRequest, Path, Request, State,
+        DefaultBodyLimit, FromRequest, Path, RawQuery, Request, State,
         rejection::{JsonRejection, PathRejection},
     },
     http::{HeaderMap, HeaderValue, StatusCode, header},
@@ -64,6 +68,9 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         if let Some(error) = self.error.downcast_ref::<NetworkError>() {
             return network_error(error.clone());
+        }
+        if let Some(error) = self.error.downcast_ref::<ProjectError>() {
+            return project_failure(error.code(), &error.to_string());
         }
         let message = secrets::scrub(&self.error.to_string(), "");
         let body = ErrorBody {
@@ -317,6 +324,11 @@ fn is_corrupt_store(error: &anyhow::Error) -> bool {
 /// Callers must classify settings lookup separately from a later "missing
 /// settings" or unknown-route validation error.
 fn read_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     if error
         .downcast_ref::<crate::store::IdempotencyConflict>()
         .is_some()
@@ -410,7 +422,18 @@ pub fn router(app: App) -> Router {
         .route("/api/runs/{id}", get(run))
         .route("/api/runs/{id}/context", get(run_context))
         .route("/api/runs/{id}/events", get(events))
-        .route("/api/projects", get(projects))
+        .route("/api/projects", get(projects).post(register_project))
+        .route("/api/projects/{id}", get(project))
+        .route(
+            "/api/projects/{id}/config",
+            get(project_config).put(configure_project),
+        )
+        .route("/api/projects/{id}/runs", post(start_project))
+        .route(
+            "/api/project-selection",
+            get(project_selection).put(select_project),
+        )
+        .route("/api/tasks/{id}/project", get(task_project))
         .route("/api/sessions/{id}", get(session))
         .route(
             "/api/sessions/{id}/turns",
@@ -450,6 +473,10 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
         return forbidden("拒绝跨站请求");
     }
     let authenticated_read = request.uri().path().starts_with("/api/network/")
+        || request.uri().path().starts_with("/api/projects")
+        || request.uri().path() == "/api/project-selection"
+        || (request.uri().path().starts_with("/api/tasks/")
+            && request.uri().path().ends_with("/project"))
         || (request.uri().path().starts_with("/api/tasks/")
             && request.uri().path().ends_with("/network-calls"));
     if (authenticated_read
@@ -536,16 +563,25 @@ async fn network_get_moved() -> Response {
         .insert(header::ALLOW, HeaderValue::from_static("POST"));
     response
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RouteProjectBody {
+    project_id: Option<ProjectId>,
+}
 async fn models(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
-    ContractJson(_): ContractJson<EmptyBody>,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<RouteProjectBody>>,
 ) -> Response {
     let id = match workspace_task_id(id) {
         Ok(id) => id,
         Err(error) => return error.into_response(),
     };
-    match app.engine.route_models(&id).await {
+    let result = match body.project_id {
+        Some(project) => app.engine.project_route_models(&project, &id).await,
+        None => app.engine.route_models(&id).await,
+    };
+    match result {
         Ok(value) => Json(value).into_response(),
         Err(error) => network_error(error),
     }
@@ -553,13 +589,17 @@ async fn models(
 async fn check(
     State(app): State<App>,
     id: std::result::Result<Path<String>, PathRejection>,
-    ContractJson(_): ContractJson<EmptyBody>,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<RouteProjectBody>>,
 ) -> Response {
     let id = match workspace_task_id(id) {
         Ok(id) => id,
         Err(error) => return error.into_response(),
     };
-    match app.engine.route_check(&id).await {
+    let result = match body.project_id {
+        Some(project) => app.engine.project_route_check(&project, &id).await,
+        None => app.engine.route_check(&id).await,
+    };
+    match result {
         Ok(value) => Json(value).into_response(),
         Err(error) => network_error(error),
     }
@@ -610,6 +650,9 @@ async fn balance(State(app): State<App>, ContractJson(_): ContractJson<EmptyBody
     }
 }
 fn network_error(error: NetworkError) -> Response {
+    if let Some(code) = error.kind.project_code() {
+        return (project_status(code), Json(json!({"error":{"code":code,"message":"项目网络操作被拒绝，请检查项目状态与权限","dispatch_state":error.dispatch_state,"calls":error.calls,"retryable":false}}))).into_response();
+    }
     let (status, code, message) = match error.kind {
         NetworkErrorKind::Invalid => (StatusCode::BAD_REQUEST, "invalid", "网络请求无效"),
         NetworkErrorKind::NotFound => (StatusCode::NOT_FOUND, "not_found", "网络对象不存在"),
@@ -637,6 +680,11 @@ fn network_error(error: NetworkError) -> Response {
             "网络服务处理失败",
         ),
         NetworkErrorKind::Upstream => (StatusCode::BAD_GATEWAY, "upstream", "上游请求未成功完成"),
+        _ => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal",
+            "网络服务处理失败",
+        ),
     };
     (status,Json(json!({"error":{"code":code,"message":message,"dispatch_state":error.dispatch_state,"calls":error.calls,"retryable":false}}))).into_response()
 }
@@ -743,11 +791,233 @@ async fn task_network_calls(
         Err(error) => network_error(error),
     }
 }
-async fn runs(State(app): State<App>) -> Result<Json<Value>> {
+async fn runs(State(app): State<App>, RawQuery(query): RawQuery) -> Result<Json<Value>> {
+    if let Some(id) = project_query(query)? {
+        let runs = app.engine.project_runs(&id).map_err(read_error)?;
+        return Ok(Json(json!(
+            runs.into_iter()
+                .map(|r| json!({"id":r.id,"title":r.title,"kind":r.kind,"created_at":r.created_at}))
+                .collect::<Vec<_>>()
+        )));
+    }
     Ok(Json(json!(app.engine.store.runs().map_err(read_error)?)))
+}
+fn project_query(query: Option<String>) -> Result<Option<ProjectId>> {
+    let mut project = None;
+    for pair in query
+        .as_deref()
+        .unwrap_or("")
+        .split('&')
+        .filter(|p| !p.is_empty())
+    {
+        let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+        let key = percent_decode(key)?;
+        let value = percent_decode(value)?;
+        if key != "project_id" || project.is_some() {
+            return Err(anyhow::anyhow!("项目查询参数无效").into());
+        }
+        secrets::validate_persisted_id("project_id", &value)?;
+        project = Some(ProjectId(value));
+    }
+    Ok(project)
 }
 async fn projects(State(app): State<App>) -> Result<Json<Vec<Project>>> {
     Ok(Json(app.engine.store.projects().map_err(read_error)?))
+}
+fn project_status(code: &str) -> StatusCode {
+    match code {
+        "project_invalid" => StatusCode::BAD_REQUEST,
+        "project_not_found" => StatusCode::NOT_FOUND,
+        "project_internal" | "project_corrupt" => StatusCode::INTERNAL_SERVER_ERROR,
+        _ => StatusCode::CONFLICT,
+    }
+}
+fn project_failure(code: &str, message: &str) -> Response {
+    let message = secrets::scrub(message, "");
+    (
+        project_status(code),
+        Json(json!({"code":code,"message":message,"error":message,"retryable":false})),
+    )
+        .into_response()
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RegisterProjectBody {
+    name: String,
+    root_path: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConfigureProjectBody {
+    expected_revision: u64,
+    #[serde(deserialize_with = "strict_project_config")]
+    config: ProjectConfig,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SelectProjectBody {
+    project_id: ProjectId,
+    expected_revision: u64,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StartProjectBody {
+    expected_config_revision: u64,
+    #[serde(deserialize_with = "strict_project_run")]
+    request: RunRequest,
+}
+fn object_fields<'a, E: serde::de::Error>(
+    value: &'a Value,
+    allowed: &[&str],
+) -> std::result::Result<&'a serde_json::Map<String, Value>, E> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| E::custom("JSON object required"))?;
+    if object.keys().any(|key| !allowed.contains(&key.as_str())) {
+        return Err(E::custom("unknown object field"));
+    }
+    Ok(object)
+}
+fn strict_project_config<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> std::result::Result<ProjectConfig, D::Error> {
+    let value = Value::deserialize(d)?;
+    let fields = [
+        "allowed_route_ids",
+        "default_route_id",
+        "tools",
+        "write_scopes",
+        "allow_commands",
+    ];
+    let object = object_fields::<D::Error>(&value, &fields)?;
+    if object.len() != fields.len() {
+        return Err(serde::de::Error::custom("complete project config required"));
+    }
+    serde_json::from_value(value).map_err(serde::de::Error::custom)
+}
+fn strict_project_run<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> std::result::Result<RunRequest, D::Error> {
+    let value = Value::deserialize(d)?;
+    let object = object_fields::<D::Error>(&value, &["title", "kind", "tasks"])?;
+    let tasks = object
+        .get("tasks")
+        .and_then(Value::as_array)
+        .ok_or_else(|| serde::de::Error::custom("tasks array required"))?;
+    for task in tasks {
+        object_fields::<D::Error>(
+            task,
+            &[
+                "name",
+                "role",
+                "route_id",
+                "prompt",
+                "depends_on",
+                "write_scopes",
+                "tools",
+                "allow_commands",
+                "max_rounds",
+            ],
+        )?;
+    }
+    serde_json::from_value(value).map_err(serde::de::Error::custom)
+}
+async fn register_project(
+    State(app): State<App>,
+    headers: HeaderMap,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<RegisterProjectBody>>,
+) -> Result<(StatusCode, Json<Project>)> {
+    let idempotency_key = required_idempotency_key(&headers)?;
+    let project = app
+        .engine
+        .register_project(RegisterProject {
+            name: body.name,
+            root_path: body.root_path,
+            idempotency_key,
+        })
+        .await?;
+    Ok((StatusCode::CREATED, Json(project)))
+}
+async fn project(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Response> {
+    let id = ProjectId(workspace_task_id(id)?);
+    match app.engine.store.project(&id) {
+        Ok(project) => Ok(Json(project).into_response()),
+        Err(error) if is_missing_row(&error) => {
+            Ok(project_failure("project_not_found", "项目不存在"))
+        }
+        Err(error) => Err(read_error(error)),
+    }
+}
+async fn project_config(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<ProjectConfigSnapshot>> {
+    app.engine
+        .project_config(&ProjectId(workspace_task_id(id)?))
+        .map(Json)
+        .map_err(read_error)
+}
+async fn configure_project(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<ConfigureProjectBody>>,
+) -> Result<Json<ProjectConfigSnapshot>> {
+    Ok(Json(
+        app.engine
+            .configure_project(ConfigureProject {
+                project_id: ProjectId(workspace_task_id(id)?),
+                expected_revision: body.expected_revision,
+                config: body.config,
+            })
+            .await?,
+    ))
+}
+async fn project_selection(State(app): State<App>) -> Result<Json<ProjectSelection>> {
+    app.engine.current_project().map(Json).map_err(read_error)
+}
+async fn select_project(
+    State(app): State<App>,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<SelectProjectBody>>,
+) -> Result<Json<ProjectSelection>> {
+    Ok(Json(
+        app.engine
+            .select_project(SelectProject {
+                project_id: body.project_id,
+                expected_revision: body.expected_revision,
+            })
+            .await?,
+    ))
+}
+async fn start_project(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<StartProjectBody>>,
+) -> Result<Json<Run>> {
+    Ok(Json(
+        app.engine
+            .start_in_project(StartInProject {
+                project_id: ProjectId(workspace_task_id(id)?),
+                expected_config_revision: body.expected_config_revision,
+                request: body.request,
+                idempotency_key: required_idempotency_key(&headers)?,
+            })
+            .await?,
+    ))
+}
+async fn task_project(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Result<Json<Value>> {
+    let id = workspace_task_id(id)?;
+    app.engine.store.task(&id).map_err(read_error)?;
+    let binding = app.engine.task_project_binding(&id).map_err(read_error)?;
+    Ok(Json(
+        json!({"status":if binding.is_some() {"bound"} else {"legacy_unbound"},"binding":binding}),
+    ))
 }
 async fn session(
     State(app): State<App>,
@@ -828,6 +1098,11 @@ fn required_idempotency_key(headers: &HeaderMap) -> Result<String> {
 /// local fixed message instead of the raw anyhow text. Only the typed
 /// NotFound maps to 404 — a raw missing row inside the command is a 500.
 fn turn_command_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     if error.is::<NetworkError>() {
         return ApiError::from(error);
     }
@@ -1093,6 +1368,11 @@ fn approval_id(path: std::result::Result<Path<String>, PathRejection>) -> Result
 }
 
 fn approval_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     if let Some(typed) = error
         .chain()
         .find_map(|cause| cause.downcast_ref::<approval::ApprovalError>())
@@ -1336,6 +1616,11 @@ async fn restore_checkpoint(
     }
 }
 fn git_diff_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     if error.downcast_ref::<WorkspaceChangeError>().is_some() {
         return workspace_change_error(error);
     }
@@ -1365,6 +1650,11 @@ fn git_diff_error(error: anyhow::Error) -> ApiError {
     ApiError::with_code(status, code, false, anyhow::anyhow!(message))
 }
 fn checkpoint_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     if error.downcast_ref::<WorkspaceChangeError>().is_some() {
         return workspace_change_error(error);
     }
@@ -1428,6 +1718,11 @@ async fn restore(
 }
 
 fn workspace_change_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     let typed = error
         .chain()
         .find_map(|cause| cause.downcast_ref::<WorkspaceChangeError>());
@@ -1471,47 +1766,27 @@ fn workspace_task_id(path: std::result::Result<Path<String>, PathRejection>) -> 
     }
     Ok(id)
 }
-async fn wasm_plugins(State(app): State<App>) -> Result<Json<Value>> {
-    let settings = app
-        .engine
-        .store
-        .settings()
-        .map_err(read_error)?
-        .ok_or_else(|| anyhow::anyhow!("缺少设置"))?;
-    let directory = std::path::Path::new(&settings.workspace)
-        .join(".peachsh")
-        .join("plugins");
-    Ok(Json(
-        json!({"abi":wasm::ABI_VERSION,"plugins":wasm::list(&directory)?}),
-    ))
+async fn wasm_plugins() -> Response {
+    project_failure(
+        "project_operation_unsupported",
+        "项目模式暂未接入WASM插件列表与执行",
+    )
 }
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WasmRun {
     plugin: String,
     input: Value,
+    project_id: Option<ProjectId>,
 }
 async fn wasm_run(
-    State(app): State<App>,
-    ContractJson(body): ContractJson<WasmRun>,
-) -> Result<Json<Value>> {
-    let settings = app
-        .engine
-        .store
-        .settings()
-        .map_err(read_error)?
-        .ok_or_else(|| anyhow::anyhow!("缺少设置"))?;
-    let directory = std::path::Path::new(&settings.workspace)
-        .join(".peachsh")
-        .join("plugins");
-    let report = tokio::task::spawn_blocking(move || {
-        let plugin = wasm::load(&directory, &body.plugin)?;
-        wasm::run(&plugin, &body.input)
-    })
-    .await
-    .map_err(anyhow::Error::from)??;
-    Ok(Json(
-        serde_json::to_value(report).map_err(anyhow::Error::from)?,
-    ))
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<WasmRun>>,
+) -> Response {
+    let _ = (body.plugin, body.input, body.project_id);
+    project_failure(
+        "project_operation_unsupported",
+        "项目模式暂不支持运行WASM插件",
+    )
 }
 /// Shared cursor for Run and Session SSE.
 ///

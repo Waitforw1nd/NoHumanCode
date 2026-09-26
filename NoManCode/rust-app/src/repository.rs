@@ -20,6 +20,122 @@ use serde_json::Value;
 pub const MIGRATION_ID: &str = "project-session-turn-repository";
 pub const APPROVAL_MIGRATION_ID: &str = "tool-call-approval-repository";
 pub const WORKSPACE_CHANGE_MIGRATION_ID: &str = "workspace-change-repository";
+pub const PROJECT_CONFIG_MIGRATION_ID: &str = "project-config-root-binding-v1";
+
+const PROJECT_TABLES: &[(&str, &str)] = &[
+    (
+        "project_configs",
+        "CREATE TABLE IF NOT EXISTS project_configs (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), value TEXT NOT NULL, permission_digest TEXT NOT NULL)",
+    ),
+    (
+        "project_root_bindings",
+        "CREATE TABLE IF NOT EXISTS project_root_bindings (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), identity TEXT NOT NULL)",
+    ),
+    (
+        "project_selection",
+        "CREATE TABLE IF NOT EXISTS project_selection (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), project_id TEXT REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0), CHECK((revision=0 AND project_id IS NULL) OR (revision>0 AND project_id IS NOT NULL)))",
+    ),
+    (
+        "task_project_bindings",
+        "CREATE TABLE IF NOT EXISTS task_project_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), project_id TEXT NOT NULL REFERENCES project_configs(project_id), value TEXT NOT NULL, provenance TEXT NOT NULL CHECK(provenance='native_v1'))",
+    ),
+    (
+        "project_registration_keys",
+        "CREATE TABLE IF NOT EXISTS project_registration_keys (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_configs(project_id), request_hash TEXT NOT NULL)",
+    ),
+];
+pub fn apply_schema_11(tx: &Transaction<'_>) -> Result<()> {
+    for (_, sql) in PROJECT_TABLES {
+        tx.execute_batch(sql)?;
+    }
+    tx.execute(
+        "INSERT OR IGNORE INTO project_selection(id,project_id,revision) VALUES (1,NULL,0)",
+        [],
+    )?;
+    verify_schema_11(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![PROJECT_CONFIG_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 11)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_11(tx: &Transaction<'_>) -> Result<()> {
+    fn normalize(sql: &str) -> String {
+        let mut out = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if let Some(q) = quote {
+                out.push(ch);
+                if ch == q {
+                    if chars.peek() == Some(&q) {
+                        out.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                out.push(ch);
+            } else if !ch.is_whitespace() {
+                out.push(ch.to_ascii_lowercase());
+            }
+        }
+        for prefix in ["createtable", "createuniqueindex", "createindex"] {
+            if let Some(rest) = out.strip_prefix(&format!("{prefix}ifnotexists")) {
+                return format!("{prefix}{rest}");
+            }
+        }
+        out
+    }
+    type NetworkColumn = (String, String, i64, Option<String>, i64, i64);
+    fn columns(db: &Connection, table: &str) -> Result<Vec<NetworkColumn>> {
+        let mut statement = db.prepare(&format!("PRAGMA table_xinfo({table})"))?;
+        Ok(statement
+            .query_map([], |r| {
+                Ok((
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                ))
+            })?
+            .collect::<rusqlite::Result<_>>()?)
+    }
+    let expected = Connection::open_in_memory()?;
+    for (_, sql) in PROJECT_TABLES {
+        expected.execute_batch(sql)?;
+    }
+    for (table, sql) in PROJECT_TABLES {
+        anyhow::ensure!(
+            columns(tx, table)? == columns(&expected, table)?,
+            "project column shape mismatch"
+        );
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "project schema constraint mismatch"
+        );
+    }
+    let count: u64 = tx.query_row(
+        "SELECT count(*) FROM project_selection WHERE id=1",
+        [],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(count == 1, "project selection missing");
+    let violation: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(violation.is_none(), "project foreign key violation");
+    Ok(())
+}
 
 const WORKSPACE_CHANGES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS workspace_changes (
   id TEXT NOT NULL PRIMARY KEY,

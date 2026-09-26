@@ -6,10 +6,11 @@ use peachsh::network_authorization::{
 };
 use peachsh::{
     approval::{ApprovalStatus, CommandNetworkAck, CommandNetworkNotice},
+    project_config::{ProjectConfig, ProjectConfigSnapshot, ProjectSelection, TaskProjectBinding},
     secrets,
 };
 use peachsh::{
-    domain::{Event, Project, Run, Session, Task, Turn, TurnTask},
+    domain::{Event, Project, ProjectId, Run, Session, Task, Turn, TurnTask},
     workspace_changes::{RestoreReceipt, RestoreStatus, WorkspaceChange},
 };
 use reqwest::{Client, Url, redirect::Policy};
@@ -44,9 +45,26 @@ fn valid_message(message: &str) -> bool {
 impl Command {
     pub fn valid_ids(&self) -> bool {
         match self {
-            Self::Project(_) | Self::Account(_) => true,
+            Self::Account(_) => true,
+            Self::Project(args) => match &args.command {
+                ProjectCommand::List | ProjectCommand::Current => true,
+                ProjectCommand::Get { id } | ProjectCommand::Select { id, .. } => valid_id(id),
+                ProjectCommand::Create { name, root, key } => {
+                    !name.trim().is_empty()
+                        && !root.trim().is_empty()
+                        && secrets::validate_idempotency_key(key).is_ok()
+                        && !key.contains(',')
+                }
+                ProjectCommand::Config(args) => match &args.command {
+                    ProjectConfigCommand::Get { id } | ProjectConfigCommand::Set { id, .. } => {
+                        valid_id(id)
+                    }
+                },
+            },
             Self::Route(args) => match &args.command {
-                RouteCommand::Models { id } | RouteCommand::Check { id } => valid_id(id),
+                RouteCommand::Models { id, project } | RouteCommand::Check { id, project } => {
+                    valid_id(id) && valid_id(project)
+                }
             },
             Self::Network(args) => match &args.command {
                 NetworkCommand::Preview(subject) => subject.valid(),
@@ -66,9 +84,11 @@ impl Command {
                 | NetworkCommand::Call { id } => valid_id(id),
             },
             Self::Run(args) => match &args.command {
-                RunCommand::List => true,
+                RunCommand::List { project } => project.as_deref().is_none_or(valid_id),
                 RunCommand::Start(start) => {
                     valid_id(&start.route)
+                        && start.project.as_deref().is_none_or(valid_id)
+                        && (start.project.is_some() == start.expected_config_revision.is_some())
                         && !start.title.trim().is_empty()
                         && start.title.len() <= 500
                         && valid_message(&start.message)
@@ -99,7 +119,7 @@ impl Command {
             },
             Self::Task(task) => match &task.command {
                 TaskCommand::Approvals { task_id } => valid_id(task_id),
-                TaskCommand::NetworkCalls { id } => valid_id(id),
+                TaskCommand::NetworkCalls { id } | TaskCommand::Project { id } => valid_id(id),
                 TaskCommand::Diff { id, path, .. } => {
                     valid_id(id) && peachsh::domain::scope_path(path).is_ok()
                 }
@@ -132,6 +152,42 @@ pub struct ProjectArgs {
 #[derive(Subcommand)]
 enum ProjectCommand {
     List,
+    Create {
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        root: String,
+        #[arg(long)]
+        key: String,
+    },
+    Get {
+        id: String,
+    },
+    Current,
+    Select {
+        id: String,
+        #[arg(long)]
+        expected_revision: u64,
+    },
+    Config(ProjectConfigArgs),
+}
+#[derive(Args)]
+struct ProjectConfigArgs {
+    #[command(subcommand)]
+    command: ProjectConfigCommand,
+}
+#[derive(Subcommand)]
+enum ProjectConfigCommand {
+    Get {
+        id: String,
+    },
+    Set {
+        id: String,
+        #[arg(long)]
+        expected_revision: u64,
+        #[arg(long)]
+        file: std::path::PathBuf,
+    },
 }
 #[derive(Args)]
 pub struct RunArgs {
@@ -140,9 +196,12 @@ pub struct RunArgs {
 }
 #[derive(Subcommand)]
 enum RunCommand {
-    /// Create one agent in the Host's currently configured workspace (no project switch).
+    /// Create in an explicit project, or use the Host default when both project flags are omitted.
     Start(StartArgs),
-    List,
+    List {
+        #[arg(long)]
+        project: Option<String>,
+    },
     Status {
         id: String,
     },
@@ -153,6 +212,10 @@ enum RunCommand {
 }
 #[derive(Args)]
 struct StartArgs {
+    #[arg(long, requires = "expected_config_revision")]
+    project: Option<String>,
+    #[arg(long, requires = "project", value_parser = clap::value_parser!(u64).range(1..))]
+    expected_config_revision: Option<u64>,
     #[arg(long)]
     title: String,
     #[arg(long)]
@@ -216,6 +279,9 @@ pub struct TaskArgs {
 }
 #[derive(Subcommand)]
 enum TaskCommand {
+    Project {
+        id: String,
+    },
     NetworkCalls {
         id: String,
     },
@@ -296,26 +362,32 @@ pub struct NetworkArgs {
     command: NetworkCommand,
 }
 #[derive(Args)]
-#[group(required = true, multiple = false)]
 struct SubjectArgs {
     #[arg(long)]
     route: Option<String>,
-    #[arg(long)]
+    #[arg(long, requires = "route", conflicts_with = "account")]
+    project: Option<String>,
+    #[arg(long, conflicts_with = "route")]
     account: bool,
 }
 impl SubjectArgs {
     fn valid(&self) -> bool {
-        self.route.as_deref().is_none_or(valid_id) && (self.route.is_some() != self.account)
+        self.route.as_deref().is_none_or(valid_id)
+            && (self.route.is_some() != self.account)
+            && (self.route.is_some() == self.project.is_some())
+            && self.project.as_deref().is_none_or(valid_id)
     }
     fn subject(self) -> NetworkSubject {
         match self.route {
             Some(id) => NetworkSubject {
                 kind: NetworkSubjectKind::Route,
                 id,
+                project_id: self.project.map(ProjectId),
             },
             None => NetworkSubject {
                 kind: NetworkSubjectKind::Account,
                 id: "newapi".into(),
+                project_id: None,
             },
         }
     }
@@ -361,8 +433,16 @@ pub struct RouteArgs {
 }
 #[derive(Subcommand)]
 enum RouteCommand {
-    Models { id: String },
-    Check { id: String },
+    Models {
+        id: String,
+        #[arg(long)]
+        project: String,
+    },
+    Check {
+        id: String,
+        #[arg(long)]
+        project: String,
+    },
 }
 #[derive(Args)]
 pub struct AccountArgs {
@@ -1021,6 +1101,25 @@ fn operation_unknown(operation: &str) -> Failure {
     };
     Failure::fixed("operation_result_unknown", message, false)
 }
+fn project_error_code(code: &str) -> Option<&'static str> {
+    match code {
+        "project_invalid" => Some("project_invalid"),
+        "project_not_found" => Some("project_not_found"),
+        "project_revision_conflict" => Some("project_revision_conflict"),
+        "project_duplicate_root" => Some("project_duplicate_root"),
+        "project_overlapping_root" => Some("project_overlapping_root"),
+        "project_selection_required" => Some("project_selection_required"),
+        "project_legacy_unbound" => Some("project_legacy_unbound"),
+        "project_root_changed" => Some("project_root_changed"),
+        "project_root_unavailable" => Some("project_root_unavailable"),
+        "project_permission_revoked" => Some("project_permission_revoked"),
+        "project_operation_unsupported" => Some("project_operation_unsupported"),
+        "project_corrupt" => Some("project_corrupt"),
+        "project_internal" => Some("project_internal"),
+        "workspace_selection_managed" => Some("workspace_selection_managed"),
+        _ => None,
+    }
+}
 fn http_failure(value: Value) -> Result<Failure, Failure> {
     if value.get("error").is_some_and(Value::is_object) {
         return network_http_failure(value);
@@ -1036,7 +1135,7 @@ fn http_failure(value: Value) -> Result<Failure, Failure> {
         Some("forbidden") => "forbidden",
         Some("unavailable") => "unavailable",
         Some("internal") => "internal",
-        _ => return Err(invalid_response()),
+        other => project_error_code(other.unwrap_or("")).ok_or_else(invalid_response)?,
     };
     Ok(Failure {
         code,
@@ -1068,17 +1167,33 @@ async fn workflow_request_bound(
         .as_ref()
         .map(|(operation, _)| *operation)
         .filter(|op| *op != "diff");
-    let url = endpoint(origin, segments)?;
-    let request = if let Some((_, body)) = write {
+    let mut url = endpoint(origin, segments)?;
+    if segments.len() == 4 && segments[..3] == ["api", "runs", "project-filter"] {
+        url = endpoint(origin, &["api", "runs"])?;
+        url.query_pairs_mut().append_pair("project_id", segments[3]);
+    }
+    let authenticated_read = segments
+        .get(1)
+        .is_some_and(|s| matches!(*s, "projects" | "project-selection"))
+        || segments.last() == Some(&"project");
+    let request = if write.is_some() || authenticated_read {
+        let body = write.as_ref().map(|(_, body)| body);
         let bootstrap: Bootstrap =
             decode(request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?)).await?)?;
         if bootstrap.token.is_empty() || bootstrap.token.len() > 4096 {
             return Err(invalid_response());
         }
-        let mut request = client
-            .post(url)
-            .header("x-peachsh-token", &bootstrap.token)
-            .json(&body);
+        let mut request = if body.is_none() {
+            client.get(url)
+        } else if matches!(operation, Some("select-project" | "configure-project")) {
+            client.put(url)
+        } else {
+            client.post(url)
+        };
+        request = request.header("x-peachsh-token", &bootstrap.token);
+        if let Some(body) = body {
+            request = request.json(body);
+        }
         if let Some(key) = key {
             request = request.header("idempotency-key", key);
         }
@@ -1171,6 +1286,27 @@ async fn workflow(
             error
         })
 }
+fn validate_project(project: &Project) -> Result<(), Failure> {
+    if !valid_id(&project.id.0)
+        || project.name.trim().is_empty()
+        || project.root_path.is_empty()
+        || !safe_strings(&encoded(project)?)
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+fn validate_selection(selection: &ProjectSelection) -> Result<(), Failure> {
+    if selection
+        .project_id
+        .as_ref()
+        .is_some_and(|p| !valid_id(&p.0))
+        || (selection.revision == 0) != selection.project_id.is_none()
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
 async fn workflow_inner(
     client: &Client,
     origin: &Url,
@@ -1178,21 +1314,168 @@ async fn workflow_inner(
     command: Command,
 ) -> Result<(), Failure> {
     let value = match command {
-        Command::Project(_) => {
-            let projects: Vec<Project> =
-                decode(workflow_request(client, origin, &["api", "projects"], None, None).await?)?;
-            encoded(projects)?
-        }
+        Command::Project(args) => match args.command {
+            ProjectCommand::List => {
+                let projects: Vec<Project> = decode(
+                    workflow_request(client, origin, &["api", "projects"], None, None).await?,
+                )?;
+                for project in &projects {
+                    validate_project(project)?;
+                }
+                encoded(projects)?
+            }
+            ProjectCommand::Create { name, root, key } => {
+                let project: Project = decode(
+                    workflow_request(
+                        client,
+                        origin,
+                        &["api", "projects"],
+                        Some(("register-project", json!({"name":name,"root_path":root}))),
+                        Some(&key),
+                    )
+                    .await?,
+                )?;
+                validate_project(&project)?;
+                encoded(project)?
+            }
+            ProjectCommand::Get { id } => {
+                let project: Project = decode(
+                    workflow_request(client, origin, &["api", "projects", &id], None, None).await?,
+                )?;
+                validate_project(&project)?;
+                if project.id.0 != id {
+                    return Err(invalid_response());
+                }
+                encoded(project)?
+            }
+            ProjectCommand::Current => {
+                let selection: ProjectSelection = decode(
+                    workflow_request(client, origin, &["api", "project-selection"], None, None)
+                        .await?,
+                )?;
+                validate_selection(&selection)?;
+                encoded(selection)?
+            }
+            ProjectCommand::Select {
+                id,
+                expected_revision,
+            } => {
+                let selection: ProjectSelection = decode(
+                    workflow_request(
+                        client,
+                        origin,
+                        &["api", "project-selection"],
+                        Some((
+                            "select-project",
+                            json!({"project_id":id,"expected_revision":expected_revision}),
+                        )),
+                        None,
+                    )
+                    .await?,
+                )?;
+                validate_selection(&selection)?;
+                if selection.project_id.as_ref().map(|p| p.0.as_str()) != Some(id.as_str())
+                    || expected_revision.checked_add(1) != Some(selection.revision)
+                {
+                    return Err(invalid_response());
+                }
+                encoded(selection)?
+            }
+            ProjectCommand::Config(args) => {
+                let (id, write, expected) = match args.command {
+                    ProjectConfigCommand::Get { id } => (id, None, None),
+                    ProjectConfigCommand::Set {
+                        id,
+                        expected_revision,
+                        file,
+                    } => {
+                        let bytes = std::fs::read(file).map_err(|_| {
+                            Failure::fixed("request_failed", "无法读取项目配置文件", false)
+                        })?;
+                        if bytes.len() > RESPONSE_LIMIT {
+                            return Err(Failure::fixed(
+                                "request_failed",
+                                "项目配置文件过大",
+                                false,
+                            ));
+                        }
+                        let shape: Value = serde_json::from_slice(&bytes).map_err(|_| {
+                            Failure::fixed("request_failed", "项目配置JSON无效", false)
+                        })?;
+                        if shape.as_object().is_none_or(|object| {
+                            object.len() != 5
+                                || ![
+                                    "allowed_route_ids",
+                                    "default_route_id",
+                                    "tools",
+                                    "write_scopes",
+                                    "allow_commands",
+                                ]
+                                .iter()
+                                .all(|key| object.contains_key(*key))
+                        }) {
+                            return Err(Failure::fixed(
+                                "request_failed",
+                                "项目配置必须为完整对象",
+                                false,
+                            ));
+                        }
+                        let config: ProjectConfig =
+                            serde_json::from_slice(&bytes).map_err(|_| {
+                                Failure::fixed(
+                                    "request_failed",
+                                    "项目配置JSON无效或字段不完整",
+                                    false,
+                                )
+                            })?;
+                        (
+                            id,
+                            Some((
+                                "configure-project",
+                                json!({"expected_revision":expected_revision,"config":config}),
+                            )),
+                            Some(expected_revision),
+                        )
+                    }
+                };
+                let snapshot: ProjectConfigSnapshot = decode(
+                    workflow_request(
+                        client,
+                        origin,
+                        &["api", "projects", &id, "config"],
+                        write,
+                        None,
+                    )
+                    .await?,
+                )?;
+                if snapshot.project_id.0 != id
+                    || snapshot.revision == 0
+                    || !valid_digest(&snapshot.permission_digest)
+                    || expected.is_some_and(|r| r.checked_add(1) != Some(snapshot.revision))
+                {
+                    return Err(invalid_response());
+                }
+                encoded(snapshot)?
+            }
+        },
         Command::Run(args) => match args.command {
             RunCommand::Start(args) => {
                 let body = json!({"title":args.title,"kind":"chat","tasks":[{"name":"agent","role":"coding agent",
                     "route_id":args.route,"prompt":args.message,"depends_on":[],"write_scopes":args.scope,
                     "tools":args.tools,"allow_commands":args.allow_commands,"max_rounds":12}]});
+                let segments = match args.project.as_deref() {
+                    Some(id) => vec!["api", "projects", id, "runs"],
+                    None => vec!["api", "runs"],
+                };
+                let body = match args.expected_config_revision {
+                    Some(revision) => json!({"expected_config_revision":revision,"request":body}),
+                    None => body,
+                };
                 let run: Run = decode(
                     workflow_request(
                         client,
                         origin,
-                        &["api", "runs"],
+                        &segments,
                         Some(("start", body)),
                         Some(&args.key),
                     )
@@ -1200,9 +1483,13 @@ async fn workflow_inner(
                 )?;
                 run_projection(run)?
             }
-            RunCommand::List => {
+            RunCommand::List { project } => {
+                let segments = match project.as_deref() {
+                    Some(id) => vec!["api", "runs", "project-filter", id],
+                    None => vec!["api", "runs"],
+                };
                 let runs: Vec<RunSummary> =
-                    decode(workflow_request(client, origin, &["api", "runs"], None, None).await?)?;
+                    decode(workflow_request(client, origin, &segments, None, None).await?)?;
                 if runs.iter().any(|run| !valid_id(&run.id)) {
                     return Err(invalid_response());
                 }
@@ -1318,6 +1605,37 @@ async fn workflow_inner(
             }
         },
         Command::Task(args) => match args.command {
+            TaskCommand::Project { id } => {
+                #[derive(Deserialize, Serialize)]
+                #[serde(deny_unknown_fields)]
+                struct BindingView {
+                    binding: Option<TaskProjectBinding>,
+                    status: String,
+                }
+                let view: BindingView = decode(
+                    workflow_request(
+                        client,
+                        origin,
+                        &["api", "tasks", &id, "project"],
+                        None,
+                        None,
+                    )
+                    .await?,
+                )?;
+                if match &view.binding {
+                    Some(b) => {
+                        view.status != "bound"
+                            || b.task_id != id
+                            || !valid_id(&b.project_id.0)
+                            || b.config_revision == 0
+                            || !valid_digest(&b.permission_digest)
+                    }
+                    None => view.status != "legacy_unbound",
+                } {
+                    return Err(invalid_response());
+                }
+                encoded(view)?
+            }
             TaskCommand::Diff { id, path, view } => {
                 let result: DiffViewResponse = decode(
                     workflow_request(
@@ -1436,7 +1754,9 @@ async fn workflow_inner(
 
 fn validate_subject(subject: &NetworkSubject) -> Result<(), Failure> {
     if !valid_id(&subject.id)
-        || (subject.kind == NetworkSubjectKind::Account && subject.id != "newapi")
+        || (subject.kind == NetworkSubjectKind::Account
+            && (subject.id != "newapi" || subject.project_id.is_some()))
+        || subject.project_id.as_ref().is_some_and(|p| !valid_id(&p.0))
     {
         return Err(invalid_response());
     }
@@ -1567,7 +1887,7 @@ fn network_http_failure(value: Value) -> Result<Failure, Failure> {
         "unknown" => "unknown",
         "internal" => "internal",
         "upstream" => "upstream",
-        _ => return Err(invalid_response()),
+        other => project_error_code(other).ok_or_else(invalid_response)?,
     };
     Ok(Failure {
         code,
@@ -1625,11 +1945,12 @@ async fn network_request(
     }
     let failure = http_failure(value).map_err(|_| invalid())?;
     let expected = match failure.code {
-        "invalid" => 400,
-        "not_found" => 404,
+        "invalid" | "project_invalid" => 400,
+        "not_found" | "project_not_found" => 404,
         "required" | "stale" | "revoked" | "conflict" | "unknown" => 409,
-        "corrupt" | "internal" => 500,
+        "corrupt" | "internal" | "project_corrupt" | "project_internal" => 500,
         "upstream" => 502,
+        code if project_error_code(code).is_some() => 409,
         _ => status.as_u16(),
     };
     if failure.details.is_some() && expected != status.as_u16() {
@@ -1857,10 +2178,13 @@ async fn network_workflow_inner(
             encoded(calls)?
         }
         Command::Route(args) => {
-            let (id, action, purposes) = match args.command {
-                RouteCommand::Models { id } => (id, "models", vec![NetworkPurpose::Models]),
-                RouteCommand::Check { id } => (
+            let (id, project, action, purposes) = match args.command {
+                RouteCommand::Models { id, project } => {
+                    (id, project, "models", vec![NetworkPurpose::Models])
+                }
+                RouteCommand::Check { id, project } => (
                     id,
+                    project,
                     "check",
                     vec![NetworkPurpose::Models, NetworkPurpose::Completion],
                 ),
@@ -1870,7 +2194,7 @@ async fn network_workflow_inner(
                     client,
                     origin,
                     &["api", "routes", &id, action],
-                    Some(json!({})),
+                    Some(json!({"project_id":project})),
                     None,
                     true,
                 )
@@ -1881,6 +2205,8 @@ async fn network_workflow_inner(
                 || response.calls.iter().zip(purposes).any(|(c, p)| {
                     c.subject.kind != NetworkSubjectKind::Route
                         || c.subject.id != id
+                        || c.subject.project_id.as_ref().map(|p| p.0.as_str())
+                            != Some(project.as_str())
                         || c.purpose != p
                         || c.success != Some(true)
                         || c.task_id.is_some()

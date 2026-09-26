@@ -1,4 +1,8 @@
 use crate::network_authorization::*;
+use crate::project_config::{
+    ConfigureProject, ProjectConfigSnapshot, ProjectError, ProjectSelection, RegisterProject,
+    SelectProject, StartInProject, TaskProjectBinding,
+};
 use crate::{
     approval::{self, ApprovalStatus, PolicyDecision},
     domain::*,
@@ -54,13 +58,98 @@ impl Engine {
         }
     }
 }
-fn route_subject(id: &str) -> NetworkSubject {
+#[cfg(test)]
+fn route_subject(store: &Store, id: &str) -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: id.into(),
+        project_id: store.current_project().unwrap().project_id,
     }
 }
+#[cfg(test)]
+fn configure_fixture_project(store: &Store) {
+    let settings = store.settings().unwrap().unwrap();
+    let current = store.current_project().unwrap();
+    let project = if let Some(id) = current.project_id {
+        id
+    } else {
+        let project = store
+            .register_project(RegisterProject {
+                name: "fixture".into(),
+                root_path: settings.workspace,
+                idempotency_key: id(),
+            })
+            .unwrap();
+        store
+            .select_project(SelectProject {
+                project_id: project.id.clone(),
+                expected_revision: current.revision,
+            })
+            .unwrap();
+        project.id
+    };
+    let old = store.project_config(&project).unwrap();
+    store
+        .configure_project(ConfigureProject {
+            project_id: project,
+            expected_revision: old.revision,
+            config: crate::project_config::ProjectConfig {
+                allowed_route_ids: settings.routes.iter().map(|r| r.id.clone()).collect(),
+                default_route_id: settings.routes.first().map(|r| r.id.clone()),
+                tools: true,
+                write_scopes: vec!["*".into()],
+                allow_commands: true,
+            },
+        })
+        .unwrap();
+}
 impl Engine {
+    pub fn project_config(&self, id: &ProjectId) -> Result<ProjectConfigSnapshot> {
+        self.store.project_config(id)
+    }
+    pub fn current_project(&self) -> Result<ProjectSelection> {
+        self.store.current_project()
+    }
+    pub fn task_project_binding(&self, id: &str) -> Result<Option<TaskProjectBinding>> {
+        self.store.task_project_binding(id)
+    }
+    pub fn project_workspace(&self, id: &ProjectId) -> Result<std::path::PathBuf> {
+        self.store.project_workspace(id)
+    }
+    pub fn project_runs(&self, id: &ProjectId) -> Result<Vec<Run>> {
+        self.store.project_runs(id)
+    }
+    pub async fn register_project(&self, request: RegisterProject) -> Result<Project> {
+        let _gate = self.gate.lock().await;
+        self.store.register_project(request)
+    }
+    pub async fn configure_project(
+        &self,
+        request: ConfigureProject,
+    ) -> Result<ProjectConfigSnapshot> {
+        let _gate = self.gate.lock().await;
+        self.store.configure_project(request)
+    }
+    pub async fn select_project(&self, request: SelectProject) -> Result<ProjectSelection> {
+        let _gate = self.gate.lock().await;
+        self.store.select_project(request)
+    }
+    fn selected_project(&self) -> Result<ProjectId> {
+        self.current_project()?
+            .project_id
+            .ok_or_else(|| ProjectError::SelectionRequired.into())
+    }
+    fn task_route_subject(&self, task: &Task) -> Result<NetworkSubject> {
+        Ok(NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: task.route.id.clone(),
+            project_id: Some(
+                self.store
+                    .validate_project_task(task, true, true)?
+                    .project_id,
+            ),
+        })
+    }
     pub async fn network_preview(
         &self,
         subject: NetworkSubject,
@@ -110,13 +199,26 @@ impl Engine {
         &self,
         id: &str,
     ) -> std::result::Result<NetworkResponse<Vec<String>>, NetworkError> {
+        let project = self.selected_project().map_err(safe_error)?;
+        self.project_route_models(&project, id).await
+    }
+    pub async fn project_route_models(
+        &self,
+        project: &ProjectId,
+        id: &str,
+    ) -> std::result::Result<NetworkResponse<Vec<String>>, NetworkError> {
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: id.into(),
+            project_id: Some(project.clone()),
+        };
         let _slot = self.acquire_network_slot().await?;
         let (route, permit, receipt) = {
             let _gate = self.gate.lock().await;
             let route = self.network_route(id)?;
             let (permit, receipt) =
                 self.store
-                    .network_admit(&route_subject(id), NetworkPurpose::Models, None)?;
+                    .network_admit(&subject, NetworkPurpose::Models, None)?;
             (route, permit, receipt)
         };
         self.store.finish_network(
@@ -128,19 +230,32 @@ impl Engine {
         &self,
         id: &str,
     ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
+        let project = self.selected_project().map_err(safe_error)?;
+        self.project_route_check(&project, id).await
+    }
+    pub async fn project_route_check(
+        &self,
+        project: &ProjectId,
+        id: &str,
+    ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: id.into(),
+            project_id: Some(project.clone()),
+        };
         let started = std::time::Instant::now();
         let _slot = self.acquire_network_slot().await?;
         let (mut route, permit, receipt) = {
             let _gate = self.gate.lock().await;
             let route = self.network_route(id)?;
             self.store.network_preflight(
-                &route_subject(id),
+                &subject,
                 &[NetworkPurpose::Models, NetworkPurpose::Completion],
                 None,
             )?;
             let (permit, receipt) =
                 self.store
-                    .network_admit(&route_subject(id), NetworkPurpose::Models, None)?;
+                    .network_admit(&subject, NetworkPurpose::Models, None)?;
             (route, permit, receipt)
         };
         let models = self.store.finish_network(
@@ -157,7 +272,7 @@ impl Engine {
         let next = {
             let _gate = self.gate.lock().await;
             self.store
-                .network_admit(&route_subject(id), NetworkPurpose::Completion, None)
+                .network_admit(&subject, NetworkPurpose::Completion, None)
         };
         let (permit, receipt) = next.map_err(|mut e| {
             e.calls.splice(0..0, models.calls.clone());
@@ -209,6 +324,7 @@ impl Engine {
                 &NetworkSubject {
                     kind: NetworkSubjectKind::Account,
                     id: "newapi".into(),
+                    project_id: None,
                 },
                 NetworkPurpose::Balance,
                 None,
@@ -452,6 +568,14 @@ impl Engine {
             "网络调用在途时不能修改配置"
         );
         settings.validate()?;
+        if !self.store.projects()?.is_empty()
+            && self
+                .store
+                .settings()?
+                .is_some_and(|old| old.workspace != settings.workspace)
+        {
+            return Err(ProjectError::WorkspaceSelectionManaged.into());
+        }
         for (id, key) in &keys {
             ensure!(
                 settings.routes.iter().any(|r| &r.id == id),
@@ -480,7 +604,11 @@ impl Engine {
         let active = self.active.lock().unwrap();
         for task in tasks {
             for other in active.values() {
-                // Model commands can write anywhere, so serialize such tasks per project.
+                // Commands have no OS sandbox, so exclude them across the entire Host.
+                ensure!(
+                    !task.spec.allow_commands && !other.scopes.iter().any(|s| s == "*"),
+                    "命令任务必须在 Host 空闲时运行"
+                );
                 if !task.workspace.eq_ignore_ascii_case(&other.workspace) {
                     continue;
                 }
@@ -523,37 +651,82 @@ impl Engine {
         request: RunRequest,
         idempotency: Option<(&str, String)>,
     ) -> Result<Run> {
+        let project = self.selected_project()?;
+        let revision = self.project_config(&project)?.revision;
+        self.start_project_locked(request, idempotency, project, revision)
+    }
+    pub async fn start_in_project(self: &Arc<Self>, command: StartInProject) -> Result<Run> {
+        let _gate = self.gate.lock().await;
+        secrets::validate_idempotency_key(&command.idempotency_key)
+            .map_err(|_| ProjectError::Invalid)?;
+        let hash = crate::workspace_changes::digest(&serde_json::to_vec(&(
+            "start-project-v1",
+            &command.project_id,
+            command.expected_config_revision,
+            &command.request,
+        ))?);
+        if let Some(replay) = self
+            .store
+            .idempotency_replay(&command.idempotency_key, &hash)?
+        {
+            return match replay {
+                IdempotencyReplay::Turn(turn) => self
+                    .store
+                    .run(&self.store.session(&turn.session_id)?.legacy_run_id),
+                IdempotencyReplay::LegacyRun(run) => Ok(run),
+            };
+        }
+        self.start_project_locked(
+            command.request,
+            Some((&command.idempotency_key, hash)),
+            command.project_id,
+            command.expected_config_revision,
+        )
+    }
+    fn start_project_locked(
+        self: &Arc<Self>,
+        mut request: RunRequest,
+        idempotency: Option<(&str, String)>,
+        project_id: ProjectId,
+        revision: u64,
+    ) -> Result<Run> {
+        let config = self.project_config(&project_id)?;
+        if config.revision != revision {
+            return Err(ProjectError::RevisionConflict.into());
+        }
+        // Fingerprint the submitted request before resolving a default route.
+        let request_hash = idempotency
+            .as_ref()
+            .map(|(_, hash)| Ok(hash.clone()))
+            .unwrap_or_else(|| request_fingerprint(&request))?;
+        for task in &mut request.tasks {
+            if task.route_id.is_empty() {
+                task.route_id = config
+                    .config
+                    .default_route_id
+                    .clone()
+                    .ok_or(ProjectError::PermissionRevoked)?;
+            }
+            if !config.config.permits(task, true) {
+                return Err(ProjectError::PermissionRevoked.into());
+            }
+        }
         let settings = self.store.settings()?.context("缺少设置")?;
         request.validate(&settings)?;
         ensure!(
             request.tasks.len() == 1 || !request.tasks.iter().any(|t| t.allow_commands),
             "含命令权限的任务请单独运行，避免并行写入冲突"
         );
-        let request_hash = request_fingerprint(&request)?;
         let request_title = request.title.clone();
         let request_kind = request.kind;
         let request_tasks = request.tasks;
         let run_id = id();
         let created = now();
-        let workspace = std::fs::canonicalize(&settings.workspace)?
+        let workspace = self
+            .project_workspace(&project_id)?
             .to_string_lossy()
             .into_owned();
-        let project_id = ProjectId(format!(
-            "project-{:x}",
-            sha2::Sha256::digest(workspace.as_bytes())
-        ));
-        let project_name = std::path::Path::new(&workspace)
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("workspace")
-            .to_owned();
-        let project = Project {
-            id: project_id.clone(),
-            name: project_name,
-            root_path: workspace.clone(),
-            created_at: created,
-            updated_at: created,
-        };
+        let project = self.store.project(&project_id)?;
         let session_id = SessionId(id());
         let session = Session {
             id: session_id.clone(),
@@ -659,7 +832,7 @@ impl Engine {
             updated_at: created,
         };
         let key = idempotency.as_ref().map(|(key, _)| *key);
-        let committed = self.store.commit_turn_bundle_authorized(
+        let committed = self.store.commit_turn_bundle_in_project(
             TurnBundle {
                 project: &project,
                 session: &session,
@@ -669,6 +842,7 @@ impl Engine {
                 legacy_tasks: &run.tasks,
             },
             key,
+            revision,
         )?;
         if committed.id != turn.id {
             let session = self.store.session(&committed.session_id)?;
@@ -754,17 +928,10 @@ impl Engine {
         if previous.status != LifecycleStatus::Completed.as_str() {
             return Err(ChatTurnError::SessionBusy.into());
         }
-        let project = self.store.project(&session.project_id)?;
-        if previous.run_id != session.legacy_run_id
+        let binding = self.store.validate_project_task(&previous, true, true)?;
+        if binding.project_id != session.project_id
+            || previous.run_id != session.legacy_run_id
             || !previous.spec.depends_on.is_empty()
-            || std::fs::canonicalize(&previous.workspace).ok().as_deref()
-                != std::fs::canonicalize(&project.root_path).ok().as_deref()
-        {
-            return Err(ChatTurnError::UnsupportedSession.into());
-        }
-        let settings = self.store.settings()?.ok_or(ChatTurnError::CorruptState)?;
-        if std::fs::canonicalize(&settings.workspace).ok().as_deref()
-            != std::fs::canonicalize(&previous.workspace).ok().as_deref()
         {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
@@ -972,7 +1139,7 @@ impl Engine {
             let (permit, receipt) = {
                 let _gate = self.gate.lock().await;
                 self.store.network_admit(
-                    &route_subject(&task.route.id),
+                    &self.task_route_subject(task)?,
                     NetworkPurpose::Completion,
                     Some(task),
                 )?
@@ -1115,6 +1282,10 @@ impl Engine {
         cancel: &CancellationToken,
     ) -> Result<()> {
         let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
+        if name == "run_wasm" {
+            return Err(ProjectError::OperationUnsupported.into());
+        }
+        self.store.validate_project_task(task, true, false)?;
         ensure!(
             self.tool_runtime
                 .definitions(task)?
@@ -1128,7 +1299,9 @@ impl Engine {
         );
         match approval::evaluate(task, name) {
             PolicyDecision::Allow => {
-                let (lease, ()) = self.tool_runtime.acquire(task, name, || Ok(()))?;
+                let (lease, _) = self.tool_runtime.acquire(task, name, || {
+                    self.store.validate_project_task(task, true, false)
+                })?;
                 self.perform_tool(task, tool_call_id, name, args, key, None, lease)
                     .await
             }
@@ -1217,6 +1390,7 @@ impl Engine {
         } else {
             None
         };
+        self.store.validate_project_task(task, false, false)?;
         let mut prepared = None;
         if name == "write_file" {
             let approval_id = approval_id.context("write_file 缺少审批执行权")?;
@@ -1405,7 +1579,7 @@ impl Engine {
             }
         }
         self.store.network_preflight(
-            &route_subject(&task.route.id),
+            &self.task_route_subject(&task)?,
             &[NetworkPurpose::Completion],
             Some(&task),
         )?;
@@ -1499,6 +1673,7 @@ impl Engine {
                 error
             }
         })?;
+        self.store.validate_project_task(&task, false, false)?;
         let root = std::path::Path::new(&task.workspace);
         let restore_exists = self.store.latest_restore(id)?.is_some();
         let mut grouped: std::collections::BTreeMap<String, PreparedChange> =
@@ -1731,24 +1906,6 @@ impl Engine {
                 error
             }
         })?;
-        let active_ids: Vec<String> = self.active.lock().unwrap().keys().cloned().collect();
-        for active_id in active_ids {
-            if active_id == id {
-                return Err(WorkspaceChangeError::Active.into());
-            }
-            let active = self.store.task(&active_id)?;
-            if std::path::Path::new(&active.workspace).canonicalize()?
-                == std::path::Path::new(&task.workspace).canonicalize()?
-            {
-                return Err(WorkspaceChangeError::Active.into());
-            }
-        }
-        if let Some(settings) = self.store.settings()?
-            && std::path::Path::new(&settings.workspace).canonicalize()?
-                != std::path::Path::new(&task.workspace).canonicalize()?
-        {
-            return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
-        }
         if let Some(receipt) = self.store.latest_restore(id)? {
             return if receipt.status == RestoreStatus::Complete {
                 Ok(receipt)
@@ -1765,6 +1922,20 @@ impl Engine {
                 }
                 .into())
             };
+        }
+        self.store.validate_project_task(&task, true, false)?;
+        let active_ids: Vec<String> = self.active.lock().unwrap().keys().cloned().collect();
+        for active_id in active_ids {
+            if active_id == id {
+                return Err(WorkspaceChangeError::Active.into());
+            }
+            let active = self.store.task(&active_id)?;
+            if active.spec.allow_commands
+                || std::path::Path::new(&active.workspace).canonicalize()?
+                    == std::path::Path::new(&task.workspace).canonicalize()?
+            {
+                return Err(WorkspaceChangeError::Active.into());
+            }
         }
         let records = self
             .store
@@ -1864,6 +2035,7 @@ impl Engine {
                     !crash_probe::take_restore_failure(id, &change.path),
                     "injected restore path failure"
                 );
+                self.store.validate_project_task(&task, false, false)?;
                 let checked = workspace::resolve(
                     std::path::Path::new(&task.workspace),
                     &change.path,
@@ -2008,8 +2180,9 @@ fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
 #[cfg(test)]
 mod workspace_phase_tests {
     fn authorize_fixture(store: &crate::store::Store) {
+        super::configure_fixture_project(store);
         for route in store.settings().unwrap().unwrap().routes {
-            let subject = super::route_subject(&route.id);
+            let subject = super::route_subject(store, &route.id);
             let p = store.network_preview(subject.clone()).unwrap();
             store
                 .network_confirm(
@@ -3210,18 +3383,11 @@ impl Engine {
                 error
             }
         })?;
+        self.store.validate_project_task(&task, false, false)?;
         let root = std::path::Path::new(&task.workspace);
         let canonical = root
             .canonicalize()
             .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
-        if let Some(settings) = self.store.settings()?
-            && std::path::Path::new(&settings.workspace)
-                .canonicalize()
-                .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?
-                != canonical
-        {
-            return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
-        }
         let active: Vec<_> = self
             .active
             .lock()
@@ -3278,16 +3444,9 @@ impl Engine {
         if task.status != "completed" {
             return Err(CheckpointError::Unrestorable.into());
         }
+        self.store.validate_project_task(&task, false, false)?;
         let root = std::path::Path::new(&task.workspace);
         let canonical = root.canonicalize().map_err(|_| CheckpointError::Conflict)?;
-        if let Some(settings) = self.store.settings()?
-            && std::path::Path::new(&settings.workspace)
-                .canonicalize()
-                .map_err(|_| CheckpointError::Conflict)?
-                != canonical
-        {
-            return Err(CheckpointError::Conflict.into());
-        }
         let active_ids: Vec<_> = self.active.lock().unwrap().keys().cloned().collect();
         for id in active_ids {
             if id == task_id
@@ -3419,10 +3578,13 @@ mod network_gate_tests {
             })
             .unwrap();
         store.put_secret("route", "fixture-gate-key").unwrap();
-        let p = store.network_preview(route_subject("route")).unwrap();
+        super::configure_fixture_project(&store);
+        let p = store
+            .network_preview(route_subject(&store, "route"))
+            .unwrap();
         store
             .network_confirm(
-                route_subject("route"),
+                route_subject(&store, "route"),
                 ConfirmRequest {
                     config_revision: p.config_revision,
                     credential_revision: p.credential_revision,
@@ -3503,7 +3665,10 @@ mod network_gate_tests {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("http://{}", listener.local_addr().unwrap());
         let e = setup(dir.path(), &base);
-        let p = e.network_preview(route_subject("route")).await.unwrap();
+        let p = e
+            .network_preview(route_subject(&e.store, "route"))
+            .await
+            .unwrap();
         let held = e.acquire_network_slot().await.unwrap();
         let request = e.route_models("route");
         tokio::pin!(request);
@@ -3538,9 +3703,12 @@ mod network_gate_tests {
             .await
             .unwrap();
         });
-        let preview = e.network_preview(route_subject("route")).await.unwrap();
+        let preview = e
+            .network_preview(route_subject(&e.store, "route"))
+            .await
+            .unwrap();
         e.network_confirm(
-            route_subject("route"),
+            route_subject(&e.store, "route"),
             ConfirmRequest {
                 config_revision: preview.config_revision,
                 credential_revision: preview.credential_revision,
@@ -3566,7 +3734,11 @@ mod network_gate_tests {
             } else {
                 "network-after-claim"
             };
-            crash_probe::arm("route:route".into(), at, root.join("signal"));
+            crash_probe::arm(
+                route_subject(&e.store, "route").key().unwrap(),
+                at,
+                root.join("signal"),
+            );
             let _ = e.route_models("route").await;
             panic!("child should block");
         }

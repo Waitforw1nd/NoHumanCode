@@ -302,6 +302,65 @@ async fn settled(h: &Harness, task_id: &str) -> Task {
     .unwrap()
 }
 
+async fn start_without_waiter(h: &Harness) -> Task {
+    let engine = h.engine.clone();
+    let (task_id, _run_id) = std::thread::scope(|scope| {
+        let handle = scope.spawn(|| {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let task = runtime.block_on(async {
+                engine
+                    .start(RunRequest {
+                        title: "remote-no-waiter".into(),
+                        kind: SessionKind::Team,
+                        tasks: vec![TaskSpec {
+                            name: "worker".into(),
+                            role: "worker".into(),
+                            route_id: "route".into(),
+                            prompt: "begin".into(),
+                            depends_on: vec![],
+                            write_scopes: vec!["src".into()],
+                            tools: true,
+                            allow_commands: false,
+                            max_rounds: 4,
+                        }],
+                    })
+                    .await
+                    .unwrap()
+                    .tasks
+                    .into_iter()
+                    .next()
+                    .unwrap()
+            });
+            let id = task.id.clone();
+            let run = task.run_id.clone();
+            runtime.block_on(async {
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    loop {
+                        if !engine
+                            .store
+                            .pending_approvals_for_task(&id)
+                            .unwrap()
+                            .is_empty()
+                        {
+                            break;
+                        }
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+                .unwrap();
+            });
+            runtime.shutdown_timeout(Duration::from_secs(2));
+            (id, run)
+        });
+        handle.join().unwrap()
+    });
+    h.engine.store.task(&task_id).unwrap()
+}
+
 fn event_count(h: &Harness, task: &Task, kind: &str) -> usize {
     h.engine
         .store
@@ -390,16 +449,25 @@ async fn cl02_real_cli_approve_executes_and_deny_does_not() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cl03_remote_cli_does_not_initialize_local_state_or_execute_without_waiter() {
-    let h = harness().await;
-    let mut task = seed_task(&h.engine.store, h._dir.path(), "remote-task");
-    let id = card(&h, &mut task, "write", "remote");
+    let h = live_harness("src/remote.txt").await;
+    let task = start_without_waiter(&h).await;
+    let id = h
+        .engine
+        .store
+        .pending_approvals_for_task(&task.id)
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap()
+        .id;
+    let calls_before = h.provider_calls.load(std::sync::atomic::Ordering::SeqCst);
     let local = tempfile::tempdir().unwrap();
     let cwd = local.path().join("cwd");
     std::fs::create_dir(&cwd).unwrap();
     let output = cli_in(port(&h.origin), &["approval", "approve", &id], &cwd);
     assert!(output.status.success(), "{}", stderr(&output));
     assert!(!local.path().join("data-rust").exists());
-    assert_eq!(h.provider_calls.load(Ordering::SeqCst), 0);
+    assert_eq!(h.provider_calls.load(Ordering::SeqCst), calls_before);
     assert!(!h._dir.path().join("src/write.txt").exists());
     assert_eq!(
         h.engine.store.approval(&id).unwrap().execution_state,
@@ -425,23 +493,24 @@ async fn cl04_http_errors_are_json_on_stderr_with_exit_one() {
         serde_json::from_slice::<Value>(&missing_task.stderr).unwrap(),
         json!({"code":"not_found","message":"任务不存在","retryable":false,"error":"任务不存在"})
     );
-    let mut task = seed_task(&h.engine.store, h._dir.path(), "conflict-task");
-    let id = card(&h, &mut task, "write", "x");
+    let h_live = live_harness("src/conflict.txt").await;
+    let task = start_live(&h_live).await;
+    let id = pending(&h_live, &task.id).await.id;
     assert!(
-        cli(port(&h.origin), &["approval", "approve", &id])
+        cli(port(&h_live.origin), &["approval", "approve", &id])
             .status
             .success()
     );
-    let conflict = cli(port(&h.origin), &["--json", "approval", "deny", &id]);
+    let conflict = cli(port(&h_live.origin), &["--json", "approval", "deny", &id]);
     assert_eq!(conflict.status.code(), Some(1));
     assert!(conflict.stdout.is_empty());
     assert_eq!(
         serde_json::from_slice::<Value>(&conflict.stderr).unwrap(),
         json!({"code":"conflict","message":"审批当前状态不能执行此操作","retryable":false,"error":"审批当前状态不能执行此操作"})
     );
-    assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
+    assert_eq!(event_count(&h_live, &task, "approval.resolved"), 1);
     let injected = cli(
-        port(&h.origin),
+        port(&h_live.origin),
         &["--json", "approval", "get", "../bad?query=value"],
     );
     assert_eq!(injected.status.code(), Some(1));
@@ -449,7 +518,7 @@ async fn cl04_http_errors_are_json_on_stderr_with_exit_one() {
         serde_json::from_slice::<Value>(&injected.stderr).unwrap()["code"],
         "not_found"
     );
-    assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
+    assert_eq!(event_count(&h_live, &task, "approval.resolved"), 1);
 }
 
 #[tokio::test(flavor = "multi_thread")]

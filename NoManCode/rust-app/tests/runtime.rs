@@ -275,6 +275,7 @@ async fn http_run_exposes_domain_and_session_events_with_conflict_replay() {
     assert_eq!(session.kind, SessionKind::Chat);
     let projects: Vec<Project> = client
         .get(format!("{origin}/api/projects"))
+        .header("x-peachsh-token", "csrf-http-domain")
         .send()
         .await
         .unwrap()

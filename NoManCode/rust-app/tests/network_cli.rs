@@ -121,13 +121,13 @@ fn error(output: Output) -> Value {
     serde_json::from_slice(&output.stderr).unwrap()
 }
 fn preview(base: &str, origin: &str) -> Value {
-    json!({"subject":{"kind":"route","id":"route-a"},"config_revision":1,"credential_revision":2,"origin":origin,"base_url":base,"credential_ref":"route::route-a","binding_digest":"a".repeat(64),"purposes":["models","completion"],"authorization":null})
+    json!({"subject":{"kind":"route","id":"route-a","project_id":"project-a"},"config_revision":1,"credential_revision":2,"origin":origin,"base_url":base,"credential_ref":"route::route-a","binding_digest":"a".repeat(64),"purposes":["models","completion"],"authorization":null})
 }
 fn authorization() -> Value {
-    json!({"authorization_id":"network-auth-a","subject":{"kind":"route","id":"route-a"},"config_revision":1,"credential_revision":2,"binding_digest":"a".repeat(64),"purposes":["models","completion"],"state":"active","created_at":1})
+    json!({"authorization_id":"network-auth-a","subject":{"kind":"route","id":"route-a","project_id":"project-a"},"config_revision":1,"credential_revision":2,"binding_digest":"a".repeat(64),"purposes":["models","completion"],"state":"active","created_at":1})
 }
 fn call(state: &str) -> Value {
-    json!({"call_id":"network-call-a","authorization_id":"network-auth-a","subject":{"kind":"route","id":"route-a"},"task_id":null,"purpose":"models","method":"GET","origin":"https://example.com:443","endpoint_digest":"b".repeat(64),"state":state,"claimed_at":2,"finished_at":if state=="finished"{json!(3)}else{Value::Null},"success":if state=="finished"{json!(true)}else{Value::Null},"http_status":if state=="finished"{json!(200)}else{Value::Null},"result":if state=="finished"{json!("success")}else{json!("transport_unknown")}})
+    json!({"call_id":"network-call-a","authorization_id":"network-auth-a","subject":{"kind":"route","id":"route-a","project_id":"project-a"},"task_id":null,"purpose":"models","method":"GET","origin":"https://example.com:443","endpoint_digest":"b".repeat(64),"state":state,"claimed_at":2,"finished_at":if state=="finished"{json!(3)}else{Value::Null},"success":if state=="finished"{json!(true)}else{Value::Null},"http_status":if state=="finished"{json!(200)}else{Value::Null},"result":if state=="finished"{json!("success")}else{json!("transport_unknown")}})
 }
 #[tokio::test]
 async fn network_cli_default_ports_ipv6_and_case_follow_host_target_contract() {
@@ -150,15 +150,29 @@ async fn network_cli_default_ports_ipv6_and_case_follow_host_target_contract() {
     for (_, origin) in variants {
         assert_eq!(
             ok(host
-                .cli(&["network", "preview", "--route", "route-a"])
+                .cli(&[
+                    "network",
+                    "preview",
+                    "--route",
+                    "route-a",
+                    "--project",
+                    "project-a"
+                ])
                 .await)["origin"],
             origin
         );
     }
     assert_eq!(
         error(
-            host.cli(&["network", "preview", "--route", "route-a"])
-                .await
+            host.cli(&[
+                "network",
+                "preview",
+                "--route",
+                "route-a",
+                "--project",
+                "project-a"
+            ])
+            .await
         )["code"],
         "internal"
     );
@@ -183,6 +197,8 @@ async fn network_cli_authorize_uses_only_supplied_snapshot_and_deduplicates_purp
             "authorize",
             "--route",
             "route-a",
+            "--project",
+            "project-a",
             "--config-revision",
             "1",
             "--credential-revision",
@@ -215,10 +231,16 @@ async fn network_cli_preserves_partial_finished_and_unknown_receipts_without_ret
     let finished = call("finished");
     let unknown = call("unknown");
     let host=Host::new(vec![(409,json!({"error":{"code":"stale","message":"网络授权已变化","dispatch_state":"not_sent","calls":[finished.clone()],"retryable":false}})),(409,json!({"error":{"code":"unknown","message":"网络调用结果未知","dispatch_state":"unknown","calls":[unknown.clone()],"retryable":false}}))]).await;
-    let first = error(host.cli(&["route", "check", "route-a"]).await);
+    let first = error(
+        host.cli(&["route", "check", "route-a", "--project", "project-a"])
+            .await,
+    );
     assert_eq!(first["dispatch_state"], "not_sent");
     assert_eq!(first["calls"], json!([finished]));
-    let second = error(host.cli(&["route", "models", "route-a"]).await);
+    let second = error(
+        host.cli(&["route", "models", "route-a", "--project", "project-a"])
+            .await,
+    );
     assert_eq!(second["dispatch_state"], "unknown");
     assert_eq!(second["calls"], json!([unknown]));
     let requests = host.state.requests.lock().unwrap();
@@ -226,7 +248,7 @@ async fn network_cli_preserves_partial_finished_and_unknown_receipts_without_ret
     assert!(
         requests
             .iter()
-            .all(|r| r.0 == "POST" && r.2 == json!({}) && r.3)
+            .all(|r| r.0 == "POST" && r.2 == json!({"project_id":"project-a"}) && r.3)
     );
 }
 #[tokio::test]
@@ -260,7 +282,9 @@ async fn network_cli_models_success_and_task_call_binding_are_validated() {
     ])
     .await;
     assert_eq!(
-        ok(host.cli(&["route", "models", "route-a"]).await)["result"],
+        ok(host
+            .cli(&["route", "models", "route-a", "--project", "project-a"])
+            .await)["result"],
         json!(["mock-model"])
     );
     assert_eq!(
@@ -284,7 +308,14 @@ async fn network_cli_closed_stdout_keeps_known_call_receipt_on_stderr_once() {
     let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"))
         .arg("--port")
         .arg(host.port.to_string())
-        .args(["--json", "route", "models", "route-a"])
+        .args([
+            "--json",
+            "route",
+            "models",
+            "route-a",
+            "--project",
+            "project-a",
+        ])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .kill_on_drop(true)

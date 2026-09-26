@@ -1,3 +1,6 @@
+#[path = "support/project_fixture.rs"]
+#[allow(dead_code)]
+mod project_fixture;
 use peachsh::{domain::*, engine::Engine, network_authorization::*, store::Store};
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -78,10 +81,11 @@ impl Drop for Mock {
         self.task.abort();
     }
 }
-fn subject() -> NetworkSubject {
+fn subject(engine: &Engine) -> NetworkSubject {
     NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: "route".into(),
+        project_id: engine.current_project().unwrap().project_id,
     }
 }
 fn setup(root: &std::path::Path, base: &str) -> Arc<Engine> {
@@ -105,6 +109,7 @@ fn setup(root: &std::path::Path, base: &str) -> Arc<Engine> {
     store
         .put_secret("route::route", "fixture-network-secret")
         .unwrap();
+    project_fixture::configured_project(&store);
     Engine::new(store, 2).unwrap()
 }
 fn request() -> RunRequest {
@@ -133,8 +138,8 @@ fn confirm_request(p: &NetworkPreview, purposes: Vec<NetworkPurpose>) -> Confirm
     }
 }
 async fn grant(e: &Engine, purposes: Vec<NetworkPurpose>) -> NetworkAuthorization {
-    let p = e.network_preview(subject()).await.unwrap();
-    e.network_confirm(subject(), confirm_request(&p, purposes), &id())
+    let p = e.network_preview(subject(e)).await.unwrap();
+    e.network_confirm(subject(e), confirm_request(&p, purposes), &id())
         .await
         .unwrap()
         .authorization
@@ -215,15 +220,15 @@ async fn idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corrupt
     let mock = Mock::new().await;
     let dir = tempfile::tempdir().unwrap();
     let e = setup(dir.path(), &mock.base);
-    let p = e.network_preview(subject()).await.unwrap();
+    let p = e.network_preview(subject(&e)).await.unwrap();
     let req = confirm_request(&p, vec![NetworkPurpose::Models, NetworkPurpose::Models]);
     let a = e
-        .network_confirm(subject(), req.clone(), "confirm-one")
+        .network_confirm(subject(&e), req.clone(), "confirm-one")
         .await
         .unwrap();
     assert!(!a.replayed);
     let replay = e
-        .network_confirm(subject(), req.clone(), "confirm-one")
+        .network_confirm(subject(&e), req.clone(), "confirm-one")
         .await
         .unwrap();
     assert!(replay.replayed);
@@ -232,14 +237,14 @@ async fn idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corrupt
         .await
         .unwrap();
     let replay = e
-        .network_confirm(subject(), req.clone(), "confirm-one")
+        .network_confirm(subject(&e), req.clone(), "confirm-one")
         .await
         .unwrap();
     assert_eq!(replay.authorization.state, AuthorizationState::Revoked);
     let mut different = req.clone();
     different.purposes = vec![NetworkPurpose::Completion];
     denied(
-        e.network_confirm(subject(), different, "confirm-one")
+        e.network_confirm(subject(&e), different, "confirm-one")
             .await
             .unwrap_err(),
         NetworkErrorKind::Conflict,
@@ -254,9 +259,11 @@ async fn idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corrupt
     )
     .await
     .unwrap();
+    project_fixture::configured_project(&e.store);
     let other = NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: "other".into(),
+        project_id: e.current_project().unwrap().project_id,
     };
     let p2 = e.network_preview(other.clone()).await.unwrap();
     let b = e
@@ -275,7 +282,7 @@ async fn idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corrupt
     )
     .unwrap();
     denied(
-        e.network_confirm(subject(), req, "confirm-one")
+        e.network_confirm(subject(&e), req, "confirm-one")
             .await
             .unwrap_err(),
         NetworkErrorKind::Corrupt,
@@ -297,7 +304,7 @@ async fn raw_secret_and_settings_changes_cannot_bypass_bound_snapshot() {
         NetworkErrorKind::Stale,
     );
     assert_eq!(mock.hits(), 0);
-    let p = e.network_preview(subject()).await.unwrap();
+    let p = e.network_preview(subject(&e)).await.unwrap();
     assert!(p.credential_revision > a.credential_revision);
     assert_eq!(
         e.network_authorization(&a.authorization_id).unwrap().state,
@@ -412,6 +419,7 @@ async fn account_save_is_local_and_requires_new_token_when_identity_changes() {
     let s = NetworkSubject {
         kind: NetworkSubjectKind::Account,
         id: "newapi".into(),
+        project_id: None,
     };
     let p = e.network_preview(s.clone()).await.unwrap();
     e.network_confirm(
@@ -428,11 +436,11 @@ async fn account_save_is_local_and_requires_new_token_when_identity_changes() {
 fn fake_unique_index_literal_is_rejected_and_active_uniqueness_is_real() {
     let dir = tempfile::tempdir().unwrap();
     let e = setup(dir.path(), "http://127.0.0.1:9");
-    let p = e.store.network_preview(subject()).unwrap();
+    let p = e.store.network_preview(subject(&e)).unwrap();
     let a = e
         .store
         .network_confirm(
-            subject(),
+            subject(&e),
             confirm_request(&p, vec![NetworkPurpose::Models]),
             "one",
         )
@@ -450,12 +458,12 @@ async fn confirm_failure_rolls_back_authorization_confirmation_and_event() {
     let mock = Mock::new().await;
     let dir = tempfile::tempdir().unwrap();
     let e = setup(dir.path(), &mock.base);
-    let p = e.network_preview(subject()).await.unwrap();
+    let p = e.network_preview(subject(&e)).await.unwrap();
     let db = Connection::open(dir.path().join("network.db")).unwrap();
     db.execute_batch("CREATE TRIGGER fail_confirmation BEFORE INSERT ON network_confirmations BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
     assert!(
         e.network_confirm(
-            subject(),
+            subject(&e),
             confirm_request(&p, vec![NetworkPurpose::Models]),
             "rollback"
         )
@@ -474,7 +482,7 @@ async fn confirm_failure_rolls_back_authorization_confirmation_and_event() {
     }
     db.execute_batch("DROP TRIGGER fail_confirmation").unwrap();
     e.network_confirm(
-        subject(),
+        subject(&e),
         confirm_request(&p, vec![NetworkPurpose::Models]),
         "rollback",
     )
@@ -544,6 +552,7 @@ async fn account_quota_change_is_local_and_preserves_identity_grant() {
     let subject = NetworkSubject {
         kind: NetworkSubjectKind::Account,
         id: "newapi".into(),
+        project_id: None,
     };
     let p = e.network_preview(subject.clone()).await.unwrap();
     let a = e
@@ -649,7 +658,7 @@ async fn environment_credential_reference_and_value_are_rechecked_across_real_pr
     e.configure(settings).await.unwrap();
     let original = grant(&e, vec![NetworkPurpose::Models]).await;
     assert!(
-        e.network_preview(subject())
+        e.network_preview(subject(&e))
             .await
             .unwrap()
             .credential_ref
@@ -832,7 +841,7 @@ async fn append_binding_failure_preserves_every_old_business_column_then_explici
         )
         .unwrap();
     e.network_revoke(&old.authorization_id).await.unwrap();
-    grant(&e, vec![NetworkPurpose::Completion]).await;
+    let replacement = grant(&e, vec![NetworkPurpose::Completion]).await;
     let command = SendChatTurn {
         session_id: SessionId(session),
         agent_id: AgentId(agent),
@@ -852,6 +861,28 @@ async fn append_binding_failure_preserves_every_old_business_column_then_explici
         "completed"
     );
     assert_ne!(next.task.legacy_task_id, task.id);
+    let binding = |task_id: &str| {
+        db.query_row(
+            "SELECT authorization_id FROM task_network_bindings WHERE task_id=?1",
+            [task_id],
+            |r| r.get::<_, String>(0),
+        )
+        .unwrap()
+    };
+    assert_eq!(binding(&task.id), old.authorization_id);
+    assert_eq!(
+        binding(&next.task.legacy_task_id),
+        replacement.authorization_id
+    );
+    assert_eq!(
+        e.resume(&task.id, "old retry")
+            .await
+            .unwrap_err()
+            .downcast_ref::<NetworkError>()
+            .unwrap()
+            .kind,
+        NetworkErrorKind::Revoked
+    );
     assert_eq!(mock.hits(), 2);
     let replay = e.send_chat_turn(command).await.unwrap();
     assert!(replay.replayed);

@@ -512,7 +512,12 @@ async fn partial_restore_reports_completed_and_unattempted_paths() {
         if first_restored && writer_active(&db_path) {
             break;
         }
-        assert!(!request.is_finished(), "restore finished before barrier");
+        if request.is_finished() {
+            let response = request.await.unwrap();
+            let status = response.status();
+            let body = response.text().await.unwrap();
+            panic!("restore finished before barrier: {status} {body}");
+        }
         assert!(
             Instant::now() < deadline,
             "first outcome barrier not reached"

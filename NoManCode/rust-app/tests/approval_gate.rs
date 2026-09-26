@@ -184,7 +184,40 @@ fn error_kind(error: &anyhow::Error) -> &ApprovalError {
         .downcast_ref::<ApprovalError>()
         .expect("typed approval error chain")
 }
-fn seed(store: &Store, root: &Path, id: &str, calls: Vec<Value>, commands: bool) -> Task {
+fn seed(_store: &Store, root: &Path, _label: &str, calls: Vec<Value>, commands: bool) -> Task {
+    let root = root.to_owned();
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let mut task = runtime.block_on(async {
+            let engine = setup(&root, "http://127.0.0.1:1/v1");
+            engine
+                .start(RunRequest {
+                    title: "seed".into(),
+                    kind: SessionKind::Team,
+                    tasks: vec![spec(commands)],
+                })
+                .await
+                .unwrap()
+                .tasks
+                .remove(0)
+        });
+        // No yield occurred after launch: shutdown stops the queued runner before model dispatch.
+        drop(runtime);
+        let store = Store::open(&root.join("approval.db")).unwrap();
+        task.status = "running".into();
+        task.messages
+            .push(json!({"role":"assistant","tool_calls":calls}));
+        store.save_task(&task).unwrap();
+        task
+    })
+    .join()
+    .unwrap()
+}
+
+fn legacy_seed(store: &Store, root: &Path, id: &str, calls: Vec<Value>, commands: bool) -> Task {
     let task = Task {
         id: id.into(),
         run_id: format!("run-{id}"),
@@ -212,6 +245,109 @@ fn seed(store: &Store, root: &Path, id: &str, calls: Vec<Value>, commands: bool)
         })
         .unwrap();
     task
+}
+
+#[test]
+fn project_ceiling_revocation_and_approval_claim_are_linearized_across_stores() {
+    use peachsh::project_config::*;
+    for revoke_first in [true, false] {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("approval.db");
+        let store = Store::open(&path).unwrap();
+        let c = write("write", "src/a.txt");
+        let task = seed(&store, temp.path(), "project-claim", vec![c.clone()], false);
+        let (approval, _) = store
+            .ensure_approval(&task, "write", "write_file", &args(&c))
+            .unwrap();
+        store.decide_approval(&approval.id, true, "user").unwrap();
+        let project = store
+            .task_project_binding(&task.id)
+            .unwrap()
+            .unwrap()
+            .project_id;
+        let before = store.project_config(&project).unwrap();
+        let other = Store::open(&path).unwrap();
+        if !revoke_first {
+            store
+                .claim_approval(&task, "write", "write_file", &args(&c))
+                .unwrap();
+        }
+        other
+            .configure_project(ConfigureProject {
+                project_id: project,
+                expected_revision: before.revision,
+                config: ProjectConfig::default(),
+            })
+            .unwrap();
+        if revoke_first {
+            assert_eq!(
+                store
+                    .claim_approval(&task, "write", "write_file", &args(&c))
+                    .unwrap_err()
+                    .downcast_ref::<ProjectError>()
+                    .unwrap()
+                    .code(),
+                "project_permission_revoked"
+            );
+            assert_eq!(
+                store.approval(&approval.id).unwrap().execution_state,
+                ExecutionState::NotStarted
+            );
+        } else {
+            assert_eq!(
+                store.approval(&approval.id).unwrap().execution_state,
+                ExecutionState::Claimed
+            );
+        }
+        assert!(!temp.path().join("src/a.txt").exists());
+    }
+    // Independent SQLite connections start together; whichever commits first determines admission.
+    for _ in 0..8 {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("approval.db");
+        let store = Store::open(&path).unwrap();
+        let c = write("race", "src/a.txt");
+        let task = seed(&store, temp.path(), "race", vec![c.clone()], false);
+        let (approval, _) = store
+            .ensure_approval(&task, "race", "write_file", &args(&c))
+            .unwrap();
+        store.decide_approval(&approval.id, true, "user").unwrap();
+        let project = store
+            .task_project_binding(&task.id)
+            .unwrap()
+            .unwrap()
+            .project_id;
+        let before = store.project_config(&project).unwrap();
+        let claim_store = Store::open(&path).unwrap();
+        let config_store = Store::open(&path).unwrap();
+        let barrier = Arc::new(Barrier::new(2));
+        let b = barrier.clone();
+        let claim = std::thread::spawn(move || {
+            b.wait();
+            claim_store.claim_approval(&task, "race", "write_file", &args(&c))
+        });
+        let revoke = std::thread::spawn(move || {
+            barrier.wait();
+            config_store.configure_project(ConfigureProject {
+                project_id: project,
+                expected_revision: before.revision,
+                config: ProjectConfig::default(),
+            })
+        });
+        let claimed = claim.join().unwrap();
+        revoke.join().unwrap().unwrap();
+        let state = store.approval(&approval.id).unwrap().execution_state;
+        match claimed {
+            Ok(_) => assert_eq!(state, ExecutionState::Claimed),
+            Err(error) => {
+                assert_eq!(
+                    error.downcast_ref::<ProjectError>().unwrap().code(),
+                    "project_permission_revoked"
+                );
+                assert_eq!(state, ExecutionState::NotStarted);
+            }
+        }
+    }
 }
 
 #[tokio::test]
@@ -644,8 +780,8 @@ fn ap13_cross_task_same_call_isolated() {
         s.claim_approval(&b, "same", "write_file", &args(&c))
             .is_err()
     );
-    assert_eq!(s.approvals_for_task("a").unwrap().len(), 1);
-    assert_eq!(s.approvals_for_task("b").unwrap().len(), 1);
+    assert_eq!(s.approvals_for_task(&a.id).unwrap().len(), 1);
+    assert_eq!(s.approvals_for_task(&b.id).unwrap().len(), 1);
 }
 
 #[test]
@@ -703,10 +839,11 @@ fn ap17_multistore_decision_cancel_race() {
             let s = Store::open(&temp.path().join("approval.db")).unwrap();
             let barrier = barrier.clone();
             let id = card.id.clone();
+            let task_id = t.id.clone();
             handles.push(std::thread::spawn(move || {
                 barrier.wait();
                 if mode == 2 {
-                    s.cancel_pending_approvals("a").map(|_| ())
+                    s.cancel_pending_approvals(&task_id).map(|_| ())
                 } else {
                     s.decide_approval(&id, mode == 0, "user").map(|_| ())
                 }
@@ -723,7 +860,7 @@ fn ap17_multistore_decision_cancel_race() {
                 .count(),
             1
         );
-        assert_eq!(s.task("a").unwrap().status, "cancelled");
+        assert_eq!(s.task(&t.id).unwrap().status, "cancelled");
         assert!(s.claim_approval(&t, "w", "write_file", &args(&c)).is_err());
     }
 }
@@ -741,7 +878,7 @@ fn ap17_claim_cancel_order_and_stale_completed() {
         if claim_first {
             s.claim_approval(&t, "w", "write_file", &args(&c)).unwrap();
         }
-        s.cancel_pending_approvals("a").unwrap();
+        s.cancel_pending_approvals(&t.id).unwrap();
         let record = s.approval(&card.id).unwrap();
         assert_eq!(record.status, ApprovalStatus::Approved);
         assert_eq!(
@@ -755,7 +892,7 @@ fn ap17_claim_cancel_order_and_stale_completed() {
         assert!(s.claim_approval(&t, "w", "write_file", &args(&c)).is_err());
         t.status = "completed".into();
         s.save_task(&t).unwrap();
-        assert_eq!(s.task("a").unwrap().status, "cancelled");
+        assert_eq!(s.task(&t.id).unwrap().status, "cancelled");
         assert_eq!(
             s.events(&t.run_id, 0)
                 .unwrap()
@@ -1012,7 +1149,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     let path = temp.path().join("approval.db");
     let s = Store::open(&path).unwrap();
     let c = write("w", "src/a.txt");
-    let t = seed(&s, temp.path(), "a", vec![c], false);
+    let t = legacy_seed(&s, temp.path(), "a", vec![c], false);
     drop(s);
     // Restore exactly schema 6: the only removed objects are schema 7 objects.
     let conn = db(temp.path());
@@ -1039,7 +1176,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     );
     conn.execute_batch("DROP TRIGGER migration_fault;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 10);
+    assert_eq!(s.schema_version().unwrap(), 11);
     assert_eq!(s.task("a").unwrap().id, t.id);
     assert_eq!(
         conn.query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r
@@ -1075,12 +1212,12 @@ fn ap20_public_query_order_and_corruption_distinct_from_missing() {
     let t = seed(&s, temp.path(), "task", vec![a.clone(), b.clone()], false);
     let (ar, _) = s.ensure_approval(&t, "a", "write_file", &args(&a)).unwrap();
     let (br, _) = s.ensure_approval(&t, "b", "write_file", &args(&b)).unwrap();
-    let list = s.approvals_for_task("task").unwrap();
+    let list = s.approvals_for_task(&t.id).unwrap();
     let pairs: Vec<_> = list.iter().map(|v| (v.created_at, v.id.clone())).collect();
     let mut sorted = pairs.clone();
     sorted.sort();
     assert_eq!(pairs, sorted);
-    assert_eq!(s.pending_approvals_for_task("task").unwrap().len(), 2);
+    assert_eq!(s.pending_approvals_for_task(&t.id).unwrap().len(), 2);
     assert!(s.approvals_for_task("other").unwrap().is_empty());
     assert!(matches!(
         error_kind(&s.approval("missing").unwrap_err()),
@@ -1248,7 +1385,9 @@ async fn ap16_public_finish_failure_preserves_all_transaction_inputs() {
         .unwrap();
     let conn = db(temp.path());
     let before: String = conn
-        .query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r.get(0))
+        .query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {
+            r.get(0)
+        })
         .unwrap();
     let before_events = s.events(&task.run_id, 0).unwrap().len();
     conn.execute_batch("CREATE TRIGGER finish_fault BEFORE UPDATE OF execution_state ON approvals WHEN NEW.execution_state='finished' BEGIN SELECT RAISE(ABORT,'finish fault'); END;").unwrap();
@@ -1257,9 +1396,10 @@ async fn ap16_public_finish_failure_preserves_all_transaction_inputs() {
             .is_err()
     );
     assert_eq!(
-        conn.query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r
-            .get::<_, String>(0))
-            .unwrap(),
+        conn.query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {
+            r.get::<_, String>(0)
+        })
+        .unwrap(),
         before
     );
     assert_eq!(s.events(&task.run_id, 0).unwrap().len(), before_events);
@@ -1300,7 +1440,7 @@ fn ap19_constraints_enforced_and_partial_ddl_retry() {
     network_fixture::drop_network_schema(&conn);
     conn.execute_batch("DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 10);
+    assert_eq!(s.schema_version().unwrap(), 11);
     assert_eq!(s.approval(&record.id).unwrap(), record);
     drop(s);
     conn.execute_batch("DROP INDEX approvals_task_call_unique; CREATE INDEX approvals_task_call_unique ON approvals(task_id,tool_call_id);").unwrap();
@@ -1329,7 +1469,7 @@ fn ap14_persisted_workspace_and_permission_changes_conflict() {
             1 => changed.spec.allow_commands = false,
             2 => changed.spec.write_scopes = vec!["*".into()],
             _ => {
-                changed.messages[1]["tool_calls"][0] = call(
+                changed.messages.last_mut().unwrap()["tool_calls"][0] = call(
                     "cmd",
                     "run_command",
                     json!({"command":"Write-Output changed"}),
@@ -1448,9 +1588,10 @@ fn ap17_multistore_cancel_claim_barrier() {
             b.wait();
             claim_store.claim_approval(&t, "w", "write_file", &a)
         });
+        let cancel_id = task.id.clone();
         let cancel = std::thread::spawn(move || {
             barrier.wait();
-            cancel_store.cancel_pending_approvals("a")
+            cancel_store.cancel_pending_approvals(&cancel_id)
         });
         let claimed = claim.join().unwrap().is_ok();
         cancel.join().unwrap().unwrap();
@@ -1464,7 +1605,7 @@ fn ap17_multistore_cancel_claim_barrier() {
                 ExecutionState::Cancelled
             }
         );
-        assert_eq!(s.task("a").unwrap().status, "cancelled");
+        assert_eq!(s.task(&task.id).unwrap().status, "cancelled");
         assert_eq!(
             s.events(&task.run_id, 0)
                 .unwrap()
@@ -1595,4 +1736,120 @@ fn command_legacy_approved_ack_is_sidecar_only_and_unknown_cannot_be_acknowledge
             .downcast_ref::<ApprovalError>(),
         Some(ApprovalError::UnknownResult { .. })
     ));
+}
+
+#[tokio::test]
+async fn pending_command_keeps_original_cwd_after_default_project_switch() {
+    use peachsh::project_config::{RegisterProject, SelectProject};
+    let temp = tempfile::tempdir().unwrap();
+    let a = temp.path().join("a");
+    let b = temp.path().join("b");
+    std::fs::create_dir(&a).unwrap();
+    std::fs::create_dir(&b).unwrap();
+    std::fs::write(b.join("sentinel.txt"), "B unchanged").unwrap();
+    let command = call(
+        "cwd",
+        "run_command",
+        json!({"command":"[System.IO.File]::WriteAllText((Join-Path (Get-Location) 'sentinel.txt'), 'A command')"}),
+    );
+    let (base, server) = server(&a, vec![vec![command], vec![]]).await;
+    let engine = setup(&a, &base);
+    let task = start(&engine, true).await;
+    let original = engine
+        .store
+        .task_project_binding(&task.id)
+        .unwrap()
+        .unwrap();
+    let approval = pending(&engine, &task.id).await;
+    let other = engine
+        .store
+        .register_project(RegisterProject {
+            name: "B".into(),
+            root_path: b.to_string_lossy().into(),
+            idempotency_key: id(),
+        })
+        .unwrap();
+    let current = engine.store.current_project().unwrap();
+    engine
+        .store
+        .select_project(SelectProject {
+            project_id: other.id.clone(),
+            expected_revision: current.revision,
+        })
+        .unwrap();
+    engine
+        .decide_approval_with_network_ack(&approval.id, true, None, true)
+        .unwrap();
+    assert_eq!(settled(&engine, &task.id).await.status, "completed");
+    assert_eq!(
+        std::fs::read_to_string(a.join("sentinel.txt")).unwrap(),
+        "A command"
+    );
+    assert_eq!(
+        std::fs::read_to_string(b.join("sentinel.txt")).unwrap(),
+        "B unchanged"
+    );
+    assert_eq!(
+        engine
+            .store
+            .task_project_binding(&task.id)
+            .unwrap()
+            .unwrap()
+            .project_id,
+        original.project_id
+    );
+    assert_eq!(
+        engine.store.current_project().unwrap().project_id,
+        Some(other.id)
+    );
+    assert_eq!(
+        engine.store.approval(&approval.id).unwrap().execution_state,
+        ExecutionState::Finished
+    );
+    server.abort();
+}
+
+#[test]
+fn schema10_unbound_pending_approval_can_deny_or_cancel_but_not_approve() {
+    for deny in [true, false] {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("approval.db");
+        let store = Store::open(&path).unwrap();
+        let call = write("legacy", "src/a.txt");
+        let task = seed(&store, temp.path(), "legacy", vec![call.clone()], false);
+        let (card, _) = store
+            .ensure_approval(&task, "legacy", "write_file", &args(&call))
+            .unwrap();
+        drop(store);
+        let raw = Connection::open(&path).unwrap();
+        network_fixture::project_fixture::drop_project_schema(&raw);
+        raw.pragma_update(None, "user_version", 10).unwrap();
+        drop(raw);
+        let store = Store::open(&path).unwrap();
+        let before = store.approval(&card.id).unwrap();
+        assert_eq!(
+            store
+                .decide_approval(&card.id, true, "user")
+                .unwrap_err()
+                .downcast_ref::<peachsh::project_config::ProjectError>()
+                .unwrap()
+                .code(),
+            "project_legacy_unbound"
+        );
+        assert_eq!(store.approval(&card.id).unwrap(), before);
+        if deny {
+            store.decide_approval(&card.id, false, "user").unwrap();
+            assert_eq!(
+                store.approval(&card.id).unwrap().status,
+                ApprovalStatus::Denied
+            );
+        } else {
+            store.cancel_pending_approvals(&task.id).unwrap();
+            assert_eq!(
+                store.approval(&card.id).unwrap().execution_state,
+                ExecutionState::Cancelled
+            );
+        }
+        assert!(!temp.path().join("src/a.txt").exists());
+    }
 }
