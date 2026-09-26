@@ -8,6 +8,7 @@ pub mod repository;
 pub mod secrets;
 pub mod server;
 pub mod store;
+pub mod tool_runtime;
 pub mod wasm;
 pub mod workspace;
 pub mod workspace_changes;

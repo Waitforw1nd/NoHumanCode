@@ -677,7 +677,20 @@ impl Store {
         repository::Repository::new(&self.db.lock().unwrap()).latest_committed_turn(id)
     }
 
-    /// Append one tool-free chat turn to an existing session.
+    /// Build a checked historical prefix, including safe Host recovery facts.
+    pub(crate) fn chat_continuation_prefix(
+        &self,
+        session: &SessionId,
+        previous: &Task,
+    ) -> Result<Vec<Value>> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        let prefix = chat_continuation_prefix_tx(&tx, session, previous)?;
+        tx.commit()?;
+        Ok(prefix)
+    }
+
+    /// Append one completed single-agent chat turn to an existing session.
     ///
     /// `request_hash` must already be the stable send-turn digest. This command
     /// classifies that key, rechecks the committed predecessor, and inserts the
@@ -753,9 +766,8 @@ impl Store {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
         let previous_legacy = legacy_task_row(&tx, &previous.legacy_task_id)?;
-        if !tool_free_chat_task(&previous_legacy)
+        if !previous_legacy.spec.depends_on.is_empty()
             || previous_legacy.run_id != session.legacy_run_id
-            || !tool_free_chat_prefix(&previous_legacy.messages)
         {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
@@ -763,14 +775,25 @@ impl Store {
         if !same_project_path(&previous_legacy.workspace, &project.root_path) {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
+        let settings: String =
+            tx.query_row("SELECT value FROM config WHERE id='settings'", [], |row| {
+                row.get(0)
+            })?;
+        let settings: Settings =
+            serde_json::from_str(&settings).map_err(|_| ChatTurnError::CorruptState)?;
+        if !same_project_path(&settings.workspace, &previous_legacy.workspace) {
+            return Err(ChatTurnError::UnsupportedSession.into());
+        }
+        let prefix = chat_continuation_prefix_tx(&tx, &session.id, &previous_legacy)?;
         if !candidate_continues_snapshot(
             &previous_legacy,
             legacy_task,
             &command_message(legacy_task),
+            &prefix,
         ) {
             return Err(ChatTurnError::PredecessorChanged.into());
         }
-        if !tool_free_chat_task(legacy_task)
+        if !legacy_task.spec.depends_on.is_empty()
             || legacy_task.run_id != session.legacy_run_id
             || legacy_task.id != task.legacy_task_id
             || legacy_task.status != LifecycleStatus::Queued.as_str()
@@ -1598,10 +1621,242 @@ fn same_project_path(left: &str, right: &str) -> bool {
     left == right
 }
 
+// Validate complete transcripts before copying them. A call belongs to the first
+// committed task containing it; descendants must preserve the entire prefix.
+struct ClosedCall<'a> {
+    id: &'a str,
+    name: &'a str,
+    result: Value,
+}
+
+fn closed_calls(messages: &[Value]) -> Result<Vec<ClosedCall<'_>>> {
+    let unsupported = || ChatTurnError::UnsupportedSession;
+    if messages.is_empty() {
+        return Err(unsupported().into());
+    }
+    let mut calls = Vec::new();
+    let mut ids = std::collections::HashSet::new();
+    let mut saw_user = false;
+    let mut index = 0;
+    while index < messages.len() {
+        let message = &messages[index];
+        let role = message["role"].as_str().ok_or_else(unsupported)?;
+        saw_user |= role == "user";
+        if !matches!(role, "system" | "user" | "assistant") || message.get("tool_call_id").is_some()
+        {
+            return Err(unsupported().into());
+        }
+        let group = message.get("tool_calls");
+        if group.is_none() || group.is_some_and(|group| group.as_array().is_some_and(Vec::is_empty))
+        {
+            let content = &message["content"];
+            if !(content.as_str().is_some_and(|text| !text.is_empty())
+                || content.as_array().is_some_and(|parts| {
+                    !parts.is_empty()
+                        && parts.iter().all(|part| {
+                            part["type"] == "text"
+                                && part["text"].as_str().is_some_and(|text| !text.is_empty())
+                        })
+                }))
+            {
+                return Err(unsupported().into());
+            }
+            index += 1;
+            continue;
+        }
+        let group = group.ok_or_else(unsupported)?;
+        let group = group.as_array().ok_or_else(unsupported)?;
+        if role != "assistant"
+            || group.is_empty()
+            || !(message["content"].is_null() || message["content"].is_string())
+        {
+            return Err(unsupported().into());
+        }
+        index += 1;
+        for call in group {
+            let id = call["id"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .ok_or_else(unsupported)?;
+            let name = call["function"]["name"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .ok_or_else(unsupported)?;
+            let args = call["function"]["arguments"]
+                .as_str()
+                .ok_or_else(unsupported)?;
+            if call["type"] != "function"
+                || !ids.insert(id)
+                || !serde_json::from_str::<Value>(args).is_ok_and(|args| args.is_object())
+            {
+                return Err(unsupported().into());
+            }
+            let result = messages.get(index).ok_or_else(unsupported)?;
+            if result["role"] != "tool"
+                || result["tool_call_id"] != id
+                || result.get("tool_calls").is_some()
+            {
+                return Err(unsupported().into());
+            }
+            let content = result["content"].as_str().ok_or_else(unsupported)?;
+            calls.push(ClosedCall {
+                id,
+                name,
+                result: serde_json::from_str(content)
+                    .unwrap_or_else(|_| Value::String(content.into())),
+            });
+            index += 1;
+        }
+    }
+    if !saw_user {
+        return Err(unsupported().into());
+    }
+    Ok(calls)
+}
+
+fn chat_continuation_prefix_tx(
+    tx: &rusqlite::Transaction<'_>,
+    session_id: &SessionId,
+    previous: &Task,
+) -> Result<Vec<Value>> {
+    use approval::{ApprovalStatus, ExecutionState};
+    let repo = repository::Repository::new(tx);
+    let session = repo.session(session_id)?;
+    let latest = repo
+        .latest_committed_turn(session_id)?
+        .ok_or(ChatTurnError::NotFound)?;
+    let mut stmt = tx.prepare("SELECT t.id FROM turns t JOIN events e ON e.turn_id=t.id AND e.session_id=t.session_id WHERE t.session_id=?1 GROUP BY t.id ORDER BY MIN(e.seq)")?;
+    let turns = stmt
+        .query_map([&session_id.0], |row| row.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut prefix: Vec<Value> = Vec::new();
+    let mut owners = std::collections::HashMap::<String, String>::new();
+    let mut recovery_facts = Vec::new();
+    let mut agent_id = None;
+    for turn_id in turns {
+        let turn = repo.turn(&TurnId(turn_id))?;
+        let tasks = repo.turn_tasks(&turn.id)?;
+        let projected = match tasks.as_slice() {
+            [only] if only.depends_on.is_empty() => only,
+            _ => return Err(ChatTurnError::UnsupportedSession.into()),
+        };
+        let task = legacy_task_row(tx, &projected.legacy_task_id)?;
+        if turn.project_id != session.project_id
+            || projected.session_id != session.id
+            || task.run_id != session.legacy_run_id
+            || !task.spec.depends_on.is_empty()
+            || agent_id
+                .as_ref()
+                .is_some_and(|id| id != &projected.agent_id)
+        {
+            return Err(ChatTurnError::CorruptState.into());
+        }
+        agent_id = Some(projected.agent_id.clone());
+        // Raw state scan deliberately precedes transcript validation. Even a
+        // damaged completed projection may not hide a pending effect.
+        let unresolved: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM approvals WHERE task_id=?1 AND (status='pending' OR execution_state IN ('claimed','unknown') OR (status='approved' AND execution_state NOT IN ('finished','cancelled')))) OR EXISTS(SELECT 1 FROM workspace_changes WHERE task_id=?1 AND (state IN ('prepared','unknown') OR restore_state='unknown')) OR EXISTS(SELECT 1 FROM workspace_restores WHERE task_id=?1 AND status IN ('claimed','partial','unknown')) OR EXISTS(SELECT 1 FROM workspace_restore_outcomes o JOIN workspace_restores r ON r.id=o.restore_id WHERE r.task_id=?1 AND o.status IN ('claimed','unknown'))",
+            [&task.id], |row| row.get(0))?;
+        if unresolved {
+            return Err(ChatTurnError::UnresolvedEffects.into());
+        }
+        if task.status != "completed"
+            || projected.status != LifecycleStatus::Completed
+            || turn.status != LifecycleStatus::Completed
+        {
+            return Err(ChatTurnError::SessionBusy.into());
+        }
+        if !task.messages.starts_with(&prefix) {
+            return Err(ChatTurnError::CorruptState.into());
+        }
+        let calls = closed_calls(&task.messages)?;
+        let approvals = repo.approvals_for_task(&task.id)?;
+        for record in &approvals {
+            if owners.contains_key(&record.tool_call_id)
+                || !calls
+                    .iter()
+                    .any(|call| call.id == record.tool_call_id && call.name == record.tool_name)
+            {
+                return Err(ChatTurnError::CorruptState.into());
+            }
+            if !matches!(
+                record.status,
+                ApprovalStatus::Denied | ApprovalStatus::Cancelled
+            ) && !matches!(
+                record.execution_state,
+                ExecutionState::Finished | ExecutionState::Cancelled
+            ) {
+                return Err(ChatTurnError::UnresolvedEffects.into());
+            }
+        }
+        let new_calls: Vec<_> = calls
+            .iter()
+            .filter(|call| !owners.contains_key(call.id))
+            .collect();
+        let mut events_stmt = tx.prepare("SELECT data FROM events WHERE task_id=?1 AND turn_id=?2 AND session_id=?3 AND kind='tool_result' ORDER BY seq")?;
+        let events = events_stmt
+            .query_map(params![task.id, turn.id.0, session.id.0], |row| {
+                row.get::<_, String>(0)
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        if events.len() != new_calls.len() {
+            return Err(ChatTurnError::UnsupportedSession.into());
+        }
+        for (call, raw_event) in new_calls.into_iter().zip(events) {
+            let event: Value =
+                serde_json::from_str(&raw_event).map_err(|_| ChatTurnError::CorruptState)?;
+            // Legacy readonly/denied events have no call id. Their owned task,
+            // ordered position, name and exact result still prove provenance.
+            if event["name"] != call.name
+                || event["result"] != call.result
+                || event.get("tool_call_id").is_some_and(|id| id != call.id)
+            {
+                return Err(ChatTurnError::CorruptState.into());
+            }
+            if approval::evaluate(&task, call.name) == approval::PolicyDecision::RequireApproval
+                && !approvals
+                    .iter()
+                    .any(|record| record.tool_call_id == call.id)
+            {
+                return Err(ChatTurnError::UnresolvedEffects.into());
+            }
+            owners.insert(call.id.into(), task.id.clone());
+        }
+        let mut restores = tx.prepare("SELECT id FROM workspace_restores WHERE task_id=?1 AND status='complete' ORDER BY created_at,rowid")?;
+        let restores = restores
+            .query_map([&task.id], |row| row.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        for restore_id in restores {
+            let receipt = restore_receipt(tx, &restore_id)?;
+            if receipt
+                .outcomes
+                .iter()
+                .any(|outcome| outcome.status != RestoreStatus::Complete)
+            {
+                return Err(ChatTurnError::CorruptState.into());
+            }
+            recovery_facts.push(json!({"task_id":task.id,"restore_id":restore_id}));
+        }
+        if turn.id == latest.id && (task.id != previous.id || task.messages != previous.messages) {
+            return Err(ChatTurnError::PredecessorChanged.into());
+        }
+        prefix = task.messages;
+    }
+    if !recovery_facts.is_empty() {
+        prefix.push(json!({"role":"user","content":format!("Host recovery fact: completed workspace restores {}. Prior tool results describe historical file contents, not current disk state. Read the current files before further edits.", serde_json::to_string(&recovery_facts)?)}));
+    }
+    Ok(prefix)
+}
+
 /// The candidate must be the persisted predecessor plus exactly one user message.
 /// Identity, route, workspace, and the copied prefix are compared inside the
 /// append transaction so a completed resume cannot be silently dropped.
-fn candidate_continues_snapshot(previous: &Task, candidate: &Task, message: &str) -> bool {
+fn candidate_continues_snapshot(
+    previous: &Task,
+    candidate: &Task,
+    message: &str,
+    expected_prefix: &[Value],
+) -> bool {
     if candidate.spec.prompt != message
         || serde_json::to_value(&candidate.route).ok() != serde_json::to_value(&previous.route).ok()
         || candidate.workspace != previous.workspace
@@ -1609,13 +1864,16 @@ fn candidate_continues_snapshot(previous: &Task, candidate: &Task, message: &str
         || candidate.spec.role != previous.spec.role
         || candidate.spec.route_id != previous.spec.route_id
         || candidate.spec.max_rounds != previous.spec.max_rounds
+        || candidate.spec.tools != previous.spec.tools
+        || candidate.spec.write_scopes != previous.spec.write_scopes
+        || candidate.spec.allow_commands != previous.spec.allow_commands
     {
         return false;
     }
     let Some((last, prefix)) = candidate.messages.split_last() else {
         return false;
     };
-    prefix == previous.messages.as_slice()
+    prefix == expected_prefix
         && last["role"] == "user"
         && last["content"] == message
         && last.get("tool_calls").is_none()
@@ -1769,13 +2027,6 @@ fn approval_event(
     event.session_id = event.session_id.filter(|id| !id.is_empty());
     repository::Repository::append_event(tx, &event)?;
     Ok(())
-}
-
-fn tool_free_chat_task(task: &Task) -> bool {
-    !task.spec.tools
-        && !task.spec.allow_commands
-        && task.spec.write_scopes.is_empty()
-        && task.spec.depends_on.is_empty()
 }
 
 fn legacy_task_row(tx: &rusqlite::Transaction<'_>, id: &str) -> Result<Task> {

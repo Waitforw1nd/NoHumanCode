@@ -512,7 +512,7 @@ pub enum IdempotencyReplay {
 /// Application command version included in the send-turn digest.
 pub const SEND_CHAT_TURN_COMMAND: &str = "engine.send_chat_turn.v1";
 
-/// One new user message on an existing, already completed, tool-free chat.
+/// One new user message on an existing, already completed, single-agent chat.
 ///
 /// Identity fields are stable ids. Display names are not part of this command
 /// and must not be used to decide session ownership.
@@ -549,7 +549,7 @@ pub enum ChatTurnError {
     /// after the candidate was built. Replay of an already committed key is
     /// unaffected.
     PredecessorChanged,
-    /// The session is not a single tool-free chat that this command can extend.
+    /// The session is not a supported single-agent chat with closed history.
     UnsupportedSession,
     /// The message, key, or required identity failed validation.
     InvalidInput,
@@ -567,7 +567,7 @@ impl std::fmt::Display for ChatTurnError {
             Self::StalePredecessor => "前序回合已不是最新提交回合",
             Self::SessionBusy => "当前回合尚未完成，不能追加新回合",
             Self::PredecessorChanged => "前序回合内容已变化，请按当前快照重试",
-            Self::UnsupportedSession => "当前会话不支持无工具连续对话追加",
+            Self::UnsupportedSession => "当前会话或工具历史不支持连续对话追加",
             Self::InvalidInput => "连续对话请求无效",
             Self::NotFound => "连续对话所需对象不存在",
             Self::CorruptState => "连续对话持久状态损坏，不能判断归属或顺序",
