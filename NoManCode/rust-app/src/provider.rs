@@ -640,6 +640,61 @@ mod network_tests {
     }
 
     #[tokio::test]
+    async fn sse_exact_limit_finishes_and_over_limit_fails_before_eof() {
+        let finish = b"data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n";
+        let done = b"data: [DONE]\n\n";
+        let mut exact_body = finish.to_vec();
+        exact_body.push(b':');
+        exact_body.resize(RESPONSE_LIMIT - done.len() - 1, b'x');
+        exact_body.push(b'\n');
+        exact_body.extend_from_slice(done);
+        assert_eq!(exact_body.len(), RESPONSE_LIMIT);
+        let exact = Mock::start(response(200, &exact_body, ""), false).await;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            complete(
+                &client().unwrap(),
+                permit(&exact.base, NetworkPurpose::Completion, Some("m"), None),
+                &route(&exact.base),
+                &[],
+                &[],
+                |_| Ok(()),
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(result.0["content"], "OK");
+        assert_eq!(exact.hits(), 1);
+        exact.stop().await;
+
+        let mut wire = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/event-stream\r\n\r\n",
+            RESPONSE_LIMIT + 1000
+        )
+        .into_bytes();
+        wire.push(b':');
+        wire.resize(wire.len() + RESPONSE_LIMIT, b'x');
+        let oversized = Mock::start(wire, true).await;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            complete(
+                &client().unwrap(),
+                permit(&oversized.base, NetworkPurpose::Completion, Some("m"), None),
+                &route(&oversized.base),
+                &[],
+                &[],
+                |_| Ok(()),
+            ),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.unwrap_err(), TransportError::Unknown);
+        assert_eq!(oversized.hits(), 1);
+        oversized.stop().await;
+    }
+
+    #[tokio::test]
     async fn response_errors_distinguish_complete_invalid_and_truncated() {
         for (wire, expected) in [
             (
