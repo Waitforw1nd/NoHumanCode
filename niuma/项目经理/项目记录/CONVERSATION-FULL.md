@@ -1,3 +1,11 @@
+## 2026-09-27 NEXT-08契约1.0已冻结，待新基线派发
+
+更新人：经理GPT-6。用户要求继续下一轮，已核E盘活动主线b9997c8b60c35b14005e88a318d171527df92d28、NoManCode tree0f01cd6c1621a16cef842a583028b91cc80f4e12、Rust treef303e198698c8b68f11f937b6ec405fe8db6a70a，启动status/index空。原B/C/D GPT-6-astra已完成只读预审，不构成新实现开工。
+
+已交NEXT-08多项目配置契约1.0，范围为项目登记/选择/权限上限、Task不可变项目快照与根目录身份、项目route网络授权、HTTP/CLI和最小web会话链。Host共享Provider/key/account/并发；网络授权不会随项目选择搬运。schema11历史无sidecar只保留历史查询/纯回放/deny/cancel，旧Task原可恢复能力亦明确关闭；不伪造历史目录身份，不自动adopt。新schema11正向审批/恢复/crash保证必须继续测试。具体接口、矩阵P01–P11及所有权见任务目录契约，尚无产品实现/正式测试。
+
+下一第一操作：提交管理契约形成完整开发基线，在E盘建立B-R7/C-R9/D-R6独立树，按既有授权直接派原执行者并记录真实接收；经理不接管源码。NEXT-07保持已结项，396/0/1是历史证据，不冒称本轮测试。完整阶段一未完成；不push/release/live/reset/clean/stash，不清旧树。下方为历史。
+
 ## NEXT-06已验收并整合main（2026-09-27）
 
 经理GPT-6。产品整合3b58041e9939cd9d1e6a979449c81f5489f7229f，管理/证据归档5391c592fa8cd458372ee86d0ec4592d37fa0022；最终受测9f990648df3308dc7235b028123e5532a35a00f8。主线NoManCode tree 9d5d77c62ddd4f7696f6ffc937056593754815fb、Rust tree b549de2e18d39c8e69e6607b9f430974895ee4b9均与受测候选一致。C在D盘串行五门禁全0，345通过/0失败/1付费live忽略；经理核68对日志hash，具体边界见NEXT-06联合验收与整合记录。
