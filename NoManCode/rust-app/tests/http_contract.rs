@@ -491,6 +491,7 @@ async fn h1_read_shapes_and_security_headers_stay() {
 
     let projects: Vec<Project> = http
         .get(format!("{}/api/projects", harness.origin))
+        .header("x-peachsh-token", &harness.token)
         .send()
         .await
         .unwrap()
