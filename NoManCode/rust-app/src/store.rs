@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 9;
+pub const SCHEMA_VERSION: u32 = 10;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -17,7 +17,7 @@ impl std::fmt::Display for IdempotencyConflict {
 impl std::error::Error for IdempotencyConflict {}
 
 pub struct Store {
-    db: Mutex<Connection>,
+    pub(crate) db: Mutex<Connection>,
 }
 pub struct TurnBundle<'a> {
     pub project: &'a Project,
@@ -49,6 +49,10 @@ impl Store {
         anyhow::ensure!(
             version < 9 || repository::migration_applied(&db, repository::CHECKPOINT_MIGRATION_ID)?,
             "schema 9 checkpoint marker missing"
+        );
+        anyhow::ensure!(
+            version < 10 || repository::migration_applied(&db, repository::NETWORK_MIGRATION_ID)?,
+            "schema 10 marker missing"
         );
         if version < 2 {
             db.execute_batch("CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), created_at INTEGER NOT NULL);
@@ -147,11 +151,22 @@ impl Store {
         } else {
             let current: u32 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
             anyhow::ensure!(
-                current == SCHEMA_VERSION,
+                (9..=SCHEMA_VERSION).contains(&current),
                 "checkpoint migration version mismatch"
             );
             let tx = db.transaction()?;
             repository::verify_schema_9(&tx)?;
+            tx.commit()?;
+        }
+        if !repository::migration_applied(&db, repository::NETWORK_MIGRATION_ID)? {
+            let tx = db.transaction()?;
+            repository::apply_schema_10(&tx)?;
+            tx.commit()?;
+        } else {
+            let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
+            anyhow::ensure!(current == SCHEMA_VERSION, "network schema version mismatch");
+            let tx = db.transaction()?;
+            repository::verify_schema_10(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })

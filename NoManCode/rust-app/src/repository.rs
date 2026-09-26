@@ -2019,6 +2019,106 @@ fn event_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
     })
 }
 
+pub const NETWORK_MIGRATION_ID: &str = "network-authorization-repository";
+const NETWORK_TABLES: &[(&str, &str)] = &[
+    (
+        "network_subjects",
+        "CREATE TABLE IF NOT EXISTS network_subjects (subject TEXT NOT NULL PRIMARY KEY, snapshot TEXT NOT NULL, credential_blob BLOB NOT NULL)",
+    ),
+    (
+        "network_authorizations",
+        "CREATE TABLE IF NOT EXISTS network_authorizations (id TEXT NOT NULL PRIMARY KEY, subject TEXT NOT NULL REFERENCES network_subjects(subject), config_revision INTEGER NOT NULL CHECK(config_revision>0), credential_revision INTEGER NOT NULL CHECK(credential_revision>0), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64), purposes TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','revoked','stale')), created_at INTEGER NOT NULL CHECK(created_at>=0))",
+    ),
+    (
+        "network_confirmations",
+        "CREATE TABLE IF NOT EXISTS network_confirmations (subject TEXT NOT NULL REFERENCES network_subjects(subject), creation_key TEXT NOT NULL, request_digest TEXT NOT NULL CHECK(length(request_digest)=64), authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), PRIMARY KEY(subject,creation_key))",
+    ),
+    (
+        "task_network_bindings",
+        "CREATE TABLE IF NOT EXISTS task_network_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64))",
+    ),
+    (
+        "network_calls",
+        "CREATE TABLE IF NOT EXISTS network_calls (id TEXT NOT NULL PRIMARY KEY, authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), task_id TEXT REFERENCES tasks(id), state TEXT NOT NULL CHECK(state IN ('claimed','finished','unknown','not_sent')), receipt TEXT NOT NULL)",
+    ),
+    (
+        "command_network_ack",
+        "CREATE TABLE IF NOT EXISTS command_network_ack (approval_id TEXT NOT NULL PRIMARY KEY REFERENCES approvals(id), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64), notice_version INTEGER NOT NULL CHECK(notice_version=1), created_at INTEGER NOT NULL CHECK(created_at>=0))",
+    ),
+    (
+        "network_events",
+        "CREATE TABLE IF NOT EXISTS network_events (seq INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('confirmed','revoked','stale')), object_id TEXT NOT NULL, created_at INTEGER NOT NULL CHECK(created_at>=0))",
+    ),
+];
+const NETWORK_ACTIVE_INDEX: &str = "CREATE UNIQUE INDEX network_one_active ON network_authorizations(subject) WHERE state='active'";
+pub fn apply_schema_10(tx: &Transaction<'_>) -> Result<()> {
+    for (_, sql) in NETWORK_TABLES {
+        tx.execute_batch(sql)?;
+    }
+    tx.execute_batch(&NETWORK_ACTIVE_INDEX.replacen(
+        "CREATE UNIQUE INDEX ",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ",
+        1,
+    ))?;
+    verify_schema_10(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![NETWORK_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 10)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_10(tx: &Transaction<'_>) -> Result<()> {
+    fn normalize(sql: &str) -> String {
+        let mut out = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if let Some(q) = quote {
+                out.push(ch);
+                if ch == q {
+                    if chars.peek() == Some(&q) {
+                        out.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                out.push(ch);
+            } else if !ch.is_whitespace() {
+                out.push(ch.to_ascii_lowercase());
+            }
+        }
+        out.replacen("ifnotexists", "", 1)
+    }
+    for (table, sql) in NETWORK_TABLES {
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "network schema constraint mismatch"
+        );
+    }
+    let actual: String = tx.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='index' AND name='network_one_active'",
+        [],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(
+        normalize(&actual) == normalize(NETWORK_ACTIVE_INDEX),
+        "network active index mismatch"
+    );
+    let violation: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(violation.is_none(), "network foreign key violation");
+    Ok(())
+}
+
 #[cfg(test)]
 mod schema_tests {
     use super::*;
