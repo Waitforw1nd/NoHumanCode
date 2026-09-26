@@ -1,7 +1,7 @@
 //! NEXT-07 real Host authorization admission and transport contracts; localhost only.
 use axum::{
-    Json, Router,
     routing::{get, post},
+    Json, Router,
 };
 use peachsh::{
     domain::{Account, Route, Settings},
@@ -9,12 +9,12 @@ use peachsh::{
     server::{self, App},
     store::Store,
 };
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     collections::HashMap,
     sync::{
-        Arc,
         atomic::{AtomicUsize, Ordering},
+        Arc,
     },
     time::Duration,
 };
@@ -23,6 +23,7 @@ struct Host {
     engine: Arc<Engine>,
     calls: Arc<AtomicUsize>,
     provider_origin: String,
+    project_id: String,
     http: tokio::task::JoinHandle<()>,
     provider: tokio::task::JoinHandle<()>,
     _dir: tempfile::TempDir,
@@ -79,6 +80,36 @@ impl Host {
             )
             .await
             .unwrap();
+        let project = engine
+            .register_project(peachsh::project_config::RegisterProject {
+                name: "network-fixture".into(),
+                root_path: dir.path().to_string_lossy().into(),
+                idempotency_key: "network-fixture-project".into(),
+            })
+            .await
+            .unwrap();
+        engine
+            .configure_project(peachsh::project_config::ConfigureProject {
+                project_id: project.id.clone(),
+                expected_revision: 1,
+                config: peachsh::project_config::ProjectConfig {
+                    allowed_route_ids: vec!["route-a".into()],
+                    default_route_id: Some("route-a".into()),
+                    tools: true,
+                    write_scopes: vec!["*".into()],
+                    allow_commands: true,
+                },
+            })
+            .await
+            .unwrap();
+        engine
+            .select_project(peachsh::project_config::SelectProject {
+                project_id: project.id.clone(),
+                expected_revision: 0,
+            })
+            .await
+            .unwrap();
+        let project_id = project.id.0;
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
         let router = server::router(App {
@@ -92,6 +123,7 @@ impl Host {
             engine,
             calls,
             provider_origin,
+            project_id,
             http,
             provider,
             _dir: dir,
@@ -109,7 +141,10 @@ impl Host {
             .await
             .unwrap()
     }
-    async fn preview(&self, subject: Value) -> Value {
+    async fn preview(&self, mut subject: Value) -> Value {
+        if subject["kind"] == "route" {
+            subject["project_id"] = json!(self.project_id);
+        }
         let r = self.post("/api/network/preview", subject).await;
         let status = r.status();
         let value: Value = r.json().await.unwrap();

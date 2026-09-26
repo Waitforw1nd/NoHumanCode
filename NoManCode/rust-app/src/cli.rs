@@ -1399,6 +1399,27 @@ async fn workflow_inner(
                                 false,
                             ));
                         }
+                        let shape: Value = serde_json::from_slice(&bytes).map_err(|_| {
+                            Failure::fixed("request_failed", "项目配置JSON无效", false)
+                        })?;
+                        if shape.as_object().is_none_or(|object| {
+                            object.len() != 5
+                                || ![
+                                    "allowed_route_ids",
+                                    "default_route_id",
+                                    "tools",
+                                    "write_scopes",
+                                    "allow_commands",
+                                ]
+                                .iter()
+                                .all(|key| object.contains_key(*key))
+                        }) {
+                            return Err(Failure::fixed(
+                                "request_failed",
+                                "项目配置必须为完整对象",
+                                false,
+                            ));
+                        }
                         let config: ProjectConfig =
                             serde_json::from_slice(&bytes).map_err(|_| {
                                 Failure::fixed(
@@ -1733,7 +1754,9 @@ async fn workflow_inner(
 
 fn validate_subject(subject: &NetworkSubject) -> Result<(), Failure> {
     if !valid_id(&subject.id)
-        || (subject.kind == NetworkSubjectKind::Account && subject.id != "newapi")
+        || (subject.kind == NetworkSubjectKind::Account
+            && (subject.id != "newapi" || subject.project_id.is_some()))
+        || subject.project_id.as_ref().is_some_and(|p| !valid_id(&p.0))
     {
         return Err(invalid_response());
     }
@@ -1922,11 +1945,12 @@ async fn network_request(
     }
     let failure = http_failure(value).map_err(|_| invalid())?;
     let expected = match failure.code {
-        "invalid" => 400,
-        "not_found" => 404,
+        "invalid" | "project_invalid" => 400,
+        "not_found" | "project_not_found" => 404,
         "required" | "stale" | "revoked" | "conflict" | "unknown" => 409,
-        "corrupt" | "internal" => 500,
+        "corrupt" | "internal" | "project_corrupt" | "project_internal" => 500,
         "upstream" => 502,
+        code if project_error_code(code).is_some() => 409,
         _ => status.as_u16(),
     };
     if failure.details.is_some() && expected != status.as_u16() {

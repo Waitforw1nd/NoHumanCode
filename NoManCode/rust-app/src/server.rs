@@ -9,7 +9,7 @@ use crate::{
         ConfigureProject, ProjectConfig, ProjectConfigSnapshot, ProjectError, ProjectSelection,
         RegisterProject, SelectProject, StartInProject,
     },
-    secrets, wasm,
+    secrets,
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
 };
 use axum::{
@@ -849,6 +849,7 @@ struct RegisterProjectBody {
 #[serde(deny_unknown_fields)]
 struct ConfigureProjectBody {
     expected_revision: u64,
+    #[serde(deserialize_with = "strict_project_config")]
     config: ProjectConfig,
 }
 #[derive(Deserialize)]
@@ -861,7 +862,64 @@ struct SelectProjectBody {
 #[serde(deny_unknown_fields)]
 struct StartProjectBody {
     expected_config_revision: u64,
+    #[serde(deserialize_with = "strict_project_run")]
     request: RunRequest,
+}
+fn object_fields<'a, E: serde::de::Error>(
+    value: &'a Value,
+    allowed: &[&str],
+) -> std::result::Result<&'a serde_json::Map<String, Value>, E> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| E::custom("JSON object required"))?;
+    if object.keys().any(|key| !allowed.contains(&key.as_str())) {
+        return Err(E::custom("unknown object field"));
+    }
+    Ok(object)
+}
+fn strict_project_config<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> std::result::Result<ProjectConfig, D::Error> {
+    let value = Value::deserialize(d)?;
+    let fields = [
+        "allowed_route_ids",
+        "default_route_id",
+        "tools",
+        "write_scopes",
+        "allow_commands",
+    ];
+    let object = object_fields::<D::Error>(&value, &fields)?;
+    if object.len() != fields.len() {
+        return Err(serde::de::Error::custom("complete project config required"));
+    }
+    serde_json::from_value(value).map_err(serde::de::Error::custom)
+}
+fn strict_project_run<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> std::result::Result<RunRequest, D::Error> {
+    let value = Value::deserialize(d)?;
+    let object = object_fields::<D::Error>(&value, &["title", "kind", "tasks"])?;
+    let tasks = object
+        .get("tasks")
+        .and_then(Value::as_array)
+        .ok_or_else(|| serde::de::Error::custom("tasks array required"))?;
+    for task in tasks {
+        object_fields::<D::Error>(
+            task,
+            &[
+                "name",
+                "role",
+                "route_id",
+                "prompt",
+                "depends_on",
+                "write_scopes",
+                "tools",
+                "allow_commands",
+                "max_rounds",
+            ],
+        )?;
+    }
+    serde_json::from_value(value).map_err(serde::de::Error::custom)
 }
 async fn register_project(
     State(app): State<App>,
@@ -1309,6 +1367,11 @@ fn approval_id(path: std::result::Result<Path<String>, PathRejection>) -> Result
 }
 
 fn approval_error(error: anyhow::Error) -> ApiError {
+    if error.downcast_ref::<ProjectError>().is_some()
+        || error.downcast_ref::<NetworkError>().is_some()
+    {
+        return classify_anyhow(error);
+    }
     if let Some(typed) = error
         .chain()
         .find_map(|cause| cause.downcast_ref::<approval::ApprovalError>())
@@ -1702,23 +1765,11 @@ fn workspace_task_id(path: std::result::Result<Path<String>, PathRejection>) -> 
     }
     Ok(id)
 }
-async fn wasm_plugins(State(app): State<App>, RawQuery(query): RawQuery) -> Result<Response> {
-    let project = match project_query(query)? {
-        Some(id) => Some(id),
-        None => app.engine.current_project().map_err(read_error)?.project_id,
-    };
-    let Some(project) = project else {
-        return Ok(project_failure(
-            "project_selection_required",
-            "请先选择项目",
-        ));
-    };
-    let directory = app
-        .engine
-        .project_workspace(&project)?
-        .join(".peachsh")
-        .join("plugins");
-    Ok(Json(json!({"abi":wasm::ABI_VERSION,"plugins":wasm::list(&directory)?})).into_response())
+async fn wasm_plugins() -> Response {
+    project_failure(
+        "project_operation_unsupported",
+        "项目模式暂未接入WASM插件列表与执行",
+    )
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

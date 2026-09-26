@@ -10,7 +10,7 @@
 <main><header><div><span id="page-title">工作台</span><span class="muted breadcrumb"> / 🍑sh</span></div><span class="badge">RUST NATIVE</span></header>
 <div id="notice" role="status" hidden></div>
 <div id="selected-project" class="project-banner"></div>
-<section id="projects" class="view" hidden><h1>项目与权限</h1><p>项目目录和名称登记后固定。切换默认项目只影响新草稿，已有会话保留所属项目。</p>
+<section id="projects" class="view" hidden><h1>项目与权限</h1><p>WASM插件列表与执行尚未接入项目权限。项目目录和名称登记后固定。切换默认项目只影响新草稿，已有会话保留所属项目。</p>
 <div class="card"><label>已登记项目<select id="project-picker"></select></label><div class="toolbar"><button id="project-refresh" class="secondary">读取最新选择</button><button id="project-select" class="primary">设为新任务默认项目</button></div></div>
 <div class="card"><h2>登记已有本机目录</h2><label>项目名称<input id="project-name"></label><label>目录<input id="project-root"></label><p>不会创建目录、初始化Git或联网。初始权限全部关闭。</p><button id="project-create" class="primary">登记项目</button></div>
 <div class="card"><h2>项目权限上限</h2><p>完整配置包括 allowed_route_ids、default_route_id、tools（布尔值）、write_scopes、allow_commands。默认路由必须在允许列表中；命令仍需逐次审批。</p><button id="project-config-load" class="secondary">读取所选项目配置</button><p id="project-config-status"></p><label>完整配置<textarea id="project-config" spellcheck="false"></textarea></label><button id="project-config-save" class="primary">保存完整权限配置</button></div></section>
