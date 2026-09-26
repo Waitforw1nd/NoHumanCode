@@ -1089,6 +1089,11 @@ fn approval_error(error: anyhow::Error) -> ApiError {
         .find_map(|cause| cause.downcast_ref::<approval::ApprovalError>())
     {
         let (status, code, message) = match typed {
+            approval::ApprovalError::InvalidNetworkAcknowledgement { .. } => (
+                StatusCode::BAD_REQUEST,
+                ErrorCode::RequestFailed,
+                "此审批不接受命令联网确认",
+            ),
             approval::ApprovalError::NetworkAcknowledgementRequired { .. } => (
                 StatusCode::CONFLICT,
                 ErrorCode::Conflict,
