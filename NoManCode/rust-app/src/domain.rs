@@ -688,6 +688,8 @@ pub fn validate_event_kind(kind: &str) -> Result<()> {
         "task.status",
         "approval.requested",
         "approval.resolved",
+        "approval.command_network_ack",
+        "network.call",
         "tool.started",
         "tool.finished",
         "file.backup",

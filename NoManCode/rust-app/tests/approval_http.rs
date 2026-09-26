@@ -1,5 +1,8 @@
 //! NEXT-02D approval HTTP contract tests.
 
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     approval::{ApprovalStatus, ExecutionState},
@@ -318,7 +321,13 @@ async fn provider(
 async fn provider_server(
     groups: Vec<Vec<Value>>,
 ) -> (String, Arc<AtomicUsize>, tokio::task::JoinHandle<()>) {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    provider_server_at(groups, "127.0.0.1:0").await
+}
+async fn provider_server_at(
+    groups: Vec<Vec<Value>>,
+    address: &str,
+) -> (String, Arc<AtomicUsize>, tokio::task::JoinHandle<()>) {
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     let base = format!("http://{}/v1", listener.local_addr().unwrap());
     let calls = Arc::new(AtomicUsize::new(0));
     let app = Router::new()
@@ -349,6 +358,7 @@ fn configure_live(store: &Store, root: &Path, base: &str) {
         })
         .unwrap();
     store.put_secret("route", "synthetic-key").unwrap();
+    network_fixture::authorize_routes(store);
 }
 
 async fn live_harness(groups: Vec<Vec<Value>>) -> Harness {
@@ -436,10 +446,15 @@ async fn settled(h: &Harness, task_id: &str) -> Task {
 }
 
 async fn http_decide(h: &Harness, id: &str, decision: &str) -> Response {
+    let ack = decision == "approve"
+        && h.engine
+            .store
+            .approval(id)
+            .is_ok_and(|a| a.tool_name == "run_command");
     client()
         .post(format!("{}/api/approvals/{id}/decision", h.origin))
         .header("x-peachsh-token", &h.token)
-        .json(&json!({"decision":decision}))
+        .json(&json!({"decision":decision,"acknowledge_command_network":ack}))
         .send()
         .await
         .unwrap()
@@ -1099,6 +1114,8 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
     assert_eq!(
         fields,
         [
+            "command_network_ack",
+            "network_notice",
             "created_at",
             "decided_at",
             "decided_by",
@@ -1535,7 +1552,10 @@ async fn ah14_unknown_is_visible_and_decision_remains_conflict() {
         "run_command",
         json!({"command":"exit 0"}),
     );
-    h.engine.store.decide_approval(&id, true, "user").unwrap();
+    h.engine
+        .store
+        .decide_approval_with_network_ack(&id, true, "user", true)
+        .unwrap();
     h.engine
         .store
         .claim_approval(
@@ -1564,7 +1584,7 @@ async fn ah14_unknown_is_visible_and_decision_remains_conflict() {
             .await
             .unwrap(),
         StatusCode::CONFLICT,
-        "审批当前状态不能执行此操作",
+        "工具执行结果未知",
         false,
     )
     .await;
@@ -1615,7 +1635,7 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
         .enable_all()
         .build()
         .unwrap();
-    let (task, approval) = runtime.block_on(async {
+    let (task, approval, original_base) = runtime.block_on(async {
         let (base, _calls, _provider) = provider_server(vec![vec![tool_call(
             "write",
             "write_file",
@@ -1632,14 +1652,19 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
             .tasks
             .remove(0);
         let approval = pending_engine(&engine, &task.id).await;
-        (task, approval)
+        (task, approval, base)
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
     assert!(!temp.path().join("src/restarted.txt").exists());
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
-        let (base, calls, _provider) = provider_server(vec![vec![]]).await;
+        let address = original_base
+            .strip_prefix("http://")
+            .unwrap()
+            .strip_suffix("/v1")
+            .unwrap();
+        let (base, calls, _provider) = provider_server_at(vec![vec![]], address).await;
         let store = Arc::new(Store::open(&db_path).unwrap());
         configure_live(&store, temp.path(), &base);
         let engine = Engine::new(store, 2).unwrap();
@@ -1659,15 +1684,7 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
             "HTTP decision must not launch"
         );
         assert!(!temp.path().join("src/restarted.txt").exists());
-        let mut persisted = engine.store.task(&task.id).unwrap();
-        persisted.route.base_url = base;
-        Connection::open(&db_path)
-            .unwrap()
-            .execute(
-                "UPDATE tasks SET value=?2 WHERE id=?1",
-                rusqlite::params![persisted.id, serde_json::to_string(&persisted).unwrap()],
-            )
-            .unwrap();
+        assert_eq!(engine.store.task(&task.id).unwrap().route.base_url, base);
         engine.resume(&task.id, "continue").await.unwrap();
         assert_eq!(settled_engine(&engine, &task.id).await.status, "completed");
         assert_eq!(
@@ -1754,7 +1771,7 @@ fn ah06_real_command_side_effect_then_shutdown_recovers_unknown() {
         let response = client()
             .post(format!("{origin}/api/approvals/{}/decision", approval.id))
             .header("x-peachsh-token", token)
-            .json(&json!({"decision":"approve"}))
+            .json(&json!({"decision":"approve","acknowledge_command_network":true}))
             .send()
             .await
             .unwrap();
@@ -1798,7 +1815,7 @@ fn ah06_real_command_side_effect_then_shutdown_recovers_unknown() {
                 .await
                 .unwrap(),
             StatusCode::CONFLICT,
-            "审批当前状态不能执行此操作",
+            "工具执行结果未知",
             false,
         )
         .await;
@@ -1906,4 +1923,105 @@ fn ah06_denied_http_decision_survives_real_runtime_restart_without_execution() {
         );
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
+}
+
+#[tokio::test]
+async fn ah15_command_network_ack_is_explicit_and_legacy_approved_waits_without_claim() {
+    let h = live_harness(vec![
+        vec![tool_call(
+            "command",
+            "run_command",
+            json!({"command":"Add-Content -LiteralPath acknowledged-counter.txt -Value one"}),
+        )],
+        vec![],
+    ])
+    .await;
+    let task = start_live(&h, true).await;
+    let record = pending(&h, &task.id).await;
+    let before = h.provider_calls.load(Ordering::SeqCst);
+    let rejected = client()
+        .post(format!("{}/api/approvals/{}/decision", h.origin, record.id))
+        .header("x-peachsh-token", &h.token)
+        .json(&json!({"decision":"approve"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(rejected.status(), 409);
+    let response: Value = rejected.json().await.unwrap();
+    assert_eq!(response["code"], "conflict");
+    let pending_record = h.engine.store.approval(&record.id).unwrap();
+    assert_eq!(pending_record.status, ApprovalStatus::Pending);
+    assert_eq!(pending_record.execution_state, ExecutionState::NotStarted);
+    assert_eq!(
+        pending_record.command_network_ack,
+        peachsh::approval::CommandNetworkAck::Required
+    );
+    assert!(!h._dir.path().join("acknowledged-counter.txt").exists());
+    // Reconstruct an old approved row with no sidecar. Never bypass claim checks.
+    Connection::open(&h.db_path).unwrap().execute("UPDATE approvals SET status='approved',decided_at=created_at,decided_by='historical-user' WHERE id=?1",[&record.id]).unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let old = h.engine.store.approval(&record.id).unwrap();
+    assert_eq!(old.status, ApprovalStatus::Approved);
+    assert_eq!(old.execution_state, ExecutionState::NotStarted);
+    assert_eq!(
+        old.command_network_ack,
+        peachsh::approval::CommandNetworkAck::Required
+    );
+    assert_eq!(h.provider_calls.load(Ordering::SeqCst), before);
+    assert_eq!(event_count(&h, &task, "tool_start"), 0);
+    assert_eq!(event_count(&h, &task, "tool_result"), 0);
+    let response = http_decide(&h, &record.id, "approve").await;
+    assert_eq!(response.status(), 200);
+    let confirmed: Value = response.json().await.unwrap();
+    assert_eq!(confirmed["command_network_ack"], "acknowledged");
+    assert_eq!(
+        confirmed["network_notice"],
+        json!({"version":1,"may_access_network":true,"outbound_sandbox":false})
+    );
+    assert_eq!(confirmed["decided_at"], json!(old.decided_at));
+    assert_eq!(confirmed["decided_by"], "historical-user");
+    assert_eq!(settled(&h, &task.id).await.status, "completed");
+    let finished = h.engine.store.approval(&record.id).unwrap();
+    assert_eq!(finished.binding_digest, old.binding_digest);
+    assert_eq!(finished.decided_at, old.decided_at);
+    assert_eq!(finished.preview, old.preview);
+    assert_eq!(event_count(&h, &task, "approval.resolved"), 0);
+    assert_eq!(event_count(&h, &task, "approval.command_network_ack"), 1);
+    assert_eq!(event_count(&h, &task, "tool_start"), 1);
+    assert_eq!(
+        std::fs::read_to_string(h._dir.path().join("acknowledged-counter.txt"))
+            .unwrap()
+            .lines()
+            .count(),
+        1
+    );
+    assert_eq!(http_decide(&h, &record.id, "approve").await.status(), 409);
+    let write = live_harness(vec![
+        vec![tool_call(
+            "write",
+            "write_file",
+            json!({"path":"src/no-ack.txt","content":"safe"}),
+        )],
+        vec![],
+    ])
+    .await;
+    let task = start_live(&write, false).await;
+    let record = pending(&write, &task.id).await;
+    let response = client()
+        .post(format!(
+            "{}/api/approvals/{}/decision",
+            write.origin, record.id
+        ))
+        .header("x-peachsh-token", &write.token)
+        .json(&json!({"decision":"approve","acknowledge_command_network":true}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 400);
+    assert_eq!(
+        write.engine.store.approval(&record.id).unwrap().status,
+        ApprovalStatus::Pending
+    );
+    assert!(!write._dir.path().join("src/no-ack.txt").exists());
+    assert_eq!(http_decide(&write, &record.id, "deny").await.status(), 200);
 }

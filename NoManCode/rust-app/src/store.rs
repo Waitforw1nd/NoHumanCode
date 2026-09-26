@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 9;
+pub const SCHEMA_VERSION: u32 = 10;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -17,7 +17,7 @@ impl std::fmt::Display for IdempotencyConflict {
 impl std::error::Error for IdempotencyConflict {}
 
 pub struct Store {
-    db: Mutex<Connection>,
+    pub(crate) db: Mutex<Connection>,
 }
 pub struct TurnBundle<'a> {
     pub project: &'a Project,
@@ -49,6 +49,10 @@ impl Store {
         anyhow::ensure!(
             version < 9 || repository::migration_applied(&db, repository::CHECKPOINT_MIGRATION_ID)?,
             "schema 9 checkpoint marker missing"
+        );
+        anyhow::ensure!(
+            version < 10 || repository::migration_applied(&db, repository::NETWORK_MIGRATION_ID)?,
+            "schema 10 marker missing"
         );
         if version < 2 {
             db.execute_batch("CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), created_at INTEGER NOT NULL);
@@ -147,11 +151,22 @@ impl Store {
         } else {
             let current: u32 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
             anyhow::ensure!(
-                current == SCHEMA_VERSION,
+                (9..=SCHEMA_VERSION).contains(&current),
                 "checkpoint migration version mismatch"
             );
             let tx = db.transaction()?;
             repository::verify_schema_9(&tx)?;
+            tx.commit()?;
+        }
+        if !repository::migration_applied(&db, repository::NETWORK_MIGRATION_ID)? {
+            let tx = db.transaction()?;
+            repository::apply_schema_10(&tx)?;
+            tx.commit()?;
+        } else {
+            let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
+            anyhow::ensure!(current == SCHEMA_VERSION, "network schema version mismatch");
+            let tx = db.transaction()?;
+            repository::verify_schema_10(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -492,6 +507,21 @@ impl Store {
     }
 
     pub fn commit_turn_bundle(&self, bundle: TurnBundle<'_>, key: Option<&str>) -> Result<Turn> {
+        self.commit_turn_bundle_inner(bundle, key, false)
+    }
+    pub(crate) fn commit_turn_bundle_authorized(
+        &self,
+        bundle: TurnBundle<'_>,
+        key: Option<&str>,
+    ) -> Result<Turn> {
+        self.commit_turn_bundle_inner(bundle, key, true)
+    }
+    fn commit_turn_bundle_inner(
+        &self,
+        bundle: TurnBundle<'_>,
+        key: Option<&str>,
+        authorize: bool,
+    ) -> Result<Turn> {
         let TurnBundle {
             project,
             session,
@@ -545,6 +575,11 @@ impl Store {
         }
         if let Some(existing) = self.commit_turn_in_tx(&tx, turn, tasks, key, legacy_tasks)? {
             return Ok(existing);
+        }
+        if authorize {
+            for task in legacy_tasks {
+                crate::network_authorization::bind_task_tx(&tx, task)?;
+            }
         }
         tx.commit()?;
         Ok(turn.clone())
@@ -734,6 +769,27 @@ impl Store {
         key: &str,
         expected_last_turn_id: &TurnId,
     ) -> Result<ChatTurnReceipt> {
+        self.append_chat_turn_inner(turn, task, legacy_task, key, expected_last_turn_id, false)
+    }
+    pub(crate) fn append_chat_turn_authorized(
+        &self,
+        turn: &Turn,
+        task: &TurnTask,
+        legacy_task: &Task,
+        key: &str,
+        expected_last_turn_id: &TurnId,
+    ) -> Result<ChatTurnReceipt> {
+        self.append_chat_turn_inner(turn, task, legacy_task, key, expected_last_turn_id, true)
+    }
+    fn append_chat_turn_inner(
+        &self,
+        turn: &Turn,
+        task: &TurnTask,
+        legacy_task: &Task,
+        key: &str,
+        expected_last_turn_id: &TurnId,
+        authorize: bool,
+    ) -> Result<ChatTurnReceipt> {
         validate_turn_input(turn, std::slice::from_ref(task), Some(key))?;
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -837,6 +893,9 @@ impl Store {
             .is_some()
         {
             return Err(IdempotencyConflict.into());
+        }
+        if authorize {
+            crate::network_authorization::bind_task_tx(&tx, legacy_task)?;
         }
         tx.commit()?;
         Ok(ChatTurnReceipt {
@@ -1165,6 +1224,13 @@ impl Store {
             .into());
         }
         let record = approval::ApprovalRecord {
+            network_notice: (tool_name == "run_command")
+                .then(approval::CommandNetworkNotice::default),
+            command_network_ack: if tool_name == "run_command" {
+                approval::CommandNetworkAck::Required
+            } else {
+                approval::CommandNetworkAck::NotRequired
+            },
             id: id(),
             tool_call_id: tool_call_id.to_owned(),
             task_id: task.id.clone(),
@@ -1208,9 +1274,63 @@ impl Store {
         approved: bool,
         decided_by: &str,
     ) -> Result<approval::ApprovalRecord> {
+        self.decide_approval_with_network_ack(approval_id, approved, decided_by, false)
+    }
+    pub fn decide_approval_with_network_ack(
+        &self,
+        approval_id: &str,
+        approved: bool,
+        decided_by: &str,
+        acknowledge_command_network: bool,
+    ) -> Result<approval::ApprovalRecord> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let current = repository::Repository::new(&tx).approval(approval_id)?;
+        if acknowledge_command_network && current.tool_name != "run_command" {
+            return Err(
+                approval::ApprovalError::InvalidNetworkAcknowledgement { id: current.id }.into(),
+            );
+        }
+        if approved && current.tool_name == "run_command" {
+            if current.execution_state == approval::ExecutionState::Unknown {
+                return Err(approval::ApprovalError::UnknownResult { id: current.id }.into());
+            }
+            if !acknowledge_command_network {
+                return Err(approval::ApprovalError::NetworkAcknowledgementRequired {
+                    id: current.id,
+                }
+                .into());
+            }
+            if current.execution_state != approval::ExecutionState::NotStarted {
+                return Err(approval::ApprovalError::Conflict {
+                    id: current.id,
+                    status: current.execution_state.as_str().into(),
+                }
+                .into());
+            }
+            if matches!(
+                current.status,
+                approval::ApprovalStatus::Pending | approval::ApprovalStatus::Approved
+            ) {
+                if current.command_network_ack != approval::CommandNetworkAck::Acknowledged {
+                    tx.execute(
+                        "INSERT INTO command_network_ack VALUES (?1,?2,1,?3)",
+                        params![current.id, current.binding_digest, now()],
+                    )?;
+                    approval_event(
+                        &tx,
+                        &current,
+                        "approval.command_network_ack",
+                        json!({"approval_id":current.id,"notice_version":1,"may_access_network":true,"outbound_sandbox":false}),
+                    )?;
+                }
+                if current.status == approval::ApprovalStatus::Approved {
+                    let result = repository::Repository::new(&tx).approval(approval_id)?;
+                    tx.commit()?;
+                    return Ok(result);
+                }
+            }
+        }
         if current.status != approval::ApprovalStatus::Pending {
             return Err(approval::ApprovalError::Conflict {
                 id: approval_id.to_owned(),
@@ -1347,6 +1467,13 @@ impl Store {
             current.execution_state == approval::ExecutionState::NotStarted,
             "审批执行状态不可领取"
         );
+        if current.tool_name == "run_command"
+            && current.command_network_ack != approval::CommandNetworkAck::Acknowledged
+        {
+            return Err(
+                approval::ApprovalError::NetworkAcknowledgementRequired { id: current.id }.into(),
+            );
+        }
         let changed = tx.execute(
             "UPDATE approvals SET execution_state='claimed' WHERE id=?1 AND status='approved' AND execution_state='not_started'",
             [&current.id],
@@ -1439,7 +1566,7 @@ impl Store {
             stmt.query_map([], |row| row.get(0))?
                 .collect::<rusqlite::Result<_>>()?
         };
-        let mut affected = 0;
+        let mut affected = crate::network_authorization::recover_calls_tx(&tx)?;
         for value in values {
             let mut task: Task = serde_json::from_str(&value)?;
             if matches!(task.status.as_str(), "queued" | "running") {
@@ -2099,7 +2226,7 @@ fn ensure_resume_targets_latest_chat_turn(
     Ok(())
 }
 
-fn task_event_tx(
+pub(crate) fn task_event_tx(
     tx: &rusqlite::Transaction<'_>,
     task_id: &str,
     kind: &str,

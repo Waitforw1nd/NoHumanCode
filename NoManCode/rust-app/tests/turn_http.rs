@@ -5,6 +5,9 @@
 //! created through a real `POST /api/runs` request and awaited to completion;
 //! no direct Engine call stands in for the new endpoint under test.
 
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+
 use axum::{Json, Router, body::Body, extract::State, response::IntoResponse, routing::post};
 use peachsh::{
     domain::*,
@@ -286,6 +289,7 @@ async fn harness() -> Harness {
     let db_path = dir.path().join("turns.db");
     let store = Arc::new(Store::open(&db_path).unwrap());
     configure(&store, &dir, &base);
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 2).unwrap();
     let (origin, http) = serve(engine.clone(), "turn-token").await;
     Harness {
@@ -1977,6 +1981,7 @@ async fn n11_same_key_concurrency() {
     let second = started().await;
     let before = snapshot(&second.h.db_path);
     let store = Arc::new(Store::open(&second.h.db_path).unwrap());
+    network_fixture::authorize_routes(&store);
     let engine = Engine::new(store, 2).unwrap();
     let (origin, _http) = serve(engine, &second.h.token).await;
     let peer = Harness {
@@ -2503,6 +2508,7 @@ async fn n16_real_restart_partial_replay_resume() {
             store
                 .put_secret("route::chat-route", "synthetic-chat-key")
                 .unwrap();
+            network_fixture::authorize_routes(&store);
             let engine = Engine::new(store, 2).unwrap();
             let (origin, _http) = serve(engine.clone(), "restart-token").await;
             let http = client();

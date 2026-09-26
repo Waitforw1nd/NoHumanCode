@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use anyhow::{Result, ensure};
 use peachsh::{
     domain::*,

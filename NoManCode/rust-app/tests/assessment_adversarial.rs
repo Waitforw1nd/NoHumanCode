@@ -1,4 +1,7 @@
-//! Explicit security and reliability probes. The repaired probes run in routine CI.
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
+// Explicit security and reliability probes. The repaired probes run in routine CI.
 use peachsh::{domain::*, engine::Engine, store::Store, wasm};
 use std::sync::Arc;
 
@@ -21,6 +24,7 @@ fn setup(dir: &std::path::Path) -> Arc<Engine> {
         })
         .unwrap();
     store.put_secret("test", "fake-only").unwrap();
+    network_fixture::authorize_routes(&store);
     Engine::new(store, 1).unwrap()
 }
 fn request(title: &str) -> RunRequest {

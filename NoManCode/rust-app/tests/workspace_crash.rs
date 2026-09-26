@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/network_fixture.rs"]
+mod network_fixture;
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     domain::{Route, RunRequest, SessionKind, Settings, TaskSpec},
@@ -59,6 +62,7 @@ async fn mock_provider(stall_after_write: bool) -> String {
 fn open_engine(root: &Path) -> Arc<Engine> {
     let store = Arc::new(Store::open(&root.join("workspace.db")).unwrap());
     store.recover().unwrap();
+
     Engine::new(store, 2).unwrap()
 }
 
@@ -97,6 +101,7 @@ async fn written_task(root: &Path) -> String {
         })
         .unwrap();
     engine.store.put_secret("route", "fake-test-key").unwrap();
+    network_fixture::authorize_routes(&engine.store);
     let task = engine
         .start(RunRequest {
             title: "crash".into(),
@@ -132,7 +137,12 @@ async fn written_task(root: &Path) -> String {
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
     engine
-        .decide_approval(&approval.id, true, Some("test"))
+        .decide_approval_with_network_ack(
+            &approval.id,
+            true,
+            Some("test"),
+            approval.tool_name == "run_command",
+        )
         .unwrap();
     loop {
         if !engine.is_busy() {
@@ -255,6 +265,7 @@ async fn crash_child_write() {
         })
         .unwrap();
     engine.store.put_secret("route", "fake-test-key").unwrap();
+    network_fixture::authorize_routes(&engine.store);
     let task = engine
         .start(RunRequest {
             title: "crash".into(),
@@ -287,7 +298,12 @@ async fn crash_child_write() {
             .next()
         {
             engine
-                .decide_approval(&approval.id, true, Some("test"))
+                .decide_approval_with_network_ack(
+                    &approval.id,
+                    true,
+                    Some("test"),
+                    approval.tool_name == "run_command",
+                )
                 .unwrap();
             break;
         }

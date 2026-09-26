@@ -271,13 +271,35 @@ async fn host(replies: Vec<Value>) -> Host {
     let port = reserve.local_addr().unwrap().port();
     drop(reserve);
     let child = launch(dir.path(), port).await;
-    Host {
+    let h = Host {
         dir,
         port,
         child,
         script,
         provider,
-    }
+    };
+    // Explicit test setup through the real CLI and Host; production never creates grants.
+    let preview = h.ok(&["network", "preview", "--route", "local"]).await;
+    h.ok(&[
+        "network",
+        "authorize",
+        "--route",
+        "local",
+        "--config-revision",
+        &preview["config_revision"].to_string(),
+        "--credential-revision",
+        &preview["credential_revision"].to_string(),
+        "--binding",
+        preview["binding_digest"].as_str().unwrap(),
+        "--purpose",
+        "models",
+        "--purpose",
+        "completion",
+        "--key",
+        "fixture-network-grant",
+    ])
+    .await;
+    h
 }
 async fn start(h: &Host, key: &str, tools: bool, commands: bool) -> Value {
     let mut args = vec![

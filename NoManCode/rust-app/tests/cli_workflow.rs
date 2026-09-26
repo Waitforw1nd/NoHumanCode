@@ -271,13 +271,35 @@ async fn host(replies: Vec<Value>) -> Host {
     let port = reserve.local_addr().unwrap().port();
     drop(reserve);
     let child = launch(dir.path(), port).await;
-    Host {
+    let h = Host {
         dir,
         port,
         child,
         script,
         provider,
-    }
+    };
+    // Explicit test setup through the real CLI and Host; production never creates grants.
+    let preview = h.ok(&["network", "preview", "--route", "local"]).await;
+    h.ok(&[
+        "network",
+        "authorize",
+        "--route",
+        "local",
+        "--config-revision",
+        &preview["config_revision"].to_string(),
+        "--credential-revision",
+        &preview["credential_revision"].to_string(),
+        "--binding",
+        preview["binding_digest"].as_str().unwrap(),
+        "--purpose",
+        "models",
+        "--purpose",
+        "completion",
+        "--key",
+        "fixture-network-grant",
+    ])
+    .await;
+    h
 }
 async fn start(h: &Host, key: &str, tools: bool, commands: bool) -> Value {
     let mut args = vec![
@@ -340,7 +362,12 @@ async fn n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart() {
         assert_eq!(card["tool_call_id"], call_id);
         let id = card["id"].as_str().unwrap();
         assert_eq!(h.ok(&["approval", "get", id]).await["id"], id);
-        h.ok(&["approval", decision, id]).await;
+        if card["tool_name"] == "run_command" && decision == "approve" {
+            h.ok(&["approval", decision, id, "--acknowledge-command-network"])
+                .await;
+        } else {
+            h.ok(&["approval", decision, id]).await;
+        }
     }
     let done = h.done(run_id, task).await;
     assert_eq!(done["allow_commands"], true);
