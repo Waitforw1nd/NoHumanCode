@@ -303,3 +303,94 @@ async fn network_cli_closed_stdout_keeps_known_call_receipt_on_stderr_once() {
     assert_eq!(requests.len(), 1);
     assert_eq!(requests[0].1, "/api/routes/route-a/models");
 }
+
+#[tokio::test]
+async fn network_cli_rejects_inconsistent_host_receipts_and_accepts_every_legal_state() {
+    let finished = call("finished");
+    let unknown = call("unknown");
+    let mut not_sent = unknown.clone();
+    not_sent["state"] = json!("not_sent");
+    not_sent["result"] = json!("preflight_rejected");
+    not_sent["finished_at"] = json!(3);
+    let mut claimed = unknown.clone();
+    claimed["state"] = json!("claimed");
+    claimed["result"] = Value::Null;
+    let mut http_failure = finished.clone();
+    http_failure["success"] = json!(false);
+    http_failure["http_status"] = json!(502);
+    http_failure["result"] = json!("http_failure");
+    let mut invalid_response = finished.clone();
+    invalid_response["success"] = json!(false);
+    invalid_response["result"] = json!("invalid_response");
+    let mut success_without_status = finished.clone();
+    success_without_status["http_status"] = Value::Null;
+    let mut interrupted = unknown.clone();
+    interrupted["result"] = json!("interrupted");
+    interrupted["finished_at"] = json!(3);
+    let mut persistence_unknown = interrupted.clone();
+    persistence_unknown["result"] = json!("persistence_unknown");
+    let legal = vec![
+        finished.clone(),
+        success_without_status,
+        http_failure.clone(),
+        invalid_response.clone(),
+        unknown.clone(),
+        interrupted,
+        persistence_unknown,
+        not_sent.clone(),
+        claimed.clone(),
+    ];
+    let patches = vec![
+        (unknown.clone(), "success", json!(false)),
+        (unknown.clone(), "http_status", json!(200)),
+        (unknown.clone(), "result", json!("success")),
+        (not_sent.clone(), "success", json!(false)),
+        (not_sent.clone(), "finished_at", Value::Null),
+        (finished.clone(), "success", json!(false)),
+        (http_failure, "http_status", json!(200)),
+        (invalid_response, "http_status", json!(502)),
+        (finished.clone(), "http_status", json!(500)),
+        (claimed, "finished_at", json!(3)),
+        (finished.clone(), "method", json!("POST")),
+        (finished.clone(), "origin", json!("https://example.com")),
+        (
+            finished.clone(),
+            "origin",
+            json!("https://example.com:443/path"),
+        ),
+        (finished.clone(), "finished_at", Value::Null),
+        (finished, "finished_at", json!(1)),
+    ];
+    let invalid: Vec<_> = patches
+        .into_iter()
+        .map(|(mut value, key, patch)| {
+            value[key] = patch;
+            value
+        })
+        .collect();
+    let host = Host::new(
+        legal
+            .iter()
+            .chain(&invalid)
+            .map(|v| (200, v.clone()))
+            .collect(),
+    )
+    .await;
+    for expected in &legal {
+        assert_eq!(
+            ok(host.cli(&["network", "call", "network-call-a"]).await),
+            *expected
+        );
+    }
+    for _ in &invalid {
+        let failure = error(host.cli(&["network", "call", "network-call-a"]).await);
+        assert_eq!(failure["code"], "internal");
+        assert!(
+            failure.get("calls").is_none(),
+            "do not publish contradictory untrusted receipts"
+        );
+    }
+    let requests = host.state.requests.lock().unwrap();
+    assert_eq!(requests.len(), legal.len() + invalid.len());
+    assert!(requests.iter().all(|r| r.0 == "GET" && r.3));
+}

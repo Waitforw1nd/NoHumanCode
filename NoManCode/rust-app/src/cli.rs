@@ -1468,29 +1468,61 @@ fn validate_network_calls(calls: &[CallReceipt]) -> Result<(), Failure> {
     for call in calls {
         validate_subject(&call.subject)?;
         validate_purposes(&call.subject, &[call.purpose])?;
-        let url = Url::parse(&call.origin).map_err(|_| invalid_response())?;
+        let target = peachsh::provider_transport::validate_target(&call.origin, call.purpose)
+            .map_err(|_| invalid_response())?;
+        let origin_url = Url::parse(&call.origin).map_err(|_| invalid_response())?;
+        let valid_state = match call.state {
+            CallState::Claimed => {
+                call.finished_at.is_none()
+                    && call.success.is_none()
+                    && call.result.is_none()
+                    && call.http_status.is_none()
+            }
+            CallState::Finished => {
+                call.finished_at.is_some()
+                    && match (call.success, call.result, call.http_status) {
+                        (Some(true), Some(CallResult::Success), None) => true,
+                        (Some(true), Some(CallResult::Success), Some(status)) => {
+                            (200..300).contains(&status)
+                        }
+                        (Some(false), Some(CallResult::HttpFailure), Some(status)) => {
+                            (100..600).contains(&status) && !(200..300).contains(&status)
+                        }
+                        (Some(false), Some(CallResult::InvalidResponse), Some(status)) => {
+                            (200..300).contains(&status)
+                        }
+                        _ => false,
+                    }
+            }
+            CallState::Unknown => {
+                call.http_status.is_none()
+                    && call.success.is_none()
+                    && matches!(
+                        call.result,
+                        Some(
+                            CallResult::TransportUnknown
+                                | CallResult::Interrupted
+                                | CallResult::PersistenceUnknown
+                        )
+                    )
+            }
+            CallState::NotSent => {
+                call.http_status.is_none()
+                    && call.finished_at.is_some()
+                    && call.success.is_none()
+                    && call.result == Some(CallResult::PreflightRejected)
+            }
+        };
         if !valid_id(&call.call_id)
             || !ids.insert(&call.call_id)
             || !valid_id(&call.authorization_id)
             || !valid_digest(&call.endpoint_digest)
             || call.task_id.as_deref().is_some_and(|id| !valid_id(id))
-            || !matches!(url.scheme(), "http" | "https")
-            || !url.username().is_empty()
-            || url.password().is_some()
-            || url.query().is_some()
-            || url.fragment().is_some()
-            || !matches!(call.method.as_str(), "GET" | "POST")
-            || call.http_status.is_some_and(|s| !(100..=599).contains(&s))
+            || target.origin() != call.origin
+            || origin_url.path() != "/"
+            || target.method() != call.method
             || call.finished_at.is_some_and(|t| t < call.claimed_at)
-            || (call.state == CallState::Claimed
-                && (call.finished_at.is_some()
-                    || call.success.is_some()
-                    || call.result.is_some()
-                    || call.http_status.is_some()))
-            || (call.state == CallState::Finished
-                && (call.finished_at.is_none() || call.success.is_none() || call.result.is_none()))
-            || (call.success == Some(true)
-                && (call.state != CallState::Finished || call.result != Some(CallResult::Success)))
+            || !valid_state
         {
             return Err(invalid_response());
         }
