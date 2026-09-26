@@ -935,7 +935,7 @@ async fn t7_unsupported_and_invalid_inputs_add_nothing() {
     );
     let db = open_db(&harness);
     db.execute(
-        "UPDATE tasks SET value=json_set(value,'$.spec.tools',json('true')) WHERE id=?1",
+        "UPDATE tasks SET value=json_set(value,'$.spec.depends_on',json('[\"unsupported-dependency\"]')) WHERE id=?1",
         [&harness.first.task.legacy_task_id],
     )
     .unwrap();

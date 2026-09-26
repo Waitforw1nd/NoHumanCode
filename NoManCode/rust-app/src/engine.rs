@@ -378,7 +378,7 @@ impl Engine {
         Ok(run)
     }
 
-    /// Append one user message to an existing tool-free chat.
+    /// Append one user message to an existing completed single-agent chat.
     ///
     /// Replay is classified before eligibility. A matching key returns the
     /// original turn and task and does not launch again, even if that turn is
@@ -440,21 +440,26 @@ impl Engine {
             _ => return Err(ChatTurnError::UnsupportedSession.into()),
         };
         let previous = self.store.task(&previous_task.legacy_task_id)?;
+        if previous.status != LifecycleStatus::Completed.as_str() {
+            return Err(ChatTurnError::SessionBusy.into());
+        }
         let project = self.store.project(&session.project_id)?;
         if previous.run_id != session.legacy_run_id
-            || previous.spec.tools
-            || previous.spec.allow_commands
-            || !previous.spec.write_scopes.is_empty()
             || !previous.spec.depends_on.is_empty()
             || std::fs::canonicalize(&previous.workspace).ok().as_deref()
                 != std::fs::canonicalize(&project.root_path).ok().as_deref()
         {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
-        if !tool_free_chat_prefix(&previous.messages) {
+        let settings = self.store.settings()?.ok_or(ChatTurnError::CorruptState)?;
+        if std::fs::canonicalize(&settings.workspace).ok().as_deref()
+            != std::fs::canonicalize(&previous.workspace).ok().as_deref()
+        {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
-        let mut messages = previous.messages.clone();
+        let mut messages = self
+            .store
+            .chat_continuation_prefix(&session.id, &previous)?;
         messages.push(json!({"role":"user","content":command.message}));
         if serde_json::to_vec(&messages)?.len() > 1_500_000 {
             return Err(ChatTurnError::InvalidInput.into());
@@ -472,9 +477,9 @@ impl Engine {
                 route_id: previous.spec.route_id.clone(),
                 prompt: command.message.clone(),
                 depends_on: vec![],
-                write_scopes: vec![],
-                tools: false,
-                allow_commands: false,
+                write_scopes: previous.spec.write_scopes.clone(),
+                tools: previous.spec.tools,
+                allow_commands: previous.spec.allow_commands,
                 max_rounds: previous.spec.max_rounds,
             },
             route: previous.route.clone(),
@@ -487,6 +492,7 @@ impl Engine {
             created_at: created,
             updated_at: created,
         };
+        self.scope_conflicts(std::slice::from_ref(&legacy))?;
         let task = TurnTask {
             id: TaskId(legacy_id),
             turn_id: turn_id.clone(),
@@ -1029,7 +1035,7 @@ impl Engine {
         self.store.event(
             &task.id,
             "tool_result",
-            json!({"name":name,"result":result}),
+            json!({"name":name,"tool_call_id":tool_call_id,"result":result}),
         )?;
         task.messages
             .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":content}));
