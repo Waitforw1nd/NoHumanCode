@@ -1660,14 +1660,14 @@ async fn network_workflow_inner(
                 {
                     return Err(invalid_response());
                 }
-                let base = Url::parse(&preview.base_url).map_err(|_| invalid_response())?;
-                if !matches!(base.scheme(), "http" | "https")
-                    || !base.username().is_empty()
-                    || base.password().is_some()
-                    || base.query().is_some()
-                    || base.fragment().is_some()
-                    || base.origin().ascii_serialization() != preview.origin
-                {
+                let purpose = match subject.kind {
+                    NetworkSubjectKind::Route => NetworkPurpose::Models,
+                    NetworkSubjectKind::Account => NetworkPurpose::Balance,
+                };
+                let target =
+                    peachsh::provider_transport::validate_target(&preview.base_url, purpose)
+                        .map_err(|_| invalid_response())?;
+                if target.origin() != preview.origin {
                     return Err(invalid_response());
                 }
                 if let Some(auth) = &preview.authorization {
