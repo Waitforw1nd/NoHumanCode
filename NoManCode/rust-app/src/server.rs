@@ -1,5 +1,6 @@
 use crate::{
     approval,
+    budget::{BudgetConfig, BudgetError, BudgetErrorKind, ConfigureBudget},
     checkpoint::CheckpointError,
     domain::*,
     engine::Engine,
@@ -437,6 +438,12 @@ pub fn router(app: App) -> Router {
             "/api/projects/{id}/config",
             get(project_config).put(configure_project),
         )
+        .route(
+            "/api/projects/{id}/budget",
+            get(budget_config).put(configure_budget),
+        )
+        .route("/api/projects/{id}/budget/status", get(budget_status))
+        .route("/api/projects/{id}/budget/calls/{call}", get(budget_call))
         .route("/api/projects/{id}/runs", post(start_project))
         .route("/api/projects/{id}/worktrees", post(create_worktree))
         .route("/api/projects/{id}/worktrees/lookup", post(lookup_worktree))
@@ -738,6 +745,15 @@ async fn balance(State(app): State<App>, ContractJson(_): ContractJson<EmptyBody
     }
 }
 fn network_error(error: NetworkError) -> Response {
+    if let Some(code) = error.kind.budget_code() {
+        let status = match code {
+            "budget_invalid" => StatusCode::BAD_REQUEST,
+            "budget_not_found" => StatusCode::NOT_FOUND,
+            "budget_corrupt" | "budget_internal" => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => StatusCode::CONFLICT,
+        };
+        return (status, Json(json!({"error":{"code":code,"message":"预算操作被拒绝，请查询项目预算与调用诊断","dispatch_state":error.dispatch_state,"calls":error.calls,"retryable":false}}))).into_response();
+    }
     if let Some(code) = error.kind.project_code() {
         return (project_status(code), Json(json!({"error":{"code":code,"message":"项目网络操作被拒绝，请检查项目状态与权限","dispatch_state":error.dispatch_state,"calls":error.calls,"retryable":false}}))).into_response();
     }
@@ -1160,6 +1176,137 @@ async fn project(
             Ok(project_failure("project_not_found", "项目不存在"))
         }
         Err(error) => Err(read_error(error)),
+    }
+}
+fn budget_failure(error: BudgetError) -> Response {
+    let (status, message) = match error.kind {
+        BudgetErrorKind::Invalid => (StatusCode::BAD_REQUEST, "预算请求无效"),
+        BudgetErrorKind::NotFound => (StatusCode::NOT_FOUND, "预算对象不存在"),
+        BudgetErrorKind::RevisionConflict => {
+            (StatusCode::CONFLICT, "预算配置版本已变化，请重新查询")
+        }
+        BudgetErrorKind::Conflict => (StatusCode::CONFLICT, "预算幂等请求或持久回执冲突"),
+        BudgetErrorKind::Busy => (
+            StatusCode::CONFLICT,
+            "项目仍有未结束调用，暂不能首次配置预算",
+        ),
+        BudgetErrorKind::Exceeded => (StatusCode::CONFLICT, "预算不足以预约下一次模型调用"),
+        BudgetErrorKind::Unresolved => (StatusCode::CONFLICT, "预算存在未决用量，请查询调用诊断"),
+        BudgetErrorKind::Overrun => (StatusCode::CONFLICT, "实际用量已超过预约，后续调用已阻止"),
+        BudgetErrorKind::Corrupt => (StatusCode::INTERNAL_SERVER_ERROR, "预算持久状态损坏"),
+        BudgetErrorKind::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "预算操作失败"),
+    };
+    budget_error_response(status, error.kind.code(), message)
+}
+fn budget_error_response(status: StatusCode, code: &str, message: &str) -> Response {
+    (status, Json(json!({"error":{"code":code,"message":message,"dispatch_state":"not_sent","calls":[],"retryable":false}}))).into_response()
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConfigureBudgetBody {
+    expected_revision: u64,
+    idempotency_key: String,
+    config: BudgetConfig,
+}
+struct BudgetJson(ConfigureBudgetBody);
+impl<S: Send + Sync> FromRequest<S> for BudgetJson {
+    type Rejection = Response;
+    async fn from_request(
+        request: Request,
+        state: &S,
+    ) -> std::result::Result<Self, Self::Rejection> {
+        match Json::<StrictObject<ConfigureBudgetBody>>::from_request(request, state).await {
+            Ok(Json(StrictObject(body))) => Ok(Self(body)),
+            Err(error) => {
+                let rejection = json_rejection(error);
+                let message = match rejection.status {
+                    StatusCode::UNSUPPORTED_MEDIA_TYPE => {
+                        "预算接口需要 application/json Content-Type"
+                    }
+                    StatusCode::PAYLOAD_TOO_LARGE => "预算请求体超过 1 MiB 限制",
+                    _ => "预算请求无效",
+                };
+                Err(budget_error_response(
+                    rejection.status,
+                    "budget_invalid",
+                    message,
+                ))
+            }
+        }
+    }
+}
+fn budget_id(
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> std::result::Result<ProjectId, BudgetError> {
+    let Path(id) = id.map_err(|_| BudgetError::from(BudgetErrorKind::Invalid))?;
+    secrets::validate_persisted_id("project", &id)
+        .map_err(|_| BudgetError::from(BudgetErrorKind::Invalid))?;
+    if matches!(id.as_str(), "." | "..") {
+        return Err(BudgetErrorKind::Invalid.into());
+    }
+    Ok(ProjectId(id))
+}
+async fn budget_config(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Response {
+    match budget_id(id).and_then(|id| app.engine.budget_config(&id)) {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => budget_failure(error),
+    }
+}
+async fn configure_budget(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    BudgetJson(body): BudgetJson,
+) -> Response {
+    let result = budget_id(id).and_then(|project_id| {
+        if body.expected_revision >= i64::MAX as u64
+            || secrets::validate_idempotency_key(&body.idempotency_key).is_err()
+            || body.idempotency_key.contains(',')
+        {
+            return Err(BudgetErrorKind::Invalid.into());
+        }
+        body.config.validate()?;
+        app.engine.configure_budget(ConfigureBudget {
+            project_id,
+            expected_revision: body.expected_revision,
+            idempotency_key: body.idempotency_key,
+            config: body.config,
+        })
+    });
+    match result {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => budget_failure(error),
+    }
+}
+async fn budget_status(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+) -> Response {
+    match budget_id(id).and_then(|id| app.engine.budget_status(&id)) {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => budget_failure(error),
+    }
+}
+async fn budget_call(
+    State(app): State<App>,
+    path: std::result::Result<Path<(String, String)>, PathRejection>,
+) -> Response {
+    let result = (|| {
+        let Path((project, call)) =
+            path.map_err(|_| BudgetError::from(BudgetErrorKind::Invalid))?;
+        let id = budget_id(Ok(Path(project)))?;
+        secrets::validate_persisted_id("call", &call)
+            .map_err(|_| BudgetError::from(BudgetErrorKind::Invalid))?;
+        if matches!(call.as_str(), "." | "..") {
+            return Err(BudgetErrorKind::Invalid.into());
+        }
+        app.engine.budget_call(&id, &call)
+    })();
+    match result {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => budget_failure(error),
     }
 }
 async fn project_config(
@@ -3061,6 +3208,293 @@ mod worktree_http_crash_tests {
                 "W08 phase={phase} restart verified state={} and killed/waited; no extra worker or Provider dispatch",
                 receipt["state"]
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod budget_http_crash_tests {
+    use super::*;
+    use crate::{engine::crash_probe, network_authorization::NetworkPurpose, store::Store};
+    use std::{
+        path::{Path as FsPath, PathBuf},
+        process::{Child, Command, Stdio},
+        sync::atomic::{AtomicUsize, Ordering},
+        time::Instant,
+    };
+    const TEST: &str =
+        "server::budget_http_crash_tests::u07_real_router_budget_three_boundaries_kill_wait";
+    struct ChildGuard(Child);
+    impl ChildGuard {
+        fn kill_wait(&mut self) {
+            self.0.kill().unwrap();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            loop {
+                if self.0.try_wait().unwrap().is_some() {
+                    return;
+                }
+                assert!(Instant::now() < deadline, "kill/wait deadline");
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
+    impl Drop for ChildGuard {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while Instant::now() < deadline {
+                if self.0.try_wait().ok().flatten().is_some() {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
+    async fn wait_file(path: &FsPath) -> String {
+        tokio::time::timeout(Duration::from_secs(15), async {
+            loop {
+                if let Ok(text) = std::fs::read_to_string(path)
+                    && !text.is_empty()
+                {
+                    break text;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("child notification deadline")
+    }
+    fn spawn(root: &FsPath, phase: &str) -> ChildGuard {
+        let log = std::fs::File::create(root.join(format!("{phase}.log"))).unwrap();
+        ChildGuard(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_BUDGET_HTTP_CHILD", root)
+                .env("NHC_BUDGET_HTTP_PHASE", phase)
+                .stdout(Stdio::from(log.try_clone().unwrap()))
+                .stderr(Stdio::from(log))
+                .spawn()
+                .unwrap(),
+        )
+    }
+    fn client() -> reqwest::Client {
+        reqwest::Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(Duration::from_secs(20))
+            .build()
+            .unwrap()
+    }
+    async fn child(root: PathBuf, phase: String) {
+        let store = Arc::new(Store::open(&root.join("host.sqlite3")).unwrap());
+        store.recover().unwrap();
+        let engine = Engine::new(store, 2).unwrap();
+        let project = std::fs::read_to_string(root.join("project")).unwrap();
+        if phase.starts_with("budget-") {
+            let at = match phase.as_str() {
+                "budget-before-claim" => "budget-before-claim",
+                "budget-after-claim" => "budget-after-claim",
+                "budget-before-finish" => "budget-before-finish",
+                _ => panic!("unknown child phase"),
+            };
+            crash_probe::arm(
+                format!("project-route:{project}:route-a"),
+                at,
+                root.join("signal"),
+            );
+        }
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let app = router(App {
+            engine,
+            token: "budget-crash-token".into(),
+            origin: origin.clone(),
+        });
+        std::fs::write(root.join(format!("listen-{phase}")), origin).unwrap();
+        axum::serve(listener, app).await.unwrap();
+    }
+    async fn read_json(origin: &str, path: &str, status: u16) -> Value {
+        let response = client()
+            .get(format!("{origin}{path}"))
+            .header("x-peachsh-token", "budget-crash-token")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), status);
+        response.json().await.unwrap()
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn u07_real_router_budget_three_boundaries_kill_wait() {
+        if let Ok(root) = std::env::var("NHC_BUDGET_HTTP_CHILD") {
+            child(
+                PathBuf::from(root),
+                std::env::var("NHC_BUDGET_HTTP_PHASE").unwrap(),
+            )
+            .await;
+            return;
+        }
+        for phase in [
+            "budget-before-claim",
+            "budget-after-claim",
+            "budget-before-finish",
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path();
+            let models = Arc::new(AtomicUsize::new(0));
+            let completions = Arc::new(AtomicUsize::new(0));
+            let model_count = models.clone();
+            let completion_count = completions.clone();
+            let provider=Router::new().route("/v1/models",get(move||{let counter=model_count.clone();async move {counter.fetch_add(1,Ordering::SeqCst);Json(json!({"data":[{"id":"mock"}]}))}})).route("/v1/chat/completions",post(move||{let counter=completion_count.clone();async move {counter.fetch_add(1,Ordering::SeqCst);([("content-type","text/event-stream")],"data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":2,\"completion_tokens\":3,\"total_tokens\":5}}\n\ndata: [DONE]\n\n")}}));
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let provider_origin = format!("http://{}", listener.local_addr().unwrap());
+            let provider_task =
+                tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
+            let project = {
+                let store = Arc::new(Store::open(&root.join("host.sqlite3")).unwrap());
+                let engine = Engine::new(store, 2).unwrap();
+                engine
+                    .configure_with_keys(
+                        Settings {
+                            workspace: root.to_string_lossy().into(),
+                            max_concurrency: 2,
+                            routes: vec![Route {
+                                id: "route-a".into(),
+                                name: "Mock".into(),
+                                base_url: format!("{provider_origin}/v1"),
+                                model: "mock".into(),
+                                max_tokens: 128,
+                                parallel_limit: 2,
+                                key_env: None,
+                            }],
+                            newapi: None,
+                        },
+                        HashMap::from([("route-a".into(), "synthetic-budget-key".into())]),
+                    )
+                    .await
+                    .unwrap();
+                let project = engine
+                    .register_project(RegisterProject {
+                        name: "crash".into(),
+                        root_path: root.to_string_lossy().into(),
+                        idempotency_key: "project".into(),
+                    })
+                    .await
+                    .unwrap()
+                    .id;
+                engine
+                    .configure_project(ConfigureProject {
+                        project_id: project.clone(),
+                        expected_revision: 1,
+                        config: ProjectConfig {
+                            allowed_route_ids: vec!["route-a".into()],
+                            default_route_id: Some("route-a".into()),
+                            tools: false,
+                            write_scopes: vec![],
+                            allow_commands: false,
+                        },
+                    })
+                    .await
+                    .unwrap();
+                let subject = NetworkSubject {
+                    kind: crate::network_authorization::NetworkSubjectKind::Route,
+                    id: "route-a".into(),
+                    project_id: Some(project.clone()),
+                };
+                let preview = engine.network_preview(subject.clone()).await.unwrap();
+                engine
+                    .network_confirm(
+                        subject,
+                        ConfirmRequest {
+                            config_revision: preview.config_revision,
+                            credential_revision: preview.credential_revision,
+                            binding_digest: preview.binding_digest,
+                            purposes: vec![NetworkPurpose::Models, NetworkPurpose::Completion],
+                        },
+                        "grant",
+                    )
+                    .await
+                    .unwrap();
+                engine
+                    .configure_budget(ConfigureBudget {
+                        project_id: project.clone(),
+                        expected_revision: 0,
+                        idempotency_key: "budget".into(),
+                        config: BudgetConfig {
+                            limit_tokens: 100,
+                            per_call_reservation_tokens: 10,
+                        },
+                    })
+                    .unwrap();
+                project.0
+            };
+            std::fs::write(root.join("project"), &project).unwrap();
+            let mut worker = spawn(root, phase);
+            let origin = wait_file(&root.join(format!("listen-{phase}"))).await;
+            let request_project = project.clone();
+            let request = tokio::spawn(async move {
+                client()
+                    .post(format!("{origin}/api/routes/route-a/check"))
+                    .header("x-peachsh-token", "budget-crash-token")
+                    .json(&json!({"project_id":request_project}))
+                    .send()
+                    .await
+            });
+            let signal = wait_file(&root.join("signal")).await;
+            let call_id = signal.lines().nth(1).unwrap().to_owned();
+            assert!(worker.0.try_wait().unwrap().is_none());
+            assert_eq!(models.load(Ordering::SeqCst), 1);
+            let expected_calls = usize::from(phase == "budget-before-finish");
+            assert_eq!(completions.load(Ordering::SeqCst), expected_calls);
+            worker.kill_wait();
+            let _ = request.await.unwrap();
+            let mut previous = None;
+            for restart in ["restart-one", "restart-two"] {
+                let mut restarted = spawn(root, restart);
+                let origin = wait_file(&root.join(format!("listen-{restart}"))).await;
+                let status = read_json(
+                    &origin,
+                    &format!("/api/projects/{project}/budget/status"),
+                    200,
+                )
+                .await;
+                assert_eq!(status["spent_tokens"], 0);
+                assert_eq!(status["claimed_count"], 0);
+                let call = read_json(
+                    &origin,
+                    &format!("/api/projects/{project}/budget/calls/{call_id}"),
+                    if phase == "budget-before-claim" {
+                        404
+                    } else {
+                        200
+                    },
+                )
+                .await;
+                if phase == "budget-before-claim" {
+                    assert_eq!(status["held_tokens"], 0);
+                    assert_eq!(status["unresolved_count"], 0);
+                    assert_eq!(call["error"]["code"], "budget_not_found");
+                } else {
+                    assert_eq!(status["held_tokens"], 10);
+                    assert_eq!(status["unresolved_count"], 1);
+                    assert_eq!(status["blocked_reason"], "unresolved");
+                    assert_eq!(call["state"], "unknown");
+                    assert_eq!(call["call"]["state"], "unknown");
+                    assert_eq!(call["reserved_tokens"], 10);
+                }
+                if let Some((old_status, old_call)) = &previous {
+                    assert_eq!(&status, old_status);
+                    assert_eq!(&call, old_call);
+                }
+                previous = Some((status, call));
+                assert_eq!(models.load(Ordering::SeqCst), 1);
+                assert_eq!(completions.load(Ordering::SeqCst), expected_calls);
+                restarted.kill_wait();
+            }
+            println!(
+                "U07 phase={phase} real kill+wait, two Host reopens; models=1 completions={expected_calls}"
+            );
+            provider_task.abort();
+            let _ = provider_task.await;
         }
     }
 }
