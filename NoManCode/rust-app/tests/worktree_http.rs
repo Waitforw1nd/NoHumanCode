@@ -357,6 +357,16 @@ async fn w01_w02_worktree_project_has_independent_authorization_and_original_ses
     assert_ne!(target_id, source_id);
     let target = std::path::PathBuf::from(receipt["target_path"].as_str().unwrap());
     let op = receipt["operation_id"].as_str().unwrap();
+    let clean_observation = body(
+        h.post(&format!("{endpoint}/{op}/inspect"), json!({})).await,
+        200,
+    )
+    .await;
+    assert_eq!(clean_observation["receipt"], receipt);
+    assert_eq!(
+        clean_observation["observation"]["state"],
+        "present_matching"
+    );
     assert_eq!(h.calls.load(Ordering::SeqCst), calls);
     assert_eq!(git(&root, &["rev-parse", "HEAD"]).await, head);
     assert_eq!(std::fs::read(root.join(".git/index")).unwrap(), index);

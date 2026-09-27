@@ -2856,7 +2856,12 @@ mod worktree_http_crash_tests {
                 .json(&body);
             let request = tokio::spawn(async move { post.send().await });
             let op = wait_file(&root.join("ready")).await;
+            println!(
+                "W08 phase={phase} operation={op} child_pid={} reached durable hook",
+                process.0.id()
+            );
             process.kill_wait();
+            println!("W08 phase={phase} original child killed and waited");
             assert!(
                 request.await.unwrap().is_err(),
                 "response must be lost at held hook"
@@ -3052,6 +3057,10 @@ mod worktree_http_crash_tests {
             assert_eq!(std::fs::read(source.join(".git/index")).unwrap(), index);
             assert_eq!(git(&source, &["rev-parse", "HEAD"]).await, head);
             restart.kill_wait();
+            println!(
+                "W08 phase={phase} restart verified state={} and killed/waited; no extra worker or Provider dispatch",
+                receipt["state"]
+            );
         }
     }
 }
