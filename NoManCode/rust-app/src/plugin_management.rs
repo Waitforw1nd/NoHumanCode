@@ -247,6 +247,259 @@ mod tests {
             (shell, true)
         );
     }
+    fn b02_snapshot(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
+        let names: Vec<String> = db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        names
+            .into_iter()
+            .map(|name| {
+                let quoted = name.replace('"', "\"\"");
+                let rows = db
+                    .prepare(&format!("SELECT rowid,* FROM \"{quoted}\" ORDER BY rowid"))
+                    .unwrap()
+                    .query_map([], |r| {
+                        (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+                    })
+                    .unwrap()
+                    .collect::<rusqlite::Result<_>>()
+                    .unwrap();
+                (name, rows)
+            })
+            .collect()
+    }
+    #[test]
+    fn b02_corrupt_shell_rows_fail_without_repair() {
+        for mode in ["missing", "extra", "orphan"] {
+            let (dir, store) = store();
+            let path = dir.path().join("state.sqlite");
+            drop(store);
+            let db = Connection::open(&path).unwrap();
+            match mode {
+                "missing"=>db.execute_batch("DELETE FROM plugin_desired WHERE plugin_id='builtin.shell'").unwrap(),
+                "extra"=>db.execute_batch("PRAGMA ignore_check_constraints=ON; INSERT INTO plugin_desired VALUES('builtin.extra',1,0,1)").unwrap(),
+                "orphan"=>db.execute_batch("PRAGMA foreign_keys=OFF; PRAGMA ignore_check_constraints=ON; INSERT INTO plugin_management_requests VALUES('orphan','builtin.missing',1,0,1,1)").unwrap(),
+                _=>unreachable!()
+            }
+            let before = b02_snapshot(&db);
+            let schema: Vec<(String, Option<String>)> = db
+                .prepare("SELECT name,sql FROM sqlite_master ORDER BY name")
+                .unwrap()
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .unwrap()
+                .collect::<rusqlite::Result<_>>()
+                .unwrap();
+            for _ in 0..2 {
+                assert!(Store::open(&path).is_err(), "{mode}");
+                assert_eq!(b02_snapshot(&db), before, "{mode}");
+                let after: Vec<(String, Option<String>)> = db
+                    .prepare("SELECT name,sql FROM sqlite_master ORDER BY name")
+                    .unwrap()
+                    .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                    .unwrap()
+                    .collect::<rusqlite::Result<_>>()
+                    .unwrap();
+                assert_eq!(after, schema);
+                assert_eq!(
+                    db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                        .unwrap(),
+                    13
+                );
+            }
+        }
+    }
+    #[test]
+    fn b02_shell_cas_and_cross_plugin_global_key_race() {
+        for cross in [false, true] {
+            let (dir, first) = store();
+            let path = dir.path().join("state.sqlite");
+            let second = Store::open(&path).unwrap();
+            let initial = first.builtin_plugin_states().unwrap();
+            let (done_tx, done_rx) = std::sync::mpsc::channel();
+            let mut workers = Vec::new();
+            let mut releases = Vec::new();
+            for (i, store) in [first, second].into_iter().enumerate() {
+                let (tx, rx) = std::sync::mpsc::channel();
+                releases.push(tx);
+                let done = done_tx.clone();
+                workers.push(std::thread::spawn(move || {
+                    rx.recv_timeout(std::time::Duration::from_secs(8)).unwrap();
+                    let id = if cross && i == 0 {
+                        BUILTIN_FILES_ID
+                    } else {
+                        BUILTIN_SHELL_ID
+                    };
+                    let key = if cross {
+                        "global-race".to_owned()
+                    } else {
+                        format!("shell-race-{i}")
+                    };
+                    done.send((id, store.set_plugin_desired(id, &request(false, 0), &key)))
+                        .unwrap();
+                }));
+            }
+            for tx in releases {
+                tx.send(()).unwrap();
+            }
+            let results: Vec<_> = (0..2)
+                .map(|_| {
+                    done_rx
+                        .recv_timeout(std::time::Duration::from_secs(10))
+                        .unwrap()
+                })
+                .collect();
+            for worker in workers {
+                worker.join().unwrap();
+            }
+            assert_eq!(results.iter().filter(|(_, r)| r.is_ok()).count(), 1);
+            let winner = results.iter().find(|(_, r)| r.is_ok()).unwrap().0;
+            let loser = results.iter().find(|(_, r)| r.is_err()).unwrap();
+            assert_eq!(
+                loser
+                    .1
+                    .as_ref()
+                    .unwrap_err()
+                    .downcast_ref::<PluginManagementError>(),
+                Some(&if cross {
+                    PluginManagementError::IdempotencyConflict
+                } else {
+                    PluginManagementError::RevisionConflict
+                })
+            );
+            let store = Store::open(&path).unwrap();
+            let current = store.builtin_plugin_states().unwrap();
+            for (old, new) in [(&initial.0, &current.0), (&initial.1, &current.1)] {
+                if new.plugin_id == winner {
+                    assert_eq!(new.revision, 1);
+                    assert!(!new.enabled);
+                } else {
+                    assert_eq!(new, old);
+                }
+            }
+            let db = store.db.lock().unwrap();
+            assert_eq!(
+                db.query_row("SELECT count(*) FROM plugin_management_requests", [], |r| r
+                    .get::<_, i64>(0))
+                    .unwrap(),
+                1
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT plugin_id FROM plugin_management_requests",
+                    [],
+                    |r| r.get::<_, String>(0)
+                )
+                .unwrap(),
+                winner
+            );
+        }
+    }
+    #[test]
+    fn b02_concurrent_open_migrates_true12_once_without_losing_rows() {
+        let (dir, store) = store();
+        let path = dir.path().join("state.sqlite");
+        drop(store);
+        let mut db = Connection::open(&path).unwrap();
+        db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
+        {
+            let tx = db
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .unwrap();
+            tx.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            crate::repository::apply_schema_12(&tx).unwrap();
+            tx.execute_batch("UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical','builtin.files',0,0,1,17); INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
+            crate::repository::verify_schema_12(&tx).unwrap();
+            tx.commit().unwrap();
+        }
+        let before = b02_snapshot(&db);
+        drop(db);
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let mut workers = Vec::new();
+        let mut releases = Vec::new();
+        for _ in 0..2 {
+            let path = path.clone();
+            let done = done_tx.clone();
+            let (tx, rx) = std::sync::mpsc::channel();
+            releases.push(tx);
+            workers.push(std::thread::spawn(move || {
+                rx.recv_timeout(std::time::Duration::from_secs(8)).unwrap();
+                done.send(Store::open(&path).map(|s| s.schema_version().unwrap()))
+                    .unwrap();
+            }));
+        }
+        for tx in releases {
+            tx.send(()).unwrap();
+        }
+        let results: Vec<_> = (0..2)
+            .map(|_| {
+                done_rx
+                    .recv_timeout(std::time::Duration::from_secs(15))
+                    .unwrap()
+            })
+            .collect();
+        for worker in workers {
+            worker.join().unwrap();
+        }
+        assert!(results.iter().any(|r| matches!(r, Ok(13))));
+        for result in results {
+            if let Err(error) = result {
+                let sqlite = error
+                    .downcast_ref::<rusqlite::Error>()
+                    .expect("only explicit SQLITE_BUSY is tolerated");
+                assert!(
+                    matches!(sqlite,rusqlite::Error::SqliteFailure(code,_) if code.code==rusqlite::ErrorCode::DatabaseBusy)
+                );
+                eprintln!("B02 concurrent opener SQLITE_BUSY: {sqlite}");
+            }
+        }
+        for _ in 0..2 {
+            let store = Store::open(&path).unwrap();
+            assert_eq!(store.schema_version().unwrap(), 13);
+            let mut db = store.db.lock().unwrap();
+            let tx = db.transaction().unwrap();
+            crate::repository::verify_schema_13(&tx).unwrap();
+            tx.commit().unwrap();
+            let after = b02_snapshot(&db);
+            for (name, old) in &before {
+                let rows = &after.iter().find(|(n, _)| n == name).unwrap().1;
+                if name == "plugin_desired" {
+                    assert_eq!(rows.len(), old.len() + 1);
+                    for row in old {
+                        assert!(rows.contains(row));
+                    }
+                } else if name == "schema_migrations" {
+                    assert_eq!(rows.len(), old.len() + 1);
+                    for row in old {
+                        assert!(rows.contains(row));
+                    }
+                } else {
+                    assert_eq!(rows, old, "{name}");
+                }
+            }
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM sqlite_master WHERE name LIKE 'nhc_shell13_%'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                0
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM schema_migrations WHERE id='builtin-shell-management-v1'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                1
+            );
+        }
+    }
     #[test]
     fn store_cas_replay_conflicts_and_atomic_failure() {
         let (_dir, store) = store();
