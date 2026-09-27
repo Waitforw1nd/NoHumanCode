@@ -1679,6 +1679,7 @@ impl Engine {
             Some(&task),
         )?;
         self.scope_conflicts(std::slice::from_ref(&task))?;
+        self.store.check_resume_unsealed(&task.id)?;
         // Complete interrupted tool-call groups before adding a new user message.
         let answered: std::collections::HashSet<String> = task
             .messages
@@ -1723,12 +1724,7 @@ impl Engine {
                 }
             }
         }
-        if waiting_for_approval {
-            self.deferred_resume
-                .lock()
-                .unwrap()
-                .insert(task.id.clone(), message.to_owned());
-        } else {
+        if !waiting_for_approval {
             task.messages.push(json!({"role":"user","content":message}));
         }
         task.status = "queued".into();
@@ -1736,6 +1732,12 @@ impl Engine {
         task.output.push_str("\n\n—— 继续 ——\n");
         task.updated_at = now();
         self.store.resume_task(&task, message)?;
+        if waiting_for_approval {
+            self.deferred_resume
+                .lock()
+                .unwrap()
+                .insert(task.id.clone(), message.to_owned());
+        }
         self.launch(task.clone());
         Ok(task)
     }
@@ -3438,6 +3440,198 @@ mod workspace_phase_tests {
     }
 
     #[test]
+    fn sealed_pending_resume_and_failed_commit_leave_no_deferred_input() {
+        for restore_first in [true, false] {
+            let temp = tempfile::tempdir().unwrap();
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let (old_engine, task_id) = runtime.block_on(async {
+                let (engine, id) = two_write_engine(temp.path()).await;
+                let mut seen = 0;
+                tokio::time::timeout(Duration::from_secs(8), async {
+                    loop {
+                        if let Some(approval) = engine
+                            .store
+                            .pending_approvals_for_task(&id)
+                            .unwrap()
+                            .first()
+                        {
+                            if seen == 0 {
+                                engine.decide_approval(&approval.id, true, None).unwrap();
+                                seen = 1;
+                            } else if approval.tool_call_id == "phase-1" {
+                                break;
+                            }
+                        }
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+                .unwrap();
+                (engine, id)
+            });
+            runtime.shutdown_timeout(Duration::from_secs(2));
+            old_engine.store.recover().unwrap();
+            let engine = Engine::new(old_engine.store.clone(), 2).unwrap();
+            let task = engine.store.task(&task_id).unwrap();
+            assert!(!unanswered_tool_calls(&task.messages).is_empty());
+            assert_eq!(
+                engine
+                    .store
+                    .pending_approvals_for_task(&task_id)
+                    .unwrap()
+                    .len(),
+                1
+            );
+            if restore_first {
+                let changes = engine.store.workspace_changes_for_task(&task_id).unwrap();
+                assert_eq!(changes.len(), 1);
+                engine.store.claim_restore(&task_id, &changes).unwrap();
+            } else {
+                engine.store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_resume BEFORE INSERT ON events WHEN NEW.kind='resume' BEGIN SELECT RAISE(ABORT,'resume fixture fault'); END;").unwrap();
+            }
+            let before = resume_business_snapshot(&engine.store);
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let error = runtime
+                .block_on(engine.resume(&task_id, "deferred input must not remain"))
+                .unwrap_err();
+            if restore_first {
+                assert_eq!(
+                    error.downcast_ref::<crate::store::ResumeError>(),
+                    Some(&crate::store::ResumeError::Sealed)
+                );
+            } else {
+                assert!(error.to_string().contains("resume fixture fault"));
+            }
+            assert_eq!(resume_business_snapshot(&engine.store), before);
+            assert!(engine.deferred_resume.lock().unwrap().is_empty());
+            assert!(!engine.is_busy());
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"after-0"
+            );
+            runtime.shutdown_timeout(Duration::from_secs(2));
+        }
+    }
+
+    #[tokio::test]
+    async fn no_restore_resume_executes_and_checkpoint_keeps_original_error() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, id) = two_write_engine(temp.path()).await;
+        finish_two_writes(&engine, &id, usize::MAX).await;
+        assert!(engine.store.latest_restore(&id).unwrap().is_none());
+        assert_eq!(engine.resume(&id, "write once more").await.unwrap().id, id);
+        tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                for approval in engine.store.pending_approvals_for_task(&id).unwrap() {
+                    engine.decide_approval(&approval.id, true, None).unwrap();
+                }
+                if !engine.is_busy() {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(engine.store.task(&id).unwrap().status, "completed");
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"after-3"
+        );
+        let checkpoint = engine.create_checkpoint(&id, "seal").await.unwrap();
+        engine
+            .restore_checkpoint(&checkpoint.checkpoint.checkpoint_id)
+            .await
+            .unwrap();
+        let before = resume_business_snapshot(&engine.store);
+        let mut task = engine.store.task(&id).unwrap();
+        task.status = "queued".into();
+        assert_eq!(
+            engine
+                .store
+                .resume_task(&task, "blocked")
+                .unwrap_err()
+                .downcast_ref::<crate::checkpoint::CheckpointError>(),
+            Some(&crate::checkpoint::CheckpointError::Conflict)
+        );
+        assert_eq!(
+            engine
+                .resume(&id, "blocked")
+                .await
+                .unwrap_err()
+                .downcast_ref::<crate::checkpoint::CheckpointError>(),
+            Some(&crate::checkpoint::CheckpointError::Conflict)
+        );
+        assert_eq!(resume_business_snapshot(&engine.store), before);
+    }
+
+    fn resume_business_snapshot(store: &Store) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        let db = store.db.lock().unwrap();
+        [
+            "tasks",
+            "events",
+            "turns",
+            "turn_tasks",
+            "approvals",
+            "workspace_changes",
+            "workspace_restores",
+            "workspace_restore_outcomes",
+            "network_calls",
+        ]
+        .iter()
+        .map(|table| {
+            let mut query = db
+                .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
+                .unwrap();
+            let columns = query.column_count();
+            query
+                .query_map([], |row| {
+                    (0..columns)
+                        .map(|i| row.get(i))
+                        .collect::<rusqlite::Result<Vec<_>>>()
+                })
+                .unwrap()
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .unwrap()
+        })
+        .collect()
+    }
+
+    async fn assert_resume_sealed_without_changes(engine: &Arc<Engine>, id: &str) {
+        let before = resume_business_snapshot(&engine.store);
+        let mut proposed = engine.store.task(id).unwrap();
+        proposed.status = "queued".into();
+        proposed
+            .messages
+            .push(json!({"role":"user","content":"must not persist"}));
+        assert_eq!(
+            engine
+                .store
+                .resume_task(&proposed, "must not persist")
+                .unwrap_err()
+                .downcast_ref::<crate::store::ResumeError>(),
+            Some(&crate::store::ResumeError::Sealed)
+        );
+        assert_eq!(
+            engine
+                .resume(id, "must not launch")
+                .await
+                .unwrap_err()
+                .downcast_ref::<crate::store::ResumeError>(),
+            Some(&crate::store::ResumeError::Sealed)
+        );
+        assert_eq!(resume_business_snapshot(&engine.store), before);
+        assert!(!engine.is_busy());
+        assert!(engine.deferred_resume.lock().unwrap().is_empty());
+    }
+
+    #[test]
     fn restore_gate_serializes_competitors_and_seals_resumed_writes() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             let temp = tempfile::tempdir().unwrap();
@@ -3478,36 +3672,7 @@ mod workspace_phase_tests {
                 .unwrap();
             assert_eq!(count, 1);
 
-            engine.resume(&task_id, "write again").await.unwrap();
-            let approval = tokio::time::timeout(Duration::from_secs(8), async {
-                loop {
-                    if let Some(value) = engine
-                        .store
-                        .pending_approvals_for_task(&task_id)
-                        .unwrap()
-                        .into_iter()
-                        .next()
-                    {
-                        break value;
-                    }
-                    tokio::task::yield_now().await;
-                }
-            })
-            .await
-            .unwrap();
-            engine
-                .decide_approval(&approval.id, true, Some("test"))
-                .unwrap();
-            tokio::time::timeout(Duration::from_secs(8), async {
-                loop {
-                    if !engine.is_busy() {
-                        break;
-                    }
-                    tokio::task::yield_now().await;
-                }
-            })
-            .await
-            .unwrap();
+            assert_resume_sealed_without_changes(&engine, &task_id).await;
             assert_eq!(
                 std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
                 "before-a"
@@ -3527,50 +3692,36 @@ mod workspace_phase_tests {
     #[test]
     fn partial_and_unknown_restore_histories_seal_resumed_writes() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
-            for status in [RestoreStatus::Partial, RestoreStatus::Unknown] {
+            for status in [
+                RestoreStatus::Claimed,
+                RestoreStatus::Partial,
+                RestoreStatus::Unknown,
+                RestoreStatus::Conflict,
+            ] {
                 let temp = tempfile::tempdir().unwrap();
                 let (engine, task_id) = two_write_engine(temp.path()).await;
                 finish_two_writes(&engine, &task_id, usize::MAX).await;
                 let records = engine.store.workspace_changes_for_task(&task_id).unwrap();
                 let original_ids: Vec<_> = records.iter().map(|record| record.id.clone()).collect();
                 let claimed = engine.store.claim_restore(&task_id, &records[..1]).unwrap();
-                let restore_id = claimed.restore_id.unwrap();
-                let receipt = engine.store.finish_restore(&restore_id, status).unwrap();
+                let restore_id = claimed.restore_id.clone().unwrap();
+                let receipt = if status == RestoreStatus::Claimed {
+                    claimed
+                } else {
+                    engine.store.finish_restore(&restore_id, status).unwrap()
+                };
                 assert_eq!(receipt.status, status);
-                assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
+                assert_eq!(
+                    receipt.outcomes[0].status,
+                    if status == RestoreStatus::Claimed {
+                        RestoreStatus::Claimed
+                    } else {
+                        RestoreStatus::Unknown
+                    }
+                );
                 assert!(!engine.changes(&task_id).unwrap()[0].restorable);
 
-                engine.resume(&task_id, "write again").await.unwrap();
-                let approval = tokio::time::timeout(Duration::from_secs(8), async {
-                    loop {
-                        if let Some(value) = engine
-                            .store
-                            .pending_approvals_for_task(&task_id)
-                            .unwrap()
-                            .into_iter()
-                            .next()
-                        {
-                            break value;
-                        }
-                        tokio::task::yield_now().await;
-                    }
-                })
-                .await
-                .unwrap();
-                assert_eq!(approval.tool_call_id, "phase-3");
-                engine
-                    .decide_approval(&approval.id, true, Some("test"))
-                    .unwrap();
-                tokio::time::timeout(Duration::from_secs(8), async {
-                    loop {
-                        if !engine.is_busy() {
-                            break;
-                        }
-                        tokio::task::yield_now().await;
-                    }
-                })
-                .await
-                .unwrap();
+                assert_resume_sealed_without_changes(&engine, &task_id).await;
                 assert_eq!(
                     std::fs::read_to_string(temp.path().join("src/a.txt")).unwrap(),
                     "after-1"
@@ -3584,22 +3735,6 @@ mod workspace_phase_tests {
                     original_ids
                 );
                 assert_eq!(engine.latest_restore(&task_id).unwrap().unwrap(), receipt);
-                let task = engine.store.task(&task_id).unwrap();
-                let result = task
-                    .messages
-                    .iter()
-                    .find(|message| message["tool_call_id"] == "phase-3")
-                    .unwrap();
-                assert!(
-                    serde_json::from_str::<Value>(result["content"].as_str().unwrap())
-                        .unwrap()
-                        .get("error")
-                        .is_some()
-                );
-                assert_eq!(
-                    engine.store.approval(&approval.id).unwrap().execution_state,
-                    approval::ExecutionState::Finished
-                );
                 let operations: i64 = rusqlite::Connection::open(temp.path().join("phase.db"))
                     .unwrap()
                     .query_row(
@@ -3661,7 +3796,12 @@ mod workspace_phase_tests {
             .unwrap();
             assert_eq!(receipt.unwrap().status, RestoreStatus::Complete);
             assert_eq!(new_run.unwrap().tasks.len(), 1);
-            assert_eq!(resumed.unwrap().id, task_id);
+            assert_eq!(
+                resumed
+                    .unwrap_err()
+                    .downcast_ref::<crate::store::ResumeError>(),
+                Some(&crate::store::ResumeError::Sealed)
+            );
             assert_eq!(engine.store.runs().unwrap().len(), runs_before.len() + 1);
             assert_eq!(
                 std::fs::read(temp.path().join("src/a.txt")).unwrap(),
