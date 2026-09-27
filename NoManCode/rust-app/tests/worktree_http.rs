@@ -557,12 +557,20 @@ async fn w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects(
     let db = h._dir.path().join("host.sqlite3");
     let before = rows(&db);
     for header in ["token", "host", "origin", "fetch"] {
-        let mut r = h
-            .request(reqwest::Method::POST, &endpoint)
+        let mut r = client()
+            .post(format!("{}{endpoint}", h.origin))
+            .header(
+                "x-peachsh-token",
+                if header == "token" {
+                    "wrong"
+                } else {
+                    "host-token"
+                },
+            )
             .header("Idempotency-Key", "auth")
             .json(&valid);
         r = match header {
-            "token" => r.header("x-peachsh-token", "wrong"),
+            "token" => r,
             "host" => r.header("host", "evil.invalid"),
             "origin" => r.header("origin", "http://evil.invalid"),
             _ => r.header("sec-fetch-site", "cross-site"),
