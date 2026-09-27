@@ -294,7 +294,26 @@ impl FilesControl<'_> {
     pub(crate) fn reconcile(&mut self, enabled: bool) -> FilesRuntimeStatus {
         self.state.admission_open = false;
         if !enabled {
-            self.stop_active();
+            let previously_failed = self.state.apply_failed
+                || self
+                    .state
+                    .host
+                    .instances()
+                    .iter()
+                    .any(|i| matches!(i.state, InstanceState::Failed { .. }));
+            // A new disabled intent can explicitly finish cleanup from an older
+            // failure. Never conceal a failure produced by this very stop.
+            if self.stop_active() && previously_failed {
+                let mut unloaded = true;
+                for id in [CONSUMER, FILES] {
+                    if self.state.host.instances().iter().any(|i| i.id == id)
+                        && self.state.host.unload(id).is_err()
+                    {
+                        unloaded = false;
+                    }
+                }
+                self.state.apply_failed = !unloaded;
+            }
             return self.snapshot();
         }
         if ToolRuntime::files_active(&self.state.host) && !self.state.apply_failed {
@@ -1155,6 +1174,41 @@ mod tests {
         assert_eq!(active.state, FilesRuntimeState::Active);
         assert_eq!(active.recovery, failed.recovery);
         assert_eq!(active.effects_count, 2);
+    }
+    #[test]
+    fn f07_new_disabled_intent_finishes_old_failed_cleanup_without_retrying_hooks() {
+        let events = Arc::new(Mutex::new(vec![]));
+        let provider = Arc::new(AtomicUsize::new(0));
+        let consumer = Arc::new(AtomicUsize::new(0));
+        let runtime = probe_runtime(true, provider.clone(), consumer.clone(), events.clone());
+        provider.store(2, Ordering::SeqCst);
+        consumer.store(2, Ordering::SeqCst);
+        let failed = reconcile(&runtime, false);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        assert_eq!(failed.recovery.len(), 2);
+        let hooks = events.lock().unwrap().clone();
+        assert_eq!(status(&runtime), failed); // Observing/replaying never cleans.
+        let cleaned = reconcile(&runtime, false); // A separate explicit intent.
+        assert_eq!(cleaned.state, FilesRuntimeState::Unloaded);
+        assert!(!cleaned.admission_open);
+        assert_eq!((cleaned.effects_count, cleaned.subscriptions_count), (0, 0));
+        assert!(
+            cleaned
+                .instances
+                .iter()
+                .all(|i| i.state == FilesInstanceState::Unloaded)
+        );
+        assert_eq!(cleaned.recovery, failed.recovery);
+        assert_eq!(*events.lock().unwrap(), hooks); // No repeated deactivate.
+        assert_eq!(reconcile(&runtime, false), cleaned);
+        // Failed initial activation can likewise be explicitly disabled.
+        let mode = Arc::new(AtomicUsize::new(1));
+        let runtime = probe_runtime(true, mode.clone(), mode, Arc::new(Mutex::new(vec![])));
+        let failed = status(&runtime);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        let disabled = reconcile(&runtime, false);
+        assert_eq!(disabled.state, FilesRuntimeState::Unloaded);
+        assert_eq!(disabled.recovery, failed.recovery);
     }
     #[test]
     fn f07_failed_persistence_callback_does_not_apply_and_poison_is_fail_closed() {
