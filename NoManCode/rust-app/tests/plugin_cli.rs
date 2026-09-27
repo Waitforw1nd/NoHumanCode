@@ -350,8 +350,9 @@ async fn l07_known_versions_preserve_json_and_human_reports_validated_tool_scope
     for version in ["1.0.0", "1.1.0"] {
         let s = versioned_status(version);
         let mut r = result(false);
-        r["current"] = s.clone();
-        r["current"]["desired"]["revision"] = json!(1);
+        for field in ["version", "affected_tools", "compat_tools"] {
+            r["current"][field] = s[field].clone();
+        }
         let h = Host::new(vec![
             (200, json!({"plugins":[s.clone()]})),
             (200, json!({"plugin":s.clone()})),
@@ -413,8 +414,9 @@ async fn l07_unknown_mixed_or_arbitrary_tool_maps_are_rejected_without_retry() {
     cases.push(arbitrary);
     for s in cases {
         let mut r = result(false);
-        r["current"] = s.clone();
-        r["current"]["desired"]["revision"] = json!(1);
+        for field in ["version", "affected_tools", "compat_tools"] {
+            r["current"][field] = s[field].clone();
+        }
         let h = Host::new(vec![(200, json!({"plugin":s})), (200, r)]).await;
         let read = failure(&h.cli(&["plugin", "status", "builtin.files"]).await);
         assert_eq!(read["code"], "internal");
