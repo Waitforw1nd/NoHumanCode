@@ -4610,7 +4610,7 @@ mod workspace_phase_tests {
         n13_busy(engine.restore(&task_id).await);
         n13_busy(
             engine
-                .create_checkpoint(&task_id, "blocked checkpoint")
+                .create_checkpoint(&task_id, "blocked-checkpoint")
                 .await,
         );
         let newroot = temp.path().join("new-project");
@@ -4637,7 +4637,7 @@ mod workspace_phase_tests {
                 .store
                 .register_project(RegisterProject {
                     name: original.name.clone(),
-                    root_path: original.root_path.clone(),
+                    root_path: engine.store.settings().unwrap().unwrap().workspace,
                     idempotency_key: key
                 })
                 .unwrap()
@@ -4655,7 +4655,7 @@ mod workspace_phase_tests {
             .unwrap();
         assert!(
             engine
-                .create_checkpoint(&task_id, "after release")
+                .create_checkpoint(&task_id, "after-release")
                 .await
                 .is_ok()
         );
