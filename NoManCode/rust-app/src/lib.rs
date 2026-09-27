@@ -10,6 +10,8 @@ pub mod project_config;
 pub mod provider;
 pub mod provider_transport;
 pub mod repository;
+#[cfg(all(test, windows))]
+mod restore_http_tests;
 pub mod secrets;
 pub mod server;
 pub mod store;

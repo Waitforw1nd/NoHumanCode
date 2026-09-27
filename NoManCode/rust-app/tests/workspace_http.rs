@@ -9,7 +9,7 @@ use peachsh::{
     store::Store,
 };
 use reqwest::{Client, Response, StatusCode};
-use rusqlite::{Connection, ErrorCode};
+use rusqlite::Connection;
 use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
@@ -468,95 +468,4 @@ async fn internal_error_and_unknown_receipt_hide_database_details() {
     ] {
         assert!(!failure.to_string().contains(text));
     }
-}
-
-#[cfg(windows)]
-fn writer_active(db_path: &Path) -> bool {
-    let db = Connection::open(db_path).unwrap();
-    db.busy_timeout(Duration::ZERO).unwrap();
-    match db.execute_batch("BEGIN IMMEDIATE; ROLLBACK;") {
-        Ok(()) => false,
-        Err(rusqlite::Error::SqliteFailure(error, _)) => error.code == ErrorCode::DatabaseBusy,
-        Err(error) => panic!("unexpected DB probe: {error}"),
-    }
-}
-
-#[cfg(windows)]
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn partial_restore_reports_completed_and_unattempted_paths() {
-    use std::{fs::OpenOptions, os::windows::fs::OpenOptionsExt};
-
-    let h = harness(vec![
-        write_call("w1", "src/a.txt", "a-after"),
-        write_call("w2", "src/b.txt", "b-after"),
-        json!({"content":"done"}),
-    ])
-    .await;
-    std::fs::write(h.file("a.txt"), "a-before-secret").unwrap();
-    std::fs::write(h.file("b.txt"), "b-before-secret").unwrap();
-    let task = start_task(&h, &[("src/a.txt", "a-after"), ("src/b.txt", "b-after")]).await;
-    let db_path = h.dir.path().join("workspace.db");
-    h.db().execute_batch("CREATE TRIGGER pause_first_outcome BEFORE UPDATE OF status ON workspace_restore_outcomes WHEN NEW.status='complete' AND NEW.path='src/a.txt' BEGIN SELECT sum(x) FROM (WITH RECURSIVE seq(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM seq WHERE x<10000000) SELECT x FROM seq); END;").unwrap();
-    let c = client();
-    let url = h.restore_url(&task);
-    let request = tokio::spawn(async move {
-        c.post(url)
-            .header("x-peachsh-token", TOKEN)
-            .send()
-            .await
-            .unwrap()
-    });
-    let deadline = Instant::now() + Duration::from_secs(20);
-    loop {
-        let first_restored = std::fs::read(h.file("a.txt")).unwrap() == b"a-before-secret";
-        if first_restored && writer_active(&db_path) {
-            break;
-        }
-        if request.is_finished() {
-            let response = request.await.unwrap();
-            let status = response.status();
-            let body = response.text().await.unwrap();
-            panic!("restore finished before barrier: {status} {body}");
-        }
-        assert!(
-            Instant::now() < deadline,
-            "first outcome barrier not reached"
-        );
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-    let lock = OpenOptions::new()
-        .read(true)
-        .share_mode(0)
-        .open(h.file("b.txt"))
-        .unwrap();
-    assert_eq!(
-        std::fs::read_to_string(h.file("a.txt")).unwrap(),
-        "a-before-secret"
-    );
-    let response = tokio::time::timeout(Duration::from_secs(20), request)
-        .await
-        .unwrap()
-        .unwrap();
-    let partial = body(response, StatusCode::CONFLICT).await;
-    assert_eq!(partial["receipt"]["status"], "partial");
-    assert_eq!(partial["receipt"]["restored"], 1);
-    assert_eq!(partial["receipt"]["outcomes"].as_array().unwrap().len(), 2);
-    assert_eq!(partial["receipt"]["outcomes"][0]["status"], "complete");
-    assert_eq!(partial["receipt"]["outcomes"][1]["status"], "unknown");
-    assert_eq!(partial["ok"], false);
-    assert!(!partial.to_string().contains("secret"));
-    drop(lock);
-    assert_eq!(std::fs::read_to_string(h.file("b.txt")).unwrap(), "b-after");
-    let retry = body(
-        client()
-            .post(h.restore_url(&task))
-            .header("x-peachsh-token", TOKEN)
-            .send()
-            .await
-            .unwrap(),
-        StatusCode::CONFLICT,
-    )
-    .await;
-    assert_eq!(retry["receipt"], partial["receipt"]);
-    assert_eq!(std::fs::read_to_string(h.file("b.txt")).unwrap(), "b-after");
 }
