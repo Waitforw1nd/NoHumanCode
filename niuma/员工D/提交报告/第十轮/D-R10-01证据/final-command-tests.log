@@ -1,0 +1,11 @@
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running unittests src\lib.rs (../nhc-d-shell-service\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 4 tests
+test command_execution::tests::s06_deadline_covers_inherited_pipe_after_direct_parent_exit ... ok
+test command_execution::tests::s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown ... ok
+test command_execution::tests::s06_real_timeout_reaps_child_and_readers_without_false_unknown ... ok
+test command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 138 filtered out; finished in 7.11s
+

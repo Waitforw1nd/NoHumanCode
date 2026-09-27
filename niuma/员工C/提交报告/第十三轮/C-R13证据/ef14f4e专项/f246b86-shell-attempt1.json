@@ -1,0 +1,23 @@
+{
+  "label": "f246b86-shell-attempt1",
+  "started_utc": "2026-09-27T05:01:45.1552809Z",
+  "head": "f246b86fb84d18278d3ccd0776bfa52fd1e1ef11",
+  "rust_tree": "2cf889524e10ace0f79ab3d3fd80485fc391c7d0",
+  "status_before": [],
+  "command": "cargo test --locked --test plugin_http --test plugin_cli -- --nocapture",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "environment": {
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "2",
+    "VSINSTALLDIR": "<machine-msvc>",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "TMP": "../nhc-c-shell-interface\\.local\\tmp",
+    "CARGO_TARGET_DIR": "../nhc-c-shell-interface\\.local\\target",
+    "TEMP": "../nhc-c-shell-interface\\.local\\tmp"
+  },
+  "finished_utc": "2026-09-27T05:02:45.2182353Z",
+  "exit_code": 0,
+  "status_after": []
+}

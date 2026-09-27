@@ -1,0 +1,15 @@
+{
+  "command": "cargo test --lib shell_schema13 -- --nocapture",
+  "exit": 0,
+  "start_utc": "2026-09-27T04:47:11.5297650Z",
+  "head": "6c84681f6ffc47afb521c472a181f6f0217f4fe3",
+  "target": "<B_WORKTREE>\\.local\\target-r11",
+  "end_utc": "2026-09-27T04:48:05.4973474Z",
+  "status": [
+    " M src/plugin_management.rs",
+    " M src/repository.rs",
+    " M src/store.rs"
+  ],
+  "tmp": "<B_WORKTREE>\\.local\\tmp",
+  "msvc": "<MSVC_ROOT>\\VC\\Tools\\MSVC\\14.40.33807"
+}

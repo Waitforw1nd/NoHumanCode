@@ -1,0 +1,11 @@
+{
+  "command": "cargo test --lib n12_ -- --nocapture",
+  "start_utc": "2026-09-27T05:10:27.6486093Z",
+  "end_utc": "2026-09-27T05:10:41.5633782Z",
+  "msvc": "<MSVC_ROOT>\\VC\\Tools\\MSVC\\14.40.33807",
+  "target": "<B_WORKTREE>\\.local\\target-r11",
+  "exit": 0,
+  "head": "76d2d7ebcbbd516f502843d198208eb712a89232",
+  "tmp": "<B_WORKTREE>\\.local\\tmp",
+  "status": " M src/engine.rs"
+}

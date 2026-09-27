@@ -1,0 +1,6 @@
+{
+  "start_utc": "2026-09-27T04:59:17.3713760Z",
+  "end_utc": "2026-09-27T04:59:27.4172727Z",
+  "command": "cargo test --locked --test tool_runtime",
+  "exit": 0
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "source": "../nhc-b-shell-management/.local/review-evidence/b02-01.log",
+    "source_sha256": "1F65D409CC50DFCF2DF78A31B443885B602D3B516FD17CCA0502F64F1A05F4D2",
+    "published": "证据1.1/b02-01.log",
+    "published_sha256": "450485ABF63EA3C63E613CDAF316C10C72F903ED15A489D6FED87BDAD46F52ED",
+    "verified": true
+  },
+  {
+    "source": "../nhc-b-shell-management/.local/review-evidence/b02-01.log.json",
+    "source_sha256": "5E942018024BEE8515EA3140730F7B970A544311686F2994F4ECB6B6B8BC303F",
+    "published": "证据1.1/b02-01.log.json",
+    "published_sha256": "7FD6E1B55C40A078D1FB3D5D553087ED539AA6E1AB9A15E905CE487D0D9958CD",
+    "verified": true
+  }
+]

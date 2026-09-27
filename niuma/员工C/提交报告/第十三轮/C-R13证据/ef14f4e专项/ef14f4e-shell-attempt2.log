@@ -1,0 +1,37 @@
+   Compiling peachsh v0.2.0 (../nhc-c-shell-interface\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 2.02s
+     Running tests\plugin_cli.rs (../nhc-c-shell-interface\.local\target\debug\deps\plugin_cli-8e1e9882fbaa9ed2.exe)
+
+running 10 tests
+test f09_unconverged_accepted_json_is_complete_and_exit_one ... ok
+test f09_hostile_output_is_not_echoed_or_retried ... ok
+test f09_lost_response_requires_manual_same_key_and_parameters ... ok
+test s10_shell_unconverged_success_and_unknown_manual_replay_are_preserved ... ok
+test f09_actual_cli_uses_authenticated_get_put_and_preserves_response ... ok
+test s10_current_catalog_shell_status_mutation_and_human_boundary ... ok
+test f09_cli_rejects_invalid_input_and_safe_errors_remain_structured ... ok
+test l07_known_versions_preserve_json_and_human_reports_validated_tool_scope ... ok
+test l07_unknown_mixed_or_arbitrary_tool_maps_are_rejected_without_retry ... ok
+test s10_reject_invalid_catalogs_and_cross_plugin_responses ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.20s
+
+     Running tests\plugin_http.rs (../nhc-c-shell-interface\.local\target\debug\deps\plugin_http-c933aa68bf7c54a8.exe)
+
+running 9 tests
+test f07_database_rejection_does_not_change_runtime_or_consume_key ... ok
+test f02_status_is_read_only_and_reports_actual_runtime ... ok
+test f06_cas_replay_and_concurrent_conflicts ... ok
+test s10_shell_http_metadata_isolated_global_key_and_strict_contract ... ok
+test f09_real_committed_response_loss_manual_cli_replay_keeps_receipt ... ok
+test f09_strict_inputs_and_auth_have_no_mutations ... ok
+F05 killed Host pid=35536; wait=exit code: 1
+F05 killed Host pid=46584; wait=exit code: 1
+S09 shell Host kill pid=33164; wait=exit code: 1
+test f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_read ... ok
+F05 killed Host pid=22996; wait=exit code: 1
+test s09_shell_real_host_restart_disabled_then_approval_ack_command_and_files_positive ... ok
+test l06_real_host_restart_list_and_search_remain_disabled_then_enable ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.85s
+

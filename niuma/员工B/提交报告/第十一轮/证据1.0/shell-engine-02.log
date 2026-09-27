@@ -1,0 +1,22 @@
+   Compiling peachsh v0.2.0 (<B_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 11.54s
+     Running unittests src\lib.rs (<B_WORKTREE>\.local\target-r11\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 4 tests
+test engine::workspace_phase_tests::n12_pending_disable_then_approval_ack_keeps_decision_without_claim ... ok
+
+thread 'engine::workspace_phase_tests::n12_shell_tools_commands_project_and_ack_are_required' (47864) panicked at src\engine.rs:3606:22:
+called `Result::unwrap()` on an `Err` value: project_permission_revoked
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test engine::workspace_phase_tests::n12_shell_tools_commands_project_and_ack_are_required ... FAILED
+test engine::workspace_phase_tests::n12_true_schema12_migrates_preserving_all_old_rows_and_schema13_reopens ... ok
+test engine::workspace_phase_tests::n12_claimed_shell_finishes_after_disable_and_normal_cancel ... ok
+
+failures:
+
+failures:
+    engine::workspace_phase_tests::n12_shell_tools_commands_project_and_ack_are_required
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 134 filtered out; finished in 0.75s
+
+error: test failed, to rerun pass `--lib`

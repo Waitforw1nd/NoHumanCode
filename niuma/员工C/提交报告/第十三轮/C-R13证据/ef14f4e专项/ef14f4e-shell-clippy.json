@@ -1,0 +1,23 @@
+{
+  "label": "ef14f4e-shell-clippy",
+  "started_utc": "2026-09-27T05:04:54.6073509Z",
+  "head": "ef14f4e1fc76fecad74acf0c5869489fe5bfb7d1",
+  "rust_tree": "677fc9d6f7c44220dfcd1cc0a7e7d53df432cec8",
+  "status_before": [],
+  "command": "cargo clippy --locked --bin peachsh --test plugin_http --test plugin_cli -- -D warnings",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "environment": {
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_TARGET_DIR": "../nhc-c-shell-interface\\.local\\target",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "2",
+    "TMP": "../nhc-c-shell-interface\\.local\\tmp",
+    "VSINSTALLDIR": "<machine-msvc>",
+    "TEMP": "../nhc-c-shell-interface\\.local\\tmp"
+  },
+  "finished_utc": "2026-09-27T05:04:55.9527479Z",
+  "exit_code": 0,
+  "status_after": []
+}

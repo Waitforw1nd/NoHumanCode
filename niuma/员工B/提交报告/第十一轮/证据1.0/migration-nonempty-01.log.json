@@ -1,0 +1,21 @@
+{
+  "head": "6c84681f6ffc47afb521c472a181f6f0217f4fe3",
+  "tmp": "<B_WORKTREE>\\.local\\tmp",
+  "msvc": "<MSVC_ROOT>\\VC\\Tools\\MSVC\\14.40.33807",
+  "status": [
+    " M src/engine.rs",
+    " M src/plugin_management.rs",
+    " M src/repository.rs",
+    " M src/store.rs",
+    " M tests/approval_gate.rs",
+    " M tests/checkpoint.rs",
+    " M tests/project_context.rs",
+    " M tests/project_migration.rs",
+    " M tests/workspace_changes.rs"
+  ],
+  "command": "cargo test --lib n12_true_schema12 -- --nocapture",
+  "exit": 0,
+  "target": "<B_WORKTREE>\\.local\\target-r11",
+  "end_utc": "2026-09-27T04:53:33.9944131Z",
+  "start_utc": "2026-09-27T04:53:21.2175244Z"
+}

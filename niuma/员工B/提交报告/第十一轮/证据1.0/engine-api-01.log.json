@@ -1,0 +1,15 @@
+{
+  "command": "cargo test --test plugin_management -- --nocapture",
+  "start_utc": "2026-09-27T04:58:27.8487632Z",
+  "status": [
+    " M src/engine.rs",
+    " M src/plugin_management.rs",
+    " M tests/plugin_management.rs"
+  ],
+  "tmp": "<B_WORKTREE>\\.local\\tmp",
+  "end_utc": "2026-09-27T04:58:38.7056120Z",
+  "target": "<B_WORKTREE>\\.local\\target-r11",
+  "head": "525ca53b267af292db7c78edae8a35cb0567c198",
+  "exit": 0,
+  "msvc": "<MSVC_ROOT>\\VC\\Tools\\MSVC\\14.40.33807"
+}

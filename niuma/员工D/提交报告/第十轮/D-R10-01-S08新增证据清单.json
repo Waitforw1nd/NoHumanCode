@@ -1,0 +1,92 @@
+[
+  {
+    "source_bytes": 154,
+    "published_bytes": 154,
+    "published": "D-R10-01证据/s08-check.json",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "ECF66527F0DC60DC32BC4BE36DE838DBEDB8E161FBEEF55085F468B19CD6024B",
+    "published_sha256": "ECF66527F0DC60DC32BC4BE36DE838DBEDB8E161FBEEF55085F468B19CD6024B",
+    "source": "../nhc-d-shell-service/.local/logs/s08-check.json"
+  },
+  {
+    "source_bytes": 396,
+    "published_bytes": 391,
+    "published": "D-R10-01证据/s08-check.log",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "2B9151EFDABA113E267FBD4D410939CE4D425FE5891D493ABD6DC5C645952BA7",
+    "published_sha256": "B82B1D5A4ECF238ECBB483E42B559DCD2355BE4F56623F51BA758B98AC31A5EF",
+    "source": "../nhc-d-shell-service/.local/logs/s08-check.log"
+  },
+  {
+    "source_bytes": 247,
+    "published_bytes": 247,
+    "published": "D-R10-01证据/s08-clippy.json",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "675834EB4EB06AF7B32BF9CDF25AC67A140AE8F2DF2A1FF3903F8A7E3AB172E8",
+    "published_sha256": "675834EB4EB06AF7B32BF9CDF25AC67A140AE8F2DF2A1FF3903F8A7E3AB172E8",
+    "source": "../nhc-d-shell-service/.local/logs/s08-clippy.json"
+  },
+  {
+    "source_bytes": 139,
+    "published_bytes": 134,
+    "published": "D-R10-01证据/s08-clippy.log",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "19CB91CE371B526309967CAB18ED5DCEDBA6B005C157231ED27D3FE45A062332",
+    "published_sha256": "C08F5C9C55448E70D7BF5B05E90F289DE9E1BD742F72A81FFF6CEE2B0F55F3AF",
+    "source": "../nhc-d-shell-service/.local/logs/s08-clippy.log"
+  },
+  {
+    "source_bytes": 255,
+    "published_bytes": 255,
+    "published": "D-R10-01证据/s08-fixed-test.json",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "DF6A5A725FDF7FA8CB4A18FE75B7303CEDFBD072AC6BDCAFFC47C43D8023C8E4",
+    "published_sha256": "DF6A5A725FDF7FA8CB4A18FE75B7303CEDFBD072AC6BDCAFFC47C43D8023C8E4",
+    "source": "../nhc-d-shell-service/.local/logs/s08-fixed-test.json"
+  },
+  {
+    "source_bytes": 402,
+    "published_bytes": 397,
+    "published": "D-R10-01证据/s08-fixed-test.log",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "960D93DA1B55F8B4F92DC4332CFC704AE4E00C49E80E01EF14C096840F379D38",
+    "published_sha256": "4780E155DB6E006BA92614A741388F1F151BCBCBA7274DE19B40F75D7B82DE14",
+    "source": "../nhc-d-shell-service/.local/logs/s08-fixed-test.log"
+  },
+  {
+    "source_bytes": 263,
+    "published_bytes": 263,
+    "published": "D-R10-01证据/s08-fmt.json",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "AA0A8F213EF0E48B1F7EEEA2D122ED4404C9F0A9337D94DA5774B87D59CE073C",
+    "published_sha256": "AA0A8F213EF0E48B1F7EEEA2D122ED4404C9F0A9337D94DA5774B87D59CE073C",
+    "source": "../nhc-d-shell-service/.local/logs/s08-fmt.json"
+  },
+  {
+    "source_bytes": 0,
+    "published_bytes": 0,
+    "published": "D-R10-01证据/s08-fmt.log",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "source": "../nhc-d-shell-service/.local/logs/s08-fmt.log"
+  },
+  {
+    "source_bytes": 201,
+    "published_bytes": 201,
+    "published": "D-R10-01证据/s08-test.json",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "F17E7EF63BBB9807835B5140DF105B23DB8CF2569908606907B660A2CEB2F01E",
+    "published_sha256": "F17E7EF63BBB9807835B5140DF105B23DB8CF2569908606907B660A2CEB2F01E",
+    "source": "../nhc-d-shell-service/.local/logs/s08-test.json"
+  },
+  {
+    "source_bytes": 481,
+    "published_bytes": 471,
+    "published": "D-R10-01证据/s08-test.log",
+    "path_conversion": "活动工作树绝对路径转相邻树相对路径；原件不变",
+    "source_sha256": "7087FD23C9A107B3954B1AAFB7FC1999ADA3ADD11635F9AAC4961D7ECC509DF7",
+    "published_sha256": "9FB039C132E9E00D03D5543C525EF1475933747550C1EB139663AADEB2EAFD1B",
+    "source": "../nhc-d-shell-service/.local/logs/s08-test.log"
+  }
+]

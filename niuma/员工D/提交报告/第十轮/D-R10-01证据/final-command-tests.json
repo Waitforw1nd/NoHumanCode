@@ -1,0 +1,7 @@
+{
+  "start_utc": "2026-09-27T05:02:01.4876780Z",
+  "command": "cargo test --locked --lib command_execution::tests -- --test-threads=1",
+  "end_utc": "2026-09-27T05:02:09.0267092Z",
+  "sha": "bd6b8876c936382a64f5777862bd644ff3dde3fa",
+  "exit": 0
+}
