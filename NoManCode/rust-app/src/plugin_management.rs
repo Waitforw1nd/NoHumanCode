@@ -350,3 +350,99 @@ mod tests {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PluginBlockedReason {
+    Disabled,
+    RuntimeFailed,
+    RuntimeUnavailable,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PluginStatus {
+    pub plugin_id: String,
+    pub version: String,
+    pub scope: String,
+    pub desired: PluginDesired,
+    pub runtime: crate::tool_runtime::FilesRuntimeStatus,
+    pub affected_tools: Vec<String>,
+    pub compat_tools: Vec<String>,
+    pub affected_dependents: Vec<String>,
+    pub converged: bool,
+    pub blocked_reason: Option<PluginBlockedReason>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PluginMutationResult {
+    pub receipt: PluginMutationReceipt,
+    pub replayed: bool,
+    pub current: PluginStatus,
+}
+impl PluginStatus {
+    pub(crate) fn observe(
+        desired: PluginDesired,
+        runtime: crate::tool_runtime::FilesRuntimeStatus,
+    ) -> Self {
+        use crate::tool_runtime::{FilesInstanceState, FilesRuntimeState};
+        let complete_instances = runtime.instances.len() == 2
+            && [BUILTIN_FILES_ID, "builtin.engine-tools"]
+                .iter()
+                .all(|id| runtime.instances.iter().any(|i| i.plugin_id == *id));
+        let converged = if desired.enabled {
+            runtime.state == FilesRuntimeState::Active
+                && runtime.admission_open
+                && complete_instances
+                && runtime
+                    .instances
+                    .iter()
+                    .all(|i| i.state == FilesInstanceState::Active)
+        } else {
+            matches!(
+                runtime.state,
+                FilesRuntimeState::Stopped | FilesRuntimeState::Unloaded
+            ) && !runtime.admission_open
+                && runtime.effects_count == 0
+                && runtime.subscriptions_count == 0
+                && runtime.providers.is_empty()
+                && complete_instances
+                && runtime.instances.iter().all(|i| {
+                    matches!(
+                        i.state,
+                        FilesInstanceState::Stopped | FilesInstanceState::Unloaded
+                    ) && i.failure_stage.is_none()
+                })
+        };
+        let blocked_reason = if runtime.state == FilesRuntimeState::Failed {
+            Some(PluginBlockedReason::RuntimeFailed)
+        } else if !desired.enabled {
+            Some(PluginBlockedReason::Disabled)
+        } else if !converged {
+            Some(PluginBlockedReason::RuntimeUnavailable)
+        } else {
+            None
+        };
+        Self {
+            plugin_id: BUILTIN_FILES_ID.into(),
+            version: "1.0.0".into(),
+            scope: "host".into(),
+            desired,
+            runtime,
+            affected_tools: vec!["read_file".into(), "write_file".into()],
+            compat_tools: vec![
+                "list_files".into(),
+                "search_files".into(),
+                "run_command".into(),
+                "run_wasm".into(),
+            ],
+            affected_dependents: vec!["builtin.engine-tools".into()],
+            converged,
+            blocked_reason,
+        }
+    }
+}
+pub(crate) fn safe_error(error: anyhow::Error) -> anyhow::Error {
+    if error.downcast_ref::<PluginManagementError>().is_some() {
+        error
+    } else {
+        error.context(PluginManagementError::Internal)
+    }
+}

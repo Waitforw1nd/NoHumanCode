@@ -536,6 +536,8 @@ pub struct Engine {
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
+        let desired = store.plugin_desired()?;
+        let tool_runtime = ToolRuntime::builtin_with_enabled(desired.enabled)?;
         Ok(Arc::new(Self {
             store,
             client: provider::client()?,
@@ -547,7 +549,7 @@ impl Engine {
             key_slots: Mutex::new(HashMap::new()),
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
-            tool_runtime: ToolRuntime::builtin()?,
+            tool_runtime,
             #[cfg(test)]
             restore_probe: Mutex::new(None),
         }))
@@ -606,6 +608,50 @@ impl Engine {
             });
         }
     }
+    pub fn plugins(&self) -> Result<Vec<crate::plugin_management::PluginStatus>> {
+        Ok(vec![self.plugin_status(
+            crate::plugin_management::BUILTIN_FILES_ID,
+        )?])
+    }
+    pub fn plugin_status(&self, id: &str) -> Result<crate::plugin_management::PluginStatus> {
+        use crate::plugin_management::{PluginStatus, safe_error, validate_plugin_id};
+        validate_plugin_id(id)?;
+        self.tool_runtime
+            .with_files_control(|control| {
+                Ok(PluginStatus::observe(
+                    self.store.plugin_desired()?,
+                    control.snapshot(),
+                ))
+            })
+            .map_err(safe_error)
+    }
+    pub fn set_plugin_enabled(
+        &self,
+        id: &str,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<crate::plugin_management::PluginMutationResult> {
+        use crate::plugin_management::{
+            PluginMutationResult, PluginStatus, safe_error, validate_plugin_id,
+        };
+        validate_plugin_id(id)?;
+        self.tool_runtime
+            .with_files_control(|control| {
+                let (receipt, replayed) = self.store.set_plugin_desired(id, &request, key)?;
+                if !replayed {
+                    control.reconcile(request.enabled);
+                }
+                let current =
+                    PluginStatus::observe(self.store.plugin_desired()?, control.snapshot());
+                Ok(PluginMutationResult {
+                    receipt,
+                    replayed,
+                    current,
+                })
+            })
+            .map_err(safe_error)
+    }
+    /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_files(&self) -> Result<()> {
         self.tool_runtime.disable_builtin_files()
     }
@@ -1395,7 +1441,13 @@ impl Engine {
         match approval::evaluate(task, name) {
             PolicyDecision::Allow => {
                 let (lease, _) = self.tool_runtime.acquire(task, name, || {
-                    self.store.validate_project_task(task, true, false)
+                    if name == "read_file" {
+                        self.store.validate_files_read(task)
+                    } else {
+                        self.store
+                            .validate_project_task(task, true, false)
+                            .map(|_| ())
+                    }
                 })?;
                 self.perform_tool(task, tool_call_id, name, args, key, None, lease)
                     .await
