@@ -289,7 +289,7 @@ async fn run(
         .ends_with("pwsh.exe");
     let mut child = command.spawn().map_err(|_| GitWorktreeError::Unavailable)?;
     #[cfg(all(test, windows))]
-    let observation = trace.then(|| tests::ProcessObservation::capture(&child));
+    let observation = (trace && mutating).then(|| tests::ProcessObservation::capture(&child));
     let result = timeout_at(deadline, async {
         let stdout = child.stdout.take().ok_or(GitWorktreeError::Unavailable)?;
         let stderr = child.stderr.take().ok_or(GitWorktreeError::Unavailable)?;
@@ -1208,6 +1208,7 @@ mod tests {
             user: *mut u64,
         ) -> i32;
         fn WaitForSingleObject(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
     }
     #[cfg(windows)]
     impl ProcessObservation {
@@ -1229,16 +1230,111 @@ mod tests {
                 },
                 0
             );
-            Self {
+            let observation = Self {
                 handle,
                 pid: child.id().unwrap(),
                 created,
-            }
+            };
+            observation.remember();
+            observation
+        }
+        fn remember(&self) {
+            let copy = Self {
+                handle: self.handle.try_clone().unwrap(),
+                pid: self.pid,
+                created: self.created,
+            };
+            process_observations()
+                .lock()
+                .unwrap()
+                .insert(self.pid, copy);
+        }
+        fn capture_pid(pid: u32) -> Self {
+            use std::os::windows::io::{AsRawHandle, FromRawHandle};
+            let raw = unsafe { OpenProcess(0x00100000 | 0x1000, 0, pid) };
+            assert!(!raw.is_null(), "cannot retain fixture process {pid}");
+            let handle = unsafe { std::os::windows::io::OwnedHandle::from_raw_handle(raw) };
+            let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
+            assert_ne!(
+                unsafe {
+                    GetProcessTimes(
+                        handle.as_raw_handle(),
+                        &mut created,
+                        &mut exited,
+                        &mut kernel,
+                        &mut user,
+                    )
+                },
+                0
+            );
+            let observation = Self {
+                handle,
+                pid,
+                created,
+            };
+            observation.remember();
+            observation
         }
         pub(super) fn signal(&self) -> u32 {
             use std::os::windows::io::AsRawHandle;
             unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) }
         }
+    }
+    #[cfg(windows)]
+    fn process_observations(
+    ) -> &'static std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>> {
+        static ITEMS: std::sync::OnceLock<
+            std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>>,
+        > = std::sync::OnceLock::new();
+        ITEMS.get_or_init(Default::default)
+    }
+    #[cfg(windows)]
+    fn require_original_process_exited(
+        observation: &ProcessObservation,
+    ) -> std::result::Result<(), String> {
+        let signal = observation.signal();
+        if signal == 0 {
+            Ok(())
+        } else {
+            Err(format!(
+                "original fixture pid={} created={} signal={} remains unsignaled",
+                observation.pid, observation.created, signal
+            ))
+        }
+    }
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn w06_original_handle_rejects_live_process_and_accepts_waited_exit() {
+        let mut command = Command::new("pwsh.exe");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Start-Sleep -Seconds 20",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
+            .kill_on_drop(true)
+            .creation_flags(0x08000000);
+        let mut child = command.spawn().unwrap();
+        let observation = ProcessObservation::capture(&child);
+        assert!(
+            require_original_process_exited(&observation).is_err(),
+            "a live original process must fail the exact assertion"
+        );
+        child.start_kill().unwrap();
+        timeout_at(Instant::now() + Duration::from_secs(5), child.wait())
+            .await
+            .unwrap()
+            .unwrap();
+        require_original_process_exited(&observation).unwrap();
+        process_observations()
+            .lock()
+            .unwrap()
+            .remove(&observation.pid)
+            .unwrap();
     }
     struct Fixture {
         _temp: tempfile::TempDir,
@@ -2165,6 +2261,22 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
+    async fn assert_pid_absent(pid: u32) {
+        let observation = process_observations()
+            .lock()
+            .unwrap()
+            .remove(&pid)
+            .expect("fixture PID must match retained original handle");
+        eprintln!(
+            "D08 original-handle pid={} created={} signal={}",
+            observation.pid,
+            observation.created,
+            observation.signal()
+        );
+        require_original_process_exited(&observation).unwrap();
+    }
+    #[cfg(not(windows))]
     async fn assert_pid_absent(pid: u32) {
         let mut query = Command::new("pwsh.exe");
         query
@@ -2232,6 +2344,8 @@ mod tests {
             .trim()
             .parse()
             .unwrap();
+        #[cfg(windows)]
+        let _descendant_observation = ProcessObservation::capture_pid(descendant);
         let mut cleanup = Command::new("pwsh.exe");
         cleanup.args(["-NoProfile","-NonInteractive","-Command",&format!("$p=Get-Process -Id {descendant} -ErrorAction SilentlyContinue; if($p){{$p.Kill();$p.WaitForExit()}}")]).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null()).kill_on_drop(true);
         #[cfg(windows)]
