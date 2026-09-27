@@ -472,7 +472,11 @@ async fn n03_denied_write_history_can_continue_without_inheriting_approval() {
 
 #[tokio::test]
 async fn n09_stop_before_approval_claim_has_no_write_or_claim() {
-    for unload in [false, true] {
+    for (unload, name) in [false, true].into_iter().flat_map(|unload| {
+        ["read_file", "list_files", "search_files"]
+            .into_iter()
+            .map(move |name| (unload, name))
+    }) {
         let h = start(vec![
             write("write-1", "not-written"),
             json!({"content":"done"}),
@@ -691,7 +695,11 @@ async fn n07_tool_chat_same_key_race_and_active_scope_conflict() {
 
 #[tokio::test]
 async fn n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload() {
-    for unload in [false, true] {
+    for (unload, name) in [false, true].into_iter().flat_map(|unload| {
+        ["read_file", "list_files", "search_files"]
+            .into_iter()
+            .map(move |name| (unload, name))
+    }) {
         let h = start(vec![json!({"content":"done"})]).await;
         assert_eq!(h.settle(&h.first, true).await.status, "completed");
         if unload {
@@ -700,9 +708,9 @@ async fn n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload(
             h.engine.disable_builtin_files().unwrap();
         }
         h.queue(vec![call(
-            "revoked-read",
-            "read_file",
-            json!({"path":"src/a.txt"}),
+            "revoked-file",
+            name,
+            json!({"path":"src","query":"before"}),
         )]);
         let next = h
             .engine
@@ -714,10 +722,15 @@ async fn n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload(
             "failed"
         );
         let requests = h.provider.requests.lock().unwrap();
+        assert_eq!(
+            requests.len(),
+            2,
+            "no continuation Provider request after revoked call"
+        );
         let definitions = requests.last().unwrap()["tools"].as_array().unwrap();
         assert!(definitions.iter().all(|item| !matches!(
             item["function"]["name"].as_str(),
-            Some("read_file" | "write_file")
+            Some("read_file" | "write_file" | "list_files" | "search_files")
         )));
         drop(requests);
         let events = h.engine.store.events(&h.run, 0).unwrap();
@@ -729,4 +742,114 @@ async fn n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload(
             0
         );
     }
+}
+#[tokio::test]
+async fn n11_disabled_files_keep_command_approval_network_ack_and_wasm_denial() {
+    let h = start(vec![json!({"content":"done"})]).await;
+    let original = h.settle(&h.first, true).await;
+    h.engine
+        .set_plugin_enabled(
+            "builtin.files",
+            peachsh::plugin_management::SetPluginEnabled {
+                enabled: false,
+                expected_revision: 0,
+            },
+            "disable-for-command",
+        )
+        .unwrap();
+    h.queue(vec![
+        call(
+            "command-after-disable",
+            "run_command",
+            json!({"command":"Write-Output command-ack-positive"}),
+        ),
+        json!({"content":"done"}),
+    ]);
+    let mut spec = original.spec.clone();
+    spec.allow_commands = true;
+    let run = h
+        .engine
+        .start(RunRequest {
+            title: "compat command".into(),
+            kind: SessionKind::Team,
+            tasks: vec![spec.clone()],
+        })
+        .await
+        .unwrap();
+    let task_id = &run.tasks[0].id;
+    let pending = h.pending(task_id).await;
+    assert_eq!(pending.tool_name, "run_command");
+    assert_eq!(pending.execution_state, ExecutionState::NotStarted);
+    assert_eq!(
+        pending.command_network_ack,
+        peachsh::approval::CommandNetworkAck::Required
+    );
+    let error = h
+        .engine
+        .decide_approval(&pending.id, true, Some("test"))
+        .unwrap_err();
+    assert!(matches!(
+        error.downcast_ref::<peachsh::approval::ApprovalError>(),
+        Some(peachsh::approval::ApprovalError::NetworkAcknowledgementRequired { .. })
+    ));
+    assert_eq!(
+        h.engine
+            .store
+            .approval(&pending.id)
+            .unwrap()
+            .execution_state,
+        ExecutionState::NotStarted
+    );
+    let done = h.settle(task_id, true).await;
+    assert_eq!(done.status, "completed");
+    let receipt = h.engine.store.approval(&pending.id).unwrap();
+    assert_eq!(receipt.execution_state, ExecutionState::Finished);
+    assert_eq!(
+        receipt.command_network_ack,
+        peachsh::approval::CommandNetworkAck::Acknowledged
+    );
+    assert!(done.messages.iter().any(|m| {
+        m["role"] == "tool"
+            && m["content"]
+                .as_str()
+                .is_some_and(|v| v.contains("command-ack-positive"))
+    }));
+    assert_eq!(h.count("command_network_ack"), 1);
+    assert!(
+        !h.engine
+            .plugin_status("builtin.files")
+            .unwrap()
+            .runtime
+            .admission_open
+    );
+    h.queue(vec![call(
+        "wasm-still-denied",
+        "run_wasm",
+        json!({"path":"missing.wasm"}),
+    )]);
+    let wasm = h
+        .engine
+        .start(RunRequest {
+            title: "wasm denied".into(),
+            kind: SessionKind::Team,
+            tasks: vec![spec],
+        })
+        .await
+        .unwrap();
+    assert_eq!(h.settle(&wasm.tasks[0].id, true).await.status, "failed");
+    assert!(
+        h.engine
+            .store
+            .approvals_for_task(&wasm.tasks[0].id)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        !h.engine
+            .store
+            .events(&wasm.id, 0)
+            .unwrap()
+            .iter()
+            .any(|e| e.kind == "tool_start" || e.kind == "tool_result")
+    );
 }

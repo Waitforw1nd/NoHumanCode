@@ -1449,7 +1449,7 @@ impl Engine {
         match approval::evaluate(task, name) {
             PolicyDecision::Allow => {
                 let (lease, _) = self.tool_runtime.acquire(task, name, || {
-                    if name == "read_file" {
+                    if matches!(name, "read_file" | "list_files" | "search_files") {
                         self.store.validate_files_read(task)
                     } else {
                         self.store
@@ -2537,7 +2537,7 @@ mod workspace_phase_tests {
         let definitions = engine.tool_runtime.definitions(&task).unwrap();
         assert!(definitions.iter().all(|d| !matches!(
             d["function"]["name"].as_str(),
-            Some("read_file" | "write_file")
+            Some("read_file" | "write_file" | "list_files" | "search_files")
         )));
         let admitted = std::sync::atomic::AtomicBool::new(false);
         assert!(
@@ -2550,17 +2550,15 @@ mod workspace_phase_tests {
                 .is_err()
         );
         assert!(!admitted.load(Ordering::SeqCst));
-        // Compatibility tools still use their normal scoped policy, not the disabled service.
-        let (lease, ()) = engine
-            .tool_runtime
-            .acquire(&task, "list_files", || {
+        // All file discovery services now share the same disabled admission.
+        for name in ["list_files", "search_files"] {
+            assert!(
                 engine
-                    .store
-                    .validate_project_task(&task, true, false)
-                    .map(|_| ())
-            })
-            .unwrap();
-        assert!(lease.execute(&task, &json!({"path":"src"})).await.is_ok());
+                    .tool_runtime
+                    .acquire(&task, name, || { engine.store.validate_files_read(&task) })
+                    .is_err()
+            );
+        }
         task.status = "running".into();
         assert!(
             engine
@@ -2951,7 +2949,7 @@ mod workspace_phase_tests {
             let definitions = engine.tool_runtime.definitions(&task).unwrap();
             assert!(definitions.iter().all(|definition| !matches!(
                 definition["function"]["name"].as_str(),
-                Some("read_file" | "write_file")
+                Some("read_file" | "write_file" | "list_files" | "search_files")
             )));
             drop(guard);
             tokio::time::timeout(Duration::from_secs(8), async {
