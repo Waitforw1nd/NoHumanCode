@@ -3422,4 +3422,19 @@ mod worktree_schema_tests {
             }
         }
     }
+    #[test]
+    fn n13_schema_orphan_origin_foreign_key_is_rejected_without_repair() {
+        let (_dir, path, db) = historical13();
+        drop(Store::open(&path).unwrap());
+        db.execute_batch("PRAGMA foreign_keys=OFF; INSERT INTO project_worktree_origins(project_id,operation_id,source_project_id,identity) VALUES('missing-project','missing-operation','missing-source','{}'); PRAGMA foreign_keys=ON;").unwrap();
+        let before = rows(&db);
+        assert!(
+            db.query_row("PRAGMA foreign_key_check", [], |r| r.get::<_, String>(0))
+                .is_ok()
+        );
+        for _ in 0..2 {
+            assert!(Store::open(&path).is_err());
+            assert_eq!(rows(&db), before);
+        }
+    }
 }

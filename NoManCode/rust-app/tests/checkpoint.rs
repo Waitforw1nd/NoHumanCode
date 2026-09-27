@@ -740,6 +740,21 @@ fn k05_fake_literal_and_missing_constraint_are_rejected() {
     }
 }
 
+fn expected_after_worktree_migration(
+    mut old: Vec<(String, Vec<Vec<rusqlite::types::Value>>)>,
+) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
+    for name in [
+        "worktree_operations",
+        "worktree_project_reservations",
+        "project_worktree_origins",
+    ] {
+        assert!(!old.iter().any(|(table, _)| table == name));
+        old.push((name.into(), vec![]));
+    }
+    old.sort_by(|a, b| a.0.cmp(&b.0));
+    old
+}
+
 fn all_schema10_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
     let mut q=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_migrations','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys','plugin_desired','plugin_management_requests') ORDER BY name").unwrap();
     let names = q
@@ -817,7 +832,10 @@ async fn k05_real_schema8_migration_preserves_every_business_value_and_ciphertex
     drop(Store::open(&path).unwrap());
     drop(Store::open(&path).unwrap());
     let db = Connection::open(&path).unwrap();
-    assert_eq!(business_rows(&db), old_rows);
+    assert_eq!(
+        business_rows(&db),
+        expected_after_worktree_migration(old_rows)
+    );
     assert_eq!(
         db.query_row("SELECT before_blob FROM workspace_changes", [], |r| r
             .get::<_, Vec<u8>>(0))
@@ -1051,7 +1069,10 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
     drop(store);
     drop(Store::open(&path).unwrap());
     let db = Connection::open(&path).unwrap();
-    assert_eq!(business_rows(&db), before);
+    assert_eq!(
+        business_rows(&db),
+        expected_after_worktree_migration(before)
+    );
     let after: Vec<Vec<rusqlite::types::Value>> = {
         let mut s = db.prepare("SELECT * FROM checkpoints ORDER BY id").unwrap();
         s.query_map([], |r| {
@@ -1169,7 +1190,10 @@ async fn completed_restore_replays_after_legacy_migration_and_original_root_is_o
     );
     assert_eq!(std::fs::read(moved.join("src/a.txt")).unwrap(), b"before");
     let raw = Connection::open(moved.join("workspace.db")).unwrap();
-    assert_eq!(all_schema10_rows(&raw), all_before);
+    assert_eq!(
+        all_schema10_rows(&raw),
+        expected_after_worktree_migration(all_before)
+    );
     assert_eq!(engine.store.schema_version().unwrap(), 14);
 }
 
@@ -1231,7 +1255,10 @@ async fn schema10_unbound_checkpoint_is_history_only_and_cannot_restore() {
         b"after"
     );
     let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
-    assert_eq!(business_rows(&raw), before);
+    assert_eq!(
+        business_rows(&raw),
+        expected_after_worktree_migration(before)
+    );
     server.abort();
     let _ = server.await;
 }

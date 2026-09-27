@@ -1668,4 +1668,172 @@ mod tests {
         assert_eq!(raw(&f.source, &["show-ref"]), refs);
         assert_eq!(f.count("projects"), rows);
     }
+    #[tokio::test]
+    async fn n13_same_key_two_store_race_replays_one_operation() {
+        let f = Fixture::new();
+        let request = f.request();
+        let first = f.plan(&request).await;
+        let second = f.plan(&request).await;
+        let inventory = f.store.worktree_inventory().unwrap();
+        let other = Arc::new(Store::open(&f.db).unwrap());
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let handles: Vec<_> = [(f.store.clone(), first), (other, second)]
+            .into_iter()
+            .map(|(store, plan)| {
+                let request = request.clone();
+                let inventory = inventory.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    store
+                        .claim_worktree(
+                            &request,
+                            &inventory,
+                            std::slice::from_ref(&request.source_project_id),
+                            &plan,
+                        )
+                        .unwrap()
+                })
+            })
+            .collect();
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        assert_eq!(results[0].0, results[1].0);
+        assert_ne!(results[0].1, results[1].1);
+        assert_eq!(f.count("worktree_operations"), 1);
+        assert_eq!(f.count("worktree_project_reservations"), 1);
+        assert_eq!(std::fs::read_dir(&f.parent).unwrap().count(), 0);
+    }
+    #[tokio::test]
+    async fn n13_registration_inventory_and_claim_race_has_no_unreserved_new_member() {
+        for _ in 0..3 {
+            let f = Fixture::new();
+            let request = f.request();
+            let plan = f.plan(&request).await;
+            let inventory = f.store.worktree_inventory().unwrap();
+            let other = Arc::new(Store::open(&f.db).unwrap());
+            let root = f._temp.path().join("new");
+            std::fs::create_dir(&root).unwrap();
+            let barrier = Arc::new(std::sync::Barrier::new(2));
+            let b = barrier.clone();
+            let store = f.store.clone();
+            let claimed = std::thread::spawn(move || {
+                b.wait();
+                store.claim_worktree(
+                    &request,
+                    &inventory,
+                    std::slice::from_ref(&request.source_project_id),
+                    &plan,
+                )
+            });
+            let registered = std::thread::spawn(move || {
+                barrier.wait();
+                other.register_project(RegisterProject {
+                    name: "Concurrent".into(),
+                    root_path: root.to_string_lossy().into(),
+                    idempotency_key: id(),
+                })
+            });
+            match (claimed.join().unwrap(), registered.join().unwrap()) {
+                (Ok(_), Err(error)) => {
+                    assert_eq!(
+                        error.downcast_ref::<WorktreeError>(),
+                        Some(&WorktreeError::Busy)
+                    );
+                    assert_eq!(f.count("projects"), 1);
+                    assert_eq!(f.count("worktree_operations"), 1);
+                }
+                (Err(error), Ok(_)) => {
+                    assert_eq!(
+                        error.downcast_ref::<WorktreeError>(),
+                        Some(&WorktreeError::Conflict)
+                    );
+                    assert_eq!(f.count("projects"), 2);
+                    assert_eq!(f.count("worktree_operations"), 0);
+                }
+                result => panic!("registration/claim must have exactly one winner: {result:?}"),
+            }
+        }
+    }
+    #[tokio::test]
+    async fn n13_removed_sibling_reservation_is_detected_and_source_scopes_do_not_leak() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let successful = engine.create_project_worktree(f.request()).await.unwrap();
+        let sibling = successful.project_id.clone().unwrap();
+        let request = f.request();
+        let plan = f.plan(&request).await;
+        let inventory = f.store.worktree_inventory().unwrap();
+        let members = vec![f.project.id.clone(), sibling.clone()];
+        let receipt = f
+            .store
+            .claim_worktree(&request, &inventory, &members, &plan)
+            .unwrap()
+            .0;
+        assert_eq!(f.count("worktree_project_reservations"), 2);
+        assert_eq!(
+            engine
+                .worktree_receipt(&sibling, &receipt.operation_id)
+                .unwrap_err()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::NotFound)
+        );
+        assert_eq!(
+            engine
+                .lookup_project_worktree(&sibling, &request.idempotency_key)
+                .unwrap_err()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::NotFound)
+        );
+        let mut conflicting = request.clone();
+        conflicting.source_project_id = sibling.clone();
+        assert_eq!(
+            engine
+                .create_project_worktree(conflicting)
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::IdempotencyConflict)
+        );
+        f.store
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "DELETE FROM worktree_project_reservations WHERE project_id=?1",
+                [&sibling.0],
+            )
+            .unwrap();
+        for _ in 0..2 {
+            assert!(Store::open(&f.db).is_err());
+        }
+        assert_eq!(f.count("worktree_project_reservations"), 1);
+    }
+    #[tokio::test]
+    async fn n13_stale_configuration_and_head_fail_before_claim() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let mut request = f.request();
+        request.expected_config_revision += 1;
+        assert_eq!(
+            engine
+                .create_project_worktree(request)
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::RevisionConflict)
+        );
+        let mut request = f.request();
+        request.expected_head = "0".repeat(40);
+        assert_eq!(
+            engine
+                .create_project_worktree(request)
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::Conflict)
+        );
+        assert_eq!(f.count("worktree_operations"), 0);
+        assert_eq!(f.count("projects"), 1);
+        assert_eq!(std::fs::read_dir(&f.parent).unwrap().count(), 0);
+    }
 }

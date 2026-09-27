@@ -12,6 +12,7 @@ use crate::{
     },
     secrets,
     workspace_changes::{RestoreStatus, WorkspaceChangeError},
+    worktree_management::{CreateWorktree, WorktreeError, WorktreeState},
 };
 use axum::{
     Json, Router,
@@ -67,6 +68,9 @@ impl ApiError {
 }
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        if let Some(error) = self.error.downcast_ref::<WorktreeError>() {
+            return worktree_failure(error);
+        }
         if let Some(error) = self.error.downcast_ref::<NetworkError>() {
             return network_error(error.clone());
         }
@@ -327,6 +331,7 @@ fn is_corrupt_store(error: &anyhow::Error) -> bool {
 fn read_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -433,6 +438,13 @@ pub fn router(app: App) -> Router {
             get(project_config).put(configure_project),
         )
         .route("/api/projects/{id}/runs", post(start_project))
+        .route("/api/projects/{id}/worktrees", post(create_worktree))
+        .route("/api/projects/{id}/worktrees/lookup", post(lookup_worktree))
+        .route("/api/projects/{id}/worktrees/{op}", get(worktree_status))
+        .route(
+            "/api/projects/{id}/worktrees/{op}/inspect",
+            post(inspect_worktree),
+        )
         .route(
             "/api/project-selection",
             get(project_selection).put(select_project),
@@ -900,6 +912,129 @@ fn project_query(query: Option<String>) -> Result<Option<ProjectId>> {
 async fn projects(State(app): State<App>) -> Result<Json<Vec<Project>>> {
     Ok(Json(app.engine.store.projects().map_err(read_error)?))
 }
+fn worktree_failure(error: &WorktreeError) -> Response {
+    let (status, code) = match error {
+        WorktreeError::Invalid => (StatusCode::BAD_REQUEST, "worktree_invalid"),
+        WorktreeError::NotFound => (StatusCode::NOT_FOUND, "worktree_not_found"),
+        WorktreeError::RevisionConflict => (StatusCode::CONFLICT, "worktree_revision_conflict"),
+        WorktreeError::IdempotencyConflict => {
+            (StatusCode::CONFLICT, "worktree_idempotency_conflict")
+        }
+        WorktreeError::Busy => (StatusCode::CONFLICT, "worktree_busy"),
+        WorktreeError::RootChanged => (StatusCode::CONFLICT, "worktree_root_changed"),
+        WorktreeError::Conflict => (StatusCode::CONFLICT, "worktree_conflict"),
+        WorktreeError::Unsupported => (StatusCode::UNPROCESSABLE_ENTITY, "worktree_unsupported"),
+        WorktreeError::Unavailable => (StatusCode::SERVICE_UNAVAILABLE, "worktree_unavailable"),
+        WorktreeError::Corrupt => (StatusCode::INTERNAL_SERVER_ERROR, "worktree_corrupt"),
+    };
+    (
+        status,
+        Json(json!({"code":code,"message":code,"error":code,"retryable":false})),
+    )
+        .into_response()
+}
+fn worktree_command_error(error: anyhow::Error) -> ApiError {
+    let typed = error
+        .downcast_ref::<WorktreeError>()
+        .copied()
+        .unwrap_or(WorktreeError::Corrupt);
+    ApiError::from(anyhow::Error::from(typed))
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CreateWorktreeBody {
+    name: String,
+    parent_path: String,
+    expected_config_revision: u64,
+    expected_head: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LookupWorktreeBody {
+    idempotency_key: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct InspectWorktreeBody {}
+
+fn worktree_operation_id(id: String) -> Result<String> {
+    if !uuid::Uuid::parse_str(&id).is_ok_and(|u| u.to_string() == id) {
+        return Err(anyhow::Error::from(WorktreeError::Invalid).into());
+    }
+    Ok(id)
+}
+async fn create_worktree(
+    State(app): State<App>,
+    source: std::result::Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<CreateWorktreeBody>>,
+) -> Result<Response> {
+    let receipt = app
+        .engine
+        .create_project_worktree(CreateWorktree {
+            source_project_id: ProjectId(workspace_task_id(source)?),
+            name: body.name,
+            parent_path: body.parent_path,
+            expected_config_revision: body.expected_config_revision,
+            expected_head: body.expected_head,
+            idempotency_key: required_idempotency_key(&headers)?,
+        })
+        .await
+        .map_err(worktree_command_error)?;
+    let status = match receipt.state {
+        WorktreeState::Succeeded => StatusCode::OK,
+        WorktreeState::Claimed | WorktreeState::Unknown => StatusCode::ACCEPTED,
+        WorktreeState::Rejected => StatusCode::CONFLICT,
+    };
+    Ok((status, Json(receipt)).into_response())
+}
+async fn lookup_worktree(
+    State(app): State<App>,
+    source: std::result::Result<Path<String>, PathRejection>,
+    ContractJson(StrictObject(body)): ContractJson<StrictObject<LookupWorktreeBody>>,
+) -> Result<Response> {
+    let source = ProjectId(workspace_task_id(source)?);
+    secrets::validate_idempotency_key(&body.idempotency_key)
+        .map_err(|_| anyhow::Error::from(WorktreeError::Invalid))?;
+    Ok(Json(
+        app.engine
+            .lookup_project_worktree(&source, &body.idempotency_key)
+            .map_err(worktree_command_error)?,
+    )
+    .into_response())
+}
+async fn worktree_status(
+    State(app): State<App>,
+    path: std::result::Result<Path<(String, String)>, PathRejection>,
+) -> Result<Response> {
+    let Path((source, op)) = path.map_err(|_| anyhow::Error::from(WorktreeError::Invalid))?;
+    secrets::validate_persisted_id("project_id", &source)
+        .map_err(|_| anyhow::Error::from(WorktreeError::Invalid))?;
+    let op = worktree_operation_id(op)?;
+    Ok(Json(
+        app.engine
+            .worktree_receipt(&ProjectId(source), &op)
+            .map_err(worktree_command_error)?,
+    )
+    .into_response())
+}
+async fn inspect_worktree(
+    State(app): State<App>,
+    path: std::result::Result<Path<(String, String)>, PathRejection>,
+    ContractJson(StrictObject(_)): ContractJson<StrictObject<InspectWorktreeBody>>,
+) -> Result<Response> {
+    let Path((source, op)) = path.map_err(|_| anyhow::Error::from(WorktreeError::Invalid))?;
+    secrets::validate_persisted_id("project_id", &source)
+        .map_err(|_| anyhow::Error::from(WorktreeError::Invalid))?;
+    let op = worktree_operation_id(op)?;
+    Ok(Json(
+        app.engine
+            .inspect_project_worktree(&ProjectId(source), &op)
+            .await
+            .map_err(worktree_command_error)?,
+    )
+    .into_response())
+}
 fn project_status(code: &str) -> StatusCode {
     match code {
         "project_invalid" => StatusCode::BAD_REQUEST,
@@ -1176,6 +1311,7 @@ fn required_idempotency_key(headers: &HeaderMap) -> Result<String> {
 fn turn_command_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1465,6 +1601,7 @@ fn approval_id(path: std::result::Result<Path<String>, PathRejection>) -> Result
 fn approval_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1713,6 +1850,7 @@ async fn restore_checkpoint(
 fn git_diff_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1747,6 +1885,7 @@ fn git_diff_error(error: anyhow::Error) -> ApiError {
 fn checkpoint_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1815,6 +1954,7 @@ async fn restore(
 fn workspace_change_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -2453,6 +2593,474 @@ mod review_transport_tests {
             assert_eq!(result.status, StatusCode::NOT_FOUND);
             let result = mapping(WorkspaceChangeError::Active.into());
             assert_eq!(result.status, StatusCode::CONFLICT);
+        }
+    }
+}
+
+#[cfg(test)]
+mod worktree_http_crash_tests {
+    use super::*;
+    use crate::{engine::WorktreeProbePhase, store::Store};
+    use std::{
+        path::{Path as FsPath, PathBuf},
+        process::{Child, Command, Stdio},
+        time::Instant,
+    };
+    const TEST: &str = "server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries";
+    struct ChildGuard(Child);
+    impl ChildGuard {
+        fn kill_wait(&mut self) {
+            self.0.kill().unwrap();
+            let end = Instant::now() + Duration::from_secs(5);
+            loop {
+                if self.0.try_wait().unwrap().is_some() {
+                    return;
+                }
+                assert!(Instant::now() < end, "child wait deadline");
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
+    impl Drop for ChildGuard {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let end = Instant::now() + Duration::from_secs(5);
+            while Instant::now() < end {
+                if self.0.try_wait().ok().flatten().is_some() {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
+    fn client() -> reqwest::Client {
+        reqwest::Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(12))
+            .build()
+            .unwrap()
+    }
+    async fn wait_file(path: &FsPath) -> String {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if let Ok(text) = std::fs::read_to_string(path) {
+                    if !text.is_empty() {
+                        break text;
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("deterministic child notification")
+    }
+    async fn child(root: PathBuf, phase: String) {
+        let store = Arc::new(Store::open(&root.join("host.sqlite3")).unwrap());
+        store.recover().unwrap();
+        let engine = Engine::new(store, 2).unwrap();
+        let probe_root = root.clone();
+        let probe_phase = phase.clone();
+        engine.set_worktree_probe_for_test(Arc::new(move |stage, op| {
+            let actual = match stage {
+                WorktreeProbePhase::ClaimCommitted => "claim",
+                WorktreeProbePhase::CreatedBeforeRegister => "created",
+                WorktreeProbePhase::RegisteredBeforeReply => "registered",
+            };
+            if probe_phase == "restart" {
+                std::fs::write(probe_root.join("unexpected-worker"), actual).unwrap();
+                return;
+            }
+            if actual == probe_phase {
+                std::fs::write(probe_root.join("ready"), op).unwrap();
+                let end = Instant::now() + Duration::from_secs(20);
+                while Instant::now() < end {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                panic!("parent failed to kill stopped child");
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let app = router(App {
+            engine,
+            token: "worktree-crash-token".into(),
+            origin: origin.clone(),
+        });
+        std::fs::write(root.join(format!("listen-{phase}")), origin).unwrap();
+        tokio::time::timeout(
+            Duration::from_secs(60),
+            axum::serve(listener, app).into_future(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    }
+    fn spawn(root: &FsPath, phase: &str) -> ChildGuard {
+        let log = std::fs::File::create(root.join(format!("child-{phase}.log"))).unwrap();
+        ChildGuard(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_WORKTREE_HTTP_CHILD", root)
+                .env("NHC_WORKTREE_HTTP_PHASE", phase)
+                .stdout(Stdio::from(log.try_clone().unwrap()))
+                .stderr(Stdio::from(log))
+                .spawn()
+                .unwrap(),
+        )
+    }
+    async fn git(root: &FsPath, args: &[&str]) -> String {
+        let o = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio::process::Command::new("git")
+                .args(["-c", "core.autocrlf=false", "-c", "core.hooksPath=NUL"])
+                .args(args)
+                .current_dir(root)
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_CONFIG_GLOBAL", "NUL")
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+        String::from_utf8(o.stdout).unwrap().trim().into()
+    }
+    fn snapshot(path: &FsPath) -> Vec<String> {
+        let db = rusqlite::Connection::open(path).unwrap();
+        let tables = db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            .unwrap()
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .unwrap();
+        tables
+            .into_iter()
+            .map(|name| {
+                let mut s = db
+                    .prepare(&format!(
+                        "SELECT rowid,* FROM \"{}\" ORDER BY rowid",
+                        name.replace('"', "\"\"")
+                    ))
+                    .unwrap();
+                let n = s.column_count();
+                let rows = s
+                    .query_map([], |r| {
+                        Ok((0..n)
+                            .map(|i| format!("{:?}", r.get_ref(i).unwrap()))
+                            .collect::<Vec<_>>())
+                    })
+                    .unwrap()
+                    .collect::<std::result::Result<Vec<_>, _>>()
+                    .unwrap();
+                format!("{name}:{rows:?}")
+            })
+            .collect()
+    }
+    async fn json_response(response: reqwest::Response, status: u16) -> Value {
+        let code = response.status().as_u16();
+        let v = response.json::<Value>().await.unwrap();
+        assert_eq!(code, status, "{v}");
+        v
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn w08_real_router_process_kill_wait_at_three_durable_boundaries() {
+        if let Ok(root) = std::env::var("NHC_WORKTREE_HTTP_CHILD") {
+            child(
+                PathBuf::from(root),
+                std::env::var("NHC_WORKTREE_HTTP_PHASE").unwrap(),
+            )
+            .await;
+            return;
+        }
+        for phase in ["claim", "created", "registered"] {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path();
+            let source = root.join("source");
+            std::fs::create_dir(&source).unwrap();
+            git(&source, &["init", "--initial-branch=main"]).await;
+            std::fs::write(source.join("tracked"), "original").unwrap();
+            git(&source, &["add", "tracked"]).await;
+            git(
+                &source,
+                &[
+                    "-c",
+                    "user.name=Fixture",
+                    "-c",
+                    "user.email=fixture@invalid",
+                    "commit",
+                    "-m",
+                    "fixture",
+                ],
+            )
+            .await;
+            let head = git(&source, &["rev-parse", "HEAD"]).await;
+            let index = std::fs::read(source.join(".git/index")).unwrap();
+            let engine = Engine::new(
+                Arc::new(Store::open(&root.join("host.sqlite3")).unwrap()),
+                1,
+            )
+            .unwrap();
+            engine
+                .configure_with_keys(
+                    Settings {
+                        workspace: root.to_string_lossy().into(),
+                        max_concurrency: 1,
+                        routes: vec![Route {
+                            id: "route".into(),
+                            name: "route".into(),
+                            base_url: "http://127.0.0.1:9/v1".into(),
+                            model: "fixture".into(),
+                            max_tokens: 32,
+                            parallel_limit: 1,
+                            key_env: None,
+                        }],
+                        newapi: None,
+                    },
+                    HashMap::from([("route".into(), "worktree-fixture-key".into())]),
+                )
+                .await
+                .unwrap();
+            let project = engine
+                .register_project(RegisterProject {
+                    name: "source".into(),
+                    root_path: source.to_string_lossy().into(),
+                    idempotency_key: "register".into(),
+                })
+                .await
+                .unwrap();
+            engine
+                .configure_project(ConfigureProject {
+                    project_id: project.id.clone(),
+                    expected_revision: 1,
+                    config: ProjectConfig {
+                        allowed_route_ids: vec!["route".into()],
+                        default_route_id: Some("route".into()),
+                        tools: false,
+                        write_scopes: vec![],
+                        allow_commands: false,
+                    },
+                })
+                .await
+                .unwrap();
+            drop(engine);
+            let body = json!({"name":"isolated","parent_path":root,"expected_config_revision":2,"expected_head":head});
+            let path = format!("/api/projects/{}/worktrees", project.id.0);
+            let mut process = spawn(root, phase);
+            let origin = wait_file(&root.join(format!("listen-{phase}"))).await;
+            let post = client()
+                .post(format!("{origin}{path}"))
+                .header("x-peachsh-token", "worktree-crash-token")
+                .header("Idempotency-Key", "crash-create")
+                .json(&body);
+            let request = tokio::spawn(async move { post.send().await });
+            let op = wait_file(&root.join("ready")).await;
+            println!(
+                "W08 phase={phase} operation={op} child_pid={} reached durable hook",
+                process.0.id()
+            );
+            process.kill_wait();
+            println!("W08 phase={phase} original child killed and waited");
+            assert!(
+                request.await.unwrap().is_err(),
+                "response must be lost at held hook"
+            );
+            assert_eq!(std::fs::read(source.join("tracked")).unwrap(), b"original");
+            assert_eq!(std::fs::read(source.join(".git/index")).unwrap(), index);
+            let target = root.join(format!("nhc-{op}"));
+            assert_eq!(target.exists(), phase != "claim");
+            let branches = git(
+                &source,
+                &[
+                    "for-each-ref",
+                    "--format=%(refname):%(objectname)",
+                    "refs/heads/",
+                ],
+            )
+            .await;
+            let mut restart = spawn(root, "restart");
+            let origin = wait_file(&root.join("listen-restart")).await;
+            let get = || {
+                client()
+                    .get(format!("{origin}{path}/{op}"))
+                    .header("x-peachsh-token", "worktree-crash-token")
+            };
+            let receipt = json_response(get().send().await.unwrap(), 200).await;
+            let succeeded = phase == "registered";
+            assert_eq!(
+                receipt["state"],
+                if succeeded { "succeeded" } else { "unknown" }
+            );
+            assert_eq!(receipt["project_id"].is_string(), succeeded);
+            let before = snapshot(&root.join("host.sqlite3"));
+            for _ in 0..2 {
+                let replay = json_response(
+                    client()
+                        .post(format!("{origin}{path}"))
+                        .header("x-peachsh-token", "worktree-crash-token")
+                        .header("Idempotency-Key", "crash-create")
+                        .json(&body)
+                        .send()
+                        .await
+                        .unwrap(),
+                    if succeeded { 200 } else { 202 },
+                )
+                .await;
+                assert_eq!(replay, receipt);
+                assert_eq!(
+                    json_response(
+                        client()
+                            .post(format!("{origin}{path}/lookup"))
+                            .header("x-peachsh-token", "worktree-crash-token")
+                            .json(&json!({"idempotency_key":"crash-create"}))
+                            .send()
+                            .await
+                            .unwrap(),
+                        200
+                    )
+                    .await,
+                    receipt
+                );
+                let inspected = json_response(
+                    client()
+                        .post(format!("{origin}{path}/{op}/inspect"))
+                        .header("x-peachsh-token", "worktree-crash-token")
+                        .json(&json!({}))
+                        .send()
+                        .await
+                        .unwrap(),
+                    200,
+                )
+                .await;
+                assert_eq!(inspected["receipt"], receipt);
+                assert_eq!(
+                    inspected["observation"]["state"],
+                    if phase == "claim" {
+                        "absent_observed"
+                    } else {
+                        "present_matching"
+                    }
+                );
+            }
+            assert_eq!(snapshot(&root.join("host.sqlite3")), before);
+            assert!(!root.join("unexpected-worker").exists());
+            assert_eq!(
+                git(
+                    &source,
+                    &[
+                        "for-each-ref",
+                        "--format=%(refname):%(objectname)",
+                        "refs/heads/"
+                    ]
+                )
+                .await,
+                branches
+            );
+            let projects = json_response(
+                client()
+                    .get(format!("{origin}/api/projects"))
+                    .header("x-peachsh-token", "worktree-crash-token")
+                    .send()
+                    .await
+                    .unwrap(),
+                200,
+            )
+            .await;
+            assert_eq!(
+                projects.as_array().unwrap().len(),
+                if succeeded { 2 } else { 1 }
+            );
+            if !succeeded {
+                let other = root.join("other");
+                std::fs::create_dir(&other).unwrap();
+                let rejected = client()
+                    .post(format!("{origin}/api/projects"))
+                    .header("x-peachsh-token", "worktree-crash-token")
+                    .header("Idempotency-Key", "reservation-check")
+                    .json(&json!({"name":"other","root_path":other}))
+                    .send()
+                    .await
+                    .unwrap();
+                assert_eq!(rejected.status(), 409);
+                assert_eq!(snapshot(&root.join("host.sqlite3")), before);
+                // The binary is built by the companion integration targets before this lib test.
+                let binary = std::env::current_exe()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join(format!("peachsh{}", std::env::consts::EXE_SUFFIX));
+                assert!(
+                    binary.is_file(),
+                    "build worktree_cli/worktree_http targets before W08"
+                );
+                let other_path = other.to_string_lossy().into_owned();
+                for args in [
+                    vec![
+                        "project",
+                        "create",
+                        "--name",
+                        "other",
+                        "--root",
+                        &other_path,
+                        "--key",
+                        "cli-reservation",
+                    ],
+                    vec![
+                        "run",
+                        "start",
+                        "--project",
+                        &project.id.0,
+                        "--expected-config-revision",
+                        "2",
+                        "--route",
+                        "route",
+                        "--title",
+                        "blocked",
+                        "--message",
+                        "blocked",
+                        "--key",
+                        "cli-start-reservation",
+                    ],
+                ] {
+                    let output = tokio::time::timeout(
+                        Duration::from_secs(10),
+                        tokio::process::Command::new(&binary)
+                            .args(["--port", origin.rsplit(':').next().unwrap(), "--json"])
+                            .args(args)
+                            .current_dir(root)
+                            .kill_on_drop(true)
+                            .output(),
+                    )
+                    .await
+                    .unwrap()
+                    .unwrap();
+                    assert_eq!(output.status.code(), Some(1));
+                    assert!(output.stdout.is_empty());
+                    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+                    assert_eq!(error["code"], "worktree_busy");
+                    assert_eq!(error["retryable"], false);
+                }
+                assert_eq!(snapshot(&root.join("host.sqlite3")), before);
+            }
+            let db = rusqlite::Connection::open(root.join("host.sqlite3")).unwrap();
+            for table in ["runs", "network_calls"] {
+                assert_eq!(
+                    db.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r
+                        .get::<_, i64>(0))
+                        .unwrap(),
+                    0
+                );
+            }
+            assert_eq!(std::fs::read(source.join(".git/index")).unwrap(), index);
+            assert_eq!(git(&source, &["rev-parse", "HEAD"]).await, head);
+            restart.kill_wait();
+            println!(
+                "W08 phase={phase} restart verified state={} and killed/waited; no extra worker or Provider dispatch",
+                receipt["state"]
+            );
         }
     }
 }
