@@ -867,7 +867,7 @@ mod tests {
         let first = status(&runtime);
         assert_eq!(first.state, FilesRuntimeState::Active);
         assert!(first.admission_open);
-        assert_eq!((first.effects_count, first.subscriptions_count), (2, 0));
+        assert_eq!((first.effects_count, first.subscriptions_count), (4, 0));
         assert_eq!(
             first
                 .providers
@@ -875,7 +875,9 @@ mod tests {
                 .map(|p| (&p.key.name, p.provider_id.as_str()))
                 .collect::<Vec<_>>(),
             vec![
+                (&"tool.list_files".to_owned(), FILES),
                 (&"tool.read_file".to_owned(), FILES),
+                (&"tool.search_files".to_owned(), FILES),
                 (&"tool.write_file".to_owned(), FILES)
             ]
         );
@@ -938,9 +940,22 @@ mod tests {
                 .is_err()
         );
         // Compat remains available under the same original task permissions.
-        let (compat, ()) = runtime.acquire(&task, "list_files", || Ok(())).unwrap();
+        let mut command_task = task.clone();
+        command_task.spec.allow_commands = true;
+        let (compat, ()) = runtime
+            .acquire(&command_task, "run_command", || Ok(()))
+            .unwrap();
         assert_eq!(status(&runtime).in_flight, 0);
-        compat.execute(&task, &json!({"path":"."})).await.unwrap();
+        // Component callback only; real approval/network acknowledgement is Engine's responsibility.
+        let output = compat
+            .execute(
+                &command_task,
+                &json!({"command":"Write-Output 'compat-marker'","timeout_seconds":5}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(output["exit_code"], 0);
+        assert!(output["stdout"].as_str().unwrap().contains("compat-marker"));
         reconcile(&runtime, true);
         let (dropped, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
         runtime
@@ -990,6 +1005,9 @@ mod tests {
                 .push(format!("start:{}", self.id));
             if self.id == FILES {
                 for name in FILE_TOOLS {
+                    if self.mode.load(Ordering::SeqCst) == 4 && name == "search_files" {
+                        continue;
+                    }
                     let service: Service = Arc::new(WorkspaceService(name));
                     ctx.register_effect(&key(name), Box::new(service)).unwrap();
                 }
@@ -1136,7 +1154,7 @@ mod tests {
             let active = reconcile(&runtime, true);
             assert_eq!(active.state, FilesRuntimeState::Active);
             assert!(active.admission_open);
-            assert_eq!(active.effects_count, 2);
+            assert_eq!(active.effects_count, 4);
             assert_eq!(active.recovery, failed.recovery);
         }
     }
@@ -1180,7 +1198,7 @@ mod tests {
         let active = reconcile(&runtime, true);
         assert_eq!(active.state, FilesRuntimeState::Active);
         assert_eq!(active.recovery, failed.recovery);
-        assert_eq!(active.effects_count, 2);
+        assert_eq!(active.effects_count, 4);
     }
     #[test]
     fn f07_new_disabled_intent_finishes_old_failed_cleanup_without_retrying_hooks() {
@@ -1287,5 +1305,424 @@ mod tests {
         assert!(!stopped.draining);
         assert!(!stopped.admission_open);
         assert_eq!(stopped.effects_count, 0);
+    }
+    struct DiscoveryMarker {
+        name: &'static str,
+        hits: Arc<AtomicUsize>,
+    }
+    impl ToolServiceV1 for DiscoveryMarker {
+        fn definition(&self, _: &Task) -> Option<Value> {
+            Some(
+                json!({"type":"function","function":{"name":self.name,"description":"discovery registry marker"}}),
+            )
+        }
+        fn execute<'a>(&'a self, _: &'a Task, _: &'a Value) -> ToolFuture<'a> {
+            Box::pin(async move {
+                self.hits.fetch_add(1, Ordering::SeqCst);
+                Ok(json!({"source":self.name}))
+            })
+        }
+    }
+    fn discovery_runtime() -> (ToolRuntime, Arc<AtomicUsize>, Arc<AtomicUsize>) {
+        let list = Arc::new(AtomicUsize::new(0));
+        let search = Arc::new(AtomicUsize::new(0));
+        let runtime = ToolRuntime::assemble([
+            Arc::new(WorkspaceService("read_file")),
+            Arc::new(WorkspaceService("write_file")),
+            Arc::new(DiscoveryMarker {
+                name: "list_files",
+                hits: list.clone(),
+            }),
+            Arc::new(DiscoveryMarker {
+                name: "search_files",
+                hits: search.clone(),
+            }),
+        ])
+        .unwrap();
+        (runtime, list, search)
+    }
+    #[tokio::test]
+    async fn l01_l02_four_registry_services_and_revocation_have_no_discovery_fallback() {
+        // Four distinct registry payloads on an unusable workspace rule out
+        // accidental direct dispatch even for the pre-existing read/write keys.
+        let counts: [Arc<AtomicUsize>; 4] = std::array::from_fn(|_| Arc::new(AtomicUsize::new(0)));
+        let services: [Service; 4] = std::array::from_fn(|i| {
+            Arc::new(DiscoveryMarker {
+                name: FILE_TOOLS[i],
+                hits: counts[i].clone(),
+            }) as Service
+        });
+        let markers = ToolRuntime::assemble(services).unwrap();
+        let marker_task = task("does-not-exist");
+        for (i, name) in FILE_TOOLS.into_iter().enumerate() {
+            let definitions = markers.definitions(&marker_task).unwrap();
+            assert_eq!(
+                definitions
+                    .iter()
+                    .find(|d| d["function"]["name"] == name)
+                    .unwrap()["function"]["description"],
+                "discovery registry marker"
+            );
+            let lease = markers.acquire(&marker_task, name, || Ok(())).unwrap().0;
+            assert_eq!(
+                lease.execute(&marker_task, &json!({})).await.unwrap(),
+                json!({"source":name})
+            );
+            assert_eq!(counts[i].load(Ordering::SeqCst), 1);
+        }
+        let (runtime, list, search) = discovery_runtime();
+        let mut task = task("does-not-exist");
+        task.spec.write_scopes.clear(); // Discovery must not require a write grant.
+        {
+            let state = runtime.lock().unwrap();
+            for id in [FILES, CONSUMER] {
+                let manifests = state.catalog().descriptors();
+                let declaration = manifests.iter().find(|m| m.id == id).unwrap();
+                assert_eq!(declaration.version.to_string(), FILES_PLUGIN_VERSION);
+                assert_eq!(declaration.manifest_version, 1);
+                let interfaces = if id == FILES {
+                    &declaration.provides
+                } else {
+                    &declaration.requires
+                };
+                assert_eq!(interfaces.len(), 4);
+                assert!(interfaces.iter().all(|k| k.version.to_string() == "1.0.0"));
+            }
+        }
+        let definitions = runtime.definitions(&task).unwrap();
+        let names: std::collections::BTreeSet<_> = definitions
+            .iter()
+            .map(|d| d["function"]["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names.len(), definitions.len());
+        assert_eq!(
+            names,
+            std::collections::BTreeSet::from([
+                "list_files",
+                "read_file",
+                "search_files",
+                "run_wasm"
+            ])
+        );
+        for name in ["list_files", "search_files"] {
+            assert_eq!(
+                definitions
+                    .iter()
+                    .find(|d| d["function"]["name"] == name)
+                    .unwrap()["function"]["description"],
+                "discovery registry marker"
+            );
+            let (lease, ()) = runtime.acquire(&task, name, || Ok(())).unwrap();
+            assert_eq!(
+                lease.execute(&task, &json!({})).await.unwrap(),
+                json!({"source":name})
+            );
+        }
+        assert_eq!(
+            (list.load(Ordering::SeqCst), search.load(Ordering::SeqCst)),
+            (1, 1)
+        );
+        for unload in [false, true] {
+            if unload {
+                runtime.unload_builtin_files().unwrap();
+            } else {
+                runtime.disable_builtin_files().unwrap();
+            }
+            assert_eq!(
+                runtime
+                    .definitions(&task)
+                    .unwrap()
+                    .iter()
+                    .map(|d| d["function"]["name"].as_str().unwrap())
+                    .collect::<Vec<_>>(),
+                vec!["run_wasm"]
+            );
+            for name in FILE_TOOLS {
+                assert!(
+                    runtime
+                        .acquire(&task, name, || -> Result<()> {
+                            panic!("revoked admission")
+                        })
+                        .is_err()
+                );
+            }
+            assert_eq!(status(&runtime).effects_count, 0);
+            assert_eq!(
+                (list.load(Ordering::SeqCst), search.load(Ordering::SeqCst)),
+                (1, 1)
+            );
+        }
+    }
+    #[tokio::test]
+    async fn l01_real_discovery_results_permissions_and_path_policy_are_preserved() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("src")).unwrap();
+        std::fs::create_dir(root.path().join(".git")).unwrap();
+        std::fs::write(root.path().join("src/a.txt"), "first\ndiscovery-needle\n").unwrap();
+        std::fs::write(root.path().join("src/b.txt"), "other").unwrap();
+        std::fs::write(root.path().join(".git/secret.txt"), "discovery-needle").unwrap();
+        let mut task = task(root.path().to_str().unwrap());
+        task.spec.write_scopes.clear();
+        let runtime = ToolRuntime::builtin().unwrap();
+        for (name, args) in [
+            ("list_files", json!({"path":"src"})),
+            (
+                "search_files",
+                json!({"query":"discovery-needle","path":"src"}),
+            ),
+        ] {
+            let expected = workspace::execute(&task, name, &args).await.unwrap();
+            let (lease, ()) = runtime.acquire(&task, name, || Ok(())).unwrap();
+            let actual = lease.execute(&task, &args).await.unwrap();
+            assert_eq!(actual, expected);
+            if name == "list_files" {
+                let mut names = actual["files"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|f| f["name"].as_str().unwrap())
+                    .collect::<Vec<_>>();
+                names.sort_unstable();
+                assert_eq!(names, ["a.txt", "b.txt"]);
+            } else {
+                assert_eq!(
+                    actual["matches"],
+                    json!([{"path":"src/a.txt","line":2,"text":"discovery-needle"}])
+                );
+            }
+            for bad_path in ["../outside", ".git"] {
+                let (lease, ()) = runtime.acquire(&task, name, || Ok(())).unwrap();
+                assert!(
+                    lease
+                        .execute(&task, &json!({"path":bad_path,"query":"discovery-needle"}))
+                        .await
+                        .is_err()
+                );
+                assert_eq!(status(&runtime).in_flight, 0);
+            }
+        }
+        task.spec.tools = false;
+        assert!(runtime.definitions(&task).unwrap().is_empty());
+        for name in ["list_files", "search_files"] {
+            assert!(
+                runtime
+                    .acquire(&task, name, || -> Result<()> { panic!("tools denied") })
+                    .is_err()
+            );
+        }
+    }
+    #[tokio::test]
+    async fn l03_each_discovery_admission_wins_bounded_stop_then_real_result_finishes() {
+        for name in ["list_files", "search_files"] {
+            let root = tempfile::tempdir().unwrap();
+            std::fs::write(root.path().join("proof.txt"), "lease-needle").unwrap();
+            let task = task(root.path().to_str().unwrap());
+            let runtime = Arc::new(ToolRuntime::builtin().unwrap());
+            let (entered_tx, entered_rx) = mpsc::channel();
+            let (release_tx, release_rx) = mpsc::channel();
+            let (lease_tx, lease_rx) = mpsc::channel();
+            let worker = {
+                let runtime = runtime.clone();
+                let task = task.clone();
+                std::thread::spawn(move || {
+                    let lease = runtime
+                        .acquire(&task, name, || {
+                            entered_tx.send(()).unwrap();
+                            release_rx.recv_timeout(WAIT).unwrap();
+                            Ok(())
+                        })
+                        .unwrap()
+                        .0;
+                    lease_tx.send(lease).unwrap();
+                })
+            };
+            entered_rx.recv_timeout(WAIT).unwrap();
+            let (attempt_tx, attempt_rx) = mpsc::channel();
+            let (stopped_tx, stopped_rx) = mpsc::channel();
+            let stopper = {
+                let runtime = runtime.clone();
+                std::thread::spawn(move || {
+                    attempt_tx.send(()).unwrap();
+                    let stopped = reconcile(&runtime, false);
+                    stopped_tx.send(stopped).unwrap();
+                })
+            };
+            attempt_rx.recv_timeout(WAIT).unwrap();
+            assert!(matches!(
+                stopped_rx.try_recv(),
+                Err(mpsc::TryRecvError::Empty)
+            ));
+            release_tx.send(()).unwrap();
+            let lease = lease_rx.recv_timeout(WAIT).unwrap();
+            let stopped = stopped_rx.recv_timeout(WAIT).unwrap();
+            for worker in [worker, stopper] {
+                let deadline = std::time::Instant::now() + WAIT;
+                while !worker.is_finished() && std::time::Instant::now() < deadline {
+                    std::thread::yield_now();
+                }
+                assert!(worker.is_finished(), "discovery worker termination timeout");
+                worker.join().unwrap();
+            }
+            assert!(stopped.draining && !stopped.admission_open);
+            assert_eq!((stopped.in_flight, stopped.effects_count), (1, 0));
+            assert!(
+                runtime
+                    .acquire(&task, name, || -> Result<()> {
+                        panic!("post-disable admission")
+                    })
+                    .is_err()
+            );
+            let value = lease
+                .execute(&task, &json!({"path":".","query":"lease-needle"}))
+                .await
+                .unwrap();
+            if name == "list_files" {
+                assert_eq!(value["files"][0]["name"], "proof.txt");
+            } else {
+                assert_eq!(value["matches"][0]["text"], "lease-needle");
+            }
+            assert_eq!(status(&runtime).in_flight, 0);
+            assert!(!status(&runtime).draining);
+        }
+    }
+    #[tokio::test]
+    async fn l03_mixed_file_leases_drop_error_and_binding_rejection_release_exactly_once() {
+        let root = tempfile::tempdir().unwrap();
+        let task = task(root.path().to_str().unwrap());
+        let runtime = ToolRuntime::builtin().unwrap();
+        let mut leases = FILE_TOOLS
+            .into_iter()
+            .map(|name| runtime.acquire(&task, name, || Ok(())).unwrap().0)
+            .collect::<Vec<_>>();
+        assert_eq!(status(&runtime).in_flight, 4);
+        let search = leases.pop().unwrap();
+        let list = leases.pop().unwrap();
+        let stopped = reconcile(&runtime, false);
+        assert!(stopped.draining);
+        assert_eq!(stopped.in_flight, 4);
+        runtime
+            .with_files_control(|control| {
+                drop(leases);
+                assert_eq!(control.snapshot().in_flight, 2);
+                Ok(())
+            })
+            .unwrap();
+        assert!(search.execute(&task, &json!({"query":""})).await.is_err());
+        assert_eq!(status(&runtime).in_flight, 1);
+        let mut other = task.clone();
+        other.id = "different".into();
+        assert!(list.execute(&other, &json!({"path":"."})).await.is_err());
+        assert_eq!(status(&runtime).in_flight, 0);
+        assert!(!status(&runtime).draining);
+        reconcile(&runtime, true);
+        for name in ["list_files", "search_files"] {
+            assert!(
+                runtime
+                    .acquire(&task, name, || -> Result<()> {
+                        bail!("rejected final admission")
+                    })
+                    .is_err()
+            );
+            let lease = runtime.acquire(&task, name, || Ok(())).unwrap().0;
+            runtime
+                .with_files_control(|control| {
+                    drop(lease);
+                    assert_eq!(control.snapshot().in_flight, 0);
+                    Ok(())
+                })
+                .unwrap();
+            let lease = runtime.acquire(&task, name, || Ok(())).unwrap().0;
+            assert!(
+                lease
+                    .execute(&task, &json!({"path":"../invalid","query":"x"}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+        }
+    }
+    struct PendingDiscovery {
+        name: &'static str,
+        entered: Arc<tokio::sync::Notify>,
+    }
+    impl ToolServiceV1 for PendingDiscovery {
+        fn definition(&self, _: &Task) -> Option<Value> {
+            Some(json!({"type":"function","function":{"name":self.name}}))
+        }
+        fn execute<'a>(&'a self, _: &'a Task, _: &'a Value) -> ToolFuture<'a> {
+            Box::pin(async move {
+                self.entered.notify_one();
+                std::future::pending().await
+            })
+        }
+    }
+    #[tokio::test]
+    async fn l03_each_pending_discovery_abort_releases_lease() {
+        for name in ["list_files", "search_files"] {
+            let entered = Arc::new(tokio::sync::Notify::new());
+            let mut services: [Service; 4] =
+                FILE_TOOLS.map(|name| Arc::new(WorkspaceService(name)) as Service);
+            let index = FILE_TOOLS
+                .iter()
+                .position(|candidate| *candidate == name)
+                .unwrap();
+            services[index] = Arc::new(PendingDiscovery {
+                name,
+                entered: entered.clone(),
+            });
+            let runtime = ToolRuntime::assemble(services).unwrap();
+            let task = task("unused");
+            let lease = runtime.acquire(&task, name, || Ok(())).unwrap().0;
+            let running = tokio::spawn(async move { lease.execute(&task, &json!({})).await });
+            tokio::time::timeout(WAIT, entered.notified())
+                .await
+                .unwrap();
+            assert!(reconcile(&runtime, false).draining);
+            running.abort();
+            assert!(
+                tokio::time::timeout(WAIT, running)
+                    .await
+                    .unwrap()
+                    .unwrap_err()
+                    .is_cancelled()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            assert!(!status(&runtime).admission_open);
+        }
+    }
+    #[test]
+    fn l04_missing_fourth_registration_fails_closed_and_explicit_rebuild_recovers() {
+        let mode = Arc::new(AtomicUsize::new(4));
+        let runtime = probe_runtime(
+            true,
+            mode.clone(),
+            Arc::new(AtomicUsize::new(0)),
+            Arc::new(Mutex::new(vec![])),
+        );
+        let failed = status(&runtime);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        assert_eq!(failed.effects_count, 0);
+        assert_eq!(
+            failed.recovery[0].cause_code,
+            FilesFailureCauseCode::ProvidesNotCovered
+        );
+        assert!(!failed.admission_open);
+        for name in FILE_TOOLS {
+            assert!(
+                runtime
+                    .acquire(&task("unused"), name, || -> Result<()> {
+                        panic!("incomplete assembly")
+                    })
+                    .is_err()
+            );
+        }
+        let disabled = reconcile(&runtime, false);
+        assert_eq!(disabled.state, FilesRuntimeState::Unloaded);
+        assert_eq!(disabled.recovery, failed.recovery);
+        mode.store(0, Ordering::SeqCst);
+        let active = reconcile(&runtime, true);
+        assert_eq!(active.effects_count, 4);
+        assert!(active.admission_open);
+        assert_eq!(active.recovery, failed.recovery);
     }
 }
