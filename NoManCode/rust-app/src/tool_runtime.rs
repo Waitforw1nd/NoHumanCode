@@ -23,8 +23,9 @@ use std::{
 
 const FILES: &str = "builtin.files";
 const CONSUMER: &str = "builtin.engine-tools";
-const FILE_TOOLS: [&str; 2] = ["read_file", "write_file"];
-const COMPAT_TOOLS: [&str; 4] = ["list_files", "search_files", "run_command", "run_wasm"];
+pub(crate) const FILES_PLUGIN_VERSION: &str = "1.1.0";
+pub(crate) const FILE_TOOLS: [&str; 4] = ["read_file", "write_file", "list_files", "search_files"];
+pub(crate) const COMPAT_TOOLS: [&str; 2] = ["run_command", "run_wasm"];
 type ToolFuture<'a> = Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>>;
 
 // Private: only this assembly can create services or obtain their raw Arc.
@@ -58,15 +59,17 @@ fn key(name: &str) -> InterfaceKey {
 }
 fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
     let keys = FILE_TOOLS.iter().map(|name| key(name)).collect();
+    let version = ExactVersion {
+        major: 1,
+        minor: 1,
+        patch: 0,
+    };
+    debug_assert_eq!(version.to_string(), FILES_PLUGIN_VERSION);
     CatalogManifestV1 {
         manifest_version: 1,
         id: id.into(),
         display_name: id.into(),
-        version: ExactVersion {
-            major: 1,
-            minor: 0,
-            patch: 0,
-        },
+        version,
         scope: ScopeKind::Host,
         runtime: RuntimeKind::Builtin,
         lifecycle: LifecycleKind::HostManaged,
@@ -86,7 +89,7 @@ fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
     }
 }
 struct FilesPlugin {
-    services: [Service; 2],
+    services: [Service; 4],
 }
 impl BuiltinPlugin for FilesPlugin {
     fn activate(&mut self, ctx: &mut PluginContext) -> Result<(), PluginError> {
@@ -418,15 +421,17 @@ impl ToolRuntime {
             [
                 Arc::new(WorkspaceService("read_file")),
                 Arc::new(WorkspaceService("write_file")),
+                Arc::new(WorkspaceService("list_files")),
+                Arc::new(WorkspaceService("search_files")),
             ],
             enabled,
         )
     }
     #[cfg(test)]
-    fn assemble(services: [Service; 2]) -> Result<Self> {
+    fn assemble(services: [Service; 4]) -> Result<Self> {
         Self::assemble_enabled(services, true)
     }
-    fn assemble_enabled(services: [Service; 2], enabled: bool) -> Result<Self> {
+    fn assemble_enabled(services: [Service; 4], enabled: bool) -> Result<Self> {
         let mut host = PluginHost::new(ScopeKey::Host)?;
         host.catalog_mut().register(manifest(FILES, true))?;
         host.catalog_mut().register(manifest(CONSUMER, false))?;
@@ -649,6 +654,8 @@ mod tests {
         let runtime = ToolRuntime::assemble([
             Arc::new(Marker(hits.clone())),
             Arc::new(WorkspaceService("write_file")),
+            Arc::new(WorkspaceService("list_files")),
+            Arc::new(WorkspaceService("search_files")),
         ])
         .unwrap();
         (runtime, hits)
@@ -1255,6 +1262,8 @@ mod tests {
         let runtime = ToolRuntime::assemble([
             Arc::new(PendingService(entered.clone())),
             Arc::new(WorkspaceService("write_file")),
+            Arc::new(WorkspaceService("list_files")),
+            Arc::new(WorkspaceService("search_files")),
         ])
         .unwrap();
         let task = task("unused");
