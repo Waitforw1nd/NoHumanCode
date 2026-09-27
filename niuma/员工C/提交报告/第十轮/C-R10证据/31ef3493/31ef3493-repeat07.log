@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized] target(s) in 0.22s
+     Running unittests src\lib.rs (../nhc-c-restore-http-deterministic/.local/target-r10\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 1 test
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+test restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 107 filtered out; finished in 0.24s
+

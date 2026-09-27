@@ -1,0 +1,108 @@
+{
+  "environment": {
+    "CARGO_BUILD_JOBS": "1",
+    "CARGO_INCREMENTAL": "0",
+    "TEMP": "../nhc-c-restore-http-deterministic/.local/tmp",
+    "PATH": "D:/vsstudio/VC/Tools/MSVC/14.40.33807/bin/Hostx64/x64;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell;C:\\Users\\Administrator\\.codex\\tmp\\arg0\\codex-arg0DKppUh;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\libheif\\libheif\\bin;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\jxrlib\\jxrlib\\bin;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\override;C:\\Program Files\\Microsoft\\bin;C:\\Program Files (x86)\\Razer\\ChromaBroadcast\\bin;C:\\Program Files\\Razer\\ChromaBroadcast\\bin;C:\\Program Files\\Java\\jdk1.8.0_202\\bin;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;C:\\Program Files (x86)\\bin\\;C:\\Program Files\\Common Files\\Oracle\\Java\\javapath;C:\\Program Files (x86)\\Common Files\\Oracle\\Java\\java8path;C:\\Program Files (x86)\\Common Files\\Oracle\\Java\\javapath;C:\\Program Files (x86)\\Razer Chroma SDK\\bin;C:\\Program Files\\Razer Chroma SDK\\bin;C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common;C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\;C:\\Program Files\\Microsoft SQL Server\\Client SDK\\ODBC\\170\\Tools\\Binn\\;C:\\Program Files\\dotnet\\;D:\\Program Files (x86)\\;F:\\hadoop\\hadoop-3.1.3\\bin;F:\\hadoop\\hadoop-3.1.3\\sbin;C:\\Program Files\\Git\\cmd;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell;C:\\Windows\\system32\\config\\systemprofile\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin;C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR;C:\\Program Files (x86)\\NetSarang\\Xftp 8\\;C:\\Program Files\\Docker\\Docker\\resources\\bin;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Launcher\\;D:\\go\\bin;D:\\AI\\Grok;C:\\Users\\Administrator\\.cargo\\bin;C:\\Program Files\\MySQL\\MySQL Shell 8.0\\bin\\;C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\Administrator\\.dotnet\\tools;D:\\Program Files (x64)\\CLion 2024.3.5\\bin;D:\\DeepSeekHarness;D:\\Program Files (x64)\\Devin\\bin;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\fallback;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin;C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\git\\cmd;C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\Codex\\bin\\a9b4d7dd6031a02d;C:\\Users\\Administrator\\AppData\\Local\\OpenAI\\Codex\\bin\\13995fba801849b0",
+    "LIB": "D:/vsstudio/VC/Tools/MSVC/14.40.33807/lib/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22621.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22621.0/um/x64",
+    "AR": "D:/vsstudio/VC/Tools/MSVC/14.40.33807/bin/Hostx64/x64/lib.exe",
+    "TMP": "../nhc-c-restore-http-deterministic/.local/tmp",
+    "CC": "D:/vsstudio/VC/Tools/MSVC/14.40.33807/bin/Hostx64/x64/cl.exe",
+    "CARGO_TARGET_DIR": "../nhc-c-restore-http-deterministic/.local/target-r10",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "INCLUDE": "D:/vsstudio/VC/Tools/MSVC/14.40.33807/include;C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/ucrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/shared;C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/um",
+    "CARGO_PROFILE_TEST_DEBUG": "0"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "runs": [
+    {
+      "started_utc": "2026-09-27T01:26:03.4586913Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:17.3185877Z",
+      "exit_code": 0,
+      "label": "single",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-single.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:17.5021237Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:18.1257778Z",
+      "exit_code": 0,
+      "label": "repeat01",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat01.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:18.3000641Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:18.8789572Z",
+      "exit_code": 0,
+      "label": "repeat02",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat02.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:19.0452549Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:19.6580104Z",
+      "exit_code": 0,
+      "label": "repeat03",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat03.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:19.8306538Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:20.4442315Z",
+      "exit_code": 0,
+      "label": "repeat04",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat04.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:20.6197890Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:21.2124631Z",
+      "exit_code": 0,
+      "label": "repeat05",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat05.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:21.3820438Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:21.9597379Z",
+      "exit_code": 0,
+      "label": "repeat06",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat06.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:22.1395128Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:22.7171183Z",
+      "exit_code": 0,
+      "label": "repeat07",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat07.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:22.8821111Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:23.4824068Z",
+      "exit_code": 0,
+      "label": "repeat08",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat08.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:23.6469357Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:24.2666529Z",
+      "exit_code": 0,
+      "label": "repeat09",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat09.log"
+    },
+    {
+      "started_utc": "2026-09-27T01:26:24.4338545Z",
+      "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
+      "finished_utc": "2026-09-27T01:26:25.0306443Z",
+      "exit_code": 0,
+      "label": "repeat10",
+      "log": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-repeat10.log"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# D-R7-01 第0.4轮恢复封存补充契约预审
+
+2026-09-27，员工D GPT-6-astra。已完整读NEXT-09接口补充2；仅E只读现行原路径，无测试/产品写。此为范围预审，固定修订R06待经理通知。
+
+最小改动边界可行：Store::resume_task现有Immediate事务先保留checkpoints exists→CheckpointError::Conflict，再查询workspace_restores task_id任一记录→ResumeError::Sealed；必须在save_task_tx/event之前，不能只挡Engine。两恢复路由最终均claim_restore同表，不需双份状态判断或schema变化。即使receipt是conflict/unknown/claimed也不能只因非complete放行；没有claim的预检拒绝不应封存。
+
+Engine已有gate可序列化本Engine的restore/resume，但不同Store直接调用仍须由SQLite写事务排序；不能因有gate省略Store检查。成功resume_task之后再登记局部deferred输入并launch，事务失败既不修改deferred也不launch；测试应使用带pending工具组的Task证明旧提前insert路径已消除，而不只测试没有pending的完成Task。resume前段ensure_approval目前可能被调用，固定候选需核它在被封存Task拒绝前是否产生持久写；不预判实际变化，保持Task/messages/events/network及receipt不变要求。
+
+已有Checkpoint优先类型须精确保留；不要将所有resume错误包成Sealed。HTTP仅resume边界downcast Sealed→409/conflict/retryable=false固定消息，checkpoint错误及别的路由分类不变。typed Display无动态数据。
+
+complete恢复显式新Turn走append路径，不调用resume_task；封存exists检查不能加到通用save_task或全部validate_project_task，否则会误封正常receipt/后续新Task。原append unresolved effects仅partial/unknown/claimed等阻断的判定保持，complete可按兼容当前grant协议新建Task。新接口不回写历史receipt/Task，不把NEXT-06永久写封存倒写成当时已拒resume。
+
+固定审查将查：Store直接多连接撤销次序、Engine deferred/launch顺序、两个restore入口同事实、checkpoint错误优先、complete新Turn正向、partial/unknown新Turn仍拒、HTTP错误脱敏及无新增调用证据。当前无接口层阻断；C df017537严格失败保留，未执行后续断言不可算通过，也不是860根因。

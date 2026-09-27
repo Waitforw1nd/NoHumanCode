@@ -1,0 +1,27 @@
+{
+  "commit": "29826d444cedf3d4b11aa18060302146f8400b49",
+  "filtered": 107,
+  "failed": 1,
+  "gates": "not run",
+  "exit": 101,
+  "nomancode_tree": "326d7c0adae38f87452af5fc6edddde0a9b3667d",
+  "ignored": 0,
+  "failure": "test wrongly expected ok=false from existing generic ErrorBody; actual absent/null",
+  "rust_tree": "f6f2a67af4e9fa093e6373f1616832b486deebcc",
+  "passed": 0,
+  "files": [
+    {
+      "published_sha256": "11957D35938CA6A93A375D7BB831E93FE377751BAF6F885D0D356BE433E011A3",
+      "original_sha256": "D3167168EA54B9569C1D6A80F2906D7187F964664638DB2936F5376C25E65C1D",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/29826d44-single.log",
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/29826d44-single.log"
+    },
+    {
+      "published_sha256": "9764623FCFF825915E1895F64AE3116C404F409DCD765922A5E79BCA0709DF01",
+      "original_sha256": "F917D82FEA37C52AD3DF751710095AC3B20A9076DC1E6D2A76D883AB9AEB9004",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/29826d44-runs.json",
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/29826d44-runs.json"
+    }
+  ],
+  "repeat10": "not run"
+}

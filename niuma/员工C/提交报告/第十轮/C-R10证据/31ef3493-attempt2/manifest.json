@@ -1,0 +1,100 @@
+{
+  "attempt": 2,
+  "nomancode_tree": "019af93d0fd678b3ab50dcb106ab87e160d8288d",
+  "commit": "31ef3493e330cb071a509da26ae674803b59a147",
+  "preparation": "Created E-tree NoManCode/rust-app/target for tempdir_in; no source changes",
+  "gates": {
+    "clippy": 101,
+    "wasm_check": "not run",
+    "check": 0,
+    "test": 0,
+    "fmt": 0
+  },
+  "failure": "engine.rs observed MutexGuard across await, clippy::await_holding_lock",
+  "test": {
+    "excluding_helpers": 431,
+    "raw_blocks": [
+      "test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s\r",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.90s\r",
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.09s\r",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s\r",
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.80s\r",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s\r",
+      "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.34s\r",
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.10s\r",
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s\r",
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.98s\r",
+      "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s\r",
+      "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s\r",
+      "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.13s\r",
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.20s\r",
+      "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s\r",
+      "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s\r",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s\r",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s\r",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s\r",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.09s\r",
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s\r",
+      "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s\r",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s\r",
+      "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.25s\r",
+      "test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.09s\r",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s\r",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s\r",
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s\r",
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\r"
+    ],
+    "ignored": 1,
+    "passed": 435,
+    "blocks": 38,
+    "helpers_in_passed": 4,
+    "failed": 0
+  },
+  "logs": [
+    {
+      "original_sha256": "CDFD23383FA98DDA0051307DDFC2C2D9EDD5FE01720A5D1F662F7C9BAA70A827",
+      "original_bytes": 318,
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/31ef3493-attempt2/31ef3493-attempt2-check.log",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-attempt2-check.log",
+      "published_sha256": "CDFD23383FA98DDA0051307DDFC2C2D9EDD5FE01720A5D1F662F7C9BAA70A827"
+    },
+    {
+      "original_sha256": "8E4F0A375A6C60F25328C5E01BFFDDBC29671AC9E674D65870D3303831E57E61",
+      "original_bytes": 1390,
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/31ef3493-attempt2/31ef3493-attempt2-clippy.log",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-attempt2-clippy.log",
+      "published_sha256": "30A8713BD7D161BDB9DA673F9B96773C7848358F91DECE176312213C1DFF036A"
+    },
+    {
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/31ef3493-attempt2/31ef3493-attempt2-fmt.log",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-attempt2-fmt.log",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "original_sha256": "C4A058F0808F78E7ECC0DE555E989503861B6B1B23C2A7268ADC4F672A792C68",
+      "original_bytes": 40925,
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/31ef3493-attempt2/31ef3493-attempt2-test.log",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-attempt2-test.log",
+      "published_sha256": "5BD632E3570368D56172528560F3B2C8841F5FF725F36CB71C2330B73FD3CBEA"
+    },
+    {
+      "original_sha256": "BE5591F825F9D0ABF26F27DDC821BA39B66284ED6F6D5777EC605D130726D944",
+      "original_bytes": 2005,
+      "published": "niuma/员工C/提交报告/第十轮/C-R10证据/31ef3493-attempt2/31ef3493-attempt2.json",
+      "original": "../nhc-c-restore-http-deterministic/.local/evidence/31ef3493-attempt2.json",
+      "published_sha256": "805B643A24380376B54B43BD6C5BAC142E73CD23D1E338DCD58919D14B0A314E"
+    }
+  ],
+  "rust_tree": "94af3c0d6931fe191e3af5dd070602fe701c99d1"
+}
