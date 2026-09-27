@@ -486,7 +486,7 @@ async fn h1_read_shapes_and_security_headers_stay() {
     let health: Value = health.json().await.unwrap();
     assert_eq!(health["ok"], true);
     assert_eq!(health["runtime"], "rust");
-    assert_eq!(health["schema_version"], 11);
+    assert_eq!(health["schema_version"], peachsh::store::SCHEMA_VERSION);
     assert_ne!(health["schema_version"], 0);
 
     let projects: Vec<Project> = http

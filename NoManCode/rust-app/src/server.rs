@@ -5,6 +5,7 @@ use crate::{
     engine::Engine,
     git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
     network_authorization::{ConfirmRequest, NetworkError, NetworkErrorKind, NetworkSubject},
+    plugin_management::{PluginManagementError, SetPluginEnabled},
     project_config::{
         ConfigureProject, ProjectConfig, ProjectConfigSnapshot, ProjectError, ProjectSelection,
         RegisterProject, SelectProject, StartInProject,
@@ -398,6 +399,9 @@ pub fn router(app: App) -> Router {
         .route("/style.css", get(stylesheet))
         .route("/api/health", get(health))
         .route("/api/bootstrap", get(bootstrap))
+        .route("/api/plugins", get(plugins))
+        .route("/api/plugins/{id}", get(plugin_status))
+        .route("/api/plugins/{id}/enabled", put(set_plugin_enabled))
         .route("/api/settings", get(settings).put(save_settings))
         .route(
             "/api/routes/{id}/models",
@@ -473,6 +477,8 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
         return forbidden("拒绝跨站请求");
     }
     let authenticated_read = request.uri().path().starts_with("/api/network/")
+        || request.uri().path() == "/api/plugins"
+        || request.uri().path().starts_with("/api/plugins/")
         || request.uri().path().starts_with("/api/projects")
         || request.uri().path() == "/api/project-selection"
         || (request.uri().path().starts_with("/api/tasks/")
@@ -515,6 +521,76 @@ async fn health(State(app): State<App>) -> Result<Json<Value>> {
 }
 async fn bootstrap(State(app): State<App>) -> Json<Value> {
     Json(json!({"token":app.token,"version":env!("CARGO_PKG_VERSION")}))
+}
+
+fn plugin_failure(code: &str) -> Response {
+    let (status, code, message) = match code {
+        "plugin_invalid" => (StatusCode::BAD_REQUEST, "plugin_invalid", "插件请求无效"),
+        "plugin_not_found" => (StatusCode::NOT_FOUND, "plugin_not_found", "插件不存在"),
+        "plugin_revision_conflict" => (
+            StatusCode::CONFLICT,
+            "plugin_revision_conflict",
+            "插件状态版本冲突",
+        ),
+        "plugin_idempotency_conflict" => (
+            StatusCode::CONFLICT,
+            "plugin_idempotency_conflict",
+            "插件请求幂等键冲突",
+        ),
+        "plugin_unavailable" => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "plugin_unavailable",
+            "插件管理暂时不可用",
+        ),
+        _ => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "plugin_internal",
+            "插件管理失败；写入结果可能已提交，请查询状态或使用原键和原参数手动回放",
+        ),
+    };
+    (
+        status,
+        Json(json!({"code":code,"message":message,"error":message,"retryable":false})),
+    )
+        .into_response()
+}
+
+fn plugin_error(error: anyhow::Error) -> Response {
+    plugin_failure(
+        error
+            .downcast_ref::<PluginManagementError>()
+            .map_or("plugin_internal", |e| e.code()),
+    )
+}
+
+async fn plugins(State(app): State<App>) -> Response {
+    match app.engine.plugins() {
+        Ok(plugins) => Json(json!({"plugins":plugins})).into_response(),
+        Err(error) => plugin_error(error),
+    }
+}
+
+async fn plugin_status(State(app): State<App>, Path(id): Path<String>) -> Response {
+    match app.engine.plugin_status(&id) {
+        Ok(plugin) => Json(json!({"plugin":plugin})).into_response(),
+        Err(error) => plugin_error(error),
+    }
+}
+
+async fn set_plugin_enabled(
+    State(app): State<App>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+    ContractJson(StrictObject(request)): ContractJson<StrictObject<SetPluginEnabled>>,
+) -> Response {
+    let key = match required_idempotency_key(&headers) {
+        Ok(key) => key,
+        Err(_) => return plugin_failure("plugin_invalid"),
+    };
+    match app.engine.set_plugin_enabled(&id, request, &key) {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => plugin_error(error),
+    }
 }
 async fn settings(State(app): State<App>) -> Result<Json<Value>> {
     let settings = app
