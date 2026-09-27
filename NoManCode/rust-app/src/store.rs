@@ -16,6 +16,37 @@ impl std::fmt::Display for IdempotencyConflict {
 }
 impl std::error::Error for IdempotencyConflict {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResumeError {
+    Sealed,
+}
+impl std::fmt::Display for ResumeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("任务已有恢复记录，不能继续原任务")
+    }
+}
+impl std::error::Error for ResumeError {}
+
+fn ensure_resume_unsealed(db: &Connection, task_id: &str) -> Result<()> {
+    let sealed: bool = db.query_row(
+        "SELECT EXISTS(SELECT 1 FROM checkpoints WHERE task_id=?1)",
+        [task_id],
+        |r| r.get(0),
+    )?;
+    if sealed {
+        return Err(crate::checkpoint::CheckpointError::Conflict.into());
+    }
+    let restored: bool = db.query_row(
+        "SELECT EXISTS(SELECT 1 FROM workspace_restores WHERE task_id=?1)",
+        [task_id],
+        |r| r.get(0),
+    )?;
+    if restored {
+        return Err(ResumeError::Sealed.into());
+    }
+    Ok(())
+}
+
 pub struct Store {
     pub(crate) db: Mutex<Connection>,
 }
@@ -292,17 +323,14 @@ impl Store {
         tx.commit()?;
         Ok(())
     }
+    pub(crate) fn check_resume_unsealed(&self, task_id: &str) -> Result<()> {
+        ensure_resume_unsealed(&self.db.lock().unwrap(), task_id)
+    }
+
     pub fn resume_task(&self, task: &Task, input: &str) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        let sealed: bool = tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM checkpoints WHERE task_id=?1)",
-            [&task.id],
-            |r| r.get(0),
-        )?;
-        if sealed {
-            return Err(crate::checkpoint::CheckpointError::Conflict.into());
-        }
+        ensure_resume_unsealed(&tx, &task.id)?;
         crate::project_config::validate_task_tx(&tx, task, true, true)?;
         ensure_resume_targets_latest_chat_turn(&tx, &task.id)?;
         save_task_tx(&tx, task, true)?;
