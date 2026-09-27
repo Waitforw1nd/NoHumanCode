@@ -386,6 +386,17 @@ async fn w01_w02_worktree_project_has_independent_authorization_and_original_ses
         json!({"allowed_route_ids":[],"default_route_id":null,"tools":false,"write_scopes":[],"allow_commands":false})
     );
     h.configure(target_id).await;
+    let denied_models = body(
+        h.post(
+            "/api/routes/route-a/models",
+            json!({"project_id":target_id}),
+        )
+        .await,
+        409,
+    )
+    .await;
+    assert_eq!(denied_models["error"]["code"], "required");
+    assert_eq!(denied_models["error"]["calls"], json!([]));
     let denied = h
         .request(
             reqwest::Method::POST,
@@ -396,7 +407,9 @@ async fn w01_w02_worktree_project_has_independent_authorization_and_original_ses
         .send()
         .await
         .unwrap();
-    assert_eq!(denied.status(), 409);
+    let denied_run = body(denied, 200).await;
+    let blocked = h.settle(denied_run["id"].as_str().unwrap()).await;
+    assert_eq!(blocked["tasks"][0]["status"], "failed");
     assert_eq!(h.calls.load(Ordering::SeqCst), calls);
     h.put(&format!("/api/projects/{target_id}/config"),json!({"expected_revision":2,"config":{"allowed_route_ids":["route-a"],"default_route_id":"route-a","tools":true,"write_scopes":["src"],"allow_commands":false}}),200).await;
     h.grant(target_id).await;
