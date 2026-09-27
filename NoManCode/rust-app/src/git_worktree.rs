@@ -2172,7 +2172,7 @@ mod tests {
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                &format!("$p=Get-Process -Id {pid} -ErrorAction SilentlyContinue; if($p) {{ Write-Output ('D08 query_pid='+$PID+' target_pid='+$p.Id+' target_start='+$p.StartTime.ToFileTimeUtc()+' target_name='+$p.ProcessName); exit 9 }}"),
+                &format!("$p=Get-Process -Id {pid} -ErrorAction SilentlyContinue; if($p) {{ Write-Output ('D08 query_pid='+$PID+' target_pid='+$p.Id+' target_start='+$p.StartTime.ToFileTimeUtc()+' target_name='+$p.ProcessName); exit 9 }}; exit 0"),
             ])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
