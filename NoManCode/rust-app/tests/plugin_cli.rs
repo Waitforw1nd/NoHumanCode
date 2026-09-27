@@ -313,3 +313,115 @@ async fn f09_hostile_output_is_not_echoed_or_retried() {
         h.no_files();
     }
 }
+
+fn versioned_status(version: &str) -> Value {
+    let mut value = status();
+    value["version"] = json!(version);
+    let (affected, compat) = if version == "1.0.0" {
+        (
+            json!(["read_file", "write_file"]),
+            json!(["list_files", "search_files", "run_command", "run_wasm"]),
+        )
+    } else {
+        (
+            json!(["read_file", "write_file", "list_files", "search_files"]),
+            json!(["run_command", "run_wasm"]),
+        )
+    };
+    value["affected_tools"] = affected;
+    value["compat_tools"] = compat;
+    if version == "1.0.0" {
+        value["runtime"]["providers"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|p| {
+                matches!(
+                    p["key"]["name"].as_str(),
+                    Some("tool.read_file" | "tool.write_file")
+                )
+            });
+        value["runtime"]["effects_count"] = json!(2);
+    }
+    value
+}
+
+#[tokio::test]
+async fn l07_known_versions_preserve_json_and_human_reports_validated_tool_scope() {
+    for version in ["1.0.0", "1.1.0"] {
+        let s = versioned_status(version);
+        let mut r = result(false);
+        r["current"] = s.clone();
+        r["current"]["desired"]["revision"] = json!(1);
+        let h = Host::new(vec![
+            (200, json!({"plugins":[s.clone()]})),
+            (200, json!({"plugin":s.clone()})),
+            (200, r.clone()),
+            (200, json!({"plugin":s.clone()})),
+        ])
+        .await;
+        assert_eq!(
+            stdout(&h.cli(&["plugin", "list"]).await, 0),
+            json!({"plugins":[s.clone()]})
+        );
+        assert_eq!(
+            stdout(&h.cli(&["plugin", "status", "builtin.files"]).await, 0),
+            json!({"plugin":s.clone()})
+        );
+        assert_eq!(stdout(&h.cli(&SET).await, 0), r);
+        let output = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"))
+                .arg("--port")
+                .arg(h.port.to_string())
+                .args(["plugin", "status", "builtin.files"])
+                .current_dir(h.cwd.path())
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(output.status.code(), Some(0));
+        assert!(output.stderr.is_empty());
+        let text = String::from_utf8(output.stdout).unwrap();
+        let scope = if version == "1.0.0" {
+            "影响 read_file/write_file；list_files/search_files/run_command/run_wasm 为 compat"
+        } else {
+            "影响 read_file/write_file/list_files/search_files；run_command/run_wasm 为 compat"
+        };
+        assert!(text.contains(scope), "{text}");
+        assert!(text.contains(&format!("@{version}")));
+        h.no_files();
+    }
+}
+
+#[tokio::test]
+async fn l07_unknown_mixed_or_arbitrary_tool_maps_are_rejected_without_retry() {
+    let mut cases = vec![];
+    let mut unknown = versioned_status("1.1.0");
+    unknown["version"] = json!("1.2.0");
+    cases.push(unknown);
+    for (version, other) in [("1.0.0", "1.1.0"), ("1.1.0", "1.0.0")] {
+        for field in ["affected_tools", "compat_tools"] {
+            let mut mixed = versioned_status(version);
+            mixed[field] = versioned_status(other)[field].clone();
+            cases.push(mixed);
+        }
+    }
+    let mut arbitrary = versioned_status("1.1.0");
+    arbitrary["affected_tools"][2] = json!("arbitrary_tool");
+    cases.push(arbitrary);
+    for s in cases {
+        let mut r = result(false);
+        r["current"] = s.clone();
+        r["current"]["desired"]["revision"] = json!(1);
+        let h = Host::new(vec![(200, json!({"plugin":s})), (200, r)]).await;
+        let read = failure(&h.cli(&["plugin", "status", "builtin.files"]).await);
+        assert_eq!(read["code"], "internal");
+        let write = failure(&h.cli(&SET).await);
+        assert_eq!(write["code"], "operation_result_unknown");
+        assert_eq!(write["retryable"], false);
+        assert_eq!(h.state.requests.lock().unwrap().len(), 2);
+        h.no_files();
+    }
+}
