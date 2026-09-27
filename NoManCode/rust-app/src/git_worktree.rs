@@ -281,7 +281,15 @@ async fn run(
     deadline: Instant,
     mutating: bool,
 ) -> Result<Output> {
+    #[cfg(all(test, windows))]
+    let trace = command
+        .as_std()
+        .get_program()
+        .to_string_lossy()
+        .ends_with("pwsh.exe");
     let mut child = command.spawn().map_err(|_| GitWorktreeError::Unavailable)?;
+    #[cfg(all(test, windows))]
+    let observation = (trace && mutating).then(|| tests::ProcessObservation::capture(&child));
     let result = timeout_at(deadline, async {
         let stdout = child.stdout.take().ok_or(GitWorktreeError::Unavailable)?;
         let stderr = child.stderr.take().ok_or(GitWorktreeError::Unavailable)?;
@@ -302,8 +310,13 @@ async fn run(
         Ok(Ok(out)) if !mutating || out.code == Some(0) => Ok(out),
         other => {
             let deadline = Instant::now() + Duration::from_secs(5);
-            let _ = child.start_kill();
-            let _ = timeout_at(deadline, child.wait()).await;
+            let kill_result = child.start_kill();
+            let wait_result = timeout_at(deadline, child.wait()).await;
+            #[cfg(all(test, windows))]
+            if let Some(observation) = &observation {
+                eprintln!("D08 cleanup pid={} created={} signal={} kill={kill_result:?} wait={wait_result:?}", observation.pid, observation.created, observation.signal());
+            }
+            let _ = (kill_result, wait_result);
             if mutating {
                 Err(GitWorktreeError::OutcomeUnknown)
             } else {
@@ -1178,6 +1191,151 @@ fn same_path(left: &Path, right: &Path) -> bool {
 mod tests {
     use super::*;
     use std::process::Command as SyncCommand;
+    #[cfg(windows)]
+    pub(super) struct ProcessObservation {
+        handle: std::os::windows::io::OwnedHandle,
+        pub(super) pid: u32,
+        pub(super) created: u64,
+    }
+    #[cfg(windows)]
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetProcessTimes(
+            handle: *mut std::ffi::c_void,
+            created: *mut u64,
+            exited: *mut u64,
+            kernel: *mut u64,
+            user: *mut u64,
+        ) -> i32;
+        fn WaitForSingleObject(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
+    }
+    #[cfg(windows)]
+    impl ProcessObservation {
+        pub(super) fn capture(child: &tokio::process::Child) -> Self {
+            use std::os::windows::io::{AsRawHandle, BorrowedHandle};
+            let handle = unsafe { BorrowedHandle::borrow_raw(child.raw_handle().unwrap()) }
+                .try_clone_to_owned()
+                .unwrap();
+            let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
+            assert_ne!(
+                unsafe {
+                    GetProcessTimes(
+                        handle.as_raw_handle(),
+                        &mut created,
+                        &mut exited,
+                        &mut kernel,
+                        &mut user,
+                    )
+                },
+                0
+            );
+            let observation = Self {
+                handle,
+                pid: child.id().unwrap(),
+                created,
+            };
+            observation.remember();
+            observation
+        }
+        fn remember(&self) {
+            let copy = Self {
+                handle: self.handle.try_clone().unwrap(),
+                pid: self.pid,
+                created: self.created,
+            };
+            process_observations()
+                .lock()
+                .unwrap()
+                .insert(self.pid, copy);
+        }
+        fn capture_pid(pid: u32) -> Self {
+            use std::os::windows::io::{AsRawHandle, FromRawHandle};
+            let raw = unsafe { OpenProcess(0x00100000 | 0x1000, 0, pid) };
+            assert!(!raw.is_null(), "cannot retain fixture process {pid}");
+            let handle = unsafe { std::os::windows::io::OwnedHandle::from_raw_handle(raw) };
+            let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
+            assert_ne!(
+                unsafe {
+                    GetProcessTimes(
+                        handle.as_raw_handle(),
+                        &mut created,
+                        &mut exited,
+                        &mut kernel,
+                        &mut user,
+                    )
+                },
+                0
+            );
+            let observation = Self {
+                handle,
+                pid,
+                created,
+            };
+            observation.remember();
+            observation
+        }
+        pub(super) fn signal(&self) -> u32 {
+            use std::os::windows::io::AsRawHandle;
+            unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) }
+        }
+    }
+    #[cfg(windows)]
+    fn process_observations(
+    ) -> &'static std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>> {
+        static ITEMS: std::sync::OnceLock<
+            std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>>,
+        > = std::sync::OnceLock::new();
+        ITEMS.get_or_init(Default::default)
+    }
+    #[cfg(windows)]
+    fn require_original_process_exited(
+        observation: &ProcessObservation,
+    ) -> std::result::Result<(), String> {
+        let signal = observation.signal();
+        if signal == 0 {
+            Ok(())
+        } else {
+            Err(format!(
+                "original fixture pid={} created={} signal={} remains unsignaled",
+                observation.pid, observation.created, signal
+            ))
+        }
+    }
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn w06_original_handle_rejects_live_process_and_accepts_waited_exit() {
+        let mut command = Command::new("pwsh.exe");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Start-Sleep -Seconds 20",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
+            .kill_on_drop(true)
+            .creation_flags(0x08000000);
+        let mut child = command.spawn().unwrap();
+        let observation = ProcessObservation::capture(&child);
+        assert!(
+            require_original_process_exited(&observation).is_err(),
+            "a live original process must fail the exact assertion"
+        );
+        child.start_kill().unwrap();
+        timeout_at(Instant::now() + Duration::from_secs(5), child.wait())
+            .await
+            .unwrap()
+            .unwrap();
+        require_original_process_exited(&observation).unwrap();
+        process_observations()
+            .lock()
+            .unwrap()
+            .remove(&observation.pid)
+            .unwrap();
+    }
     struct Fixture {
         _temp: tempfile::TempDir,
         source: PathBuf,
@@ -1834,7 +1992,6 @@ mod tests {
     }
     #[tokio::test]
     async fn w06_nonzero_and_timeout_are_unknown_after_spawn() {
-        let f = Fixture::new();
         for (script, timeout) in [
             (
                 "[IO.File]::WriteAllText('pid',[string]$PID); [IO.File]::WriteAllText('partial','present'); exit 7",
@@ -1845,6 +2002,8 @@ mod tests {
                 Duration::from_secs(1),
             ),
         ] {
+            let f = Fixture::new();
+            eprintln!("D08 case deadline_ms={}", timeout.as_millis());
             let mut cmd = Command::new("pwsh.exe");
             cmd.current_dir(&f.aux)
                 .args(["-NoProfile", "-NonInteractive", "-Command", script])
@@ -2103,6 +2262,22 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
+    async fn assert_pid_absent(pid: u32) {
+        let observation = process_observations()
+            .lock()
+            .unwrap()
+            .remove(&pid)
+            .expect("fixture PID must match retained original handle");
+        eprintln!(
+            "D08 original-handle pid={} created={} signal={}",
+            observation.pid,
+            observation.created,
+            observation.signal()
+        );
+        require_original_process_exited(&observation).unwrap();
+    }
+    #[cfg(not(windows))]
     async fn assert_pid_absent(pid: u32) {
         let mut query = Command::new("pwsh.exe");
         query
@@ -2110,7 +2285,7 @@ mod tests {
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                &format!("if(Get-Process -Id {pid} -ErrorAction SilentlyContinue) {{ exit 9 }}"),
+                &format!("$p=Get-Process -Id {pid} -ErrorAction SilentlyContinue; if($p) {{ Write-Output ('D08 query_pid='+$PID+' target_pid='+$p.Id+' target_start='+$p.StartTime.ToFileTimeUtc()+' target_name='+$p.ProcessName); exit 9 }}; exit 0"),
             ])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -2118,14 +2293,15 @@ mod tests {
             .kill_on_drop(true);
         #[cfg(windows)]
         query.creation_flags(0x08000000);
-        assert_eq!(
-            run(query, 1024, Instant::now() + Duration::from_secs(5), false)
-                .await
-                .unwrap()
-                .code,
-            Some(0),
-            "fixture process {pid} survived"
+        let output = run(query, 1024, Instant::now() + Duration::from_secs(5), false)
+            .await
+            .unwrap();
+        eprintln!(
+            "D08 query target={pid} code={:?} output={}",
+            output.code,
+            String::from_utf8_lossy(&output.bytes)
         );
+        assert_eq!(output.code, Some(0), "fixture process {pid} survived");
     }
     #[tokio::test]
     async fn w06_output_overflow_terminates_and_reaps_real_child() {
@@ -2169,6 +2345,8 @@ mod tests {
             .trim()
             .parse()
             .unwrap();
+        #[cfg(windows)]
+        let _descendant_observation = ProcessObservation::capture_pid(descendant);
         let mut cleanup = Command::new("pwsh.exe");
         cleanup.args(["-NoProfile","-NonInteractive","-Command",&format!("$p=Get-Process -Id {descendant} -ErrorAction SilentlyContinue; if($p){{$p.Kill();$p.WaitForExit()}}")]).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null()).kill_on_drop(true);
         #[cfg(windows)]
