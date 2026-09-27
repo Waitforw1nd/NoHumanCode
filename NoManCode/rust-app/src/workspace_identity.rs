@@ -96,7 +96,7 @@ impl RootIdentity {
         })
     }
 
-    pub fn verify(&self) -> Result<VerifiedRoot> {
+    pub(crate) fn validate_snapshot(&self) -> Result<()> {
         if self.version != 1 {
             return Err(RootIdentityError::InvalidSnapshot);
         }
@@ -106,6 +106,11 @@ impl RootIdentity {
             _ => return Err(RootIdentityError::InvalidSnapshot),
         }
         validate_path(&self.canonical_path).map_err(|_| RootIdentityError::InvalidSnapshot)?;
+        Ok(())
+    }
+
+    pub fn verify(&self) -> Result<VerifiedRoot> {
+        self.validate_snapshot()?;
         let observed = observe_stable(&self.canonical_path)?;
         if observed.canonical_path != self.canonical_path {
             return Err(RootIdentityError::InvalidSnapshot);

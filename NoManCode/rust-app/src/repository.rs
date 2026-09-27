@@ -3050,7 +3050,7 @@ mod shell_migration_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
-        tx.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        tx.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         apply_schema_12(&tx).unwrap();
         tx.execute(
             "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=2,updated_at=41",
@@ -3166,6 +3166,275 @@ mod shell_migration_tests {
                 .unwrap();
             apply_schema_13(&tx).unwrap();
             tx.commit().unwrap();
+        }
+    }
+}
+
+pub const WORKTREE_MIGRATION_ID: &str = "git-worktree-operations-v1";
+const WORKTREE_SCHEMA: &[(&str, &str)] = &[
+    (
+        "worktree_operations",
+        "CREATE TABLE worktree_operations (operation_id TEXT NOT NULL PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE CHECK(typeof(idempotency_key)='text' AND length(idempotency_key) BETWEEN 1 AND 200), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), requested_project_id TEXT NOT NULL UNIQUE, request_json TEXT NOT NULL CHECK(typeof(request_json)='text'), request_digest TEXT NOT NULL CHECK(typeof(request_digest)='text' AND length(request_digest)=64), plan TEXT NOT NULL CHECK(typeof(plan)='text'), members TEXT NOT NULL CHECK(typeof(members)='text'), common_key TEXT NOT NULL CHECK(typeof(common_key)='text' AND length(common_key)=64), target_path TEXT NOT NULL UNIQUE, branch_ref TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('claimed','succeeded','rejected','unknown')), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), UNIQUE(common_key,branch_ref))",
+    ),
+    (
+        "worktree_active_common",
+        "CREATE UNIQUE INDEX worktree_active_common ON worktree_operations(common_key) WHERE state IN ('claimed','unknown')",
+    ),
+    (
+        "worktree_project_reservations",
+        "CREATE TABLE worktree_project_reservations (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL REFERENCES worktree_operations(operation_id))",
+    ),
+    (
+        "project_worktree_origins",
+        "CREATE TABLE project_worktree_origins (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL UNIQUE REFERENCES worktree_operations(operation_id), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), identity TEXT NOT NULL CHECK(typeof(identity)='text'))",
+    ),
+];
+pub(crate) fn apply_schema_14(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let applied = migration_applied(tx, WORKTREE_MIGRATION_ID)?;
+    anyhow::ensure!(
+        migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?,
+        "schema 13 marker missing"
+    );
+    if version == 14 {
+        anyhow::ensure!(applied, "schema 14 marker missing");
+        return verify_schema_14(tx);
+    }
+    anyhow::ensure!(
+        version == 13 && !applied,
+        "schema 14 marker/version mismatch"
+    );
+    verify_schema_13(tx)?;
+    for (_, sql) in WORKTREE_SCHEMA {
+        tx.execute_batch(sql)?;
+    }
+    verify_schema_14(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        params![WORKTREE_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 14)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_14(tx: &Transaction<'_>) -> Result<()> {
+    // Only whitespace and unquoted SQL keyword case are insignificant.
+    fn normalize(sql: &str) -> String {
+        let mut result = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(c) = chars.next() {
+            if let Some(q) = quote {
+                result.push(c);
+                if c == q {
+                    if chars.peek() == Some(&q) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(c, '\'' | '"' | '`') {
+                quote = Some(c);
+                result.push(c);
+            } else if !c.is_whitespace() {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+        result
+    }
+    for (name, sql) in WORKTREE_SCHEMA {
+        let actual: String =
+            tx.query_row("SELECT sql FROM sqlite_master WHERE name=?1", [name], |r| {
+                r.get(0)
+            })?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "worktree schema constraint mismatch"
+        );
+    }
+    crate::worktree_management::verify_persisted_rows(tx)?;
+    let foreign: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(foreign.is_none(), "worktree foreign key violation");
+    Ok(())
+}
+
+#[cfg(test)]
+mod worktree_schema_tests {
+    use super::*;
+    use crate::{domain::id, project_config::RegisterProject, store::Store};
+    type Rows = std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>>;
+    fn rows(db: &Connection) -> Rows {
+        let names: Vec<String> = db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        names
+            .into_iter()
+            .map(|name| {
+                let values = db
+                    .prepare(&format!("SELECT rowid,* FROM {name} ORDER BY rowid"))
+                    .unwrap()
+                    .query_map([], |r| {
+                        (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+                    })
+                    .unwrap()
+                    .collect::<rusqlite::Result<_>>()
+                    .unwrap();
+                (name, values)
+            })
+            .collect()
+    }
+    fn historical13() -> (tempfile::TempDir, std::path::PathBuf, Connection) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite");
+        let root = dir.path().join("project");
+        std::fs::create_dir(&root).unwrap();
+        let store = Store::open(&path).unwrap();
+        store
+            .register_project(RegisterProject {
+                name: "Old project".into(),
+                root_path: root.to_string_lossy().into(),
+                idempotency_key: id(),
+            })
+            .unwrap();
+        drop(store);
+        let mut db = Connection::open(&path).unwrap();
+        db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .unwrap();
+        tx.execute_batch("DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
+            UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files';
+            INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical-files','builtin.files',0,0,1,17);
+            INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
+        verify_schema_13(&tx).unwrap();
+        tx.commit().unwrap();
+        (dir, path, db)
+    }
+    fn assert_migrated(db: &Connection, before: Rows) {
+        let after = rows(db);
+        let mut expected = before;
+        for name in [
+            "worktree_operations",
+            "worktree_project_reservations",
+            "project_worktree_origins",
+        ] {
+            assert!(expected.insert(name.into(), vec![]).is_none());
+        }
+        let new: Vec<_> = after["schema_migrations"]
+            .iter()
+            .filter(|r| r[1] == rusqlite::types::Value::Text(WORKTREE_MIGRATION_ID.into()))
+            .cloned()
+            .collect();
+        assert_eq!(new.len(), 1);
+        expected.get_mut("schema_migrations").unwrap().extend(new);
+        assert_eq!(after, expected);
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
+                .unwrap(),
+            14
+        );
+    }
+    #[test]
+    fn n13_schema_nonempty_true13_rows_preserved_and_reopen_is_read_only() {
+        let (_dir, path, db) = historical13();
+        let before = rows(&db);
+        let store = Store::open(&path).unwrap();
+        assert_eq!(store.schema_version().unwrap(), 14);
+        assert_migrated(&db, before);
+        let after = rows(&db);
+        drop(store);
+        for _ in 0..2 {
+            drop(Store::open(&path).unwrap());
+            assert_eq!(rows(&db), after);
+        }
+    }
+    #[test]
+    fn n13_schema_marker_failure_rolls_back_every_new_object() {
+        let (_dir, path, db) = historical13();
+        let before = rows(&db);
+        db.execute_batch("CREATE TRIGGER fail_worktree_marker BEFORE INSERT ON schema_migrations WHEN NEW.id='git-worktree-operations-v1' BEGIN SELECT RAISE(ABORT,'injected'); END;").unwrap();
+        for _ in 0..2 {
+            assert!(Store::open(&path).is_err());
+            assert_eq!(rows(&db), before);
+            assert_eq!(
+                db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
+                    .unwrap(),
+                13
+            );
+        }
+        assert_eq!(db.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('worktree_operations','worktree_active_common','worktree_project_reservations','project_worktree_origins')",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_worktree_marker")
+            .unwrap();
+        drop(Store::open(&path).unwrap());
+        assert_migrated(&db, before);
+    }
+    #[test]
+    fn n13_schema_concurrent_open_serializes_migration() {
+        let (_dir, path, db) = historical13();
+        let before = rows(&db);
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let handles: Vec<_> = (0..2)
+            .map(|_| {
+                let path = path.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    Store::open(&path).map(|s| s.schema_version().unwrap())
+                })
+            })
+            .collect();
+        for handle in handles {
+            assert_eq!(handle.join().unwrap().unwrap(), 14);
+        }
+        assert_migrated(&db, before);
+    }
+    #[test]
+    fn n13_schema_corrupt14_is_rejected_without_self_repair() {
+        for sql in [
+            "DROP INDEX worktree_active_common",
+            "DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'",
+            "PRAGMA user_version=13",
+            "ALTER TABLE worktree_operations ADD COLUMN unexpected TEXT",
+        ] {
+            let (_dir, path, db) = historical13();
+            drop(Store::open(&path).unwrap());
+            db.execute_batch(sql).unwrap();
+            let before = rows(&db);
+            let schema: String = db
+                .query_row("SELECT group_concat(sql,';') FROM sqlite_master", [], |r| {
+                    r.get(0)
+                })
+                .unwrap();
+            for _ in 0..2 {
+                assert!(Store::open(&path).is_err(), "{sql}");
+                assert_eq!(rows(&db), before);
+                assert_eq!(
+                    db.query_row("SELECT group_concat(sql,';') FROM sqlite_master", [], |r| r
+                        .get::<_, String>(0))
+                        .unwrap(),
+                    schema
+                );
+            }
+        }
+    }
+    #[test]
+    fn n13_schema_orphan_origin_foreign_key_is_rejected_without_repair() {
+        let (_dir, path, db) = historical13();
+        drop(Store::open(&path).unwrap());
+        db.execute_batch("PRAGMA foreign_keys=OFF; INSERT INTO project_worktree_origins(project_id,operation_id,source_project_id,identity) VALUES('missing-project','missing-operation','missing-source','{}'); PRAGMA foreign_keys=ON;").unwrap();
+        let before = rows(&db);
+        assert!(
+            db.query_row("PRAGMA foreign_key_check", [], |r| r.get::<_, String>(0))
+                .is_ok()
+        );
+        for _ in 0..2 {
+            assert!(Store::open(&path).is_err());
+            assert_eq!(rows(&db), before);
         }
     }
 }

@@ -521,6 +521,15 @@ struct Active {
 }
 #[cfg(test)]
 type ShellClaimProbe = (String, Arc<dyn Fn() + Send + Sync>);
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WorktreeProbePhase {
+    ClaimCommitted,
+    CreatedBeforeRegister,
+    RegisteredBeforeReply,
+}
+#[cfg(test)]
+type WorktreeProbe = Arc<dyn Fn(WorktreeProbePhase, &str) + Send + Sync>;
 pub struct Engine {
     pub store: Arc<Store>,
     pub client: crate::provider_transport::ProviderClient,
@@ -533,6 +542,8 @@ pub struct Engine {
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
     tool_runtime: ToolRuntime,
+    #[cfg(test)]
+    worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
     plugin_commit_probe: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     #[cfg(test)]
@@ -570,6 +581,8 @@ impl Engine {
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
             tool_runtime,
+            #[cfg(test)]
+            worktree_probe: Mutex::new(None),
             #[cfg(test)]
             plugin_commit_probe: Mutex::new(None),
             #[cfg(test)]
@@ -631,6 +644,210 @@ impl Engine {
                 error,
             });
         }
+    }
+    #[cfg(test)]
+    pub(crate) fn set_worktree_probe_for_test(&self, probe: WorktreeProbe) {
+        *self.worktree_probe.lock().unwrap() = Some(probe);
+    }
+    #[cfg(test)]
+    fn observe_worktree(&self, phase: WorktreeProbePhase, operation: &str) {
+        let probe = self.worktree_probe.lock().unwrap().clone();
+        if let Some(probe) = probe {
+            probe(phase, operation);
+        }
+    }
+    pub async fn create_project_worktree(
+        self: &Arc<Self>,
+        request: crate::worktree_management::CreateWorktree,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        use crate::{git_worktree as git, worktree_management::*};
+        let request = normalize_request(request)?;
+        if let Some(prior) = self.store.worktree_replay(&request)? {
+            return Ok(prior);
+        }
+        let inventory = self.store.worktree_inventory()?;
+        let roots = inventory.roots()?;
+        let source = roots
+            .iter()
+            .find(|(id, _)| id == &request.source_project_id)
+            .ok_or(WorktreeError::NotFound)?
+            .1
+            .clone();
+        let config = self.store.project_config(&request.source_project_id)?;
+        ensure!(
+            config.revision == request.expected_config_revision,
+            WorktreeError::RevisionConflict
+        );
+        let context = git::GitContext::new(roots.iter().map(|(_, r)| r.clone()).collect())
+            .map_err(map_git)?;
+        let parent = crate::workspace_identity::RootIdentity::capture(std::path::Path::new(
+            &request.parent_path,
+        ))
+        .map_err(|_| WorktreeError::RootChanged)?;
+        let operation = uuid::Uuid::new_v4().to_string();
+        let prepared = git::prepare(
+            &context,
+            &source,
+            &parent,
+            &operation,
+            &request.expected_head,
+        )
+        .await
+        .map_err(map_git)?;
+        let common = prepared.plan().repository.common_key().map_err(map_git)?;
+        let mut members = Vec::new();
+        for (id, root) in &roots {
+            match git::probe_project_git(&context, root)
+                .await
+                .map_err(map_git)?
+            {
+                git::ProjectGitObservation::NotGit => {}
+                git::ProjectGitObservation::Repository(repository) => {
+                    if repository.common_key().map_err(map_git)? == common {
+                        members.push(id.clone());
+                    }
+                }
+            }
+        }
+        let plan = prepared.into_persisted_plan();
+        let aux = self.store.worktree_aux(&operation)?;
+        // Verify the existing parent; no helper directory exists before the durable claim.
+        for (_, root) in &roots {
+            let path = root.canonical_path();
+            ensure!(
+                !aux.starts_with(path) && !path.starts_with(&aux),
+                WorktreeError::Conflict
+            );
+        }
+        let (receipt, replayed) = self
+            .store
+            .claim_worktree(&request, &inventory, &members, &plan)?;
+        if replayed {
+            return Ok(receipt);
+        }
+        let engine = self.clone();
+        let original = receipt.clone();
+        // No await between committing admission and handing ownership to the worker.
+        let worker = tokio::spawn(async move {
+            #[cfg(test)]
+            engine.observe_worktree(WorktreeProbePhase::ClaimCommitted, &receipt.operation_id);
+            let claimed =
+                git::ClaimedWorktree::new(plan, aux, roots.into_iter().map(|(_, r)| r).collect());
+            let outcome = match claimed {
+                Ok(claimed) => git::execute_claimed(claimed).await,
+                Err(error) => Err(error),
+            };
+            match outcome {
+                Ok(created) => {
+                    #[cfg(test)]
+                    engine.observe_worktree(
+                        WorktreeProbePhase::CreatedBeforeRegister,
+                        &receipt.operation_id,
+                    );
+                    let result = match engine.store.finish_worktree(&receipt, Some(&created), None)
+                    {
+                        Ok(result) => result,
+                        Err(_) => engine.store.finish_worktree(
+                            &receipt,
+                            None,
+                            Some((
+                                WorktreeState::Unknown,
+                                WorktreeCause::RegistrationOutcomeUnknown,
+                            )),
+                        )?,
+                    };
+                    #[cfg(test)]
+                    if result.state == WorktreeState::Succeeded {
+                        engine.observe_worktree(
+                            WorktreeProbePhase::RegisteredBeforeReply,
+                            &result.operation_id,
+                        );
+                    }
+                    Ok::<_, anyhow::Error>(result)
+                }
+                Err(error) => {
+                    let (state, cause) = if error == git::GitWorktreeError::OutcomeUnknown {
+                        (WorktreeState::Unknown, WorktreeCause::ProcessOutcomeUnknown)
+                    } else {
+                        (
+                            WorktreeState::Rejected,
+                            match map_git(error) {
+                                WorktreeError::Invalid => WorktreeCause::Invalid,
+                                WorktreeError::Unsupported => WorktreeCause::Unsupported,
+                                WorktreeError::Unavailable => WorktreeCause::Unavailable,
+                                _ => WorktreeCause::Conflict,
+                            },
+                        )
+                    };
+                    engine
+                        .store
+                        .finish_worktree(&receipt, None, Some((state, cause)))
+                }
+            }
+        });
+        match worker.await {
+            Ok(Ok(receipt)) => Ok(receipt),
+            Ok(Err(_)) | Err(_) => self.store.finish_worktree(
+                &original,
+                None,
+                Some((WorktreeState::Unknown, WorktreeCause::Interrupted)),
+            ),
+        }
+    }
+    pub async fn inspect_project_worktree(
+        &self,
+        source: &ProjectId,
+        operation: &str,
+    ) -> Result<crate::worktree_management::WorktreeInspection> {
+        use crate::{git_worktree as git, worktree_management::*};
+        let receipt = self.store.worktree_receipt(source, operation)?;
+        let plan = self.store.worktree_plan(source, operation)?;
+        let roots = self.store.worktree_inventory()?.snapshots()?;
+        let ctx =
+            git::GitContext::new(roots.into_iter().map(|(_, r)| r).collect()).map_err(map_git)?;
+        let registered = self.store.registered_worktree_origin(&receipt)?;
+        if registered.as_ref().is_some_and(|o| !o.identities_match()) {
+            return Ok(WorktreeInspection {
+                observation: WorktreeObservation {
+                    operation_id: receipt.operation_id.clone(),
+                    observed_at: crate::domain::now() as i64,
+                    state: WorktreeObservationState::IdentityChanged,
+                    reason_codes: vec![WorktreeObservationReason::IdentityChanged],
+                    observed_head: None,
+                    observed_branch: None,
+                },
+                receipt,
+            });
+        }
+        let actual = git::diagnose(
+            &ctx,
+            &plan,
+            registered.as_ref().map(|o| &o.root),
+            registered.as_ref().map(|o| &o.git_dir),
+        )
+        .await
+        .map_err(map_git)?;
+        let observation: WorktreeObservation =
+            serde_json::from_value(serde_json::to_value(actual)?)
+                .map_err(|_| WorktreeError::Corrupt)?;
+        Ok(WorktreeInspection {
+            receipt,
+            observation,
+        })
+    }
+    pub fn worktree_receipt(
+        &self,
+        source: &ProjectId,
+        operation_id: &str,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        self.store.worktree_receipt(source, operation_id)
+    }
+    pub fn lookup_project_worktree(
+        &self,
+        source: &ProjectId,
+        key: &str,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        self.store.lookup_project_worktree(source, key)
     }
     pub fn plugins(&self) -> Result<Vec<crate::plugin_management::PluginStatus>> {
         // Independent snapshots; never hold both group locks.
@@ -2689,7 +2906,7 @@ mod workspace_phase_tests {
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
             // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
-            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
             {
                 let tx = db.unchecked_transaction().unwrap();
                 crate::repository::apply_schema_12(&tx).unwrap();
@@ -2726,7 +2943,7 @@ mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 13);
+            assert_eq!(engine.store.schema_version().unwrap(), 14);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.2.0");
@@ -2734,7 +2951,25 @@ mod workspace_phase_tests {
             assert_eq!(current.desired.revision, 1);
             assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });
             let mut expected = before.clone();
+            for name in [
+                "worktree_operations",
+                "worktree_project_reservations",
+                "project_worktree_origins",
+            ] {
+                assert!(expected.insert(name.into(), vec![]).is_none());
+            }
             let after = all_rows(&db);
+            let worktree_markers: Vec<_> = after["schema_migrations"]
+                .iter()
+                .filter(|row| {
+                    row[1]
+                        == rusqlite::types::Value::Text(
+                            crate::repository::WORKTREE_MIGRATION_ID.into(),
+                        )
+                })
+                .cloned()
+                .collect();
+            assert_eq!(worktree_markers.len(), 1);
             let shell_rows: Vec<_> = after["plugin_desired"]
                 .iter()
                 .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
@@ -2762,6 +2997,10 @@ mod workspace_phase_tests {
                 .get_mut("schema_migrations")
                 .unwrap()
                 .extend(marker_rows);
+            expected
+                .get_mut("schema_migrations")
+                .unwrap()
+                .extend(worktree_markers);
             assert_eq!(after, expected);
             drop(Store::open(&path).unwrap());
             assert_eq!(all_rows(&db), expected);
@@ -3043,7 +3282,7 @@ mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3098,9 +3337,17 @@ mod workspace_phase_tests {
         assert_eq!(n10_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 13);
+        assert_eq!(migrated.schema_version().unwrap(), 14);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
+        let mut before = before;
+        for name in [
+            "worktree_operations",
+            "worktree_project_reservations",
+            "project_worktree_origins",
+        ] {
+            assert!(before.insert(name.into(), vec![]).is_none());
+        }
         assert_eq!(n10_rows(&db), before);
         let reopened = Engine::new(migrated, 2).unwrap();
         n10_set(&reopened, false, 0, "off");
@@ -3400,6 +3647,15 @@ mod workspace_phase_tests {
         tools: bool,
         allow_commands: bool,
     ) -> (Arc<Engine>, String, Arc<AtomicUsize>) {
+        shell_engine_at(root, command, tools, allow_commands, &root.join("shell.db")).await
+    }
+    async fn shell_engine_at(
+        root: &Path,
+        command: &str,
+        tools: bool,
+        allow_commands: bool,
+        db_path: &Path,
+    ) -> (Arc<Engine>, String, Arc<AtomicUsize>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("http://{}/v1", listener.local_addr().unwrap());
         let calls = Arc::new(AtomicUsize::new(0));
@@ -3412,7 +3668,7 @@ mod workspace_phase_tests {
         tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
         });
-        let store = Arc::new(Store::open(&root.join("shell.db")).unwrap());
+        let store = Arc::new(Store::open(db_path).unwrap());
         store
             .save_settings(&Settings {
                 workspace: root.to_string_lossy().into(),
@@ -4225,6 +4481,490 @@ mod workspace_phase_tests {
         )
     }
 
+    fn n13_raw(root: &Path, args: &[&str]) -> String {
+        let out = std::process::Command::new("git")
+            .current_dir(root)
+            .args(args)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env(
+                "GIT_CONFIG_GLOBAL",
+                if cfg!(windows) { "NUL" } else { "/dev/null" },
+            )
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    }
+    async fn n13_completed_fixture(root: &Path) -> (Arc<Engine>, String) {
+        let source = root.join("source");
+        std::fs::create_dir(&source).unwrap();
+        let (engine, task) =
+            two_write_engine_paths_at(&source, SessionKind::Chat, false, &root.join("host.db"))
+                .await;
+        finish_two_writes(&engine, &task, usize::MAX).await;
+        (engine, task)
+    }
+    async fn n13_plan_for_engine(
+        engine: &Engine,
+        parent: &Path,
+    ) -> (
+        crate::worktree_management::CreateWorktree,
+        crate::worktree_management::ProjectInventory,
+        crate::git_worktree::PersistedWorktreePlan,
+    ) {
+        let project = engine.store.current_project().unwrap().project_id.unwrap();
+        let root = engine.store.project_workspace(&project).unwrap();
+        n13_raw(&root, &["init", "--quiet"]);
+        n13_raw(&root, &["config", "user.name", "Fixture"]);
+        n13_raw(&root, &["config", "user.email", "fixture@example.invalid"]);
+        n13_raw(&root, &["config", "core.autocrlf", "false"]);
+        n13_raw(&root, &["add", "--all"]);
+        n13_raw(&root, &["commit", "--quiet", "-m", "quiescent baseline"]);
+        let inventory = engine.store.worktree_inventory().unwrap();
+        let roots = inventory.roots().unwrap();
+        let source = roots
+            .iter()
+            .find(|(id, _)| id == &project)
+            .unwrap()
+            .1
+            .clone();
+        let ctx = crate::git_worktree::GitContext::new(roots.into_iter().map(|(_, r)| r).collect())
+            .unwrap();
+        let request = crate::worktree_management::CreateWorktree {
+            source_project_id: project.clone(),
+            name: "Reserved".into(),
+            parent_path: parent.to_string_lossy().into(),
+            expected_config_revision: engine.store.project_config(&project).unwrap().revision,
+            expected_head: n13_raw(&root, &["rev-parse", "HEAD"]).trim().into(),
+            idempotency_key: id(),
+        };
+        let plan = crate::git_worktree::prepare(
+            &ctx,
+            &source,
+            &crate::workspace_identity::RootIdentity::capture(parent).unwrap(),
+            &id(),
+            &request.expected_head,
+        )
+        .await
+        .unwrap()
+        .into_persisted_plan();
+        (request, inventory, plan)
+    }
+    #[track_caller]
+    fn n13_busy<T: std::fmt::Debug>(result: Result<T>) {
+        let error = result.unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<crate::worktree_management::WorktreeError>(),
+            Some(&crate::worktree_management::WorktreeError::Busy),
+            "actual admission error: {error:#}"
+        );
+    }
+    #[tokio::test]
+    async fn n13_reverse_new_turn_resume_restore_checkpoint_and_registration_are_atomic() {
+        use crate::worktree_management::{WorktreeCause, WorktreeState};
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = n13_completed_fixture(temp.path()).await;
+        let task = engine.store.task(&task_id).unwrap();
+        let context = engine.store.run_context(&task.run_id).unwrap();
+        let (request, inventory, plan) = n13_plan_for_engine(&engine, temp.path()).await;
+        let (receipt, _) = engine
+            .store
+            .claim_worktree(
+                &request,
+                &inventory,
+                std::slice::from_ref(&request.source_project_id),
+                &plan,
+            )
+            .unwrap();
+        let before = n10_rows(&engine.store.db.lock().unwrap());
+        n13_busy(engine.store.resume_task(&task, "blocked resume"));
+        n13_busy(
+            engine
+                .start_in_project(StartInProject {
+                    project_id: request.source_project_id.clone(),
+                    expected_config_revision: request.expected_config_revision,
+                    request: RunRequest {
+                        title: "blocked new".into(),
+                        kind: SessionKind::Chat,
+                        tasks: vec![task.spec.clone()],
+                    },
+                    idempotency_key: id(),
+                })
+                .await,
+        );
+        n13_busy(
+            engine
+                .send_chat_turn(SendChatTurn {
+                    session_id: context.session.id,
+                    agent_id: context.tasks[0].agent_id.clone(),
+                    expected_last_turn_id: context.latest_turn.id,
+                    message: "blocked append".into(),
+                    idempotency_key: id(),
+                })
+                .await,
+        );
+        n13_busy(engine.restore(&task_id).await);
+        n13_busy(
+            engine
+                .create_checkpoint(&task_id, "blocked-checkpoint")
+                .await,
+        );
+        let newroot = temp.path().join("new-project");
+        std::fs::create_dir(&newroot).unwrap();
+        n13_busy(engine.store.register_project(RegisterProject {
+            name: "New".into(),
+            root_path: newroot.to_string_lossy().into(),
+            idempotency_key: id(),
+        }));
+        let original = engine.store.project(&request.source_project_id).unwrap();
+        let key: String = engine
+            .store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT key FROM project_registration_keys WHERE project_id=?1",
+                [&original.id.0],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            engine
+                .store
+                .register_project(RegisterProject {
+                    name: original.name.clone(),
+                    root_path: engine.store.settings().unwrap().unwrap().workspace,
+                    idempotency_key: key
+                })
+                .unwrap()
+                .id,
+            original.id
+        );
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+        engine
+            .store
+            .finish_worktree(
+                &receipt,
+                None,
+                Some((WorktreeState::Rejected, WorktreeCause::Conflict)),
+            )
+            .unwrap();
+        assert!(
+            engine
+                .create_checkpoint(&task_id, "after-release")
+                .await
+                .is_ok()
+        );
+    }
+    #[tokio::test]
+    async fn n13_reverse_approval_creation_approval_claim_and_deny_preserve_old_priority() {
+        use crate::worktree_management::{WorktreeCause, WorktreeState};
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = n13_completed_fixture(temp.path()).await;
+        let mut task = engine.store.task(&task_id).unwrap();
+        let args = json!({"path":"src/a.txt","content":"late"});
+        let calls:Vec<_>=(0..4).map(|i|json!({"id":format!("late-{i}"),"type":"function","function":{"name":"write_file","arguments":args.to_string()}})).collect();
+        task.messages
+            .push(json!({"role":"assistant","tool_calls":calls}));
+        engine.store.save_task(&task).unwrap();
+        let approved = engine
+            .store
+            .ensure_approval(&task, "late-0", "write_file", &args)
+            .unwrap()
+            .0;
+        engine
+            .store
+            .decide_approval(&approved.id, true, "fixture")
+            .unwrap();
+        let pending = engine
+            .store
+            .ensure_approval(&task, "late-1", "write_file", &args)
+            .unwrap()
+            .0;
+        let denied = engine
+            .store
+            .ensure_approval(&task, "late-2", "write_file", &args)
+            .unwrap()
+            .0;
+        let (request, inventory, plan) = n13_plan_for_engine(&engine, temp.path()).await;
+        let (receipt, _) = engine
+            .store
+            .claim_worktree(
+                &request,
+                &inventory,
+                std::slice::from_ref(&request.source_project_id),
+                &plan,
+            )
+            .unwrap();
+        let before = n10_rows(&engine.store.db.lock().unwrap());
+        assert!(
+            !engine
+                .store
+                .ensure_approval(&task, "late-1", "write_file", &args)
+                .unwrap()
+                .1
+        );
+        n13_busy(
+            engine
+                .store
+                .ensure_approval(&task, "late-3", "write_file", &args),
+        );
+        n13_busy(engine.store.decide_approval(&pending.id, true, "fixture"));
+        let mut wrong = args.clone();
+        wrong["content"] = json!("wrong");
+        assert!(matches!(
+            engine
+                .store
+                .claim_approval(&task, "late-0", "write_file", &wrong)
+                .unwrap_err()
+                .downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::BindingConflict { .. })
+        ));
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+        // Controlled persistence injection reaches the last claim guard without violating
+        // the normal completed -> running prohibition through save_task/resume.
+        task.status = "running".into();
+        engine
+            .store
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "UPDATE tasks SET value=?1 WHERE id=?2",
+                rusqlite::params![serde_json::to_string(&task).unwrap(), task.id],
+            )
+            .unwrap();
+        n13_busy(
+            engine
+                .store
+                .claim_approval(&task, "late-0", "write_file", &args),
+        );
+        assert_eq!(
+            engine.store.approval(&approved.id).unwrap().execution_state,
+            approval::ExecutionState::NotStarted
+        );
+        assert_eq!(
+            engine
+                .store
+                .decide_approval(&denied.id, false, "fixture")
+                .unwrap()
+                .status,
+            approval::ApprovalStatus::Denied
+        );
+        engine
+            .store
+            .finish_worktree(
+                &receipt,
+                None,
+                Some((WorktreeState::Rejected, WorktreeCause::Conflict)),
+            )
+            .unwrap();
+        assert_eq!(
+            engine.store.approval(&denied.id).unwrap().status,
+            approval::ApprovalStatus::Denied
+        );
+    }
+    #[tokio::test]
+    async fn n13_reverse_checkpoint_replay_and_restore_seal_precede_reservation() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = n13_completed_fixture(temp.path()).await;
+        let checkpoint = engine
+            .create_checkpoint(&task_id, "existing")
+            .await
+            .unwrap();
+        let (request, inventory, plan) = n13_plan_for_engine(&engine, temp.path()).await;
+        engine
+            .store
+            .claim_worktree(
+                &request,
+                &inventory,
+                std::slice::from_ref(&request.source_project_id),
+                &plan,
+            )
+            .unwrap();
+        let replay = engine
+            .create_checkpoint(&task_id, "existing")
+            .await
+            .unwrap();
+        assert!(replay.replayed);
+        assert_eq!(replay.checkpoint, checkpoint.checkpoint);
+        assert_eq!(
+            engine
+                .store
+                .resume_task(&engine.store.task(&task_id).unwrap(), "sealed")
+                .unwrap_err()
+                .downcast_ref::<crate::checkpoint::CheckpointError>(),
+            Some(&crate::checkpoint::CheckpointError::Conflict)
+        );
+        assert_eq!(
+            engine
+                .create_checkpoint(&task_id, "different")
+                .await
+                .unwrap_err()
+                .downcast_ref::<crate::checkpoint::CheckpointError>(),
+            Some(&crate::checkpoint::CheckpointError::Conflict)
+        );
+    }
+
+    #[tokio::test]
+    async fn n13_reverse_command_ack_replay_and_blocked_ack_are_atomic() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("source");
+        std::fs::create_dir(&source).unwrap();
+        std::fs::write(source.join("baseline.txt"), "baseline").unwrap();
+        let (engine, task_id, calls) = shell_engine_at(
+            &source,
+            "Write-Output 'unused'",
+            true,
+            true,
+            &temp.path().join("host.db"),
+        )
+        .await;
+        let initial = n10_pending(&engine, &task_id).await;
+        engine
+            .decide_approval(&initial.id, false, Some("fixture"))
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine.is_busy() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let mut task = engine.store.task(&task_id).unwrap();
+        assert_eq!(task.status, "completed");
+        let args = json!({"command":"Write-Output 'unused'","timeout_seconds":10});
+        let pending:Vec<_>=(0..3).map(|i|json!({"id":format!("ack-{i}"),"type":"function","function":{"name":"run_command","arguments":args.to_string()}})).collect();
+        task.messages
+            .push(json!({"role":"assistant","tool_calls":pending}));
+        engine.store.save_task(&task).unwrap();
+        let acked = engine
+            .store
+            .ensure_approval(&task, "ack-0", "run_command", &args)
+            .unwrap()
+            .0;
+        let acked = engine
+            .store
+            .decide_approval_with_network_ack(&acked.id, true, "fixture", true)
+            .unwrap();
+        let pending = engine
+            .store
+            .ensure_approval(&task, "ack-1", "run_command", &args)
+            .unwrap()
+            .0;
+        let (request, inventory, plan) = n13_plan_for_engine(&engine, temp.path()).await;
+        engine
+            .store
+            .claim_worktree(
+                &request,
+                &inventory,
+                std::slice::from_ref(&request.source_project_id),
+                &plan,
+            )
+            .unwrap();
+        let before = n10_rows(&engine.store.db.lock().unwrap());
+        let provider_calls = calls.load(Ordering::SeqCst);
+        assert_eq!(
+            engine
+                .store
+                .decide_approval_with_network_ack(&acked.id, true, "fixture", true)
+                .unwrap(),
+            acked
+        );
+        n13_busy(
+            engine
+                .store
+                .decide_approval_with_network_ack(&pending.id, true, "fixture", true),
+        );
+        n13_busy(
+            engine
+                .store
+                .ensure_approval(&task, "ack-2", "run_command", &args),
+        );
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+        assert_eq!(calls.load(Ordering::SeqCst), provider_calls);
+        engine
+            .store
+            .decide_approval(&pending.id, false, "fixture")
+            .unwrap();
+    }
+    #[tokio::test]
+    async fn n13_reverse_existing_restore_replay_and_sealed_resume_precede_reservation() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = n13_completed_fixture(temp.path()).await;
+        let restored = engine.restore(&task_id).await.unwrap();
+        let (request, inventory, plan) = n13_plan_for_engine(&engine, temp.path()).await;
+        engine
+            .store
+            .claim_worktree(
+                &request,
+                &inventory,
+                std::slice::from_ref(&request.source_project_id),
+                &plan,
+            )
+            .unwrap();
+        let before = n10_rows(&engine.store.db.lock().unwrap());
+        assert_eq!(engine.store.claim_restore(&task_id, &[]).unwrap(), restored);
+        assert_eq!(engine.restore(&task_id).await.unwrap(), restored);
+        assert_eq!(
+            engine
+                .store
+                .resume_task(&engine.store.task(&task_id).unwrap(), "sealed")
+                .unwrap_err()
+                .downcast_ref::<crate::store::ResumeError>(),
+            Some(&crate::store::ResumeError::Sealed)
+        );
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+    }
+    #[tokio::test]
+    async fn n13_reverse_actual_running_task_wins_then_cancel_allows_claim() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("source");
+        std::fs::create_dir(&source).unwrap();
+        let (engine, task_id) = two_write_engine_paths_at(
+            &source,
+            SessionKind::Chat,
+            false,
+            &temp.path().join("host.db"),
+        )
+        .await;
+        let _pending = n10_pending(&engine, &task_id).await;
+        let (request, inventory, plan) = n13_plan_for_engine(&engine, temp.path()).await;
+        n13_busy(engine.store.claim_worktree(
+            &request,
+            &inventory,
+            std::slice::from_ref(&request.source_project_id),
+            &plan,
+        ));
+        engine.cancel(&task_id).unwrap();
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine.is_busy() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(engine.store.task(&task_id).unwrap().status, "cancelled");
+        let receipt = engine
+            .store
+            .claim_worktree(
+                &request,
+                &inventory,
+                std::slice::from_ref(&request.source_project_id),
+                &plan,
+            )
+            .unwrap()
+            .0;
+        assert_eq!(
+            receipt.state,
+            crate::worktree_management::WorktreeState::Claimed
+        );
+        assert!(!plan.target_path().exists());
+    }
     async fn two_write_engine(root: &Path) -> (Arc<Engine>, String) {
         two_write_engine_kind(root, SessionKind::Team).await
     }
@@ -4237,6 +4977,14 @@ mod workspace_phase_tests {
         root: &Path,
         kind: SessionKind,
         multiple_paths: bool,
+    ) -> (Arc<Engine>, String) {
+        two_write_engine_paths_at(root, kind, multiple_paths, &root.join("phase.db")).await
+    }
+    async fn two_write_engine_paths_at(
+        root: &Path,
+        kind: SessionKind,
+        multiple_paths: bool,
+        db_path: &Path,
     ) -> (Arc<Engine>, String) {
         std::fs::create_dir_all(root.join("src")).unwrap();
         std::fs::write(root.join("src/a.txt"), "before-a").unwrap();
@@ -4253,7 +5001,7 @@ mod workspace_phase_tests {
         tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
         });
-        let store = Arc::new(Store::open(&root.join("phase.db")).unwrap());
+        let store = Arc::new(Store::open(db_path).unwrap());
         store
             .save_settings(&Settings {
                 workspace: root.to_string_lossy().into(),
