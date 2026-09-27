@@ -2247,4 +2247,82 @@ mod tests {
         runtime.shell_in_flight.store(0, Ordering::SeqCst);
         assert_eq!(status(&runtime).in_flight, 0);
     }
+    #[test]
+    fn s08_durable_acceptance_survives_real_shell_apply_failure_and_replay() {
+        use crate::{engine::Engine, plugin_management::SetPluginEnabled, store::Store};
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("state.sqlite");
+        let store = Arc::new(Store::open(&path).unwrap());
+        let runtime = ToolRuntime::builtin().unwrap();
+        let mode = Arc::new(AtomicUsize::new(0));
+        install_shell_probe(&runtime, mode.clone());
+        shell_reconcile(&runtime, true);
+        let engine = Engine::new_with_runtime_for_test(store.clone(), runtime).unwrap();
+        let files = engine.plugin_status(FILES).unwrap();
+        let sql = rusqlite::Connection::open(&path).unwrap();
+        let files_row = || {
+            sql.query_row("SELECT enabled,revision,updated_at FROM plugin_desired WHERE plugin_id='builtin.files'", [], |r| Ok((r.get::<_,bool>(0)?,r.get::<_,i64>(1)?,r.get::<_,i64>(2)?))).unwrap()
+        };
+        let original_files = files_row();
+        let set = |enabled, revision, key| {
+            engine
+                .set_plugin_enabled(
+                    SHELL,
+                    SetPluginEnabled {
+                        enabled,
+                        expected_revision: revision,
+                    },
+                    key,
+                )
+                .unwrap()
+        };
+        mode.store(2, Ordering::SeqCst);
+        let accepted = set(false, 0, "s08-stop-fails");
+        assert!(!accepted.replayed);
+        assert_eq!(accepted.receipt.revision, 1);
+        assert!(!accepted.current.converged);
+        assert_eq!(accepted.current.runtime.state, FilesRuntimeState::Failed);
+        assert_eq!(accepted.current.runtime.effects_count, 0);
+        assert!(!accepted.current.desired.enabled);
+        let row: (bool,i64,i64) = sql.query_row("SELECT enabled,revision,updated_at FROM plugin_desired WHERE plugin_id='builtin.shell'", [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!(row, (false, 1, accepted.receipt.committed_at));
+        let receipt: (String,bool,i64,i64,i64) = sql.query_row("SELECT plugin_id,enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key='s08-stop-fails'", [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).unwrap();
+        assert_eq!(
+            receipt,
+            (SHELL.into(), false, 0, 1, accepted.receipt.committed_at)
+        );
+        mode.store(0, Ordering::SeqCst);
+        let replay = set(false, 0, "s08-stop-fails");
+        assert!(replay.replayed);
+        assert_eq!(replay.receipt, accepted.receipt);
+        assert_eq!(replay.current, accepted.current); // No reconciliation on replay.
+        let clean = set(false, 1, "s08-explicit-clean");
+        assert_eq!(clean.receipt.revision, 2);
+        assert!(clean.current.converged);
+        assert_eq!(clean.current.runtime.state, FilesRuntimeState::Unloaded);
+        mode.store(4, Ordering::SeqCst); // Genuine missing service registration.
+        let failed_enable = set(true, 2, "s08-enable-fails");
+        assert_eq!(failed_enable.receipt.revision, 3);
+        assert!(failed_enable.current.desired.enabled);
+        assert!(!failed_enable.current.converged);
+        assert_eq!(
+            failed_enable.current.runtime.state,
+            FilesRuntimeState::Failed
+        );
+        mode.store(0, Ordering::SeqCst);
+        assert_eq!(
+            set(true, 2, "s08-enable-fails").current,
+            failed_enable.current
+        );
+        let recovered = set(true, 3, "s08-explicit-recover");
+        assert_eq!(recovered.receipt.revision, 4);
+        assert!(recovered.current.converged);
+        assert_eq!(recovered.current.runtime.effects_count, 1);
+        assert!(!recovered.current.runtime.recovery.is_empty());
+        assert_eq!(engine.plugin_status(FILES).unwrap(), files);
+        assert_eq!(files_row(), original_files);
+        let receipt_counts: (i64,i64) = sql.query_row("SELECT count(*),sum(CASE WHEN plugin_id='builtin.files' THEN 1 ELSE 0 END) FROM plugin_management_requests", [], |r| Ok((r.get(0)?,r.get(1)?))).unwrap();
+        assert_eq!(receipt_counts, (4, 0));
+        assert_eq!(store.plugin_desired_for(SHELL).unwrap().revision, 4);
+    }
 }
