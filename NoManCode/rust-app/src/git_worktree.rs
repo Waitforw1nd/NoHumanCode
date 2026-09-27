@@ -83,7 +83,7 @@ impl RepositorySnapshot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ProjectGitObservation {
     NotGit,
-    Repository(RepositorySnapshot),
+    Repository(Box<RepositorySnapshot>),
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -747,9 +747,9 @@ pub(crate) async fn probe_project_git(
 ) -> Result<ProjectGitObservation> {
     let root = verified(source)?;
     match std::fs::symlink_metadata(root.join(".git")) {
-        Ok(_) => Ok(ProjectGitObservation::Repository(
+        Ok(_) => Ok(ProjectGitObservation::Repository(Box::new(
             inspect_with(ctx, source, None, false).await?,
-        )),
+        ))),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             // Establish absence by walking verified ancestors; a Git exit code
             // 128 alone could also mean permission/configuration failure.
