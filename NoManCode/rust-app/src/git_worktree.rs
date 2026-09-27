@@ -281,7 +281,15 @@ async fn run(
     deadline: Instant,
     mutating: bool,
 ) -> Result<Output> {
+    #[cfg(all(test, windows))]
+    let trace = command
+        .as_std()
+        .get_program()
+        .to_string_lossy()
+        .ends_with("pwsh.exe");
     let mut child = command.spawn().map_err(|_| GitWorktreeError::Unavailable)?;
+    #[cfg(all(test, windows))]
+    let observation = trace.then(|| tests::ProcessObservation::capture(&child));
     let result = timeout_at(deadline, async {
         let stdout = child.stdout.take().ok_or(GitWorktreeError::Unavailable)?;
         let stderr = child.stderr.take().ok_or(GitWorktreeError::Unavailable)?;
@@ -302,8 +310,13 @@ async fn run(
         Ok(Ok(out)) if !mutating || out.code == Some(0) => Ok(out),
         other => {
             let deadline = Instant::now() + Duration::from_secs(5);
-            let _ = child.start_kill();
-            let _ = timeout_at(deadline, child.wait()).await;
+            let kill_result = child.start_kill();
+            let wait_result = timeout_at(deadline, child.wait()).await;
+            #[cfg(all(test, windows))]
+            if let Some(observation) = &observation {
+                eprintln!("D08 cleanup pid={} created={} signal={} kill={kill_result:?} wait={wait_result:?}", observation.pid, observation.created, observation.signal());
+            }
+            let _ = (kill_result, wait_result);
             if mutating {
                 Err(GitWorktreeError::OutcomeUnknown)
             } else {
@@ -1178,6 +1191,55 @@ fn same_path(left: &Path, right: &Path) -> bool {
 mod tests {
     use super::*;
     use std::process::Command as SyncCommand;
+    #[cfg(windows)]
+    struct ProcessObservation {
+        handle: std::os::windows::io::OwnedHandle,
+        pid: u32,
+        created: u64,
+    }
+    #[cfg(windows)]
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetProcessTimes(
+            handle: *mut std::ffi::c_void,
+            created: *mut u64,
+            exited: *mut u64,
+            kernel: *mut u64,
+            user: *mut u64,
+        ) -> i32;
+        fn WaitForSingleObject(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
+    }
+    #[cfg(windows)]
+    impl ProcessObservation {
+        fn capture(child: &tokio::process::Child) -> Self {
+            use std::os::windows::io::{AsRawHandle, BorrowedHandle};
+            let handle = unsafe { BorrowedHandle::borrow_raw(child.raw_handle().unwrap()) }
+                .try_clone_to_owned()
+                .unwrap();
+            let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
+            assert_ne!(
+                unsafe {
+                    GetProcessTimes(
+                        handle.as_raw_handle(),
+                        &mut created,
+                        &mut exited,
+                        &mut kernel,
+                        &mut user,
+                    )
+                },
+                0
+            );
+            Self {
+                handle,
+                pid: child.id().unwrap(),
+                created,
+            }
+        }
+        fn signal(&self) -> u32 {
+            use std::os::windows::io::AsRawHandle;
+            unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) }
+        }
+    }
     struct Fixture {
         _temp: tempfile::TempDir,
         source: PathBuf,
@@ -2110,7 +2172,7 @@ mod tests {
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                &format!("if(Get-Process -Id {pid} -ErrorAction SilentlyContinue) {{ exit 9 }}"),
+                &format!("$p=Get-Process -Id {pid} -ErrorAction SilentlyContinue; if($p) {{ Write-Output ('D08 query_pid='+$PID+' target_pid='+$p.Id+' target_start='+$p.StartTime.ToFileTimeUtc()+' target_name='+$p.ProcessName); exit 9 }}"),
             ])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -2118,14 +2180,15 @@ mod tests {
             .kill_on_drop(true);
         #[cfg(windows)]
         query.creation_flags(0x08000000);
-        assert_eq!(
-            run(query, 1024, Instant::now() + Duration::from_secs(5), false)
-                .await
-                .unwrap()
-                .code,
-            Some(0),
-            "fixture process {pid} survived"
+        let output = run(query, 1024, Instant::now() + Duration::from_secs(5), false)
+            .await
+            .unwrap();
+        eprintln!(
+            "D08 query target={pid} code={:?} output={}",
+            output.code,
+            String::from_utf8_lossy(&output.bytes)
         );
+        assert_eq!(output.code, Some(0), "fixture process {pid} survived");
     }
     #[tokio::test]
     async fn w06_output_overflow_terminates_and_reaps_real_child() {
