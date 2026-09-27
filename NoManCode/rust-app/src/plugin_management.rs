@@ -5,6 +5,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 
 pub const BUILTIN_FILES_ID: &str = "builtin.files";
+pub const BUILTIN_SHELL_ID: &str = "builtin.shell";
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PluginDesired {
     pub plugin_id: String,
@@ -66,20 +67,35 @@ impl std::fmt::Display for PluginManagementError {
 impl std::error::Error for PluginManagementError {}
 
 pub(crate) fn validate_plugin_id(id: &str) -> Result<()> {
-    if id != BUILTIN_FILES_ID {
+    if !matches!(id, BUILTIN_FILES_ID | BUILTIN_SHELL_ID) {
         return Err(PluginManagementError::NotFound.into());
     }
     Ok(())
 }
 pub(crate) fn desired_tx(db: &Connection) -> Result<PluginDesired> {
+    desired_for_tx(db, BUILTIN_FILES_ID)
+}
+pub(crate) fn desired_for_tx(db: &Connection, id: &str) -> Result<PluginDesired> {
+    validate_plugin_id(id)?;
     let desired = db.query_row(
-        "SELECT plugin_id,enabled,revision,updated_at FROM plugin_desired WHERE plugin_id='builtin.files'",
-        [], |r| Ok(PluginDesired { plugin_id: r.get(0)?, enabled: r.get(1)?, revision: r.get(2)?, updated_at: r.get(3)? }),
+        "SELECT plugin_id,enabled,revision,updated_at FROM plugin_desired WHERE plugin_id=?1",
+        [id],
+        |r| {
+            Ok(PluginDesired {
+                plugin_id: r.get(0)?,
+                enabled: r.get(1)?,
+                revision: r.get(2)?,
+                updated_at: r.get(3)?,
+            })
+        },
     )?;
     Ok(desired)
 }
 pub(crate) fn ensure_files_enabled_tx(db: &Connection) -> Result<()> {
-    if !desired_tx(db)?.enabled {
+    ensure_plugin_enabled_tx(db, BUILTIN_FILES_ID)
+}
+pub(crate) fn ensure_plugin_enabled_tx(db: &Connection, id: &str) -> Result<()> {
+    if !desired_for_tx(db, id)?.enabled {
         return Err(PluginManagementError::Unavailable.into());
     }
     Ok(())
@@ -91,6 +107,26 @@ impl Store {
             .lock()
             .map_err(|_| PluginManagementError::Internal)?;
         desired_tx(&db)
+    }
+    pub(crate) fn plugin_desired_for(&self, id: &str) -> Result<PluginDesired> {
+        if id == BUILTIN_FILES_ID {
+            return self.plugin_desired();
+        }
+        let db = self
+            .db
+            .lock()
+            .map_err(|_| PluginManagementError::Internal)?;
+        desired_for_tx(&db, id)
+    }
+    pub(crate) fn builtin_plugin_states(&self) -> Result<(PluginDesired, PluginDesired)> {
+        let db = self
+            .db
+            .lock()
+            .map_err(|_| PluginManagementError::Internal)?;
+        Ok((
+            desired_for_tx(&db, BUILTIN_FILES_ID)?,
+            desired_for_tx(&db, BUILTIN_SHELL_ID)?,
+        ))
     }
     // Caller holds the runtime management lock. Never calls runtime from Store.
     pub(crate) fn set_plugin_desired(
@@ -124,7 +160,7 @@ impl Store {
             tx.commit()?;
             return Ok((receipt, true));
         }
-        let current = desired_tx(&tx)?;
+        let current = desired_for_tx(&tx, id)?;
         if current.revision != request.expected_revision || current.revision == i64::MAX as u64 {
             return Err(PluginManagementError::RevisionConflict.into());
         }
@@ -172,6 +208,43 @@ mod tests {
         assert_eq!(
             result.unwrap_err().downcast_ref::<PluginManagementError>(),
             Some(&expected)
+        );
+    }
+    #[test]
+    fn shell_global_key_and_independent_revisions() {
+        let (_dir, store) = store();
+        let (files, shell) = store.builtin_plugin_states().unwrap();
+        assert_eq!((files.revision, shell.revision), (0, 0));
+        let first = store
+            .set_plugin_desired(BUILTIN_FILES_ID, &request(false, 0), "shared")
+            .unwrap()
+            .0;
+        let before = store.builtin_plugin_states().unwrap();
+        error(
+            store.set_plugin_desired(BUILTIN_SHELL_ID, &request(false, 0), "shared"),
+            PluginManagementError::IdempotencyConflict,
+        );
+        assert_eq!(before, store.builtin_plugin_states().unwrap());
+        let shell = store
+            .set_plugin_desired(BUILTIN_SHELL_ID, &request(true, 0), "shell")
+            .unwrap()
+            .0;
+        assert_eq!(shell.revision, 1);
+        assert_eq!(
+            store.plugin_desired_for(BUILTIN_FILES_ID).unwrap().revision,
+            1
+        );
+        assert_eq!(
+            store
+                .set_plugin_desired(BUILTIN_FILES_ID, &request(false, 0), "shared")
+                .unwrap(),
+            (first, true)
+        );
+        assert_eq!(
+            store
+                .set_plugin_desired(BUILTIN_SHELL_ID, &request(true, 0), "shell")
+                .unwrap(),
+            (shell, true)
         );
     }
     #[test]
@@ -247,7 +320,10 @@ mod tests {
             .db
             .lock()
             .unwrap()
-            .execute("UPDATE plugin_desired SET revision=?1", [i64::MAX])
+            .execute(
+                "UPDATE plugin_desired SET revision=?1 WHERE plugin_id='builtin.files'",
+                [i64::MAX],
+            )
             .unwrap();
         error(
             store.set_plugin_desired(
@@ -331,7 +407,7 @@ mod tests {
         assert_eq!(count, 1);
     }
     #[test]
-    fn schema_12_reopen_marker_constraint_and_data_corruption_rejected() {
+    fn schema_13_reopen_marker_constraint_and_data_corruption_rejected() {
         for mode in [
             "marker",
             "constraint",
@@ -342,7 +418,7 @@ mod tests {
             "receipt",
         ] {
             let (dir, store) = store();
-            assert_eq!(store.schema_version().unwrap(), 12);
+            assert_eq!(store.schema_version().unwrap(), 13);
             assert_eq!(
                 Store::open(&dir.path().join("state.sqlite"))
                     .unwrap()
@@ -429,8 +505,24 @@ impl PluginStatus {
         runtime: crate::tool_runtime::FilesRuntimeStatus,
     ) -> Self {
         use crate::tool_runtime::{FilesInstanceState, FilesRuntimeState};
+        let shell = desired.plugin_id == BUILTIN_SHELL_ID;
+        let dependent = if shell {
+            "builtin.engine-shell-tools"
+        } else {
+            "builtin.engine-tools"
+        };
+        let version = if shell {
+            crate::tool_runtime::SHELL_PLUGIN_VERSION
+        } else {
+            crate::tool_runtime::FILES_PLUGIN_VERSION
+        };
+        let tools: &[&str] = if shell {
+            &crate::tool_runtime::SHELL_TOOLS
+        } else {
+            &crate::tool_runtime::FILE_TOOLS
+        };
         let complete_instances = runtime.instances.len() == 2
-            && [BUILTIN_FILES_ID, "builtin.engine-tools"]
+            && [desired.plugin_id.as_str(), dependent]
                 .iter()
                 .all(|id| runtime.instances.iter().any(|i| i.plugin_id == *id));
         let converged = if desired.enabled {
@@ -467,20 +559,17 @@ impl PluginStatus {
             None
         };
         Self {
-            plugin_id: BUILTIN_FILES_ID.into(),
-            version: crate::tool_runtime::FILES_PLUGIN_VERSION.into(),
+            plugin_id: desired.plugin_id.clone(),
+            version: version.into(),
             scope: "host".into(),
             desired,
             runtime,
-            affected_tools: crate::tool_runtime::FILE_TOOLS
-                .iter()
-                .map(|name| (*name).into())
-                .collect(),
+            affected_tools: tools.iter().map(|name| (*name).into()).collect(),
             compat_tools: crate::tool_runtime::COMPAT_TOOLS
                 .iter()
                 .map(|name| (*name).into())
                 .collect(),
-            affected_dependents: vec!["builtin.engine-tools".into()],
+            affected_dependents: vec![dependent.into()],
             converged,
             blocked_reason,
         }
