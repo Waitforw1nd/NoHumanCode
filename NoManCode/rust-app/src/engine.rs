@@ -519,6 +519,8 @@ struct Active {
     workspace: String,
     scopes: Vec<String>,
 }
+#[cfg(test)]
+type ShellClaimProbe = (String, Arc<dyn Fn() + Send + Sync>);
 pub struct Engine {
     pub store: Arc<Store>,
     pub client: crate::provider_transport::ProviderClient,
@@ -535,11 +537,27 @@ pub struct Engine {
     plugin_commit_probe: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     #[cfg(test)]
     restore_probe: Mutex<Option<restore_probe::Hook>>,
+    #[cfg(test)]
+    shell_claim_probe: Mutex<Option<ShellClaimProbe>>,
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
         let (files, shell) = store.builtin_plugin_states()?;
         let tool_runtime = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
+        Self::assemble(store, max_concurrency, tool_runtime)
+    }
+    #[cfg(test)]
+    pub(crate) fn new_with_runtime_for_test(
+        store: Arc<Store>,
+        runtime: ToolRuntime,
+    ) -> Result<Arc<Self>> {
+        Self::assemble(store, 2, runtime)
+    }
+    fn assemble(
+        store: Arc<Store>,
+        max_concurrency: usize,
+        tool_runtime: ToolRuntime,
+    ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
             store,
             client: provider::client()?,
@@ -556,6 +574,8 @@ impl Engine {
             plugin_commit_probe: Mutex::new(None),
             #[cfg(test)]
             restore_probe: Mutex::new(None),
+            #[cfg(test)]
+            shell_claim_probe: Mutex::new(None),
         }))
     }
     #[cfg(test)]
@@ -1486,6 +1506,19 @@ impl Engine {
                         let (lease, claimed) = self.tool_runtime.acquire(task, name, || {
                             self.store.claim_approval(task, tool_call_id, name, args)
                         })?;
+                        #[cfg(test)]
+                        if name == "run_command" {
+                            let probe = self
+                                .shell_claim_probe
+                                .lock()
+                                .unwrap()
+                                .as_ref()
+                                .filter(|(id, _)| id == &task.id)
+                                .map(|(_, f)| f.clone());
+                            if let Some(probe) = probe {
+                                probe();
+                            }
+                        }
                         self.perform_tool(
                             task,
                             tool_call_id,
@@ -3338,6 +3371,548 @@ mod workspace_phase_tests {
                 1
             );
         }
+    }
+
+    #[derive(Clone)]
+    struct ShellFixture {
+        calls: Arc<AtomicUsize>,
+        command: String,
+    }
+    async fn shell_reply(
+        State(state): State<ShellFixture>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        let index = state.calls.fetch_add(1, Ordering::SeqCst);
+        let delta = if index == 0 {
+            json!({"tool_calls":[{"index":0,"id":"shell-call","type":"function","function":{"name":"run_command","arguments":json!({"command":state.command,"timeout_seconds":10}).to_string()}}]})
+        } else {
+            json!({"content":"done"})
+        };
+        let chunk = json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+    async fn shell_engine(
+        root: &Path,
+        command: &str,
+        tools: bool,
+        allow_commands: bool,
+    ) -> (Arc<Engine>, String, Arc<AtomicUsize>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let calls = Arc::new(AtomicUsize::new(0));
+        let app = Router::new()
+            .route("/v1/chat/completions", post(shell_reply))
+            .with_state(ShellFixture {
+                calls: calls.clone(),
+                command: command.into(),
+            });
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let store = Arc::new(Store::open(&root.join("shell.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: root.to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 64,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route", "shell-fixture-key").unwrap();
+        authorize_fixture(&store);
+        let engine =
+            Engine::new_with_runtime_for_test(store, ToolRuntime::builtin().unwrap()).unwrap();
+        let task = engine
+            .start(RunRequest {
+                title: "shell".into(),
+                kind: SessionKind::Team,
+                tasks: vec![TaskSpec {
+                    name: "shell".into(),
+                    role: "shell".into(),
+                    route_id: "route".into(),
+                    prompt: "command".into(),
+                    depends_on: vec![],
+                    write_scopes: vec![],
+                    tools,
+                    allow_commands,
+                    max_rounds: 3,
+                }],
+            })
+            .await
+            .unwrap()
+            .tasks
+            .remove(0);
+        (engine, task.id, calls)
+    }
+    fn shell_set(
+        engine: &Engine,
+        enabled: bool,
+        revision: u64,
+        key: &str,
+    ) -> crate::plugin_management::PluginMutationResult {
+        engine
+            .set_plugin_enabled(
+                crate::plugin_management::BUILTIN_SHELL_ID,
+                crate::plugin_management::SetPluginEnabled {
+                    enabled,
+                    expected_revision: revision,
+                },
+                key,
+            )
+            .unwrap()
+    }
+    fn assert_no_shell_execution(engine: &Engine, task_id: &str, calls: &AtomicUsize, root: &Path) {
+        let task = engine.store.task(task_id).unwrap();
+        assert!(!root.join("shell-marker.txt").exists());
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert!(!task.messages.iter().any(|m| m["role"] == "tool"));
+        let events = engine.store.events(&task.run_id, 0).unwrap();
+        assert!(
+            !events
+                .iter()
+                .any(|e| matches!(e.kind.as_str(), "tool_start" | "tool_result"))
+        );
+        assert_eq!(
+            engine
+                .plugin_status("builtin.shell")
+                .unwrap()
+                .runtime
+                .in_flight,
+            0
+        );
+    }
+    #[tokio::test]
+    async fn n12_pending_disable_then_approval_ack_keeps_decision_without_claim() {
+        for durable_only in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, id, calls) = shell_engine(
+                temp.path(),
+                "[IO.File]::WriteAllText('shell-marker.txt','executed')",
+                true,
+                true,
+            )
+            .await;
+            let pending = n10_pending(&engine, &id).await;
+            let files = engine.plugin_status("builtin.files").unwrap();
+            if durable_only {
+                engine
+                    .store
+                    .set_plugin_desired(
+                        "builtin.shell",
+                        &crate::plugin_management::SetPluginEnabled {
+                            enabled: false,
+                            expected_revision: 0,
+                        },
+                        "durable-off",
+                    )
+                    .unwrap();
+                assert!(
+                    engine
+                        .plugin_status("builtin.shell")
+                        .unwrap()
+                        .runtime
+                        .admission_open
+                );
+            } else {
+                shell_set(&engine, false, 0, "shell-off");
+            }
+            engine
+                .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+                .unwrap();
+            if durable_only {
+                let task = engine.store.task(&id).unwrap();
+                let args = serde_json::from_str::<Value>(
+                    task.messages
+                        .iter()
+                        .find_map(|m| m["tool_calls"].as_array())
+                        .unwrap()[0]["function"]["arguments"]
+                        .as_str()
+                        .unwrap(),
+                )
+                .unwrap();
+                let error = engine
+                    .store
+                    .claim_approval(&task, "shell-call", "run_command", &args)
+                    .unwrap_err();
+                assert_eq!(
+                    error.downcast_ref::<crate::plugin_management::PluginManagementError>(),
+                    Some(&crate::plugin_management::PluginManagementError::Unavailable)
+                );
+            }
+            n10_idle(&engine).await;
+            let approved = engine.store.approval(&pending.id).unwrap();
+            assert_eq!(approved.status, ApprovalStatus::Approved);
+            assert_eq!(
+                approved.command_network_ack,
+                approval::CommandNetworkAck::Acknowledged
+            );
+            assert_eq!(
+                approved.execution_state,
+                approval::ExecutionState::NotStarted
+            );
+            assert_no_shell_execution(&engine, &id, &calls, temp.path());
+            assert_eq!(engine.plugin_status("builtin.files").unwrap(), files);
+        }
+    }
+    #[tokio::test]
+    async fn n12_shell_tools_commands_project_and_ack_are_required() {
+        for (tools, allow) in [(false, false), (true, false)] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, id, calls) = shell_engine(
+                temp.path(),
+                "[IO.File]::WriteAllText('shell-marker.txt','executed')",
+                tools,
+                allow,
+            )
+            .await;
+            n10_idle(&engine).await;
+            assert!(engine.store.approvals_for_task(&id).unwrap().is_empty());
+            assert_no_shell_execution(&engine, &id, &calls, temp.path());
+        }
+        for revoke in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, id, calls) = shell_engine(
+                temp.path(),
+                "[IO.File]::WriteAllText('shell-marker.txt','executed')",
+                true,
+                true,
+            )
+            .await;
+            let pending = n10_pending(&engine, &id).await;
+            if revoke {
+                engine
+                    .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+                    .unwrap();
+                let project = engine.store.current_project().unwrap().project_id.unwrap();
+                let old = engine.store.project_config(&project).unwrap();
+                let mut config = old.config;
+                config.allow_commands = false;
+                engine
+                    .store
+                    .configure_project(ConfigureProject {
+                        project_id: project,
+                        expected_revision: old.revision,
+                        config,
+                    })
+                    .unwrap();
+                n10_idle(&engine).await;
+            } else {
+                assert!(matches!(
+                    engine
+                        .decide_approval(&pending.id, true, Some("test"))
+                        .unwrap_err()
+                        .downcast_ref::<approval::ApprovalError>(),
+                    Some(approval::ApprovalError::NetworkAcknowledgementRequired { .. })
+                ));
+                assert_eq!(
+                    engine.store.approval(&pending.id).unwrap().status,
+                    ApprovalStatus::Pending
+                );
+                engine.cancel(&id).unwrap();
+                n10_idle(&engine).await;
+            }
+            assert_no_shell_execution(&engine, &id, &calls, temp.path());
+        }
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn n12_claimed_shell_finishes_after_disable_and_normal_cancel() {
+        for cancel in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine,id,calls)=shell_engine(temp.path(),"[IO.File]::WriteAllText('shell-marker.txt','executed'); Write-Output 'shell-complete'",true,true).await;
+            let pending = n10_pending(&engine, &id).await;
+            let files = engine.plugin_status("builtin.files").unwrap();
+            let (ready_tx, ready_rx) = oneshot::channel();
+            let ready = Mutex::new(Some(ready_tx));
+            let (release_tx, release_rx) = std::sync::mpsc::channel();
+            let release = Mutex::new(release_rx);
+            *engine.shell_claim_probe.lock().unwrap() = Some((
+                id.clone(),
+                Arc::new(move || {
+                    ready.lock().unwrap().take().unwrap().send(()).unwrap();
+                    release
+                        .lock()
+                        .unwrap()
+                        .recv_timeout(Duration::from_secs(8))
+                        .unwrap();
+                }),
+            ));
+            engine
+                .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+                .unwrap();
+            tokio::time::timeout(Duration::from_secs(8), ready_rx)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                engine.store.approval(&pending.id).unwrap().execution_state,
+                approval::ExecutionState::Claimed
+            );
+            assert!(!temp.path().join("shell-marker.txt").exists());
+            let disabled = shell_set(&engine, false, 0, "disable-claimed");
+            assert!(disabled.current.converged && disabled.current.runtime.draining);
+            assert_eq!(disabled.current.runtime.in_flight, 1);
+            assert_eq!(disabled.current.runtime.effects_count, 0);
+            assert_eq!(engine.plugin_status("builtin.files").unwrap(), files);
+            let task = engine.store.task(&id).unwrap();
+            assert!(
+                engine
+                    .tool_runtime
+                    .acquire(&task, "run_command", || Ok(()))
+                    .is_err()
+            );
+            if cancel {
+                engine.cancel(&id).unwrap();
+            }
+            release_tx.send(()).unwrap();
+            n10_idle(&engine).await;
+            assert_eq!(
+                std::fs::read_to_string(temp.path().join("shell-marker.txt")).unwrap(),
+                "executed"
+            );
+            assert_eq!(
+                engine.store.approval(&pending.id).unwrap().execution_state,
+                approval::ExecutionState::Finished
+            );
+            let task = engine.store.task(&id).unwrap();
+            let outputs: Vec<_> = task
+                .messages
+                .iter()
+                .filter(|m| m["role"] == "tool")
+                .collect();
+            assert_eq!(outputs.len(), 1);
+            let result: Value =
+                serde_json::from_str(outputs[0]["content"].as_str().unwrap()).unwrap();
+            assert_eq!(result["exit_code"], 0);
+            assert!(
+                result["stdout"]
+                    .as_str()
+                    .unwrap()
+                    .contains("shell-complete")
+            );
+            let events = engine.store.events(&task.run_id, 0).unwrap();
+            assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
+            assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 1);
+            assert_eq!(calls.load(Ordering::SeqCst), if cancel { 1 } else { 2 });
+            assert_eq!(
+                engine
+                    .plugin_status("builtin.shell")
+                    .unwrap()
+                    .runtime
+                    .in_flight,
+                0
+            );
+            assert_eq!(engine.plugin_status("builtin.files").unwrap(), files);
+        }
+    }
+
+    #[tokio::test]
+    async fn n12_spawned_typed_unknown_keeps_claim_and_stops_provider() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, id, calls) = shell_engine(
+            temp.path(),
+            "Start-Sleep -Seconds 9; [IO.File]::WriteAllText('shell-marker.txt','unexpected')",
+            true,
+            true,
+        )
+        .await;
+        let pending = n10_pending(&engine, &id).await;
+        let _fault = crate::command_execution::unknown_after_spawn_once(&id);
+        engine
+            .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+            .unwrap();
+        n10_idle(&engine).await;
+        let record = engine.store.approval(&pending.id).unwrap();
+        assert_eq!(record.status, ApprovalStatus::Approved);
+        assert_eq!(
+            record.command_network_ack,
+            approval::CommandNetworkAck::Acknowledged
+        );
+        assert_eq!(record.execution_state, approval::ExecutionState::Claimed);
+        let task = engine.store.task(&id).unwrap();
+        assert_eq!(task.status, "failed");
+        assert!(!task.messages.iter().any(|m| m["role"] == "tool"));
+        let events = engine.store.events(&task.run_id, 0).unwrap();
+        assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
+        assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 0);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            engine
+                .plugin_status("builtin.shell")
+                .unwrap()
+                .runtime
+                .in_flight,
+            0
+        );
+        assert!(matches!(
+            engine
+                .resume(&id, "must not retry")
+                .await
+                .unwrap_err()
+                .downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::UnknownResult { .. })
+        ));
+        let before = n10_rows(&engine.store.db.lock().unwrap());
+        shell_set(&engine, false, 0, "unknown-off");
+        shell_set(&engine, true, 1, "unknown-on");
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+        drop(engine);
+        let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
+        assert!(store.recover().unwrap() > 0);
+        assert_eq!(
+            store.approval(&pending.id).unwrap().execution_state,
+            approval::ExecutionState::Unknown
+        );
+        let after = n10_rows(&store.db.lock().unwrap());
+        for table in [
+            "task_network_bindings",
+            "network_authorizations",
+            "task_project_bindings",
+        ] {
+            assert_eq!(after[table], before[table]);
+        }
+        let restarted = Engine::new(store, 2).unwrap();
+        assert!(matches!(
+            restarted
+                .resume(&id, "still must not retry")
+                .await
+                .unwrap_err()
+                .downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::UnknownResult { .. })
+        ));
+        assert_eq!(n10_rows(&restarted.store.db.lock().unwrap()), after);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert!(!temp.path().join("shell-marker.txt").exists());
+        eprintln!(
+            "S06: task-scoped test injection after real spawn; typed unknown preserved claim, not a claim of actual OS cleanup failure"
+        );
+    }
+    #[test]
+    fn n12_claim_before_spawn_child_kill_wait_recovers_unknown_without_retry() {
+        const TEST: &str = "engine::workspace_phase_tests::n12_claim_before_spawn_child_kill_wait_recovers_unknown_without_retry";
+        if let Ok(root) = std::env::var("NHC_SHELL_CLAIM_CHILD") {
+            let root = std::path::PathBuf::from(root);
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                let (engine, id, _) = shell_engine(
+                    &root,
+                    "[IO.File]::WriteAllText('shell-marker.txt','unexpected')",
+                    true,
+                    true,
+                )
+                .await;
+                let pending = n10_pending(&engine, &id).await;
+                let signal = root.join("claimed.json");
+                let payload =
+                    serde_json::to_vec(&json!({"task_id":id,"approval_id":pending.id})).unwrap();
+                *engine.shell_claim_probe.lock().unwrap() = Some((
+                    id.clone(),
+                    Arc::new(move || {
+                        let staging = signal.with_extension("tmp");
+                        std::fs::write(&staging, &payload).unwrap();
+                        std::fs::rename(staging, &signal).unwrap();
+                        let deadline = Instant::now() + Duration::from_secs(20);
+                        while Instant::now() < deadline {
+                            std::thread::park_timeout(Duration::from_millis(20));
+                        }
+                        panic!("parent did not stop claimed child within bound");
+                    }),
+                ));
+                engine
+                    .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+                    .unwrap();
+                n10_idle(&engine).await;
+                panic!("claim stop point unexpectedly returned");
+            });
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let output = std::fs::File::create(temp.path().join("child.log")).unwrap();
+        let mut child = ChildGuard(Some(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_SHELL_CLAIM_CHILD", temp.path())
+                .stdout(Stdio::from(output.try_clone().unwrap()))
+                .stderr(Stdio::from(output))
+                .spawn()
+                .unwrap(),
+        ));
+        let signal = temp.path().join("claimed.json");
+        let deadline = Instant::now() + Duration::from_secs(12);
+        while !signal.exists() && Instant::now() < deadline {
+            assert!(
+                child.0.as_mut().unwrap().try_wait().unwrap().is_none(),
+                "child exited: {}",
+                std::fs::read_to_string(temp.path().join("child.log")).unwrap()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(signal.exists(), "claim signal timed out");
+        let payload: Value = serde_json::from_slice(&std::fs::read(&signal).unwrap()).unwrap();
+        let task_id = payload["task_id"].as_str().unwrap();
+        let approval_id = payload["approval_id"].as_str().unwrap();
+        let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
+        assert_eq!(
+            store.approval(approval_id).unwrap().execution_state,
+            approval::ExecutionState::Claimed
+        );
+        let before = n10_rows(&store.db.lock().unwrap());
+        assert!(!temp.path().join("shell-marker.txt").exists());
+        let exit = child.stop();
+        assert!(!exit.success());
+        eprintln!("S09: actual claim-before-spawn child kill+wait complete: {exit}");
+        drop(store);
+        let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
+        assert!(store.recover().unwrap() > 0);
+        assert_eq!(
+            store.approval(approval_id).unwrap().execution_state,
+            approval::ExecutionState::Unknown
+        );
+        assert_eq!(store.task(task_id).unwrap().status, "interrupted");
+        let after = n10_rows(&store.db.lock().unwrap());
+        for table in [
+            "task_network_bindings",
+            "network_authorizations",
+            "task_project_bindings",
+        ] {
+            assert_eq!(after[table], before[table]);
+        }
+        let engine = Engine::new(store, 2).unwrap();
+        shell_set(&engine, false, 0, "crash-off");
+        shell_set(&engine, true, 1, "crash-on");
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), after);
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            assert!(matches!(
+                engine
+                    .resume(task_id, "must not retry")
+                    .await
+                    .unwrap_err()
+                    .downcast_ref::<approval::ApprovalError>(),
+                Some(approval::ApprovalError::UnknownResult { .. })
+            ));
+        });
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), after);
+        assert!(!engine.is_busy());
+        assert!(!temp.path().join("shell-marker.txt").exists());
+        let task = engine.store.task(task_id).unwrap();
+        assert!(!task.messages.iter().any(|m| m["role"] == "tool"));
+        assert!(
+            !engine
+                .store
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .any(|e| matches!(e.kind.as_str(), "tool_start" | "tool_result"))
+        );
     }
 
     impl ChildGuard {
