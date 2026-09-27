@@ -455,7 +455,7 @@ async fn w09_cli_broken_stdout_after_create_reports_unknown_without_retry() {
 async fn w09_cli_windows_path_spellings_are_lexical_without_filesystem_access() {
     let p = parent();
     let mut r = receipt("succeeded");
-    let target = r["target_path"].as_str().unwrap().replace('/', '\\');
+    let target = r["target_path"].as_str().unwrap().replace('/', "\\");
     r["target_path"] = json!(if target.starts_with("\\\\?\\") {
         target.to_ascii_uppercase()
     } else {
