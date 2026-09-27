@@ -466,12 +466,7 @@ mod tests {
             let after = b02_snapshot(&db);
             for (name, old) in &before {
                 let rows = &after.iter().find(|(n, _)| n == name).unwrap().1;
-                if name == "plugin_desired" {
-                    assert_eq!(rows.len(), old.len() + 1);
-                    for row in old {
-                        assert!(rows.contains(row));
-                    }
-                } else if name == "schema_migrations" {
+                if name == "plugin_desired" || name == "schema_migrations" {
                     assert_eq!(rows.len(), old.len() + 1);
                     for row in old {
                         assert!(rows.contains(row));
