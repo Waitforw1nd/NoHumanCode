@@ -294,7 +294,26 @@ impl FilesControl<'_> {
     pub(crate) fn reconcile(&mut self, enabled: bool) -> FilesRuntimeStatus {
         self.state.admission_open = false;
         if !enabled {
-            self.stop_active();
+            let previously_failed = self.state.apply_failed
+                || self
+                    .state
+                    .host
+                    .instances()
+                    .iter()
+                    .any(|i| matches!(i.state, InstanceState::Failed { .. }));
+            // A new disabled intent can explicitly finish cleanup from an older
+            // failure. Never conceal a failure produced by this very stop.
+            if self.stop_active() && previously_failed {
+                let mut unloaded = true;
+                for id in [CONSUMER, FILES] {
+                    if self.state.host.instances().iter().any(|i| i.id == id)
+                        && self.state.host.unload(id).is_err()
+                    {
+                        unloaded = false;
+                    }
+                }
+                self.state.apply_failed = !unloaded;
+            }
             return self.snapshot();
         }
         if ToolRuntime::files_active(&self.state.host) && !self.state.apply_failed {
@@ -417,6 +436,9 @@ impl ToolRuntime {
             })
         });
         host.with_factory(CONSUMER, || Box::new(ConsumerPlugin));
+        Self::from_host(host, enabled)
+    }
+    fn from_host(host: PluginHost, enabled: bool) -> Result<Self> {
         let runtime = Self {
             host: Mutex::new(RuntimeState {
                 host,
@@ -594,11 +616,11 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::sync::{
-        Barrier,
         atomic::{AtomicUsize, Ordering},
         mpsc,
     };
 
+    const WAIT: std::time::Duration = std::time::Duration::from_secs(5);
     fn task(root: &str) -> Task {
         serde_json::from_value(json!({"id":"task","run_id":"run",
             "spec":{"name":"worker","role":"test","route_id":"route","prompt":"test",
@@ -655,26 +677,24 @@ mod tests {
         let (runtime, hits) = marker_runtime();
         let runtime = Arc::new(runtime);
         let task = task("unused");
-        let entered = Arc::new(Barrier::new(2));
-        let release = Arc::new(Barrier::new(2));
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
         let (attempt_tx, attempt_rx) = mpsc::channel();
         let (done_tx, done_rx) = mpsc::channel();
         let acquired = {
             let runtime = runtime.clone();
             let task = task.clone();
-            let entered = entered.clone();
-            let release = release.clone();
             std::thread::spawn(move || {
                 runtime
                     .acquire(&task, "read_file", || {
-                        entered.wait();
-                        release.wait();
+                        entered_tx.send(()).unwrap();
+                        release_rx.recv_timeout(WAIT).unwrap();
                         Ok("claimed")
                     })
                     .unwrap()
             })
         };
-        entered.wait();
+        entered_rx.recv_timeout(WAIT).unwrap();
         let stopper = {
             let runtime = runtime.clone();
             std::thread::spawn(move || {
@@ -683,20 +703,23 @@ mod tests {
                 done_tx.send(()).unwrap();
             })
         };
-        attempt_rx.recv().unwrap();
-        // The admission callback still owns the runtime lock.
+        attempt_rx.recv_timeout(WAIT).unwrap();
         assert!(matches!(done_rx.try_recv(), Err(mpsc::TryRecvError::Empty)));
-        release.wait();
+        release_tx.send(()).unwrap();
+        done_rx.recv_timeout(WAIT).unwrap();
         let (lease, claim) = acquired.join().unwrap();
         stopper.join().unwrap();
-        done_rx.recv().unwrap();
         assert_eq!(claim, "claimed");
         assert!(runtime.lock().unwrap().effects().is_empty());
+        assert_eq!(status(&runtime).in_flight, 1);
+        assert!(status(&runtime).draining);
         assert_eq!(
             lease.execute(&task, &json!({})).await.unwrap(),
             json!({"marker":true})
         );
         assert_eq!(hits.load(Ordering::SeqCst), 1);
+        assert_eq!(status(&runtime).in_flight, 0);
+        assert!(!status(&runtime).draining);
         assert!(
             runtime
                 .acquire(&task, "read_file", || -> Result<()> {
@@ -708,49 +731,52 @@ mod tests {
     #[test]
     fn n09_stop_first_rejects_admission_and_unload_leaves_no_effects() {
         let runtime = Arc::new(ToolRuntime::builtin().unwrap());
-        let stopped = Arc::new(Barrier::new(2));
+        let (stopped_tx, stopped_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
         let worker = {
             let runtime = runtime.clone();
-            let stopped = stopped.clone();
             std::thread::spawn(move || {
-                stopped.wait();
+                stopped_rx.recv_timeout(WAIT).unwrap();
                 assert!(
                     runtime
                         .acquire(&task("unused"), "write_file", || -> Result<()> {
-                            panic!("stopped service must never admit")
+                            panic!("stopped must never admit")
                         })
                         .is_err()
                 );
+                done_tx.send(()).unwrap();
             })
         };
         runtime.disable_builtin_files().unwrap();
-        stopped.wait();
+        stopped_tx.send(()).unwrap();
+        done_rx.recv_timeout(WAIT).unwrap();
         worker.join().unwrap();
         runtime.unload_builtin_files().unwrap();
         runtime.unload_builtin_files().unwrap();
-        let host = runtime.lock().unwrap();
-        assert!(host.effects().is_empty());
+        let snapshot = status(&runtime);
+        assert_eq!(snapshot.effects_count, 0);
+        assert_eq!(snapshot.instances.len(), 2);
         assert!(
-            host.instances()
+            snapshot
+                .instances
                 .iter()
-                .all(|i| i.state == InstanceState::Unloaded)
+                .all(|i| i.state == FilesInstanceState::Unloaded)
         );
     }
     #[test]
     fn n09_claim_failure_returns_no_lease_and_releases_lock_for_stop() {
         let (runtime, hits) = marker_runtime();
         let runtime = Arc::new(runtime);
-        let entered = Arc::new(Barrier::new(2));
-        let release = Arc::new(Barrier::new(2));
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
         let worker = {
             let runtime = runtime.clone();
-            let entered = entered.clone();
-            let release = release.clone();
             std::thread::spawn(move || {
                 runtime
                     .acquire(&task("unused"), "read_file", || -> Result<()> {
-                        entered.wait();
-                        release.wait();
+                        entered_tx.send(()).unwrap();
+                        release_rx.recv_timeout(WAIT).unwrap();
                         bail!("claim conflict")
                     })
                     .err()
@@ -758,16 +784,21 @@ mod tests {
                     .to_string()
             })
         };
-        entered.wait();
+        entered_rx.recv_timeout(WAIT).unwrap();
         let stopper = {
             let runtime = runtime.clone();
-            std::thread::spawn(move || runtime.disable_builtin_files().unwrap())
+            std::thread::spawn(move || {
+                runtime.disable_builtin_files().unwrap();
+                done_tx.send(()).unwrap();
+            })
         };
-        release.wait();
+        release_tx.send(()).unwrap();
+        done_rx.recv_timeout(WAIT).unwrap();
         assert_eq!(worker.join().unwrap(), "claim conflict");
         stopper.join().unwrap();
         assert_eq!(hits.load(Ordering::SeqCst), 0);
-        assert!(runtime.lock().unwrap().effects().is_empty());
+        assert_eq!(status(&runtime).in_flight, 0);
+        assert_eq!(status(&runtime).effects_count, 0);
     }
     #[tokio::test]
     async fn builtin_executes_existing_file_implementation_and_preserves_path_checks() {
@@ -811,5 +842,441 @@ mod tests {
         task.spec.allow_commands = true;
         assert!(lease.execute(&task, &json!({})).await.is_err());
         assert_eq!(hits.load(Ordering::SeqCst), 0);
+    }
+
+    fn status(runtime: &ToolRuntime) -> FilesRuntimeStatus {
+        runtime
+            .with_files_control(|control| Ok(control.snapshot()))
+            .unwrap()
+    }
+    fn reconcile(runtime: &ToolRuntime, enabled: bool) -> FilesRuntimeStatus {
+        runtime
+            .with_files_control(|control| Ok(control.reconcile(enabled)))
+            .unwrap()
+    }
+    #[test]
+    fn f02_f10_snapshot_is_read_only_and_repeated_control_has_exact_registry() {
+        let (runtime, hits) = marker_runtime();
+        let first = status(&runtime);
+        assert_eq!(first.state, FilesRuntimeState::Active);
+        assert!(first.admission_open);
+        assert_eq!((first.effects_count, first.subscriptions_count), (2, 0));
+        assert_eq!(
+            first
+                .providers
+                .iter()
+                .map(|p| (&p.key.name, p.provider_id.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (&"tool.read_file".to_owned(), FILES),
+                (&"tool.write_file".to_owned(), FILES)
+            ]
+        );
+        assert_eq!(first.instances.len(), 2);
+        assert!(
+            first
+                .instances
+                .iter()
+                .all(|i| i.state == FilesInstanceState::Active && i.failure_stage.is_none())
+        );
+        assert_eq!(
+            serde_json::from_value::<FilesRuntimeStatus>(serde_json::to_value(&first).unwrap())
+                .unwrap(),
+            first
+        );
+        for _ in 0..3 {
+            assert_eq!(status(&runtime), first);
+        }
+        assert_eq!(hits.load(Ordering::SeqCst), 0);
+        for _ in 0..3 {
+            let stopped = reconcile(&runtime, false);
+            assert_eq!(stopped.state, FilesRuntimeState::Stopped);
+            assert!(!stopped.admission_open);
+            assert_eq!((stopped.effects_count, stopped.subscriptions_count), (0, 0));
+            assert!(stopped.providers.is_empty());
+            assert_eq!(reconcile(&runtime, false), stopped);
+            assert_eq!(reconcile(&runtime, true), first);
+            assert_eq!(reconcile(&runtime, true), first);
+        }
+    }
+    #[tokio::test]
+    async fn f04_real_write_lease_finishes_after_disable_and_all_release_paths_count() {
+        let root = tempfile::tempdir().unwrap();
+        let task = task(root.path().to_str().unwrap());
+        let runtime = ToolRuntime::builtin().unwrap();
+        let (lease, receipt) = runtime
+            .acquire(&task, "write_file", || Ok(json!({"claimed":17})))
+            .unwrap();
+        assert_eq!(status(&runtime).in_flight, 1);
+        let stopped = reconcile(&runtime, false);
+        assert!(stopped.draining);
+        assert_eq!(stopped.in_flight, 1);
+        assert_eq!(stopped.effects_count, 0);
+        assert_eq!(receipt, json!({"claimed":17}));
+        lease
+            .execute(&task, &json!({"path":"real.txt","content":"once"}))
+            .await
+            .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("real.txt")).unwrap(),
+            "once"
+        );
+        assert_eq!(status(&runtime).in_flight, 0);
+        assert!(!status(&runtime).draining);
+        assert!(
+            runtime
+                .acquire(&task, "write_file", || -> Result<()> {
+                    panic!("disabled claim")
+                })
+                .is_err()
+        );
+        // Compat remains available under the same original task permissions.
+        let (compat, ()) = runtime.acquire(&task, "list_files", || Ok(())).unwrap();
+        assert_eq!(status(&runtime).in_flight, 0);
+        compat.execute(&task, &json!({"path":"."})).await.unwrap();
+        reconcile(&runtime, true);
+        let (dropped, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+        runtime
+            .with_files_control(|control| {
+                assert_eq!(control.snapshot().in_flight, 1);
+                drop(dropped); // Drop while the runtime lock is held must not lock it.
+                assert_eq!(control.snapshot().in_flight, 0);
+                Ok(())
+            })
+            .unwrap();
+        let (bad, ()) = runtime.acquire(&task, "write_file", || Ok(())).unwrap();
+        assert!(
+            bad.execute(&task, &json!({"path":"../outside","content":"no"}))
+                .await
+                .is_err()
+        );
+        assert_eq!(status(&runtime).in_flight, 0);
+        assert!(
+            runtime
+                .acquire(&task, "read_file", || -> Result<()> {
+                    bail!("claim rejected")
+                })
+                .is_err()
+        );
+        assert_eq!(status(&runtime).in_flight, 0);
+        let (bound, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+        let mut wrong = task.clone();
+        wrong.id = "other".into();
+        assert!(
+            bound
+                .execute(&wrong, &json!({"path":"real.txt"}))
+                .await
+                .is_err()
+        );
+        assert_eq!(status(&runtime).in_flight, 0);
+    }
+    struct ProbePlugin {
+        id: &'static str,
+        mode: Arc<AtomicUsize>,
+        events: Arc<Mutex<Vec<String>>>,
+    }
+    impl BuiltinPlugin for ProbePlugin {
+        fn activate(&mut self, ctx: &mut PluginContext) -> Result<(), PluginError> {
+            self.events
+                .lock()
+                .unwrap()
+                .push(format!("start:{}", self.id));
+            if self.id == FILES {
+                for name in FILE_TOOLS {
+                    let service: Service = Arc::new(WorkspaceService(name));
+                    ctx.register_effect(&key(name), Box::new(service)).unwrap();
+                }
+            } else {
+                for name in FILE_TOOLS {
+                    assert_eq!(ctx.bound(&key(name)).unwrap().provider_id(), FILES);
+                }
+            }
+            match self.mode.load(Ordering::SeqCst) {
+                1 => Err(PluginError::new(
+                    "sensitive activation payload /private/token",
+                )),
+                3 => panic!("sensitive panic payload"),
+                _ => Ok(()),
+            }
+        }
+        fn deactivate(&mut self, _: &mut PluginContext) -> Result<(), PluginError> {
+            self.events
+                .lock()
+                .unwrap()
+                .push(format!("stop:{}", self.id));
+            if self.mode.load(Ordering::SeqCst) == 2 {
+                return Err(PluginError::new("sensitive stop payload"));
+            }
+            Ok(())
+        }
+    }
+    fn probe_runtime(
+        enabled: bool,
+        provider_mode: Arc<AtomicUsize>,
+        consumer_mode: Arc<AtomicUsize>,
+        events: Arc<Mutex<Vec<String>>>,
+    ) -> ToolRuntime {
+        let mut host = PluginHost::new(ScopeKey::Host).unwrap();
+        host.catalog_mut().register(manifest(FILES, true)).unwrap();
+        host.catalog_mut()
+            .register(manifest(CONSUMER, false))
+            .unwrap();
+        for (id, mode) in [(FILES, provider_mode), (CONSUMER, consumer_mode)] {
+            let events = events.clone();
+            host.with_factory(id, move || {
+                Box::new(ProbePlugin {
+                    id,
+                    mode: mode.clone(),
+                    events: events.clone(),
+                })
+            });
+        }
+        ToolRuntime::from_host(host, enabled).unwrap()
+    }
+    #[test]
+    fn f07_f10_disabled_constructor_never_activates_and_lifecycle_order_is_exact() {
+        let events = Arc::new(Mutex::new(vec![]));
+        let mode = Arc::new(AtomicUsize::new(0));
+        let runtime = probe_runtime(false, mode.clone(), mode, events.clone());
+        let initial = status(&runtime);
+        assert_eq!(initial.state, FilesRuntimeState::Unloaded);
+        assert_eq!(initial.instances.len(), 2);
+        assert!(
+            initial
+                .instances
+                .iter()
+                .all(|i| i.state == FilesInstanceState::Unloaded)
+        );
+        assert_eq!(initial.effects_count, 0);
+        assert!(!initial.admission_open);
+        assert!(events.lock().unwrap().is_empty());
+        assert_eq!(reconcile(&runtime, false), initial);
+        assert!(
+            runtime
+                .acquire(&task("unused"), "read_file", || -> Result<()> {
+                    panic!("initial disabled")
+                })
+                .is_err()
+        );
+        for _ in 0..2 {
+            reconcile(&runtime, true);
+            reconcile(&runtime, false);
+        }
+        assert_eq!(
+            *events.lock().unwrap(),
+            vec![
+                "start:builtin.files",
+                "start:builtin.engine-tools",
+                "stop:builtin.engine-tools",
+                "stop:builtin.files",
+                "start:builtin.files",
+                "start:builtin.engine-tools",
+                "stop:builtin.engine-tools",
+                "stop:builtin.files"
+            ]
+        );
+    }
+    #[test]
+    fn f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery() {
+        for (provider_failure, mode_value) in [(true, 1), (false, 1), (true, 3)] {
+            let events = Arc::new(Mutex::new(vec![]));
+            let provider = Arc::new(AtomicUsize::new(if provider_failure {
+                mode_value
+            } else {
+                0
+            }));
+            let consumer = Arc::new(AtomicUsize::new(if provider_failure {
+                0
+            } else {
+                mode_value
+            }));
+            let runtime = probe_runtime(true, provider.clone(), consumer.clone(), events.clone());
+            let failed = status(&runtime);
+            assert_eq!(failed.state, FilesRuntimeState::Failed);
+            assert!(!failed.admission_open);
+            assert_eq!((failed.effects_count, failed.subscriptions_count), (0, 0));
+            assert_eq!(failed.recovery.len(), 1);
+            assert_eq!(failed.recovery[0].stage, FilesFailureStage::Activate);
+            assert_eq!(
+                failed.recovery[0].plugin_id,
+                if provider_failure { FILES } else { CONSUMER }
+            );
+            assert_eq!(
+                failed.recovery[0].cause_code,
+                if mode_value == 3 {
+                    FilesFailureCauseCode::Panic
+                } else {
+                    FilesFailureCauseCode::PluginError
+                }
+            );
+            assert!(
+                !serde_json::to_string(&failed)
+                    .unwrap()
+                    .contains("sensitive")
+            );
+            let old_events = events.lock().unwrap().clone();
+            assert_eq!(status(&runtime), failed);
+            assert_eq!(*events.lock().unwrap(), old_events);
+            assert!(
+                runtime
+                    .acquire(&task("unused"), "read_file", || -> Result<()> {
+                        panic!("failed must not admit")
+                    })
+                    .is_err()
+            );
+            provider.store(0, Ordering::SeqCst);
+            consumer.store(0, Ordering::SeqCst);
+            let active = reconcile(&runtime, true);
+            assert_eq!(active.state, FilesRuntimeState::Active);
+            assert!(active.admission_open);
+            assert_eq!(active.effects_count, 2);
+            assert_eq!(active.recovery, failed.recovery);
+        }
+    }
+    #[test]
+    fn f07_stop_failure_closes_admission_cleans_both_members_and_keeps_history() {
+        let events = Arc::new(Mutex::new(vec![]));
+        let provider = Arc::new(AtomicUsize::new(0));
+        let consumer = Arc::new(AtomicUsize::new(0));
+        let runtime = probe_runtime(true, provider.clone(), consumer.clone(), events.clone());
+        provider.store(2, Ordering::SeqCst);
+        consumer.store(2, Ordering::SeqCst);
+        let failed = reconcile(&runtime, false);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        assert!(!failed.admission_open);
+        assert_eq!(failed.effects_count, 0);
+        assert!(failed.providers.is_empty());
+        assert_eq!(failed.recovery.len(), 2);
+        assert!(
+            failed
+                .instances
+                .iter()
+                .all(|i| i.state == FilesInstanceState::Failed
+                    && i.failure_stage == Some(FilesFailureStage::Deactivate))
+        );
+        assert_eq!(
+            *events.lock().unwrap(),
+            vec![
+                "start:builtin.files",
+                "start:builtin.engine-tools",
+                "stop:builtin.engine-tools",
+                "stop:builtin.files"
+            ]
+        );
+        assert!(
+            !serde_json::to_string(&failed)
+                .unwrap()
+                .contains("sensitive")
+        );
+        provider.store(0, Ordering::SeqCst);
+        consumer.store(0, Ordering::SeqCst);
+        let active = reconcile(&runtime, true);
+        assert_eq!(active.state, FilesRuntimeState::Active);
+        assert_eq!(active.recovery, failed.recovery);
+        assert_eq!(active.effects_count, 2);
+    }
+    #[test]
+    fn f07_new_disabled_intent_finishes_old_failed_cleanup_without_retrying_hooks() {
+        let events = Arc::new(Mutex::new(vec![]));
+        let provider = Arc::new(AtomicUsize::new(0));
+        let consumer = Arc::new(AtomicUsize::new(0));
+        let runtime = probe_runtime(true, provider.clone(), consumer.clone(), events.clone());
+        provider.store(2, Ordering::SeqCst);
+        consumer.store(2, Ordering::SeqCst);
+        let failed = reconcile(&runtime, false);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        assert_eq!(failed.recovery.len(), 2);
+        let hooks = events.lock().unwrap().clone();
+        assert_eq!(status(&runtime), failed); // Observing/replaying never cleans.
+        let cleaned = reconcile(&runtime, false); // A separate explicit intent.
+        assert_eq!(cleaned.state, FilesRuntimeState::Unloaded);
+        assert!(!cleaned.admission_open);
+        assert_eq!((cleaned.effects_count, cleaned.subscriptions_count), (0, 0));
+        assert!(
+            cleaned
+                .instances
+                .iter()
+                .all(|i| i.state == FilesInstanceState::Unloaded)
+        );
+        assert_eq!(cleaned.recovery, failed.recovery);
+        assert_eq!(*events.lock().unwrap(), hooks); // No repeated deactivate.
+        assert_eq!(reconcile(&runtime, false), cleaned);
+        // Failed initial activation can likewise be explicitly disabled.
+        let mode = Arc::new(AtomicUsize::new(1));
+        let runtime = probe_runtime(true, mode.clone(), mode, Arc::new(Mutex::new(vec![])));
+        let failed = status(&runtime);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        let disabled = reconcile(&runtime, false);
+        assert_eq!(disabled.state, FilesRuntimeState::Unloaded);
+        assert_eq!(disabled.recovery, failed.recovery);
+    }
+    #[test]
+    fn f07_failed_persistence_callback_does_not_apply_and_poison_is_fail_closed() {
+        let runtime = Arc::new(ToolRuntime::builtin().unwrap());
+        let before = status(&runtime);
+        let failed: Result<()> =
+            runtime.with_files_control(|_| bail!("simulated Store transaction failure"));
+        assert!(failed.is_err());
+        assert_eq!(status(&runtime), before);
+        let other = runtime.clone();
+        assert!(
+            std::thread::spawn(move || {
+                let _guard = other.lock().unwrap();
+                panic!("poison test");
+            })
+            .join()
+            .is_err()
+        );
+        assert!(runtime.with_files_control(|c| Ok(c.snapshot())).is_err());
+        assert!(runtime.definitions(&task("unused")).is_err());
+        assert!(
+            runtime
+                .acquire(&task("unused"), "read_file", || -> Result<()> {
+                    panic!("poisoned admit")
+                })
+                .is_err()
+        );
+    }
+    struct PendingService(Arc<tokio::sync::Notify>);
+    impl ToolServiceV1 for PendingService {
+        fn definition(&self, _: &Task) -> Option<Value> {
+            Some(json!({"type":"function","function":{"name":"read_file"}}))
+        }
+        fn execute<'a>(&'a self, _: &'a Task, _: &'a Value) -> ToolFuture<'a> {
+            Box::pin(async move {
+                self.0.notify_one();
+                std::future::pending().await
+            })
+        }
+    }
+    #[tokio::test]
+    async fn f04_cancelling_in_progress_future_releases_count_without_reopening_admission() {
+        let entered = Arc::new(tokio::sync::Notify::new());
+        let runtime = ToolRuntime::assemble([
+            Arc::new(PendingService(entered.clone())),
+            Arc::new(WorkspaceService("write_file")),
+        ])
+        .unwrap();
+        let task = task("unused");
+        let (lease, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+        let running = tokio::spawn(async move { lease.execute(&task, &json!({})).await });
+        tokio::time::timeout(WAIT, entered.notified())
+            .await
+            .unwrap();
+        assert_eq!(status(&runtime).in_flight, 1);
+        assert!(reconcile(&runtime, false).draining);
+        running.abort();
+        assert!(
+            tokio::time::timeout(WAIT, running)
+                .await
+                .unwrap()
+                .unwrap_err()
+                .is_cancelled()
+        );
+        let stopped = status(&runtime);
+        assert_eq!(stopped.in_flight, 0);
+        assert!(!stopped.draining);
+        assert!(!stopped.admission_open);
+        assert_eq!(stopped.effects_count, 0);
     }
 }

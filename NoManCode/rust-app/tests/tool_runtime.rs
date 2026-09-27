@@ -80,3 +80,33 @@ fn revoked_file_tools_never_reappear_through_compatibility_dispatch() {
             .contains(&"read_file".to_owned())
     );
 }
+
+#[test]
+fn disabled_constructor_exposes_only_compat_and_never_calls_file_admission() {
+    let runtime = ToolRuntime::builtin_with_enabled(false).unwrap();
+    let mut task = task();
+    task.spec.write_scopes = vec!["*".into()];
+    task.spec.allow_commands = true;
+    let mut visible = names(runtime.definitions(&task).unwrap());
+    visible.sort();
+    assert_eq!(
+        visible,
+        ["list_files", "run_command", "run_wasm", "search_files"]
+    );
+    for name in ["read_file", "write_file"] {
+        assert!(
+            runtime
+                .acquire(&task, name, || -> anyhow::Result<()> {
+                    panic!("disabled callback")
+                })
+                .is_err()
+        );
+    }
+    for name in ["list_files", "search_files", "run_command", "run_wasm"] {
+        let (_, admitted) = runtime.acquire(&task, name, || Ok(73)).unwrap();
+        assert_eq!(admitted, 73);
+    }
+    runtime.disable_builtin_files().unwrap();
+    runtime.unload_builtin_files().unwrap();
+    assert_eq!(runtime.definitions(&task).unwrap().len(), 4);
+}
