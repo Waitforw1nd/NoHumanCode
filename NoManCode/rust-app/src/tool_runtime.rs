@@ -23,9 +23,13 @@ use std::{
 
 const FILES: &str = "builtin.files";
 const CONSUMER: &str = "builtin.engine-tools";
-pub(crate) const FILES_PLUGIN_VERSION: &str = "1.1.0";
+const SHELL: &str = "builtin.shell";
+const SHELL_CONSUMER: &str = "builtin.engine-shell-tools";
+pub(crate) const FILES_PLUGIN_VERSION: &str = "1.2.0";
+pub(crate) const SHELL_PLUGIN_VERSION: &str = "1.0.0";
+pub(crate) const SHELL_TOOLS: [&str; 1] = ["run_command"];
 pub(crate) const FILE_TOOLS: [&str; 4] = ["read_file", "write_file", "list_files", "search_files"];
-pub(crate) const COMPAT_TOOLS: [&str; 2] = ["run_command", "run_wasm"];
+pub(crate) const COMPAT_TOOLS: [&str; 1] = ["run_wasm"];
 type ToolFuture<'a> = Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>>;
 
 // Private: only this assembly can create services or obtain their raw Arc.
@@ -58,13 +62,22 @@ fn key(name: &str) -> InterfaceKey {
     }
 }
 fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
-    let keys = FILE_TOOLS.iter().map(|name| key(name)).collect();
+    let shell = id == SHELL || id == SHELL_CONSUMER;
+    let names: &[&str] = if shell { &SHELL_TOOLS } else { &FILE_TOOLS };
+    let keys = names.iter().map(|name| key(name)).collect();
     let version = ExactVersion {
         major: 1,
-        minor: 1,
+        minor: if shell { 0 } else { 2 },
         patch: 0,
     };
-    debug_assert_eq!(version.to_string(), FILES_PLUGIN_VERSION);
+    debug_assert_eq!(
+        version.to_string(),
+        if shell {
+            SHELL_PLUGIN_VERSION
+        } else {
+            FILES_PLUGIN_VERSION
+        }
+    );
     CatalogManifestV1 {
         manifest_version: 1,
         id: id.into(),
@@ -74,7 +87,9 @@ fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
         runtime: RuntimeKind::Builtin,
         lifecycle: LifecycleKind::HostManaged,
         surfaces: vec![Surface::Cli, Surface::Headless],
-        permissions: if provider {
+        permissions: if provider && shell {
+            vec!["process.exec".into()]
+        } else if provider {
             vec!["filesystem.read".into(), "filesystem.write".into()]
         } else {
             vec![]
@@ -84,7 +99,7 @@ fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
         requires: if provider {
             vec![]
         } else {
-            FILE_TOOLS.iter().map(|name| key(name)).collect()
+            names.iter().map(|name| key(name)).collect()
         },
     }
 }
@@ -113,6 +128,33 @@ impl BuiltinPlugin for ConsumerPlugin {
             if binding.payload().downcast_ref::<Service>().is_none() {
                 return Err(PluginError::new("file tool payload type mismatch"));
             }
+        }
+        Ok(())
+    }
+    fn deactivate(&mut self, _: &mut PluginContext) -> Result<(), PluginError> {
+        Ok(())
+    }
+}
+
+struct ShellPlugin(Service);
+impl BuiltinPlugin for ShellPlugin {
+    fn activate(&mut self, ctx: &mut PluginContext) -> Result<(), PluginError> {
+        ctx.register_effect(&key("run_command"), Box::new(self.0.clone()))
+            .map_err(|error| PluginError::new(error.to_string()))?;
+        Ok(())
+    }
+    fn deactivate(&mut self, _: &mut PluginContext) -> Result<(), PluginError> {
+        Ok(())
+    }
+}
+struct ShellConsumerPlugin;
+impl BuiltinPlugin for ShellConsumerPlugin {
+    fn activate(&mut self, ctx: &mut PluginContext) -> Result<(), PluginError> {
+        let binding = ctx
+            .bound(&key("run_command"))
+            .map_err(|error| PluginError::new(error.to_string()))?;
+        if binding.payload().downcast_ref::<Service>().is_none() {
+            return Err(PluginError::new("shell tool payload type mismatch"));
         }
         Ok(())
     }
@@ -200,6 +242,8 @@ fn cause_code(cause: &PluginFailureCause) -> FilesFailureCauseCode {
     }
 }
 struct RuntimeState {
+    provider: &'static str,
+    consumer: &'static str,
     host: PluginHost,
     admission_open: bool,
     apply_failed: bool,
@@ -219,7 +263,7 @@ pub(crate) struct FilesControl<'a> {
 impl FilesControl<'_> {
     pub(crate) fn snapshot(&self) -> FilesRuntimeStatus {
         let actual = self.state.host.instances();
-        let instances: Vec<_> = [FILES, CONSUMER]
+        let instances: Vec<_> = [self.state.provider, self.state.consumer]
             .into_iter()
             .map(|id| {
                 let state = actual
@@ -244,7 +288,7 @@ impl FilesControl<'_> {
                 }
             })
             .collect();
-        let active = ToolRuntime::files_active(&self.state.host);
+        let active = ToolRuntime::group_active(self.state);
         let state = if self.state.apply_failed
             || instances
                 .iter()
@@ -308,7 +352,7 @@ impl FilesControl<'_> {
             // failure. Never conceal a failure produced by this very stop.
             if self.stop_active() && previously_failed {
                 let mut unloaded = true;
-                for id in [CONSUMER, FILES] {
+                for id in [self.state.consumer, self.state.provider] {
                     if self.state.host.instances().iter().any(|i| i.id == id)
                         && self.state.host.unload(id).is_err()
                     {
@@ -319,7 +363,7 @@ impl FilesControl<'_> {
             }
             return self.snapshot();
         }
-        if ToolRuntime::files_active(&self.state.host) && !self.state.apply_failed {
+        if ToolRuntime::group_active(self.state) && !self.state.apply_failed {
             self.state.admission_open = true;
             return self.snapshot();
         }
@@ -327,7 +371,7 @@ impl FilesControl<'_> {
         if !self.stop_active() {
             return self.snapshot();
         }
-        for id in [CONSUMER, FILES] {
+        for id in [self.state.consumer, self.state.provider] {
             if self.state.host.instances().iter().any(|i| i.id == id)
                 && self.state.host.unload(id).is_err()
             {
@@ -336,8 +380,8 @@ impl FilesControl<'_> {
             }
         }
         self.state.apply_failed = false;
-        match self.state.host.start(&[CONSUMER.to_owned()]) {
-            Ok(_) => self.state.admission_open = ToolRuntime::files_active(&self.state.host),
+        match self.state.host.start(&[self.state.consumer.to_owned()]) {
+            Ok(_) => self.state.admission_open = ToolRuntime::group_active(self.state),
             Err(error) => {
                 self.state.apply_failed = true;
                 let record = match error {
@@ -373,7 +417,7 @@ impl FilesControl<'_> {
     fn stop_active(&mut self) -> bool {
         let mut success = true;
         // Consumer failure must not leave the provider active.
-        for id in [CONSUMER, FILES] {
+        for id in [self.state.consumer, self.state.provider] {
             if self
                 .state
                 .host
@@ -395,6 +439,8 @@ impl FilesControl<'_> {
 pub struct ToolRuntime {
     host: Mutex<RuntimeState>,
     in_flight: Arc<AtomicU64>,
+    shell_host: Mutex<RuntimeState>,
+    shell_in_flight: Arc<AtomicU64>,
 }
 struct FileLeaseCount(Arc<AtomicU64>);
 impl Drop for FileLeaseCount {
@@ -406,6 +452,7 @@ impl Drop for FileLeaseCount {
 /// Single-use admitted service. Not Clone, not persistent, and not a public
 /// tool execution API. Only Engine's existing approval/perform_tool path calls it.
 pub struct ToolLease {
+    shell: bool,
     _file_count: Option<FileLeaseCount>,
     service: Service,
     task_id: String,
@@ -417,21 +464,29 @@ impl ToolRuntime {
         Self::builtin_with_enabled(true)
     }
     pub fn builtin_with_enabled(enabled: bool) -> Result<Self> {
-        Self::assemble_enabled(
+        Self::builtin_with_plugin_states(enabled, true)
+    }
+    pub fn builtin_with_plugin_states(files_enabled: bool, shell_enabled: bool) -> Result<Self> {
+        Self::assemble_states(
             [
                 Arc::new(WorkspaceService("read_file")),
                 Arc::new(WorkspaceService("write_file")),
                 Arc::new(WorkspaceService("list_files")),
                 Arc::new(WorkspaceService("search_files")),
             ],
-            enabled,
+            files_enabled,
+            shell_enabled,
         )
     }
     #[cfg(test)]
     fn assemble(services: [Service; 4]) -> Result<Self> {
         Self::assemble_enabled(services, true)
     }
+    #[cfg(test)]
     fn assemble_enabled(services: [Service; 4], enabled: bool) -> Result<Self> {
+        Self::assemble_states(services, enabled, true)
+    }
+    fn assemble_states(services: [Service; 4], enabled: bool, shell_enabled: bool) -> Result<Self> {
         let mut host = PluginHost::new(ScopeKey::Host)?;
         host.catalog_mut().register(manifest(FILES, true))?;
         host.catalog_mut().register(manifest(CONSUMER, false))?;
@@ -441,20 +496,57 @@ impl ToolRuntime {
             })
         });
         host.with_factory(CONSUMER, || Box::new(ConsumerPlugin));
-        Self::from_host(host, enabled)
+        Self::from_hosts(host, enabled, Self::shell_host()?, shell_enabled)
     }
+    fn shell_host() -> Result<PluginHost> {
+        let mut host = PluginHost::new(ScopeKey::Host)?;
+        host.catalog_mut().register(manifest(SHELL, true))?;
+        host.catalog_mut()
+            .register(manifest(SHELL_CONSUMER, false))?;
+        host.with_factory(SHELL, || {
+            Box::new(ShellPlugin(Arc::new(WorkspaceService("run_command"))))
+        });
+        host.with_factory(SHELL_CONSUMER, || Box::new(ShellConsumerPlugin));
+        Ok(host)
+    }
+    #[cfg(test)]
     fn from_host(host: PluginHost, enabled: bool) -> Result<Self> {
+        Self::from_hosts(host, enabled, Self::shell_host()?, true)
+    }
+    fn from_hosts(
+        host: PluginHost,
+        enabled: bool,
+        shell_host: PluginHost,
+        shell_enabled: bool,
+    ) -> Result<Self> {
         let runtime = Self {
             host: Mutex::new(RuntimeState {
+                provider: FILES,
+                consumer: CONSUMER,
                 host,
                 admission_open: false,
                 apply_failed: false,
                 activation_recovery: vec![],
             }),
             in_flight: Arc::new(AtomicU64::new(0)),
+            shell_host: Mutex::new(RuntimeState {
+                provider: SHELL,
+                consumer: SHELL_CONSUMER,
+                host: shell_host,
+                admission_open: false,
+                apply_failed: false,
+                activation_recovery: vec![],
+            }),
+            shell_in_flight: Arc::new(AtomicU64::new(0)),
         };
         if enabled {
             runtime.with_files_control(|control| {
+                control.reconcile(true);
+                Ok(())
+            })?;
+        }
+        if shell_enabled {
+            runtime.with_shell_control(|control| {
                 control.reconcile(true);
                 Ok(())
             })?;
@@ -466,9 +558,11 @@ impl ToolRuntime {
             .lock()
             .map_err(|_| anyhow::anyhow!("tool runtime lock poisoned"))
     }
-    fn files_active(host: &PluginHost) -> bool {
-        [FILES, CONSUMER].iter().all(|id| {
-            host.instances()
+    fn group_active(state: &RuntimeState) -> bool {
+        [state.provider, state.consumer].iter().all(|id| {
+            state
+                .host
+                .instances()
                 .iter()
                 .any(|instance| instance.id == *id && instance.state == InstanceState::Active)
         })
@@ -485,32 +579,54 @@ impl ToolRuntime {
             in_flight: &self.in_flight,
         })
     }
-    fn file_service(host: &PluginHost, name: &str) -> Result<Service> {
-        Ok(host.resolve_bound::<Service>(CONSUMER, &key(name))?.payload)
+    pub(crate) fn with_shell_control<R>(
+        &self,
+        f: impl FnOnce(&mut FilesControl<'_>) -> Result<R>,
+    ) -> Result<R> {
+        let mut state = self
+            .shell_host
+            .lock()
+            .map_err(|_| anyhow::anyhow!("shell runtime lock poisoned"))?;
+        f(&mut FilesControl {
+            state: &mut state,
+            in_flight: &self.shell_in_flight,
+        })
     }
-    /// Definitions from real registry payloads, with explicitly unconverted
-    /// compatibility tools. Revoked file tools never enter the fallback list.
+    /// Each assembly is observed separately: never hold both runtime locks.
     pub fn definitions(&self, task: &Task) -> Result<Vec<Value>> {
-        let host = self.lock()?;
-        let mut result = workspace::definitions(task)
-            .into_iter()
+        let allowed = workspace::definitions(task);
+        let mut result = allowed
+            .iter()
             .filter(|definition| {
                 definition["function"]["name"]
                     .as_str()
                     .is_some_and(|name| COMPAT_TOOLS.contains(&name))
             })
+            .cloned()
             .collect::<Vec<_>>();
-        if host.admission_open && !host.apply_failed && Self::files_active(&host) {
-            for name in FILE_TOOLS {
-                if !workspace::definitions(task)
-                    .iter()
-                    .any(|definition| definition["function"]["name"] == name)
-                {
-                    continue;
-                }
-                if let Some(definition) = Self::file_service(&host, name)?.definition(task) {
-                    validate_definition(&definition, name)?;
-                    result.push(definition);
+        for (mutex, names) in [
+            (&self.host, FILE_TOOLS.as_slice()),
+            (&self.shell_host, SHELL_TOOLS.as_slice()),
+        ] {
+            let state = mutex
+                .lock()
+                .map_err(|_| anyhow::anyhow!("tool runtime lock poisoned"))?;
+            if state.admission_open && !state.apply_failed && Self::group_active(&state) {
+                for name in names {
+                    if !allowed
+                        .iter()
+                        .any(|definition| definition["function"]["name"] == *name)
+                    {
+                        continue;
+                    }
+                    let service = state
+                        .host
+                        .resolve_bound::<Service>(state.consumer, &key(name))?
+                        .payload;
+                    if let Some(definition) = service.definition(task) {
+                        validate_definition(&definition, name)?;
+                        result.push(definition);
+                    }
                 }
             }
         }
@@ -526,7 +642,15 @@ impl ToolRuntime {
         name: &str,
         admit: impl FnOnce() -> Result<A>,
     ) -> Result<(ToolLease, A)> {
-        let host = self.lock()?;
+        let is_shell = SHELL_TOOLS.contains(&name);
+        let (mutex, count) = if is_shell {
+            (&self.shell_host, &self.shell_in_flight)
+        } else {
+            (&self.host, &self.in_flight)
+        };
+        let host = mutex
+            .lock()
+            .map_err(|_| anyhow::anyhow!("tool runtime lock poisoned"))?;
         // Host permission ceiling is independent of plugin-provided metadata.
         ensure!(
             workspace::definitions(task)
@@ -535,16 +659,17 @@ impl ToolRuntime {
             "工具未获任务授权"
         );
         let is_file = FILE_TOOLS.contains(&name);
-        let service: Service = if is_file {
+        let service: Service = if is_file || is_shell {
             ensure!(
-                host.admission_open && !host.apply_failed && Self::files_active(&host),
+                host.admission_open && !host.apply_failed && Self::group_active(&host),
                 "file tools unavailable"
             );
             ensure!(
-                self.in_flight.load(Ordering::SeqCst) < u64::MAX,
+                count.load(Ordering::SeqCst) < u64::MAX,
                 "file lease count exhausted"
             );
-            Self::file_service(&host, name)?
+            host.resolve_bound::<Service>(host.consumer, &key(name))?
+                .payload
         } else if let Some(&name) = COMPAT_TOOLS.iter().find(|candidate| **candidate == name) {
             Arc::new(WorkspaceService(name))
         } else {
@@ -555,6 +680,7 @@ impl ToolRuntime {
         // Do all fallible snapshot work before claim, so an admitted call cannot
         // disappear because creating its lease failed afterwards.
         let mut lease = ToolLease {
+            shell: is_shell,
             _file_count: None,
             service,
             task_id: task.id.clone(),
@@ -562,9 +688,9 @@ impl ToolRuntime {
             spec: serde_json::to_value(&task.spec)?,
         };
         let admitted = admit()?;
-        if is_file {
-            self.in_flight.fetch_add(1, Ordering::SeqCst);
-            lease._file_count = Some(FileLeaseCount(self.in_flight.clone()));
+        if is_file || is_shell {
+            count.fetch_add(1, Ordering::SeqCst);
+            lease._file_count = Some(FileLeaseCount(count.clone()));
         }
         drop(host);
         Ok((lease, admitted))
@@ -577,6 +703,28 @@ impl ToolRuntime {
                 status.state != FilesRuntimeState::Failed,
                 "file runtime stop failed"
             );
+            Ok(())
+        })
+    }
+    /// In-memory shell control; durable management belongs to Engine/Store.
+    pub fn disable_builtin_shell(&self) -> Result<()> {
+        self.with_shell_control(|control| {
+            ensure!(
+                control.reconcile(false).state != FilesRuntimeState::Failed,
+                "shell runtime stop failed"
+            );
+            Ok(())
+        })
+    }
+    pub fn unload_builtin_shell(&self) -> Result<()> {
+        self.with_shell_control(|control| {
+            control.reconcile(false);
+            for id in [SHELL_CONSUMER, SHELL] {
+                if control.state.host.instances().iter().any(|i| i.id == id) {
+                    control.state.host.unload(id)?;
+                }
+            }
+            control.state.apply_failed = false;
             Ok(())
         })
     }
@@ -612,7 +760,22 @@ impl ToolLease {
                 && self.spec == serde_json::to_value(&task.spec)?,
             "tool lease task binding changed"
         );
-        self.service.execute(task, args).await
+        if self.shell {
+            let task = task.clone();
+            let args = args.clone();
+            let (send, receive) = tokio::sync::oneshot::channel();
+            // The worker, not the caller waiting on its channel, owns the lease.
+            tokio::spawn(async move {
+                let result = self.service.execute(&task, &args).await;
+                drop(self);
+                let _ = send.send(result);
+            });
+            receive
+                .await
+                .map_err(|_| crate::command_execution::CommandOutcomeUnknown)?
+        } else {
+            self.service.execute(task, args).await
+        }
     }
 }
 
