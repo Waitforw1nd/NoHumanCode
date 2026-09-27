@@ -1,3 +1,10 @@
+## 2026-09-27 NEXT-10契约冻结，准备新基线派发
+
+更新人经理GPT-6。本次按用户明确指令接任，只E盘；实核主线606fb710db958734d87296ee0a7a1d78f216adad、NoManCode60c7b346727838af2347a33c523db02b7b69c461、Rust78afba3f3d01381b69f4010a01646a5a1d490fb7，开工status/index空。当前可用代理只有/root，旧B-R8/C-R10/D-R7均结项，历史贡献保留。经理没有产品实现授权，未改产品/未跑产品测试；NEXT-09既有435/0/1和35对hash只继承。
+
+已完成：真实源码核查、NEXT-10现有builtin.files状态诊断/持久启停契约1.0与B-R9/C-R11/D-R8任务包。持久desired/CAS/幂等receipt与runtime实际/在途lease分离；同runtime→Store锁序，commit前失败不动runtime、commit后禁用关闭新准入，原claim可完成；重启按desired、旧Task/unknown/grant不自动改变。F01–F11和唯一文件所有权已冻结。具体见niuma/项目经理/任务/2026-09-27NEXT-10插件持久管理契约.md及本轮契约自检。
+
+未完成：完整基线管理提交、新E树/代理真实接收、产品实现/证据/review/验收/整合；无产品阻塞已确认。下一第一操作：经理精确提交本管理包得到完整基线，新建三个E工作树，按已有GPT-6-astra授权派发并记录真实接收。此节点不把任务包存在当员工已开工，不恢复任何旧任务。全阶段一仍未完成；D备份/旧树/产物/历史保留，无reset/clean/stash/release/live/push。
 ## 2026-09-27 用户要求换对话：进度与经理提示词已整理
 
 经理GPT-6。本轮仅交接文档，未派发NEXT-10、未改产品或重跑测试。交接前实核HEAD e25480d81b26386f8a9c5bfb44f3a817ef08fc6e及clean status/index，产品tree与NEXT-09受测7c560a66一致。完整阶段一未完成，已完成范围/剩余缺口/下一经理交付见niuma/项目经理/项目记录/2026-09-27换对话进度总览.md。根项目经理启动提示词已补该总览及跨对话执行者核验要求。
