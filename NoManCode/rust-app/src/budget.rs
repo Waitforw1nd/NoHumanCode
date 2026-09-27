@@ -965,7 +965,8 @@ mod tests {
         assert_eq!(
             store
                 .network_admit(&subject, NetworkPurpose::Completion, None)
-                .unwrap_err()
+                .err()
+                .unwrap()
                 .kind,
             NetworkErrorKind::BudgetExceeded
         );
@@ -1040,7 +1041,8 @@ mod tests {
         assert_eq!(
             store
                 .network_admit(&subject, NetworkPurpose::Completion, None)
-                .unwrap_err()
+                .err()
+                .unwrap()
                 .kind,
             NetworkErrorKind::BudgetOverrun
         );
@@ -1074,7 +1076,8 @@ mod tests {
             assert_eq!(
                 store
                     .network_admit(&subject, NetworkPurpose::Completion, None)
-                    .unwrap_err()
+                    .err()
+                    .unwrap()
                     .kind,
                 NetworkErrorKind::BudgetUnresolved
             );
