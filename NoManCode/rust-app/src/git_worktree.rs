@@ -1245,6 +1245,43 @@ mod tests {
         }
     }
     #[tokio::test]
+    async fn w04_nested_root_reparse_and_existing_branch_are_rejected() {
+        let f = Fixture::new();
+        let nested = f.source.join("nested");
+        std::fs::create_dir(&nested).unwrap();
+        let nested_root = RootIdentity::capture(&nested).unwrap();
+        assert!(inspect(&f.context, &nested_root).await.is_err());
+        let plan = f.plan().await.into_persisted_plan();
+        raw(
+            &f.source,
+            &["update-ref", &plan.branch_ref, &plan.expected_head],
+        );
+        assert_eq!(
+            prepare(
+                &f.context,
+                &f.root,
+                &plan.target_parent,
+                &plan.operation_id,
+                &plan.expected_head
+            )
+            .await
+            .unwrap_err(),
+            GitWorktreeError::Conflict
+        );
+        #[cfg(windows)]
+        {
+            let alias = f._temp.path().join("junction");
+            let output = SyncCommand::new("pwsh.exe").args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(RootIdentity::capture(&alias).is_err());
+            assert!(f.parent.exists());
+        }
+    }
+    #[tokio::test]
     async fn w05_isolated_environment_helper() {
         let Some(source) = std::env::var_os("NHC_TEST_SOURCE") else {
             return;
@@ -1308,11 +1345,35 @@ mod tests {
         std::fs::remove_file(&marker).unwrap();
         std::fs::write(f.source.join(".git/info/exclude"), "git.exe\ngit.pdb\n").unwrap();
         let global = f._temp.path().join("global.config");
+        let attrs = f._temp.path().join("global.attributes");
+        std::fs::write(&attrs, "a.txt filter=evil\n").unwrap();
+        let script = f._temp.path().join("global-filter.sh");
         std::fs::write(
-            &global,
-            "[include]\n path = missing-injected-file\n[filter \"evil\"]\n smudge = forbidden\n",
+            &script,
+            format!(
+                "#!/bin/sh\necho bad > '{}'\ncat\n",
+                marker.to_string_lossy().replace('\\', "/")
+            ),
         )
         .unwrap();
+        std::fs::write(
+            &global,
+            format!(
+                "[core]\n attributesFile = {}\n[filter \"evil\"]\n smudge = sh '{}'\n",
+                attrs.to_string_lossy().replace('\\', "/"),
+                script.to_string_lossy().replace('\\', "/")
+            ),
+        )
+        .unwrap();
+        let positive = SyncCommand::new("git")
+            .current_dir(&f.source)
+            .env("GIT_CONFIG_GLOBAL", &global)
+            .args(["cat-file", "--filters", "HEAD:a.txt"])
+            .output()
+            .unwrap();
+        assert!(positive.status.success());
+        assert!(marker.exists(), "global attributes/filter positive control");
+        std::fs::remove_file(&marker).unwrap();
         let mut paths = vec![f.source.clone()];
         paths.extend(std::env::split_paths(&std::env::var_os("PATH").unwrap()));
         let mut child = Command::new(std::env::current_exe().unwrap());
@@ -1770,6 +1831,15 @@ mod tests {
             } else {
                 raw(&root, &["init", "--quiet"]);
             }
+            if mode == "sha256" {
+                raw(&root, &["config", "user.name", "Fixture"]);
+                raw(&root, &["config", "user.email", "fixture@example.invalid"]);
+                raw(
+                    &root,
+                    &["commit", "--allow-empty", "--quiet", "-m", "sha256"],
+                );
+                assert_eq!(raw(&root, &["rev-parse", "HEAD"]).len(), 65);
+            }
             let root = RootIdentity::capture(&root).unwrap();
             let ctx = GitContext::new(vec![root.clone()]).unwrap();
             assert!(inspect(&ctx, &root).await.is_err(), "{mode}");
@@ -1912,7 +1982,7 @@ mod tests {
                 ),
             )
             .unwrap();
-            if mode == "smudge" || mode == "process" {
+            if mode == "smudge" || mode == "process" || mode == "include" {
                 std::fs::write(f.source.join(".gitattributes"), "a.txt filter=evil\n").unwrap();
                 raw(&f.source, &["add", ".gitattributes"]);
                 raw(&f.source, &["commit", "--quiet", "-m", "attributes"]);
@@ -1922,7 +1992,7 @@ mod tests {
                 std::fs::write(
                     &config,
                     format!(
-                        "[filter \"evil\"]\n smudge = {}\n",
+                        "[filter \"evil\"]\n smudge = sh '{}'\n",
                         script.to_string_lossy().replace('\\', "/")
                     ),
                 )
@@ -1947,7 +2017,7 @@ mod tests {
                     ],
                 );
             }
-            if mode == "smudge" || mode == "process" {
+            if mode == "smudge" || mode == "process" || mode == "include" {
                 let mut positive = Command::new("git");
                 positive
                     .current_dir(&f.source)
