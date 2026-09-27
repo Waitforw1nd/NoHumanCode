@@ -472,11 +472,7 @@ async fn n03_denied_write_history_can_continue_without_inheriting_approval() {
 
 #[tokio::test]
 async fn n09_stop_before_approval_claim_has_no_write_or_claim() {
-    for (unload, name) in [false, true].into_iter().flat_map(|unload| {
-        ["read_file", "list_files", "search_files"]
-            .into_iter()
-            .map(move |name| (unload, name))
-    }) {
+    for unload in [false, true] {
         let h = start(vec![
             write("write-1", "not-written"),
             json!({"content":"done"}),
@@ -710,17 +706,20 @@ async fn n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload(
         h.queue(vec![call(
             "revoked-file",
             name,
-            json!({"path":"src","query":"before"}),
+            if name == "read_file" {
+                json!({"path":"src/a.txt"})
+            } else {
+                json!({"path":"src","query":"before"})
+            },
         )]);
         let next = h
             .engine
             .send_chat_turn(h.command("after-stop"))
             .await
             .unwrap();
-        assert_eq!(
-            h.settle(&next.task.legacy_task_id, true).await.status,
-            "failed"
-        );
+        let failed = h.settle(&next.task.legacy_task_id, true).await;
+        assert_eq!(failed.status, "failed");
+        assert_eq!(failed.error.as_deref(), Some("模型请求了未授权的工具"));
         let requests = h.provider.requests.lock().unwrap();
         assert_eq!(
             requests.len(),
