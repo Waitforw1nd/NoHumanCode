@@ -1229,20 +1229,21 @@ async fn s09_shell_real_host_restart_disabled_then_approval_ack_command_and_file
                 std::fs::read_to_string(root.path().join("workspace/shell-marker.txt")).unwrap(),
                 "shell-once"
             );
-            let r = requests.lock().unwrap();
-            assert_eq!(r.len(), 5);
-            let output = r[4]["messages"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find(|m| m["role"] == "tool")
-                .unwrap()["content"]
-                .as_str()
-                .unwrap();
-            let output: Value = serde_json::from_str(output).unwrap();
-            assert_eq!(output["exit_code"], 0);
-            assert!(output["stdout"].as_str().unwrap().contains("shell-output"));
-            drop(r);
+            {
+                let r = requests.lock().unwrap();
+                assert_eq!(r.len(), 5);
+                let output = r[4]["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|m| m["role"] == "tool")
+                    .unwrap()["content"]
+                    .as_str()
+                    .unwrap();
+                let output: Value = serde_json::from_str(output).unwrap();
+                assert_eq!(output["exit_code"], 0);
+                assert!(output["stdout"].as_str().unwrap().contains("shell-output"));
+            }
             let approvals = body(
                 request(
                     &origin,
