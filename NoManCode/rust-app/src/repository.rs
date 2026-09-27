@@ -2862,3 +2862,76 @@ pub(crate) fn verify_schema_9(tx: &Transaction<'_>) -> Result<()> {
     );
     Ok(())
 }
+
+pub const PLUGIN_MANAGEMENT_MIGRATION_ID: &str = "builtin-plugin-management-v1";
+const PLUGIN_TABLES: &[(&str, &str)] = &[
+    (
+        "plugin_desired",
+        "CREATE TABLE IF NOT EXISTS plugin_desired (plugin_id TEXT NOT NULL PRIMARY KEY CHECK(typeof(plugin_id)='text' AND plugin_id='builtin.files'), enabled INTEGER NOT NULL CHECK(typeof(enabled)='integer' AND enabled IN (0,1)), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0), updated_at INTEGER NOT NULL CHECK(typeof(updated_at)='integer'))",
+    ),
+    (
+        "plugin_management_requests",
+        "CREATE TABLE IF NOT EXISTS plugin_management_requests (key TEXT NOT NULL PRIMARY KEY CHECK(typeof(key)='text' AND length(key) BETWEEN 1 AND 200), plugin_id TEXT NOT NULL REFERENCES plugin_desired(plugin_id) CHECK(typeof(plugin_id)='text' AND plugin_id='builtin.files'), enabled INTEGER NOT NULL CHECK(typeof(enabled)='integer' AND enabled IN (0,1)), expected_revision INTEGER NOT NULL CHECK(typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807), result_revision INTEGER NOT NULL CHECK(typeof(result_revision)='integer' AND result_revision=expected_revision+1), committed_at INTEGER NOT NULL CHECK(typeof(committed_at)='integer'))",
+    ),
+];
+pub(crate) fn apply_schema_12(tx: &Transaction<'_>) -> Result<()> {
+    for (_, sql) in PLUGIN_TABLES {
+        tx.execute_batch(sql)?;
+    }
+    tx.execute("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.files',1,0,?1)", [now()])?;
+    verify_schema_12(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![PLUGIN_MANAGEMENT_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 12)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_12(tx: &Transaction<'_>) -> Result<()> {
+    // Compare the whole DDL including PK/FK/CHECK, preserving quoted literals.
+    // A schema with equal columns but weaker constraints must fail closed.
+    fn normalize(sql: &str) -> String {
+        let mut out = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if let Some(q) = quote {
+                out.push(ch);
+                if ch == q {
+                    if chars.peek() == Some(&q) {
+                        out.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(ch, '\'' | '"' | '`') {
+                quote = Some(ch);
+                out.push(ch);
+            } else if !ch.is_whitespace() {
+                out.push(ch.to_ascii_lowercase());
+            }
+        }
+        out.replacen("createtableifnotexists", "createtable", 1)
+    }
+    for (table, sql) in PLUGIN_TABLES {
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [table],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "plugin schema constraint mismatch"
+        );
+    }
+    let valid: i64 = tx.query_row("SELECT count(*) FROM plugin_desired WHERE typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer'", [], |r| r.get(0))?;
+    let total: i64 = tx.query_row("SELECT count(*) FROM plugin_desired", [], |r| r.get(0))?;
+    anyhow::ensure!(valid == 1 && total == 1, "plugin desired state invalid");
+    let invalid: i64 = tx.query_row("SELECT count(*) FROM plugin_management_requests WHERE NOT(typeof(key)='text' AND length(key) BETWEEN 1 AND 200 AND typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807 AND typeof(result_revision)='integer' AND result_revision=expected_revision+1 AND typeof(committed_at)='integer')", [], |r| r.get(0))?;
+    anyhow::ensure!(invalid == 0, "plugin receipt invalid");
+    let violation: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(violation.is_none(), "plugin foreign key violation");
+    Ok(())
+}

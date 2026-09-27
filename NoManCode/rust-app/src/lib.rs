@@ -6,6 +6,7 @@ pub mod git_diff;
 pub mod network_authorization;
 pub mod plugin_catalog;
 pub mod plugin_host;
+pub mod plugin_management;
 pub mod project_config;
 pub mod provider;
 pub mod provider_transport;
