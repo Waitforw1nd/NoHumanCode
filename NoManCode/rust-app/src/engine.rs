@@ -538,8 +538,8 @@ pub struct Engine {
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
-        let desired = store.plugin_desired()?;
-        let tool_runtime = ToolRuntime::builtin_with_enabled(desired.enabled)?;
+        let (files, shell) = store.builtin_plugin_states()?;
+        let tool_runtime = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
         Ok(Arc::new(Self {
             store,
             client: provider::client()?,
@@ -613,21 +613,33 @@ impl Engine {
         }
     }
     pub fn plugins(&self) -> Result<Vec<crate::plugin_management::PluginStatus>> {
-        Ok(vec![self.plugin_status(
-            crate::plugin_management::BUILTIN_FILES_ID,
-        )?])
+        // Independent snapshots; never hold both group locks.
+        Ok(vec![
+            self.plugin_status(crate::plugin_management::BUILTIN_FILES_ID)?,
+            self.plugin_status(crate::plugin_management::BUILTIN_SHELL_ID)?,
+        ])
+    }
+    fn with_plugin_control<R>(
+        &self,
+        id: &str,
+        f: impl FnOnce(&mut crate::tool_runtime::FilesControl<'_>) -> Result<R>,
+    ) -> Result<R> {
+        use crate::plugin_management::{BUILTIN_FILES_ID, safe_error, validate_plugin_id};
+        validate_plugin_id(id)?;
+        if id == BUILTIN_FILES_ID {
+            self.tool_runtime.with_files_control(f)
+        } else {
+            self.tool_runtime.with_shell_control(f)
+        }
+        .map_err(safe_error)
     }
     pub fn plugin_status(&self, id: &str) -> Result<crate::plugin_management::PluginStatus> {
-        use crate::plugin_management::{PluginStatus, safe_error, validate_plugin_id};
-        validate_plugin_id(id)?;
-        self.tool_runtime
-            .with_files_control(|control| {
-                Ok(PluginStatus::observe(
-                    self.store.plugin_desired()?,
-                    control.snapshot(),
-                ))
-            })
-            .map_err(safe_error)
+        self.with_plugin_control(id, |control| {
+            Ok(crate::plugin_management::PluginStatus::observe(
+                self.store.plugin_desired_for(id)?,
+                control.snapshot(),
+            ))
+        })
     }
     pub fn set_plugin_enabled(
         &self,
@@ -635,29 +647,24 @@ impl Engine {
         request: crate::plugin_management::SetPluginEnabled,
         key: &str,
     ) -> Result<crate::plugin_management::PluginMutationResult> {
-        use crate::plugin_management::{
-            PluginMutationResult, PluginStatus, safe_error, validate_plugin_id,
-        };
-        validate_plugin_id(id)?;
-        self.tool_runtime
-            .with_files_control(|control| {
-                let (receipt, replayed) = self.store.set_plugin_desired(id, &request, key)?;
-                if !replayed {
-                    #[cfg(test)]
-                    if let Some(probe) = self.plugin_commit_probe.lock().unwrap().clone() {
-                        probe();
-                    }
-                    control.reconcile(request.enabled);
+        use crate::plugin_management::{PluginMutationResult, PluginStatus};
+        self.with_plugin_control(id, |control| {
+            let (receipt, replayed) = self.store.set_plugin_desired(id, &request, key)?;
+            if !replayed {
+                #[cfg(test)]
+                if let Some(probe) = self.plugin_commit_probe.lock().unwrap().clone() {
+                    probe();
                 }
-                let current =
-                    PluginStatus::observe(self.store.plugin_desired()?, control.snapshot());
-                Ok(PluginMutationResult {
-                    receipt,
-                    replayed,
-                    current,
-                })
+                control.reconcile(request.enabled);
+            }
+            let current =
+                PluginStatus::observe(self.store.plugin_desired_for(id)?, control.snapshot());
+            Ok(PluginMutationResult {
+                receipt,
+                replayed,
+                current,
             })
-            .map_err(safe_error)
+        })
     }
     /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_files(&self) -> Result<()> {
@@ -666,6 +673,13 @@ impl Engine {
 
     pub fn unload_builtin_files(&self) -> Result<()> {
         self.tool_runtime.unload_builtin_files()
+    }
+    /// In-memory component control only. Persistent desired state is unchanged.
+    pub fn disable_builtin_shell(&self) -> Result<()> {
+        self.tool_runtime.disable_builtin_shell()
+    }
+    pub fn unload_builtin_shell(&self) -> Result<()> {
+        self.tool_runtime.unload_builtin_shell()
     }
     pub fn key(&self, route: &Route) -> Result<String> {
         ensure!(
@@ -1647,6 +1661,16 @@ impl Engine {
         }
         let (result, succeeded) = match lease.execute(task, args).await {
             Ok(value) => (value, true),
+            Err(error)
+                if name == "run_command"
+                    && error.chain().any(|cause| {
+                        cause.is::<crate::command_execution::CommandOutcomeUnknown>()
+                    }) =>
+            {
+                let id =
+                    approval_id.context("Command result unknown without an approval binding")?;
+                return Err(approval::ApprovalError::UnknownResult { id: id.to_owned() }.into());
+            }
             Err(error) => (
                 json!({"error":secrets::scrub(&error.to_string(), key)}),
                 false,
@@ -2672,7 +2696,7 @@ mod workspace_phase_tests {
             assert_eq!(engine.store.schema_version().unwrap(), 13);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
-            assert_eq!(current.version, "1.1.0");
+            assert_eq!(current.version, "1.2.0");
             assert_eq!(current.desired.updated_at, 123);
             assert_eq!(current.desired.revision, 1);
             assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });

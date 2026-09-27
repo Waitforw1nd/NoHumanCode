@@ -109,6 +109,9 @@ impl Store {
         desired_tx(&db)
     }
     pub(crate) fn plugin_desired_for(&self, id: &str) -> Result<PluginDesired> {
+        if id == BUILTIN_FILES_ID {
+            return self.plugin_desired();
+        }
         let db = self
             .db
             .lock()
@@ -502,8 +505,24 @@ impl PluginStatus {
         runtime: crate::tool_runtime::FilesRuntimeStatus,
     ) -> Self {
         use crate::tool_runtime::{FilesInstanceState, FilesRuntimeState};
+        let shell = desired.plugin_id == BUILTIN_SHELL_ID;
+        let dependent = if shell {
+            "builtin.engine-shell-tools"
+        } else {
+            "builtin.engine-tools"
+        };
+        let version = if shell {
+            crate::tool_runtime::SHELL_PLUGIN_VERSION
+        } else {
+            crate::tool_runtime::FILES_PLUGIN_VERSION
+        };
+        let tools: &[&str] = if shell {
+            &crate::tool_runtime::SHELL_TOOLS
+        } else {
+            &crate::tool_runtime::FILE_TOOLS
+        };
         let complete_instances = runtime.instances.len() == 2
-            && [BUILTIN_FILES_ID, "builtin.engine-tools"]
+            && [desired.plugin_id.as_str(), dependent]
                 .iter()
                 .all(|id| runtime.instances.iter().any(|i| i.plugin_id == *id));
         let converged = if desired.enabled {
@@ -540,20 +559,17 @@ impl PluginStatus {
             None
         };
         Self {
-            plugin_id: BUILTIN_FILES_ID.into(),
-            version: crate::tool_runtime::FILES_PLUGIN_VERSION.into(),
+            plugin_id: desired.plugin_id.clone(),
+            version: version.into(),
             scope: "host".into(),
             desired,
             runtime,
-            affected_tools: crate::tool_runtime::FILE_TOOLS
-                .iter()
-                .map(|name| (*name).into())
-                .collect(),
+            affected_tools: tools.iter().map(|name| (*name).into()).collect(),
             compat_tools: crate::tool_runtime::COMPAT_TOOLS
                 .iter()
                 .map(|name| (*name).into())
                 .collect(),
-            affected_dependents: vec!["builtin.engine-tools".into()],
+            affected_dependents: vec![dependent.into()],
             converged,
             blocked_reason,
         }
