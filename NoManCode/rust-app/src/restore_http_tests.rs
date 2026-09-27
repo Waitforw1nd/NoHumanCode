@@ -291,16 +291,45 @@ async fn assert_sealed(
 ) {
     use crate::{
         domain::{ChatTurnError, SendChatTurn},
-        workspace_changes::WorkspaceChangeError,
+        store::ResumeError,
     };
     let counts = durable_counts(db);
     let previous = serde_json::to_value(engine.store.task(task).unwrap()).unwrap();
     let call_count = calls.load(std::sync::atomic::Ordering::SeqCst);
+    let receipt = serde_json::to_value(engine.latest_restore(task).unwrap()).unwrap();
+    let root = engine.store.task(task).unwrap().workspace;
+    let response = body(
+        client()
+            .post(format!("{origin}/api/tasks/{task}/resume"))
+            .header("x-peachsh-token", TOKEN)
+            .json(&json!({"message":"must not retry"}))
+            .send()
+            .await
+            .unwrap(),
+        StatusCode::CONFLICT,
+    )
+    .await;
+    assert_eq!(response["code"], "conflict");
+    assert_eq!(response["retryable"], false);
+    assert_eq!(response["message"], "任务已有恢复记录，不能继续原任务");
+    assert_eq!(response["error"], "任务已有恢复记录，不能继续原任务");
+    assert_eq!(response["ok"], false);
+    assert_eq!(durable_counts(db), counts);
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), call_count);
+    assert_eq!(
+        serde_json::to_value(engine.store.task(task).unwrap()).unwrap(),
+        previous
+    );
+    assert_eq!(
+        serde_json::to_value(engine.latest_restore(task).unwrap()).unwrap(),
+        receipt
+    );
+    assert_files(Path::new(&root));
     let resume = engine.resume(task, "must not retry").await.unwrap_err();
     assert!(
         matches!(
-            resume.downcast_ref::<WorkspaceChangeError>(),
-            Some(WorkspaceChangeError::Unknown { .. } | WorkspaceChangeError::Unrestorable)
+            resume.downcast_ref::<ResumeError>(),
+            Some(ResumeError::Sealed)
         ),
         "resume must fail for restore sealing, got {resume:?}"
     );
@@ -332,6 +361,16 @@ async fn assert_sealed(
     );
     assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), call_count);
     assert!(!engine.is_busy());
+    assert_eq!(
+        serde_json::to_value(engine.latest_restore(task).unwrap()).unwrap(),
+        receipt
+    );
+    assert_files(Path::new(&root));
+    eprintln!(
+        "sealed checks: counts_before={counts:?} counts_after={:?} provider_before={call_count} provider_after={} task_unchanged=true receipt_unchanged=true fs_unchanged=true",
+        durable_counts(db),
+        calls.load(std::sync::atomic::Ordering::SeqCst)
+    );
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn partial_restore_committed_barrier_http_reopen_no_retry() {
@@ -496,7 +535,7 @@ async fn partial_restore_committed_barrier_http_reopen_no_retry() {
     )
     .await;
     assert_eq!(retry["receipt"], partial["receipt"]);
-    assert_sealed(&h.engine, &task, &db, &h.calls).await;
+    assert_sealed(&h.engine, &task, &db, &h.origin, &h.calls).await;
     assert_files(h.dir.path());
     assert_eq!(outcome_rows(&db), committed);
     // Stop and join the HTTP servers; reopen actual durable Store/Engine.
@@ -537,7 +576,7 @@ async fn partial_restore_committed_barrier_http_reopen_no_retry() {
     .await;
     assert_eq!(reopened["receipt"], partial["receipt"]);
     let reopened_db = Connection::open(dir.path().join("workspace.db")).unwrap();
-    assert_sealed(&engine, &task, &reopened_db, &calls).await;
+    assert_sealed(&engine, &task, &reopened_db, &origin, &calls).await;
     assert_files(dir.path());
     let db = Connection::open(dir.path().join("workspace.db")).unwrap();
     assert_eq!(outcome_rows(&db), committed);

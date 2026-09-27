@@ -1289,7 +1289,26 @@ async fn resume(
     ContractJson(body): ContractJson<Resume>,
 ) -> Result<Json<Task>> {
     let id = object_id(id)?;
-    Ok(Json(app.engine.resume(&id, &body.message).await?))
+    let task = app
+        .engine
+        .resume(&id, &body.message)
+        .await
+        .map_err(|error| {
+            if matches!(
+                error.downcast_ref::<crate::store::ResumeError>(),
+                Some(crate::store::ResumeError::Sealed)
+            ) {
+                ApiError::with_code(
+                    StatusCode::CONFLICT,
+                    ErrorCode::Conflict,
+                    false,
+                    anyhow::anyhow!("任务已有恢复记录，不能继续原任务"),
+                )
+            } else {
+                ApiError::from(error)
+            }
+        })?;
+    Ok(Json(task))
 }
 async fn cancel(
     State(app): State<App>,
