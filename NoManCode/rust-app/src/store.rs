@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 14;
+pub const SCHEMA_VERSION: u32 = 15;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -121,8 +121,13 @@ impl Store {
         let worktree_marker =
             repository::migration_applied(&preflight, repository::WORKTREE_MIGRATION_ID)?;
         anyhow::ensure!(
-            worktree_marker == (version == 14),
+            worktree_marker == (version >= 14),
             "schema 14 marker/version mismatch"
+        );
+        anyhow::ensure!(
+            repository::migration_applied(&preflight, repository::BUDGET_MIGRATION_ID)?
+                == (version == 15),
+            "schema 15 marker/version mismatch"
         );
         preflight.commit()?;
         if version < 2 {
@@ -284,7 +289,7 @@ impl Store {
         {
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             let current: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-            if current == 14 {
+            if current >= 14 {
                 repository::verify_schema_13(&tx)?;
             } else {
                 repository::apply_schema_13(&tx)?;
@@ -294,6 +299,11 @@ impl Store {
         {
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             repository::apply_schema_14(&tx)?;
+            tx.commit()?;
+        }
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            repository::apply_schema_15(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
