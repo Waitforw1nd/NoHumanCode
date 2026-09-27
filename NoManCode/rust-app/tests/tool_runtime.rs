@@ -62,15 +62,21 @@ fn revoked_file_tools_never_reappear_through_compatibility_dispatch() {
     runtime.unload_builtin_files().unwrap();
     let mut visible = names(runtime.definitions(&task).unwrap());
     visible.sort();
-    assert_eq!(visible, ["list_files", "run_wasm", "search_files"]);
-    for name in ["read_file", "write_file", "unknown"] {
+    assert_eq!(visible, ["run_wasm"]);
+    for name in [
+        "read_file",
+        "write_file",
+        "list_files",
+        "search_files",
+        "unknown",
+    ] {
         assert!(
             runtime
                 .acquire(&task, name, || -> anyhow::Result<()> { panic!("revoked") })
                 .is_err()
         );
     }
-    for name in ["list_files", "search_files", "run_wasm"] {
+    for name in ["run_wasm"] {
         let (_, admission) = runtime.acquire(&task, name, || Ok(7)).unwrap();
         assert_eq!(admission, 7);
     }
@@ -89,11 +95,8 @@ fn disabled_constructor_exposes_only_compat_and_never_calls_file_admission() {
     task.spec.allow_commands = true;
     let mut visible = names(runtime.definitions(&task).unwrap());
     visible.sort();
-    assert_eq!(
-        visible,
-        ["list_files", "run_command", "run_wasm", "search_files"]
-    );
-    for name in ["read_file", "write_file"] {
+    assert_eq!(visible, ["run_command", "run_wasm"]);
+    for name in ["read_file", "write_file", "list_files", "search_files"] {
         assert!(
             runtime
                 .acquire(&task, name, || -> anyhow::Result<()> {
@@ -102,11 +105,11 @@ fn disabled_constructor_exposes_only_compat_and_never_calls_file_admission() {
                 .is_err()
         );
     }
-    for name in ["list_files", "search_files", "run_command", "run_wasm"] {
+    for name in ["run_command", "run_wasm"] {
         let (_, admitted) = runtime.acquire(&task, name, || Ok(73)).unwrap();
         assert_eq!(admitted, 73);
     }
     runtime.disable_builtin_files().unwrap();
     runtime.unload_builtin_files().unwrap();
-    assert_eq!(runtime.definitions(&task).unwrap().len(), 4);
+    assert_eq!(runtime.definitions(&task).unwrap().len(), 2);
 }
