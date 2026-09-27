@@ -1,0 +1,108 @@
+{
+  "candidate": "93697de82a79ed657ad3a8913e7aab9e240b8d56",
+  "changes": [
+    "本人工作树绝对路径改为仓库根相对路径（含JSON转义形式）",
+    "机器MSVC安装前缀改为<machine-msvc>占位，未迁移工具链",
+    "其余测试、警告与时间内容保持；原始日志不改写"
+  ],
+  "rust_tree": "1725b2e2db5a61e3f9a6b26f13c8c3525421ffae",
+  "files": [
+    {
+      "original_sha256": "316B53B6F58BD0CB6900A4D39CEF01FBB7E32B4172A1096694BF1553244E2E8B",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/component-clippy-01.log",
+      "published_sha256": "A2C9857B90DE646464F9E7E0A29F3AA6171A012562A56B61571B75AA2AA08DB8",
+      "original_bytes": 4906,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/component-clippy-01.log",
+      "published_bytes": 4896
+    },
+    {
+      "original_sha256": "8A0D70A5B87E81638883A80F51196B61742C72F89FAF1BBFE4F520ECBF7D554C",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/component-clippy-01.log.json",
+      "published_sha256": "914F915EF30696F91A03D3A95E83433D3D548C9FC07489D7DBCD9E6D2D2F8180",
+      "original_bytes": 417,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/component-clippy-01.log.json",
+      "published_bytes": 405
+    },
+    {
+      "original_sha256": "99C5B5296997F4F83B9B160F8A66216ECBF33481D0F7FEC50496697E398549EF",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/engine-components-01.log",
+      "published_sha256": "AD2C0CFC0AB749041F96E1243CDD9B377B35D0901A8B031EAD6381A21D071CEA",
+      "original_bytes": 735,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/engine-components-01.log",
+      "published_bytes": 725
+    },
+    {
+      "original_sha256": "1E876DBB40F9796EA82D2F4DD38B2592478CEF66F054FD762685EDD378E8DBCB",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/engine-components-01.log.json",
+      "published_sha256": "81DB6F4B0ACEE241B5732FDB1D38A787061F01355102F45740789ABEE675DBA5",
+      "original_bytes": 443,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/engine-components-01.log.json",
+      "published_bytes": 431
+    },
+    {
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/owned-fmt-01.log",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/owned-fmt-01.log",
+      "published_bytes": 0
+    },
+    {
+      "original_sha256": "C8FDBE292E19ECE0B4B6A16942614FC5A06AB0398D550C4EC9E20FAB8F545B09",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/owned-fmt-01.log.json",
+      "published_sha256": "C8FDBE292E19ECE0B4B6A16942614FC5A06AB0398D550C4EC9E20FAB8F545B09",
+      "original_bytes": 208,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/owned-fmt-01.log.json",
+      "published_bytes": 208
+    },
+    {
+      "original_sha256": "5AB6DDC1A3517AD2EC3398E918AEBA156BD27A096CD4CDEAB2322731E37A2E4A",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/phase-regression-01.log",
+      "published_sha256": "384DD23647B0BA39544C293FF3D06BD1C3CCC1E2459CCA0FF0A238ADCA783181",
+      "original_bytes": 3007,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/phase-regression-01.log",
+      "published_bytes": 3002
+    },
+    {
+      "original_sha256": "25BDB185D780582E1CA911550FF94C567C396B5C31ECBC832A89FDCB099BB3C2",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/phase-regression-01.log.json",
+      "published_sha256": "18C8830B81F8CDF2DBEFB3A45CD1AF31EA0AD854F7AE8E201F64DC779C127C78",
+      "original_bytes": 437,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/phase-regression-01.log.json",
+      "published_bytes": 425
+    },
+    {
+      "original_sha256": "F07E9CC233B56B47C5E5013D63F208DBEEE3FFB669B882ED4156B154B92CCCCA",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/public-api-01.log",
+      "published_sha256": "834AB03888E5A47AAFAD79EEB28AC880A7EF11EAA3627AA1661CB1591A50954D",
+      "original_bytes": 7665,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/public-api-01.log",
+      "published_bytes": 7645
+    },
+    {
+      "original_sha256": "836FBB731FA478A4F38FFD0C8D5C8A59C7C9C0E087399F06A1B47720F760FB63",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/public-api-01.log.json",
+      "published_sha256": "E7887024CAE151E843DA345552896AFAA4708022E3319EC626D2D441FA4D81C4",
+      "original_bytes": 452,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/public-api-01.log.json",
+      "published_bytes": 440
+    },
+    {
+      "original_sha256": "35AE366C72AEF53F3D8FB2729A86FF7B6525D139299CC4AC80BBA4A4AB79D400",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/public-api-02.log",
+      "published_sha256": "642CC9A4F994AE73AE5B677F5311E9BEE9F67907442458DD063F8FF743D489ED",
+      "original_bytes": 1686,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/public-api-02.log",
+      "published_bytes": 1671
+    },
+    {
+      "original_sha256": "C5938051199A77D829750A43A7BF3C97FFACE57BB11FACCBB11F7E91CC96F6CB",
+      "published": "niuma/员工B/提交报告/第十轮/证据1.0/public-api-02.log.json",
+      "published_sha256": "913512635A5AE6E5B51FCEF4D252F98135A33B3847B8851B4DBC538DDEC2B3FE",
+      "original_bytes": 452,
+      "original": "../nhc-b-file-discovery/.local/review-evidence/public-api-02.log.json",
+      "published_bytes": 440
+    }
+  ],
+  "published_utc": "2026-09-27T03:58:09.7999528Z"
+}

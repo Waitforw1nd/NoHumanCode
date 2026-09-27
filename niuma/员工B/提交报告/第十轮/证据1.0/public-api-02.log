@@ -1,0 +1,28 @@
+   Compiling peachsh v0.2.0 (../nhc-b-file-discovery\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.60s
+     Running tests\plugin_management.rs (../nhc-b-file-discovery\.local\target-r10\debug\deps\plugin_management-a23b3a7c2003d35c.exe)
+
+running 3 tests
+test strict_request_and_safe_typed_errors ... ok
+test management_status_replay_and_explicit_reconciliation ... ok
+test disabled_restart_and_runtime_failure_before_commit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\tool_session_turns.rs (../nhc-b-file-discovery\.local\target-r10\debug\deps\tool_session_turns-2a0efc6d22f5fc37.exe)
+
+running 11 tests
+test n03_denied_write_history_can_continue_without_inheriting_approval ... ok
+test n06_malformed_and_changed_origin_history_cannot_append ... ok
+test n05_legacy_untracked_effect_is_not_cleared_by_interrupted_placeholder ... ok
+test n09_stop_before_approval_claim_has_no_write_or_claim ... ok
+test n06_store_rechecks_every_inherited_permission_and_original_approval_owner ... ok
+test n07_tool_chat_same_key_race_and_active_scope_conflict ... ok
+test n04_restore_then_new_task_uses_restored_bytes_and_host_fact ... ok
+test n03_closed_history_inherits_permissions_and_creates_fresh_approval ... ok
+test n05_all_historical_unresolved_states_block_but_replay_survives ... ok
+test n11_disabled_files_keep_command_approval_network_ack_and_wasm_denial ... ok
+test n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+

@@ -1,0 +1,10 @@
+{
+  "msvc": "<machine-msvc>\\VC\\Tools\\MSVC\\14.40.33807",
+  "head": "914757473883dd1e5b977602bab606472ef8f706",
+  "target": "../nhc-b-file-discovery\\.local\\target-r10",
+  "tmp": "../nhc-b-file-discovery\\.local\\tmp",
+  "command": "cargo test --locked --test plugin_management --test tool_session_turns -- --nocapture",
+  "end_utc": "2026-09-27T03:51:42.4590446Z",
+  "start_utc": "2026-09-27T03:50:47.2561039Z",
+  "exit": 0
+}

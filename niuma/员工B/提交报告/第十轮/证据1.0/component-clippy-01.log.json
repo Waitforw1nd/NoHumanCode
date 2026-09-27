@@ -1,0 +1,10 @@
+{
+  "msvc": "<machine-msvc>\\VC\\Tools\\MSVC\\14.40.33807",
+  "target": "../nhc-b-file-discovery\\.local\\target-r10",
+  "start_utc": "2026-09-27T03:55:57.8887848Z",
+  "tmp": "../nhc-b-file-discovery\\.local\\tmp",
+  "command": "cargo clippy --locked --lib --tests -- -D warnings",
+  "end_utc": "2026-09-27T03:56:25.8289499Z",
+  "head": "93697de82a79ed657ad3a8913e7aab9e240b8d56",
+  "exit": 0
+}

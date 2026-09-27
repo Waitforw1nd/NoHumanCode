@@ -1,0 +1,6 @@
+{
+  "exit": 0,
+  "head": "93697de82a79ed657ad3a8913e7aab9e240b8d56",
+  "utc": "2026-09-27T03:57:21.8423999Z",
+  "command": "rustfmt --edition 2024 --check --config skip_children=true [4 owned files]"
+}

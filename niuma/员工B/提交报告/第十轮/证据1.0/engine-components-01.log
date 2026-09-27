@@ -1,0 +1,11 @@
+   Compiling peachsh v0.2.0 (../nhc-b-file-discovery\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 11.51s
+     Running unittests src\lib.rs (../nhc-b-file-discovery\.local\target-r10\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 3 tests
+test engine::workspace_phase_tests::n11_three_reads_recheck_durable_desired_and_project_permissions ... ok
+test engine::workspace_phase_tests::n11_real_discovery_leases_finish_after_persistent_disable_and_record_results ... ok
+test engine::workspace_phase_tests::n11_old_schema12_receipt_reopens_as_current_version_without_any_row_changes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 123 filtered out; finished in 0.29s
+

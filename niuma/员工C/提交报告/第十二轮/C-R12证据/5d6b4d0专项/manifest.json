@@ -1,0 +1,35 @@
+{
+  "batch": "5d6b4d0专项",
+  "created_utc": "2026-09-27T03:57:25.9245121Z",
+  "transforms": [
+    "Active worktree absolute prefix -> ../nhc-c-file-discovery",
+    "Main repository absolute prefix -> .",
+    "Read-only machine MSVC installation prefix -> <machine-msvc>"
+  ],
+  "files": [
+    {
+      "original": "../nhc-c-file-discovery/.local/logs/5d6b4d0-plugin-attempt1.log",
+      "published": "niuma/员工C/提交报告/第十二轮/C-R12证据/5d6b4d0专项/5d6b4d0-plugin-attempt1.log",
+      "original_sha256": "A8805589F423A70D9A5CBA23CE2C3938CE7DE2E76A7AC79931808DBBDAF66E6B",
+      "published_sha256": "B358073195B3FB96551AE3BC887AFC2D1536B485D6EE773A1609111FE0A83F4F"
+    },
+    {
+      "original": "../nhc-c-file-discovery/.local/logs/5d6b4d0-plugin-attempt1.json",
+      "published": "niuma/员工C/提交报告/第十二轮/C-R12证据/5d6b4d0专项/5d6b4d0-plugin-attempt1.json",
+      "original_sha256": "8BAC3B4F8C87DDDE152A28198AC0577EE56DE84A1812070FB63481765D112DF7",
+      "published_sha256": "984F5D558C6D310D5CCB52281A91FD2CBB2A15ACF6342EA9ACAE9F29638138DE"
+    },
+    {
+      "original": "../nhc-c-file-discovery/.local/logs/5d6b4d0-plugin-clippy.log",
+      "published": "niuma/员工C/提交报告/第十二轮/C-R12证据/5d6b4d0专项/5d6b4d0-plugin-clippy.log",
+      "original_sha256": "0EBF6E075ED61BEBB8C01F02211E4C5E6164B0C2AB0D504EE662D635A21B15EF",
+      "published_sha256": "F6F56E14EDDECB42E6686EE957CE51E56D5F2B167F0CEFA41A400CD45E7B35AF"
+    },
+    {
+      "original": "../nhc-c-file-discovery/.local/logs/5d6b4d0-plugin-clippy.json",
+      "published": "niuma/员工C/提交报告/第十二轮/C-R12证据/5d6b4d0专项/5d6b4d0-plugin-clippy.json",
+      "original_sha256": "B88D8BD9CAFF0239AE3A85A4DA7314A56898B4675B430E554EB6174213D24EFB",
+      "published_sha256": "8EE4A05C348B2ED16EFCDD082BAD07287B047053E31DD5DA8B91FDF89D51B397"
+    }
+  ]
+}
