@@ -314,7 +314,7 @@ async fn assert_sealed(
     assert_eq!(response["retryable"], false);
     assert_eq!(response["message"], "任务已有恢复记录，不能继续原任务");
     assert_eq!(response["error"], "任务已有恢复记录，不能继续原任务");
-    assert_eq!(response["ok"], false);
+    assert!(response.get("ok").is_none());
     assert_eq!(durable_counts(db), counts);
     assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), call_count);
     assert_eq!(
