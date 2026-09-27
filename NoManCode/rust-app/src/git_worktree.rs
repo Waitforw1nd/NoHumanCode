@@ -1002,6 +1002,7 @@ pub(crate) async fn diagnose(
     ctx: &GitContext,
     plan: &PersistedWorktreePlan,
     registered_result_root: Option<&RootIdentity>,
+    registered_result_git_dir: Option<&RootIdentity>,
 ) -> Result<WorktreeObservation> {
     plan.validate()?;
     use WorktreeObservationReason as R;
@@ -1055,6 +1056,11 @@ pub(crate) async fn diagnose(
             } else {
                 match created(ctx, plan, None, registered_result_root, false).await {
                     Ok(value) => {
+                        if registered_result_git_dir.is_some_and(|saved| saved != &value.git_dir) {
+                            result.state = S::IdentityChanged;
+                            result.reason_codes = vec![R::IdentityChanged];
+                            return Ok(result);
+                        }
                         result.state = S::PresentMatching;
                         result.reason_codes.clear();
                         result.observed_head = Some(value.head_oid);
@@ -1263,7 +1269,10 @@ mod tests {
                 std::fs::create_dir(&other).unwrap();
             }
             assert_eq!(
-                diagnose(&ctx, &plan, Some(&made.root)).await.unwrap().state,
+                diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
+                    .await
+                    .unwrap()
+                    .state,
                 WorktreeObservationState::Unavailable
             );
             assert_eq!(
@@ -1276,7 +1285,10 @@ mod tests {
             );
             std::fs::rename(&f.source, f._temp.path().join("source-moved")).unwrap();
             assert_eq!(
-                diagnose(&ctx, &plan, Some(&made.root)).await.unwrap().state,
+                diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
+                    .await
+                    .unwrap()
+                    .state,
                 WorktreeObservationState::IdentityChanged
             );
         }
@@ -1299,7 +1311,7 @@ mod tests {
                 Err(GitWorktreeError::Unavailable)
             ));
             assert_eq!(
-                diagnose(&ctx, &plan, None).await.unwrap().state,
+                diagnose(&ctx, &plan, None, None).await.unwrap().state,
                 WorktreeObservationState::Unavailable
             );
             assert!(!plan.target_path().exists());
@@ -1349,7 +1361,10 @@ mod tests {
             let index = std::fs::read(made.git_dir.canonical_path().join("index")).unwrap();
             let ctx = GitContext::new(vec![f.root.clone(), made.root.clone()]).unwrap();
             assert_eq!(
-                diagnose(&ctx, &plan, Some(&made.root)).await.unwrap().state,
+                diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
+                    .await
+                    .unwrap()
+                    .state,
                 WorktreeObservationState::PresentMatching
             );
             assert_eq!(std::fs::read(&file).unwrap(), b"user change\n");
@@ -1377,7 +1392,7 @@ mod tests {
         let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
         let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
         let old_refs = raw(&f.source, &["show-ref"]);
-        let initial = diagnose(&f.context, &plan, None).await.unwrap();
+        let initial = diagnose(&f.context, &plan, None, None).await.unwrap();
         assert_eq!(initial.state, WorktreeObservationState::AbsentObserved);
         let value = execute_claimed(
             ClaimedWorktree::new(
@@ -1419,7 +1434,7 @@ mod tests {
         let context = GitContext::new(vec![f.root.clone(), value.root.clone()]).unwrap();
         for _ in 0..2 {
             assert_eq!(
-                diagnose(&context, &plan, Some(&value.root))
+                diagnose(&context, &plan, Some(&value.root), Some(&value.git_dir))
                     .await
                     .unwrap()
                     .state,
@@ -1427,7 +1442,7 @@ mod tests {
             );
         }
         assert_ne!(
-            diagnose(&context, &plan, None).await.unwrap().state,
+            diagnose(&context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::PresentMatching
         );
         assert_eq!(
@@ -1539,7 +1554,7 @@ mod tests {
         )
         .unwrap();
         assert_ne!(
-            diagnose(&f.context, &plan, None).await.unwrap().state,
+            diagnose(&f.context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::AbsentObserved
         );
         assert!(admin.exists());
@@ -1697,7 +1712,7 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(
-            diagnose(&f.context, &plan, None).await.unwrap().state,
+            diagnose(&f.context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::PresentMatching
         );
         // Only this freshly-created disposable fixture tree is removed. Keep the
@@ -1709,7 +1724,7 @@ mod tests {
         assert!(made.git_dir.canonical_path().exists());
         assert!(!target.exists());
         assert_eq!(
-            diagnose(&f.context, &plan, None).await.unwrap().state,
+            diagnose(&f.context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::Partial
         );
         assert!(made.git_dir.canonical_path().exists());
