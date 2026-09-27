@@ -931,6 +931,14 @@ mod tests {
             let head = raw(&source, &["rev-parse", "HEAD"]).trim().to_owned();
             let db = host.join("host.db");
             let store = Arc::new(Store::open(&db).unwrap());
+            store
+                .save_settings(&Settings {
+                    workspace: source.to_string_lossy().into(),
+                    max_concurrency: 2,
+                    routes: vec![],
+                    newapi: None,
+                })
+                .unwrap();
             let project = store
                 .register_project(RegisterProject {
                     name: "Source".into(),
@@ -1449,5 +1457,215 @@ mod tests {
             }
             assert_eq!(f.count("projects"), 2);
         }
+    }
+    #[test]
+    fn n13_real_process_three_durable_stops_kill_wait_recover_without_repeat() {
+        const TEST: &str = "worktree_management::tests::n13_real_process_three_durable_stops_kill_wait_recover_without_repeat";
+        if let Ok(root) = std::env::var("NHC_WORKTREE_B_CHILD") {
+            let root = PathBuf::from(root);
+            let phase = std::env::var("NHC_WORKTREE_B_PHASE").unwrap();
+            let request: CreateWorktree =
+                serde_json::from_slice(&std::fs::read(root.join("request.json")).unwrap()).unwrap();
+            let store = Arc::new(Store::open(&root.join("host/host.db")).unwrap());
+            let engine = Engine::new(store, 2).unwrap();
+            engine.set_worktree_probe_for_test(Arc::new(move |at, op| {
+                let matches = matches!(
+                    (phase.as_str(), at),
+                    ("claim", crate::engine::WorktreeProbePhase::ClaimCommitted)
+                        | (
+                            "created",
+                            crate::engine::WorktreeProbePhase::CreatedBeforeRegister
+                        )
+                        | (
+                            "registered",
+                            crate::engine::WorktreeProbePhase::RegisteredBeforeReply
+                        )
+                );
+                if matches {
+                    std::fs::write(root.join("ready"), op).unwrap();
+                    std::thread::sleep(std::time::Duration::from_secs(40));
+                    panic!("parent did not terminate stopped child");
+                }
+            }));
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(engine.create_project_worktree(request))
+                .unwrap();
+            panic!("child returned without stopping");
+        }
+        for phase in ["claim", "created", "registered"] {
+            let f = Fixture::new();
+            let request = f.request();
+            std::fs::write(
+                f._temp.path().join("request.json"),
+                serde_json::to_vec(&request).unwrap(),
+            )
+            .unwrap();
+            let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
+            let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
+            let output = std::fs::File::create(f._temp.path().join("child.log")).unwrap();
+            let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_WORKTREE_B_CHILD", f._temp.path())
+                .env("NHC_WORKTREE_B_PHASE", phase)
+                .stdout(output.try_clone().unwrap())
+                .stderr(output)
+                .spawn()
+                .unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+            while !f._temp.path().join("ready").exists() && std::time::Instant::now() < deadline {
+                if let Some(status) = child.try_wait().unwrap() {
+                    panic!(
+                        "{phase} child exited {status}: {}",
+                        std::fs::read_to_string(f._temp.path().join("child.log")).unwrap()
+                    );
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            if !f._temp.path().join("ready").exists() {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!("{phase} child stop timeout");
+            }
+            let operation = std::fs::read_to_string(f._temp.path().join("ready")).unwrap();
+            let stopped = f.store.worktree_receipt(&f.project.id, &operation).unwrap();
+            assert_eq!(
+                stopped.state,
+                if phase == "registered" {
+                    WorktreeState::Succeeded
+                } else {
+                    WorktreeState::Claimed
+                }
+            );
+            child.kill().unwrap();
+            let status = child.wait().unwrap();
+            assert!(!status.success());
+            eprintln!(
+                "N13 actual kill+wait phase={phase} child={} exit={status} operation={operation}",
+                child.id()
+            );
+            let refs = raw(&f.source, &["show-ref"]);
+            let list = raw(&f.source, &["worktree", "list", "--porcelain"]);
+            let reopened = Arc::new(Store::open(&f.db).unwrap());
+            reopened.recover().unwrap();
+            let recovered = reopened
+                .worktree_receipt(&f.project.id, &operation)
+                .unwrap();
+            assert_eq!(
+                recovered.state,
+                if phase == "registered" {
+                    WorktreeState::Succeeded
+                } else {
+                    WorktreeState::Unknown
+                }
+            );
+            assert_eq!(
+                f.count("projects"),
+                if phase == "registered" { 2 } else { 1 }
+            );
+            assert_eq!(
+                f.count("worktree_project_reservations"),
+                if phase == "registered" { 0 } else { 1 }
+            );
+            let engine = Engine::new(reopened.clone(), 2).unwrap();
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                assert_eq!(
+                    engine.create_project_worktree(request).await.unwrap(),
+                    recovered
+                );
+                for _ in 0..2 {
+                    let result = engine
+                        .inspect_project_worktree(&f.project.id, &operation)
+                        .await
+                        .unwrap();
+                    assert_eq!(result.receipt, recovered);
+                    assert_eq!(
+                        result.observation.state,
+                        if phase == "claim" {
+                            WorktreeObservationState::AbsentObserved
+                        } else {
+                            WorktreeObservationState::PresentMatching
+                        }
+                    );
+                }
+            });
+            reopened.recover().unwrap();
+            assert_eq!(
+                reopened
+                    .worktree_receipt(&f.project.id, &operation)
+                    .unwrap(),
+                recovered
+            );
+            assert_eq!(
+                f.count("worktree_project_reservations"),
+                if phase == "registered" { 0 } else { 1 }
+            );
+            assert_eq!(raw(&f.source, &["show-ref"]), refs);
+            assert_eq!(raw(&f.source, &["worktree", "list", "--porcelain"]), list);
+            assert_eq!(raw(&f.source, &["rev-parse", "HEAD"]), old_head);
+            assert_eq!(
+                std::fs::read(f.source.join(".git/index")).unwrap(),
+                old_index
+            );
+            for table in ["network_calls", "tasks", "runs"] {
+                assert_eq!(f.count(table), 0);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn n13_two_real_worktrees_cannot_substitute_each_others_saved_admin() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let first = engine.create_project_worktree(f.request()).await.unwrap();
+        let second = engine.create_project_worktree(f.request()).await.unwrap();
+        assert_eq!(first.state, WorktreeState::Succeeded);
+        assert_eq!(second.state, WorktreeState::Succeeded);
+        let get_origin = |op: &str| -> WorktreeOrigin {
+            serde_json::from_str(
+                &f.store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .query_row(
+                        "SELECT identity FROM project_worktree_origins WHERE operation_id=?1",
+                        [op],
+                        |r| r.get::<_, String>(0),
+                    )
+                    .unwrap(),
+            )
+            .unwrap()
+        };
+        let mut origin = get_origin(&first.operation_id);
+        let other = get_origin(&second.operation_id);
+        assert_ne!(origin.git_dir, other.git_dir);
+        assert_eq!(origin.common_dir, other.common_dir);
+        origin.git_dir = other.git_dir;
+        f.store
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "UPDATE project_worktree_origins SET identity=?1 WHERE operation_id=?2",
+                params![serde_json::to_string(&origin).unwrap(), first.operation_id],
+            )
+            .unwrap();
+        // Both admins are structurally valid and exist; only the actual target's observed admin can disambiguate them.
+        drop(Store::open(&f.db).unwrap());
+        let refs = raw(&f.source, &["show-ref"]);
+        let rows = f.count("projects");
+        for _ in 0..2 {
+            let observed = engine
+                .inspect_project_worktree(&f.project.id, &first.operation_id)
+                .await
+                .unwrap();
+            assert_eq!(
+                observed.observation.state,
+                WorktreeObservationState::IdentityChanged
+            );
+            assert_eq!(observed.receipt, first);
+        }
+        assert_eq!(raw(&f.source, &["show-ref"]), refs);
+        assert_eq!(f.count("projects"), rows);
     }
 }

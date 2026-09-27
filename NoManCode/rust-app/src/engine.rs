@@ -819,9 +819,14 @@ impl Engine {
                 receipt,
             });
         }
-        let actual = git::diagnose(&ctx, &plan, registered.as_ref().map(|o| &o.root))
-            .await
-            .map_err(map_git)?;
+        let actual = git::diagnose(
+            &ctx,
+            &plan,
+            registered.as_ref().map(|o| &o.root),
+            registered.as_ref().map(|o| &o.git_dir),
+        )
+        .await
+        .map_err(map_git)?;
         let observation: WorktreeObservation =
             serde_json::from_value(serde_json::to_value(actual)?)
                 .map_err(|_| WorktreeError::Corrupt)?;
