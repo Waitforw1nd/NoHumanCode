@@ -10,7 +10,7 @@ use std::{
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
     process::Command,
-    time::{timeout_at, Instant},
+    time::{Instant, timeout_at},
 };
 
 const LIMIT: usize = 16 * 1024 * 1024;
@@ -314,7 +314,12 @@ async fn run(
             let wait_result = timeout_at(deadline, child.wait()).await;
             #[cfg(all(test, windows))]
             if let Some(observation) = &observation {
-                eprintln!("D08 cleanup pid={} created={} signal={} kill={kill_result:?} wait={wait_result:?}", observation.pid, observation.created, observation.signal());
+                eprintln!(
+                    "D08 cleanup pid={} created={} signal={} kill={kill_result:?} wait={wait_result:?}",
+                    observation.pid,
+                    observation.created,
+                    observation.signal()
+                );
             }
             let _ = (kill_result, wait_result);
             if mutating {
@@ -1281,8 +1286,8 @@ mod tests {
         }
     }
     #[cfg(windows)]
-    fn process_observations(
-    ) -> &'static std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>> {
+    fn process_observations()
+    -> &'static std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>> {
         static ITEMS: std::sync::OnceLock<
             std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>>,
         > = std::sync::OnceLock::new();
@@ -1854,34 +1859,40 @@ mod tests {
         }
         let f = Fixture::new();
         let plan = f.plan().await.into_persisted_plan();
-        assert!(prepare(
-            &f.context,
-            &f.root,
-            &plan.target_parent,
-            &plan.operation_id,
-            "HEAD~1"
-        )
-        .await
-        .is_err());
-        assert!(prepare(
-            &f.context,
-            &f.root,
-            &plan.target_parent,
-            &plan.operation_id,
-            &"0".repeat(40)
-        )
-        .await
-        .is_err());
+        assert!(
+            prepare(
+                &f.context,
+                &f.root,
+                &plan.target_parent,
+                &plan.operation_id,
+                "HEAD~1"
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            prepare(
+                &f.context,
+                &f.root,
+                &plan.target_parent,
+                &plan.operation_id,
+                &"0".repeat(40)
+            )
+            .await
+            .is_err()
+        );
         std::fs::create_dir(plan.target_path()).unwrap();
-        assert!(prepare(
-            &f.context,
-            &f.root,
-            &plan.target_parent,
-            &plan.operation_id,
-            &plan.expected_head
-        )
-        .await
-        .is_err());
+        assert!(
+            prepare(
+                &f.context,
+                &f.root,
+                &plan.target_parent,
+                &plan.operation_id,
+                &plan.expected_head
+            )
+            .await
+            .is_err()
+        );
         assert!(std::fs::read_dir(f.aux).unwrap().next().is_none());
     }
     #[tokio::test]
