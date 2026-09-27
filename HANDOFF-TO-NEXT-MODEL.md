@@ -1,6 +1,9 @@
 # NoHumanCode 新对话入口
 
-更新：2026-09-27。总项目/Git 根为 `./`；源码在 `NoManCode/`，人员档案在 `niuma/`，第三方参考在 `references/`。产品名称是 NoHumanCode，源码目录名是 NoManCode。
+更新：2026-09-28。总项目/Git 根为 `./`；源码在 `NoManCode/`，人员档案在 `niuma/`，第三方参考在 `references/`。产品名称是 NoHumanCode，源码目录名是 NoManCode。
+
+
+现行交接：[NEXT-13完成与换对话交接](niuma/项目经理/项目记录/2026-09-28NEXT-13完成与换对话交接.md)、[联合验收](niuma/项目经理/审查记录/2026-09-28NEXT-13联合验收.md)、[整合记录](niuma/项目经理/审查记录/2026-09-28NEXT-13整合记录.md)。具体最新执行状态仍以任务板和磁盘核实为准。
 
 ## 用户怎么启动新对话
 
