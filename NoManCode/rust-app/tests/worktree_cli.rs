@@ -465,3 +465,56 @@ async fn w09_cli_windows_path_spellings_are_lexical_without_filesystem_access() 
     assert_eq!(stdout(&h.cli(&create_args(&p)).await, 0), r);
     h.unchanged(1);
 }
+#[tokio::test]
+async fn n13_c01_existing_cli_writes_preserve_definite_reservation_rejection() {
+    let busy = json!({"code":"worktree_busy","message":"worktree_busy","error":"worktree_busy","retryable":false});
+    let h = Host::new(vec![(409, busy.to_string()); 4]).await;
+    let root = parent();
+    for args in [
+        vec![
+            "project",
+            "create",
+            "--name",
+            "old",
+            "--root",
+            root.as_str(),
+            "--key",
+            "old",
+        ],
+        vec![
+            "run",
+            "start",
+            "--project",
+            "source",
+            "--expected-config-revision",
+            "2",
+            "--route",
+            "route",
+            "--title",
+            "old",
+            "--message",
+            "old",
+            "--key",
+            "old-run",
+        ],
+        vec![
+            "session",
+            "send",
+            "session",
+            "--agent",
+            "agent",
+            "--after-turn",
+            "turn",
+            "--message",
+            "old",
+            "--key",
+            "turn-key",
+        ],
+        vec!["approval", "approve", "approval"],
+    ] {
+        let e = error(&h.cli(&args).await);
+        assert_eq!(e["code"], "worktree_busy");
+        assert_eq!(e["retryable"], false);
+    }
+    h.unchanged(4);
+}

@@ -331,6 +331,7 @@ fn is_corrupt_store(error: &anyhow::Error) -> bool {
 fn read_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -437,17 +438,11 @@ pub fn router(app: App) -> Router {
             get(project_config).put(configure_project),
         )
         .route("/api/projects/{id}/runs", post(start_project))
-        .route("/api/projects/{source}/worktrees", post(create_worktree))
+        .route("/api/projects/{id}/worktrees", post(create_worktree))
+        .route("/api/projects/{id}/worktrees/lookup", post(lookup_worktree))
+        .route("/api/projects/{id}/worktrees/{op}", get(worktree_status))
         .route(
-            "/api/projects/{source}/worktrees/lookup",
-            post(lookup_worktree),
-        )
-        .route(
-            "/api/projects/{source}/worktrees/{op}",
-            get(worktree_status),
-        )
-        .route(
-            "/api/projects/{source}/worktrees/{op}/inspect",
+            "/api/projects/{id}/worktrees/{op}/inspect",
             post(inspect_worktree),
         )
         .route(
@@ -1316,6 +1311,7 @@ fn required_idempotency_key(headers: &HeaderMap) -> Result<String> {
 fn turn_command_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1605,6 +1601,7 @@ fn approval_id(path: std::result::Result<Path<String>, PathRejection>) -> Result
 fn approval_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1853,6 +1850,7 @@ async fn restore_checkpoint(
 fn git_diff_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1887,6 +1885,7 @@ fn git_diff_error(error: anyhow::Error) -> ApiError {
 fn checkpoint_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -1955,6 +1954,7 @@ async fn restore(
 fn workspace_change_error(error: anyhow::Error) -> ApiError {
     if error.downcast_ref::<ProjectError>().is_some()
         || error.downcast_ref::<NetworkError>().is_some()
+        || error.downcast_ref::<WorktreeError>().is_some()
     {
         return classify_anyhow(error);
     }
@@ -2802,6 +2802,26 @@ mod worktree_http_crash_tests {
                 1,
             )
             .unwrap();
+            engine
+                .configure_with_keys(
+                    Settings {
+                        workspace: root.to_string_lossy().into(),
+                        max_concurrency: 1,
+                        routes: vec![Route {
+                            id: "route".into(),
+                            name: "route".into(),
+                            base_url: "http://127.0.0.1:9/v1".into(),
+                            model: "fixture".into(),
+                            max_tokens: 32,
+                            parallel_limit: 1,
+                            key_env: None,
+                        }],
+                        newapi: None,
+                    },
+                    HashMap::from([("route".into(), "worktree-fixture-key".into())]),
+                )
+                .await
+                .unwrap();
             let project = engine
                 .register_project(RegisterProject {
                     name: "source".into(),
@@ -2810,8 +2830,22 @@ mod worktree_http_crash_tests {
                 })
                 .await
                 .unwrap();
+            engine
+                .configure_project(ConfigureProject {
+                    project_id: project.id.clone(),
+                    expected_revision: 1,
+                    config: ProjectConfig {
+                        allowed_route_ids: vec!["route".into()],
+                        default_route_id: Some("route".into()),
+                        tools: false,
+                        write_scopes: vec![],
+                        allow_commands: false,
+                    },
+                })
+                .await
+                .unwrap();
             drop(engine);
-            let body = json!({"name":"isolated","parent_path":root,"expected_config_revision":1,"expected_head":head});
+            let body = json!({"name":"isolated","parent_path":root,"expected_config_revision":2,"expected_head":head});
             let path = format!("/api/projects/{}/worktrees", project.id.0);
             let mut process = spawn(root, phase);
             let origin = wait_file(&root.join(format!("listen-{phase}"))).await;
@@ -2944,6 +2978,66 @@ mod worktree_http_crash_tests {
                     .await
                     .unwrap();
                 assert_eq!(rejected.status(), 409);
+                assert_eq!(snapshot(&root.join("host.sqlite3")), before);
+                // The binary is built by the companion integration targets before this lib test.
+                let binary = std::env::current_exe()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join(format!("peachsh{}", std::env::consts::EXE_SUFFIX));
+                assert!(
+                    binary.is_file(),
+                    "build worktree_cli/worktree_http targets before W08"
+                );
+                let other_path = other.to_string_lossy().into_owned();
+                for args in [
+                    vec![
+                        "project",
+                        "create",
+                        "--name",
+                        "other",
+                        "--root",
+                        &other_path,
+                        "--key",
+                        "cli-reservation",
+                    ],
+                    vec![
+                        "run",
+                        "start",
+                        "--project",
+                        &project.id.0,
+                        "--expected-config-revision",
+                        "2",
+                        "--route",
+                        "route",
+                        "--title",
+                        "blocked",
+                        "--message",
+                        "blocked",
+                        "--key",
+                        "cli-start-reservation",
+                    ],
+                ] {
+                    let output = tokio::time::timeout(
+                        Duration::from_secs(10),
+                        tokio::process::Command::new(&binary)
+                            .args(["--port", origin.rsplit(':').next().unwrap(), "--json"])
+                            .args(args)
+                            .current_dir(root)
+                            .kill_on_drop(true)
+                            .output(),
+                    )
+                    .await
+                    .unwrap()
+                    .unwrap();
+                    assert_eq!(output.status.code(), Some(1));
+                    assert!(output.stdout.is_empty());
+                    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+                    assert_eq!(error["code"], "worktree_busy");
+                    assert_eq!(error["retryable"], false);
+                }
                 assert_eq!(snapshot(&root.join("host.sqlite3")), before);
             }
             let db = rusqlite::Connection::open(root.join("host.sqlite3")).unwrap();

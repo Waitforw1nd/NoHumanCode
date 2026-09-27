@@ -1371,6 +1371,9 @@ async fn request_json(
         ));
     }
     let code = match error.code.as_str().unwrap() {
+        "worktree_busy" if status == reqwest::StatusCode::CONFLICT && !error.retryable => {
+            "worktree_busy"
+        }
         "request_failed" => "request_failed",
         "not_found" => "not_found",
         "conflict" => "conflict",
@@ -1733,6 +1736,7 @@ fn operation_unknown(operation: &str) -> Failure {
 }
 fn project_error_code(code: &str) -> Option<&'static str> {
     match code {
+        "worktree_busy" => Some("worktree_busy"),
         "project_invalid" => Some("project_invalid"),
         "project_not_found" => Some("project_not_found"),
         "project_revision_conflict" => Some("project_revision_conflict"),
@@ -1755,7 +1759,10 @@ fn http_failure(value: Value) -> Result<Failure, Failure> {
         return network_http_failure(value);
     }
     let error: HttpError = decode(value)?;
-    if error.error != error.message || !safe_strings(&json!(error.message)) {
+    if error.error != error.message
+        || !safe_strings(&json!(error.message))
+        || (error.code.as_str() == Some("worktree_busy") && error.retryable)
+    {
         return Err(invalid_response());
     }
     let code = match error.code.as_str() {
@@ -1852,6 +1859,9 @@ async fn workflow_request_bound(
         return Ok(value);
     }
     let mut failure = http_failure(value.clone())?;
+    if failure.code == "worktree_busy" && status != reqwest::StatusCode::CONFLICT {
+        return Err(invalid_response());
+    }
     if matches!(operation, Some("restore" | "restore-checkpoint")) && value.get("receipt").is_some()
     {
         if status != reqwest::StatusCode::CONFLICT
