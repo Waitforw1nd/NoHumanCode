@@ -521,6 +521,15 @@ struct Active {
 }
 #[cfg(test)]
 type ShellClaimProbe = (String, Arc<dyn Fn() + Send + Sync>);
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WorktreeProbePhase {
+    ClaimCommitted,
+    CreatedBeforeRegister,
+    RegisteredBeforeReply,
+}
+#[cfg(test)]
+type WorktreeProbe = Arc<dyn Fn(WorktreeProbePhase, &str) + Send + Sync>;
 pub struct Engine {
     pub store: Arc<Store>,
     pub client: crate::provider_transport::ProviderClient,
@@ -533,6 +542,8 @@ pub struct Engine {
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
     tool_runtime: ToolRuntime,
+    #[cfg(test)]
+    worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
     plugin_commit_probe: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     #[cfg(test)]
@@ -570,6 +581,8 @@ impl Engine {
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
             tool_runtime,
+            #[cfg(test)]
+            worktree_probe: Mutex::new(None),
             #[cfg(test)]
             plugin_commit_probe: Mutex::new(None),
             #[cfg(test)]
@@ -631,6 +644,178 @@ impl Engine {
                 error,
             });
         }
+    }
+    #[cfg(test)]
+    pub(crate) fn set_worktree_probe_for_test(&self, probe: WorktreeProbe) {
+        *self.worktree_probe.lock().unwrap() = Some(probe);
+    }
+    #[cfg(test)]
+    fn observe_worktree(&self, phase: WorktreeProbePhase, operation: &str) {
+        let probe = self.worktree_probe.lock().unwrap().clone();
+        if let Some(probe) = probe {
+            probe(phase, operation);
+        }
+    }
+    pub async fn create_project_worktree(
+        self: &Arc<Self>,
+        request: crate::worktree_management::CreateWorktree,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        use crate::{git_worktree as git, worktree_management::*};
+        let request = normalize_request(request)?;
+        if let Some(prior) = self.store.worktree_replay(&request)? {
+            return Ok(prior);
+        }
+        let inventory = self.store.worktree_inventory()?;
+        let roots = inventory.roots()?;
+        let source = roots
+            .iter()
+            .find(|(id, _)| id == &request.source_project_id)
+            .ok_or(WorktreeError::NotFound)?
+            .1
+            .clone();
+        let config = self.store.project_config(&request.source_project_id)?;
+        ensure!(
+            config.revision == request.expected_config_revision,
+            WorktreeError::RevisionConflict
+        );
+        let context = git::GitContext::new(roots.iter().map(|(_, r)| r.clone()).collect())
+            .map_err(map_git)?;
+        let parent = crate::workspace_identity::RootIdentity::capture(std::path::Path::new(
+            &request.parent_path,
+        ))
+        .map_err(|_| WorktreeError::RootChanged)?;
+        let operation = uuid::Uuid::new_v4().to_string();
+        let prepared = git::prepare(
+            &context,
+            &source,
+            &parent,
+            &operation,
+            &request.expected_head,
+        )
+        .await
+        .map_err(map_git)?;
+        let common = prepared.plan().repository.common_key().map_err(map_git)?;
+        let mut members = Vec::new();
+        for (id, root) in &roots {
+            match git::probe_project_git(&context, root)
+                .await
+                .map_err(map_git)?
+            {
+                git::ProjectGitObservation::NotGit => {}
+                git::ProjectGitObservation::Repository(repository) => {
+                    if repository.common_key().map_err(map_git)? == common {
+                        members.push(id.clone());
+                    }
+                }
+            }
+        }
+        let plan = prepared.into_persisted_plan();
+        let aux = self.store.worktree_aux(&operation)?;
+        // Verify the existing parent; no helper directory exists before the durable claim.
+        for (_, root) in &roots {
+            let path = root.canonical_path();
+            ensure!(
+                !aux.starts_with(path) && !path.starts_with(&aux),
+                WorktreeError::Conflict
+            );
+        }
+        let (receipt, replayed) = self
+            .store
+            .claim_worktree(&request, &inventory, &members, &plan)?;
+        if replayed {
+            return Ok(receipt);
+        }
+        let engine = self.clone();
+        let original = receipt.clone();
+        // No await between committing admission and handing ownership to the worker.
+        let worker = tokio::spawn(async move {
+            #[cfg(test)]
+            engine.observe_worktree(WorktreeProbePhase::ClaimCommitted, &receipt.operation_id);
+            let claimed =
+                git::ClaimedWorktree::new(plan, aux, roots.into_iter().map(|(_, r)| r).collect());
+            let outcome = match claimed {
+                Ok(claimed) => git::execute_claimed(claimed).await,
+                Err(error) => Err(error),
+            };
+            match outcome {
+                Ok(created) => {
+                    #[cfg(test)]
+                    engine.observe_worktree(
+                        WorktreeProbePhase::CreatedBeforeRegister,
+                        &receipt.operation_id,
+                    );
+                    let result = match engine.store.finish_worktree(&receipt, Some(&created), None)
+                    {
+                        Ok(result) => result,
+                        Err(_) => engine.store.finish_worktree(
+                            &receipt,
+                            None,
+                            Some((
+                                WorktreeState::Unknown,
+                                WorktreeCause::RegistrationOutcomeUnknown,
+                            )),
+                        )?,
+                    };
+                    #[cfg(test)]
+                    if result.state == WorktreeState::Succeeded {
+                        engine.observe_worktree(
+                            WorktreeProbePhase::RegisteredBeforeReply,
+                            &result.operation_id,
+                        );
+                    }
+                    Ok::<_, anyhow::Error>(result)
+                }
+                Err(error) => {
+                    let (state, cause) = if error == git::GitWorktreeError::OutcomeUnknown {
+                        (WorktreeState::Unknown, WorktreeCause::ProcessOutcomeUnknown)
+                    } else {
+                        (
+                            WorktreeState::Rejected,
+                            match map_git(error) {
+                                WorktreeError::Invalid => WorktreeCause::Invalid,
+                                WorktreeError::Unsupported => WorktreeCause::Unsupported,
+                                WorktreeError::Unavailable => WorktreeCause::Unavailable,
+                                _ => WorktreeCause::Conflict,
+                            },
+                        )
+                    };
+                    engine
+                        .store
+                        .finish_worktree(&receipt, None, Some((state, cause)))
+                }
+            }
+        });
+        match worker.await {
+            Ok(Ok(receipt)) => Ok(receipt),
+            Ok(Err(_)) | Err(_) => self.store.finish_worktree(
+                &original,
+                None,
+                Some((WorktreeState::Unknown, WorktreeCause::Interrupted)),
+            ),
+        }
+    }
+    pub async fn inspect_project_worktree(
+        &self,
+        source: &ProjectId,
+        operation: &str,
+    ) -> Result<crate::worktree_management::WorktreeInspection> {
+        use crate::{git_worktree as git, worktree_management::*};
+        let receipt = self.store.worktree_receipt(source, operation)?;
+        let plan = self.store.worktree_plan(source, operation)?;
+        let roots = self.store.worktree_inventory()?.roots()?;
+        let ctx =
+            git::GitContext::new(roots.into_iter().map(|(_, r)| r).collect()).map_err(map_git)?;
+        let registered = self.store.registered_worktree_root(&receipt)?;
+        let actual = git::diagnose(&ctx, &plan, registered.as_ref())
+            .await
+            .map_err(map_git)?;
+        let observation: WorktreeObservation =
+            serde_json::from_value(serde_json::to_value(actual)?)
+                .map_err(|_| WorktreeError::Corrupt)?;
+        Ok(WorktreeInspection {
+            receipt,
+            observation,
+        })
     }
     pub fn worktree_receipt(
         &self,
