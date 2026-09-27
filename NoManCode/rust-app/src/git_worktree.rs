@@ -1023,6 +1023,10 @@ pub(crate) async fn diagnose(
         result.reason_codes = vec![R::IdentityChanged];
         return Ok(result);
     }
+    // No artifact observation is trustworthy without every executable exclusion root.
+    if ctx.project_roots.iter().any(|root| verified(root).is_err()) {
+        return Ok(result);
+    }
     match std::fs::symlink_metadata(plan.target_path()) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             match branch_available(ctx, plan, None).await {
@@ -1232,6 +1236,49 @@ mod tests {
             )
             .await
             .unwrap()
+        }
+    }
+    #[tokio::test]
+    async fn w10_present_result_with_unrelated_offline_root_is_unavailable() {
+        for replace in [false, true] {
+            let f = Fixture::new();
+            let plan = f.plan().await.into_persisted_plan();
+            let made = execute_claimed(
+                ClaimedWorktree::new(
+                    plan.clone(),
+                    f.aux.join(&plan.operation_id),
+                    vec![f.root.clone()],
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+            let other = f._temp.path().join("other-project");
+            std::fs::create_dir(&other).unwrap();
+            let identity = RootIdentity::capture(&other).unwrap();
+            let ctx = GitContext::new(vec![f.root.clone(), made.root.clone(), identity]).unwrap();
+            let index = std::fs::read(made.git_dir.canonical_path().join("index")).unwrap();
+            std::fs::rename(&other, f._temp.path().join("retained-original")).unwrap();
+            if replace {
+                std::fs::create_dir(&other).unwrap();
+            }
+            assert_eq!(
+                diagnose(&ctx, &plan, Some(&made.root)).await.unwrap().state,
+                WorktreeObservationState::Unavailable
+            );
+            assert_eq!(
+                std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
+                index
+            );
+            assert_eq!(
+                std::fs::read(made.root.canonical_path().join("a.txt")).unwrap(),
+                b"baseline\n"
+            );
+            std::fs::rename(&f.source, f._temp.path().join("source-moved")).unwrap();
+            assert_eq!(
+                diagnose(&ctx, &plan, Some(&made.root)).await.unwrap().state,
+                WorktreeObservationState::IdentityChanged
+            );
         }
     }
     #[tokio::test]
