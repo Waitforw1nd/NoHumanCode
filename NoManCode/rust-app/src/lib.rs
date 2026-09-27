@@ -1,3 +1,4 @@
+mod command_execution;
 pub mod approval;
 pub mod checkpoint;
 pub mod domain;
