@@ -336,7 +336,7 @@ fn command(
 ) -> Result<Command> {
     let mut excluded = Vec::new();
     for identity in &ctx.project_roots {
-        excluded.push(verified(identity)?);
+        excluded.push(verified(identity).map_err(|_| GitWorktreeError::Unavailable)?);
     }
     excluded.push(root.to_owned());
     excluded.extend(extra_roots.iter().map(|p| p.to_path_buf()));
@@ -849,6 +849,7 @@ async fn created(
     plan: &PersistedWorktreePlan,
     policy: Option<&Policy>,
     registered_result_root: Option<&RootIdentity>,
+    require_clean: bool,
 ) -> Result<CreatedWorktree> {
     let target = plan.target_path();
     let root = RootIdentity::capture(&target).map_err(|_| GitWorktreeError::Conflict)?;
@@ -872,7 +873,7 @@ async fn created(
     if !marker.starts_with(b"gitdir: ") {
         return Err(GitWorktreeError::Conflict);
     }
-    let observed = inspect_with(ctx, &root, policy, true).await?;
+    let observed = inspect_with(ctx, &root, policy, require_clean).await?;
     if observed.common_dir != plan.repository.common_dir
         || observed.head_oid != plan.expected_head
         || observed.head_ref.as_ref() != Some(&plan.branch_ref)
@@ -992,7 +993,7 @@ pub(crate) async fn execute_claimed(claim: ClaimedWorktree) -> Result<CreatedWor
         {
             return Err(GitWorktreeError::Conflict);
         }
-        created(&claim.context, &claim.plan, Some(&policy), None).await
+        created(&claim.context, &claim.plan, Some(&policy), None, true).await
     }
     .await;
     result.map_err(|_| GitWorktreeError::OutcomeUnknown)
@@ -1001,6 +1002,7 @@ pub(crate) async fn diagnose(
     ctx: &GitContext,
     plan: &PersistedWorktreePlan,
     registered_result_root: Option<&RootIdentity>,
+    registered_result_git_dir: Option<&RootIdentity>,
 ) -> Result<WorktreeObservation> {
     plan.validate()?;
     use WorktreeObservationReason as R;
@@ -1020,6 +1022,10 @@ pub(crate) async fn diagnose(
     {
         result.state = S::IdentityChanged;
         result.reason_codes = vec![R::IdentityChanged];
+        return Ok(result);
+    }
+    // No artifact observation is trustworthy without every executable exclusion root.
+    if ctx.project_roots.iter().any(|root| verified(root).is_err()) {
         return Ok(result);
     }
     match std::fs::symlink_metadata(plan.target_path()) {
@@ -1048,8 +1054,13 @@ pub(crate) async fn diagnose(
                 result.state = S::Conflicting;
                 result.reason_codes = vec![R::MetadataMismatch];
             } else {
-                match created(ctx, plan, None, registered_result_root).await {
+                match created(ctx, plan, None, registered_result_root, false).await {
                     Ok(value) => {
+                        if registered_result_git_dir.is_some_and(|saved| saved != &value.git_dir) {
+                            result.state = S::IdentityChanged;
+                            result.reason_codes = vec![R::IdentityChanged];
+                            return Ok(result);
+                        }
                         result.state = S::PresentMatching;
                         result.reason_codes.clear();
                         result.observed_head = Some(value.head_oid);
@@ -1234,13 +1245,154 @@ mod tests {
         }
     }
     #[tokio::test]
+    async fn w10_present_result_with_unrelated_offline_root_is_unavailable() {
+        for replace in [false, true] {
+            let f = Fixture::new();
+            let plan = f.plan().await.into_persisted_plan();
+            let made = execute_claimed(
+                ClaimedWorktree::new(
+                    plan.clone(),
+                    f.aux.join(&plan.operation_id),
+                    vec![f.root.clone()],
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+            let other = f._temp.path().join("other-project");
+            std::fs::create_dir(&other).unwrap();
+            let identity = RootIdentity::capture(&other).unwrap();
+            let ctx = GitContext::new(vec![f.root.clone(), made.root.clone(), identity]).unwrap();
+            let index = std::fs::read(made.git_dir.canonical_path().join("index")).unwrap();
+            std::fs::rename(&other, f._temp.path().join("retained-original")).unwrap();
+            if replace {
+                std::fs::create_dir(&other).unwrap();
+            }
+            assert_eq!(
+                diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
+                    .await
+                    .unwrap()
+                    .state,
+                WorktreeObservationState::Unavailable
+            );
+            assert_eq!(
+                std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
+                index
+            );
+            assert_eq!(
+                std::fs::read(made.root.canonical_path().join("a.txt")).unwrap(),
+                b"baseline\n"
+            );
+            std::fs::rename(&f.source, f._temp.path().join("source-moved")).unwrap();
+            assert_eq!(
+                diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
+                    .await
+                    .unwrap()
+                    .state,
+                WorktreeObservationState::IdentityChanged
+            );
+        }
+    }
+    #[tokio::test]
+    async fn w10_unrelated_missing_or_replaced_root_is_unavailable() {
+        for replace in [false, true] {
+            let f = Fixture::new();
+            let plan = f.plan().await.into_persisted_plan();
+            let other = f._temp.path().join("other-project");
+            std::fs::create_dir(&other).unwrap();
+            let identity = RootIdentity::capture(&other).unwrap();
+            let ctx = GitContext::new(vec![f.root.clone(), identity]).unwrap();
+            std::fs::rename(&other, f._temp.path().join("retained-original")).unwrap();
+            if replace {
+                std::fs::create_dir(&other).unwrap();
+            }
+            assert!(matches!(
+                command(&ctx, &f.source, None, &[]),
+                Err(GitWorktreeError::Unavailable)
+            ));
+            assert_eq!(
+                diagnose(&ctx, &plan, None, None).await.unwrap().state,
+                WorktreeObservationState::Unavailable
+            );
+            assert!(!plan.target_path().exists());
+            assert!(!f.source.join(".git/worktrees").exists());
+        }
+    }
+    #[tokio::test]
+    async fn w04_real_config_over_limit_is_rejected_without_effects() {
+        let f = Fixture::new();
+        let config = f.source.join(".git/config");
+        let mut bytes = std::fs::read(&config).unwrap();
+        bytes.extend_from_slice(b"\n#");
+        bytes.extend(std::iter::repeat_n(b'x', LIMIT));
+        std::fs::write(&config, &bytes).unwrap();
+        assert_eq!(
+            inspect(&f.context, &f.root).await.unwrap_err(),
+            GitWorktreeError::Unsupported
+        );
+        assert_eq!(std::fs::read(config).unwrap(), bytes);
+        assert!(!f.source.join(".git/worktrees").exists());
+    }
+    #[tokio::test]
+    async fn w01_dirty_result_diagnosis_preserves_content_and_index() {
+        for mode in ["staged", "unstaged", "untracked"] {
+            let f = Fixture::new();
+            let plan = f.plan().await.into_persisted_plan();
+            let made = execute_claimed(
+                ClaimedWorktree::new(
+                    plan.clone(),
+                    f.aux.join(&plan.operation_id),
+                    vec![f.root.clone()],
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+            let target = made.root.canonical_path();
+            let file = target.join(if mode == "untracked" {
+                "new.txt"
+            } else {
+                "a.txt"
+            });
+            std::fs::write(&file, "user change\n").unwrap();
+            if mode == "staged" {
+                raw(target, &["add", "a.txt"]);
+            }
+            let index = std::fs::read(made.git_dir.canonical_path().join("index")).unwrap();
+            let ctx = GitContext::new(vec![f.root.clone(), made.root.clone()]).unwrap();
+            assert_eq!(
+                diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
+                    .await
+                    .unwrap()
+                    .state,
+                WorktreeObservationState::PresentMatching
+            );
+            assert_eq!(std::fs::read(&file).unwrap(), b"user change\n");
+            assert_eq!(
+                std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
+                index
+            );
+            assert_eq!(
+                created(&ctx, &plan, None, Some(&made.root), true)
+                    .await
+                    .unwrap_err(),
+                GitWorktreeError::Dirty
+            );
+            assert_eq!(std::fs::read(&file).unwrap(), b"user change\n");
+            assert_eq!(
+                std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
+                index
+            );
+        }
+    }
+    #[tokio::test]
     async fn w01_real_worktree_and_registered_result_diagnosis_are_read_only() {
         let f = Fixture::new();
         let plan = f.plan().await.into_persisted_plan();
         let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
         let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
         let old_refs = raw(&f.source, &["show-ref"]);
-        let initial = diagnose(&f.context, &plan, None).await.unwrap();
+        let initial = diagnose(&f.context, &plan, None, None).await.unwrap();
         assert_eq!(initial.state, WorktreeObservationState::AbsentObserved);
         let value = execute_claimed(
             ClaimedWorktree::new(
@@ -1282,7 +1434,7 @@ mod tests {
         let context = GitContext::new(vec![f.root.clone(), value.root.clone()]).unwrap();
         for _ in 0..2 {
             assert_eq!(
-                diagnose(&context, &plan, Some(&value.root))
+                diagnose(&context, &plan, Some(&value.root), Some(&value.git_dir))
                     .await
                     .unwrap()
                     .state,
@@ -1290,7 +1442,7 @@ mod tests {
             );
         }
         assert_ne!(
-            diagnose(&context, &plan, None).await.unwrap().state,
+            diagnose(&context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::PresentMatching
         );
         assert_eq!(
@@ -1402,7 +1554,7 @@ mod tests {
         )
         .unwrap();
         assert_ne!(
-            diagnose(&f.context, &plan, None).await.unwrap().state,
+            diagnose(&f.context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::AbsentObserved
         );
         assert!(admin.exists());
@@ -1428,10 +1580,17 @@ mod tests {
         );
         raw(
             &f.source,
-            &["config", "core.fsmonitor", monitor.to_str().unwrap()],
+            &[
+                "config",
+                "core.fsmonitor",
+                &format!("sh '{}'", monitor.to_string_lossy().replace('\\', "/")),
+            ],
         );
         raw(&f.source, &["hook", "run", "post-checkout"]);
         assert!(marker.exists(), "hook positive control must execute");
+        std::fs::remove_file(&marker).unwrap();
+        raw(&f.source, &["status", "--porcelain"]);
+        assert!(marker.exists(), "fsmonitor positive control must execute");
         std::fs::remove_file(&marker).unwrap();
         let plan = f.plan().await.into_persisted_plan();
         execute_claimed(
@@ -1553,7 +1712,7 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(
-            diagnose(&f.context, &plan, None).await.unwrap().state,
+            diagnose(&f.context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::PresentMatching
         );
         // Only this freshly-created disposable fixture tree is removed. Keep the
@@ -1565,7 +1724,7 @@ mod tests {
         assert!(made.git_dir.canonical_path().exists());
         assert!(!target.exists());
         assert_eq!(
-            diagnose(&f.context, &plan, None).await.unwrap().state,
+            diagnose(&f.context, &plan, None, None).await.unwrap().state,
             WorktreeObservationState::Partial
         );
         assert!(made.git_dir.canonical_path().exists());
