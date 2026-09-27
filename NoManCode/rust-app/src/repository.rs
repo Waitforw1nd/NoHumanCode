@@ -2888,6 +2888,12 @@ pub(crate) fn apply_schema_12(tx: &Transaction<'_>) -> Result<()> {
     Ok(())
 }
 pub(crate) fn verify_schema_12(tx: &Transaction<'_>) -> Result<()> {
+    verify_plugin_schema(tx, false)
+}
+pub(crate) fn verify_schema_13(tx: &Transaction<'_>) -> Result<()> {
+    verify_plugin_schema(tx, true)
+}
+fn verify_plugin_schema(tx: &Transaction<'_>, shell: bool) -> Result<()> {
     // Compare the whole DDL including PK/FK/CHECK, preserving quoted literals.
     // A schema with equal columns but weaker constraints must fail closed.
     fn normalize(sql: &str) -> String {
@@ -2920,18 +2926,246 @@ pub(crate) fn verify_schema_12(tx: &Transaction<'_>) -> Result<()> {
             |r| r.get(0),
         )?;
         anyhow::ensure!(
-            normalize(&actual) == normalize(sql),
+            normalize(&actual)
+                == normalize(&if shell {
+                    sql.replace(
+                        "plugin_id='builtin.files'",
+                        "plugin_id IN ('builtin.files','builtin.shell')",
+                    )
+                } else {
+                    (*sql).to_owned()
+                }),
             "plugin schema constraint mismatch"
         );
     }
     let valid: i64 = tx.query_row("SELECT count(*) FROM plugin_desired WHERE typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer'", [], |r| r.get(0))?;
     let total: i64 = tx.query_row("SELECT count(*) FROM plugin_desired", [], |r| r.get(0))?;
-    anyhow::ensure!(valid == 1 && total == 1, "plugin desired state invalid");
-    let invalid: i64 = tx.query_row("SELECT count(*) FROM plugin_management_requests WHERE NOT(typeof(key)='text' AND length(key) BETWEEN 1 AND 200 AND typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807 AND typeof(result_revision)='integer' AND result_revision=expected_revision+1 AND typeof(committed_at)='integer')", [], |r| r.get(0))?;
+    let shell_valid: i64 = if shell {
+        tx.query_row("SELECT count(*) FROM plugin_desired WHERE typeof(plugin_id)='text' AND plugin_id='builtin.shell' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer'", [], |r| r.get(0))?
+    } else {
+        0
+    };
+    anyhow::ensure!(
+        valid == 1 && shell_valid == i64::from(shell) && total == 1 + i64::from(shell),
+        "plugin desired state invalid"
+    );
+    let receipt_sql = "SELECT count(*) FROM plugin_management_requests WHERE NOT(typeof(key)='text' AND length(key) BETWEEN 1 AND 200 AND typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807 AND typeof(result_revision)='integer' AND result_revision=expected_revision+1 AND typeof(committed_at)='integer')";
+    let receipt_sql = if shell {
+        receipt_sql.replace(
+            "plugin_id='builtin.files'",
+            "plugin_id IN ('builtin.files','builtin.shell')",
+        )
+    } else {
+        receipt_sql.to_owned()
+    };
+    let invalid: i64 = tx.query_row(&receipt_sql, [], |r| r.get(0))?;
     anyhow::ensure!(invalid == 0, "plugin receipt invalid");
     let violation: Option<String> = tx
         .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
         .optional()?;
     anyhow::ensure!(violation.is_none(), "plugin foreign key violation");
     Ok(())
+}
+
+#[cfg(test)]
+thread_local! { static SHELL_MIGRATION_FILL_FAILURE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+pub const SHELL_MANAGEMENT_MIGRATION_ID: &str = "builtin-shell-management-v1";
+pub(crate) fn apply_schema_13(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let old_marker = migration_applied(tx, PLUGIN_MANAGEMENT_MIGRATION_ID)?;
+    let marker = migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?;
+    anyhow::ensure!(old_marker, "schema 12 marker missing");
+    if version == 13 {
+        anyhow::ensure!(marker, "schema 13 marker missing");
+        return verify_schema_13(tx);
+    }
+    anyhow::ensure!(
+        version == 12 && !marker,
+        "schema 13 marker/version mismatch"
+    );
+    anyhow::ensure!(
+        tx.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))?,
+        "migration requires foreign keys"
+    );
+    verify_schema_12(tx)?;
+    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name IN ('plugin_desired','plugin_management_requests') AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
+    anyhow::ensure!(extras == 0, "unsupported plugin schema objects");
+    let dependencies: i64 = tx.query_row("SELECT count(*) FROM sqlite_master AS m JOIN pragma_foreign_key_list(m.name) AS f WHERE m.type='table' AND f.\"table\" IN ('plugin_desired','plugin_management_requests') AND NOT(m.name='plugin_management_requests' AND f.\"table\"='plugin_desired')", [], |r| r.get(0))?;
+    anyhow::ensure!(
+        dependencies == 0,
+        "unsupported plugin foreign key dependencies"
+    );
+    for name in ["nhc_shell13_desired", "nhc_shell13_requests"] {
+        let collision: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name=?1 UNION ALL SELECT 1 FROM sqlite_temp_master WHERE name=?1)", [name], |r| r.get(0))?;
+        anyhow::ensure!(!collision, "plugin migration staging name collision");
+    }
+    tx.execute_batch("CREATE TEMP TABLE nhc_shell13_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired;
+        CREATE TEMP TABLE nhc_shell13_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
+        DROP TABLE plugin_management_requests; DROP TABLE plugin_desired;")?;
+    for (_, sql) in PLUGIN_TABLES {
+        tx.execute_batch(&sql.replace(
+            "plugin_id='builtin.files'",
+            "plugin_id IN ('builtin.files','builtin.shell')",
+        ))?;
+    }
+    #[cfg(test)]
+    if SHELL_MIGRATION_FILL_FAILURE.get() {
+        // Transaction-scoped failure after both canonical tables exist, before old rows are restored.
+        tx.execute("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.files',3,0,0)", [])?;
+    }
+    tx.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM nhc_shell13_desired;
+        INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM nhc_shell13_requests;")?;
+    let migrated_at = now();
+    tx.execute("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.shell',1,0,?1)", [migrated_at])?;
+    verify_schema_13(tx)?;
+    for (saved, current) in [
+        (
+            "nhc_shell13_desired",
+            "SELECT rowid,* FROM plugin_desired WHERE plugin_id='builtin.files'",
+        ),
+        (
+            "nhc_shell13_requests",
+            "SELECT rowid,* FROM plugin_management_requests",
+        ),
+    ] {
+        let mismatch: bool = tx.query_row(&format!("SELECT EXISTS(SELECT * FROM {saved} EXCEPT {current}) OR EXISTS({current} EXCEPT SELECT * FROM {saved})"), [], |r| r.get(0))?;
+        anyhow::ensure!(!mismatch, "plugin migration row preservation failure");
+    }
+    tx.execute_batch("DROP TABLE temp.nhc_shell13_requests; DROP TABLE temp.nhc_shell13_desired;")?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![SHELL_MANAGEMENT_MIGRATION_ID, migrated_at],
+    )?;
+    tx.pragma_update(None, "user_version", 13)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod shell_migration_tests {
+    use super::*;
+    fn historical(enabled: bool) -> Connection {
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::store::Store::open(&dir.path().join("migration.db")).unwrap();
+        let mut db = store.db.into_inner().unwrap();
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .unwrap();
+        tx.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        apply_schema_12(&tx).unwrap();
+        tx.execute(
+            "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=2,updated_at=41",
+            [enabled],
+        )
+        .unwrap();
+        tx.execute_batch("INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (73,'old','builtin.files',0,0,1,19),(91,'old2','builtin.files',1,1,2,29);").unwrap();
+        tx.commit().unwrap();
+        db
+    }
+    #[test]
+    fn shell_schema13_preserves_old_rows_and_reopens() {
+        for enabled in [false, true] {
+            let mut db = historical(enabled);
+            let marker: i64 = db
+                .query_row(
+                    "SELECT applied_at FROM schema_migrations WHERE id=?1",
+                    [PLUGIN_MANAGEMENT_MIGRATION_ID],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            let tx = db
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .unwrap();
+            apply_schema_13(&tx).unwrap();
+            tx.commit().unwrap();
+            assert_eq!(db.query_row("SELECT rowid,enabled,revision,updated_at FROM plugin_desired WHERE plugin_id='builtin.files'", [], |r| Ok((r.get::<_,i64>(0)?,r.get::<_,bool>(1)?,r.get::<_,i64>(2)?,r.get::<_,i64>(3)?))).unwrap(),(37,enabled,2,41));
+            assert_eq!(
+                db.query_row(
+                    "SELECT group_concat(rowid,',') FROM plugin_management_requests ORDER BY rowid",
+                    [],
+                    |r| r.get::<_, String>(0)
+                )
+                .unwrap(),
+                "73,91"
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT applied_at FROM schema_migrations WHERE id=?1",
+                    [PLUGIN_MANAGEMENT_MIGRATION_ID],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                marker
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT enabled,revision FROM plugin_desired WHERE plugin_id='builtin.shell'",
+                    [],
+                    |r| Ok((r.get::<_, bool>(0)?, r.get::<_, i64>(1)?))
+                )
+                .unwrap(),
+                (true, 0)
+            );
+            let tx = db.transaction().unwrap();
+            apply_schema_13(&tx).unwrap();
+            tx.commit().unwrap();
+        }
+    }
+    #[test]
+    fn shell_schema13_failures_rollback_with_foreign_keys_on() {
+        for mode in ["marker", "fill", "trigger", "index", "foreign", "collision"] {
+            let mut db = historical(false);
+            match mode {
+                "fill" => SHELL_MIGRATION_FILL_FAILURE.set(true),
+                "marker" => db.execute_batch("CREATE TRIGGER shell_marker_failure BEFORE INSERT ON schema_migrations WHEN NEW.id='builtin-shell-management-v1' BEGIN SELECT RAISE(ABORT,'injected'); END;").unwrap(),
+                "trigger" => db.execute_batch("CREATE TRIGGER custom_plugin AFTER UPDATE ON plugin_desired BEGIN SELECT 1; END;").unwrap(),
+                "index" => db.execute_batch("CREATE INDEX custom_plugin ON plugin_desired(revision);").unwrap(),
+                "foreign" => db.execute_batch("CREATE TABLE extra_plugin_fk(id TEXT REFERENCES plugin_desired(plugin_id));").unwrap(),
+                "collision" => db.execute_batch("CREATE TABLE nhc_shell13_desired(x TEXT);").unwrap(),
+                _ => unreachable!(),
+            }
+            {
+                let tx = db
+                    .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                    .unwrap();
+                assert!(apply_schema_13(&tx).is_err(), "{mode}");
+            }
+            SHELL_MIGRATION_FILL_FAILURE.set(false);
+            assert_eq!(
+                db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                    .unwrap(),
+                12
+            );
+            assert!(
+                db.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))
+                    .unwrap()
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM sqlite_temp_master WHERE name LIKE 'nhc_shell13_%'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                0
+            );
+            let tx = db.transaction().unwrap();
+            verify_schema_12(&tx).unwrap();
+            tx.commit().unwrap();
+            match mode {
+                "marker" => db
+                    .execute_batch("DROP TRIGGER shell_marker_failure;")
+                    .unwrap(),
+                "trigger" => db.execute_batch("DROP TRIGGER custom_plugin;").unwrap(),
+                "index" => db.execute_batch("DROP INDEX custom_plugin;").unwrap(),
+                "foreign" => db.execute_batch("DROP TABLE extra_plugin_fk;").unwrap(),
+                "collision" => db.execute_batch("DROP TABLE nhc_shell13_desired;").unwrap(),
+                _ => {}
+            }
+            let tx = db
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .unwrap();
+            apply_schema_13(&tx).unwrap();
+            tx.commit().unwrap();
+        }
+    }
 }

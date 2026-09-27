@@ -557,10 +557,10 @@ fn schema7_migrates_and_forged_schema8_is_rejected() {
     drop(store);
     let db = Connection::open(&path).unwrap();
     network_fixture::drop_network_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id='builtin-plugin-management-v1';").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 12);
+    assert_eq!(store.schema_version().unwrap(), 13);
     assert!(store.settings().unwrap().is_some());
     drop(store);
     db.execute_batch("DROP INDEX workspace_changes_task_path; CREATE INDEX workspace_changes_task_path ON workspace_changes(path_key,task_id,created_at);").unwrap();
@@ -1311,11 +1311,11 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
     };
     assert!(!approvals.is_empty() && !events.is_empty());
     network_fixture::drop_network_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id='builtin-plugin-management-v1';").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository'; DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=7;").unwrap();
     drop(db);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 12);
+    assert_eq!(store.schema_version().unwrap(), 13);
     drop(store);
     let db = Connection::open(&db_path).unwrap();
     let task_after: String = db
@@ -1349,5 +1349,5 @@ async fn schema7_to8_preserves_existing_task_approval_and_event_rows() {
     assert_eq!(approvals_after, approvals);
     assert_eq!(events_after, events);
     let store = Store::open(&db_path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 12);
+    assert_eq!(store.schema_version().unwrap(), 13);
 }

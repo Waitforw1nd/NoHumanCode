@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 12;
+pub const SCHEMA_VERSION: u32 = 13;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -70,7 +70,8 @@ impl Store {
           CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, applied_at INTEGER NOT NULL);
           CREATE INDEX IF NOT EXISTS tasks_run ON tasks(run_id);
           CREATE INDEX IF NOT EXISTS events_task ON events(task_id, seq);")?;
-        let version: u32 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        let preflight = db.transaction()?;
+        let version: u32 = preflight.pragma_query_value(None, "user_version", |row| row.get(0))?;
         anyhow::ensure!(
             version <= SCHEMA_VERSION,
             "任务数据库版本 {} 高于当前程序支持的版本 {}",
@@ -78,23 +79,46 @@ impl Store {
             SCHEMA_VERSION
         );
         anyhow::ensure!(
-            version < 9 || repository::migration_applied(&db, repository::CHECKPOINT_MIGRATION_ID)?,
+            version < 9
+                || repository::migration_applied(&preflight, repository::CHECKPOINT_MIGRATION_ID)?,
             "schema 9 checkpoint marker missing"
         );
         anyhow::ensure!(
-            version < 10 || repository::migration_applied(&db, repository::NETWORK_MIGRATION_ID)?,
+            version < 10
+                || repository::migration_applied(&preflight, repository::NETWORK_MIGRATION_ID)?,
             "schema 10 marker missing"
         );
         anyhow::ensure!(
             version < 11
-                || repository::migration_applied(&db, repository::PROJECT_CONFIG_MIGRATION_ID)?,
+                || repository::migration_applied(
+                    &preflight,
+                    repository::PROJECT_CONFIG_MIGRATION_ID
+                )?,
             "schema 11 marker missing"
         );
         anyhow::ensure!(
             version < 12
-                || repository::migration_applied(&db, repository::PLUGIN_MANAGEMENT_MIGRATION_ID)?,
+                || repository::migration_applied(
+                    &preflight,
+                    repository::PLUGIN_MANAGEMENT_MIGRATION_ID
+                )?,
             "schema 12 marker missing"
         );
+        let shell_marker =
+            repository::migration_applied(&preflight, repository::SHELL_MANAGEMENT_MIGRATION_ID)?;
+        anyhow::ensure!(
+            shell_marker == (version == 13),
+            "schema 13 marker/version mismatch"
+        );
+        anyhow::ensure!(
+            version >= 12
+                || !repository::migration_applied(
+                    &preflight,
+                    repository::PLUGIN_MANAGEMENT_MIGRATION_ID
+                )?,
+            "schema 12 early marker"
+        );
+        preflight.commit()?;
         if version < 2 {
             db.execute_batch("CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), created_at INTEGER NOT NULL);
               CREATE INDEX IF NOT EXISTS idempotency_run ON idempotency(run_id);")?;
@@ -227,15 +251,33 @@ impl Store {
             repository::verify_schema_11(&tx)?;
             tx.commit()?;
         }
-        if !repository::migration_applied(&db, repository::PLUGIN_MANAGEMENT_MIGRATION_ID)? {
-            let tx = db.transaction()?;
-            repository::apply_schema_12(&tx)?;
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let current: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+            let marker =
+                repository::migration_applied(&tx, repository::PLUGIN_MANAGEMENT_MIGRATION_ID)?;
+            let shell_marker =
+                repository::migration_applied(&tx, repository::SHELL_MANAGEMENT_MIGRATION_ID)?;
+            anyhow::ensure!(
+                shell_marker == (current == 13),
+                "schema 13 marker/version mismatch"
+            );
+            if current < 12 {
+                anyhow::ensure!(!marker, "schema 12 early marker");
+                repository::apply_schema_12(&tx)?;
+            } else {
+                anyhow::ensure!(marker, "schema 12 marker missing");
+                if current == 12 {
+                    repository::verify_schema_12(&tx)?;
+                } else {
+                    repository::verify_schema_13(&tx)?;
+                }
+            }
             tx.commit()?;
-        } else {
-            let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
-            anyhow::ensure!(current == SCHEMA_VERSION, "plugin schema version mismatch");
-            let tx = db.transaction()?;
-            repository::verify_schema_12(&tx)?;
+        }
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            repository::apply_schema_13(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -1556,6 +1598,11 @@ impl Store {
         crate::project_config::validate_task_tx(&tx, task, true, false)?;
         if tool_name == "write_file" {
             crate::plugin_management::ensure_files_enabled_tx(&tx)?;
+        } else if tool_name == "run_command" {
+            crate::plugin_management::ensure_plugin_enabled_tx(
+                &tx,
+                crate::plugin_management::BUILTIN_SHELL_ID,
+            )?;
         }
         let changed = tx.execute(
             "UPDATE approvals SET execution_state='claimed' WHERE id=?1 AND status='approved' AND execution_state='not_started'",
