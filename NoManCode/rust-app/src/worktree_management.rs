@@ -370,11 +370,8 @@ impl crate::store::Store {
         source: &ProjectId,
         operation: &str,
     ) -> Result<WorktreeReceipt> {
-        read_receipt(
-            &self.db.lock().map_err(|_| WorktreeError::Corrupt)?,
-            source,
-            operation,
-        )
+        let db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        read_receipt(&db, source, operation)
     }
     pub(crate) fn lookup_project_worktree(
         &self,
@@ -417,4 +414,281 @@ pub(crate) fn windows_path_key(path: &str) -> String {
         path.strip_prefix("//?/").unwrap_or(&path).to_owned()
     };
     path.trim_end_matches('/').to_lowercase()
+}
+
+use crate::{
+    git_worktree::{self, CreatedWorktree, PersistedWorktreePlan},
+    workspace_identity::RootIdentity,
+};
+use rusqlite::params;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ProjectInventory(pub Vec<(String, String, Option<String>)>);
+pub(crate) fn inventory_tx(db: &Connection) -> Result<ProjectInventory> {
+    Ok(ProjectInventory(db.prepare("SELECT p.id,p.root_path,b.identity FROM projects p LEFT JOIN project_root_bindings b ON b.project_id=p.id ORDER BY p.id")?.query_map([],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?))
+}
+impl ProjectInventory {
+    pub(crate) fn roots(&self) -> Result<Vec<(ProjectId, RootIdentity)>> {
+        self.0
+            .iter()
+            .map(|(id, path, raw)| {
+                let root: RootIdentity =
+                    serde_json::from_str(raw.as_ref().ok_or(WorktreeError::Unavailable)?)
+                        .map_err(|_| WorktreeError::Corrupt)?;
+                let verified = root.verify().map_err(|_| WorktreeError::RootChanged)?;
+                ensure!(
+                    std::fs::canonicalize(path).map_err(|_| WorktreeError::Unavailable)?
+                        == verified.path(),
+                    WorktreeError::RootChanged
+                );
+                Ok((ProjectId(id.clone()), root))
+            })
+            .collect()
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct WorktreeOrigin {
+    pub version: u32,
+    pub root: RootIdentity,
+    pub git_dir: RootIdentity,
+    pub common_dir: RootIdentity,
+    pub head_oid: String,
+    pub branch_ref: String,
+}
+impl crate::store::Store {
+    pub(crate) fn worktree_inventory(&self) -> Result<ProjectInventory> {
+        let db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        inventory_tx(&db)
+    }
+    pub(crate) fn worktree_replay(
+        &self,
+        request: &CreateWorktree,
+    ) -> Result<Option<WorktreeReceipt>> {
+        let db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        replay_tx(&db, request)
+    }
+    pub(crate) fn worktree_aux(&self, operation: &str) -> Result<std::path::PathBuf> {
+        let db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        let path = std::fs::canonicalize(db.path().ok_or(WorktreeError::Unavailable)?)
+            .map_err(|_| WorktreeError::Unavailable)?;
+        Ok(path
+            .parent()
+            .ok_or(WorktreeError::Unavailable)?
+            .join(operation))
+    }
+    pub(crate) fn worktree_plan(
+        &self,
+        source: &ProjectId,
+        operation: &str,
+    ) -> Result<PersistedWorktreePlan> {
+        let db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        read_receipt(&db, source, operation)?;
+        let plan: PersistedWorktreePlan = serde_json::from_str(&db.query_row(
+            "SELECT plan FROM worktree_operations WHERE operation_id=?1",
+            [operation],
+            |r| r.get::<_, String>(0),
+        )?)
+        .map_err(|_| WorktreeError::Corrupt)?;
+        plan.validate().map_err(|_| WorktreeError::Corrupt)?;
+        Ok(plan)
+    }
+    pub(crate) fn claim_worktree(
+        &self,
+        request: &CreateWorktree,
+        inventory: &ProjectInventory,
+        members: &[ProjectId],
+        plan: &PersistedWorktreePlan,
+    ) -> Result<(WorktreeReceipt, bool)> {
+        let mut db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if let Some(prior) = replay_tx(&tx, request)? {
+            return Ok((prior, true));
+        }
+        ensure!(inventory_tx(&tx)? == *inventory, WorktreeError::Conflict);
+        let config = crate::project_config::config_tx(&tx, &request.source_project_id)?;
+        ensure!(
+            config.revision == request.expected_config_revision,
+            WorktreeError::RevisionConflict
+        );
+        plan.validate().map_err(|_| WorktreeError::Corrupt)?;
+        ensure!(
+            plan.expected_head == request.expected_head
+                && members.contains(&request.source_project_id),
+            WorktreeError::Corrupt
+        );
+        ensure!(
+            crate::project_config::root_tx(&tx, &request.source_project_id)? == plan.source_root,
+            WorktreeError::RootChanged
+        );
+        let roots = inventory.roots()?;
+        plan.source_root
+            .verify()
+            .map_err(|_| WorktreeError::RootChanged)?;
+        plan.target_parent
+            .verify()
+            .map_err(|_| WorktreeError::RootChanged)?;
+        plan.repository
+            .git_dir
+            .verify()
+            .map_err(|_| WorktreeError::RootChanged)?;
+        plan.repository
+            .common_dir
+            .verify()
+            .map_err(|_| WorktreeError::RootChanged)?;
+        ensure!(
+            !plan
+                .target_path()
+                .try_exists()
+                .map_err(|_| WorktreeError::Unavailable)?,
+            WorktreeError::Conflict
+        );
+        for member in members {
+            ensure!(
+                roots.iter().any(|(id, _)| id == member),
+                WorktreeError::Corrupt
+            );
+            ensure_project_unreserved_tx(&tx, member)?;
+            let busy:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM tasks t JOIN task_project_bindings b ON b.task_id=t.id WHERE b.project_id=?1 AND json_extract(t.value,'$.status') IN ('queued','running')) OR EXISTS(SELECT 1 FROM approvals a JOIN task_project_bindings b ON b.task_id=a.task_id WHERE b.project_id=?1 AND a.execution_state IN ('claimed','unknown')) OR EXISTS(SELECT 1 FROM workspace_restores r JOIN task_project_bindings b ON b.task_id=r.task_id WHERE b.project_id=?1 AND r.status IN ('claimed','unknown'))",[&member.0],|r|r.get(0))?;
+            ensure!(!busy, WorktreeError::Busy);
+        }
+        let common = plan
+            .repository
+            .common_key()
+            .map_err(|_| WorktreeError::Corrupt)?;
+        let busy:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM worktree_operations WHERE common_key=?1 AND state IN ('claimed','unknown'))",[&common],|r|r.get(0))?;
+        ensure!(!busy, WorktreeError::Busy);
+        let target = plan.target_path().to_string_lossy().into_owned();
+        let conflict:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM worktree_operations WHERE target_path=?1 OR (common_key=?2 AND branch_ref=?3))",params![target,common,plan.branch_ref],|r|r.get(0))?;
+        ensure!(!conflict, WorktreeError::Conflict);
+        let time = i64::try_from(crate::domain::now()).map_err(|_| WorktreeError::Corrupt)?;
+        let receipt = WorktreeReceipt {
+            schema_version: 1,
+            operation_id: plan.operation_id.clone(),
+            source_project_id: request.source_project_id.clone(),
+            name: request.name.clone(),
+            parent_path: request.parent_path.clone(),
+            target_path: target,
+            branch: plan
+                .branch_ref
+                .strip_prefix("refs/heads/")
+                .ok_or(WorktreeError::Corrupt)?
+                .into(),
+            expected_config_revision: request.expected_config_revision,
+            expected_head: request.expected_head.clone(),
+            request_digest: request_digest(request)?,
+            revision: 1,
+            state: WorktreeState::Claimed,
+            project_id: None,
+            cause: None,
+            created_at: time,
+            updated_at: time,
+        };
+        receipt.validate()?;
+        tx.execute("INSERT INTO worktree_operations(operation_id,idempotency_key,source_project_id,requested_project_id,request_json,request_digest,plan,common_key,target_path,branch_ref,state,revision,receipt) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'claimed',1,?11)",params![receipt.operation_id,request.idempotency_key,request.source_project_id.0,uuid::Uuid::new_v4().to_string(),serde_json::to_string(request)?,receipt.request_digest,serde_json::to_string(plan)?,common,receipt.target_path,plan.branch_ref,serde_json::to_string(&receipt)?])?;
+        for member in members {
+            tx.execute(
+                "INSERT INTO worktree_project_reservations(project_id,operation_id) VALUES(?1,?2)",
+                params![member.0, receipt.operation_id],
+            )?;
+        }
+        tx.commit()?;
+        Ok((receipt, false))
+    }
+    pub(crate) fn finish_worktree(
+        &self,
+        prior: &WorktreeReceipt,
+        created: Option<&CreatedWorktree>,
+        failure: Option<(WorktreeState, WorktreeCause)>,
+    ) -> Result<WorktreeReceipt> {
+        let mut db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let mut receipt = read_receipt(&tx, &prior.source_project_id, &prior.operation_id)?;
+        if receipt.state != WorktreeState::Claimed || receipt.revision != prior.revision {
+            return Ok(receipt);
+        }
+        if let Some(created) = created {
+            let plan: PersistedWorktreePlan = serde_json::from_str(&tx.query_row(
+                "SELECT plan FROM worktree_operations WHERE operation_id=?1",
+                [&prior.operation_id],
+                |r| r.get::<_, String>(0),
+            )?)?;
+            ensure!(
+                created.root.canonical_path() == plan.target_path()
+                    && created.common_dir == plan.repository.common_dir
+                    && created.head_oid == plan.expected_head
+                    && created.branch_ref == plan.branch_ref,
+                WorktreeError::Conflict
+            );
+            created
+                .git_dir
+                .verify()
+                .map_err(|_| WorktreeError::RootChanged)?;
+            created
+                .common_dir
+                .verify()
+                .map_err(|_| WorktreeError::RootChanged)?;
+            let id: String = tx.query_row(
+                "SELECT requested_project_id FROM worktree_operations WHERE operation_id=?1",
+                [&prior.operation_id],
+                |r| r.get(0),
+            )?;
+            let project = crate::domain::Project {
+                id: ProjectId(id),
+                name: receipt.name.clone(),
+                root_path: receipt.target_path.clone(),
+                created_at: crate::domain::now(),
+                updated_at: crate::domain::now(),
+            };
+            crate::project_config::register_worktree_project_tx(&tx, &project, &created.root)?;
+            let origin = WorktreeOrigin {
+                version: 1,
+                root: created.root.clone(),
+                git_dir: created.git_dir.clone(),
+                common_dir: created.common_dir.clone(),
+                head_oid: created.head_oid.clone(),
+                branch_ref: created.branch_ref.clone(),
+            };
+            tx.execute("INSERT INTO project_worktree_origins(project_id,operation_id,source_project_id,identity) VALUES(?1,?2,?3,?4)",params![project.id.0,receipt.operation_id,receipt.source_project_id.0,serde_json::to_string(&origin)?])?;
+            receipt.state = WorktreeState::Succeeded;
+            receipt.project_id = Some(project.id);
+        } else {
+            let (state, cause) = failure.ok_or(WorktreeError::Corrupt)?;
+            ensure!(
+                matches!(state, WorktreeState::Rejected | WorktreeState::Unknown),
+                WorktreeError::Corrupt
+            );
+            receipt.state = state;
+            receipt.cause = Some(cause);
+        }
+        receipt.revision = receipt
+            .revision
+            .checked_add(1)
+            .filter(|r| *r <= i64::MAX as u64)
+            .ok_or(WorktreeError::Corrupt)?;
+        receipt.updated_at =
+            i64::try_from(crate::domain::now()).map_err(|_| WorktreeError::Corrupt)?;
+        receipt.validate()?;
+        tx.execute("UPDATE worktree_operations SET state=?2,revision=?3,receipt=?4 WHERE operation_id=?1 AND revision=?5 AND state='claimed'",params![receipt.operation_id,serde_json::to_value(receipt.state)?.as_str(),receipt.revision,serde_json::to_string(&receipt)?,prior.revision])?;
+        if matches!(
+            receipt.state,
+            WorktreeState::Succeeded | WorktreeState::Rejected
+        ) {
+            tx.execute(
+                "DELETE FROM worktree_project_reservations WHERE operation_id=?1",
+                [&receipt.operation_id],
+            )?;
+        }
+        tx.commit()?;
+        Ok(receipt)
+    }
+}
+pub(crate) fn map_git(error: git_worktree::GitWorktreeError) -> WorktreeError {
+    use git_worktree::GitWorktreeError as G;
+    match error {
+        G::Invalid => WorktreeError::Invalid,
+        G::Unsupported => WorktreeError::Unsupported,
+        G::Dirty | G::Conflict => WorktreeError::Conflict,
+        G::Unavailable => WorktreeError::Unavailable,
+        G::OutcomeUnknown => WorktreeError::Conflict,
+    }
 }
