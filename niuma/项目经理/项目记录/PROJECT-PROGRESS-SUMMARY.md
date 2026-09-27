@@ -827,3 +827,7 @@ B继续原工作树/分支和B-R2-01-20260925-0232；C新工作树../nhc-c-appro
 ## 2026-09-27 NEXT-08最终联合验收通过
 
 经理GPT-6。固定候选`6361838aba4a480a63612800224a947a1a9bffc4`，NoManCode tree `9800ad0ebcabf556c517cade04eaa8b433057ab6`，Rust tree `ca006f88165d346ee6e60910079e9dece53aff25`。P01–P10证据联合APPROVED；C从check开始唯一串行五门禁全exit0，完整测试431通过/0失败。860首测workspace_http时序失败、同环境单测通过及后续完整重跑事实均保留，未覆盖历史日志。下一步仅经理核main普通merge前后tree/status；无release/live/push，D盘旧仓库、旧工作树、生成target和九份继承档案保留。
+
+## 2026-09-27 NEXT-12首候选review与依赖接续
+
+更新人：经理GPT-6。主线d113546b仍为NEXT-11产品树，NEXT-12未验收。B持久首候选6b879fce与D真实API48797ca1已由经理在B clean窗口普通merge为525ca53b267af292db7c78edae8a35cb0567c198，B复核并继续Engine/命令专项；C接口fb086a1冻结待真实依赖；D继续worker/管道/收尾组件。三任务执行ID与原GPT-6-astra执行者不变。精确cfg(test)按Task隔离一次unknown-after-spawn接口已记契约补充，由D实现、B消费，不是生产后门或真实OS失败证据。经理只审查与整合；正式组合五门禁未开始，阶段一未完成。下一第一操作完成B固定迁移/claim与C固定测试review，收D下一固定候选及证据，再串行合依赖。
