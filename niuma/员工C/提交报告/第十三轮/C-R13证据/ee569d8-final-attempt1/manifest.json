@@ -1,0 +1,41 @@
+{
+  "batch": "ee569d8-final-attempt1",
+  "created_utc": "2026-09-27T05:38:03.7007195Z",
+  "transforms": [
+    "Active worktree prefix -> ../nhc-c-shell-interface",
+    "Main repository prefix -> .",
+    "Read-only MSVC prefix -> <machine-msvc>"
+  ],
+  "files": [
+    {
+      "original": "../nhc-c-shell-interface/.local/logs/ee569d8-final-attempt1-check.log",
+      "published": "niuma/员工C/提交报告/第十三轮/C-R13证据/ee569d8-final-attempt1/ee569d8-final-attempt1-check.log",
+      "original_sha256": "C1E6BE8049ABAF858456EE69EDC0F757FF594DF42A24D316BEA054162E59E99D",
+      "published_sha256": "B94ACB46B2E15793AEC977E08A6A0FB7BA066468761443E4E2E2CE267EE6CD95"
+    },
+    {
+      "original": "../nhc-c-shell-interface/.local/logs/ee569d8-final-attempt1-test.log",
+      "published": "niuma/员工C/提交报告/第十三轮/C-R13证据/ee569d8-final-attempt1/ee569d8-final-attempt1-test.log",
+      "original_sha256": "F45CFEBCC10F3EC98CA1632B26A7E6D6CB85431B95E5920C84CA09B12FDF32FB",
+      "published_sha256": "374EF00776EC16FA2425C5110B206CAC7997A0936AC119B12D975A9F7A1B287F"
+    },
+    {
+      "original": "../nhc-c-shell-interface/.local/logs/ee569d8-final-attempt1-fmt.log",
+      "published": "niuma/员工C/提交报告/第十三轮/C-R13证据/ee569d8-final-attempt1/ee569d8-final-attempt1-fmt.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "original": "../nhc-c-shell-interface/.local/logs/ee569d8-final-attempt1-clippy.log",
+      "published": "niuma/员工C/提交报告/第十三轮/C-R13证据/ee569d8-final-attempt1/ee569d8-final-attempt1-clippy.log",
+      "original_sha256": "8D8CF84BEC6B6113FC3F42CA1D89B5B78EFAE8E9F5B5CB1C994637F19B836B0B",
+      "published_sha256": "CA41A2962A225E0A82BE72AD46770EF34A195E8F3B7546C23A9A38206E814F51"
+    },
+    {
+      "original": "../nhc-c-shell-interface/.local/logs/ee569d8-final-attempt1.json",
+      "published": "niuma/员工C/提交报告/第十三轮/C-R13证据/ee569d8-final-attempt1/ee569d8-final-attempt1.json",
+      "original_sha256": "026C0C3DACD1C14676DBE7D1DC48130E245F4A6D35F463C708B43AAF5358A5D2",
+      "published_sha256": "FFAF36E59F784239D5C861ECAD182677C47A3736BECF9C265344E9B13DF8DF62"
+    }
+  ]
+}

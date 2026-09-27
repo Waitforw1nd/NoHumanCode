@@ -1,0 +1,57 @@
+{
+  "label": "ee569d8-final-attempt1",
+  "head": "ee569d8916c5f117bfe675a53753f4d1dfafcceb",
+  "source_tree": "2a4ae5313cc6ef4da64d17c76835a47b6d2f40fb",
+  "rust_tree": "5ae88b2ba18cd55bbfff96c133b16af8fd90094a",
+  "status_before": [],
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "environment": {
+    "CARGO_TARGET_DIR": "../nhc-c-shell-interface\\.local\\target",
+    "CARGO_INCREMENTAL": "0",
+    "TMP": "../nhc-c-shell-interface\\.local\\tmp",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "VSINSTALLDIR": "<machine-msvc>",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "TEMP": "../nhc-c-shell-interface\\.local\\tmp",
+    "CARGO_BUILD_JOBS": "2"
+  },
+  "runs": [
+    {
+      "action": "check",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action check",
+      "started_utc": "2026-09-27T05:33:05.9786061Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\ee569d8-final-attempt1-check.log",
+      "finished_utc": "2026-09-27T05:33:58.9955288Z",
+      "exit_code": 0
+    },
+    {
+      "action": "test",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action test",
+      "started_utc": "2026-09-27T05:33:59.0158496Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\ee569d8-final-attempt1-test.log",
+      "finished_utc": "2026-09-27T05:36:54.8369893Z",
+      "exit_code": 0
+    },
+    {
+      "action": "fmt",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action fmt",
+      "started_utc": "2026-09-27T05:36:54.8398775Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\ee569d8-final-attempt1-fmt.log",
+      "finished_utc": "2026-09-27T05:36:56.4935773Z",
+      "exit_code": 0
+    },
+    {
+      "action": "clippy",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action clippy",
+      "started_utc": "2026-09-27T05:36:56.4954859Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\ee569d8-final-attempt1-clippy.log",
+      "finished_utc": "2026-09-27T05:37:02.8444940Z",
+      "exit_code": 101
+    }
+  ],
+  "head_after": "ee569d8916c5f117bfe675a53753f4d1dfafcceb",
+  "source_after": "2a4ae5313cc6ef4da64d17c76835a47b6d2f40fb",
+  "rust_after": "5ae88b2ba18cd55bbfff96c133b16af8fd90094a",
+  "status_after": []
+}

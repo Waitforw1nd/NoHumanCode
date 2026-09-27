@@ -1,0 +1,33 @@
+    Checking peachsh-protocol v0.1.0 (../nhc-c-shell-interface\NoManCode\rust-app\crates\protocol)
+    Checking tempfile v3.27.0
+    Checking peachsh v0.2.0 (../nhc-c-shell-interface\NoManCode\rust-app)
+    Checking peachsh-ui v0.1.0 (../nhc-c-shell-interface\NoManCode\rust-app\crates\ui)
+error: this `if` has identical blocks
+   --> src\plugin_management.rs:469:45
+    |
+469 |                   if name == "plugin_desired" {
+    |  _____________________________________________^
+470 | |                     assert_eq!(rows.len(), old.len() + 1);
+471 | |                     for row in old {
+472 | |                         assert!(rows.contains(row));
+473 | |                     }
+474 | |                 } else if name == "schema_migrations" {
+    | |_________________^
+    |
+note: same as this
+   --> src\plugin_management.rs:474:55
+    |
+474 |                   } else if name == "schema_migrations" {
+    |  _______________________________________________________^
+475 | |                     assert_eq!(rows.len(), old.len() + 1);
+476 | |                     for row in old {
+477 | |                         assert!(rows.contains(row));
+478 | |                     }
+479 | |                 } else {
+    | |_________________^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#if_same_then_else
+    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
+
+error: could not compile `peachsh` (lib test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
