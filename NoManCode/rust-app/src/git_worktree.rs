@@ -1164,7 +1164,10 @@ fn within(path: &Path, root: &Path) -> bool {
     if path == root {
         return true;
     }
-    root.push(if cfg!(windows) { '\\' } else { '/' });
+    let separator = if cfg!(windows) { '\\' } else { '/' };
+    if !root.ends_with(separator) {
+        root.push(separator);
+    }
     path.starts_with(&root)
 }
 fn same_path(left: &Path, right: &Path) -> bool {
@@ -1287,6 +1290,17 @@ mod tests {
         let Some(source) = std::env::var_os("NHC_TEST_SOURCE") else {
             return;
         };
+        if std::env::var_os("NHC_TEST_DRIVE_ROOT").is_some() {
+            let source = Path::new(&source);
+            let drive = source.ancestors().last().unwrap();
+            let ctx = GitContext::new(vec![RootIdentity::capture(drive).unwrap()]).unwrap();
+            assert!(matches!(
+                command(&ctx, source, None, &[]),
+                Err(GitWorktreeError::Unavailable)
+            ));
+            assert!(!Path::new(&std::env::var_os("NHC_TEST_MARKER").unwrap()).exists());
+            return;
+        }
         let root = RootIdentity::capture(Path::new(&source)).unwrap();
         let ctx = GitContext::new(vec![root.clone()]).unwrap();
         let snapshot = inspect(&ctx, &root).await.unwrap();
@@ -1420,6 +1434,36 @@ mod tests {
         );
         assert!(!marker.exists());
         assert!(!f._temp.path().join("injected-index").exists());
+        let mut drive_child = Command::new(std::env::current_exe().unwrap());
+        drive_child
+            .args([
+                "--exact",
+                "git_worktree::tests::w05_isolated_environment_helper",
+                "--nocapture",
+            ])
+            .env("PATH", &f.source)
+            .env("NHC_TEST_DRIVE_ROOT", "1")
+            .env("NHC_TEST_SOURCE", &f.source)
+            .env("NHC_TEST_MARKER", &marker)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null())
+            .kill_on_drop(true);
+        let result = run(
+            drive_child,
+            8192,
+            Instant::now() + Duration::from_secs(10),
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            result.code,
+            Some(0),
+            "drive root exclusion: {}",
+            String::from_utf8_lossy(&result.bytes)
+        );
+        assert!(!marker.exists());
     }
     #[tokio::test]
     async fn w10_present_result_with_unrelated_offline_root_is_unavailable() {
@@ -1917,8 +1961,12 @@ mod tests {
     }
     #[test]
     fn w04_structural_plan_validation_and_windows_path_aliases() {
+        #[cfg(not(windows))]
+        assert!(within(Path::new("/tmp/repo/git"), Path::new("/")));
         #[cfg(windows)]
         {
+            assert!(within(Path::new("E:/temp/git.exe"), Path::new("E:/")));
+            assert!(!within(Path::new("F:/temp/git.exe"), Path::new("E:/")));
             assert!(same_path(
                 Path::new(r"\\?\E:\Code\Repo"),
                 Path::new("e:/code/repo")
