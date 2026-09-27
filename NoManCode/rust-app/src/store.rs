@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 13;
+pub const SCHEMA_VERSION: u32 = 14;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -107,7 +107,7 @@ impl Store {
         let shell_marker =
             repository::migration_applied(&preflight, repository::SHELL_MANAGEMENT_MIGRATION_ID)?;
         anyhow::ensure!(
-            shell_marker == (version == 13),
+            shell_marker == (version >= 13),
             "schema 13 marker/version mismatch"
         );
         anyhow::ensure!(
@@ -117,6 +117,12 @@ impl Store {
                     repository::PLUGIN_MANAGEMENT_MIGRATION_ID
                 )?,
             "schema 12 early marker"
+        );
+        let worktree_marker =
+            repository::migration_applied(&preflight, repository::WORKTREE_MIGRATION_ID)?;
+        anyhow::ensure!(
+            worktree_marker == (version == 14),
+            "schema 14 marker/version mismatch"
         );
         preflight.commit()?;
         if version < 2 {
@@ -259,7 +265,7 @@ impl Store {
             let shell_marker =
                 repository::migration_applied(&tx, repository::SHELL_MANAGEMENT_MIGRATION_ID)?;
             anyhow::ensure!(
-                shell_marker == (current == 13),
+                shell_marker == (current >= 13),
                 "schema 13 marker/version mismatch"
             );
             if current < 12 {
@@ -277,7 +283,17 @@ impl Store {
         }
         {
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            repository::apply_schema_13(&tx)?;
+            let current: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+            if current == 14 {
+                repository::verify_schema_13(&tx)?;
+            } else {
+                repository::apply_schema_13(&tx)?;
+            }
+            tx.commit()?;
+        }
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            repository::apply_schema_14(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -394,6 +410,7 @@ impl Store {
         ensure_resume_unsealed(&tx, &task.id)?;
         crate::project_config::validate_task_tx(&tx, task, true, true)?;
         ensure_resume_targets_latest_chat_turn(&tx, &task.id)?;
+        crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
         save_task_tx(&tx, task, true)?;
         task_event_tx(&tx, &task.id, "delta", json!({"text": "\n\n—— 继续 ——\n"}))?;
         task_event_tx(&tx, &task.id, "resume", json!({"message": input}))?;
@@ -773,6 +790,7 @@ impl Store {
                 "旧 Run 的会话类型与当前 Session 不一致"
             );
         }
+        crate::worktree_management::ensure_project_unreserved_tx(tx, &turn.project_id)?;
         for task in legacy_tasks {
             insert_legacy_task(tx, task)?;
         }
@@ -1173,6 +1191,7 @@ impl Store {
             return restore_receipt(&tx, &id);
         }
         crate::project_config::validate_task_tx(&tx, &legacy_task_row(&tx, task_id)?, true, false)?;
+        crate::worktree_management::ensure_task_unreserved_tx(&tx, task_id)?;
         let id = uuid::Uuid::new_v4().to_string();
         tx.execute("INSERT INTO workspace_restores(id,task_id,status,created_at,finished_at) VALUES (?1,?2,'claimed',?3,NULL)", params![id,task_id,now()])?;
         for change in changes {
@@ -1336,6 +1355,7 @@ impl Store {
             }
             .into());
         }
+        crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
         let record = approval::ApprovalRecord {
             network_notice: (tool_name == "run_command")
                 .then(approval::CommandNetworkNotice::default),
@@ -1434,6 +1454,7 @@ impl Store {
                 approval::ApprovalStatus::Pending | approval::ApprovalStatus::Approved
             ) {
                 if current.command_network_ack != approval::CommandNetworkAck::Acknowledged {
+                    crate::worktree_management::ensure_task_unreserved_tx(&tx, &current.task_id)?;
                     tx.execute(
                         "INSERT INTO command_network_ack VALUES (?1,?2,1,?3)",
                         params![current.id, current.binding_digest, now()],
@@ -1470,6 +1491,9 @@ impl Store {
             "审批决定人无效"
         );
         secrets::safe_metadata_text("decided_by", decided_by)?;
+        if approved {
+            crate::worktree_management::ensure_task_unreserved_tx(&tx, &current.task_id)?;
+        }
         let changed = tx.execute(
             "UPDATE approvals SET status=?2, decided_at=?3, decided_by=?4 WHERE id=?1 AND status='pending'",
             params![approval_id, status.as_str(), decided_at, decided_by],
@@ -1604,6 +1628,7 @@ impl Store {
                 crate::plugin_management::BUILTIN_SHELL_ID,
             )?;
         }
+        crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
         let changed = tx.execute(
             "UPDATE approvals SET execution_state='claimed' WHERE id=?1 AND status='approved' AND execution_state='not_started'",
             [&current.id],
@@ -1742,6 +1767,7 @@ impl Store {
                 affected += 1;
             }
         }
+        affected += crate::worktree_management::recover_claimed_tx(&tx)?;
         tx.commit()?;
         Ok(affected)
     }
@@ -2817,6 +2843,7 @@ impl Store {
             return Err(CheckpointError::Unrestorable.into());
         }
         verify_checkpoint_sources(&tx, manifest)?;
+        crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
         let serialized = serde_json::to_string(manifest)?;
         let checkpoint = Checkpoint {
             checkpoint_id: uuid::Uuid::new_v4().to_string(),

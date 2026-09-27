@@ -403,6 +403,7 @@ impl Store {
         {
             return Err(ProjectError::Invalid.into());
         }
+        crate::worktree_management::ensure_registration_unreserved_tx(&tx)?;
         let root = RootIdentity::capture(Path::new(&request.root_path)).map_err(root_error)?;
         let path = root
             .verify()
@@ -445,19 +446,7 @@ impl Store {
             created_at: now(),
             updated_at: now(),
         });
-        if !tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1)",
-            [&project.id.0],
-            |r| r.get::<_, bool>(0),
-        )? {
-            Repository::new(&tx).insert_project(&project)?;
-        }
-        let config = ProjectConfig::default();
-        tx.execute(
-            "INSERT INTO project_root_bindings(project_id,identity) VALUES (?1,?2)",
-            params![project.id.0, serde_json::to_string(&root)?],
-        )?;
-        tx.execute("INSERT INTO project_configs(project_id,revision,value,permission_digest) VALUES (?1,1,?2,?3)",params![project.id.0,serde_json::to_string(&config)?,digest("project-config-v1",&config)?])?;
+        insert_bound_project_tx(&tx, &project, &root)?;
         tx.execute(
             "INSERT INTO project_registration_keys(key,project_id,request_hash) VALUES (?1,?2,?3)",
             params![request.idempotency_key, project.id.0, hash],
@@ -520,4 +509,52 @@ impl Store {
             revision,
         })
     }
+}
+
+fn insert_bound_project_tx(tx: &Connection, project: &Project, root: &RootIdentity) -> Result<()> {
+    if !tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1)",
+        [&project.id.0],
+        |r| r.get::<_, bool>(0),
+    )? {
+        Repository::new(tx).insert_project(project)?;
+    }
+    let config = ProjectConfig::default();
+    tx.execute(
+        "INSERT INTO project_root_bindings(project_id,identity) VALUES (?1,?2)",
+        params![project.id.0, serde_json::to_string(root)?],
+    )?;
+    tx.execute("INSERT INTO project_configs(project_id,revision,value,permission_digest) VALUES (?1,1,?2,?3)",params![project.id.0,serde_json::to_string(&config)?,digest("project-config-v1",&config)?])?;
+    Ok(())
+}
+pub(crate) fn register_worktree_project_tx(
+    tx: &Connection,
+    project: &Project,
+    root: &RootIdentity,
+) -> Result<()> {
+    let verified = root.verify().map_err(root_error)?;
+    if verified.path() != Path::new(&project.root_path) {
+        return Err(ProjectError::RootChanged.into());
+    }
+    secrets::safe_metadata_text("project_name", &project.name)?;
+    if project.name.trim().is_empty() || project.name.len() > 500 {
+        return Err(ProjectError::Invalid.into());
+    }
+    for existing in Repository::new(tx).projects()? {
+        // Managed creation never adopts legacy roots or ignores offline identity.
+        let identity = root_tx(tx, &existing.id)?;
+        match root.overlap(&identity).map_err(root_error)? {
+            RootOverlap::Disjoint => {}
+            RootOverlap::Same => return Err(ProjectError::DuplicateRoot.into()),
+            _ => return Err(ProjectError::OverlappingRoot.into()),
+        }
+    }
+    if tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1)",
+        [&project.id.0],
+        |r| r.get::<_, bool>(0),
+    )? {
+        return Err(ProjectError::DuplicateRoot.into());
+    }
+    insert_bound_project_tx(tx, project, root)
 }
