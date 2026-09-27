@@ -1,3 +1,13 @@
+## 2026-09-27 当前有效状态：NEXT-08已整合，NEXT-09恢复验收补强
+
+更新人：经理GPT-6。用户最新要求仅在E盘操作，D盘旧项目不再更新；工具必须显式指定活动E盘工作目录。人员档案只写共享niuma，保留所有旧树、生成产物与历史报告。原GPT-6-astra B/C/D接续，经理不接管产品实现或正式测试。
+
+本轮实核main HEAD 6ca971cf89f6fbeb41648045ee8a16e458a95d6e，产品merge b36c5167ded9b9f396f34c60a8e7e768632de2e6，受测候选6361838aba4a480a63612800224a947a1a9bffc4；NoManCode tree 9800ad0ebcabf556c517cade04eaa8b433057ab6、Rust tree ca006f88165d346ee6e60910079e9dece53aff25相同。产品无未提交修改，新增改动为员工证据补充与经理管理文档。
+
+NEXT-08五门禁全0是员工既有正式证据，本轮未重跑。经理重新核12对日志双SHA256全部一致；原test 38结果块，431通过/0失败/1忽略（含4个helper入口，扣除为427）。fmt无日志文件，仅原工具chunk 68f02f证明exit0。860候选partial restore失败根因未证实，单次重跑及后续全量通过不能关闭根因风险；旧报告“同环境”“时序根因”表述由新整合补充纠正，原件保留。
+
+下一操作按NEXT-09恢复确定性验收契约建立新完整基线/独立E树，B-R8/C-R10/D-R7仍由原三名员工执行。本片先移除恢复验收中的长SQL/争用轮询，验证实际部分恢复和unknown不重试；完成后再冻结builtin.files状态诊断/持久启禁契约。网络授权NEXT-07、多项目NEXT-08已按顺序交付；不重新开旧任务，不扩Desktop/Team/MCP，完整阶段一未完成。下方“等待C修复/未整合”等均为历史。
+
 ## 2026-09-27 NEXT-08最终门禁在test停止，等待C最小fixture修复
 
 经理GPT-6。固定7adb53812f2e01b91bdd95dc1939230feb68b770（NoManCode93e47885f7801eb050f0adf80d83d25de3bf73d4，Rustb796e04a6fedc95f89a8b76b5dc615c97ec57e53）C唯一串行check exit0、test exit101；失败为既有tests/cli.rs cl03远程approve和cl04 HTTP错误用例，根因旧seed Task无schema11 sidecar仍期待live approve，非生产逻辑已证缺陷。fmt/clippy/wasm-check未运行，未放宽断言、未改源码、工作树clean，失败/日志双hash保留。

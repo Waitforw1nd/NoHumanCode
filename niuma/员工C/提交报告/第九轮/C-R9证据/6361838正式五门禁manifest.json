@@ -1,1 +1,219 @@
-{"commit":"6361838aba4a480a63612800224a947a1a9bffc4","nomancode_tree":"9800ad0ebcabf556c517cade04eaa8b433057ab6","rust_tree":"ca006f88165d346ee6e60910079e9dece53aff25","source_clean":true,"untracked":"generated target directory only","gates":[{"name":"check","exit_code":0},{"name":"test","exit_code":0,"failed":0},{"name":"fmt","exit_code":0},{"name":"clippy","exit_code":0},{"name":"wasm-check","exit_code":0}],"logs":".local/review-evidence/c-r9-636-{check,test,fmt,clippy,wasm}.log","history":{"860_test":101,"targeted_repeat": "1/1 passed"},"release_live_push":false}
+{
+  "schema": 2,
+  "archived_at_utc": "2026-09-27T00:50:22.0343794Z",
+  "commit": "6361838aba4a480a63612800224a947a1a9bffc4",
+  "nomancode_tree": "9800ad0ebcabf556c517cade04eaa8b433057ab6",
+  "rust_tree": "ca006f88165d346ee6e60910079e9dece53aff25",
+  "path_base": "repository root",
+  "source_clean": true,
+  "untracked": ".cargo-target-final-362d6c0/",
+  "time_semantics": "Log LastWriteTimeUtc is filesystem metadata, not verified command start/end time. Command wall-clock timestamps not captured.",
+  "exit_evidence": "Original execution tool results in C task history",
+  "gates": [
+    {
+      "command": "powershell -ExecutionPolicy Bypass -File ./build.ps1 -Action check",
+      "exit_code": 0,
+      "tool_chunk": "161e69"
+    },
+    {
+      "command": "powershell -ExecutionPolicy Bypass -File ./build.ps1 -Action test",
+      "exit_code": 0,
+      "tool_chunk": "b54cb6"
+    },
+    {
+      "log_status": "No log file exists; original tool output empty. No synthetic log created.",
+      "command": "powershell -ExecutionPolicy Bypass -File ./build.ps1 -Action fmt",
+      "exit_code": 0,
+      "tool_chunk": "68f02f"
+    },
+    {
+      "command": "powershell -ExecutionPolicy Bypass -File ./build.ps1 -Action clippy",
+      "exit_code": 0,
+      "tool_chunk": "8c12b3"
+    },
+    {
+      "command": "powershell -ExecutionPolicy Bypass -File ./build.ps1 -Action wasm-check",
+      "exit_code": 0,
+      "tool_chunk": "7ecfb7"
+    }
+  ],
+  "test": {
+    "passed": 431,
+    "result_blocks": 38,
+    "helper_entries": 4,
+    "ignored": 1,
+    "raw_result_blocks": [
+      "test result: ok. 103 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.14s",
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.12s",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s",
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.58s",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.30s",
+      "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.36s",
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.11s",
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s",
+      "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.44s",
+      "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s",
+      "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s",
+      "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.13s",
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.17s",
+      "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s",
+      "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s",
+      "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.34s",
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s",
+      "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s",
+      "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s",
+      "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.58s",
+      "test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.28s",
+      "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s",
+      "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.24s",
+      "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s",
+      "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+    ],
+    "counting": "Sum result blocks once. Individual test lines not added. Four child helper entries already included; child subprocess results not added separately.",
+    "excluding_helper_passed": 427,
+    "failed": 0
+  },
+  "history": {
+    "targeted_repeat": "1 passed; no stable root cause proven by single successful repeat",
+    "candidate_860_rerun": "check 0, test 0, fmt 1; clippy/wasm not run",
+    "candidate_362": "check 0, test 101 (http_contract missing token); later gates not run",
+    "candidate_860": "check 0, test 101 (partial restore before barrier); later gates not run"
+  },
+  "transformation": "UTF-8 without BOM; replace E-drive worktree absolute prefixes with ../nhc-c-project-interface only; original bytes unchanged",
+  "logs": [
+    {
+      "name": "c-r9-636-check.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-636-check.log",
+      "original_sha256": "951A0C7D77C0B91F3B449AC7C0A059EAFA05B6EBAC6533F9227364F418574718",
+      "original_bytes": 9745,
+      "original_last_write_utc": "2026-09-26T23:31:52.0029105Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-636-check.log",
+      "published_sha256": "5E24BC1F6CBA4C7D065CC22F4AF38D7A60EAC3146C40C572E8133D5ED2CA8EC2",
+      "published_bytes": 9730
+    },
+    {
+      "name": "c-r9-636-clippy.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-636-clippy.log",
+      "original_sha256": "BCD4122F8A655A83C7332E805B30C2D8C6BFBBB3F1C315C3060E1EFE4BB316D2",
+      "original_bytes": 782,
+      "original_last_write_utc": "2026-09-26T23:39:23.1176809Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-636-clippy.log",
+      "published_sha256": "CE9464DC7583315EDB4784E7C4BA474E6FB936DD7AC482B221B2A7F951B1C3AE",
+      "published_bytes": 767
+    },
+    {
+      "name": "c-r9-636-test.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-636-test.log",
+      "original_sha256": "56EB208008485056EF4F4083922AD310F6286C309DF6D9612133C6D066F99C0E",
+      "original_bytes": 46913,
+      "original_last_write_utc": "2026-09-26T23:37:17.0262317Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-636-test.log",
+      "published_sha256": "24C23F19E15BA81DBA4DD44B83869EDF04EDAB2292A2BC1F76D9CBB2C3A7A5C5",
+      "published_bytes": 46723
+    },
+    {
+      "name": "c-r9-636-wasm.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-636-wasm.log",
+      "original_sha256": "2A7263E1FFB61ABC5C5DA17C2D506C79C14FEB0E8F8B48D608B154E34A2FBC07",
+      "original_bytes": 4554,
+      "original_last_write_utc": "2026-09-26T23:40:37.9269920Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-636-wasm.log",
+      "published_sha256": "77786C1B09E6754BA75E9982FB4AEE23136AFFB5B98AA17503229E7FF7BBA8C6",
+      "published_bytes": 4544
+    },
+    {
+      "name": "c-r9-860-rerun-check.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-860-rerun-check.log",
+      "original_sha256": "6B3FB1D347F4F42D6DA84D3C43D4218B57835C70C6F31BDEF74001E53FF4CFA6",
+      "original_bytes": 9745,
+      "original_last_write_utc": "2026-09-26T23:13:53.0020146Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-860-rerun-check.log",
+      "published_sha256": "6C93F0BE62F4670B26CF00187A0DE5A099EE3490F9C43F498F115B5452FA23CB",
+      "published_bytes": 9730
+    },
+    {
+      "name": "c-r9-860-rerun-fmt.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-860-rerun-fmt.log",
+      "original_sha256": "2F2F995B8336C51220CB41EA580878C0E635BBEE1CE2F1231ABA61259B1D16AB",
+      "original_bytes": 4752,
+      "original_last_write_utc": "2026-09-26T23:23:01.7338114Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-860-rerun-fmt.log",
+      "published_sha256": "FC06789F8BA54A914128C6D19EB0834416A05DFCB8663528A88B53B137C5CBB3",
+      "published_bytes": 4692
+    },
+    {
+      "name": "c-r9-860-rerun-test.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-860-rerun-test.log",
+      "original_sha256": "165E01AFE13CDB63C28997445BFF2BE6D90C3C39FEAEFC7D6A7231C2F258C554",
+      "original_bytes": 46913,
+      "original_last_write_utc": "2026-09-26T23:18:56.7049715Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-860-rerun-test.log",
+      "published_sha256": "2A8F9A33F8508D6F5C856EDEA08029D614A25198C9F557770A31F3691D31C83B",
+      "published_bytes": 46723
+    },
+    {
+      "name": "c-r9-formal-860-check.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-formal-860-check.log",
+      "original_sha256": "BB7B2309320BB448676AB36590216166C577D9126A0CCE0543FC7D5B97A80358",
+      "original_bytes": 9745,
+      "original_last_write_utc": "2026-09-26T22:46:00.9026760Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-formal-860-check.log",
+      "published_sha256": "E21629543D4415CA3EC1001AF119B425AFDF8FA05167CE79A88C151E5BE5EBAB",
+      "published_bytes": 9730
+    },
+    {
+      "name": "c-r9-formal-860-test.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-formal-860-test.log",
+      "original_sha256": "12D1ED44D60620274D893207CD19BD861FECD1642298A2A703DA8CDA68EB1AC5",
+      "original_bytes": 45790,
+      "original_last_write_utc": "2026-09-26T22:53:10.6771466Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-formal-860-test.log",
+      "published_sha256": "8E414ED2DA3A8FBEA9B0220499AFA85C187CBD85C2B5F8CCBC0E41272576DB62",
+      "published_bytes": 45615
+    },
+    {
+      "name": "c-r9-formal-check-362d6c0.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-formal-check-362d6c0.log",
+      "original_sha256": "D1846A153EFD2E558228D86B0CADC889DB54620F32B873E4336330CB67CF26FE",
+      "original_bytes": 9745,
+      "original_last_write_utc": "2026-09-26T22:07:19.1627058Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-formal-check-362d6c0.log",
+      "published_sha256": "4DE6C78F3174DE6AEB368F9296A3A2485DBE44038D2FDD9BD4B7B53529DB8A13",
+      "published_bytes": 9730
+    },
+    {
+      "name": "c-r9-formal-test-362d6c0.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-formal-test-362d6c0.log",
+      "original_sha256": "CF65A2B6F1060FA165089B10270294204220F8BE55E45F8C29FF5A5A7EE82417",
+      "original_bytes": 27680,
+      "original_last_write_utc": "2026-09-26T22:12:05.1435644Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-formal-test-362d6c0.log",
+      "published_sha256": "33406BEAFE62F67AD7CBF9D1B8EF25AB0B74909B310E8AC6727038CA5CFE6DEB",
+      "published_bytes": 27605
+    },
+    {
+      "name": "c-r9-workspace-partial-repeat.log",
+      "original_path": "../nhc-c-project-interface/.local/review-evidence/c-r9-workspace-partial-repeat.log",
+      "original_sha256": "91BDE5D7111005E660662A4B09CF9B1A814858C93E76592B1BB89C7E978333F8",
+      "original_bytes": 5971,
+      "original_last_write_utc": "2026-09-26T23:09:04.5229709Z",
+      "published_path": "niuma/员工C/提交报告/第九轮/C-R9证据/636归档/c-r9-workspace-partial-repeat.log",
+      "published_sha256": "DCAD8DB995238B2288372C5D0A11B34730355B19220F22C73649C2DD682CC376",
+      "published_bytes": 5956
+    }
+  ],
+  "release_live_push_executed": false
+}
