@@ -76,10 +76,8 @@ fn revoked_file_tools_never_reappear_through_compatibility_dispatch() {
                 .is_err()
         );
     }
-    for name in ["run_wasm"] {
-        let (_, admission) = runtime.acquire(&task, name, || Ok(7)).unwrap();
-        assert_eq!(admission, 7);
-    }
+    let (_, admission) = runtime.acquire(&task, "run_wasm", || Ok(7)).unwrap();
+    assert_eq!(admission, 7);
     // A new Host reconstructs builtins, not any lease from the previous Host.
     assert!(
         names(ToolRuntime::builtin().unwrap().definitions(&task).unwrap())
