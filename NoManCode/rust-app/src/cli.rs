@@ -718,24 +718,35 @@ fn plugin_unknown() -> Failure {
 
 fn validate_plugin(plugin: &PluginStatus) -> Result<(), Failure> {
     let value = encoded(plugin)?;
-    let (affected, compat) = match plugin.version.as_str() {
-        "1.0.0" => (
+    let (affected, compat, dependent) = match (plugin.plugin_id.as_str(), plugin.version.as_str()) {
+        ("builtin.files", "1.0.0") => (
             json!(["read_file", "write_file"]),
             json!(["list_files", "search_files", "run_command", "run_wasm"]),
+            "builtin.engine-tools",
         ),
-        "1.1.0" => (
+        ("builtin.files", "1.1.0") => (
             json!(["read_file", "write_file", "list_files", "search_files"]),
             json!(["run_command", "run_wasm"]),
+            "builtin.engine-tools",
+        ),
+        ("builtin.files", "1.2.0") => (
+            json!(["read_file", "write_file", "list_files", "search_files"]),
+            json!(["run_wasm"]),
+            "builtin.engine-tools",
+        ),
+        ("builtin.shell", "1.0.0") => (
+            json!(["run_command"]),
+            json!(["run_wasm"]),
+            "builtin.engine-shell-tools",
         ),
         _ => return Err(invalid_response()),
     };
-    if plugin.plugin_id != "builtin.files"
-        || plugin.scope != "host"
-        || plugin.desired.plugin_id != "builtin.files"
+    if plugin.scope != "host"
+        || plugin.desired.plugin_id != plugin.plugin_id
         || plugin.desired.revision > i64::MAX as u64
         || value["affected_tools"] != affected
         || value["compat_tools"] != compat
-        || value["affected_dependents"] != json!(["builtin.engine-tools"])
+        || value["affected_dependents"] != json!([dependent])
         || !safe_strings(&value)
     {
         return Err(invalid_response());
@@ -758,6 +769,9 @@ fn print_plugin(plugin: &PluginStatus) {
         runtime["draining"],
         plugin.converged
     );
+    if plugin.plugin_id == "builtin.shell" {
+        println!("命令不受文件 write_scopes 限制，无 OS 出站或目录沙箱；禁用不取消已准入命令。");
+    }
     println!(
         "影响 {}；{} 为 compat，仍受原有权限与项目策略约束。",
         plugin.affected_tools.join("/"),
@@ -847,11 +861,20 @@ async fn plugin_workflow(
                     plugins: Vec<PluginStatus>,
                 }
                 let list: List = decode(value.clone())?;
-                if list.plugins.len() != 1 {
-                    return Err(invalid_response());
-                }
                 for plugin in &list.plugins {
                     validate_plugin(plugin)?;
+                }
+                let directory = list
+                    .plugins
+                    .iter()
+                    .map(|p| (p.plugin_id.as_str(), p.version.as_str()))
+                    .collect::<Vec<_>>();
+                if !matches!(
+                    directory.as_slice(),
+                    [("builtin.files", "1.0.0" | "1.1.0")]
+                        | [("builtin.files", "1.2.0"), ("builtin.shell", "1.0.0")]
+                ) {
+                    return Err(invalid_response());
                 }
                 if json_output {
                     print_value(value, true)?;

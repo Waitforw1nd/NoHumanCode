@@ -86,7 +86,7 @@ fn revoked_file_tools_never_reappear_through_compatibility_dispatch() {
 }
 
 #[test]
-fn disabled_constructor_exposes_only_compat_and_never_calls_file_admission() {
+fn disabled_files_constructor_keeps_independent_shell_and_never_admits_files() {
     let runtime = ToolRuntime::builtin_with_enabled(false).unwrap();
     let mut task = task();
     task.spec.write_scopes = vec!["*".into()];
@@ -110,4 +110,30 @@ fn disabled_constructor_exposes_only_compat_and_never_calls_file_admission() {
     runtime.disable_builtin_files().unwrap();
     runtime.unload_builtin_files().unwrap();
     assert_eq!(runtime.definitions(&task).unwrap().len(), 2);
+}
+
+#[test]
+fn shell_cannot_reenter_via_compat_and_both_disabled_only_expose_wasm() {
+    let runtime = ToolRuntime::builtin_with_plugin_states(false, false).unwrap();
+    let mut task = task();
+    task.spec.allow_commands = true;
+    task.spec.write_scopes = vec!["*".into()];
+    assert_eq!(names(runtime.definitions(&task).unwrap()), ["run_wasm"]);
+    for name in [
+        "run_command",
+        "read_file",
+        "write_file",
+        "list_files",
+        "search_files",
+    ] {
+        assert!(
+            runtime
+                .acquire(&task, name, || -> anyhow::Result<()> {
+                    panic!("disabled callback")
+                })
+                .is_err()
+        );
+    }
+    runtime.unload_builtin_shell().unwrap();
+    assert_eq!(names(runtime.definitions(&task).unwrap()), ["run_wasm"]);
 }

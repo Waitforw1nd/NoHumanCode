@@ -144,7 +144,7 @@ async fn f02_status_is_read_only_and_reports_actual_runtime() {
     let before = h.snapshot();
     let status = h.status().await;
     assert_eq!(status["plugin_id"], "builtin.files");
-    assert_eq!(status["version"], "1.1.0");
+    assert_eq!(status["version"], "1.2.0");
     assert_eq!(status["scope"], "host");
     assert_eq!(status["desired"]["enabled"], true);
     assert_eq!(status["desired"]["revision"], 0);
@@ -155,7 +155,7 @@ async fn f02_status_is_read_only_and_reports_actual_runtime() {
         status["affected_tools"],
         json!(["read_file", "write_file", "list_files", "search_files"])
     );
-    assert_eq!(status["compat_tools"], json!(["run_command", "run_wasm"]));
+    assert_eq!(status["compat_tools"], json!(["run_wasm"]));
     assert_eq!(
         status["affected_dependents"],
         json!(["builtin.engine-tools"])
@@ -188,7 +188,10 @@ async fn f02_status_is_read_only_and_reports_actual_runtime() {
         200,
     )
     .await;
-    assert_eq!(list, json!({"plugins":[status]}));
+    assert_eq!(list["plugins"].as_array().unwrap().len(), 2);
+    assert_eq!(list["plugins"][0], status);
+    assert_eq!(list["plugins"][1]["plugin_id"], "builtin.shell");
+    assert_eq!(list["plugins"][1]["affected_tools"], json!(["run_command"]));
     assert_eq!(h.snapshot(), before);
     h.engine.disable_builtin_files().unwrap();
     let before = h.snapshot();
@@ -808,4 +811,467 @@ async fn f09_real_committed_response_loss_manual_cli_replay_keeps_receipt() {
     assert_eq!(h.snapshot(), before);
     assert_eq!(std::fs::read_dir(cwd.path()).unwrap().count(), 0);
     task.abort();
+}
+
+#[tokio::test]
+async fn s10_shell_http_metadata_isolated_global_key_and_strict_contract() {
+    let h = Host::new().await;
+    let before = h.snapshot();
+    let shell = body(
+        h.request(Method::GET, "/api/plugins/builtin.shell")
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await["plugin"]
+        .clone();
+    assert_eq!(shell["plugin_id"], "builtin.shell");
+    assert_eq!(shell["version"], "1.0.0");
+    assert_eq!(shell["affected_tools"], json!(["run_command"]));
+    assert_eq!(shell["compat_tools"], json!(["run_wasm"]));
+    assert_eq!(
+        shell["affected_dependents"],
+        json!(["builtin.engine-shell-tools"])
+    );
+    assert_eq!(shell["runtime"]["effects_count"], 1);
+    assert_eq!(shell["runtime"]["subscriptions_count"], 0);
+    assert_eq!(shell["runtime"]["instances"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        shell["runtime"]["providers"],
+        json!([{"provider_id":"builtin.shell","key":{"kind":"service","name":"tool.run_command","version":{"major":1,"minor":0,"patch":0}}}])
+    );
+    assert_eq!(h.snapshot(), before);
+    let files = h.status().await;
+    for path in [
+        "/api/plugins/builtin.shell",
+        "/api/plugins/builtin.shell/enabled",
+    ] {
+        let before = h.snapshot();
+        let method = if path.ends_with("enabled") {
+            Method::PUT
+        } else {
+            Method::GET
+        };
+        error(
+            &body(
+                client()
+                    .request(method, format!("{}{path}", h.origin))
+                    .send()
+                    .await
+                    .unwrap(),
+                403,
+            )
+            .await,
+            "forbidden",
+        );
+        assert_eq!(h.snapshot(), before);
+    }
+    let bad = h
+        .request(Method::PUT, "/api/plugins/builtin.shell/enabled")
+        .header("Idempotency-Key", "bad")
+        .header("content-type", "application/json")
+        .body(r#"{"enabled":false,"enabled":true,"expected_revision":0}"#)
+        .send()
+        .await
+        .unwrap();
+    error(&body(bad, 400).await, "request_failed");
+    assert_eq!(h.snapshot(), before);
+    let first = body(h.set(false, 0, "global-shared-key").await, 200).await;
+    let before = h.snapshot();
+    let conflict = h
+        .request(Method::PUT, "/api/plugins/builtin.shell/enabled")
+        .header("Idempotency-Key", "global-shared-key")
+        .json(&json!({"enabled":false,"expected_revision":0}))
+        .send()
+        .await
+        .unwrap();
+    error(&body(conflict, 409).await, "plugin_idempotency_conflict");
+    assert_eq!(h.snapshot(), before);
+    let shell_now = body(
+        h.request(Method::GET, "/api/plugins/builtin.shell")
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await["plugin"]
+        .clone();
+    assert_eq!(shell_now, shell);
+    let off = body(
+        h.request(Method::PUT, "/api/plugins/builtin.shell/enabled")
+            .header("Idempotency-Key", "shell-off")
+            .json(&json!({"enabled":false,"expected_revision":0}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    assert_eq!(off["current"]["runtime"]["effects_count"], 0);
+    assert_eq!(off["receipt"]["plugin_id"], "builtin.shell");
+    assert_eq!(h.status().await, first["current"]);
+    assert_eq!(files["desired"]["revision"], 0);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn s09_shell_real_host_restart_disabled_then_approval_ack_command_and_files_positive() {
+    use axum::{Json, Router, routing::post};
+    use peachsh::domain::{Route, Settings};
+    use std::sync::Mutex;
+    let root = tempfile::tempdir().unwrap();
+    for dir in ["workspace/src", "data", "client"] {
+        std::fs::create_dir_all(root.path().join(dir)).unwrap();
+    }
+    std::fs::write(
+        root.path().join("workspace/src/a.txt"),
+        "files-stay-available",
+    )
+    .unwrap();
+    let requests = Arc::new(Mutex::new(Vec::<Value>::new()));
+    let captured = requests.clone();
+    let provider=Router::new().route("/v1/chat/completions",post(move|Json(value):Json<Value>|{let captured=captured.clone();async move{let index={let mut r=captured.lock().unwrap();let n=r.len();r.push(value);n};let delta=match index {0|3=>json!({"tool_calls":[{"index":0,"id":format!("shell-{index}"),"type":"function","function":{"name":"run_command","arguments":json!({"command":"Set-Content -LiteralPath 'shell-marker.txt' -Value 'shell-once' -NoNewline; Write-Output 'shell-output'"}).to_string()}}]}),1=>json!({"tool_calls":[{"index":0,"id":"files-read","type":"function","function":{"name":"read_file","arguments":"{\"path\":\"src/a.txt\"}"}},{"index":1,"id":"files-list","type":"function","function":{"name":"list_files","arguments":"{\"path\":\"src\"}"}},{"index":2,"id":"files-search","type":"function","function":{"name":"search_files","arguments":"{\"path\":\"src\",\"query\":\"files-stay-available\"}"}},{"index":3,"id":"files-write","type":"function","function":{"name":"write_file","arguments":"{\"path\":\"src/written.txt\",\"content\":\"files-write-ok\"}"}}]}),2|4=>json!({"content":"done"}),_=>panic!("unexpected provider continuation")};let chunk=json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});([("content-type","text/event-stream")],format!("data: {chunk}\n\ndata: [DONE]\n\n"))}}));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/v1", listener.local_addr().unwrap());
+    let provider = tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
+    {
+        let store = Store::open(&root.path().join("data/peachsh.sqlite3")).unwrap();
+        store
+            .save_settings(&Settings {
+                workspace: root.path().join("workspace").to_string_lossy().into(),
+                max_concurrency: 1,
+                routes: vec![Route {
+                    id: "local".into(),
+                    name: "Local".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 128,
+                    parallel_limit: 1,
+                    key_env: Some("NHC_PLUGIN_TEST_KEY".into()),
+                }],
+                newapi: None,
+            })
+            .unwrap();
+    }
+    let reserve = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = reserve.local_addr().unwrap().port();
+    drop(reserve);
+    let origin = format!("http://127.0.0.1:{port}");
+    let mut child = launch(root.path(), port).await;
+    let auth = token(&origin).await;
+    let cwd = root.path().join("client");
+    let project = body(
+        request(&origin, &auth, Method::POST, "/api/projects")
+            .header("Idempotency-Key", "project")
+            .json(&json!({"name":"shell-project","root_path":root.path().join("workspace")}))
+            .send()
+            .await
+            .unwrap(),
+        201,
+    )
+    .await;
+    let id = project["id"].as_str().unwrap();
+    body(request(&origin,&auth,Method::PUT,&format!("/api/projects/{id}/config")).json(&json!({"expected_revision":1,"config":{"allowed_route_ids":["local"],"default_route_id":"local","tools":true,"write_scopes":["src"],"allow_commands":true}})).send().await.unwrap(),200).await;
+    body(
+        request(&origin, &auth, Method::PUT, "/api/project-selection")
+            .json(&json!({"project_id":id,"expected_revision":0}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    let preview = body(
+        request(&origin, &auth, Method::POST, "/api/network/preview")
+            .json(&json!({"kind":"route","id":"local","project_id":id}))
+            .send()
+            .await
+            .unwrap(),
+        200,
+    )
+    .await;
+    body(request(&origin,&auth,Method::POST,"/api/network/authorizations").header("Idempotency-Key","grant").json(&json!({"subject":preview["subject"],"config_revision":preview["config_revision"],"credential_revision":preview["credential_revision"],"binding_digest":preview["binding_digest"],"purposes":["completion"]})).send().await.unwrap(),201).await;
+    let files = cli_ok(cli(port, &cwd, &["plugin", "status", "builtin.files"]).await);
+    let off = cli_ok(
+        cli(
+            port,
+            &cwd,
+            &[
+                "plugin",
+                "set-enabled",
+                "builtin.shell",
+                "--enabled",
+                "false",
+                "--expected-revision",
+                "0",
+                "--key",
+                "shell-off",
+            ],
+        )
+        .await,
+    );
+    assert_eq!(off["current"]["converged"], true);
+    let pid = child.id().unwrap();
+    child.kill().await.unwrap();
+    let exit = child.wait().await.unwrap();
+    assert!(!exit.success());
+    println!("S09 shell Host kill pid={pid}; wait={exit}");
+    let before = snapshot(&root.path().join("data/peachsh.sqlite3"));
+    child = launch(root.path(), port).await;
+    let auth = token(&origin).await;
+    let restarted = cli_ok(cli(port, &cwd, &["plugin", "status", "builtin.shell"]).await);
+    assert_eq!(restarted["plugin"]["desired"], off["current"]["desired"]);
+    assert_eq!(restarted["plugin"]["runtime"]["admission_open"], false);
+    assert_eq!(restarted["plugin"]["runtime"]["effects_count"], 0);
+    assert_eq!(restarted["plugin"]["runtime"]["in_flight"], 0);
+    assert_eq!(snapshot(&root.path().join("data/peachsh.sqlite3")), before);
+    assert!(requests.lock().unwrap().is_empty());
+    assert_eq!(
+        cli_ok(cli(port, &cwd, &["plugin", "status", "builtin.files"]).await),
+        files
+    );
+    for stage in 0..3 {
+        if stage == 2 {
+            let enabled = cli_ok(
+                cli(
+                    port,
+                    &cwd,
+                    &[
+                        "plugin",
+                        "set-enabled",
+                        "builtin.shell",
+                        "--enabled",
+                        "true",
+                        "--expected-revision",
+                        "1",
+                        "--key",
+                        "shell-on",
+                    ],
+                )
+                .await,
+            );
+            assert_eq!(enabled["current"]["runtime"]["admission_open"], true);
+        }
+        let key = format!("shell-stage-{stage}");
+        let run = cli_ok(
+            cli(
+                port,
+                &cwd,
+                &[
+                    "run",
+                    "start",
+                    "--title",
+                    "shell-test",
+                    "--route",
+                    "local",
+                    "--message",
+                    "perform tool",
+                    "--tools",
+                    "--scope",
+                    "src",
+                    "--allow-commands",
+                    "--key",
+                    &key,
+                ],
+            )
+            .await,
+        );
+        let run_id = run["run_id"].as_str().unwrap();
+        let task = run["tasks"][0]["id"].as_str().unwrap();
+        if stage > 0 {
+            let pending = tokio::time::timeout(Duration::from_secs(10), async {
+                loop {
+                    let v = body(
+                        request(
+                            &origin,
+                            &auth,
+                            Method::GET,
+                            &format!("/api/tasks/{task}/approvals"),
+                        )
+                        .send()
+                        .await
+                        .unwrap(),
+                        200,
+                    )
+                    .await;
+                    if let Some(a) = v["approvals"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .find(|a| a["status"] == "pending")
+                    {
+                        break a.clone();
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            assert_eq!(
+                pending["tool_name"],
+                if stage == 1 {
+                    "write_file"
+                } else {
+                    "run_command"
+                }
+            );
+            assert!(!root.path().join("workspace/shell-marker.txt").exists());
+            let approval = pending["id"].as_str().unwrap();
+            if stage == 1 {
+                cli_ok(cli(port, &cwd, &["approval", "approve", approval]).await);
+            } else {
+                let no_ack = cli(port, &cwd, &["approval", "approve", approval]).await;
+                assert_eq!(no_ack.status.code(), Some(1));
+                assert!(!root.path().join("workspace/shell-marker.txt").exists());
+                cli_ok(
+                    cli(
+                        port,
+                        &cwd,
+                        &[
+                            "approval",
+                            "approve",
+                            approval,
+                            "--acknowledge-command-network",
+                        ],
+                    )
+                    .await,
+                );
+            }
+        }
+        tokio::time::timeout(Duration::from_secs(15), async {
+            loop {
+                let v = body(
+                    request(&origin, &auth, Method::GET, &format!("/api/runs/{run_id}"))
+                        .send()
+                        .await
+                        .unwrap(),
+                    200,
+                )
+                .await;
+                let status = v["tasks"][0]["status"].as_str().unwrap();
+                if stage == 0 && status == "failed" {
+                    assert_eq!(v["tasks"][0]["error"], "模型请求了未授权的工具");
+                    break;
+                }
+                if stage > 0 && status == "completed" {
+                    break;
+                }
+                assert!(
+                    !matches!(status, "failed" | "cancelled" | "completed"),
+                    "{v}"
+                );
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        if stage == 0 {
+            assert!(!root.path().join("workspace/shell-marker.txt").exists());
+            let approvals = body(
+                request(
+                    &origin,
+                    &auth,
+                    Method::GET,
+                    &format!("/api/tasks/{task}/approvals"),
+                )
+                .send()
+                .await
+                .unwrap(),
+                200,
+            )
+            .await;
+            assert_eq!(approvals["approvals"], json!([]));
+            let db = rusqlite::Connection::open(root.path().join("data/peachsh.sqlite3")).unwrap();
+            let count:u64=db.query_row("SELECT count(*) FROM events WHERE task_id=?1 AND kind IN ('tool_start','tool_result')",[task],|r|r.get(0)).unwrap();
+            assert_eq!(count, 0);
+            assert_eq!(requests.lock().unwrap().len(), 1);
+        }
+        if stage == 1 {
+            let r = requests.lock().unwrap();
+            assert_eq!(r.len(), 3);
+            let messages = r[2]["messages"].as_array().unwrap();
+            for (id, field, expected) in [
+                ("files-read", "content", json!("files-stay-available")),
+                (
+                    "files-list",
+                    "files",
+                    json!([{"name":"a.txt","directory":false}]),
+                ),
+                (
+                    "files-search",
+                    "matches",
+                    json!([{"path":"src/a.txt","line":1,"text":"files-stay-available"}]),
+                ),
+                ("files-write", "written", json!("src/written.txt")),
+            ] {
+                let message = messages
+                    .iter()
+                    .find(|m| m["role"] == "tool" && m["tool_call_id"] == id)
+                    .unwrap();
+                let result: Value =
+                    serde_json::from_str(message["content"].as_str().unwrap()).unwrap();
+                assert_eq!(result[field], expected);
+            }
+            assert_eq!(
+                std::fs::read_to_string(root.path().join("workspace/src/written.txt")).unwrap(),
+                "files-write-ok"
+            );
+            assert!(r[2]["messages"].as_array().unwrap().iter().any(|m| {
+                m["role"] == "tool"
+                    && m["content"]
+                        .as_str()
+                        .unwrap()
+                        .contains("files-stay-available")
+            }));
+        }
+        if stage == 2 {
+            assert_eq!(
+                std::fs::read_to_string(root.path().join("workspace/shell-marker.txt")).unwrap(),
+                "shell-once"
+            );
+            {
+                let r = requests.lock().unwrap();
+                assert_eq!(r.len(), 5);
+                let output = r[4]["messages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|m| m["role"] == "tool")
+                    .unwrap()["content"]
+                    .as_str()
+                    .unwrap();
+                let output: Value = serde_json::from_str(output).unwrap();
+                assert_eq!(output["exit_code"], 0);
+                assert!(output["stdout"].as_str().unwrap().contains("shell-output"));
+            }
+            let approvals = body(
+                request(
+                    &origin,
+                    &auth,
+                    Method::GET,
+                    &format!("/api/tasks/{task}/approvals"),
+                )
+                .send()
+                .await
+                .unwrap(),
+                200,
+            )
+            .await;
+            assert_eq!(approvals["approvals"].as_array().unwrap().len(), 1);
+            assert_eq!(approvals["approvals"][0]["status"], "approved");
+            assert_eq!(approvals["approvals"][0]["execution_state"], "finished");
+            assert_eq!(
+                approvals["approvals"][0]["command_network_ack"],
+                "acknowledged"
+            );
+        }
+        assert_eq!(
+            cli_ok(cli(port, &cwd, &["plugin", "status", "builtin.files"]).await),
+            files
+        );
+    }
+    child.kill().await.unwrap();
+    assert!(!child.wait().await.unwrap().success());
+    provider.abort();
+    assert_eq!(std::fs::read_dir(cwd).unwrap().count(), 0);
 }

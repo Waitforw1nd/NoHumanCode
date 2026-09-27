@@ -20,13 +20,19 @@ fn management_status_replay_and_explicit_reconciliation() {
     assert!(first.desired.enabled && first.converged && first.runtime.admission_open);
     assert_eq!(first.runtime.providers.len(), 4);
     assert_eq!(first.runtime.effects_count, 4);
-    assert_eq!(first.version, "1.1.0");
+    assert_eq!(first.version, "1.2.0");
     assert_eq!(
         first.affected_tools,
         ["read_file", "write_file", "list_files", "search_files"]
     );
-    assert_eq!(first.compat_tools, ["run_command", "run_wasm"]);
-    assert_eq!(engine.plugins().unwrap(), vec![first.clone()]);
+    assert_eq!(first.compat_tools, ["run_wasm"]);
+    assert_eq!(
+        engine.plugins().unwrap(),
+        vec![
+            first.clone(),
+            engine.plugin_status(BUILTIN_SHELL_ID).unwrap()
+        ]
+    );
     let disabled = engine
         .set_plugin_enabled(BUILTIN_FILES_ID, request(false, 0), "disable")
         .unwrap();
@@ -151,4 +157,61 @@ fn strict_request_and_safe_typed_errors() {
             .revision,
         0
     );
+}
+#[test]
+fn shell_state_is_independent_and_both_disabled_restart_without_activation() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.sqlite");
+    let first = engine(&path);
+    let files = first.plugin_status(BUILTIN_FILES_ID).unwrap();
+    let shell = first.plugin_status(BUILTIN_SHELL_ID).unwrap();
+    assert_eq!(shell.version, "1.0.0");
+    assert_eq!(shell.affected_tools, ["run_command"]);
+    assert_eq!(shell.compat_tools, ["run_wasm"]);
+    assert_eq!(shell.affected_dependents, ["builtin.engine-shell-tools"]);
+    assert_eq!(shell.runtime.instances.len(), 2);
+    assert_eq!(shell.runtime.effects_count, 1);
+    assert!(shell.converged);
+    first.disable_builtin_shell().unwrap();
+    assert_eq!(first.plugin_status(BUILTIN_FILES_ID).unwrap(), files);
+    let off = first
+        .set_plugin_enabled(BUILTIN_SHELL_ID, request(false, 0), "shell-off")
+        .unwrap();
+    assert!(off.current.converged);
+    let conflict = first
+        .set_plugin_enabled(BUILTIN_FILES_ID, request(false, 0), "shell-off")
+        .unwrap_err();
+    assert_eq!(
+        conflict.downcast_ref::<PluginManagementError>(),
+        Some(&PluginManagementError::IdempotencyConflict)
+    );
+    assert_eq!(first.plugin_status(BUILTIN_FILES_ID).unwrap(), files);
+    first
+        .set_plugin_enabled(BUILTIN_FILES_ID, request(false, 0), "files-off")
+        .unwrap();
+    drop(first);
+    let restarted = engine(&path);
+    for state in restarted.plugins().unwrap() {
+        assert!(!state.desired.enabled);
+        assert!(state.converged);
+        assert_eq!(state.runtime.effects_count, 0);
+        assert_eq!(state.runtime.in_flight, 0);
+        assert!(!state.runtime.admission_open);
+        assert!(state.runtime.providers.is_empty());
+    }
+    let enabled = restarted
+        .set_plugin_enabled(BUILTIN_SHELL_ID, request(true, 1), "shell-on")
+        .unwrap();
+    assert!(enabled.current.converged);
+    assert_eq!(enabled.current.runtime.effects_count, 1);
+    let files = restarted.plugin_status(BUILTIN_FILES_ID).unwrap();
+    assert!(!files.desired.enabled && files.converged);
+    restarted.unload_builtin_shell().unwrap();
+    let stopped = restarted.plugin_status(BUILTIN_SHELL_ID).unwrap();
+    let replay = restarted
+        .set_plugin_enabled(BUILTIN_SHELL_ID, request(true, 1), "shell-on")
+        .unwrap();
+    assert!(replay.replayed);
+    assert_eq!(replay.current, stopped);
+    assert_eq!(restarted.plugin_status(BUILTIN_FILES_ID).unwrap(), files);
 }

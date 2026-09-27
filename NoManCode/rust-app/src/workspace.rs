@@ -5,7 +5,6 @@ use crate::{
 use anyhow::{Context, Result, bail, ensure};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
-use tokio::io::AsyncReadExt;
 
 pub(crate) fn read_safe_file(path: &Path) -> Result<Option<Vec<u8>>> {
     let metadata = match std::fs::symlink_metadata(path) {
@@ -338,68 +337,7 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
             atomic_replace(&path, content.as_bytes())?;
             Ok(json!({"written":relative,"bytes":content.len()}))
         }
-        "run_command" => {
-            ensure!(task.spec.allow_commands, "当前任务未授权运行命令");
-            let command = args["command"].as_str().context("缺少 command")?;
-            ensure!(command.len() <= 8192, "命令过长");
-            let timeout_seconds = args["timeout_seconds"].as_u64().unwrap_or(30);
-            ensure!(
-                (1..=600).contains(&timeout_seconds),
-                "命令超时时间必须在 1–600 秒之间"
-            );
-            let mut process = tokio::process::Command::new("pwsh.exe");
-            process
-                .args(["-NoProfile", "-NonInteractive", "-Command", command])
-                .current_dir(root)
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
-                .kill_on_drop(true);
-            // Do not pass provider keys from the service environment to model commands.
-            for (name, _) in std::env::vars() {
-                if name.contains("KEY") || name.contains("TOKEN") || name.contains("SECRET") {
-                    process.env_remove(name);
-                }
-            }
-            #[cfg(windows)]
-            process.creation_flags(0x08000000);
-            let mut child = process.spawn().context("无法启动 PowerShell")?;
-            let pid = child.id();
-            let stdout = child.stdout.take().context("无法读取命令输出")?;
-            let stderr = child.stderr.take().context("无法读取命令错误")?;
-            let out = tokio::spawn(async move {
-                let mut b = vec![];
-                let _ = stdout.take(65536).read_to_end(&mut b).await;
-                b
-            });
-            let err = tokio::spawn(async move {
-                let mut b = vec![];
-                let _ = stderr.take(65536).read_to_end(&mut b).await;
-                b
-            });
-            let status = tokio::time::timeout(
-                std::time::Duration::from_secs(timeout_seconds),
-                child.wait(),
-            )
-            .await;
-            if status.is_err() {
-                if let Some(pid) = pid {
-                    let mut kill = tokio::process::Command::new("taskkill.exe");
-                    kill.args(["/PID", &pid.to_string(), "/T", "/F"]);
-                    #[cfg(windows)]
-                    kill.creation_flags(0x08000000);
-                    let _ = kill.output().await;
-                }
-                let _ = child.kill().await;
-                out.abort();
-                err.abort();
-                bail!("命令运行超过 {timeout_seconds} 秒，已停止");
-            }
-            let status = status??;
-            Ok(
-                json!({"exit_code":status.code(),"stdout":String::from_utf8_lossy(&out.await?),"stderr":String::from_utf8_lossy(&err.await?)}),
-            )
-        }
+        "run_command" => crate::command_execution::execute(task, args).await,
         "run_wasm" => {
             let plugin = args["plugin"].as_str().context("缺少 plugin")?.to_owned();
             let input = args.get("input").cloned().unwrap_or(Value::Null);
