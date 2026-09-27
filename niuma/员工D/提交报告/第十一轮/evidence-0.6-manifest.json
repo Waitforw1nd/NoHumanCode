@@ -1,0 +1,37 @@
+[
+  {
+    "raw_path": "../nhc-d-git-worktree/.local/logs/d09-context.json",
+    "published_path": "evidence-0.6/d09-context.json",
+    "raw_sha256": "50A3F7A1CB5D8C6BC635F41DFBEA0CF242C4BFF95F63020A9D0D258A22C0869F",
+    "published_sha256": "771FEE5981EDA99C19CE78C447D4A2327174432657ED5BA43C08FB51B56483E6",
+    "change": "Published copy normalizes workspace/ancestor paths; raw unchanged"
+  },
+  {
+    "raw_path": "../nhc-d-git-worktree/.local/logs/d09-fmt-after.json",
+    "published_path": "evidence-0.6/d09-fmt-after.json",
+    "raw_sha256": "2739F7A757D32CDB154D65510876C729CC67010B565D96C3B6452C2B3302CF27",
+    "published_sha256": "2739F7A757D32CDB154D65510876C729CC67010B565D96C3B6452C2B3302CF27",
+    "change": "Published copy normalizes workspace/ancestor paths; raw unchanged"
+  },
+  {
+    "raw_path": "../nhc-d-git-worktree/.local/logs/d09-fmt-after.log",
+    "published_path": "evidence-0.6/d09-fmt-after.log",
+    "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "change": "Published copy normalizes workspace/ancestor paths; raw unchanged"
+  },
+  {
+    "raw_path": "../nhc-d-git-worktree/.local/logs/d09-fmt-before.json",
+    "published_path": "evidence-0.6/d09-fmt-before.json",
+    "raw_sha256": "DD612CB766A4D132C4EDE331A6EB48D42EABCB3180BB60A7E5EDE45E9A032095",
+    "published_sha256": "DD612CB766A4D132C4EDE331A6EB48D42EABCB3180BB60A7E5EDE45E9A032095",
+    "change": "Published copy normalizes workspace/ancestor paths; raw unchanged"
+  },
+  {
+    "raw_path": "../nhc-d-git-worktree/.local/logs/d09-fmt-before.log",
+    "published_path": "evidence-0.6/d09-fmt-before.log",
+    "raw_sha256": "F900CF57B51092419E9AFE374228305293B2E384E617729802CDB677FCD2B315",
+    "published_sha256": "2AEC397863A5F0FF72750734C433AD31133E650C77733FAD29A3317862ED751A",
+    "change": "Published copy normalizes workspace/ancestor paths; raw unchanged"
+  }
+]

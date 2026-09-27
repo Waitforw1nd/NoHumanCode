@@ -2773,3 +2773,8 @@ D574982eb05a914eae95f0e11b31c185166b5547d修D06 Box及D07盘根within分隔符�
 C原日志/meta/停止报告与3对原/发布hash已经理核，source/index空/no-build冻结，未无变更重跑。B443组件报告与32映射已核，其中8份原件与旧0.1重复，新增24；总去重原件双hash101组（组件98+最终attempt1三组），重复发布映射另保留不重复计数。
 N13-D08由原D-R11-01/GPT-6-astra唯一接续定位。经理凭D574当前clean/no-build冻结回执实际核后，将完整失败935普通merge到D得到2a4596649dfaecd8e830c63602d5a4240e1f2286，NoManCode/Rust与失败候选完全相同。待D本人实核回执后按必要限定复现与cfg(test)PID/创建时间/原句柄kill-wait证据计划推进；不通过延迟或弱化断言掩盖。B/C继续冻结，最终五门禁已停止，修后原owner固定+经理整合+新C attempt从check完整重起。
 下一第一操作收D真实接收/复现和根因证据，审修订、保留全部失败与未执行。主线产品仍NEXT12，NEXT13未APPROVED/未产品合main；完整阶段一未完成。所有工程E，经理未实现产品或测试，旧树/日志/九份档案归档全保留。
+## 2026-09-28 NEXT-13修订合并完成，attempt2已放行（最新）
+
+经理GPT-6。D08原进程句柄观测与独立夹具修订已review并合C；C02测试wait_file修复f45专项clippy0，workspace fmt1保留。D09确认旧单文件检查显式edition2021及根cwd不同rustfmt不能代表本Rust workspace edition2024；fac79仅本人文件四处格式/import排序，workspace fmt0。新增C02四对/D09五对原发布hash经理全核，累计124组去重证据。
+经理凭当前C/D明确冻结再实核clean/index，普通merge得5e1b628abec3154f9a70f22420dce406d691c1a5 / NoManCode5fc44d1d2c4f65790cab94c376c59b1466e88980 / Rust e4a5012dea4d2d0f7acb352de496a66f61bb2097，C本人实核收。attempt2已正式放行给唯一C-R14-01原GPT-6-astra从check串行五门禁，当前尚无执行结果；B/D冻结。
+下一第一操作收C真实开测/各门禁及原证据，失败停后续，源变新attempt从check。935首轮Some9与历史860根因仍未证实，D观测增强不倒推原因；全部旧失败/未执行/产物保留。主线产品仍NEXT12，NEXT13未APPROVED/未产品合main，完整阶段一未完成。经理不产品实现/测试，所有工程E。

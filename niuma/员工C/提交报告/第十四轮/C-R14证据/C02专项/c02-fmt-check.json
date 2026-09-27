@@ -1,0 +1,27 @@
+{
+  "label": "c02-fmt-check",
+  "started_utc": "2026-09-27T16:52:17.2063990Z",
+  "head": "f45f2a871ca86d458548cce86c54f27624473cce",
+  "source_tree": "4a602274e2a79ac9ee3a1d31e59c5353005b6f33",
+  "rust_tree": "b6f35348f5177b81d162f968eac805c35be465c3",
+  "status_before": [],
+  "command": "cargo fmt --all -- --check",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "environment": {
+    "CARGO_TARGET_DIR": "../nhc-c-worktree-interface\\.local\\target",
+    "TEMP": "../nhc-c-worktree-interface\\.local\\tmp",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_BUILD_JOBS": "2",
+    "VSINSTALLDIR": "<machine-msvc>",
+    "CARGO_INCREMENTAL": "0",
+    "TMP": "../nhc-c-worktree-interface\\.local\\tmp",
+    "CARGO_PROFILE_TEST_DEBUG": "0"
+  },
+  "finished_utc": "2026-09-27T16:52:18.7589385Z",
+  "exit_code": 1,
+  "status_after": [],
+  "head_after": "f45f2a871ca86d458548cce86c54f27624473cce",
+  "source_after": "4a602274e2a79ac9ee3a1d31e59c5353005b6f33",
+  "rust_after": "b6f35348f5177b81d162f968eac805c35be465c3"
+}

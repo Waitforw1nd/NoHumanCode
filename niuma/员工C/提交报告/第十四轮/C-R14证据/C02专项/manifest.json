@@ -1,0 +1,34 @@
+{
+  "batch": "C02专项",
+  "created_utc": "2026-09-27T16:53:28.3708973Z",
+  "transforms": [
+    "Active worktree prefix -> ../nhc-c-worktree-interface",
+    "Read-only MSVC prefix -> <machine-msvc>"
+  ],
+  "files": [
+    {
+      "original": "../nhc-c-worktree-interface/.local/logs/c02-component-clippy.log",
+      "published": "niuma/员工C/提交报告/第十四轮/C-R14证据/C02专项/c02-component-clippy.log",
+      "original_sha256": "167C30793B156A9537BC2CAD92E4DD91EAEF5F43F95E97876D4F43CE9406F30C",
+      "published_sha256": "3774349EBC3B376B3A4F786A484CF9C62D558EAF454BC52E6BD973B086577976"
+    },
+    {
+      "original": "../nhc-c-worktree-interface/.local/logs/c02-component-clippy.json",
+      "published": "niuma/员工C/提交报告/第十四轮/C-R14证据/C02专项/c02-component-clippy.json",
+      "original_sha256": "3180C83BA5FA49C71A20BA197296E2A6279E1EC4F8436B3E1CB09A91D9D7C3D5",
+      "published_sha256": "C99CEF44D6E280DEAB81269165A8E3D79B4F9D7BF57DFE0D0691F6E33A28D679"
+    },
+    {
+      "original": "../nhc-c-worktree-interface/.local/logs/c02-fmt-check.log",
+      "published": "niuma/员工C/提交报告/第十四轮/C-R14证据/C02专项/c02-fmt-check.log",
+      "original_sha256": "BF966043E7FEEC3FDBA6CE30F0E9B77D6B8D86F9C5A0B4E9D5573E854FA8F6D9",
+      "published_sha256": "640960C2E7C5EFDBB62FCBC4C58E14989F99495E43C687456596BE7450497F1F"
+    },
+    {
+      "original": "../nhc-c-worktree-interface/.local/logs/c02-fmt-check.json",
+      "published": "niuma/员工C/提交报告/第十四轮/C-R14证据/C02专项/c02-fmt-check.json",
+      "original_sha256": "0AD92845D26FF115837694F620A5D6A4BA7C4E2D01F74EE06C5F4E9F0D963430",
+      "published_sha256": "AE3671AA1006D7744C4F924B6E01B42E01DD4CBB24FC3498EE2B34D37C946435"
+    }
+  ]
+}

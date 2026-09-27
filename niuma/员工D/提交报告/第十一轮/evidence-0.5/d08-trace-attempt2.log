@@ -1,0 +1,41 @@
+   Compiling peachsh v0.2.0 (<D-worktree>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 17.57s
+     Running unittests src\lib.rs (<D-worktree>\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 3 tests
+D08 cleanup pid=27136 created=134350010746594285 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 cleanup pid=3320 created=134350010746632977 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(7))))
+D08 query target=27136 code=Some(1) output=
+
+thread 'git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child' (58048) panicked at src\git_worktree.rs:2191:9:
+assertion `left == right` failed: fixture process 27136 survived
+  left: Some(1)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child ... FAILED
+D08 query target=3320 code=Some(1) output=
+
+thread 'git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn' (63976) panicked at src\git_worktree.rs:2191:9:
+assertion `left == right` failed: fixture process 3320 survived
+  left: Some(1)
+ right: Some(0)
+test git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn ... FAILED
+D08 cleanup pid=65800 created=134350010746668470 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(0))))
+D08 query target=65800 code=Some(1) output=
+
+thread 'git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown' (5220) panicked at src\git_worktree.rs:2191:9:
+assertion `left == right` failed: fixture process 65800 survived
+  left: Some(1)
+ right: Some(0)
+test git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown ... FAILED
+
+failures:
+
+failures:
+    git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown
+    git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn
+    git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 197 filtered out; finished in 2.97s
+
+error: test failed, to rerun pass `--lib`

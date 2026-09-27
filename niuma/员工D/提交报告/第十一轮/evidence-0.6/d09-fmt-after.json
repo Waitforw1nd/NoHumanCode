@@ -1,0 +1,12 @@
+{
+  "head": "fac79babc45decc9adc778c732f2e7839ac1e470",
+  "started_at": "2026-09-28T00:54:02.1153580+08:00",
+  "ended_at": "2026-09-28T00:54:03.5264645+08:00",
+  "exit_code": 0,
+  "status": [],
+  "noman_tree": "9d3269526f78c3a7d89aa152c0da74fc3d87eb9a",
+  "cargo_fmt": "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)",
+  "command": "cargo fmt --all -- --check",
+  "rustfmt": "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)",
+  "rust_tree": "7b9b238ee6050a7b1a71a8c8b2fd91fa4908b6f8"
+}

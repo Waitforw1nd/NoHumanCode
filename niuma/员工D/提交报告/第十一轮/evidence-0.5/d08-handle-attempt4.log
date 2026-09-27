@@ -1,0 +1,21 @@
+   Compiling peachsh v0.2.0 (<D-worktree>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 15.23s
+     Running unittests src\lib.rs (<D-worktree>\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 4 tests
+test git_worktree::tests::w06_original_handle_rejects_live_process_and_accepts_waited_exit ... ok
+D08 cleanup pid=65320 created=134350012404340532 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=65320 created=134350012404340532 signal=0
+test git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child ... ok
+D08 cleanup pid=36284 created=134350012404414923 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(7))))
+D08 original-handle pid=36284 created=134350012404414923 signal=0
+D08 cleanup pid=65880 created=134350012406609774 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=65880 created=134350012406609774 signal=0
+test git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn ... ok
+D08 cleanup pid=58208 created=134350012404378100 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(0))))
+D08 original-handle pid=58208 created=134350012404378100 signal=0
+D08 original-handle pid=7352 created=134350012407313232 signal=0
+test git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 197 filtered out; finished in 2.58s
+
