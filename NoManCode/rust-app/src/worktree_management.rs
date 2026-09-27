@@ -692,3 +692,29 @@ pub(crate) fn map_git(error: git_worktree::GitWorktreeError) -> WorktreeError {
         G::OutcomeUnknown => WorktreeError::Conflict,
     }
 }
+
+impl crate::store::Store {
+    pub(crate) fn registered_worktree_root(
+        &self,
+        receipt: &WorktreeReceipt,
+    ) -> Result<Option<RootIdentity>> {
+        if receipt.state != WorktreeState::Succeeded {
+            return Ok(None);
+        }
+        let project = receipt.project_id.as_ref().ok_or(WorktreeError::Corrupt)?;
+        let db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
+        let (source,raw):(String,String)=db.query_row("SELECT source_project_id,identity FROM project_worktree_origins WHERE project_id=?1 AND operation_id=?2",params![project.0,receipt.operation_id],|r|Ok((r.get(0)?,r.get(1)?)))?;
+        let origin: WorktreeOrigin =
+            serde_json::from_str(&raw).map_err(|_| WorktreeError::Corrupt)?;
+        ensure!(
+            origin.version == 1
+                && source == receipt.source_project_id.0
+                && origin.root == crate::project_config::root_tx(&db, project)?
+                && origin.root.canonical_path() == std::path::Path::new(&receipt.target_path)
+                && origin.head_oid == receipt.expected_head
+                && origin.branch_ref == format!("refs/heads/{}", receipt.branch),
+            WorktreeError::Corrupt
+        );
+        Ok(Some(origin.root))
+    }
+}

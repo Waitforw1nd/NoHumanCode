@@ -805,7 +805,10 @@ impl Engine {
         let roots = self.store.worktree_inventory()?.roots()?;
         let ctx =
             git::GitContext::new(roots.into_iter().map(|(_, r)| r).collect()).map_err(map_git)?;
-        let actual = git::diagnose(&ctx, &plan).await.map_err(map_git)?;
+        let registered = self.store.registered_worktree_root(&receipt)?;
+        let actual = git::diagnose(&ctx, &plan, registered.as_ref())
+            .await
+            .map_err(map_git)?;
         let observation: WorktreeObservation =
             serde_json::from_value(serde_json::to_value(actual)?)
                 .map_err(|_| WorktreeError::Corrupt)?;
