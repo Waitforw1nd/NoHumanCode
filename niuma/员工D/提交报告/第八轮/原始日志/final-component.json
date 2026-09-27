@@ -1,0 +1,30 @@
+{
+  "head": "7d16de89491be8c21b8c382b97fc874d3dfcdd24",
+  "rust_tree": "c7ad3b660cb7f0c527fd9a5a1f25061c886a7af5",
+  "start": "2026-09-27T03:04:07.1018063Z",
+  "steps": [
+    {
+      "command": "build.ps1 -Action check",
+      "exit": 0
+    },
+    {
+      "exit": 0,
+      "start": "2026-09-27T03:04:11.3506545Z",
+      "end": "2026-09-27T03:04:20.1010783Z",
+      "command": "cargo test --locked --lib tool_runtime::tests -- --nocapture"
+    },
+    {
+      "exit": 0,
+      "start": "2026-09-27T03:04:20.1011208Z",
+      "end": "2026-09-27T03:04:28.2210700Z",
+      "command": "cargo test --locked --test tool_runtime -- --nocapture"
+    },
+    {
+      "exit": 0,
+      "start": "2026-09-27T03:04:28.2210940Z",
+      "end": "2026-09-27T03:04:38.2401215Z",
+      "command": "cargo clippy --locked --lib --test tool_runtime -- -D warnings"
+    }
+  ],
+  "end": "2026-09-27T03:04:38.2401438Z"
+}

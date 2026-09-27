@@ -1,0 +1,73 @@
+   Compiling peachsh v0.2.0 (../nhc-b-plugin-management\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.67s
+     Running tests\checkpoint.rs (../nhc-b-plugin-management\.local\target-r9\debug\deps\checkpoint-e661a37933849fcd.exe)
+
+running 15 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows ... ok
+test schema10_unbound_checkpoint_is_history_only_and_cannot_restore ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test completed_restore_replays_after_legacy_migration_and_original_root_is_offline ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test cross_project_restore_keeps_original_root_and_waits_for_host_command ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.34s
+
+     Running tests\project_context.rs (../nhc-b-plugin-management\.local\target-r9\debug\deps\project_context-2c95f0c2714d5e7e.exe)
+
+running 7 tests
+test ordinary_root_search_rejects_case_sensitive_descendant ... ok
+test unavailable_legacy_root_does_not_block_registration_or_change_old_row ... ok
+test safe_defaults_cas_restart_and_overlap_are_explicit ... ok
+test safe_default_admission_and_task_binding_failure_leave_no_execution_facts ... ok
+test register_replay_precedes_root_access_and_failure_rolls_back_all_tables ... ok
+test separate_grants_selection_and_old_session_follow_original_project ... ok
+test project_config_change_and_explicit_start_are_atomic_across_stores ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running tests\project_migration.rs (../nhc-b-plugin-management\.local\target-r9\debug\deps\project_migration-dd776e7f71aebae5.exe)
+
+running 3 tests
+test failed_schema11_transaction_keeps_schema10_version_and_marker ... ok
+test schema11_preserves_v1_network_ciphertext_digest_grant_and_historical_confirm_replay ... ok
+test schema11_rejects_forged_nullable_type_literal_fk_and_primary_key ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\workspace_changes.rs (../nhc-b-plugin-management\.local\target-r9\debug\deps\workspace_changes-d2bf33518c75558c.exe)
+
+running 21 tests
+test failed_atomic_replace_cleans_plaintext_temp ... ok
+test workspace_path_aliases_and_forbidden_spellings_are_rejected_or_coalesced ... ok
+test empty_restore_is_noop_without_operation ... ok
+test schema7_migrates_and_forged_schema8_is_rejected ... ok
+test redacted_write_arguments_do_not_leave_an_unrestorable_success ... ok
+test finished_change_without_after_digest_is_corrupt_not_empty_restore ... ok
+test restore_rejects_tampered_call_path_content_and_binding ... ok
+test external_edit_conflicts_without_overwrite ... ok
+symlink creation succeeded
+test approved_write_has_typed_metadata_and_restores_exact_bytes ... ok
+test dpapi_before_secret_roundtrips_without_plaintext_in_database ... ok
+test schema7_to8_preserves_existing_task_approval_and_event_rows ... ok
+test missing_non_utf8_and_link_are_distinct_current_states ... ok
+test parent_commit_failure_returns_unknown_receipt_and_seals_change ... ok
+test http_unknown_receipt_is_safe_after_outcome_persist_failure ... ok
+test later_path_conflict_prevents_all_restore_writes ... ok
+test another_task_write_blocks_old_restore_and_hardlink_bytes_stay_unchanged ... ok
+test changed_host_workspace_or_task_scopes_reject_restore_before_claim ... ok
+test created_file_restore_deletes_only_unchanged_task_output ... ok
+test repeated_path_restores_earliest_before_and_legacy_mix_is_rejected ... ok
+test another_task_edit_blocks_resumed_write_without_absorbing_external_bytes ... ok
+test unsupported_new_content_and_before_bytes_have_no_file_effect ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.12s
+

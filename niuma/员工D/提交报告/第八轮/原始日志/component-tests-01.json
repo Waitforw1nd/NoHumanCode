@@ -1,0 +1,6 @@
+{
+  "start": "2026-09-27T03:02:19.5170157Z",
+  "end": "2026-09-27T03:02:39.7187350Z",
+  "exit": 0,
+  "command": "cargo test --locked --lib tool_runtime::tests -- --nocapture"
+}

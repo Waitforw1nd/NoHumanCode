@@ -1,0 +1,30 @@
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running unittests src\lib.rs (../nhc-b-plugin-management\.local\target-r9\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 22 tests
+F07 child kill+wait completed: exit code: 1; persisted revision=1, before apply
+test engine::workspace_phase_tests::write_prepare_before_fs_real_process_stop ... ok
+test engine::workspace_phase_tests::n10_commit_before_apply_child_kill_wait_restart_keeps_unknown_and_grants ... ok
+test engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop ... ok
+test engine::workspace_phase_tests::n10_disable_first_preserves_decision_and_refuses_claim_without_side_effects ... ok
+test engine::workspace_phase_tests::recheck_io_failure_after_prepare_is_failed_without_file_effect ... ok
+test engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop ... ok
+test engine::workspace_phase_tests::n10_claim_first_real_write_finishes_with_durable_receipt_and_drains ... ok
+test engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop ... ok
+test engine::workspace_phase_tests::restore_gate_serializes_competitors_and_seals_resumed_writes ... ok
+test engine::workspace_phase_tests::checkpoint_creation_and_both_restore_routes_share_real_gate ... ok
+test engine::workspace_phase_tests::start_and_resume_wait_for_production_workspace_gate ... ok
+test engine::workspace_phase_tests::checkpoint_partial_failure_keeps_single_receipt_and_blocks_new_turn ... ok
+test engine::workspace_phase_tests::n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease ... ok
+test engine::workspace_phase_tests::n10_schema11_migration_preserves_nonempty_all_business_rows_and_ciphertext ... ok
+test engine::workspace_phase_tests::sealed_pending_resume_and_failed_commit_leave_no_deferred_input ... ok
+test engine::workspace_phase_tests::n07_send_and_restore_wait_on_same_production_gate ... ok
+test engine::workspace_phase_tests::no_restore_resume_executes_and_checkpoint_keeps_original_error ... ok
+test engine::workspace_phase_tests::failed_prepare_does_not_pollute_later_or_earlier_success ... ok
+test engine::workspace_phase_tests::restore_probe_is_scoped_and_committed_callback_holds_no_store_lock ... ok
+test engine::workspace_phase_tests::restore_probe_distinguishes_real_file_action_and_sqlite_outcome_errors ... ok
+test engine::workspace_phase_tests::partial_and_unknown_restore_histories_seal_resumed_writes ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 101 filtered out; finished in 1.00s
+

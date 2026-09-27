@@ -1,0 +1,26 @@
+   Compiling peachsh v0.2.0 (../nhc-c-plugin-interface\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1.99s
+     Running tests\plugin_cli.rs (../nhc-c-plugin-interface\.local\target\debug\deps\plugin_cli-8e1e9882fbaa9ed2.exe)
+
+running 5 tests
+test f09_unconverged_accepted_json_is_complete_and_exit_one ... ok
+test f09_hostile_output_is_not_echoed_or_retried ... ok
+test f09_lost_response_requires_manual_same_key_and_parameters ... ok
+test f09_actual_cli_uses_authenticated_get_put_and_preserves_response ... ok
+test f09_cli_rejects_invalid_input_and_safe_errors_remain_structured ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+     Running tests\plugin_http.rs (../nhc-c-plugin-interface\.local\target\debug\deps\plugin_http-c933aa68bf7c54a8.exe)
+
+running 6 tests
+test f02_status_is_read_only_and_reports_actual_runtime ... ok
+test f07_database_rejection_does_not_change_runtime_or_consume_key ... ok
+test f06_cas_replay_and_concurrent_conflicts ... ok
+test f09_real_committed_response_loss_manual_cli_replay_keeps_receipt ... ok
+test f09_strict_inputs_and_auth_have_no_mutations ... ok
+F05 killed Host pid=2936; wait=exit code: 1
+test f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_read ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.60s
+

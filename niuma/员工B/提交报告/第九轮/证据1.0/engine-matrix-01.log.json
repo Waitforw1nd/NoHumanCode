@@ -1,0 +1,10 @@
+{
+  "command": "cargo test --locked --lib engine::workspace_phase_tests::n10_ -- --nocapture",
+  "exit": 101,
+  "start_utc": "2026-09-27T03:12:07.9587931Z",
+  "msvc": "<machine-msvc>\\VC\\Tools\\MSVC\\14.40.33807",
+  "end_utc": "2026-09-27T03:12:13.2549745Z",
+  "head": "72a49f07143041bbdbfcecfaf4acf5263ff0d603",
+  "target": "../nhc-b-plugin-management\\.local\\target-r9",
+  "tmp": "../nhc-b-plugin-management\\.local\\tmp"
+}

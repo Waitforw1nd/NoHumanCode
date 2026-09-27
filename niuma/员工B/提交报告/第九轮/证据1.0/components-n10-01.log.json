@@ -1,0 +1,10 @@
+{
+  "start_utc": "2026-09-27T03:14:30.9011122Z",
+  "exit": 0,
+  "target": "../nhc-b-plugin-management\\.local\\target-r9",
+  "head": "72a49f07143041bbdbfcecfaf4acf5263ff0d603",
+  "tmp": "../nhc-b-plugin-management\\.local\\tmp",
+  "msvc": "<machine-msvc>\\VC\\Tools\\MSVC\\14.40.33807",
+  "command": "cargo test --locked --lib n10_ -- --nocapture",
+  "end_utc": "2026-09-27T03:14:42.7561305Z"
+}

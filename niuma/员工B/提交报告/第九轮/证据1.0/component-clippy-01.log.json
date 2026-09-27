@@ -1,0 +1,10 @@
+{
+  "end_utc": "2026-09-27T03:19:43.8770495Z",
+  "tmp": "../nhc-b-plugin-management\\.local\\tmp",
+  "command": "cargo clippy --locked --lib --test plugin_management --test project_context --test project_migration --test approval_gate --test workspace_changes --test checkpoint -- -D warnings",
+  "exit": 0,
+  "msvc": "<machine-msvc>\\VC\\Tools\\MSVC\\14.40.33807",
+  "target": "../nhc-b-plugin-management\\.local\\target-r9",
+  "start_utc": "2026-09-27T03:19:21.2284728Z",
+  "head": "2d994be096bb23c6d4a799b732e4a174a22832bc"
+}

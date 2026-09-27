@@ -1,0 +1,10 @@
+{
+  "command": "cargo test --locked --test project_context --test project_migration --test approval_gate --test workspace_changes --test checkpoint -- --nocapture",
+  "msvc": "<machine-msvc>\\VC\\Tools\\MSVC\\14.40.33807",
+  "end_utc": "2026-09-27T03:16:09.7998725Z",
+  "target": "../nhc-b-plugin-management\\.local\\target-r9",
+  "exit": 101,
+  "start_utc": "2026-09-27T03:15:27.6564662Z",
+  "tmp": "../nhc-b-plugin-management\\.local\\tmp",
+  "head": "72a49f07143041bbdbfcecfaf4acf5263ff0d603"
+}

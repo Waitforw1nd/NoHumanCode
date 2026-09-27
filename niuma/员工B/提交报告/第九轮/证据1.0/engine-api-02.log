@@ -1,0 +1,12 @@
+   Compiling peachsh v0.2.0 (../nhc-b-plugin-management\NoManCode\rust-app)
+error[E0308]: mismatched types
+    --> src\engine.rs:1447:25
+     |
+1447 |                         self.store.validate_project_task(task, true, false)
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), Error>`, found `Result<TaskProjectBinding, Error>`
+     |
+     = note: expected enum `std::result::Result<(), _>`
+                found enum `std::result::Result<TaskProjectBinding, _>`
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `peachsh` (lib test) due to 1 previous error
