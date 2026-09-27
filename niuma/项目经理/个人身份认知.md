@@ -1,3 +1,11 @@
+## 2026-09-27 NEXT-13契约v1.0冻结，待完整基线派发（当前）
+经理GPT-6。三原GPT-6-astra员工B-R12-PRE01/C-R14-PRE01/D-R11-PRE01均真实接收并完成只读评估，经理已APPROVED结项。NEXT-13独立Git工作树契约v1.0与B-R12-01/C-R14-01/D-R11-01新任务包已落盘；正式实现未实接，不恢复旧任务。主线产品仍b8fa6dd之后管理状态不变，两源码tree191687949486545e22ed0769eaa32aee5d6faf6a/ae885d552659810753d00ff796dd542249d21197，未新跑测试。
+冻结：trusted local SHA1 clean HEAD、Host生成branch/target、独立Project默认无权限、持久claim与Project预约、unknown仅诊断保留预约、CLI/HTTP不自动启动/换根/grant。限制与W01–W11见任务契约。下一第一操作完整管理基线提交→三个E新树→原GPT-6-astra新执行ID正式派发和真实核收，D→B→C明确clean无构建窗口串行merge。经理不产品实现/测试；阶段一未完整，旧档案/失败/产物保留。
+## 2026-09-27 NEXT-13隔离工作区契约评估中（当前）
+
+经理GPT-6。用户继续，实际main b8fa6dd19229a97c80b0657694b77308b7109993/NoManCode191687949486545e22ed0769eaa32aee5d6faf6a/Rustae885d552659810753d00ff796dd542249d21197 clean。NEXT-12已结项，不重开旧实现。新B-R12-PRE01/D-R11-PRE01/C-R14-PRE01仅只读建议，详见NEXT-13前置只读登记；派发/真实接收随后登记，不能预称已接收。
+
+经理核现有Project根必须等Task.workspace，准备评估linked worktree登记为独立Project的最小闭环及其与同Project per-Session workspace的代价。NEXT-13未冻结，无产品实现/测试写权。下一第一操作收只读建议、冻结可评审契约，再完整基线/独立E树/新执行ID后按原GPT-6-astra授权派工。完整阶段一未完成，全部工程E、旧树保留。
 ## 2026-09-27 当前有效状态：NEXT-12已验收整合
 
 经理GPT-6。产品merge120a20f19468aa41ba07a517872b01bf106fe4a4，受测5c8f221e5abdce20a5a971533b7264e041487954；NoManCode191687949486545e22ed0769eaa32aee5d6faf6a/Rustae885d552659810753d00ff796dd542249d21197完全相同，整合前后status/index空。最终证据归档9262013465ea029acebda047d0ce17deb2ef6ed8，后续管理HEAD不自引用。C唯一第二轮五门禁全0，41块507/0/1含4helper（503），经理核81对hash。B-R11/C-R13/D-R10均APPROVED结项并本人身份冻结，当前无实现执行者；下方进行中均历史。
