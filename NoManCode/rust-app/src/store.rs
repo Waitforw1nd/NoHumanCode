@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 11;
+pub const SCHEMA_VERSION: u32 = 12;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -89,6 +89,11 @@ impl Store {
             version < 11
                 || repository::migration_applied(&db, repository::PROJECT_CONFIG_MIGRATION_ID)?,
             "schema 11 marker missing"
+        );
+        anyhow::ensure!(
+            version < 12
+                || repository::migration_applied(&db, repository::PLUGIN_MANAGEMENT_MIGRATION_ID)?,
+            "schema 12 marker missing"
         );
         if version < 2 {
             db.execute_batch("CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), created_at INTEGER NOT NULL);
@@ -214,9 +219,23 @@ impl Store {
             tx.commit()?;
         } else {
             let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
-            anyhow::ensure!(current == SCHEMA_VERSION, "project schema version mismatch");
+            anyhow::ensure!(
+                (11..=SCHEMA_VERSION).contains(&current),
+                "project schema version mismatch"
+            );
             let tx = db.transaction()?;
             repository::verify_schema_11(&tx)?;
+            tx.commit()?;
+        }
+        if !repository::migration_applied(&db, repository::PLUGIN_MANAGEMENT_MIGRATION_ID)? {
+            let tx = db.transaction()?;
+            repository::apply_schema_12(&tx)?;
+            tx.commit()?;
+        } else {
+            let current: u32 = db.pragma_query_value(None, "user_version", |r| r.get(0))?;
+            anyhow::ensure!(current == SCHEMA_VERSION, "plugin schema version mismatch");
+            let tx = db.transaction()?;
+            repository::verify_schema_12(&tx)?;
             tx.commit()?;
         }
         Ok(Self { db: Mutex::new(db) })
@@ -1535,6 +1554,9 @@ impl Store {
             );
         }
         crate::project_config::validate_task_tx(&tx, task, true, false)?;
+        if tool_name == "write_file" {
+            crate::plugin_management::ensure_files_enabled_tx(&tx)?;
+        }
         let changed = tx.execute(
             "UPDATE approvals SET execution_state='claimed' WHERE id=?1 AND status='approved' AND execution_state='not_started'",
             [&current.id],

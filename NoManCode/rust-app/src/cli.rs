@@ -6,6 +6,7 @@ use peachsh::network_authorization::{
 };
 use peachsh::{
     approval::{ApprovalStatus, CommandNetworkAck, CommandNetworkNotice},
+    plugin_management::{PluginMutationResult, PluginStatus},
     project_config::{ProjectConfig, ProjectConfigSnapshot, ProjectSelection, TaskProjectBinding},
     secrets,
 };
@@ -25,6 +26,7 @@ const RESPONSE_LIMIT: usize = 1_048_576;
 
 #[derive(Subcommand)]
 pub enum Command {
+    Plugin(PluginArgs),
     Project(ProjectArgs),
     Run(RunArgs),
     Session(SessionArgs),
@@ -45,6 +47,21 @@ fn valid_message(message: &str) -> bool {
 impl Command {
     pub fn valid_ids(&self) -> bool {
         match self {
+            Self::Plugin(args) => match &args.command {
+                PluginCommand::List => true,
+                PluginCommand::Status { id } => valid_id(id),
+                PluginCommand::SetEnabled {
+                    id,
+                    expected_revision,
+                    key,
+                    ..
+                } => {
+                    valid_id(id)
+                        && *expected_revision <= i64::MAX as u64
+                        && secrets::validate_idempotency_key(key).is_ok()
+                        && !key.contains(',')
+                }
+            },
             Self::Account(_) => true,
             Self::Project(args) => match &args.command {
                 ProjectCommand::List | ProjectCommand::Current => true,
@@ -144,6 +161,28 @@ impl Command {
         }
     }
 }
+#[derive(Args)]
+pub struct PluginArgs {
+    #[command(subcommand)]
+    command: PluginCommand,
+}
+#[derive(Subcommand)]
+enum PluginCommand {
+    List,
+    Status {
+        id: String,
+    },
+    SetEnabled {
+        id: String,
+        #[arg(long, action = clap::ArgAction::Set)]
+        enabled: bool,
+        #[arg(long)]
+        expected_revision: u64,
+        #[arg(long)]
+        key: String,
+    },
+}
+
 #[derive(Args)]
 pub struct ProjectArgs {
     #[command(subcommand)]
@@ -475,6 +514,14 @@ impl Failure {
     }
 
     pub fn print(&self, json_output: bool) {
+        // The successful mutation response has already been printed intact.
+        // This sentinel controls only the process exit status, not the wire shape.
+        if self.code == "plugin_not_converged" {
+            if !json_output {
+                eprintln!("持久命令已接受，当前运行时尚未收敛；请查询状态。");
+            }
+            return;
+        }
         let mut value = json!({"code":self.code,"message":self.message,"retryable":self.retryable,"error":self.message});
         if let Some(details) = &self.details {
             for field in [
@@ -558,6 +605,7 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         .map_err(|_| Failure::fixed("internal", "本机服务地址无效", false))?;
 
     let command = match command {
+        Command::Plugin(args) => return plugin_workflow(&client, &origin, json_output, args).await,
         Command::Network(_)
         | Command::Route(_)
         | Command::Account(_)
@@ -658,6 +706,211 @@ async fn decide(
         Some(&bootstrap.token),
     )
     .await
+}
+
+fn plugin_unknown() -> Failure {
+    Failure::fixed(
+        "operation_result_unknown",
+        "插件写入结果未知，可能已提交。请查询 plugin status，并保留原 --key、--enabled 和 --expected-revision 手动回放；不会自动重试。",
+        false,
+    )
+}
+
+fn validate_plugin(plugin: &PluginStatus) -> Result<(), Failure> {
+    let value = encoded(plugin)?;
+    if plugin.plugin_id != "builtin.files"
+        || plugin.version != "1.0.0"
+        || plugin.scope != "host"
+        || plugin.desired.plugin_id != "builtin.files"
+        || plugin.desired.revision > i64::MAX as u64
+        || value["affected_tools"] != json!(["read_file", "write_file"])
+        || value["compat_tools"] != json!(["list_files", "search_files", "run_command", "run_wasm"])
+        || value["affected_dependents"] != json!(["builtin.engine-tools"])
+        || !safe_strings(&value)
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+
+fn print_plugin(plugin: &PluginStatus) {
+    let runtime = serde_json::to_value(&plugin.runtime).expect("runtime DTO serializes");
+    println!(
+        "{}@{} scope={} desired={} revision={} runtime={} admission={} in-flight={} draining={} converged={}",
+        plugin.plugin_id,
+        plugin.version,
+        plugin.scope,
+        plugin.desired.enabled,
+        plugin.desired.revision,
+        runtime["state"].as_str().unwrap_or("unknown"),
+        runtime["admission_open"],
+        runtime["in_flight"],
+        runtime["draining"],
+        plugin.converged
+    );
+    println!(
+        "仅影响 read_file/write_file；list_files/search_files/run_command/run_wasm 为 compat，仍受原有权限与项目策略约束。"
+    );
+}
+
+async fn plugin_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    args: PluginArgs,
+) -> Result<(), Failure> {
+    let (segments, mutation) = match &args.command {
+        PluginCommand::List => (vec!["api", "plugins"], None),
+        PluginCommand::Status { id } => (vec!["api", "plugins", id], None),
+        PluginCommand::SetEnabled {
+            id,
+            enabled,
+            expected_revision,
+            key,
+        } => (
+            vec!["api", "plugins", id, "enabled"],
+            Some((*enabled, *expected_revision, key.as_str())),
+        ),
+    };
+    let bootstrap: Bootstrap =
+        decode(request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?)).await?)?;
+    if bootstrap.token.is_empty() || bootstrap.token.len() > 4096 {
+        return Err(invalid_response());
+    }
+    let url = endpoint(origin, &segments)?;
+    let request = match mutation {
+        Some((enabled, expected_revision, key)) => client
+            .put(url)
+            .header("idempotency-key", key)
+            .json(&json!({"enabled":enabled,"expected_revision":expected_revision})),
+        None => client.get(url),
+    }
+    .header("x-peachsh-token", &bootstrap.token);
+    let is_mutation = mutation.is_some();
+    let response = request.send().await.map_err(|_| {
+        if is_mutation {
+            plugin_unknown()
+        } else {
+            Failure::fixed("unavailable", "无法连接或读取本机服务", true)
+        }
+    })?;
+    let status = response.status();
+    let process = async {
+        let bytes = limited_body(response).await?;
+        let value: Value = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+        if contains_string(&value, &bootstrap.token) || !safe_strings(&value) {
+            return Err(invalid_response());
+        }
+        if status != reqwest::StatusCode::OK {
+            let error: HttpError = decode(value)?;
+            let (code, expected) = match error.code.as_str() {
+                Some("plugin_invalid") => ("plugin_invalid", 400),
+                Some("plugin_not_found") => ("plugin_not_found", 404),
+                Some("plugin_revision_conflict") => ("plugin_revision_conflict", 409),
+                Some("plugin_idempotency_conflict") => ("plugin_idempotency_conflict", 409),
+                Some("plugin_unavailable") => ("plugin_unavailable", 503),
+                Some("plugin_internal") => ("plugin_internal", 500),
+                Some("forbidden") => ("forbidden", 403),
+                Some("request_failed") => ("request_failed", status.as_u16()),
+                _ => return Err(invalid_response()),
+            };
+            if status.as_u16() != expected || error.retryable || error.error != error.message {
+                return Err(invalid_response());
+            }
+            if is_mutation && code == "plugin_internal" {
+                return Err(plugin_unknown());
+            }
+            return Err(Failure {
+                code,
+                message: error.message,
+                retryable: false,
+                details: None,
+                after: None,
+            });
+        }
+        match args.command {
+            PluginCommand::List => {
+                #[derive(Deserialize)]
+                struct List {
+                    plugins: Vec<PluginStatus>,
+                }
+                let list: List = decode(value.clone())?;
+                if list.plugins.len() != 1 {
+                    return Err(invalid_response());
+                }
+                for plugin in &list.plugins {
+                    validate_plugin(plugin)?;
+                }
+                if json_output {
+                    print_value(value, true)?;
+                } else {
+                    for plugin in &list.plugins {
+                        print_plugin(plugin);
+                    }
+                }
+            }
+            PluginCommand::Status { id } => {
+                #[derive(Deserialize)]
+                struct Status {
+                    plugin: PluginStatus,
+                }
+                let result: Status = decode(value.clone())?;
+                validate_plugin(&result.plugin)?;
+                if result.plugin.plugin_id != id {
+                    return Err(invalid_response());
+                }
+                if json_output {
+                    print_value(value, true)?;
+                } else {
+                    print_plugin(&result.plugin);
+                }
+            }
+            PluginCommand::SetEnabled {
+                id,
+                enabled,
+                expected_revision,
+                ..
+            } => {
+                let result: PluginMutationResult = decode(value.clone())?;
+                validate_plugin(&result.current)?;
+                if result.receipt.plugin_id != id
+                    || result.current.plugin_id != id
+                    || result.receipt.enabled != enabled
+                    || result.receipt.previous_revision != expected_revision
+                    || expected_revision.checked_add(1) != Some(result.receipt.revision)
+                    || result.current.desired.revision < result.receipt.revision
+                {
+                    return Err(invalid_response());
+                }
+                if json_output {
+                    print_value(value, true)?;
+                } else {
+                    println!(
+                        "持久命令已接受：receipt={} replayed={}",
+                        encoded(&result.receipt)?,
+                        result.replayed
+                    );
+                    print_plugin(&result.current);
+                }
+                if !result.current.converged {
+                    return Err(Failure::fixed(
+                        "plugin_not_converged",
+                        "持久命令已接受，当前运行时尚未收敛",
+                        false,
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+    .await;
+    process.map_err(|error| {
+        if is_mutation && matches!(error.code, "internal" | "output_failed" | "unavailable") {
+            plugin_unknown()
+        } else {
+            error
+        }
+    })
 }
 
 async fn request_bootstrap(request: reqwest::RequestBuilder) -> Result<Value, Failure> {
@@ -1745,7 +1998,11 @@ async fn workflow_inner(
             )?,
             TaskCommand::Approvals { .. } | TaskCommand::NetworkCalls { .. } => unreachable!(),
         },
-        Command::Approval(_) | Command::Network(_) | Command::Route(_) | Command::Account(_) => {
+        Command::Plugin(_)
+        | Command::Approval(_)
+        | Command::Network(_)
+        | Command::Route(_)
+        | Command::Account(_) => {
             unreachable!()
         }
     };

@@ -532,10 +532,14 @@ pub struct Engine {
     deferred_resume: Mutex<HashMap<String, String>>,
     tool_runtime: ToolRuntime,
     #[cfg(test)]
+    plugin_commit_probe: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
+    #[cfg(test)]
     restore_probe: Mutex<Option<restore_probe::Hook>>,
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
+        let desired = store.plugin_desired()?;
+        let tool_runtime = ToolRuntime::builtin_with_enabled(desired.enabled)?;
         Ok(Arc::new(Self {
             store,
             client: provider::client()?,
@@ -547,7 +551,9 @@ impl Engine {
             key_slots: Mutex::new(HashMap::new()),
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
-            tool_runtime: ToolRuntime::builtin()?,
+            tool_runtime,
+            #[cfg(test)]
+            plugin_commit_probe: Mutex::new(None),
             #[cfg(test)]
             restore_probe: Mutex::new(None),
         }))
@@ -606,6 +612,54 @@ impl Engine {
             });
         }
     }
+    pub fn plugins(&self) -> Result<Vec<crate::plugin_management::PluginStatus>> {
+        Ok(vec![self.plugin_status(
+            crate::plugin_management::BUILTIN_FILES_ID,
+        )?])
+    }
+    pub fn plugin_status(&self, id: &str) -> Result<crate::plugin_management::PluginStatus> {
+        use crate::plugin_management::{PluginStatus, safe_error, validate_plugin_id};
+        validate_plugin_id(id)?;
+        self.tool_runtime
+            .with_files_control(|control| {
+                Ok(PluginStatus::observe(
+                    self.store.plugin_desired()?,
+                    control.snapshot(),
+                ))
+            })
+            .map_err(safe_error)
+    }
+    pub fn set_plugin_enabled(
+        &self,
+        id: &str,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<crate::plugin_management::PluginMutationResult> {
+        use crate::plugin_management::{
+            PluginMutationResult, PluginStatus, safe_error, validate_plugin_id,
+        };
+        validate_plugin_id(id)?;
+        self.tool_runtime
+            .with_files_control(|control| {
+                let (receipt, replayed) = self.store.set_plugin_desired(id, &request, key)?;
+                if !replayed {
+                    #[cfg(test)]
+                    if let Some(probe) = self.plugin_commit_probe.lock().unwrap().clone() {
+                        probe();
+                    }
+                    control.reconcile(request.enabled);
+                }
+                let current =
+                    PluginStatus::observe(self.store.plugin_desired()?, control.snapshot());
+                Ok(PluginMutationResult {
+                    receipt,
+                    replayed,
+                    current,
+                })
+            })
+            .map_err(safe_error)
+    }
+    /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_files(&self) -> Result<()> {
         self.tool_runtime.disable_builtin_files()
     }
@@ -1395,7 +1449,13 @@ impl Engine {
         match approval::evaluate(task, name) {
             PolicyDecision::Allow => {
                 let (lease, _) = self.tool_runtime.acquire(task, name, || {
-                    self.store.validate_project_task(task, true, false)
+                    if name == "read_file" {
+                        self.store.validate_files_read(task)
+                    } else {
+                        self.store
+                            .validate_project_task(task, true, false)
+                            .map(|_| ())
+                    }
                 })?;
                 self.perform_tool(task, tool_call_id, name, args, key, None, lease)
                     .await
@@ -2361,6 +2421,455 @@ mod workspace_phase_tests {
     };
 
     struct ChildGuard(Option<Child>);
+
+    async fn n10_pending(engine: &Arc<Engine>, task_id: &str) -> approval::ApprovalRecord {
+        tokio::time::timeout(Duration::from_secs(8), async {
+            loop {
+                if let Some(record) = engine
+                    .store
+                    .pending_approvals_for_task(task_id)
+                    .unwrap()
+                    .into_iter()
+                    .next()
+                {
+                    break record;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap()
+    }
+    async fn n10_idle(engine: &Arc<Engine>) {
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine.is_busy() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+    }
+    fn n10_set(
+        engine: &Engine,
+        enabled: bool,
+        revision: u64,
+        key: &str,
+    ) -> crate::plugin_management::PluginMutationResult {
+        engine
+            .set_plugin_enabled(
+                "builtin.files",
+                crate::plugin_management::SetPluginEnabled {
+                    enabled,
+                    expected_revision: revision,
+                },
+                key,
+            )
+            .unwrap()
+    }
+    fn n10_rows(
+        db: &rusqlite::Connection,
+    ) -> std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>> {
+        let tables: Vec<String> = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('plugin_desired','plugin_management_requests','schema_migrations') ORDER BY name").unwrap().query_map([], |r| r.get(0)).unwrap().collect::<rusqlite::Result<_>>().unwrap();
+        tables
+            .into_iter()
+            .map(|name| {
+                let rows = db
+                    .prepare(&format!("SELECT * FROM \"{name}\" ORDER BY rowid"))
+                    .unwrap()
+                    .query_map([], |r| {
+                        (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+                    })
+                    .unwrap()
+                    .collect::<rusqlite::Result<_>>()
+                    .unwrap();
+                (name, rows)
+            })
+            .collect()
+    }
+    #[tokio::test]
+    async fn n10_disable_first_preserves_decision_and_refuses_claim_without_side_effects() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        let pending = n10_pending(&engine, &task_id).await;
+        let before = { n10_rows(&engine.store.db.lock().unwrap()) };
+        let disabled = n10_set(&engine, false, 0, "disable-before-claim");
+        assert!(disabled.current.converged);
+        assert_eq!(disabled.current.runtime.in_flight, 0);
+        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before); // management did not mutate any business row
+        let mut task = engine.store.task(&task_id).unwrap();
+        let call = task
+            .messages
+            .iter()
+            .filter_map(|m| m["tool_calls"].as_array())
+            .flatten()
+            .find(|c| c["id"] == pending.tool_call_id)
+            .unwrap()
+            .clone();
+        let args: Value =
+            serde_json::from_str(call["function"]["arguments"].as_str().unwrap()).unwrap();
+        engine
+            .decide_approval(&pending.id, true, Some("test"))
+            .unwrap();
+        // Current-thread test has not yielded to the worker: test the real Store transaction as well.
+        let rejected = engine
+            .store
+            .claim_approval(&task, &pending.tool_call_id, "write_file", &args)
+            .unwrap_err();
+        assert_eq!(
+            rejected.downcast_ref::<crate::plugin_management::PluginManagementError>(),
+            Some(&crate::plugin_management::PluginManagementError::Unavailable)
+        );
+        n10_idle(&engine).await;
+        let record = engine.store.approval(&pending.id).unwrap();
+        assert_eq!(record.status, ApprovalStatus::Approved);
+        assert_eq!(record.execution_state, approval::ExecutionState::NotStarted);
+        assert!(
+            engine
+                .store
+                .workspace_changes_for_task(&task_id)
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        let definitions = engine.tool_runtime.definitions(&task).unwrap();
+        assert!(definitions.iter().all(|d| !matches!(
+            d["function"]["name"].as_str(),
+            Some("read_file" | "write_file")
+        )));
+        let admitted = std::sync::atomic::AtomicBool::new(false);
+        assert!(
+            engine
+                .tool_runtime
+                .acquire(&task, "read_file", || {
+                    admitted.store(true, Ordering::SeqCst);
+                    Ok(())
+                })
+                .is_err()
+        );
+        assert!(!admitted.load(Ordering::SeqCst));
+        // Compatibility tools still use their normal scoped policy, not the disabled service.
+        let (lease, ()) = engine
+            .tool_runtime
+            .acquire(&task, "list_files", || {
+                engine
+                    .store
+                    .validate_project_task(&task, true, false)
+                    .map(|_| ())
+            })
+            .unwrap();
+        assert!(lease.execute(&task, &json!({"path":"src"})).await.is_ok());
+        task.status = "running".into();
+        assert!(
+            engine
+                .execute_or_wait(
+                    &mut task,
+                    &call,
+                    "write_file",
+                    &args,
+                    "phase-test-key",
+                    &CancellationToken::new()
+                )
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            engine.store.approval(&pending.id).unwrap().execution_state,
+            approval::ExecutionState::NotStarted
+        );
+    }
+    #[tokio::test]
+    async fn n10_claim_first_real_write_finishes_with_durable_receipt_and_drains() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        let pending = n10_pending(&engine, &task_id).await;
+        let gate = engine.gate.lock().await; // real production write stop point
+        engine
+            .decide_approval(&pending.id, true, Some("test"))
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine.store.approval(&pending.id).unwrap().execution_state
+                != approval::ExecutionState::Claimed
+            {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            engine
+                .plugin_status("builtin.files")
+                .unwrap()
+                .runtime
+                .in_flight,
+            1
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        let accepted = n10_set(&engine, false, 0, "claimed-disable");
+        assert!(accepted.current.converged && accepted.current.runtime.draining);
+        assert_eq!(accepted.current.runtime.in_flight, 1);
+        assert!(!accepted.current.runtime.admission_open);
+        assert_eq!(accepted.current.runtime.effects_count, 0);
+        let task = engine.store.task(&task_id).unwrap();
+        assert!(
+            engine
+                .tool_runtime
+                .acquire(&task, "read_file", || Ok(()))
+                .is_err()
+        );
+        drop(gate); // bounded second direction releases the actual write
+        n10_idle(&engine).await;
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"after-0"
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("src/b.txt")).unwrap(),
+            b"before-b"
+        );
+        assert_eq!(
+            engine.store.approval(&pending.id).unwrap().execution_state,
+            approval::ExecutionState::Finished
+        );
+        let changes = engine.store.workspace_changes_for_task(&task_id).unwrap();
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].state, ChangeState::Finished);
+        let current = engine.plugin_status("builtin.files").unwrap();
+        assert!(current.converged && !current.runtime.draining);
+        assert_eq!(current.runtime.in_flight, 0);
+        let replay = n10_set(&engine, false, 0, "claimed-disable");
+        assert!(replay.replayed);
+        assert_eq!(replay.receipt, accepted.receipt);
+        let raw = rusqlite::Connection::open(temp.path().join("phase.db")).unwrap();
+        let row: (bool,u64,u64,i64) = raw.query_row("SELECT enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key='claimed-disable'", [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).unwrap();
+        assert_eq!(row, (false, 0, 1, accepted.receipt.committed_at));
+        let events = engine.store.events(&task.run_id, 0).unwrap();
+        assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
+        assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 1);
+    }
+    #[tokio::test]
+    async fn n10_schema11_migration_preserves_nonempty_all_business_rows_and_ciphertext() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine_kind(temp.path(), SessionKind::Chat).await;
+        finish_two_writes(&engine, &task_id, usize::MAX).await;
+        let cp = engine
+            .create_checkpoint(&task_id, "migration-checkpoint")
+            .await
+            .unwrap()
+            .checkpoint;
+        engine.restore_checkpoint(&cp.checkpoint_id).await.unwrap();
+        engine.unload_builtin_files().unwrap();
+        drop(engine);
+        let path = temp.path().join("phase.db");
+        let db = rusqlite::Connection::open(&path).unwrap();
+        db.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id='builtin-plugin-management-v1'; PRAGMA user_version=11;").unwrap();
+        {
+            let tx = db.unchecked_transaction().unwrap();
+            crate::repository::verify_current_schema(&tx).unwrap();
+            crate::repository::verify_schema_7(&tx).unwrap();
+            crate::repository::verify_schema_8(&tx).unwrap();
+            crate::repository::verify_schema_9(&tx).unwrap();
+            crate::repository::verify_schema_10(&tx).unwrap();
+            crate::repository::verify_schema_11(&tx).unwrap();
+            assert!(
+                !crate::repository::migration_applied(
+                    &tx,
+                    crate::repository::PLUGIN_MANAGEMENT_MIGRATION_ID
+                )
+                .unwrap()
+            );
+            assert_eq!(tx.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('plugin_desired','plugin_management_requests')", [], |r| r.get::<_,u64>(0)).unwrap(), 0);
+            tx.commit().unwrap();
+        }
+        let before = n10_rows(&db);
+        for table in [
+            "tasks",
+            "approvals",
+            "workspace_changes",
+            "workspace_restores",
+            "workspace_restore_outcomes",
+            "checkpoints",
+            "network_calls",
+            "network_subjects",
+            "task_network_bindings",
+            "project_configs",
+            "task_project_bindings",
+            "secrets",
+        ] {
+            assert!(!before[table].is_empty(), "empty fixture: {table}");
+        }
+        let ciphertext: Vec<u8> = db
+            .query_row(
+                "SELECT before_blob FROM workspace_changes LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(!ciphertext.is_empty());
+        db.execute_batch("CREATE TRIGGER fail_plugin_marker BEFORE INSERT ON schema_migrations WHEN NEW.id='builtin-plugin-management-v1' BEGIN SELECT RAISE(ABORT,'migration fault'); END;").unwrap();
+        assert!(Store::open(&path).is_err());
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, u64>(0))
+                .unwrap(),
+            11
+        );
+        assert_eq!(db.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('plugin_desired','plugin_management_requests')", [], |r| r.get::<_,u64>(0)).unwrap(), 0);
+        assert_eq!(n10_rows(&db), before);
+        db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
+        let migrated = Arc::new(Store::open(&path).unwrap());
+        assert_eq!(migrated.schema_version().unwrap(), 12);
+        assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
+        assert!(migrated.plugin_desired().unwrap().enabled);
+        assert_eq!(n10_rows(&db), before);
+        let reopened = Engine::new(migrated, 2).unwrap();
+        n10_set(&reopened, false, 0, "off");
+        n10_set(&reopened, true, 1, "on");
+        assert_eq!(n10_rows(&db), before);
+        assert!(!reopened.is_busy());
+        let resume = reopened
+            .resume(&task_id, "must remain sealed")
+            .await
+            .unwrap_err();
+        assert_eq!(
+            resume.downcast_ref::<crate::checkpoint::CheckpointError>(),
+            Some(&crate::checkpoint::CheckpointError::Conflict)
+        );
+        assert_eq!(n10_rows(&db), before);
+    }
+
+    #[test]
+    fn n10_commit_before_apply_child_kill_wait_restart_keeps_unknown_and_grants() {
+        const TEST: &str = "engine::workspace_phase_tests::n10_commit_before_apply_child_kill_wait_restart_keeps_unknown_and_grants";
+        if let Ok(root) = std::env::var("NHC_PLUGIN_COMMIT_CHILD") {
+            let root = std::path::PathBuf::from(root);
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                let (engine, task_id) = two_write_engine(&root).await;
+                let pending = n10_pending(&engine, &task_id).await;
+                let _gate = engine.gate.lock().await;
+                engine.decide_approval(&pending.id, true, Some("test")).unwrap();
+                tokio::time::timeout(Duration::from_secs(8), async {
+                    while engine.store.approval(&pending.id).unwrap().execution_state != approval::ExecutionState::Claimed { tokio::task::yield_now().await; }
+                }).await.unwrap();
+                let original = engine.plugin_status("builtin.files").unwrap();
+                assert!(original.runtime.admission_open);
+                assert_eq!(original.runtime.in_flight, 1);
+                let signal = root.join("committed.json");
+                let payload = serde_json::to_vec(&json!({"task_id":task_id,"approval_id":pending.id,"runtime_before":original.runtime})).unwrap();
+                *engine.plugin_commit_probe.lock().unwrap() = Some(Arc::new(move || {
+                    let staging = signal.with_extension("tmp");
+                    std::fs::write(&staging, &payload).unwrap();
+                    std::fs::rename(staging, &signal).unwrap();
+                    // A finite process stop point, not a simulated Store reopen.
+                    let deadline = Instant::now() + Duration::from_secs(20);
+                    while Instant::now() < deadline { std::thread::park_timeout(Duration::from_millis(20)); }
+                    panic!("parent did not kill management child before timeout");
+                }));
+                n10_set(&engine, false, 0, "post-commit-kill");
+                panic!("commit stop point returned");
+            });
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let output = std::fs::File::create(temp.path().join("child.log")).unwrap();
+        let mut child = ChildGuard(Some(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_PLUGIN_COMMIT_CHILD", temp.path())
+                .stdout(Stdio::from(output.try_clone().unwrap()))
+                .stderr(Stdio::from(output))
+                .spawn()
+                .unwrap(),
+        ));
+        let signal = temp.path().join("committed.json");
+        let deadline = Instant::now() + Duration::from_secs(12);
+        while !signal.exists() && Instant::now() < deadline {
+            assert!(
+                child.0.as_mut().unwrap().try_wait().unwrap().is_none(),
+                "child exited: {}",
+                std::fs::read_to_string(temp.path().join("child.log")).unwrap()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(signal.exists(), "commit signal timed out");
+        let payload: Value = serde_json::from_slice(&std::fs::read(&signal).unwrap()).unwrap();
+        assert_eq!(payload["runtime_before"]["state"], "active");
+        assert_eq!(payload["runtime_before"]["in_flight"], 1);
+        let path = temp.path().join("phase.db");
+        let db = rusqlite::Connection::open(&path).unwrap();
+        let committed: (bool, u64) = db
+            .query_row("SELECT enabled,revision FROM plugin_desired", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(committed, (false, 1));
+        let receipt: (u64,u64,i64) = db.query_row("SELECT expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key='post-commit-kill'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!((receipt.0, receipt.1), (0, 1));
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        let exit = child.stop(); // real OS kill followed by wait; no surviving Tokio/management thread
+        assert!(!exit.success());
+        eprintln!("F07 child kill+wait completed: {exit}; persisted revision=1, before apply");
+        let store = Arc::new(Store::open(&path).unwrap());
+        assert!(store.recover().unwrap() > 0);
+        let task_id = payload["task_id"].as_str().unwrap();
+        let approval_id = payload["approval_id"].as_str().unwrap();
+        assert_eq!(
+            store.approval(approval_id).unwrap().execution_state,
+            approval::ExecutionState::Unknown
+        );
+        assert_eq!(store.task(task_id).unwrap().status, "interrupted");
+        let after_recovery = n10_rows(&db);
+        let restarted = Engine::new(store, 2).unwrap();
+        let state = restarted.plugin_status("builtin.files").unwrap();
+        assert!(!state.desired.enabled && state.converged && !state.runtime.admission_open);
+        assert_eq!(state.runtime.effects_count, 0);
+        assert_eq!(state.runtime.in_flight, 0);
+        assert!(!restarted.is_busy());
+        let replay = n10_set(&restarted, false, 0, "post-commit-kill");
+        assert!(replay.replayed);
+        assert_eq!(replay.receipt.committed_at, receipt.2);
+        assert_eq!(replay.current, state);
+        assert!(
+            n10_set(&restarted, true, 1, "explicit-enable")
+                .current
+                .converged
+        );
+        assert_eq!(n10_rows(&db), after_recovery); // no launch, unknown retry, grant replacement, or old Task writes
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        assert_eq!(
+            restarted
+                .store
+                .approval(approval_id)
+                .unwrap()
+                .execution_state,
+            approval::ExecutionState::Unknown
+        );
+        restarted.unload_builtin_files().unwrap();
+        drop(restarted);
+        let enabled_restart = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        assert!(
+            enabled_restart
+                .plugin_status("builtin.files")
+                .unwrap()
+                .converged
+        );
+        assert!(!enabled_restart.is_busy());
+        assert_eq!(n10_rows(&db), after_recovery);
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+    }
 
     #[tokio::test]
     async fn n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease() {
