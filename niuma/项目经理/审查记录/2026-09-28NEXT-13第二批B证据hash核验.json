@@ -1,0 +1,265 @@
+{
+  "date": "2026-09-28",
+  "reviewer": "manager",
+  "count": 32,
+  "new_raw_count": 24,
+  "previous_raw_count": 8,
+  "items": [
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/compile-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/compile-01.log",
+      "raw_sha256": "50B2F45647E440766D127482116F8711AE6DB9047033537D43A3EFD02DEC3D74",
+      "published_sha256": "B625E1940123FE8E647E8A2BADF0F35A3E1015BAF88D3C8084025030DFC9353C",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/compile-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/compile-01.log.json",
+      "raw_sha256": "46DA0F169189561019698DF0B6E07153DCAC7DBC048A03B1CF3C74B45ECF6C38",
+      "published_sha256": "FBCC1E83E27270D352682A6809745619E26EA12E2C7C25B0368EB9FB266703C1",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/compile-02.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/compile-02.log",
+      "raw_sha256": "7CFFA13A7B7FDB16114470706922A90D11F0486F98BCFF2FC15A3DC1E6833978",
+      "published_sha256": "48A0A34967E619D4EC80E564C227E2113579321FAE38E09681137CEFAC83F2CE",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/compile-02.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/compile-02.log.json",
+      "raw_sha256": "78332A94A139BC0C8EBAE0BEF0BD625CD8273DDBD7FBA126FF1A11E3A60EF5ED",
+      "published_sha256": "8FE8C4FF249B495DB1F356F14EE04DD07CFB8920C08409234D070C36FF30ED82",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/fmt-owned-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/fmt-owned-01.log",
+      "raw_sha256": "9072AEBE24439DDB7B241858FAA6C43A005C9B993CA096221FD092563D17975E",
+      "published_sha256": "B4C4B76A86C5B789DDCDF782BC4B2943FAD3BAE83016465D473BB706646E28CD",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/fmt-owned-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/fmt-owned-01.log.json",
+      "raw_sha256": "FE4CC8E67D4079368A1F3E1768F96F0C2ED4BA8D1BBD4056673A6D18AD4C7773",
+      "published_sha256": "35C9C48E9F6A92D586972989113F161C0F8A06201CAAEEF00988C1465690850C",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/fmt-owned-02.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/fmt-owned-02.log",
+      "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/fmt-owned-02.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/fmt-owned-02.log.json",
+      "raw_sha256": "1E68383BFA10A8054460B18F5DB4F424E4808D5C15DC1AF7241DCB94FB94920A",
+      "published_sha256": "D5A8A8630842B5589701A895A6FCD0D59892F53AB12E50FF43C1D2FAAD606593",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/n13-components-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/n13-components-01.log",
+      "raw_sha256": "83A121BD6C961259E689732E7BA36812397EAC437B5E937D358BE3A0D679B5BC",
+      "published_sha256": "D0D40DBC09419D4ACEE47FA4647D1C137EDB6445635590E3D7E28265204226DE",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/n13-components-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/n13-components-01.log.json",
+      "raw_sha256": "8496BE639D91677DE80D83CD75709FD3025A263C8960BAF12B84EA2D2C576121",
+      "published_sha256": "274FB5BA94ACAD788A10BB27A8724B34F06E445CC622222188DDC961B397526B",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-b02-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-b02-01.log",
+      "raw_sha256": "CDA6465ED787027141D64BE1290A0C04E791F712D06F446DFAFBA628683DBC04",
+      "published_sha256": "0D50DBD915679A357E5310EAB6BD0D9998AB53A6FD7E47432103338C540FFBF4",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-b02-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-b02-01.log.json",
+      "raw_sha256": "41B14F4F8465192145D32C6039C664348869824460A8C46308D29BDFA43B9A62",
+      "published_sha256": "B818ED95730152DEC6D2E1ECB0247D41829CE34298462BEC3FE31C7907D87DC7",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-b02-02.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-b02-02.log",
+      "raw_sha256": "06DEE8421C989E686F0D5CE7421D94B4A055FE1AC640EF6EA40DB69D2DB43ADC",
+      "published_sha256": "054E69513C6ABCEC6AC0DFCFBB785754ECE1E352F558D05D35CA85456DCA5304",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-b02-02.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-b02-02.log.json",
+      "raw_sha256": "EC12BE9961DAB708DB189B4DAFB355BCB602F2514F0A1F7C03C351BE108AE183",
+      "published_sha256": "DFBC622D27C9536B0DCFE3D2F9231BC4031B053F09727F63C9F74697D84240AB",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-fixtures-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-fixtures-01.log",
+      "raw_sha256": "B6C7B14D3350568F7B75D3C93D1967E9727503DA34FAE3E321C71B494030FBFC",
+      "published_sha256": "E1C4A598A456DACA1CEF0F267F71AAA2AAA3EFB7ACFED12D68FFB37E5CC28332",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-fixtures-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-fixtures-01.log.json",
+      "raw_sha256": "85232BF1ADE493F667B50B613F199499384BD0093710CD14C7402547A13AD1FF",
+      "published_sha256": "53803972504992648E8A41AC267817E185B98665FB23849D4CC15A1CC6984C42",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-fixtures-02.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-fixtures-02.log",
+      "raw_sha256": "EF6A20D7D4444F4B30DCADE2540A60643334C72D3D8A7840972E2909212726DA",
+      "published_sha256": "923025D8322B15AFFA82AED3F15B35D32B73B8CD51F7F6F07EB442018CDF96A3",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/old-fixtures-02.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/old-fixtures-02.log.json",
+      "raw_sha256": "3A77C02C02EE9B3F38C70021FFE1C7EF41FB3FEAFACB1D3E6A39472C857A8046",
+      "published_sha256": "44EBF3592663701DCE6E4F0B991B70282B6B2A462516C76AF2DF0680F77BB901",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/reverse-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/reverse-01.log",
+      "raw_sha256": "87DB3A85F64582F8CEDAB60426F1E4791009832A3043BE771D66D70F302CBAE3",
+      "published_sha256": "5237A82F2A641723197FD12D3D717A89952B480D986556369C95E0F95CD07823",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/reverse-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/reverse-01.log.json",
+      "raw_sha256": "D76DF50ACB4E778791C52FF5651D863835804E058519317523B6ECA5639533D5",
+      "published_sha256": "5C0260E6F0C1D3942AD81F59225C9366C7AC2EDBE879DB5E8FD5EAC623EBA7AE",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/reverse-02.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/reverse-02.log",
+      "raw_sha256": "F1AFEFA9FC1C3D28A4B40A3E5FE7617313786C0AC79C937825D8E6C9BD7110D3",
+      "published_sha256": "FFA9E84047C8A48ED414C5B6BBD926C8C7F9AEB57181BA0DBCE55C665739E350",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/reverse-02.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/reverse-02.log.json",
+      "raw_sha256": "CF9AA6DE94E5183467C6767F6A9160A2DDC18E496FF2D407F38D6CBDD8792922",
+      "published_sha256": "F13DDE3B07C34E4BD6CD8640D3232A1CD61E9F081FF7471A6B61D47F56A121A4",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/schema-old-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/schema-old-01.log",
+      "raw_sha256": "E636B997F0984BCD3C42E891B295EBBFF8AFE2579B841A51436F14B33A52EBB8",
+      "published_sha256": "4CA1DA1E3200490A4E1A9AC4CBF5FAE50A9D35F7C74F6DFAECA5F49F1C2340B6",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/schema-old-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/schema-old-01.log.json",
+      "raw_sha256": "4C29B6C9EE199F5F7255EC30C4B7C59BDB3AAC53600A26DDA264C3F7CD544693",
+      "published_sha256": "E80AC08F9F2607BE56B12CEE69CB074D14BF87861F1F6E472941438BF00CB401",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/schema14-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/schema14-01.log",
+      "raw_sha256": "7BD8BEEBB0668E035595F6BF71647865D62F6204415EF8E6D7DC8329683A97F8",
+      "published_sha256": "3410A31F4DC6303803CC8B9C63117481A9ABEA96262E8E48E05E544241044E01",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/schema14-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/schema14-01.log.json",
+      "raw_sha256": "8D8385E30608219324CEEA96D32AC377F7E16BBE065EE56038DC5DE9266F4CCE",
+      "published_sha256": "A446E2B9F44B0DDB90C51F10EBF83DD6E36704A121E2656F75D6BB71794C29E0",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/worktree-01.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/worktree-01.log",
+      "raw_sha256": "454DC00DCF494F76BE6A491FA2B46BDB624CA1DD44432C15730BFD42400630C8",
+      "published_sha256": "B27754F3360A49703F754EA712BE0845BB815EC7151C690F2B8E042185DC8408",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/worktree-01.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/worktree-01.log.json",
+      "raw_sha256": "EE1A85FE528388DDA1AB5AF64A8257E1F1771F1D1994FEF9F114BE33664B2101",
+      "published_sha256": "E96B2D15CB16AEFCFE83F3DCBFDC061E670E1CB364337AE62FAC59D82DBA10FC",
+      "verified": true,
+      "previous_raw": true
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/worktree-02.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/worktree-02.log",
+      "raw_sha256": "856D1B1157CCAF2EE02751477C7845293CA512CC8CAFC526DA8FBE2C57ECB6EB",
+      "published_sha256": "9FB593E9A7B431C1259C0136AC8DC14573B7354C10506D8690808840793FC505",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/worktree-02.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/worktree-02.log.json",
+      "raw_sha256": "433C8E308FE293132F1AC07CC2EBFDFA920B27F38A4021FE735FB8A631919434",
+      "published_sha256": "13CBE4A03EFC4D1C644DDC67CFB199BE64A09B788C00E95B7CD512A15BBF53C5",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/worktree-03.log",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/worktree-03.log",
+      "raw_sha256": "0A750A07B3F9D2E2F6D0FC785BA999776304DB0807422535AA53EB0115D22CFC",
+      "published_sha256": "035C880881101B85F431FF74F2A98C03384ABE4ACCF9E5685D6612B8BD1363CA",
+      "verified": true,
+      "previous_raw": false
+    },
+    {
+      "raw": "../nhc-b-worktree-management/.local/review-evidence/worktree-03.log.json",
+      "published": "niuma/员工B/提交报告/第十二轮/证据1.0/worktree-03.log.json",
+      "raw_sha256": "A28A7FAAFE0AABEBBF5E078B44092B9651F2D87607275692116916FE77CB2B1B",
+      "published_sha256": "EC2BDA9E0D9D1928729C7A5932E53A2B8F32D3E6D37E6A3A59C595581F7F6E9B",
+      "verified": true,
+      "previous_raw": false
+    }
+  ]
+}

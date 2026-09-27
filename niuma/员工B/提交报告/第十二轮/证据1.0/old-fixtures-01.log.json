@@ -1,0 +1,11 @@
+{
+  "msvc": "D:\\vsstudio\\VC\\Tools\\MSVC\\14.40.33807",
+  "start_utc": "2026-09-27T16:28:47.5394106Z",
+  "command": "cargo test --locked --test approval_gate --test checkpoint --test project_context --test project_migration --test workspace_changes -- --nocapture",
+  "head": "084da4a017657d7e177265df31de627d82878451",
+  "status": null,
+  "tmp": "../nhc-b-worktree-management\\.local\\tmp",
+  "target": "../nhc-b-worktree-management\\.local\\target-r12",
+  "end_utc": "2026-09-27T16:29:33.8960716Z",
+  "exit": 101
+}

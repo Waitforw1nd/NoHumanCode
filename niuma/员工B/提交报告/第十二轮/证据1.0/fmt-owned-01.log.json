@@ -1,0 +1,22 @@
+{
+  "files": [
+    "src/worktree_management.rs",
+    "src/repository.rs",
+    "src/store.rs",
+    "src/project_config.rs",
+    "src/engine.rs",
+    "src/lib.rs",
+    "src/plugin_management.rs",
+    "tests/approval_gate.rs",
+    "tests/checkpoint.rs",
+    "tests/project_context.rs",
+    "tests/project_migration.rs",
+    "tests/workspace_changes.rs"
+  ],
+  "command": "rustup run stable rustfmt --check --edition 2024 --config skip_children=true",
+  "start_utc": "2026-09-27T16:34:20.9165901Z",
+  "head": "417b66a23dc038a1d481dc76e1b3c2de36efbbf1",
+  "status": null,
+  "end_utc": "2026-09-27T16:34:21.3473709Z",
+  "exit": 1
+}

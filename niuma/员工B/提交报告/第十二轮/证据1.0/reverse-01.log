@@ -1,0 +1,30 @@
+   Compiling peachsh v0.2.0 (../nhc-b-worktree-management\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 14.32s
+     Running unittests src\lib.rs (../nhc-b-worktree-management\.local\target-r12\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 6 tests
+test engine::workspace_phase_tests::n13_reverse_command_ack_replay_and_blocked_ack_are_atomic ... ok
+test engine::workspace_phase_tests::n13_reverse_actual_running_task_wins_then_cancel_allows_claim ... ok
+
+thread 'engine::workspace_phase_tests::n13_reverse_approval_creation_approval_claim_and_deny_preserve_old_priority' (5300) panicked at src\engine.rs:4729:39:
+called `Result::unwrap()` on an `Err` value: 非法任务状态转换：completed -> running
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test engine::workspace_phase_tests::n13_reverse_checkpoint_replay_and_restore_seal_precede_reservation ... ok
+test engine::workspace_phase_tests::n13_reverse_approval_creation_approval_claim_and_deny_preserve_old_priority ... FAILED
+
+thread 'engine::workspace_phase_tests::n13_reverse_new_turn_resume_restore_checkpoint_and_registration_are_atomic' (16440) panicked at src\engine.rs:4558:9:
+assertion `left == right` failed
+  left: None
+ right: Some(Busy)
+test engine::workspace_phase_tests::n13_reverse_existing_restore_replay_and_sealed_resume_precede_reservation ... ok
+test engine::workspace_phase_tests::n13_reverse_new_turn_resume_restore_checkpoint_and_registration_are_atomic ... FAILED
+
+failures:
+
+failures:
+    engine::workspace_phase_tests::n13_reverse_approval_creation_approval_claim_and_deny_preserve_old_priority
+    engine::workspace_phase_tests::n13_reverse_new_turn_resume_restore_checkpoint_and_registration_are_atomic
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 185 filtered out; finished in 1.50s
+
+error: test failed, to rerun pass `--lib`

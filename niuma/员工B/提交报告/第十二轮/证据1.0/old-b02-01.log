@@ -1,0 +1,22 @@
+    Finished `test` profile [unoptimized] target(s) in 0.22s
+     Running unittests src\lib.rs (../nhc-b-worktree-management\.local\target-r12\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 3 tests
+
+thread 'plugin_management::tests::b02_corrupt_shell_rows_fail_without_repair' (59748) panicked at src\plugin_management.rs:307:17:
+assertion `left == right` failed
+  left: 14
+ right: 13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test plugin_management::tests::b02_corrupt_shell_rows_fail_without_repair ... FAILED
+test plugin_management::tests::b02_concurrent_open_migrates_true12_once_without_losing_rows ... ok
+test plugin_management::tests::b02_shell_cas_and_cross_plugin_global_key_race ... ok
+
+failures:
+
+failures:
+    plugin_management::tests::b02_corrupt_shell_rows_fail_without_repair
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 193 filtered out; finished in 0.10s
+
+error: test failed, to rerun pass `--lib`

@@ -1,0 +1,11 @@
+{
+  "target": "../nhc-b-worktree-management\\.local\\target-r12",
+  "head": "e1a798b32987481517eb3b835a2163ae227ad7e4",
+  "msvc": "D:\\vsstudio\\VC\\Tools\\MSVC\\14.40.33807",
+  "command": "cargo test --lib worktree_management::tests:: --locked -- --nocapture",
+  "status": null,
+  "start_utc": "2026-09-27T16:14:14.6606850Z",
+  "end_utc": "2026-09-27T16:14:39.7402187Z",
+  "exit": 101,
+  "tmp": "../nhc-b-worktree-management\\.local\\tmp"
+}

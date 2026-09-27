@@ -1,0 +1,32 @@
+   Compiling peachsh v0.2.0 (../nhc-b-worktree-management\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 17.26s
+     Running unittests src\lib.rs (../nhc-b-worktree-management\.local\target-r12\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 8 tests
+test worktree_management::tests::n13_cancelled_task_unresolved_restore_or_write_blocks_claim ... ok
+test worktree_management::tests::n13_same_database_two_store_claim_race_has_one_winner ... ok
+
+thread 'worktree_management::tests::n13_diagnose_offline_source_and_other_project_are_observations_not_errors' (56364) panicked at src\worktree_management.rs:1439:17:
+assertion `left == right` failed
+  left: Partial
+ right: Unavailable
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test worktree_management::tests::n13_diagnose_offline_source_and_other_project_are_observations_not_errors ... FAILED
+test worktree_management::tests::n13_all_terminal_replays_and_recovery_keep_unknown_reserved ... ok
+test worktree_management::tests::n13_dropped_caller_owned_worker_still_registers_once ... ok
+test worktree_management::tests::n13_origin_saved_admin_relationship_and_online_identity_are_enforced ... ok
+
+thread 'worktree_management::tests::n13_success_defaults_replay_and_diagnosis_are_read_only' (61732) panicked at src\worktree_management.rs:1056:14:
+called `Result::unwrap()` on an `Err` value: Query returned no rows
+test worktree_management::tests::n13_success_defaults_replay_and_diagnosis_are_read_only ... FAILED
+test worktree_management::tests::n13_persisted_request_plan_members_and_receipt_corruption_rejected_without_repair ... ok
+
+failures:
+
+failures:
+    worktree_management::tests::n13_diagnose_offline_source_and_other_project_are_observations_not_errors
+    worktree_management::tests::n13_success_defaults_replay_and_diagnosis_are_read_only
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 171 filtered out; finished in 7.18s
+
+error: test failed, to rerun pass `--lib`
