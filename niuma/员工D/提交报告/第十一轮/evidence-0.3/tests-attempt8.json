@@ -1,0 +1,13 @@
+{
+  "head": "e8391d2024916f1c464fafc6ababc6a286152fa6",
+  "status": [
+    " M src/git_worktree.rs"
+  ],
+  "noman_tree": "bcec3f093a863cf86ae66aa7f99508f8bfe33c4e",
+  "ended_at": "2026-09-28T00:15:44.0328319+08:00",
+  "rust_tree": "4effbc5ca7907a9fd3b3e44d43bfb76aa424e136",
+  "source_sha256": "A2EA29B052A7436AA732EF74D584CF84A410E0BF7D4C4E68C51AAFD565AD2B91",
+  "started_at": "2026-09-28T00:14:40.9950082+08:00",
+  "command": "cargo test --locked --lib git_worktree::tests -- --test-threads=2",
+  "exit_code": 0
+}

@@ -2746,3 +2746,13 @@ B报告compile-01限定cargo check --lib --locked正在执行，尚无结果；D
 经理凭逐树明确clean/no-build冻结回执，复核后串行普通合D e839：C327e47564e5e84340f2d2978ce5e251d3c806821、Becda3e047aee3c90deed2d3f12494f56b1d5c4b1；双方本人实际核收继续，原GPT-6-astra及B-R12/C-R14/D-R11执行ID保持。B503服务中断已同执行者恢复，无换模。D解除冻结补诊断dirty语义与安全反证。
 D组件13/0、B schema专项4/0是员工既有执行，非经理测试；经理新核D24+B8对，加C6共38对hash，D报告22计数待勘误与元数据候选边界补证。C新组合attempt3 CLI8/0 HTTP1/1，W02夹具预期错误，C修本人fixture，失败保留。B修origin admin关联/离线诊断/真实SQL夹具；D补fsmonitor/环境注入/大配置、dirty诊断。详见审查记录/2026-09-28NEXT-13开发审查0.3.md及契约补充05。
 未完成：上述修订、W03/W08等完整动态矩阵、最终五门禁、联合验收与主线产品整合。下一第一操作收各owner固定修订/原始证据并复核，取得新冻结窗口组合；最终仅C串行五门禁，尚未放行。完整阶段一未完成；历史860根因未证实，九份归档和全部失败/旧树/产物保留。所有工程E，人员只主仓niuma，经理不接管产品实现。
+
+## 第三批真实依赖串行整合（2026-09-28）
+
+经理取得B18454fdaee538fc7df347db66fa8936cc6ad15cb、D3964068c61a6746f5993e3af6d836dc3abe27e6b、Cc54c1e6b226f3fbf143d0510798a98fb46c24ee2各自当前clean/index空/no-build冻结回执，并工具逐树再核。普通merge B→D得cf57cfa35aabd8dfb2bcd93c79d5582318a77011，再D→B得f30a08e42339c85dcb501dfee1842effdb95e60e；两者NoManCode453c069495680db86fbef8833f1a6e614baf26da/Rust56d6a318cf9fcbafb9e576c8f73efcb806ae64e4。最后D→C得9c996a6a00e1657afd649ab6a70da41322ce8a99/NoManCode5e895df00b58db647434c81654087c4c8fd769b6/Rust552e4e19762a301223cc4b32d46cce0d9274cc95。所有合后clean；B/C本人核实接收后恢复组件测试。D已通知待实收回执，不借工具成功替代接收。
+
+经理静态核d60/8f1/396逐提交：D04 clean要求只创建后验；D05补present/absent下完整context离线检查及source身份优先；B02新增实际admin与保存admin比较。修订已整合不等于完整动态通过。D回报固定8f1e8fd的17/0待新manifest复核，四参396当时未编译如实保持。B184新增cross-admin两真实linked反例与真实三个停点，尚待新组合结果。
+
+C70732450afb21e66c2c6222aea661d1f845a3706 W08真实Router/lib-test父测试1通过，内部三停点均process kill+wait及重启验证；无新增worker/Provider为hook和DB计数证据，不扩成OS网络隔离。经理独立核第二批C6对，当前累计44对（D24/B8/C12）。见第二批C核验JSON。C旧attempt3/4 HTTP失败完整归档；管理证据提交a303aac6554efa29e93ed176c5942ee4e1929162，产品tree保持NEXT-12。
+
+下一步各owner在真实四参组合补专项/缺口；W03完整反向准入、D环境/项目git.exe反证、C全HTTP/CLI/W08及旧回归仍待。最终五门禁未放行，未联合验收/未合main产品。
