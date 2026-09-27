@@ -2717,22 +2717,23 @@ mod workspace_phase_tests {
             assert_eq!(receipt.restored, 0);
             assert_eq!(receipt.outcomes.len(), 1);
             assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
-            let observed = errors.lock().unwrap();
-            assert_eq!(observed.len(), 1);
-            let event = &observed[0];
-            assert_eq!(event.task_id, task_id);
-            assert_eq!(event.path, "src/a.txt");
-            let codes = event.error.as_ref().unwrap();
-            if filesystem_error {
-                assert_eq!(event.stage, Stage::FileAction);
-                assert!(codes.io.is_some());
-                assert_eq!(codes.sqlite, None);
-            } else {
-                assert_eq!(event.stage, Stage::OutcomePersist);
-                assert_eq!(codes.io, None);
-                assert_eq!(codes.sqlite, Some(1811));
+            {
+                let observed = errors.lock().unwrap();
+                assert_eq!(observed.len(), 1);
+                let event = &observed[0];
+                assert_eq!(event.task_id, task_id);
+                assert_eq!(event.path, "src/a.txt");
+                let codes = event.error.as_ref().unwrap();
+                if filesystem_error {
+                    assert_eq!(event.stage, Stage::FileAction);
+                    assert!(codes.io.is_some());
+                    assert_eq!(codes.sqlite, None);
+                } else {
+                    assert_eq!(event.stage, Stage::OutcomePersist);
+                    assert_eq!(codes.io, None);
+                    assert_eq!(codes.sqlite, Some(1811));
+                }
             }
-            drop(observed);
             drop(held.lock().unwrap().take());
             let expected = if filesystem_error {
                 b"after-1".as_slice()
