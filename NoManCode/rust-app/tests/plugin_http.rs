@@ -455,7 +455,7 @@ async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_re
     .unwrap();
     let requests = Arc::new(Mutex::new(Vec::<Value>::new()));
     let captured = requests.clone();
-    let provider=Router::new().route("/v1/chat/completions",post(move |Json(value):Json<Value>|{let captured=captured.clone();async move {let index={let mut requests=captured.lock().unwrap();let index=requests.len();requests.push(value);index};let delta=if index%2==0 {json!({"tool_calls":[{"index":0,"id":format!("read-{index}"),"type":"function","function":{"name":"read_file","arguments":"{\"path\":\"src/a.txt\"}"}}]})}else{json!({"content":"done"})};let chunk=json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});([("content-type","text/event-stream")],format!("data: {chunk}\n\ndata: [DONE]\n\n"))}}));
+    let provider=Router::new().route("/v1/chat/completions",post(move |Json(value):Json<Value>|{let captured=captured.clone();async move {let index={let mut requests=captured.lock().unwrap();let index=requests.len();requests.push(value);index};let delta=if index<2 {json!({"tool_calls":[{"index":0,"id":format!("read-{index}"),"type":"function","function":{"name":"read_file","arguments":"{\"path\":\"src/a.txt\"}"}}]})}else{json!({"content":"done"})};let chunk=json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});([("content-type","text/event-stream")],format!("data: {chunk}\n\ndata: [DONE]\n\n"))}}));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}/v1", listener.local_addr().unwrap());
     let provider = tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
@@ -615,9 +615,24 @@ async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_re
                 )
                 .await;
                 let status = run["tasks"][0]["status"].as_str().unwrap();
-                if status == "completed" {
+                if index == 0 && status == "failed" {
+                    assert_eq!(run["tasks"][0]["error"], "模型请求了未授权的工具");
+                    assert!(
+                        !run["tasks"][0]["messages"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|m| m["role"] == "tool")
+                    );
                     break;
                 }
+                if index == 1 && status == "completed" {
+                    break;
+                }
+                assert!(
+                    index != 0 || status != "completed",
+                    "disabled tool must not execute"
+                );
                 assert!(!matches!(status, "failed" | "cancelled"), "{run}");
                 tokio::task::yield_now().await;
             }
@@ -625,23 +640,20 @@ async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_re
         .await
         .unwrap();
         let requests = requests.lock().unwrap();
-        assert_eq!(requests.len(), (index + 1) * 2);
-        let first = &requests[index * 2];
-        let second = &requests[index * 2 + 1];
+        assert_eq!(requests.len(), if index == 0 { 1 } else { 3 });
+        let first = &requests[index];
         let tools = first["tools"].as_array().cloned().unwrap_or_default();
         assert_eq!(
             tools.iter().any(|v| v["function"]["name"] == "read_file"),
             index == 1
         );
-        let messages = second["messages"].as_array().unwrap();
-        let result = messages.iter().find(|v| v["role"] == "tool").unwrap()["content"]
-            .as_str()
-            .unwrap();
-        assert_eq!(
-            result.contains("read-positive-marker"),
-            index == 1,
-            "{result}"
-        );
+        if index == 1 {
+            let messages = requests[2]["messages"].as_array().unwrap();
+            let result = messages.iter().find(|v| v["role"] == "tool").unwrap()["content"]
+                .as_str()
+                .unwrap();
+            assert!(result.contains("read-positive-marker"), "{result}");
+        }
     }
     assert_eq!(
         std::fs::read_to_string(root.path().join("workspace/src/a.txt")).unwrap(),
