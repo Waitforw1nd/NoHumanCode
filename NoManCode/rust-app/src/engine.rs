@@ -2422,6 +2422,289 @@ mod workspace_phase_tests {
 
     struct ChildGuard(Option<Child>);
 
+    #[tokio::test]
+    async fn n11_three_reads_recheck_durable_desired_and_project_permissions() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        finish_two_writes(&engine, &task_id, usize::MAX).await;
+        let task = engine.store.task(&task_id).unwrap();
+        // Force the persistent check to be the rejecting boundary while the registry is active.
+        engine
+            .store
+            .set_plugin_desired(
+                "builtin.files",
+                &crate::plugin_management::SetPluginEnabled {
+                    enabled: false,
+                    expected_revision: 0,
+                },
+                "durable-read-deny",
+            )
+            .unwrap();
+        assert!(
+            engine
+                .plugin_status("builtin.files")
+                .unwrap()
+                .runtime
+                .admission_open
+        );
+        for name in ["read_file", "list_files", "search_files"] {
+            let args = if name == "read_file" {
+                json!({"path":"src/a.txt"})
+            } else {
+                json!({"path":"src","query":"after"})
+            };
+            let call = json!({"id":format!("denied-{name}"),"function":{"name":name,"arguments":args.to_string()}});
+            let before = n10_rows(&engine.store.db.lock().unwrap());
+            let error = engine
+                .execute_or_wait(
+                    &mut task.clone(),
+                    &call,
+                    name,
+                    &args,
+                    "phase-test-key",
+                    &CancellationToken::new(),
+                )
+                .await
+                .unwrap_err();
+            assert_eq!(
+                error.downcast_ref::<crate::plugin_management::PluginManagementError>(),
+                Some(&crate::plugin_management::PluginManagementError::Unavailable)
+            );
+            assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+            assert_eq!(
+                engine
+                    .plugin_status("builtin.files")
+                    .unwrap()
+                    .runtime
+                    .in_flight,
+                0
+            );
+        }
+        n10_set(&engine, true, 1, "restore-desired");
+        let project = engine.store.current_project().unwrap().project_id.unwrap();
+        let snapshot = engine.store.project_config(&project).unwrap();
+        let mut config = snapshot.config;
+        config.tools = false;
+        config.write_scopes.clear();
+        config.allow_commands = false;
+        engine
+            .store
+            .configure_project(ConfigureProject {
+                project_id: project,
+                expected_revision: snapshot.revision,
+                config,
+            })
+            .unwrap();
+        for name in ["read_file", "list_files", "search_files"] {
+            let result = engine
+                .tool_runtime
+                .acquire(&task, name, || engine.store.validate_files_read(&task));
+            let error = match result {
+                Err(error) => error,
+                Ok(_) => panic!("revoked project obtained a lease"),
+            };
+            assert_eq!(
+                error.downcast_ref::<ProjectError>(),
+                Some(&ProjectError::PermissionRevoked)
+            );
+        }
+        assert_eq!(
+            engine
+                .plugin_status("builtin.files")
+                .unwrap()
+                .runtime
+                .in_flight,
+            0
+        );
+    }
+    #[tokio::test]
+    async fn n11_real_discovery_leases_finish_after_persistent_disable_and_record_results() {
+        for name in ["list_files", "search_files"] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, task_id) = two_write_engine(temp.path()).await;
+            finish_two_writes(&engine, &task_id, usize::MAX).await;
+            let mut task = engine.store.task(&task_id).unwrap();
+            let args = json!({"path":"src","query":"after-1"});
+            let call_id = format!("leased-{name}");
+            task.messages.push(json!({"role":"assistant","tool_calls":[{"id":call_id,"type":"function","function":{"name":name,"arguments":args.to_string()}}]}));
+            engine.store.save_task(&task).unwrap();
+            let before_approvals = engine.store.approvals_for_task(&task_id).unwrap().len();
+            let (lease, ()) = engine
+                .tool_runtime
+                .acquire(&task, name, || engine.store.validate_files_read(&task))
+                .unwrap();
+            let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+            let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+            let worker_engine = engine.clone();
+            let worker = tokio::spawn(async move {
+                ready_tx.send(()).unwrap();
+                tokio::time::timeout(Duration::from_secs(5), release_rx)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                worker_engine
+                    .perform_tool(
+                        &mut task,
+                        &call_id,
+                        name,
+                        &args,
+                        "phase-test-key",
+                        None,
+                        lease,
+                    )
+                    .await
+                    .unwrap();
+            });
+            tokio::time::timeout(Duration::from_secs(5), ready_rx)
+                .await
+                .unwrap()
+                .unwrap();
+            let result = n10_set(&engine, false, 0, "disable-discovery-lease");
+            assert!(result.current.converged && result.current.runtime.draining);
+            assert_eq!(result.current.runtime.in_flight, 1);
+            assert_eq!(result.current.runtime.effects_count, 0);
+            release_tx.send(()).unwrap();
+            tokio::time::timeout(Duration::from_secs(5), worker)
+                .await
+                .unwrap()
+                .unwrap();
+            let final_task = engine.store.task(&task_id).unwrap();
+            let content: Value = serde_json::from_str(
+                final_task.messages.last().unwrap()["content"]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+            if name == "list_files" {
+                assert!(
+                    content["files"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|f| f["name"] == "a.txt")
+                );
+            } else {
+                assert_eq!(content["matches"][0]["path"], "src/a.txt");
+                assert_eq!(content["matches"][0]["line"], 1);
+            }
+            assert_eq!(
+                engine.store.approvals_for_task(&task_id).unwrap().len(),
+                before_approvals
+            );
+            assert_eq!(
+                engine
+                    .plugin_status("builtin.files")
+                    .unwrap()
+                    .runtime
+                    .in_flight,
+                0
+            );
+            assert!(
+                !engine
+                    .plugin_status("builtin.files")
+                    .unwrap()
+                    .runtime
+                    .draining
+            );
+            let events = engine.store.events(&final_task.run_id, 0).unwrap();
+            assert_eq!(
+                events
+                    .iter()
+                    .filter(|e| e.kind == "tool_result" && e.data["name"] == name)
+                    .count(),
+                1
+            );
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"after-1"
+            );
+        }
+    }
+    #[tokio::test]
+    async fn n11_old_schema12_receipt_reopens_as_current_version_without_any_row_changes() {
+        for enabled in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let (old, task_id) = two_write_engine_kind(temp.path(), SessionKind::Chat).await;
+            finish_two_writes(&old, &task_id, usize::MAX).await;
+            old.restore(&task_id).await.unwrap();
+            old.unload_builtin_files().unwrap();
+            let path = temp.path().join("phase.db");
+            drop(old);
+            let db = rusqlite::Connection::open(&path).unwrap();
+            // The immutable NEXT-10 receipt has no version/tool-list fields. Seed its exact schema12 representation.
+            db.execute(
+                "UPDATE plugin_desired SET enabled=?1,revision=1,updated_at=123",
+                [enabled],
+            )
+            .unwrap();
+            db.execute("INSERT INTO plugin_management_requests VALUES ('old-1.0-intent','builtin.files',?1,0,1,123)",[enabled]).unwrap();
+            fn all_rows(
+                db: &rusqlite::Connection,
+            ) -> std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>> {
+                let mut rows = n10_rows(db);
+                for name in [
+                    "plugin_desired",
+                    "plugin_management_requests",
+                    "schema_migrations",
+                ] {
+                    let values = db
+                        .prepare(&format!("SELECT * FROM {name} ORDER BY rowid"))
+                        .unwrap()
+                        .query_map([], |r| {
+                            (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+                        })
+                        .unwrap()
+                        .collect::<rusqlite::Result<_>>()
+                        .unwrap();
+                    rows.insert(name.into(), values);
+                }
+                rows
+            }
+            let before = all_rows(&db);
+            let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+            assert_eq!(engine.store.schema_version().unwrap(), 12);
+            assert!(!engine.is_busy());
+            let current = engine.plugin_status("builtin.files").unwrap();
+            assert_eq!(current.version, "1.1.0");
+            assert_eq!(current.desired.updated_at, 123);
+            assert_eq!(current.desired.revision, 1);
+            assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });
+            assert_eq!(all_rows(&db), before);
+            // If enabled, stop only in memory so a replay attempting reconciliation is observable.
+            if enabled {
+                engine.disable_builtin_files().unwrap();
+            }
+            let stopped = engine.plugin_status("builtin.files").unwrap();
+            let replay = n10_set(&engine, enabled, 0, "old-1.0-intent");
+            assert!(replay.replayed);
+            assert_eq!(
+                replay.receipt,
+                crate::plugin_management::PluginMutationReceipt {
+                    plugin_id: "builtin.files".into(),
+                    enabled,
+                    previous_revision: 0,
+                    revision: 1,
+                    committed_at: 123
+                }
+            );
+            assert_eq!(replay.current, stopped);
+            assert_eq!(all_rows(&db), before);
+            let error = engine
+                .resume(&task_id, "must stay sealed")
+                .await
+                .unwrap_err();
+            assert_eq!(
+                error.downcast_ref::<crate::store::ResumeError>(),
+                Some(&crate::store::ResumeError::Sealed)
+            );
+            assert_eq!(all_rows(&db), before);
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                b"before-a"
+            );
+        }
+    }
+
     async fn n10_pending(engine: &Arc<Engine>, task_id: &str) -> approval::ApprovalRecord {
         tokio::time::timeout(Duration::from_secs(8), async {
             loop {
