@@ -1,0 +1,65 @@
+{
+  "label": "5c8f221-final-attempt2",
+  "head": "5c8f221e5abdce20a5a971533b7264e041487954",
+  "source_tree": "191687949486545e22ed0769eaa32aee5d6faf6a",
+  "rust_tree": "ae885d552659810753d00ff796dd542249d21197",
+  "status_before": [],
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "environment": {
+    "TEMP": "../nhc-c-shell-interface\\.local\\tmp",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_TARGET_DIR": "../nhc-c-shell-interface\\.local\\target",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "VSINSTALLDIR": "<machine-msvc>",
+    "TMP": "../nhc-c-shell-interface\\.local\\tmp",
+    "CARGO_PROFILE_TEST_DEBUG": "0"
+  },
+  "runs": [
+    {
+      "action": "check",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action check",
+      "started_utc": "2026-09-27T14:39:44.0224083Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\5c8f221-final-attempt2-check.log",
+      "finished_utc": "2026-09-27T14:39:52.7204346Z",
+      "exit_code": 0
+    },
+    {
+      "action": "test",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action test",
+      "started_utc": "2026-09-27T14:39:52.7409512Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\5c8f221-final-attempt2-test.log",
+      "finished_utc": "2026-09-27T14:42:18.1217135Z",
+      "exit_code": 0
+    },
+    {
+      "action": "fmt",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action fmt",
+      "started_utc": "2026-09-27T14:42:18.1247157Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\5c8f221-final-attempt2-fmt.log",
+      "finished_utc": "2026-09-27T14:42:20.6210269Z",
+      "exit_code": 0
+    },
+    {
+      "action": "clippy",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action clippy",
+      "started_utc": "2026-09-27T14:42:20.6230355Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\5c8f221-final-attempt2-clippy.log",
+      "finished_utc": "2026-09-27T14:42:34.6783969Z",
+      "exit_code": 0
+    },
+    {
+      "action": "wasm-check",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./build.ps1 -Action wasm-check",
+      "started_utc": "2026-09-27T14:42:34.6806083Z",
+      "log": "../nhc-c-shell-interface\\.local\\logs\\5c8f221-final-attempt2-wasm-check.log",
+      "finished_utc": "2026-09-27T14:43:05.1605156Z",
+      "exit_code": 0
+    }
+  ],
+  "head_after": "5c8f221e5abdce20a5a971533b7264e041487954",
+  "source_after": "191687949486545e22ed0769eaa32aee5d6faf6a",
+  "rust_after": "ae885d552659810753d00ff796dd542249d21197",
+  "status_after": []
+}
