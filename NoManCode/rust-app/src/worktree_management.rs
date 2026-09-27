@@ -837,7 +837,7 @@ impl crate::store::Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{domain::*, engine::Engine, project_config::*};
+    use crate::{domain::*, engine::Engine, project_config::*, store::Store};
     use std::{
         path::{Path, PathBuf},
         sync::Arc,
