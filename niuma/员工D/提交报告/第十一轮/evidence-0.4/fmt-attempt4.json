@@ -1,0 +1,10 @@
+{
+  "rust_tree": "51fb90b7b8663f28ce7d986801f372d775e0c516",
+  "status": [],
+  "head": "574982eb05a914eae95f0e11b31c185166b5547d",
+  "started_at": "2026-09-28T00:31:36.7566919+08:00",
+  "exit_code": 0,
+  "ended_at": "2026-09-28T00:31:37.0662216+08:00",
+  "command": "rustfmt --edition 2021 --check src/git_worktree.rs src/workspace_identity.rs",
+  "noman_tree": "e37f546563add9b30da6b770d85597d1e7e6e5f6"
+}

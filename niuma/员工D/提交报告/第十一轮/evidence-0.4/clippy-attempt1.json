@@ -1,0 +1,11 @@
+{
+  "source_sha256": "A26CEAD51B88807BB8F78D0B522EDC68430566ECE6D1E8EC5DE5808DF73943B8",
+  "status": [],
+  "noman_tree": "bf49d6fb2f148e79234c2e5cabe11fef75913cc4",
+  "rust_tree": "a4fea4a665098747b6681988ff70ba0b4729f9a6",
+  "exit_code": 0,
+  "command": "cargo clippy --locked --lib --tests -- -D warnings",
+  "started_at": "2026-09-28T00:26:42.7329169+08:00",
+  "head": "5dde657cf177ce129771d924bf94c8bd5daae27a",
+  "ended_at": "2026-09-28T00:27:07.4637902+08:00"
+}

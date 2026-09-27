@@ -1,0 +1,11 @@
+{
+  "command": "cargo test --locked --lib git_worktree::tests -- --test-threads=2",
+  "noman_tree": "e37f546563add9b30da6b770d85597d1e7e6e5f6",
+  "source_sha256": "20B942EACDE8BC21A3A36D7B84AF5EC424DAC41DB7E5981E0CEF288697E52119",
+  "exit_code": 0,
+  "rust_tree": "51fb90b7b8663f28ce7d986801f372d775e0c516",
+  "ended_at": "2026-09-28T00:30:57.8672967+08:00",
+  "head": "574982eb05a914eae95f0e11b31c185166b5547d",
+  "status": [],
+  "started_at": "2026-09-28T00:29:54.1828563+08:00"
+}

@@ -1,0 +1,70 @@
+    Checking windows-sys v0.61.2
+    Checking zerofrom v0.1.8
+    Checking yoke v0.8.3
+    Checking zerovec v0.11.8
+    Checking tinystr v0.8.4
+    Checking icu_locale_core v2.3.0
+    Checking serde_core v1.0.229
+    Checking socket2 v0.6.5
+    Checking mio v1.2.3
+    Checking tokio v1.53.1
+    Checking zerotrie v0.2.5
+    Checking potential_utf v0.1.6
+    Checking icu_collections v2.3.0
+    Checking icu_provider v2.3.1
+    Checking futures-util v0.3.34
+    Checking serde v1.0.229
+    Checking icu_properties v2.3.0
+    Checking icu_normalizer v2.3.0
+    Checking futures-channel v0.3.34
+    Checking hyper v1.11.1
+    Checking idna_adapter v1.2.2
+    Checking anstyle-wincon v3.0.11
+    Checking wasm-encoder v0.259.0
+    Checking hyper-util v0.1.20
+    Checking serde_json v1.0.151
+    Checking idna v1.1.0
+    Checking tower v0.5.3
+    Checking anstyle-query v1.1.5
+    Checking anstream v1.0.0
+    Checking wast v259.0.0
+    Checking url v2.5.8
+    Checking tokio-rustls v0.26.5
+    Checking serde_urlencoded v0.7.1
+    Checking clap_builder v4.6.7
+    Checking tokio-util v0.7.19
+    Checking hyper-rustls v0.27.9
+    Checking tower-http v0.6.11
+    Checking serde_path_to_error v0.1.20
+    Checking serde_yaml v0.9.34+deprecated
+    Checking wat v1.259.0
+    Checking wasmi v2.0.0
+    Checking axum v0.8.9
+    Checking reqwest v0.12.28
+    Checking async-stream v0.3.6
+    Checking clap v4.6.7
+    Checking peachsh-protocol v0.1.0 (../nhc-c-worktree-interface\NoManCode\rust-app\crates\protocol)
+    Checking fastrand v2.5.0
+    Checking tempfile v3.27.0
+    Checking peachsh v0.2.0 (../nhc-c-worktree-interface\NoManCode\rust-app)
+error: large size difference between variants
+  --> src\git_worktree.rs:84:1
+   |
+84 | / pub(crate) enum ProjectGitObservation {
+85 | |     NotGit,
+   | |     ------ the second-largest variant carries no data at all
+86 | |     Repository(RepositorySnapshot),
+   | |     ------------------------------ the largest variant contains at least 240 bytes
+87 | | }
+   | |_^ the entire enum is at least 240 bytes
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#large_enum_variant
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+86 -     Repository(RepositorySnapshot),
+86 +     Repository(Box<RepositorySnapshot>),
+   |
+
+error: could not compile `peachsh` (lib) due to 1 previous error

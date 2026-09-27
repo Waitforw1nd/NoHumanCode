@@ -1,0 +1,18 @@
+   Compiling peachsh v0.2.0 (../nhc-c-worktree-interface\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 16.93s
+     Running unittests src\lib.rs (../nhc-c-worktree-interface\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 1 test
+W08 phase=claim operation=e0cd7652-f374-4b97-b1f2-fd6c8740831d child_pid=10332 reached durable hook
+W08 phase=claim original child killed and waited
+W08 phase=claim restart verified state="unknown" and killed/waited; no extra worker or Provider dispatch
+W08 phase=created operation=e998dd6a-fe96-46c3-8c60-95d566283e5c child_pid=64560 reached durable hook
+W08 phase=created original child killed and waited
+W08 phase=created restart verified state="unknown" and killed/waited; no extra worker or Provider dispatch
+W08 phase=registered operation=31d79a0c-1792-4798-8e78-38cd9ceefbd1 child_pid=60260 reached durable hook
+W08 phase=registered original child killed and waited
+W08 phase=registered restart verified state="succeeded" and killed/waited; no extra worker or Provider dispatch
+test server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 185 filtered out; finished in 18.00s
+
