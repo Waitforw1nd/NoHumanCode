@@ -1192,10 +1192,10 @@ mod tests {
     use super::*;
     use std::process::Command as SyncCommand;
     #[cfg(windows)]
-    struct ProcessObservation {
+    pub(super) struct ProcessObservation {
         handle: std::os::windows::io::OwnedHandle,
-        pid: u32,
-        created: u64,
+        pub(super) pid: u32,
+        pub(super) created: u64,
     }
     #[cfg(windows)]
     #[link(name = "kernel32")]
@@ -1211,7 +1211,7 @@ mod tests {
     }
     #[cfg(windows)]
     impl ProcessObservation {
-        fn capture(child: &tokio::process::Child) -> Self {
+        pub(super) fn capture(child: &tokio::process::Child) -> Self {
             use std::os::windows::io::{AsRawHandle, BorrowedHandle};
             let handle = unsafe { BorrowedHandle::borrow_raw(child.raw_handle().unwrap()) }
                 .try_clone_to_owned()
@@ -1235,7 +1235,7 @@ mod tests {
                 created,
             }
         }
-        fn signal(&self) -> u32 {
+        pub(super) fn signal(&self) -> u32 {
             use std::os::windows::io::AsRawHandle;
             unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) }
         }
