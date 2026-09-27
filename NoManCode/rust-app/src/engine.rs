@@ -2714,7 +2714,7 @@ mod workspace_phase_tests {
             assert_eq!(receipt.status, RestoreStatus::Unknown);
             assert_eq!(receipt.restored, 0);
             assert_eq!(receipt.outcomes.len(), 1);
-            assert_eq!(receipt.outcomes[0].status, "unknown");
+            assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
             let observed = errors.lock().unwrap();
             assert_eq!(observed.len(), 1);
             let event = &observed[0];
