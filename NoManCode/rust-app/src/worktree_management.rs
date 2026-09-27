@@ -370,26 +370,10 @@ pub(crate) fn verify_persisted_rows(db: &Connection) -> Result<()> {
             let (source,raw):(String,String)=db.query_row("SELECT source_project_id,identity FROM project_worktree_origins WHERE operation_id=?1",[&receipt.operation_id],|r|Ok((r.get(0)?,r.get(1)?)))?;
             let origin: WorktreeOrigin =
                 serde_json::from_str(&raw).map_err(|_| WorktreeError::Corrupt)?;
-            origin
-                .root
-                .validate_snapshot()
-                .map_err(|_| WorktreeError::Corrupt)?;
-            origin
-                .git_dir
-                .validate_snapshot()
-                .map_err(|_| WorktreeError::Corrupt)?;
-            origin
-                .common_dir
-                .validate_snapshot()
-                .map_err(|_| WorktreeError::Corrupt)?;
+            origin.validate(&plan)?;
             ensure!(
-                origin.version == 1
-                    && source == receipt.source_project_id.0
-                    && origin.root == crate::project_config::root_tx(db, project)?
-                    && origin.root.canonical_path() == plan.target_path()
-                    && origin.common_dir == plan.repository.common_dir
-                    && origin.head_oid == plan.expected_head
-                    && origin.branch_ref == plan.branch_ref,
+                source == receipt.source_project_id.0
+                    && origin.root == crate::project_config::root_tx(db, project)?,
                 WorktreeError::Corrupt
             );
             let root_path: String = db.query_row(
@@ -528,6 +512,26 @@ pub(crate) fn inventory_tx(db: &Connection) -> Result<ProjectInventory> {
     Ok(ProjectInventory(db.prepare("SELECT p.id,p.root_path,b.identity FROM projects p LEFT JOIN project_root_bindings b ON b.project_id=p.id ORDER BY p.id")?.query_map([],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?))
 }
 impl ProjectInventory {
+    // Diagnosis retains unavailable roots for executable trust exclusion without
+    // requiring online availability before the observation can be classified.
+    pub(crate) fn snapshots(&self) -> Result<Vec<(ProjectId, RootIdentity)>> {
+        self.0
+            .iter()
+            .map(|(id, path, raw)| {
+                let root: RootIdentity =
+                    serde_json::from_str(raw.as_ref().ok_or(WorktreeError::Unavailable)?)
+                        .map_err(|_| WorktreeError::Corrupt)?;
+                root.validate_snapshot()
+                    .map_err(|_| WorktreeError::Corrupt)?;
+                ensure!(
+                    windows_path_key(path)
+                        == windows_path_key(&root.canonical_path().to_string_lossy()),
+                    WorktreeError::Corrupt
+                );
+                Ok((ProjectId(id.clone()), root))
+            })
+            .collect()
+    }
     pub(crate) fn roots(&self) -> Result<Vec<(ProjectId, RootIdentity)>> {
         self.0
             .iter()
@@ -561,6 +565,37 @@ pub(crate) struct WorktreeOrigin {
     pub common_dir: RootIdentity,
     pub head_oid: String,
     pub branch_ref: String,
+}
+impl WorktreeOrigin {
+    fn validate(&self, plan: &PersistedWorktreePlan) -> Result<()> {
+        for root in [&self.root, &self.git_dir, &self.common_dir] {
+            root.validate_snapshot()
+                .map_err(|_| WorktreeError::Corrupt)?;
+        }
+        let root = self.root.canonical_path();
+        let admin = self.git_dir.canonical_path();
+        let common = self.common_dir.canonical_path();
+        ensure!(
+            self.version == 1
+                && root == plan.target_path()
+                && self.common_dir == plan.repository.common_dir
+                && self.head_oid == plan.expected_head
+                && self.branch_ref == plan.branch_ref
+                && admin.parent() == Some(common.join("worktrees").as_path())
+                && self.git_dir != plan.repository.git_dir
+                && !admin.starts_with(root)
+                && !root.starts_with(admin)
+                && !common.starts_with(root)
+                && !root.starts_with(common),
+            WorktreeError::Corrupt
+        );
+        Ok(())
+    }
+    pub(crate) fn identities_match(&self) -> bool {
+        [&self.root, &self.git_dir, &self.common_dir]
+            .into_iter()
+            .all(|r| r.verify().is_ok())
+    }
 }
 impl crate::store::Store {
     pub(crate) fn worktree_inventory(&self) -> Result<ProjectInventory> {
@@ -809,10 +844,10 @@ pub(crate) fn map_git(error: git_worktree::GitWorktreeError) -> WorktreeError {
 }
 
 impl crate::store::Store {
-    pub(crate) fn registered_worktree_root(
+    pub(crate) fn registered_worktree_origin(
         &self,
         receipt: &WorktreeReceipt,
-    ) -> Result<Option<RootIdentity>> {
+    ) -> Result<Option<WorktreeOrigin>> {
         if receipt.state != WorktreeState::Succeeded {
             return Ok(None);
         }
@@ -821,16 +856,20 @@ impl crate::store::Store {
         let (source,raw):(String,String)=db.query_row("SELECT source_project_id,identity FROM project_worktree_origins WHERE project_id=?1 AND operation_id=?2",params![project.0,receipt.operation_id],|r|Ok((r.get(0)?,r.get(1)?)))?;
         let origin: WorktreeOrigin =
             serde_json::from_str(&raw).map_err(|_| WorktreeError::Corrupt)?;
+        let plan: PersistedWorktreePlan = serde_json::from_str(&db.query_row(
+            "SELECT plan FROM worktree_operations WHERE operation_id=?1",
+            [&receipt.operation_id],
+            |r| r.get::<_, String>(0),
+        )?)
+        .map_err(|_| WorktreeError::Corrupt)?;
+        plan.validate().map_err(|_| WorktreeError::Corrupt)?;
+        origin.validate(&plan)?;
         ensure!(
-            origin.version == 1
-                && source == receipt.source_project_id.0
-                && origin.root == crate::project_config::root_tx(&db, project)?
-                && origin.root.canonical_path() == std::path::Path::new(&receipt.target_path)
-                && origin.head_oid == receipt.expected_head
-                && origin.branch_ref == format!("refs/heads/{}", receipt.branch),
+            source == receipt.source_project_id.0
+                && origin.root == crate::project_config::root_tx(&db, project)?,
             WorktreeError::Corrupt
         );
-        Ok(Some(origin.root))
+        Ok(Some(origin))
     }
 }
 
@@ -1153,8 +1192,11 @@ mod tests {
         let inventory = f.store.worktree_inventory().unwrap();
         // Persist the cancelled Task independently from its filesystem outcome.
         let db = f.store.db.lock().unwrap();
-        db.execute("INSERT INTO runs(id,value) VALUES('run','{}')", [])
-            .unwrap();
+        db.execute(
+            "INSERT INTO runs(id,title,created_at) VALUES('run','Fixture',1)",
+            [],
+        )
+        .unwrap();
         db.execute(
             r#"INSERT INTO tasks(id,run_id,value) VALUES('task','run','{"status":"cancelled"}')"#,
             [],
@@ -1289,5 +1331,123 @@ mod tests {
             engine.create_project_worktree(request).await.unwrap(),
             receipt
         );
+    }
+    #[tokio::test]
+    async fn n13_origin_saved_admin_relationship_and_online_identity_are_enforced() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let receipt = engine.create_project_worktree(f.request()).await.unwrap();
+        assert_eq!(receipt.state, WorktreeState::Succeeded);
+        let raw: String = f
+            .store
+            .db
+            .lock()
+            .unwrap()
+            .query_row("SELECT identity FROM project_worktree_origins", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        let original: WorktreeOrigin = serde_json::from_str(&raw).unwrap();
+        for invalid in [
+            RootIdentity::capture(&f.source).unwrap(),
+            original.root.clone(),
+            original.common_dir.clone(),
+        ] {
+            let mut origin = original.clone();
+            origin.git_dir = invalid;
+            f.store
+                .db
+                .lock()
+                .unwrap()
+                .execute(
+                    "UPDATE project_worktree_origins SET identity=?1",
+                    [serde_json::to_string(&origin).unwrap()],
+                )
+                .unwrap();
+            for _ in 0..2 {
+                assert!(Store::open(&f.db).is_err());
+            }
+            assert!(
+                engine
+                    .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+                    .await
+                    .is_err()
+            );
+        }
+        f.store
+            .db
+            .lock()
+            .unwrap()
+            .execute("UPDATE project_worktree_origins SET identity=?1", [&raw])
+            .unwrap();
+        let admin = original.git_dir.canonical_path();
+        let moved = admin.with_file_name("saved-admin");
+        std::fs::rename(admin, &moved).unwrap();
+        std::fs::create_dir(admin).unwrap();
+        // Reopen is offline structural verification, not a requirement that the origin still exists.
+        let reopened = Store::open(&f.db).unwrap();
+        assert_eq!(
+            reopened
+                .worktree_receipt(&f.project.id, &receipt.operation_id)
+                .unwrap(),
+            receipt
+        );
+        let inspected = engine
+            .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            inspected.observation.state,
+            WorktreeObservationState::IdentityChanged
+        );
+        assert_eq!(inspected.receipt, receipt);
+        assert_eq!(f.count("worktree_project_reservations"), 0);
+    }
+    #[tokio::test]
+    async fn n13_diagnose_offline_source_and_other_project_are_observations_not_errors() {
+        for source_offline in [true, false] {
+            let f = Fixture::new();
+            let unrelated = f._temp.path().join("unrelated");
+            std::fs::create_dir(&unrelated).unwrap();
+            f.store
+                .register_project(RegisterProject {
+                    name: "Unrelated".into(),
+                    root_path: unrelated.to_string_lossy().into(),
+                    idempotency_key: id(),
+                })
+                .unwrap();
+            let (_, receipt, _) = f.claim().await;
+            let engine = Engine::new(f.store.clone(), 2).unwrap();
+            let path = if source_offline {
+                &f.source
+            } else {
+                &unrelated
+            };
+            std::fs::rename(path, path.with_file_name("moved")).unwrap();
+            let reopened = Store::open(&f.db).unwrap();
+            assert_eq!(
+                reopened
+                    .worktree_receipt(&f.project.id, &receipt.operation_id)
+                    .unwrap(),
+                receipt
+            );
+            for _ in 0..2 {
+                let inspected = engine
+                    .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    inspected.observation.state,
+                    if source_offline {
+                        WorktreeObservationState::IdentityChanged
+                    } else {
+                        WorktreeObservationState::Unavailable
+                    }
+                );
+                assert_eq!(inspected.receipt, receipt);
+                assert_eq!(f.count("worktree_project_reservations"), 1);
+            }
+            assert_eq!(f.count("projects"), 2);
+        }
     }
 }

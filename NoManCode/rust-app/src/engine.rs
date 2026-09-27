@@ -802,11 +802,24 @@ impl Engine {
         use crate::{git_worktree as git, worktree_management::*};
         let receipt = self.store.worktree_receipt(source, operation)?;
         let plan = self.store.worktree_plan(source, operation)?;
-        let roots = self.store.worktree_inventory()?.roots()?;
+        let roots = self.store.worktree_inventory()?.snapshots()?;
         let ctx =
             git::GitContext::new(roots.into_iter().map(|(_, r)| r).collect()).map_err(map_git)?;
-        let registered = self.store.registered_worktree_root(&receipt)?;
-        let actual = git::diagnose(&ctx, &plan, registered.as_ref())
+        let registered = self.store.registered_worktree_origin(&receipt)?;
+        if registered.as_ref().is_some_and(|o| !o.identities_match()) {
+            return Ok(WorktreeInspection {
+                observation: WorktreeObservation {
+                    operation_id: receipt.operation_id.clone(),
+                    observed_at: crate::domain::now() as i64,
+                    state: WorktreeObservationState::IdentityChanged,
+                    reason_codes: vec![WorktreeObservationReason::IdentityChanged],
+                    observed_head: None,
+                    observed_branch: None,
+                },
+                receipt,
+            });
+        }
+        let actual = git::diagnose(&ctx, &plan, registered.as_ref().map(|o| &o.root))
             .await
             .map_err(map_git)?;
         let observation: WorktreeObservation =
