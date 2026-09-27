@@ -397,6 +397,7 @@ async fn w01_w02_worktree_project_has_independent_authorization_and_original_ses
     .await;
     assert_eq!(denied_models["error"]["code"], "required");
     assert_eq!(denied_models["error"]["calls"], json!([]));
+    let before_denied = rows(&h._dir.path().join("host.sqlite3"));
     let denied = h
         .request(
             reqwest::Method::POST,
@@ -407,9 +408,11 @@ async fn w01_w02_worktree_project_has_independent_authorization_and_original_ses
         .send()
         .await
         .unwrap();
-    let denied_run = body(denied, 200).await;
-    let blocked = h.settle(denied_run["id"].as_str().unwrap()).await;
-    assert_eq!(blocked["tasks"][0]["status"], "failed");
+    let denied_run = body(denied, 409).await;
+    assert_eq!(denied_run["error"]["code"], "required");
+    assert_eq!(denied_run["error"]["dispatch_state"], "not_sent");
+    assert_eq!(denied_run["error"]["calls"], json!([]));
+    assert_eq!(rows(&h._dir.path().join("host.sqlite3")), before_denied);
     assert_eq!(h.calls.load(Ordering::SeqCst), calls);
     h.put(&format!("/api/projects/{target_id}/config"),json!({"expected_revision":2,"config":{"allowed_route_ids":["route-a"],"default_route_id":"route-a","tools":true,"write_scopes":["src"],"allow_commands":false}}),200).await;
     h.grant(target_id).await;
