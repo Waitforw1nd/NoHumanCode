@@ -1,3 +1,11 @@
+## 2026-09-27 NEXT-09范围补充2：恢复事实封存resume
+
+更新人经理GPT-6。C固定df017537e19ebadfd2c01a8264cff7a4784e7671单次严格真HTTP编译通过/test101（0通过/1失败）：Engine.resume返回Ok、queued。失败前partial1/A已commit/B ReadCurrent失败/C未执行/同receipt回放成立；失败后的newTurn、重开、计数不增未执行。原日志与双hash已存C第十轮，禁止抹去或补称后续通过；十次重复与五门禁未运行。
+
+对照NEXT-06原文是“恢复后原Task永久写封存”，不倒写旧验收。本轮按用户“恢复后旧Task封存”明确收紧为恢复事实存在则拒绝resume，详见任务/2026-09-27NEXT-09接口补充2恢复后Task封存.md。B新增store.rs唯一权、typed ResumeError::Sealed及Immediate事务拒绝；Engine deferred输入只在持久resume成功后登记。C新增server.rs唯一权，仅resume命令映射409/conflict/false和稳定脱敏消息。D继续独立只读审查；原执行ID/新E树不变，无新执行者。
+
+B原15588组件R01/R03 2/0、2对日志hash经理已核，仅组件证据。经理已将B树ff至df017537以消费C严格测试；源码变更与最后main产品仍分开，main尚未合NEXT-09。下一第一操作收B/C封存修订固定候选→串行组合→严格首测→D复核→定向10次及C固定五门禁。历史860根因依旧未证实，本次新差别不等同该根因。全E项目输出，D冻结；无release/live/push/reset/clean/stash。
+
 ## 2026-09-27 NEXT-09三方已真实接收
 
 经理GPT-6。开发基线4767f53971eedd73a8216b1c68801e6cdce8bd79；NoManCode9800ad0ebcabf556c517cade04eaa8b433057ab6、Rustca006f88165d346ee6e60910079e9dece53aff25。新E树建立后经理与员工均核初始HEAD一致/status/index空。原GPT-6-astra三人均回实收，非仅消息发出：B-R8-01-20260927-E01在../nhc-b-restore-probe，C-R10-01-20260927-E01在../nhc-c-restore-http-deterministic，D-R7-01-20260927-E01在../nhc-d-restore-review。具体分支/所有权/报告路径见正式任务包与派发记录。
