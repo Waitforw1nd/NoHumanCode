@@ -2643,10 +2643,10 @@ mod worktree_http_crash_tests {
     async fn wait_file(path: &FsPath) -> String {
         tokio::time::timeout(Duration::from_secs(10), async {
             loop {
-                if let Ok(text) = std::fs::read_to_string(path) {
-                    if !text.is_empty() {
-                        break text;
-                    }
+                if let Ok(text) = std::fs::read_to_string(path)
+                    && !text.is_empty()
+                {
+                    break text;
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
