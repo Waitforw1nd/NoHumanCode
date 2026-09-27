@@ -166,6 +166,19 @@ pub(crate) fn ensure_registration_unreserved_tx(db: &Connection) -> Result<()> {
     }
     Ok(())
 }
+// Task terminal status does not resolve an already claimed filesystem effect.
+fn ensure_project_quiescent_tx(db: &Connection, project: &ProjectId) -> Result<()> {
+    let busy: bool = db.query_row(
+        "SELECT EXISTS(SELECT 1 FROM tasks t JOIN task_project_bindings b ON b.task_id=t.id WHERE b.project_id=?1 AND json_extract(t.value,'$.status') IN ('queued','running'))
+         OR EXISTS(SELECT 1 FROM approvals a JOIN task_project_bindings b ON b.task_id=a.task_id WHERE b.project_id=?1 AND a.execution_state IN ('claimed','unknown'))
+         OR EXISTS(SELECT 1 FROM workspace_changes c JOIN task_project_bindings b ON b.task_id=c.task_id WHERE b.project_id=?1 AND (c.state IN ('prepared','unknown') OR c.restore_state='unknown'))
+         OR EXISTS(SELECT 1 FROM workspace_restores r JOIN task_project_bindings b ON b.task_id=r.task_id WHERE b.project_id=?1 AND r.status IN ('claimed','partial','unknown'))
+         OR EXISTS(SELECT 1 FROM workspace_restore_outcomes o JOIN workspace_restores r ON r.id=o.restore_id JOIN task_project_bindings b ON b.task_id=r.task_id WHERE b.project_id=?1 AND o.status IN ('claimed','unknown'))",
+        [&project.0], |r| r.get(0),
+    )?;
+    ensure!(!busy, WorktreeError::Busy);
+    Ok(())
+}
 impl WorktreeReceipt {
     pub(crate) fn validate(&self) -> Result<()> {
         let uuid = uuid::Uuid::parse_str(&self.operation_id).map_err(|_| WorktreeError::Corrupt)?;
@@ -221,15 +234,19 @@ impl WorktreeReceipt {
                 self.project_id
                     .as_ref()
                     .is_some_and(|p| p != &self.source_project_id)
-                    && self.cause.is_none(),
+                    && self.cause.is_none()
+                    && self.revision == 2,
                 WorktreeError::Corrupt
             ),
             WorktreeState::Claimed => ensure!(
-                self.project_id.is_none() && self.cause.is_none(),
+                self.project_id.is_none()
+                    && self.cause.is_none()
+                    && self.revision == 1
+                    && self.created_at == self.updated_at,
                 WorktreeError::Corrupt
             ),
             WorktreeState::Rejected | WorktreeState::Unknown => ensure!(
-                self.project_id.is_none() && self.cause.is_some(),
+                self.project_id.is_none() && self.cause.is_some() && self.revision == 2,
                 WorktreeError::Corrupt
             ),
         }
@@ -237,7 +254,7 @@ impl WorktreeReceipt {
     }
 }
 pub(crate) fn verify_persisted_rows(db: &Connection) -> Result<()> {
-    let mut statement=db.prepare("SELECT operation_id,idempotency_key,source_project_id,requested_project_id,request_json,request_digest,plan,common_key,target_path,branch_ref,state,revision,receipt FROM worktree_operations")?;
+    let mut statement=db.prepare("SELECT operation_id,idempotency_key,source_project_id,requested_project_id,request_json,request_digest,plan,common_key,target_path,branch_ref,state,revision,receipt,members FROM worktree_operations")?;
     let mut rows = statement.query([])?;
     while let Some(row) = rows.next()? {
         let receipt: WorktreeReceipt = serde_json::from_str(&row.get::<_, String>(12)?)?;
@@ -269,19 +286,70 @@ pub(crate) fn verify_persisted_rows(db: &Connection) -> Result<()> {
             row.get::<_, String>(9)? == format!("refs/heads/{}", receipt.branch),
             WorktreeError::Corrupt
         );
-        let reserved: i64 = db.query_row(
-            "SELECT count(*) FROM worktree_project_reservations WHERE operation_id=?1",
-            [&receipt.operation_id],
-            |r| r.get(0),
-        )?;
+        let normalized = normalize_request(request.clone()).map_err(|_| WorktreeError::Corrupt)?;
+        ensure!(
+            normalized == request && request_digest(&request)? == receipt.request_digest,
+            WorktreeError::Corrupt
+        );
+        let project_id = row.get::<_, String>(3)?;
+        ensure!(
+            uuid::Uuid::parse_str(&project_id).is_ok_and(|id| id.to_string() == project_id)
+                && project_id != receipt.source_project_id.0,
+            WorktreeError::Corrupt
+        );
+        let plan: PersistedWorktreePlan =
+            serde_json::from_str(&row.get::<_, String>(6)?).map_err(|_| WorktreeError::Corrupt)?;
+        plan.validate().map_err(|_| WorktreeError::Corrupt)?;
+        ensure!(
+            plan.operation_id == receipt.operation_id
+                && plan.expected_head == receipt.expected_head
+                && plan.target_path() == std::path::Path::new(&receipt.target_path)
+                && windows_path_key(
+                    plan.target_parent
+                        .canonical_path()
+                        .to_string_lossy()
+                        .as_ref()
+                ) == windows_path_key(&receipt.parent_path)
+                && plan
+                    .repository
+                    .common_key()
+                    .map_err(|_| WorktreeError::Corrupt)?
+                    == row.get::<_, String>(7)?,
+            WorktreeError::Corrupt
+        );
+        ensure!(
+            plan.source_root == crate::project_config::root_tx(db, &receipt.source_project_id)?,
+            WorktreeError::Corrupt
+        );
+        let members: Vec<ReservedProject> =
+            serde_json::from_str(&row.get::<_, String>(13)?).map_err(|_| WorktreeError::Corrupt)?;
+        let mut ids = std::collections::BTreeSet::new();
+        for member in members {
+            member
+                .root
+                .validate_snapshot()
+                .map_err(|_| WorktreeError::Corrupt)?;
+            ensure!(
+                ids.insert(member.project_id.0.clone())
+                    && member.root == crate::project_config::root_tx(db, &member.project_id)?,
+                WorktreeError::Corrupt
+            );
+        }
+        ensure!(
+            ids.contains(&receipt.source_project_id.0),
+            WorktreeError::Corrupt
+        );
+        let reserved: std::collections::BTreeSet<String> = db
+            .prepare("SELECT project_id FROM worktree_project_reservations WHERE operation_id=?1")?
+            .query_map([&receipt.operation_id], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
         if matches!(
             receipt.state,
             WorktreeState::Claimed | WorktreeState::Unknown
         ) {
-            ensure!(reserved > 0, WorktreeError::Corrupt);
-            ensure!(db.query_row("SELECT EXISTS(SELECT 1 FROM worktree_project_reservations WHERE project_id=?1 AND operation_id=?2)",rusqlite::params![receipt.source_project_id.0,receipt.operation_id],|r|r.get::<_,bool>(0))?,WorktreeError::Corrupt);
+            ensure!(reserved == ids, WorktreeError::Corrupt);
         } else {
-            ensure!(reserved == 0, WorktreeError::Corrupt);
+            ensure!(reserved.is_empty(), WorktreeError::Corrupt);
         }
         let origin: Option<String> = db
             .query_row(
@@ -299,8 +367,25 @@ pub(crate) fn verify_persisted_rows(db: &Connection) -> Result<()> {
                 project.0 == row.get::<_, String>(3)?,
                 WorktreeError::Corrupt
             );
+            let (source,raw):(String,String)=db.query_row("SELECT source_project_id,identity FROM project_worktree_origins WHERE operation_id=?1",[&receipt.operation_id],|r|Ok((r.get(0)?,r.get(1)?)))?;
+            let origin: WorktreeOrigin =
+                serde_json::from_str(&raw).map_err(|_| WorktreeError::Corrupt)?;
+            origin.validate(&plan)?;
+            ensure!(
+                source == receipt.source_project_id.0
+                    && origin.root == crate::project_config::root_tx(db, project)?,
+                WorktreeError::Corrupt
+            );
+            let root_path: String = db.query_row(
+                "SELECT root_path FROM projects WHERE id=?1",
+                [&project.0],
+                |r| r.get(0),
+            )?;
+            ensure!(root_path == receipt.target_path, WorktreeError::Corrupt);
         }
     }
+    let excess:bool=db.query_row("SELECT EXISTS(SELECT 1 FROM project_worktree_origins o JOIN worktree_operations w ON w.operation_id=o.operation_id WHERE w.state!='succeeded')",[],|r|r.get(0))?;
+    ensure!(!excess, WorktreeError::Corrupt);
     Ok(())
 }
 
@@ -427,6 +512,26 @@ pub(crate) fn inventory_tx(db: &Connection) -> Result<ProjectInventory> {
     Ok(ProjectInventory(db.prepare("SELECT p.id,p.root_path,b.identity FROM projects p LEFT JOIN project_root_bindings b ON b.project_id=p.id ORDER BY p.id")?.query_map([],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?))
 }
 impl ProjectInventory {
+    // Diagnosis retains unavailable roots for executable trust exclusion without
+    // requiring online availability before the observation can be classified.
+    pub(crate) fn snapshots(&self) -> Result<Vec<(ProjectId, RootIdentity)>> {
+        self.0
+            .iter()
+            .map(|(id, path, raw)| {
+                let root: RootIdentity =
+                    serde_json::from_str(raw.as_ref().ok_or(WorktreeError::Unavailable)?)
+                        .map_err(|_| WorktreeError::Corrupt)?;
+                root.validate_snapshot()
+                    .map_err(|_| WorktreeError::Corrupt)?;
+                ensure!(
+                    windows_path_key(path)
+                        == windows_path_key(&root.canonical_path().to_string_lossy()),
+                    WorktreeError::Corrupt
+                );
+                Ok((ProjectId(id.clone()), root))
+            })
+            .collect()
+    }
     pub(crate) fn roots(&self) -> Result<Vec<(ProjectId, RootIdentity)>> {
         self.0
             .iter()
@@ -447,6 +552,12 @@ impl ProjectInventory {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ReservedProject {
+    project_id: ProjectId,
+    root: RootIdentity,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct WorktreeOrigin {
     pub version: u32,
     pub root: RootIdentity,
@@ -454,6 +565,37 @@ pub(crate) struct WorktreeOrigin {
     pub common_dir: RootIdentity,
     pub head_oid: String,
     pub branch_ref: String,
+}
+impl WorktreeOrigin {
+    fn validate(&self, plan: &PersistedWorktreePlan) -> Result<()> {
+        for root in [&self.root, &self.git_dir, &self.common_dir] {
+            root.validate_snapshot()
+                .map_err(|_| WorktreeError::Corrupt)?;
+        }
+        let root = self.root.canonical_path();
+        let admin = self.git_dir.canonical_path();
+        let common = self.common_dir.canonical_path();
+        ensure!(
+            self.version == 1
+                && root == plan.target_path()
+                && self.common_dir == plan.repository.common_dir
+                && self.head_oid == plan.expected_head
+                && self.branch_ref == plan.branch_ref
+                && admin.parent() == Some(common.join("worktrees").as_path())
+                && self.git_dir != plan.repository.git_dir
+                && !admin.starts_with(root)
+                && !root.starts_with(admin)
+                && !common.starts_with(root)
+                && !root.starts_with(common),
+            WorktreeError::Corrupt
+        );
+        Ok(())
+    }
+    pub(crate) fn identities_match(&self) -> bool {
+        [&self.root, &self.git_dir, &self.common_dir]
+            .into_iter()
+            .all(|r| r.verify().is_ok())
+    }
 }
 impl crate::store::Store {
     pub(crate) fn worktree_inventory(&self) -> Result<ProjectInventory> {
@@ -548,8 +690,7 @@ impl crate::store::Store {
                 WorktreeError::Corrupt
             );
             ensure_project_unreserved_tx(&tx, member)?;
-            let busy:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM tasks t JOIN task_project_bindings b ON b.task_id=t.id WHERE b.project_id=?1 AND json_extract(t.value,'$.status') IN ('queued','running')) OR EXISTS(SELECT 1 FROM approvals a JOIN task_project_bindings b ON b.task_id=a.task_id WHERE b.project_id=?1 AND a.execution_state IN ('claimed','unknown')) OR EXISTS(SELECT 1 FROM workspace_restores r JOIN task_project_bindings b ON b.task_id=r.task_id WHERE b.project_id=?1 AND r.status IN ('claimed','unknown'))",[&member.0],|r|r.get(0))?;
-            ensure!(!busy, WorktreeError::Busy);
+            ensure_project_quiescent_tx(&tx, member)?;
         }
         let common = plan
             .repository
@@ -584,7 +725,16 @@ impl crate::store::Store {
             updated_at: time,
         };
         receipt.validate()?;
-        tx.execute("INSERT INTO worktree_operations(operation_id,idempotency_key,source_project_id,requested_project_id,request_json,request_digest,plan,common_key,target_path,branch_ref,state,revision,receipt) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'claimed',1,?11)",params![receipt.operation_id,request.idempotency_key,request.source_project_id.0,uuid::Uuid::new_v4().to_string(),serde_json::to_string(request)?,receipt.request_digest,serde_json::to_string(plan)?,common,receipt.target_path,plan.branch_ref,serde_json::to_string(&receipt)?])?;
+        let member_snapshots: Vec<ReservedProject> = members
+            .iter()
+            .map(|id| {
+                Ok(ReservedProject {
+                    project_id: id.clone(),
+                    root: crate::project_config::root_tx(&tx, id)?,
+                })
+            })
+            .collect::<Result<_>>()?;
+        tx.execute("INSERT INTO worktree_operations(operation_id,idempotency_key,source_project_id,requested_project_id,request_json,request_digest,plan,common_key,target_path,branch_ref,state,revision,receipt,members) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'claimed',1,?11,?12)",params![receipt.operation_id,request.idempotency_key,request.source_project_id.0,uuid::Uuid::new_v4().to_string(),serde_json::to_string(request)?,receipt.request_digest,serde_json::to_string(plan)?,common,receipt.target_path,plan.branch_ref,serde_json::to_string(&receipt)?,serde_json::to_string(&member_snapshots)?])?;
         for member in members {
             tx.execute(
                 "INSERT INTO worktree_project_reservations(project_id,operation_id) VALUES(?1,?2)",
@@ -694,10 +844,10 @@ pub(crate) fn map_git(error: git_worktree::GitWorktreeError) -> WorktreeError {
 }
 
 impl crate::store::Store {
-    pub(crate) fn registered_worktree_root(
+    pub(crate) fn registered_worktree_origin(
         &self,
         receipt: &WorktreeReceipt,
-    ) -> Result<Option<RootIdentity>> {
+    ) -> Result<Option<WorktreeOrigin>> {
         if receipt.state != WorktreeState::Succeeded {
             return Ok(None);
         }
@@ -706,15 +856,816 @@ impl crate::store::Store {
         let (source,raw):(String,String)=db.query_row("SELECT source_project_id,identity FROM project_worktree_origins WHERE project_id=?1 AND operation_id=?2",params![project.0,receipt.operation_id],|r|Ok((r.get(0)?,r.get(1)?)))?;
         let origin: WorktreeOrigin =
             serde_json::from_str(&raw).map_err(|_| WorktreeError::Corrupt)?;
+        let plan: PersistedWorktreePlan = serde_json::from_str(&db.query_row(
+            "SELECT plan FROM worktree_operations WHERE operation_id=?1",
+            [&receipt.operation_id],
+            |r| r.get::<_, String>(0),
+        )?)
+        .map_err(|_| WorktreeError::Corrupt)?;
+        plan.validate().map_err(|_| WorktreeError::Corrupt)?;
+        origin.validate(&plan)?;
         ensure!(
-            origin.version == 1
-                && source == receipt.source_project_id.0
-                && origin.root == crate::project_config::root_tx(&db, project)?
-                && origin.root.canonical_path() == std::path::Path::new(&receipt.target_path)
-                && origin.head_oid == receipt.expected_head
-                && origin.branch_ref == format!("refs/heads/{}", receipt.branch),
+            source == receipt.source_project_id.0
+                && origin.root == crate::project_config::root_tx(&db, project)?,
             WorktreeError::Corrupt
         );
-        Ok(Some(origin.root))
+        Ok(Some(origin))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{domain::*, engine::Engine, project_config::*, store::Store};
+    use std::{
+        path::{Path, PathBuf},
+        sync::Arc,
+    };
+
+    fn raw(root: &Path, args: &[&str]) -> String {
+        let out = std::process::Command::new("git")
+            .current_dir(root)
+            .args(args)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env(
+                "GIT_CONFIG_GLOBAL",
+                if cfg!(windows) { "NUL" } else { "/dev/null" },
+            )
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    }
+    struct Fixture {
+        _temp: tempfile::TempDir,
+        source: PathBuf,
+        parent: PathBuf,
+        db: PathBuf,
+        store: Arc<Store>,
+        project: Project,
+        head: String,
+    }
+    impl Fixture {
+        fn new() -> Self {
+            let temp = tempfile::tempdir().unwrap();
+            let source = temp.path().join("source");
+            let parent = temp.path().join("targets");
+            let host = temp.path().join("host");
+            for path in [&source, &parent, &host] {
+                std::fs::create_dir(path).unwrap();
+            }
+            raw(&source, &["init", "--quiet"]);
+            raw(&source, &["config", "user.name", "Fixture"]);
+            raw(
+                &source,
+                &["config", "user.email", "fixture@example.invalid"],
+            );
+            raw(&source, &["config", "core.autocrlf", "false"]);
+            std::fs::write(source.join("a.txt"), "baseline\n").unwrap();
+            raw(&source, &["add", "--", "a.txt"]);
+            raw(&source, &["commit", "--quiet", "-m", "baseline"]);
+            let head = raw(&source, &["rev-parse", "HEAD"]).trim().to_owned();
+            let db = host.join("host.db");
+            let store = Arc::new(Store::open(&db).unwrap());
+            store
+                .save_settings(&Settings {
+                    workspace: source.to_string_lossy().into(),
+                    max_concurrency: 2,
+                    routes: vec![],
+                    newapi: None,
+                })
+                .unwrap();
+            let project = store
+                .register_project(RegisterProject {
+                    name: "Source".into(),
+                    root_path: source.to_string_lossy().into(),
+                    idempotency_key: id(),
+                })
+                .unwrap();
+            Self {
+                _temp: temp,
+                source,
+                parent,
+                db,
+                store,
+                project,
+                head,
+            }
+        }
+        fn request(&self) -> CreateWorktree {
+            CreateWorktree {
+                source_project_id: self.project.id.clone(),
+                name: "Created".into(),
+                parent_path: self.parent.to_string_lossy().into(),
+                expected_config_revision: self
+                    .store
+                    .project_config(&self.project.id)
+                    .unwrap()
+                    .revision,
+                expected_head: self.head.clone(),
+                idempotency_key: id(),
+            }
+        }
+        async fn plan(&self, request: &CreateWorktree) -> PersistedWorktreePlan {
+            let root = RootIdentity::capture(&self.source).unwrap();
+            let context = crate::git_worktree::GitContext::new(vec![root.clone()]).unwrap();
+            crate::git_worktree::prepare(
+                &context,
+                &root,
+                &RootIdentity::capture(Path::new(&request.parent_path)).unwrap(),
+                &id(),
+                &request.expected_head,
+            )
+            .await
+            .unwrap()
+            .into_persisted_plan()
+        }
+        async fn claim(&self) -> (CreateWorktree, WorktreeReceipt, PersistedWorktreePlan) {
+            let request = self.request();
+            let plan = self.plan(&request).await;
+            let receipt = self
+                .store
+                .claim_worktree(
+                    &request,
+                    &self.store.worktree_inventory().unwrap(),
+                    std::slice::from_ref(&self.project.id),
+                    &plan,
+                )
+                .unwrap()
+                .0;
+            (request, receipt, plan)
+        }
+        fn count(&self, table: &str) -> i64 {
+            self.store
+                .db
+                .lock()
+                .unwrap()
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap()
+        }
+    }
+    #[tokio::test]
+    async fn n13_success_defaults_replay_and_diagnosis_are_read_only() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let mut request = f.request();
+        request.expected_head.make_ascii_uppercase();
+        // An ordinary ancestor parent is allowed; only the actual generated leaf must be disjoint.
+        request.parent_path = f._temp.path().to_string_lossy().replace('\\', "/");
+        let old_selection = serde_json::to_value(f.store.current_project().unwrap()).unwrap();
+        let index = std::fs::read(f.source.join(".git/index")).unwrap();
+        let receipt = engine
+            .create_project_worktree(request.clone())
+            .await
+            .unwrap();
+        assert_eq!(receipt.state, WorktreeState::Succeeded, "{receipt:?}");
+        assert_eq!(receipt.expected_head, f.head);
+        assert_eq!(receipt.parent_path, request.parent_path);
+        let project = receipt.project_id.as_ref().unwrap();
+        assert_eq!(
+            f.store.project_config(project).unwrap().config,
+            ProjectConfig::default()
+        );
+        assert_eq!(
+            serde_json::to_value(f.store.current_project().unwrap()).unwrap(),
+            old_selection
+        );
+        for table in ["network_authorizations", "tasks", "runs"] {
+            assert_eq!(f.count(table), 0, "{table}");
+        }
+        assert_eq!(f.count("project_worktree_origins"), 1);
+        assert_eq!(f.count("worktree_project_reservations"), 0);
+        assert_eq!(raw(&f.source, &["rev-parse", "HEAD"]).trim(), f.head);
+        assert_eq!(std::fs::read(f.source.join(".git/index")).unwrap(), index);
+        let branches = raw(&f.source, &["show-ref"]);
+        let inspected = engine
+            .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            inspected.observation.state,
+            WorktreeObservationState::PresentMatching
+        );
+        assert_eq!(inspected.receipt, receipt);
+        assert_eq!(raw(&f.source, &["show-ref"]), branches);
+        // Pure replay occurs before a now-invalid current Git tree or permission revision.
+        std::fs::write(f.source.join("untracked.txt"), "dirty").unwrap();
+        let config = f.store.project_config(&f.project.id).unwrap();
+        f.store
+            .configure_project(ConfigureProject {
+                project_id: f.project.id.clone(),
+                expected_revision: config.revision,
+                config: config.config,
+            })
+            .unwrap();
+        assert_eq!(
+            engine
+                .create_project_worktree(request.clone())
+                .await
+                .unwrap(),
+            receipt
+        );
+        let mut different = request;
+        different.name.push('x');
+        assert_eq!(
+            engine
+                .create_project_worktree(different)
+                .await
+                .unwrap_err()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::IdempotencyConflict)
+        );
+        assert_eq!(raw(&f.source, &["show-ref"]), branches);
+        assert_eq!(
+            Store::open(&f.db)
+                .unwrap()
+                .worktree_receipt(&f.project.id, &receipt.operation_id)
+                .unwrap(),
+            receipt
+        );
+    }
+    #[tokio::test]
+    async fn n13_all_terminal_replays_and_recovery_keep_unknown_reserved() {
+        for state in [
+            WorktreeState::Rejected,
+            WorktreeState::Unknown,
+            WorktreeState::Claimed,
+        ] {
+            let f = Fixture::new();
+            let (request, receipt, plan) = f.claim().await;
+            let expected = if state == WorktreeState::Claimed {
+                receipt.clone()
+            } else {
+                f.store
+                    .finish_worktree(
+                        &receipt,
+                        None,
+                        Some((
+                            state,
+                            if state == WorktreeState::Unknown {
+                                WorktreeCause::ProcessOutcomeUnknown
+                            } else {
+                                WorktreeCause::Conflict
+                            },
+                        )),
+                    )
+                    .unwrap()
+            };
+            let engine = Engine::new(f.store.clone(), 2).unwrap();
+            std::fs::write(f.source.join("dirty"), "dirty").unwrap();
+            assert_eq!(
+                engine
+                    .create_project_worktree(request.clone())
+                    .await
+                    .unwrap(),
+                expected
+            );
+            assert!(!plan.target_path().exists());
+            assert_eq!(f.count("project_worktree_origins"), 0);
+            assert_eq!(
+                f.count("worktree_project_reservations"),
+                if state == WorktreeState::Rejected {
+                    0
+                } else {
+                    1
+                }
+            );
+            let reopened = Store::open(&f.db).unwrap();
+            reopened.recover().unwrap();
+            let recovered = reopened
+                .worktree_receipt(&f.project.id, &receipt.operation_id)
+                .unwrap();
+            if state == WorktreeState::Claimed {
+                assert_eq!(recovered.state, WorktreeState::Unknown);
+                assert_eq!(recovered.cause, Some(WorktreeCause::Interrupted));
+            } else {
+                assert_eq!(recovered, expected);
+            }
+            reopened.recover().unwrap();
+            assert_eq!(
+                reopened
+                    .worktree_receipt(&f.project.id, &receipt.operation_id)
+                    .unwrap(),
+                recovered
+            );
+            assert!(!plan.target_path().exists());
+            assert_eq!(raw(&f.source, &["branch", "--list", &receipt.branch]), "");
+        }
+    }
+    #[tokio::test]
+    async fn n13_same_database_two_store_claim_race_has_one_winner() {
+        let f = Fixture::new();
+        let first = f.request();
+        let second = f.request();
+        let a = f.plan(&first).await;
+        let b = f.plan(&second).await;
+        let inventory = f.store.worktree_inventory().unwrap();
+        let other = Arc::new(Store::open(&f.db).unwrap());
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let handles: Vec<_> = [(f.store.clone(), first, a), (other, second, b)]
+            .into_iter()
+            .map(|(store, request, plan)| {
+                let inventory = inventory.clone();
+                let member = f.project.id.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    store.claim_worktree(&request, &inventory, &[member], &plan)
+                })
+            })
+            .collect();
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        assert_eq!(results.iter().filter(|r| r.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .into_iter()
+                .find_map(Result::err)
+                .unwrap()
+                .downcast_ref::<WorktreeError>(),
+            Some(&WorktreeError::Busy)
+        );
+        assert_eq!(f.count("worktree_operations"), 1);
+        assert_eq!(f.count("worktree_project_reservations"), 1);
+        assert_eq!(std::fs::read_dir(&f.parent).unwrap().count(), 0);
+    }
+    #[tokio::test]
+    async fn n13_cancelled_task_unresolved_restore_or_write_blocks_claim() {
+        let f = Fixture::new();
+        let request = f.request();
+        let plan = f.plan(&request).await;
+        let inventory = f.store.worktree_inventory().unwrap();
+        // Persist the cancelled Task independently from its filesystem outcome.
+        let db = f.store.db.lock().unwrap();
+        db.execute(
+            "INSERT INTO runs(id,title,created_at) VALUES('run','Fixture',1)",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            r#"INSERT INTO tasks(id,run_id,value) VALUES('task','run','{"status":"cancelled"}')"#,
+            [],
+        )
+        .unwrap();
+        db.execute("INSERT INTO task_project_bindings(task_id,project_id,value,provenance) VALUES('task',?1,'{}','native_v1')",[&f.project.id.0]).unwrap();
+        db.execute_batch("INSERT INTO workspace_changes(id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,state,restore_state,created_at) VALUES('change','task','call','digest','digest','[]','a.txt','a.txt','created','finished','pending',1);
+          INSERT INTO workspace_restores(id,task_id,status,created_at) VALUES('restore','task','partial',1);
+          INSERT INTO workspace_restore_outcomes(restore_id,change_id,path,status,updated_at) VALUES('restore','change','a.txt','unknown',1);").unwrap();
+        drop(db);
+        for (parent, outcome, state, restored) in [
+            ("partial", "unknown", "finished", "pending"),
+            ("complete", "unknown", "finished", "pending"),
+            ("complete", "claimed", "finished", "pending"),
+            ("complete", "complete", "prepared", "pending"),
+            ("complete", "complete", "unknown", "pending"),
+            ("complete", "complete", "finished", "unknown"),
+        ] {
+            {
+                let db = f.store.db.lock().unwrap();
+                db.execute("UPDATE workspace_restores SET status=?1", [parent])
+                    .unwrap();
+                db.execute("UPDATE workspace_restore_outcomes SET status=?1", [outcome])
+                    .unwrap();
+                db.execute(
+                    "UPDATE workspace_changes SET state=?1,restore_state=?2",
+                    params![state, restored],
+                )
+                .unwrap();
+            }
+            let err = f
+                .store
+                .claim_worktree(
+                    &request,
+                    &inventory,
+                    std::slice::from_ref(&f.project.id),
+                    &plan,
+                )
+                .unwrap_err();
+            assert_eq!(
+                err.downcast_ref::<WorktreeError>(),
+                Some(&WorktreeError::Busy),
+                "{parent}/{outcome}/{state}/{restored}"
+            );
+            assert_eq!(f.count("worktree_operations"), 0);
+            assert!(!plan.target_path().exists());
+        }
+        {
+            let db = f.store.db.lock().unwrap();
+            db.execute(
+                "UPDATE workspace_changes SET state='finished',restore_state='restored'",
+                [],
+            )
+            .unwrap();
+        }
+        assert!(
+            f.store
+                .claim_worktree(
+                    &request,
+                    &inventory,
+                    std::slice::from_ref(&f.project.id),
+                    &plan
+                )
+                .is_ok()
+        );
+    }
+    #[tokio::test]
+    async fn n13_persisted_request_plan_members_and_receipt_corruption_rejected_without_repair() {
+        for sql in [
+            "UPDATE worktree_operations SET request_digest=replace(request_digest,substr(request_digest,1,1),'z')",
+            "UPDATE worktree_operations SET plan=json_set(plan,'$.expected_head','0000000000000000000000000000000000000000')",
+            "DELETE FROM worktree_project_reservations",
+            "UPDATE worktree_operations SET members='[]'",
+            "UPDATE worktree_operations SET receipt=json_set(receipt,'$.updated_at',-1)",
+            "UPDATE worktree_operations SET receipt=json_set(receipt,'$.cause','interrupted')",
+        ] {
+            let f = Fixture::new();
+            let (_, _, _) = f.claim().await;
+            f.store.db.lock().unwrap().execute_batch(sql).unwrap();
+            let before = std::fs::read(&f.db).unwrap();
+            assert!(Store::open(&f.db).is_err(), "{sql}");
+            assert!(Store::open(&f.db).is_err(), "{sql}");
+            assert_eq!(std::fs::read(&f.db).unwrap(), before, "{sql}");
+        }
+    }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+    async fn n13_dropped_caller_owned_worker_still_registers_once() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let ready = std::sync::Mutex::new(Some(ready_tx));
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release = std::sync::Mutex::new(release_rx);
+        engine.set_worktree_probe_for_test(Arc::new(move |phase, _| {
+            if phase == crate::engine::WorktreeProbePhase::ClaimCommitted {
+                ready.lock().unwrap().take().unwrap().send(()).unwrap();
+                release
+                    .lock()
+                    .unwrap()
+                    .recv_timeout(std::time::Duration::from_secs(10))
+                    .unwrap();
+            }
+        }));
+        let request = f.request();
+        let e = engine.clone();
+        let r = request.clone();
+        let caller = tokio::spawn(async move { e.create_project_worktree(r).await });
+        tokio::time::timeout(std::time::Duration::from_secs(10), ready_rx)
+            .await
+            .unwrap()
+            .unwrap();
+        caller.abort();
+        assert!(caller.await.unwrap_err().is_cancelled());
+        assert_eq!(f.count("worktree_project_reservations"), 1);
+        release_tx.send(()).unwrap();
+        let receipt = tokio::time::timeout(std::time::Duration::from_secs(15), async {
+            loop {
+                let r = engine
+                    .lookup_project_worktree(&f.project.id, &request.idempotency_key)
+                    .unwrap();
+                if r.state != WorktreeState::Claimed {
+                    break r;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(receipt.state, WorktreeState::Succeeded);
+        assert_eq!(f.count("project_worktree_origins"), 1);
+        assert_eq!(
+            engine.create_project_worktree(request).await.unwrap(),
+            receipt
+        );
+    }
+    #[tokio::test]
+    async fn n13_origin_saved_admin_relationship_and_online_identity_are_enforced() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let receipt = engine.create_project_worktree(f.request()).await.unwrap();
+        assert_eq!(receipt.state, WorktreeState::Succeeded);
+        let raw: String = f
+            .store
+            .db
+            .lock()
+            .unwrap()
+            .query_row("SELECT identity FROM project_worktree_origins", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        let original: WorktreeOrigin = serde_json::from_str(&raw).unwrap();
+        for invalid in [
+            RootIdentity::capture(&f.source).unwrap(),
+            original.root.clone(),
+            original.common_dir.clone(),
+        ] {
+            let mut origin = original.clone();
+            origin.git_dir = invalid;
+            f.store
+                .db
+                .lock()
+                .unwrap()
+                .execute(
+                    "UPDATE project_worktree_origins SET identity=?1",
+                    [serde_json::to_string(&origin).unwrap()],
+                )
+                .unwrap();
+            for _ in 0..2 {
+                assert!(Store::open(&f.db).is_err());
+            }
+            assert!(
+                engine
+                    .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+                    .await
+                    .is_err()
+            );
+        }
+        f.store
+            .db
+            .lock()
+            .unwrap()
+            .execute("UPDATE project_worktree_origins SET identity=?1", [&raw])
+            .unwrap();
+        let admin = original.git_dir.canonical_path();
+        let moved = admin.with_file_name("saved-admin");
+        std::fs::rename(admin, &moved).unwrap();
+        std::fs::create_dir(admin).unwrap();
+        // Reopen is offline structural verification, not a requirement that the origin still exists.
+        let reopened = Store::open(&f.db).unwrap();
+        assert_eq!(
+            reopened
+                .worktree_receipt(&f.project.id, &receipt.operation_id)
+                .unwrap(),
+            receipt
+        );
+        let inspected = engine
+            .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            inspected.observation.state,
+            WorktreeObservationState::IdentityChanged
+        );
+        assert_eq!(inspected.receipt, receipt);
+        assert_eq!(f.count("worktree_project_reservations"), 0);
+    }
+    #[tokio::test]
+    async fn n13_diagnose_offline_source_and_other_project_are_observations_not_errors() {
+        for source_offline in [true, false] {
+            let f = Fixture::new();
+            let unrelated = f._temp.path().join("unrelated");
+            std::fs::create_dir(&unrelated).unwrap();
+            f.store
+                .register_project(RegisterProject {
+                    name: "Unrelated".into(),
+                    root_path: unrelated.to_string_lossy().into(),
+                    idempotency_key: id(),
+                })
+                .unwrap();
+            let (_, receipt, _) = f.claim().await;
+            let engine = Engine::new(f.store.clone(), 2).unwrap();
+            let path = if source_offline {
+                &f.source
+            } else {
+                &unrelated
+            };
+            std::fs::rename(path, path.with_file_name("moved")).unwrap();
+            let reopened = Store::open(&f.db).unwrap();
+            assert_eq!(
+                reopened
+                    .worktree_receipt(&f.project.id, &receipt.operation_id)
+                    .unwrap(),
+                receipt
+            );
+            for _ in 0..2 {
+                let inspected = engine
+                    .inspect_project_worktree(&f.project.id, &receipt.operation_id)
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    inspected.observation.state,
+                    if source_offline {
+                        WorktreeObservationState::IdentityChanged
+                    } else {
+                        WorktreeObservationState::Unavailable
+                    }
+                );
+                assert_eq!(inspected.receipt, receipt);
+                assert_eq!(f.count("worktree_project_reservations"), 1);
+            }
+            assert_eq!(f.count("projects"), 2);
+        }
+    }
+    #[test]
+    fn n13_real_process_three_durable_stops_kill_wait_recover_without_repeat() {
+        const TEST: &str = "worktree_management::tests::n13_real_process_three_durable_stops_kill_wait_recover_without_repeat";
+        if let Ok(root) = std::env::var("NHC_WORKTREE_B_CHILD") {
+            let root = PathBuf::from(root);
+            let phase = std::env::var("NHC_WORKTREE_B_PHASE").unwrap();
+            let request: CreateWorktree =
+                serde_json::from_slice(&std::fs::read(root.join("request.json")).unwrap()).unwrap();
+            let store = Arc::new(Store::open(&root.join("host/host.db")).unwrap());
+            let engine = Engine::new(store, 2).unwrap();
+            engine.set_worktree_probe_for_test(Arc::new(move |at, op| {
+                let matches = matches!(
+                    (phase.as_str(), at),
+                    ("claim", crate::engine::WorktreeProbePhase::ClaimCommitted)
+                        | (
+                            "created",
+                            crate::engine::WorktreeProbePhase::CreatedBeforeRegister
+                        )
+                        | (
+                            "registered",
+                            crate::engine::WorktreeProbePhase::RegisteredBeforeReply
+                        )
+                );
+                if matches {
+                    std::fs::write(root.join("ready"), op).unwrap();
+                    std::thread::sleep(std::time::Duration::from_secs(40));
+                    panic!("parent did not terminate stopped child");
+                }
+            }));
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(engine.create_project_worktree(request))
+                .unwrap();
+            panic!("child returned without stopping");
+        }
+        for phase in ["claim", "created", "registered"] {
+            let f = Fixture::new();
+            let request = f.request();
+            std::fs::write(
+                f._temp.path().join("request.json"),
+                serde_json::to_vec(&request).unwrap(),
+            )
+            .unwrap();
+            let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
+            let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
+            let output = std::fs::File::create(f._temp.path().join("child.log")).unwrap();
+            let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_WORKTREE_B_CHILD", f._temp.path())
+                .env("NHC_WORKTREE_B_PHASE", phase)
+                .stdout(output.try_clone().unwrap())
+                .stderr(output)
+                .spawn()
+                .unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+            while !f._temp.path().join("ready").exists() && std::time::Instant::now() < deadline {
+                if let Some(status) = child.try_wait().unwrap() {
+                    panic!(
+                        "{phase} child exited {status}: {}",
+                        std::fs::read_to_string(f._temp.path().join("child.log")).unwrap()
+                    );
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            if !f._temp.path().join("ready").exists() {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!("{phase} child stop timeout");
+            }
+            let operation = std::fs::read_to_string(f._temp.path().join("ready")).unwrap();
+            let stopped = f.store.worktree_receipt(&f.project.id, &operation).unwrap();
+            assert_eq!(
+                stopped.state,
+                if phase == "registered" {
+                    WorktreeState::Succeeded
+                } else {
+                    WorktreeState::Claimed
+                }
+            );
+            child.kill().unwrap();
+            let status = child.wait().unwrap();
+            assert!(!status.success());
+            eprintln!(
+                "N13 actual kill+wait phase={phase} child={} exit={status} operation={operation}",
+                child.id()
+            );
+            let refs = raw(&f.source, &["show-ref"]);
+            let list = raw(&f.source, &["worktree", "list", "--porcelain"]);
+            let reopened = Arc::new(Store::open(&f.db).unwrap());
+            reopened.recover().unwrap();
+            let recovered = reopened
+                .worktree_receipt(&f.project.id, &operation)
+                .unwrap();
+            assert_eq!(
+                recovered.state,
+                if phase == "registered" {
+                    WorktreeState::Succeeded
+                } else {
+                    WorktreeState::Unknown
+                }
+            );
+            assert_eq!(
+                f.count("projects"),
+                if phase == "registered" { 2 } else { 1 }
+            );
+            assert_eq!(
+                f.count("worktree_project_reservations"),
+                if phase == "registered" { 0 } else { 1 }
+            );
+            let engine = Engine::new(reopened.clone(), 2).unwrap();
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                assert_eq!(
+                    engine.create_project_worktree(request).await.unwrap(),
+                    recovered
+                );
+                for _ in 0..2 {
+                    let result = engine
+                        .inspect_project_worktree(&f.project.id, &operation)
+                        .await
+                        .unwrap();
+                    assert_eq!(result.receipt, recovered);
+                    assert_eq!(
+                        result.observation.state,
+                        if phase == "claim" {
+                            WorktreeObservationState::AbsentObserved
+                        } else {
+                            WorktreeObservationState::PresentMatching
+                        }
+                    );
+                }
+            });
+            reopened.recover().unwrap();
+            assert_eq!(
+                reopened
+                    .worktree_receipt(&f.project.id, &operation)
+                    .unwrap(),
+                recovered
+            );
+            assert_eq!(
+                f.count("worktree_project_reservations"),
+                if phase == "registered" { 0 } else { 1 }
+            );
+            assert_eq!(raw(&f.source, &["show-ref"]), refs);
+            assert_eq!(raw(&f.source, &["worktree", "list", "--porcelain"]), list);
+            assert_eq!(raw(&f.source, &["rev-parse", "HEAD"]), old_head);
+            assert_eq!(
+                std::fs::read(f.source.join(".git/index")).unwrap(),
+                old_index
+            );
+            for table in ["network_calls", "tasks", "runs"] {
+                assert_eq!(f.count(table), 0);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn n13_two_real_worktrees_cannot_substitute_each_others_saved_admin() {
+        let f = Fixture::new();
+        let engine = Engine::new(f.store.clone(), 2).unwrap();
+        let first = engine.create_project_worktree(f.request()).await.unwrap();
+        let second = engine.create_project_worktree(f.request()).await.unwrap();
+        assert_eq!(first.state, WorktreeState::Succeeded);
+        assert_eq!(second.state, WorktreeState::Succeeded);
+        let get_origin = |op: &str| -> WorktreeOrigin {
+            serde_json::from_str(
+                &f.store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .query_row(
+                        "SELECT identity FROM project_worktree_origins WHERE operation_id=?1",
+                        [op],
+                        |r| r.get::<_, String>(0),
+                    )
+                    .unwrap(),
+            )
+            .unwrap()
+        };
+        let mut origin = get_origin(&first.operation_id);
+        let other = get_origin(&second.operation_id);
+        assert_ne!(origin.git_dir, other.git_dir);
+        assert_eq!(origin.common_dir, other.common_dir);
+        origin.git_dir = other.git_dir;
+        f.store
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "UPDATE project_worktree_origins SET identity=?1 WHERE operation_id=?2",
+                params![serde_json::to_string(&origin).unwrap(), first.operation_id],
+            )
+            .unwrap();
+        // Both admins are structurally valid and exist; only the actual target's observed admin can disambiguate them.
+        drop(Store::open(&f.db).unwrap());
+        let refs = raw(&f.source, &["show-ref"]);
+        let rows = f.count("projects");
+        for _ in 0..2 {
+            let observed = engine
+                .inspect_project_worktree(&f.project.id, &first.operation_id)
+                .await
+                .unwrap();
+            assert_eq!(
+                observed.observation.state,
+                WorktreeObservationState::IdentityChanged
+            );
+            assert_eq!(observed.receipt, first);
+        }
+        assert_eq!(raw(&f.source, &["show-ref"]), refs);
+        assert_eq!(f.count("projects"), rows);
     }
 }

@@ -802,13 +802,31 @@ impl Engine {
         use crate::{git_worktree as git, worktree_management::*};
         let receipt = self.store.worktree_receipt(source, operation)?;
         let plan = self.store.worktree_plan(source, operation)?;
-        let roots = self.store.worktree_inventory()?.roots()?;
+        let roots = self.store.worktree_inventory()?.snapshots()?;
         let ctx =
             git::GitContext::new(roots.into_iter().map(|(_, r)| r).collect()).map_err(map_git)?;
-        let registered = self.store.registered_worktree_root(&receipt)?;
-        let actual = git::diagnose(&ctx, &plan, registered.as_ref())
-            .await
-            .map_err(map_git)?;
+        let registered = self.store.registered_worktree_origin(&receipt)?;
+        if registered.as_ref().is_some_and(|o| !o.identities_match()) {
+            return Ok(WorktreeInspection {
+                observation: WorktreeObservation {
+                    operation_id: receipt.operation_id.clone(),
+                    observed_at: crate::domain::now() as i64,
+                    state: WorktreeObservationState::IdentityChanged,
+                    reason_codes: vec![WorktreeObservationReason::IdentityChanged],
+                    observed_head: None,
+                    observed_branch: None,
+                },
+                receipt,
+            });
+        }
+        let actual = git::diagnose(
+            &ctx,
+            &plan,
+            registered.as_ref().map(|o| &o.root),
+            registered.as_ref().map(|o| &o.git_dir),
+        )
+        .await
+        .map_err(map_git)?;
         let observation: WorktreeObservation =
             serde_json::from_value(serde_json::to_value(actual)?)
                 .map_err(|_| WorktreeError::Corrupt)?;
@@ -2888,7 +2906,7 @@ mod workspace_phase_tests {
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
             // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
-            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
             {
                 let tx = db.unchecked_transaction().unwrap();
                 crate::repository::apply_schema_12(&tx).unwrap();
@@ -2925,7 +2943,7 @@ mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 13);
+            assert_eq!(engine.store.schema_version().unwrap(), 14);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.2.0");
@@ -2933,7 +2951,25 @@ mod workspace_phase_tests {
             assert_eq!(current.desired.revision, 1);
             assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });
             let mut expected = before.clone();
+            for name in [
+                "worktree_operations",
+                "worktree_project_reservations",
+                "project_worktree_origins",
+            ] {
+                assert!(expected.insert(name.into(), vec![]).is_none());
+            }
             let after = all_rows(&db);
+            let worktree_markers: Vec<_> = after["schema_migrations"]
+                .iter()
+                .filter(|row| {
+                    row[1]
+                        == rusqlite::types::Value::Text(
+                            crate::repository::WORKTREE_MIGRATION_ID.into(),
+                        )
+                })
+                .cloned()
+                .collect();
+            assert_eq!(worktree_markers.len(), 1);
             let shell_rows: Vec<_> = after["plugin_desired"]
                 .iter()
                 .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
@@ -2961,6 +2997,10 @@ mod workspace_phase_tests {
                 .get_mut("schema_migrations")
                 .unwrap()
                 .extend(marker_rows);
+            expected
+                .get_mut("schema_migrations")
+                .unwrap()
+                .extend(worktree_markers);
             assert_eq!(after, expected);
             drop(Store::open(&path).unwrap());
             assert_eq!(all_rows(&db), expected);
@@ -3242,7 +3282,7 @@ mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3297,9 +3337,17 @@ mod workspace_phase_tests {
         assert_eq!(n10_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 13);
+        assert_eq!(migrated.schema_version().unwrap(), 14);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
+        let mut before = before;
+        for name in [
+            "worktree_operations",
+            "worktree_project_reservations",
+            "project_worktree_origins",
+        ] {
+            assert!(before.insert(name.into(), vec![]).is_none());
+        }
         assert_eq!(n10_rows(&db), before);
         let reopened = Engine::new(migrated, 2).unwrap();
         n10_set(&reopened, false, 0, "off");
