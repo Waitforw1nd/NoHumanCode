@@ -169,7 +169,7 @@ const SET: [&str; 9] = [
 ];
 #[tokio::test]
 async fn f09_actual_cli_uses_authenticated_get_put_and_preserves_response() {
-    let s = status();
+    let s = versioned_status("1.1.0");
     let r = result(false);
     let h = Host::new(vec![
         (200, json!({"plugins":[s.clone()]})),
@@ -400,7 +400,7 @@ async fn l07_known_versions_preserve_json_and_human_reports_validated_tool_scope
 async fn l07_unknown_mixed_or_arbitrary_tool_maps_are_rejected_without_retry() {
     let mut cases = vec![];
     let mut unknown = versioned_status("1.1.0");
-    unknown["version"] = json!("1.2.0");
+    unknown["version"] = json!("9.0.0");
     cases.push(unknown);
     for (version, other) in [("1.0.0", "1.1.0"), ("1.1.0", "1.0.0")] {
         for field in ["affected_tools", "compat_tools"] {
@@ -426,4 +426,186 @@ async fn l07_unknown_mixed_or_arbitrary_tool_maps_are_rejected_without_retry() {
         assert_eq!(h.state.requests.lock().unwrap().len(), 2);
         h.no_files();
     }
+}
+
+fn shell_status() -> Value {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = Engine::new(
+        Arc::new(Store::open(&dir.path().join("host.sqlite3")).unwrap()),
+        1,
+    )
+    .unwrap();
+    serde_json::to_value(engine.plugin_status("builtin.shell").unwrap()).unwrap()
+}
+fn shell_result() -> Value {
+    let mut current = shell_status();
+    current["desired"]["enabled"] = json!(false);
+    current["desired"]["revision"] = json!(1);
+    current["runtime"]["state"] = json!("stopped");
+    current["runtime"]["admission_open"] = json!(false);
+    current["runtime"]["providers"] = json!([]);
+    current["runtime"]["effects_count"] = json!(0);
+    for instance in current["runtime"]["instances"].as_array_mut().unwrap() {
+        instance["state"] = json!("stopped");
+    }
+    current["blocked_reason"] = json!("disabled");
+    json!({"receipt":{"plugin_id":"builtin.shell","enabled":false,"previous_revision":0,"revision":1,"committed_at":123},"replayed":false,"current":current})
+}
+#[tokio::test]
+async fn s10_current_catalog_shell_status_mutation_and_human_boundary() {
+    let files = status();
+    let shell = shell_status();
+    assert_eq!(files["version"], "1.2.0");
+    assert_eq!(shell["version"], "1.0.0");
+    let catalog = json!({"plugins":[files.clone(),shell.clone()]});
+    let receipt = shell_result();
+    let h = Host::new(vec![
+        (200, catalog.clone()),
+        (200, json!({"plugin":files.clone()})),
+        (200, json!({"plugin":shell.clone()})),
+        (200, receipt.clone()),
+        (200, json!({"plugin":shell.clone()})),
+    ])
+    .await;
+    assert_eq!(stdout(&h.cli(&["plugin", "list"]).await, 0), catalog);
+    assert_eq!(
+        stdout(&h.cli(&["plugin", "status", "builtin.files"]).await, 0),
+        json!({"plugin":files})
+    );
+    assert_eq!(
+        stdout(&h.cli(&["plugin", "status", "builtin.shell"]).await, 0),
+        json!({"plugin":shell.clone()})
+    );
+    let args = [
+        "plugin",
+        "set-enabled",
+        "builtin.shell",
+        "--enabled",
+        "false",
+        "--expected-revision",
+        "0",
+        "--key",
+        "shell-key",
+    ];
+    assert_eq!(stdout(&h.cli(&args).await, 0), receipt);
+    let output = tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"))
+            .arg("--port")
+            .arg(h.port.to_string())
+            .args(["plugin", "status", "builtin.shell"])
+            .current_dir(h.cwd.path())
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let human = String::from_utf8(output.stdout).unwrap();
+    for expected in [
+        "影响 run_command；run_wasm 为 compat",
+        "不受文件 write_scopes 限制",
+        "无 OS 出站或目录沙箱",
+        "禁用不取消已准入命令",
+    ] {
+        assert!(human.contains(expected), "{human}");
+    }
+    let requests = h.state.requests.lock().unwrap();
+    assert_eq!(requests[3].1, "/api/plugins/builtin.shell/enabled");
+    assert_eq!(requests[3].4.as_deref(), Some("shell-key"));
+    h.no_files();
+}
+#[tokio::test]
+async fn s10_reject_invalid_catalogs_and_cross_plugin_responses() {
+    let f = status();
+    let s = shell_status();
+    let old = versioned_status("1.1.0");
+    for plugins in [
+        json!([]),
+        json!([f.clone()]),
+        json!([s.clone()]),
+        json!([s.clone(), f.clone()]),
+        json!([f.clone(), f.clone()]),
+        json!([old.clone(), s.clone()]),
+        json!([f.clone(), s.clone(), s.clone()]),
+        json!([old.clone(), old]),
+    ] {
+        let h = Host::new(vec![(200, json!({"plugins":plugins}))]).await;
+        assert_eq!(
+            failure(&h.cli(&["plugin", "list"]).await)["code"],
+            "internal"
+        );
+        assert_eq!(h.state.requests.lock().unwrap().len(), 1);
+    }
+    let mut bad_id = s.clone();
+    bad_id["plugin_id"] = json!("builtin.other");
+    bad_id["desired"]["plugin_id"] = json!("builtin.other");
+    let mut bad_version = s.clone();
+    bad_version["version"] = json!("1.1.0");
+    let mut mixed = s.clone();
+    mixed["affected_tools"] = f["affected_tools"].clone();
+    let mut dependent = s.clone();
+    dependent["affected_dependents"] = json!(["builtin.engine-tools"]);
+    for invalid in [bad_id, bad_version, mixed, dependent, f] {
+        let mut r = shell_result();
+        r["current"] = invalid.clone();
+        r["current"]["desired"]["revision"] = json!(1);
+        let h = Host::new(vec![(200, json!({"plugin":invalid})), (200, r)]).await;
+        assert_eq!(
+            failure(&h.cli(&["plugin", "status", "builtin.shell"]).await)["code"],
+            "internal"
+        );
+        assert_eq!(
+            failure(
+                &h.cli(&[
+                    "plugin",
+                    "set-enabled",
+                    "builtin.shell",
+                    "--enabled",
+                    "false",
+                    "--expected-revision",
+                    "0",
+                    "--key",
+                    "bad"
+                ])
+                .await
+            )["code"],
+            "operation_result_unknown"
+        );
+        assert_eq!(h.state.requests.lock().unwrap().len(), 2);
+    }
+}
+#[tokio::test]
+async fn s10_shell_unconverged_success_and_unknown_manual_replay_are_preserved() {
+    let mut result = shell_result();
+    result["current"]["converged"] = json!(false);
+    result["current"]["runtime"]["state"] = json!("failed");
+    result["current"]["blocked_reason"] = json!("runtime_failed");
+    let args = [
+        "plugin",
+        "set-enabled",
+        "builtin.shell",
+        "--enabled",
+        "false",
+        "--expected-revision",
+        "0",
+        "--key",
+        "original-shell",
+    ];
+    let h = Host::new(vec![(200, result.clone())]).await;
+    assert_eq!(stdout(&h.cli(&args).await, 1), result);
+    let mut replay = shell_result();
+    replay["replayed"] = json!(true);
+    let h = Host::new(vec![(0, Value::Null), (200, replay.clone())]).await;
+    assert_eq!(
+        failure(&h.cli(&args).await)["code"],
+        "operation_result_unknown"
+    );
+    assert_eq!(h.state.requests.lock().unwrap().len(), 1);
+    assert_eq!(stdout(&h.cli(&args).await, 0), replay);
+    let requests = h.state.requests.lock().unwrap();
+    assert_eq!(requests[0], requests[1]);
+    h.no_files();
 }
