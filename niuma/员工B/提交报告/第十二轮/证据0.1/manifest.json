@@ -1,0 +1,103 @@
+{
+  "version": "0.1",
+  "status": "checkpoint_not_final",
+  "source_is_immutable": true,
+  "items": [
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/compile-01.log",
+      "published": "compile-01.log",
+      "source_sha256": "50b2f45647e440766d127482116f8711ae6db9047033537d43a3efd02dec3d74",
+      "published_sha256": "b625e1940123fe8e647e8a2badf0f35a3e1015baf88d3c8084025030dfc9353c",
+      "path_changes": [
+        {
+          "old": "E:\\code\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/compile-01.log.json",
+      "published": "compile-01.log.json",
+      "source_sha256": "46da0f169189561019698df0b6e07153dcac7dbc048a03b1cf3c74b45ecf6c38",
+      "published_sha256": "fbcc1e83e27270d352682a6809745619e26ea12e2c7c25b0368eb9fb266703c1",
+      "path_changes": [
+        {
+          "old": "E:\\\\code\\\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/compile-02.log",
+      "published": "compile-02.log",
+      "source_sha256": "7cffa13a7b7fdb16114470706922a90d11f0486f98bcff2fc15a3dc1e6833978",
+      "published_sha256": "48a0a34967e619d4ec80e564c227e2113579321fae38e09681137cefac83f2ce",
+      "path_changes": [
+        {
+          "old": "E:\\code\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/compile-02.log.json",
+      "published": "compile-02.log.json",
+      "source_sha256": "78332a94a139bc0c8ebae0bef0bd625cd8273ddbd7fba126ff1a11e3a60ef5ed",
+      "published_sha256": "8fe8c4ff249b495db1f356f14ee04dd07cfb8920c08409234d070c36ff30ed82",
+      "path_changes": [
+        {
+          "old": "E:\\\\code\\\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/worktree-01.log",
+      "published": "worktree-01.log",
+      "source_sha256": "454dc00dcf494f76be6a491fa2b46bdb624ca1dd44432c15730bfd42400630c8",
+      "published_sha256": "b27754f3360a49703f754ea712be0845bb815ec7151c690f2b8e042185dc8408",
+      "path_changes": [
+        {
+          "old": "E:\\code\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/worktree-01.log.json",
+      "published": "worktree-01.log.json",
+      "source_sha256": "ee1a85fe528388dda1ab5af64a8257e1f1771f1d1994fef9f114be33664b2101",
+      "published_sha256": "e96b2d15cb16aefcfe83f3dcbfdc061e670e1cb364337ae62fac59d82dba10fc",
+      "path_changes": [
+        {
+          "old": "E:\\\\code\\\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/schema14-01.log",
+      "published": "schema14-01.log",
+      "source_sha256": "7bd8beebb0668e035595f6bf71647865d62f6204415ef8e6d7dc8329683a97f8",
+      "published_sha256": "3410a31f4dc6303803cc8b9c63117481a9abea96262e8e48e05e544241044e01",
+      "path_changes": [
+        {
+          "old": "E:\\code\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    },
+    {
+      "source": "../nhc-b-worktree-management/.local/review-evidence/schema14-01.log.json",
+      "published": "schema14-01.log.json",
+      "source_sha256": "8d8385e30608219324ceea96d32ac377f7e16bbe065ee56038dc5de9266f4cce",
+      "published_sha256": "a446e2b9f44b0ddb90c51f10ebf83dd6e36704a121e2656f75d6bb71794c29e0",
+      "path_changes": [
+        {
+          "old": "E:\\\\code\\\\nhc-b-worktree-management",
+          "new": "../nhc-b-worktree-management"
+        }
+      ]
+    }
+  ]
+}

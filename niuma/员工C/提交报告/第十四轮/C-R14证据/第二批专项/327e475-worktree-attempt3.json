@@ -1,0 +1,27 @@
+{
+  "label": "327e475-worktree-attempt3",
+  "started_utc": "2026-09-27T16:11:59.7435568Z",
+  "head": "327e47564e5e84340f2d2978ce5e251d3c806821",
+  "source_tree": "4ae1ac8be7e63620a4e092e0e0cbd97026dabf92",
+  "rust_tree": "419969c978efd0034048a0488d2f942e1bf44427",
+  "status_before": [],
+  "command": "cargo test --locked --test worktree_cli --test worktree_http",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "environment": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "VSINSTALLDIR": "<machine-msvc>",
+    "CARGO_BUILD_JOBS": "2",
+    "TMP": "../nhc-c-worktree-interface\\.local\\tmp",
+    "CARGO_TARGET_DIR": "../nhc-c-worktree-interface\\.local\\target",
+    "CARGO_INCREMENTAL": "0",
+    "TEMP": "../nhc-c-worktree-interface\\.local\\tmp"
+  },
+  "finished_utc": "2026-09-27T16:12:20.4852547Z",
+  "exit_code": 101,
+  "status_after": [],
+  "head_after": "327e47564e5e84340f2d2978ce5e251d3c806821",
+  "source_after": "4ae1ac8be7e63620a4e092e0e0cbd97026dabf92",
+  "rust_after": "419969c978efd0034048a0488d2f942e1bf44427"
+}

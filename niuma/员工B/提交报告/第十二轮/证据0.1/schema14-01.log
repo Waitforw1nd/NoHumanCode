@@ -1,0 +1,12 @@
+   Compiling peachsh v0.2.0 (../nhc-b-worktree-management\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 18.55s
+     Running unittests src\lib.rs (../nhc-b-worktree-management\.local\target-r12\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 4 tests
+test repository::worktree_schema_tests::n13_schema_concurrent_open_serializes_migration ... ok
+test repository::worktree_schema_tests::n13_schema_nonempty_true13_rows_preserved_and_reopen_is_read_only ... ok
+test repository::worktree_schema_tests::n13_schema_marker_failure_rolls_back_every_new_object ... ok
+test repository::worktree_schema_tests::n13_schema_corrupt14_is_rejected_without_self_repair ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 166 filtered out; finished in 0.22s
+

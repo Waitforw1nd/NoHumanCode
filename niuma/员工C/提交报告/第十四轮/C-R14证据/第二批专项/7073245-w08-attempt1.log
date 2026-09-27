@@ -1,0 +1,9 @@
+   Compiling peachsh v0.2.0 (../nhc-c-worktree-interface\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 23.39s
+     Running unittests src\lib.rs (../nhc-c-worktree-interface\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 1 test
+test server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 167 filtered out; finished in 18.58s
+

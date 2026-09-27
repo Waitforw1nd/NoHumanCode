@@ -1,0 +1,6 @@
+{
+  "command": "cargo test --locked --lib git_worktree::tests::w01 -- --nocapture",
+  "start_utc": "2026-09-27T15:50:42.9560490Z",
+  "end_utc": "2026-09-27T15:51:00.8143110Z",
+  "exit": 101
+}

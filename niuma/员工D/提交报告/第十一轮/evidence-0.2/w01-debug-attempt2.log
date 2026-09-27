@@ -1,0 +1,32 @@
+   Compiling peachsh v0.2.0 (<D-worktree>\NoManCode\rust-app)
+warning: method `set_worktree_probe_for_test` is never used
+   --> src\engine.rs:649:19
+    |
+554 | impl Engine {
+    | ----------- method in this implementation
+...
+649 |     pub(crate) fn set_worktree_probe_for_test(&self, probe: WorktreeProbe) {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `peachsh` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized] target(s) in 16.68s
+     Running unittests src\lib.rs (<D-worktree>\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 1 test
+configuration command failed: Some(128)
+
+thread 'git_worktree::tests::w01_real_worktree_and_registered_result_diagnosis_are_read_only' (29252) panicked at src\git_worktree.rs:1194:69:
+called `Result::unwrap()` on an `Err` value: Unsupported
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test git_worktree::tests::w01_real_worktree_and_registered_result_diagnosis_are_read_only ... FAILED
+
+failures:
+
+failures:
+    git_worktree::tests::w01_real_worktree_and_registered_result_diagnosis_are_read_only
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 159 filtered out; finished in 0.52s
+
+error: test failed, to rerun pass `--lib`

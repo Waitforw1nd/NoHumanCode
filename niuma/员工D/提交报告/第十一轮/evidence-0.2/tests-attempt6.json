@@ -1,0 +1,6 @@
+{
+  "command": "cargo test --locked --lib git_worktree::tests -- --test-threads=2",
+  "exit_code": 101,
+  "started_at": "2026-09-27T23:59:48.8999327+08:00",
+  "ended_at": "2026-09-27T23:59:49.3354092+08:00"
+}

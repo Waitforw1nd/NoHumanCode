@@ -1,0 +1,9 @@
+   Compiling peachsh v0.2.0 (<D-worktree>\NoManCode\rust-app)
+error[E0762]: unterminated character literal
+    --> src\git_worktree.rs:1678:78
+     |
+1678 |                         &format!("sh '{}'", script.to_string_lossy().replace('\', "/")),
+     |                                                                              ^^^^^^
+
+For more information about this error, try `rustc --explain E0762`.
+error: could not compile `peachsh` (lib test) due to 1 previous error

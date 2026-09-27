@@ -1,0 +1,6 @@
+{
+  "logged_at": "2026-09-27T15:52:10.6000344Z",
+  "note": "E0618 D local git_path shadowed function; test not executed",
+  "command": "build.ps1 -Action check",
+  "exit": 101
+}
