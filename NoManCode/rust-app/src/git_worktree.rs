@@ -10,7 +10,7 @@ use std::{
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
     process::Command,
-    time::{Instant, timeout_at},
+    time::{timeout_at, Instant},
 };
 
 const LIMIT: usize = 16 * 1024 * 1024;
@@ -52,8 +52,12 @@ impl RepositorySnapshot {
         self.common_dir
             .validate_snapshot()
             .map_err(|_| GitWorktreeError::Invalid)?;
+        let mut identity =
+            serde_json::to_value(&self.common_dir).map_err(|_| GitWorktreeError::Invalid)?;
+        identity["canonical_path"] =
+            serde_json::Value::String(path_key(self.common_dir.canonical_path()));
         Ok(digest(
-            &serde_json::to_vec(&self.common_dir).map_err(|_| GitWorktreeError::Invalid)?,
+            &serde_json::to_vec(&identity).map_err(|_| GitWorktreeError::Invalid)?,
         ))
     }
     fn validate(&self) -> Result<()> {
@@ -342,7 +346,7 @@ fn command(
                 .filter(|p| p.is_absolute())
                 .map(|p| p.join(if cfg!(windows) { "git.exe" } else { "git" }))
                 .filter_map(|p| p.canonicalize().ok())
-                .find(|p| p.is_file() && !excluded.iter().any(|r| p.starts_with(r)))
+                .find(|p| p.is_file() && !excluded.iter().any(|r| within(p, r)))
         })
         .ok_or(GitWorktreeError::Unavailable)?;
     let mut cmd = Command::new(executable);
@@ -383,6 +387,7 @@ fn command(
         "fetch.recurseSubmodules=false",
         "checkout.recurseSubmodules=false",
         "branch.autoSetupMerge=false",
+        "branch.autoSetupRebase=never",
         "worktree.guessRemote=false",
         "core.sparseCheckout=false",
         "core.protectNTFS=true",
@@ -391,14 +396,10 @@ fn command(
     }
     if let Some(p) = policy {
         verify_policy(p)?;
-        cmd.arg("-c").arg(format!(
-            "core.hooksPath={}",
-            p.hooks.to_str().ok_or(GitWorktreeError::Invalid)?
-        ));
-        cmd.arg("-c").arg(format!(
-            "core.attributesFile={}",
-            p.attributes.to_str().ok_or(GitWorktreeError::Invalid)?
-        ));
+        cmd.arg("-c")
+            .arg(format!("core.hooksPath={}", git_path(&p.hooks)?));
+        cmd.arg("-c")
+            .arg(format!("core.attributesFile={}", git_path(&p.attributes)?));
     } else {
         cmd.args([
             "-c",
@@ -460,12 +461,12 @@ fn aux_policy(claim: &ClaimedWorktree) -> Result<Policy> {
         &claim.plan.repository.common_dir,
     ]) {
         let path = verified(root)?;
-        if claim.host_aux.starts_with(&path) || path.starts_with(&claim.host_aux) {
+        if within(&claim.host_aux, &path) || within(&path, &claim.host_aux) {
             return Err(GitWorktreeError::Conflict);
         }
     }
     let target = claim.plan.target_path();
-    if claim.host_aux.starts_with(&target) || target.starts_with(&claim.host_aux) {
+    if within(&claim.host_aux, &target) || within(&target, &claim.host_aux) {
         return Err(GitWorktreeError::Conflict);
     }
     if claim.host_aux.file_name().and_then(|v| v.to_str()) != Some(claim.plan.operation_id.as_str())
@@ -525,12 +526,12 @@ async fn configuration(
     policy: Option<&Policy>,
 ) -> Result<String> {
     let common_path = verified(common)?;
-    let git_path = verified(git_dir)?;
+    let admin_path = verified(git_dir)?;
     for path in [
         common_path.join("objects/info/alternates"),
         common_path.join("objects/info/http-alternates"),
         common_path.join("config.worktree"),
-        git_path.join("config.worktree"),
+        admin_path.join("config.worktree"),
     ] {
         match std::fs::symlink_metadata(path) {
             Ok(_) => return Err(GitWorktreeError::Unsupported),
@@ -547,7 +548,7 @@ async fn configuration(
         &[
             "config",
             "--file",
-            config.to_str().ok_or(GitWorktreeError::Invalid)?,
+            &git_path(&config)?,
             "--no-includes",
             "--null",
             "--list",
@@ -676,6 +677,19 @@ async fn inspect_with(
         }
     }
     if clean {
+        // Git's assume-unchanged/skip-worktree bits can conceal dirty bytes.
+        let flags = git(ctx, &root, policy, &["ls-files", "-v", "-z"], LIMIT).await?;
+        if flags.code != Some(0) {
+            return Err(GitWorktreeError::Unavailable);
+        }
+        if flags
+            .bytes
+            .split(|b| *b == 0)
+            .filter(|v| !v.is_empty())
+            .any(|v| v.first() != Some(&b'H'))
+        {
+            return Err(GitWorktreeError::Unsupported);
+        }
         let state = git(
             ctx,
             &root,
@@ -805,7 +819,7 @@ fn validate_target(ctx: &GitContext, plan: &PersistedWorktreePlan) -> Result<()>
         &plan.repository.common_dir,
     ]) {
         let path = verified(root)?;
-        if target.starts_with(&path) || path.starts_with(&target) {
+        if within(&target, &path) || within(&path, &target) {
             return Err(GitWorktreeError::Conflict);
         }
     }
@@ -964,7 +978,7 @@ pub(crate) async fn execute_claimed(claim: ClaimedWorktree) -> Result<CreatedWor
             .strip_prefix("refs/heads/")
             .ok_or(GitWorktreeError::Invalid)?,
         "--",
-        target.to_str().ok_or(GitWorktreeError::Invalid)?,
+        &git_path(&target)?,
         &claim.plan.expected_head,
     ]);
     run(cmd, LIMIT, Instant::now() + Duration::from_secs(30), true).await?;
@@ -1105,18 +1119,47 @@ async fn absent_registration(ctx: &GitContext, plan: &PersistedWorktreePlan) -> 
     }
     Ok(true)
 }
-fn same_path(left: &Path, right: &Path) -> bool {
+fn git_path(path: &Path) -> Result<String> {
+    let value = path.to_str().ok_or(GitWorktreeError::Invalid)?;
     #[cfg(windows)]
     {
-        left.to_string_lossy()
-            .replace('/', "\\")
-            .eq_ignore_ascii_case(&right.to_string_lossy().replace('/', "\\"))
+        Ok(value
+            .strip_prefix(r"\\?\")
+            .unwrap_or(value)
+            .replace('\\', "/"))
     }
     #[cfg(not(windows))]
     {
-        left == right
+        Ok(value.to_owned())
     }
 }
+fn path_key(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        value
+            .replace('/', "\\")
+            .trim_start_matches("\\\\?\\")
+            .to_lowercase()
+    }
+    #[cfg(not(windows))]
+    {
+        value.into_owned()
+    }
+}
+fn within(path: &Path, root: &Path) -> bool {
+    let path = path_key(path);
+    let mut root = path_key(root);
+    if path == root {
+        return true;
+    }
+    root.push(if cfg!(windows) { '\\' } else { '/' });
+    path.starts_with(&root)
+}
+fn same_path(left: &Path, right: &Path) -> bool {
+    path_key(left) == path_key(right)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1274,40 +1317,34 @@ mod tests {
         }
         let f = Fixture::new();
         let plan = f.plan().await.into_persisted_plan();
-        assert!(
-            prepare(
-                &f.context,
-                &f.root,
-                &plan.target_parent,
-                &plan.operation_id,
-                "HEAD~1"
-            )
-            .await
-            .is_err()
-        );
-        assert!(
-            prepare(
-                &f.context,
-                &f.root,
-                &plan.target_parent,
-                &plan.operation_id,
-                &"0".repeat(40)
-            )
-            .await
-            .is_err()
-        );
+        assert!(prepare(
+            &f.context,
+            &f.root,
+            &plan.target_parent,
+            &plan.operation_id,
+            "HEAD~1"
+        )
+        .await
+        .is_err());
+        assert!(prepare(
+            &f.context,
+            &f.root,
+            &plan.target_parent,
+            &plan.operation_id,
+            &"0".repeat(40)
+        )
+        .await
+        .is_err());
         std::fs::create_dir(plan.target_path()).unwrap();
-        assert!(
-            prepare(
-                &f.context,
-                &f.root,
-                &plan.target_parent,
-                &plan.operation_id,
-                &plan.expected_head
-            )
-            .await
-            .is_err()
-        );
+        assert!(prepare(
+            &f.context,
+            &f.root,
+            &plan.target_parent,
+            &plan.operation_id,
+            &plan.expected_head
+        )
+        .await
+        .is_err());
         assert!(std::fs::read_dir(f.aux).unwrap().next().is_none());
     }
     #[tokio::test]
@@ -1393,6 +1430,9 @@ mod tests {
             &f.source,
             &["config", "core.fsmonitor", monitor.to_str().unwrap()],
         );
+        raw(&f.source, &["hook", "run", "post-checkout"]);
+        assert!(marker.exists(), "hook positive control must execute");
+        std::fs::remove_file(&marker).unwrap();
         let plan = f.plan().await.into_persisted_plan();
         execute_claimed(
             ClaimedWorktree::new(
@@ -1411,11 +1451,11 @@ mod tests {
         let f = Fixture::new();
         for (script, timeout) in [
             (
-                "[IO.File]::WriteAllText('partial','present'); exit 7",
+                "[IO.File]::WriteAllText('pid',[string]$PID); [IO.File]::WriteAllText('partial','present'); exit 7",
                 Duration::from_secs(3),
             ),
             (
-                "[IO.File]::WriteAllText('partial','present'); Start-Sleep -Seconds 20",
+                "[IO.File]::WriteAllText('pid',[string]$PID); [IO.File]::WriteAllText('partial','present'); Start-Sleep -Seconds 20",
                 Duration::from_secs(1),
             ),
         ] {
@@ -1439,6 +1479,323 @@ mod tests {
                 std::fs::read_to_string(f.aux.join("partial")).unwrap(),
                 "present"
             );
+            let pid = std::fs::read_to_string(f.aux.join("pid")).unwrap();
+            assert_pid_absent(pid.trim().parse().unwrap()).await;
         }
+    }
+    #[tokio::test]
+    async fn w04_special_repository_states_and_parent_replacement() {
+        for mode in ["unborn", "bare", "sha256"] {
+            let temp = tempfile::tempdir().unwrap();
+            let root = temp.path().join("repo");
+            std::fs::create_dir(&root).unwrap();
+            if mode == "bare" {
+                raw(&root, &["init", "--bare", "--quiet"]);
+            } else if mode == "sha256" {
+                raw(&root, &["init", "--object-format=sha256", "--quiet"]);
+            } else {
+                raw(&root, &["init", "--quiet"]);
+            }
+            let root = RootIdentity::capture(&root).unwrap();
+            let ctx = GitContext::new(vec![root.clone()]).unwrap();
+            assert!(inspect(&ctx, &root).await.is_err(), "{mode}");
+        }
+        let f = Fixture::new();
+        let plan = f.plan().await.into_persisted_plan();
+        let saved = f.parent.with_file_name("old-parent");
+        std::fs::rename(&f.parent, &saved).unwrap();
+        std::fs::create_dir(&f.parent).unwrap();
+        assert_eq!(
+            execute_claimed(
+                ClaimedWorktree::new(
+                    plan.clone(),
+                    f.aux.join(&plan.operation_id),
+                    vec![f.root.clone()]
+                )
+                .unwrap()
+            )
+            .await
+            .unwrap_err(),
+            GitWorktreeError::Conflict
+        );
+        assert!(!plan.target_path().exists());
+        let f = Fixture::new();
+        raw(&f.source, &["update-index", "--assume-unchanged", "a.txt"]);
+        std::fs::write(f.source.join("a.txt"), "hidden-dirty").unwrap();
+        assert_eq!(
+            inspect(&f.context, &f.root).await.unwrap_err(),
+            GitWorktreeError::Unsupported
+        );
+    }
+    #[tokio::test]
+    async fn w01_sibling_parent_and_w10_real_deleted_target_admin_residue() {
+        let f = Fixture::new();
+        let snapshot = inspect(&f.context, &f.root).await.unwrap();
+        let parent = RootIdentity::capture(f._temp.path()).unwrap();
+        let plan = prepare(
+            &f.context,
+            &f.root,
+            &parent,
+            &uuid::Uuid::new_v4().to_string(),
+            &snapshot.head_oid,
+        )
+        .await
+        .unwrap()
+        .into_persisted_plan();
+        let made = execute_claimed(
+            ClaimedWorktree::new(
+                plan.clone(),
+                f.aux.join(&plan.operation_id),
+                vec![f.root.clone()],
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            diagnose(&f.context, &plan, None).await.unwrap().state,
+            WorktreeObservationState::PresentMatching
+        );
+        // Only this freshly-created disposable fixture tree is removed. Keep the
+        // real Git admin entry, then delete only its fixture branch to expose D02.
+        let target = plan.target_path();
+        assert!(target.starts_with(f._temp.path().canonicalize().unwrap()));
+        std::fs::remove_dir_all(&target).unwrap();
+        raw(&f.source, &["update-ref", "-d", &plan.branch_ref]);
+        assert!(made.git_dir.canonical_path().exists());
+        assert!(!target.exists());
+        assert_eq!(
+            diagnose(&f.context, &plan, None).await.unwrap().state,
+            WorktreeObservationState::Partial
+        );
+        assert!(made.git_dir.canonical_path().exists());
+    }
+    #[test]
+    fn w04_structural_plan_validation_and_windows_path_aliases() {
+        #[cfg(windows)]
+        {
+            assert!(same_path(
+                Path::new(r"\\?\E:\Code\Repo"),
+                Path::new("e:/code/repo")
+            ));
+            assert!(within(
+                Path::new(r"\\?\E:\Code\Repo\git.exe"),
+                Path::new("e:/code/repo")
+            ));
+            assert!(!within(
+                Path::new("E:/code/repository"),
+                Path::new("E:/code/repo")
+            ));
+        }
+    }
+    #[tokio::test]
+    async fn w04_common_key_stable_across_windows_case_and_detached_head() {
+        let f = Fixture::new();
+        let snapshot = inspect(&f.context, &f.root).await.unwrap();
+        #[cfg(windows)]
+        {
+            let alias =
+                RootIdentity::capture(Path::new(&f.source.to_string_lossy().to_uppercase()))
+                    .unwrap();
+            let mut same = snapshot.clone();
+            same.common_dir = RootIdentity::capture(Path::new(
+                &snapshot
+                    .common_dir
+                    .canonical_path()
+                    .to_string_lossy()
+                    .to_uppercase(),
+            ))
+            .unwrap();
+            assert_eq!(snapshot.common_key().unwrap(), same.common_key().unwrap());
+            assert_eq!(alias.overlap(&f.root).unwrap(), RootOverlap::Same);
+        }
+        raw(&f.source, &["checkout", "--detach", "--quiet"]);
+        let detached = inspect(&f.context, &f.root).await.unwrap();
+        assert_eq!(detached.head_ref, None);
+        let plan = f.plan().await.into_persisted_plan();
+        execute_claimed(
+            ClaimedWorktree::new(
+                plan.clone(),
+                f.aux.join(&plan.operation_id),
+                vec![f.root.clone()],
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    }
+    #[tokio::test]
+    async fn w05_filters_include_and_alternates_leave_external_marker_absent() {
+        for mode in ["smudge", "process", "include", "alternates"] {
+            let f = Fixture::new();
+            let marker = f._temp.path().join("filter-marker");
+            let script = f._temp.path().join("filter.sh");
+            std::fs::write(
+                &script,
+                format!(
+                    "#!/bin/sh\necho bad > '{}'\ncat\n",
+                    marker.to_string_lossy().replace('\\', "/")
+                ),
+            )
+            .unwrap();
+            if mode == "smudge" || mode == "process" {
+                std::fs::write(f.source.join(".gitattributes"), "a.txt filter=evil\n").unwrap();
+                raw(&f.source, &["add", ".gitattributes"]);
+                raw(&f.source, &["commit", "--quiet", "-m", "attributes"]);
+            }
+            if mode == "include" {
+                let config = f._temp.path().join("included");
+                std::fs::write(
+                    &config,
+                    format!(
+                        "[filter \"evil\"]\n smudge = {}\n",
+                        script.to_string_lossy().replace('\\', "/")
+                    ),
+                )
+                .unwrap();
+                raw(
+                    &f.source,
+                    &["config", "include.path", config.to_str().unwrap()],
+                );
+            } else if mode == "alternates" {
+                std::fs::write(
+                    f.source.join(".git/objects/info/alternates"),
+                    "unavailable-object-pool",
+                )
+                .unwrap();
+            } else {
+                raw(
+                    &f.source,
+                    &[
+                        "config",
+                        &format!("filter.evil.{mode}"),
+                        &format!("sh '{}'", script.to_string_lossy().replace('\\', "/")),
+                    ],
+                );
+            }
+            if mode == "smudge" || mode == "process" {
+                let mut positive = Command::new("git");
+                positive
+                    .current_dir(&f.source)
+                    .args(["cat-file", "--filters", "HEAD:a.txt"])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .stdin(Stdio::null())
+                    .kill_on_drop(true);
+                let _ = run(
+                    positive,
+                    8192,
+                    Instant::now() + Duration::from_secs(3),
+                    false,
+                )
+                .await;
+                assert!(
+                    marker.exists(),
+                    "Git filter {mode} positive control must launch script"
+                );
+                std::fs::remove_file(&marker).unwrap();
+            }
+            assert_eq!(
+                inspect(&f.context, &f.root).await.unwrap_err(),
+                GitWorktreeError::Unsupported
+            );
+            assert!(!marker.exists());
+            assert!(!f.source.join(".git/worktrees").exists());
+        }
+    }
+
+    async fn assert_pid_absent(pid: u32) {
+        let mut query = Command::new("pwsh.exe");
+        query
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                &format!("if(Get-Process -Id {pid} -ErrorAction SilentlyContinue) {{ exit 9 }}"),
+            ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null())
+            .kill_on_drop(true);
+        #[cfg(windows)]
+        query.creation_flags(0x08000000);
+        assert_eq!(
+            run(query, 1024, Instant::now() + Duration::from_secs(5), false)
+                .await
+                .unwrap()
+                .code,
+            Some(0),
+            "fixture process {pid} survived"
+        );
+    }
+    #[tokio::test]
+    async fn w06_output_overflow_terminates_and_reaps_real_child() {
+        let f = Fixture::new();
+        let mut cmd = Command::new("pwsh.exe");
+        cmd.current_dir(&f.aux).args(["-NoProfile","-NonInteractive","-Command","[IO.File]::WriteAllText('pid',[string]$PID); [Console]::Out.Write(('x'*65536)); Start-Sleep -Seconds 20"]).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null()).kill_on_drop(true);
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000);
+        assert!(matches!(
+            run(cmd, 1024, Instant::now() + Duration::from_secs(5), true).await,
+            Err(GitWorktreeError::OutcomeUnknown)
+        ));
+        assert_pid_absent(
+            std::fs::read_to_string(f.aux.join("pid"))
+                .unwrap()
+                .trim()
+                .parse()
+                .unwrap(),
+        )
+        .await;
+    }
+    #[tokio::test]
+    async fn w06_inherited_pipe_deadline_keeps_partial_outcome_unknown() {
+        let f = Fixture::new();
+        std::fs::write(f.aux.join("descendant.ps1"),"[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'descendant-pid'),[string]$PID); Start-Sleep -Seconds 6").unwrap();
+        let script = "[IO.File]::WriteAllText('parent-pid',[string]$PID); $p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $c=[Diagnostics.Process]::Start($p); $d=[DateTime]::UtcNow.AddSeconds(1); while(!(Test-Path 'descendant-pid')) { if([DateTime]::UtcNow -gt $d){exit 97}; Start-Sleep -Milliseconds 10 }; exit 0";
+        let mut cmd = Command::new("pwsh.exe");
+        cmd.current_dir(&f.aux)
+            .args(["-NoProfile", "-NonInteractive", "-Command", script])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null())
+            .kill_on_drop(true);
+        #[cfg(windows)]
+        cmd.creation_flags(0x08000000);
+        let begin = Instant::now();
+        let result = run(cmd, 1024, Instant::now() + Duration::from_secs(2), true).await;
+        let elapsed = begin.elapsed();
+        let descendant: u32 = std::fs::read_to_string(f.aux.join("descendant-pid"))
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        let mut cleanup = Command::new("pwsh.exe");
+        cleanup.args(["-NoProfile","-NonInteractive","-Command",&format!("$p=Get-Process -Id {descendant} -ErrorAction SilentlyContinue; if($p){{$p.Kill();$p.WaitForExit()}}")]).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null()).kill_on_drop(true);
+        #[cfg(windows)]
+        cleanup.creation_flags(0x08000000);
+        assert_eq!(
+            run(
+                cleanup,
+                1024,
+                Instant::now() + Duration::from_secs(5),
+                false
+            )
+            .await
+            .unwrap()
+            .code,
+            Some(0)
+        );
+        assert!(matches!(result, Err(GitWorktreeError::OutcomeUnknown)));
+        assert!(elapsed < Duration::from_secs(4));
+        assert_pid_absent(
+            std::fs::read_to_string(f.aux.join("parent-pid"))
+                .unwrap()
+                .trim()
+                .parse()
+                .unwrap(),
+        )
+        .await;
+        assert_pid_absent(descendant).await;
     }
 }
