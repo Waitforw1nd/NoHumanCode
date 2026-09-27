@@ -1295,7 +1295,12 @@ mod tests {
             let drive = source.ancestors().last().unwrap();
             let ctx = GitContext::new(vec![RootIdentity::capture(drive).unwrap()]).unwrap();
             assert!(matches!(
-                command(&ctx, source, None, &[]),
+                command(
+                    &ctx,
+                    Path::new(&std::env::var_os("NHC_TEST_PARENT").unwrap()),
+                    None,
+                    &[]
+                ),
                 Err(GitWorktreeError::Unavailable)
             ));
             assert!(!Path::new(&std::env::var_os("NHC_TEST_MARKER").unwrap()).exists());
@@ -1443,6 +1448,7 @@ mod tests {
             ])
             .env("PATH", &f.source)
             .env("NHC_TEST_DRIVE_ROOT", "1")
+            .env("NHC_TEST_PARENT", &f.parent)
             .env("NHC_TEST_SOURCE", &f.source)
             .env("NHC_TEST_MARKER", &marker)
             .stdout(Stdio::piped())
