@@ -1888,4 +1888,363 @@ mod tests {
         assert!(active.admission_open);
         assert_eq!(active.recovery, failed.recovery);
     }
+    fn shell_status(runtime: &ToolRuntime) -> FilesRuntimeStatus {
+        runtime.with_shell_control(|c| Ok(c.snapshot())).unwrap()
+    }
+    fn shell_reconcile(runtime: &ToolRuntime, enabled: bool) -> FilesRuntimeStatus {
+        runtime
+            .with_shell_control(|c| Ok(c.reconcile(enabled)))
+            .unwrap()
+    }
+    fn command_task(root: &std::path::Path) -> Task {
+        let mut value = task(root.to_str().unwrap());
+        value.spec.allow_commands = true;
+        value
+    }
+    async fn wait_until(mut condition: impl FnMut() -> bool) {
+        tokio::time::timeout(std::time::Duration::from_secs(12), async {
+            while !condition() {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("bounded component watchdog expired");
+    }
+    async fn real_shell(runtime: &ToolRuntime, task: &Task) {
+        let (lease, ()) = runtime.acquire(task, "run_command", || Ok(())).unwrap();
+        let value = tokio::time::timeout(WAIT, lease.execute(task, &json!({
+            "command":"[IO.File]::WriteAllText((Join-Path $PWD 'shell-marker.txt'), 'shell'); [Console]::Out.Write('shell-registry'); [Console]::Error.Write('stderr-marker'); exit 7",
+            "timeout_seconds":3
+        }))).await.unwrap().unwrap();
+        assert_eq!(value["exit_code"], 7);
+        assert_eq!(value["stdout"], "shell-registry");
+        assert_eq!(value["stderr"], "stderr-marker");
+        assert_eq!(
+            std::fs::read_to_string(std::path::Path::new(&task.workspace).join("shell-marker.txt"))
+                .unwrap(),
+            "shell"
+        );
+    }
+    async fn real_files(runtime: &ToolRuntime, task: &Task) {
+        for (name, args) in [
+            (
+                "write_file",
+                json!({"path":"files-marker.txt", "content":"independent-files"}),
+            ),
+            ("read_file", json!({"path":"files-marker.txt"})),
+            ("list_files", json!({"path":"."})),
+            (
+                "search_files",
+                json!({"query":"independent-files", "path":"."}),
+            ),
+        ] {
+            let (lease, ()) = runtime.acquire(task, name, || Ok(())).unwrap();
+            let output = lease.execute(task, &args).await.unwrap();
+            if name == "read_file" {
+                assert_eq!(output["content"], "independent-files");
+            }
+            if name == "list_files" {
+                assert!(output.to_string().contains("files-marker.txt"));
+            }
+            if name == "search_files" {
+                assert!(output.to_string().contains("independent-files"));
+            }
+        }
+    }
+    #[tokio::test]
+    async fn s01_s02_real_registry_and_independent_disable_unload() {
+        let root = tempfile::tempdir().unwrap();
+        let task = command_task(root.path());
+        let runtime = ToolRuntime::builtin().unwrap();
+        assert_eq!(
+            (
+                status(&runtime).effects_count,
+                shell_status(&runtime).effects_count
+            ),
+            (4, 1)
+        );
+        let shell = shell_status(&runtime);
+        assert_eq!(
+            shell
+                .instances
+                .iter()
+                .map(|i| i.plugin_id.as_str())
+                .collect::<Vec<_>>(),
+            [SHELL, SHELL_CONSUMER]
+        );
+        assert_eq!(shell.providers[0].provider_id, SHELL);
+        assert_eq!(shell.providers[0].key, key("run_command"));
+        assert_eq!(shell.subscriptions_count, 0);
+        for (id, version) in [
+            (FILES, "1.2.0"),
+            (CONSUMER, "1.2.0"),
+            (SHELL, "1.0.0"),
+            (SHELL_CONSUMER, "1.0.0"),
+        ] {
+            assert_eq!(
+                manifest(id, id == FILES || id == SHELL).version.to_string(),
+                version
+            );
+        }
+        assert_eq!(manifest(SHELL, true).permissions, ["process.exec"]);
+        assert_eq!(COMPAT_TOOLS, ["run_wasm"]);
+        real_shell(&runtime, &task).await;
+        runtime.disable_builtin_files().unwrap();
+        real_shell(&runtime, &task).await;
+        runtime.unload_builtin_files().unwrap();
+        real_shell(&runtime, &task).await;
+        assert_eq!(shell_status(&runtime), shell);
+        reconcile(&runtime, true);
+        runtime.disable_builtin_shell().unwrap();
+        real_files(&runtime, &task).await;
+        runtime.unload_builtin_shell().unwrap();
+        real_files(&runtime, &task).await;
+        assert_eq!(shell_status(&runtime).effects_count, 0);
+        assert_eq!(status(&runtime).effects_count, 4);
+        assert!(
+            runtime
+                .acquire(&task, "run_command", || -> Result<()> {
+                    panic!("disabled shell claimed")
+                })
+                .is_err()
+        );
+        assert!(
+            !runtime
+                .definitions(&task)
+                .unwrap()
+                .iter()
+                .any(|d| d["function"]["name"] == "run_command")
+        );
+    }
+    #[test]
+    fn s01_all_desired_combinations_and_shell_unpolled_binding_counts() {
+        let mut task = task("unused");
+        task.spec.allow_commands = true;
+        for (files, shell) in [(false, false), (false, true), (true, false), (true, true)] {
+            let runtime = ToolRuntime::builtin_with_plugin_states(files, shell).unwrap();
+            assert_eq!(status(&runtime).effects_count, if files { 4 } else { 0 });
+            assert_eq!(shell_status(&runtime).effects_count, u64::from(shell));
+            for state in [(!files, status(&runtime)), (!shell, shell_status(&runtime))] {
+                if state.0 {
+                    assert!(
+                        state
+                            .1
+                            .instances
+                            .iter()
+                            .all(|i| i.state == FilesInstanceState::Unloaded)
+                    );
+                }
+            }
+            assert_eq!(
+                runtime.definitions(&task).unwrap().len(),
+                1 + usize::from(files) * 4 + usize::from(shell)
+            );
+            if shell {
+                let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+                assert_eq!(shell_status(&runtime).in_flight, 1);
+                assert_eq!(status(&runtime).in_flight, 0);
+                runtime
+                    .with_shell_control(|control| {
+                        drop(lease);
+                        assert_eq!(control.snapshot().in_flight, 0);
+                        Ok(())
+                    })
+                    .unwrap();
+            }
+        }
+    }
+    struct ShellProbe {
+        mode: Arc<AtomicUsize>,
+    }
+    impl BuiltinPlugin for ShellProbe {
+        fn activate(&mut self, ctx: &mut PluginContext) -> Result<(), PluginError> {
+            if self.mode.load(Ordering::SeqCst) != 4 {
+                let service: Service = Arc::new(WorkspaceService("run_command"));
+                ctx.register_effect(&key("run_command"), Box::new(service))
+                    .unwrap();
+            }
+            Ok(())
+        }
+        fn deactivate(&mut self, _: &mut PluginContext) -> Result<(), PluginError> {
+            if self.mode.load(Ordering::SeqCst) == 2 {
+                Err(PluginError::new("private-shell-failure"))
+            } else {
+                Ok(())
+            }
+        }
+    }
+    fn install_shell_probe(runtime: &ToolRuntime, mode: Arc<AtomicUsize>) {
+        runtime.unload_builtin_shell().unwrap();
+        let mut state = runtime.shell_host.lock().unwrap();
+        state
+            .host
+            .with_factory(SHELL, move || Box::new(ShellProbe { mode: mode.clone() }));
+    }
+    #[tokio::test]
+    async fn s02_missing_registration_and_lifecycle_failure_do_not_cross_groups() {
+        let root = tempfile::tempdir().unwrap();
+        let task = command_task(root.path());
+        let files_mode = Arc::new(AtomicUsize::new(4));
+        let runtime = probe_runtime(
+            true,
+            files_mode.clone(),
+            Arc::new(AtomicUsize::new(0)),
+            Arc::new(Mutex::new(vec![])),
+        );
+        assert_eq!(status(&runtime).state, FilesRuntimeState::Failed);
+        real_shell(&runtime, &task).await;
+        assert!(
+            runtime
+                .definitions(&task)
+                .unwrap()
+                .iter()
+                .any(|d| d["function"]["name"] == "run_command")
+        );
+        files_mode.store(0, Ordering::SeqCst);
+        reconcile(&runtime, true);
+        let shell_mode = Arc::new(AtomicUsize::new(4));
+        install_shell_probe(&runtime, shell_mode.clone());
+        let failed = shell_reconcile(&runtime, true);
+        assert_eq!(failed.state, FilesRuntimeState::Failed);
+        assert_eq!(failed.effects_count, 0);
+        assert!(
+            failed
+                .recovery
+                .iter()
+                .all(|r| r.plugin_id == SHELL || r.plugin_id == SHELL_CONSUMER)
+        );
+        real_files(&runtime, &task).await;
+        assert!(
+            runtime
+                .acquire(&task, "run_command", || -> Result<()> {
+                    panic!("missing registry claim")
+                })
+                .is_err()
+        );
+        assert_eq!(runtime.definitions(&task).unwrap().len(), 5);
+        shell_mode.store(0, Ordering::SeqCst);
+        shell_reconcile(&runtime, true);
+        let history = shell_status(&runtime).recovery;
+        shell_mode.store(2, Ordering::SeqCst);
+        assert_eq!(
+            shell_reconcile(&runtime, false).state,
+            FilesRuntimeState::Failed
+        );
+        real_files(&runtime, &task).await;
+        let cleared = shell_reconcile(&runtime, false);
+        assert_eq!(cleared.state, FilesRuntimeState::Unloaded);
+        assert!(cleared.recovery.starts_with(&history));
+        shell_mode.store(0, Ordering::SeqCst);
+        shell_reconcile(&runtime, true);
+        files_mode.store(2, Ordering::SeqCst);
+        assert_eq!(reconcile(&runtime, false).state, FilesRuntimeState::Failed);
+        real_shell(&runtime, &task).await;
+        assert_eq!(
+            reconcile(&runtime, false).state,
+            FilesRuntimeState::Unloaded
+        );
+    }
+    #[tokio::test]
+    async fn s05_caller_abort_keeps_real_worker_lease_through_disable_and_completion() {
+        let root = tempfile::tempdir().unwrap();
+        let task = command_task(root.path());
+        let runtime = ToolRuntime::builtin().unwrap();
+        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+        let ready = root.path().join("ready");
+        let release = root.path().join("release");
+        let finished = root.path().join("finished");
+        let command = "[IO.File]::WriteAllText((Join-Path $PWD 'ready'), [string]$PID); $deadline=[DateTime]::UtcNow.AddSeconds(8); while (!(Test-Path (Join-Path $PWD 'release'))) { if ([DateTime]::UtcNow -gt $deadline) { exit 98 }; Start-Sleep -Milliseconds 10 }; [IO.File]::WriteAllText((Join-Path $PWD 'finished'), 'completed'); 'worker-output'";
+        let caller = tokio::spawn(async move {
+            lease
+                .execute(&task, &json!({"command":command, "timeout_seconds":10}))
+                .await
+        });
+        wait_until(|| ready.exists()).await;
+        caller.abort();
+        assert!(caller.await.unwrap_err().is_cancelled());
+        assert_eq!(shell_status(&runtime).in_flight, 1);
+        assert_eq!(status(&runtime).in_flight, 0);
+        runtime.disable_builtin_shell().unwrap();
+        let draining = shell_status(&runtime);
+        assert!(draining.draining);
+        assert_eq!(draining.effects_count, 0);
+        std::fs::write(release, "go").unwrap();
+        wait_until(|| shell_status(&runtime).in_flight == 0).await;
+        assert_eq!(std::fs::read_to_string(finished).unwrap(), "completed");
+        assert!(!shell_status(&runtime).draining);
+    }
+    #[tokio::test]
+    async fn s05_shell_binding_rejection_errors_and_admitted_after_disable() {
+        let root = tempfile::tempdir().unwrap();
+        let task = command_task(root.path());
+        let runtime = ToolRuntime::builtin().unwrap();
+        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+        let mut wrong = task.clone();
+        wrong.spec.allow_commands = false;
+        assert!(
+            lease
+                .execute(&wrong, &json!({"command":"'no'"}))
+                .await
+                .is_err()
+        );
+        assert_eq!(shell_status(&runtime).in_flight, 0);
+        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+        assert!(
+            lease
+                .execute(&task, &json!({"command":"'no'", "timeout_seconds":0}))
+                .await
+                .is_err()
+        );
+        assert_eq!(shell_status(&runtime).in_flight, 0);
+        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+        runtime.disable_builtin_shell().unwrap();
+        assert_eq!(
+            lease
+                .execute(&task, &json!({"command":"'already-admitted'"}))
+                .await
+                .unwrap()["stdout"]
+                .as_str()
+                .unwrap()
+                .trim(),
+            "already-admitted"
+        );
+        assert_eq!(shell_status(&runtime).in_flight, 0);
+    }
+    struct DisappearingShellWorker;
+    impl ToolServiceV1 for DisappearingShellWorker {
+        fn definition(&self, task: &Task) -> Option<Value> {
+            WorkspaceService("run_command").definition(task)
+        }
+        fn execute<'a>(&'a self, _: &'a Task, _: &'a Value) -> ToolFuture<'a> {
+            Box::pin(async { panic!("controlled shell worker disappearance") })
+        }
+    }
+    #[tokio::test]
+    async fn s05_worker_channel_loss_is_unknown_and_releases_owned_count() {
+        let runtime = ToolRuntime::builtin().unwrap();
+        runtime.unload_builtin_shell().unwrap();
+        {
+            let mut state = runtime.shell_host.lock().unwrap();
+            state.host.with_factory(SHELL, || {
+                Box::new(ShellPlugin(Arc::new(DisappearingShellWorker)))
+            });
+        }
+        shell_reconcile(&runtime, true);
+        let mut task = task("unused");
+        task.spec.allow_commands = true;
+        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+        let error = lease.execute(&task, &json!({})).await.unwrap_err();
+        assert!(error.is::<crate::command_execution::CommandOutcomeUnknown>());
+        assert_eq!(shell_status(&runtime).in_flight, 0);
+        runtime.shell_in_flight.store(u64::MAX, Ordering::SeqCst);
+        assert!(
+            runtime
+                .acquire(&task, "run_command", || -> Result<()> {
+                    panic!("overflow must precede claim")
+                })
+                .is_err()
+        );
+        runtime.shell_in_flight.store(0, Ordering::SeqCst);
+        assert_eq!(status(&runtime).in_flight, 0);
+    }
 }
