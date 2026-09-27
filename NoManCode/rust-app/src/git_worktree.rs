@@ -83,7 +83,7 @@ impl RepositorySnapshot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ProjectGitObservation {
     NotGit,
-    Repository(RepositorySnapshot),
+    Repository(Box<RepositorySnapshot>),
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -747,9 +747,9 @@ pub(crate) async fn probe_project_git(
 ) -> Result<ProjectGitObservation> {
     let root = verified(source)?;
     match std::fs::symlink_metadata(root.join(".git")) {
-        Ok(_) => Ok(ProjectGitObservation::Repository(
+        Ok(_) => Ok(ProjectGitObservation::Repository(Box::new(
             inspect_with(ctx, source, None, false).await?,
-        )),
+        ))),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             // Establish absence by walking verified ancestors; a Git exit code
             // 128 alone could also mean permission/configuration failure.
@@ -1164,7 +1164,10 @@ fn within(path: &Path, root: &Path) -> bool {
     if path == root {
         return true;
     }
-    root.push(if cfg!(windows) { '\\' } else { '/' });
+    let separator = if cfg!(windows) { '\\' } else { '/' };
+    if !root.ends_with(separator) {
+        root.push(separator);
+    }
     path.starts_with(&root)
 }
 fn same_path(left: &Path, right: &Path) -> bool {
@@ -1243,6 +1246,230 @@ mod tests {
             .await
             .unwrap()
         }
+    }
+    #[tokio::test]
+    async fn w04_nested_root_reparse_and_existing_branch_are_rejected() {
+        let f = Fixture::new();
+        let nested = f.source.join("nested");
+        std::fs::create_dir(&nested).unwrap();
+        let nested_root = RootIdentity::capture(&nested).unwrap();
+        assert!(inspect(&f.context, &nested_root).await.is_err());
+        let plan = f.plan().await.into_persisted_plan();
+        raw(
+            &f.source,
+            &["update-ref", &plan.branch_ref, &plan.expected_head],
+        );
+        assert_eq!(
+            prepare(
+                &f.context,
+                &f.root,
+                &plan.target_parent,
+                &plan.operation_id,
+                &plan.expected_head
+            )
+            .await
+            .err()
+            .unwrap(),
+            GitWorktreeError::Conflict
+        );
+        #[cfg(windows)]
+        {
+            let alias = f._temp.path().join("junction");
+            let output = SyncCommand::new("pwsh.exe").args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(RootIdentity::capture(&alias).is_err());
+            assert!(f.parent.exists());
+        }
+    }
+    #[tokio::test]
+    async fn w05_isolated_environment_helper() {
+        let Some(source) = std::env::var_os("NHC_TEST_SOURCE") else {
+            return;
+        };
+        if std::env::var_os("NHC_TEST_DRIVE_ROOT").is_some() {
+            let source = Path::new(&source);
+            let drive = source.ancestors().last().unwrap();
+            let ctx = GitContext::new(vec![RootIdentity::capture(drive).unwrap()]).unwrap();
+            assert!(matches!(
+                command(
+                    &ctx,
+                    Path::new(&std::env::var_os("NHC_TEST_PARENT").unwrap()),
+                    None,
+                    &[]
+                ),
+                Err(GitWorktreeError::Unavailable)
+            ));
+            assert!(!Path::new(&std::env::var_os("NHC_TEST_MARKER").unwrap()).exists());
+            return;
+        }
+        let root = RootIdentity::capture(Path::new(&source)).unwrap();
+        let ctx = GitContext::new(vec![root.clone()]).unwrap();
+        let snapshot = inspect(&ctx, &root).await.unwrap();
+        let parent =
+            RootIdentity::capture(Path::new(&std::env::var_os("NHC_TEST_PARENT").unwrap()))
+                .unwrap();
+        let plan = prepare(
+            &ctx,
+            &root,
+            &parent,
+            &uuid::Uuid::new_v4().to_string(),
+            &snapshot.head_oid,
+        )
+        .await
+        .unwrap()
+        .into_persisted_plan();
+        execute_claimed(
+            ClaimedWorktree::new(
+                plan.clone(),
+                PathBuf::from(std::env::var_os("NHC_TEST_AUX").unwrap()).join(&plan.operation_id),
+                vec![root],
+            )
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+        assert!(!Path::new(&std::env::var_os("NHC_TEST_MARKER").unwrap()).exists());
+    }
+    #[tokio::test]
+    async fn w05_project_git_executable_and_inherited_environment_are_excluded() {
+        let f = Fixture::new();
+        let marker = f._temp.path().join("injection-marker");
+        let code = f._temp.path().join("fake_git.rs");
+        std::fs::write(
+            &code,
+            format!(
+                "fn main() {{ std::fs::write({:?}, b\"executed\").unwrap(); }}",
+                marker.to_string_lossy()
+            ),
+        )
+        .unwrap();
+        let fake = f.source.join("git.exe");
+        let output = SyncCommand::new("rustc")
+            .args(["--crate-name", "fake_git", "--edition=2021"])
+            .arg(&code)
+            .arg("-o")
+            .arg(&fake)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "fake executable fixture compilation: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(SyncCommand::new(&fake).status().unwrap().success());
+        assert!(marker.exists(), "project executable positive control");
+        std::fs::remove_file(&marker).unwrap();
+        std::fs::write(f.source.join(".git/info/exclude"), "git.exe\ngit.pdb\n").unwrap();
+        let global = f._temp.path().join("global.config");
+        let attrs = f._temp.path().join("global.attributes");
+        std::fs::write(&attrs, "a.txt filter=evil\n").unwrap();
+        let script = f._temp.path().join("global-filter.sh");
+        std::fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\necho bad > '{}'\ncat\n",
+                marker.to_string_lossy().replace('\\', "/")
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            &global,
+            format!(
+                "[core]\n attributesFile = {}\n[filter \"evil\"]\n smudge = sh '{}'\n",
+                attrs.to_string_lossy().replace('\\', "/"),
+                script.to_string_lossy().replace('\\', "/")
+            ),
+        )
+        .unwrap();
+        let positive = SyncCommand::new("git")
+            .current_dir(&f.source)
+            .env("GIT_CONFIG_GLOBAL", &global)
+            .args(["cat-file", "--filters", "HEAD:a.txt"])
+            .output()
+            .unwrap();
+        assert!(positive.status.success());
+        assert!(marker.exists(), "global attributes/filter positive control");
+        std::fs::remove_file(&marker).unwrap();
+        let mut paths = vec![f.source.clone()];
+        paths.extend(std::env::split_paths(&std::env::var_os("PATH").unwrap()));
+        let mut child = Command::new(std::env::current_exe().unwrap());
+        child
+            .args([
+                "--exact",
+                "git_worktree::tests::w05_isolated_environment_helper",
+                "--nocapture",
+            ])
+            .env("PATH", std::env::join_paths(paths).unwrap())
+            .env("NHC_TEST_SOURCE", &f.source)
+            .env("NHC_TEST_PARENT", &f.parent)
+            .env("NHC_TEST_AUX", &f.aux)
+            .env("NHC_TEST_MARKER", &marker)
+            .env("GIT_CONFIG_GLOBAL", &global)
+            .env("GIT_DIR", f._temp.path().join("invalid-git-dir"))
+            .env("GIT_WORK_TREE", f._temp.path().join("invalid-work-tree"))
+            .env("GIT_INDEX_FILE", f._temp.path().join("injected-index"))
+            .env(
+                "GIT_OBJECT_DIRECTORY",
+                f._temp.path().join("invalid-objects"),
+            )
+            .env("GIT_CONFIG_COUNT", "1")
+            .env("GIT_CONFIG_KEY_0", "core.repositoryformatversion")
+            .env("GIT_CONFIG_VALUE_0", "999")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null())
+            .kill_on_drop(true);
+        let result = run(
+            child,
+            65536,
+            Instant::now() + Duration::from_secs(45),
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            result.code,
+            Some(0),
+            "isolated child: {}",
+            String::from_utf8_lossy(&result.bytes)
+        );
+        assert!(!marker.exists());
+        assert!(!f._temp.path().join("injected-index").exists());
+        let mut drive_child = Command::new(std::env::current_exe().unwrap());
+        drive_child
+            .args([
+                "--exact",
+                "git_worktree::tests::w05_isolated_environment_helper",
+                "--nocapture",
+            ])
+            .env("PATH", &f.source)
+            .env("NHC_TEST_DRIVE_ROOT", "1")
+            .env("NHC_TEST_PARENT", &f.parent)
+            .env("NHC_TEST_SOURCE", &f.source)
+            .env("NHC_TEST_MARKER", &marker)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null())
+            .kill_on_drop(true);
+        let result = run(
+            drive_child,
+            8192,
+            Instant::now() + Duration::from_secs(10),
+            false,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            result.code,
+            Some(0),
+            "drive root exclusion: {}",
+            String::from_utf8_lossy(&result.bytes)
+        );
+        assert!(!marker.exists());
     }
     #[tokio::test]
     async fn w10_present_result_with_unrelated_offline_root_is_unavailable() {
@@ -1655,6 +1882,15 @@ mod tests {
             } else {
                 raw(&root, &["init", "--quiet"]);
             }
+            if mode == "sha256" {
+                raw(&root, &["config", "user.name", "Fixture"]);
+                raw(&root, &["config", "user.email", "fixture@example.invalid"]);
+                raw(
+                    &root,
+                    &["commit", "--allow-empty", "--quiet", "-m", "sha256"],
+                );
+                assert_eq!(raw(&root, &["rev-parse", "HEAD"]).len(), 65);
+            }
             let root = RootIdentity::capture(&root).unwrap();
             let ctx = GitContext::new(vec![root.clone()]).unwrap();
             assert!(inspect(&ctx, &root).await.is_err(), "{mode}");
@@ -1731,8 +1967,12 @@ mod tests {
     }
     #[test]
     fn w04_structural_plan_validation_and_windows_path_aliases() {
+        #[cfg(not(windows))]
+        assert!(within(Path::new("/tmp/repo/git"), Path::new("/")));
         #[cfg(windows)]
         {
+            assert!(within(Path::new("E:/temp/git.exe"), Path::new("E:/")));
+            assert!(!within(Path::new("F:/temp/git.exe"), Path::new("E:/")));
             assert!(same_path(
                 Path::new(r"\\?\E:\Code\Repo"),
                 Path::new("e:/code/repo")
@@ -1797,7 +2037,7 @@ mod tests {
                 ),
             )
             .unwrap();
-            if mode == "smudge" || mode == "process" {
+            if mode == "smudge" || mode == "process" || mode == "include" {
                 std::fs::write(f.source.join(".gitattributes"), "a.txt filter=evil\n").unwrap();
                 raw(&f.source, &["add", ".gitattributes"]);
                 raw(&f.source, &["commit", "--quiet", "-m", "attributes"]);
@@ -1807,7 +2047,7 @@ mod tests {
                 std::fs::write(
                     &config,
                     format!(
-                        "[filter \"evil\"]\n smudge = {}\n",
+                        "[filter \"evil\"]\n smudge = sh '{}'\n",
                         script.to_string_lossy().replace('\\', "/")
                     ),
                 )
@@ -1832,7 +2072,7 @@ mod tests {
                     ],
                 );
             }
-            if mode == "smudge" || mode == "process" {
+            if mode == "smudge" || mode == "process" || mode == "include" {
                 let mut positive = Command::new("git");
                 positive
                     .current_dir(&f.source)
