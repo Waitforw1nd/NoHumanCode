@@ -9,6 +9,9 @@ use peachsh::{
     plugin_management::{PluginMutationResult, PluginStatus},
     project_config::{ProjectConfig, ProjectConfigSnapshot, ProjectSelection, TaskProjectBinding},
     secrets,
+    worktree_management::{
+        WorktreeInspection, WorktreeObservationState, WorktreeReceipt, WorktreeState,
+    },
 };
 use peachsh::{
     domain::{Event, Project, ProjectId, Run, Session, Task, Turn, TurnTask},
@@ -77,6 +80,7 @@ impl Command {
                         valid_id(id)
                     }
                 },
+                ProjectCommand::Worktree(args) => args.command.valid(),
             },
             Self::Route(args) => match &args.command {
                 RouteCommand::Models { id, project } | RouteCommand::Check { id, project } => {
@@ -190,6 +194,8 @@ pub struct ProjectArgs {
 }
 #[derive(Subcommand)]
 enum ProjectCommand {
+    /// Explicit linked-worktree Project creation and read-only diagnostics.
+    Worktree(WorktreeArgs),
     List,
     Create {
         #[arg(long)]
@@ -209,6 +215,121 @@ enum ProjectCommand {
         expected_revision: u64,
     },
     Config(ProjectConfigArgs),
+}
+#[derive(Args)]
+struct WorktreeArgs {
+    #[command(subcommand)]
+    command: WorktreeCommand,
+}
+#[derive(Subcommand)]
+enum WorktreeCommand {
+    Create {
+        #[arg(long)]
+        source_project: String,
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        parent: String,
+        #[arg(long)]
+        expected_config_revision: u64,
+        #[arg(long)]
+        expected_head: String,
+        #[arg(long)]
+        key: String,
+    },
+    Status {
+        #[arg(long)]
+        source_project: String,
+        #[arg(long, required_unless_present = "key", conflicts_with = "key")]
+        id: Option<String>,
+        #[arg(long, required_unless_present = "id", conflicts_with = "id")]
+        key: Option<String>,
+    },
+    Inspect {
+        #[arg(long)]
+        source_project: String,
+        #[arg(long)]
+        id: String,
+    },
+}
+fn canonical_uuid(id: &str) -> bool {
+    uuid::Uuid::parse_str(id).is_ok_and(|value| value.to_string() == id)
+}
+fn commit_oid(value: &str) -> bool {
+    value.len() == 40 && value.bytes().all(|b| b.is_ascii_hexdigit())
+}
+fn worktree_key(value: &str) -> bool {
+    secrets::validate_idempotency_key(value).is_ok() && !value.contains(',')
+}
+// Lexical wire comparison only. RootIdentity validation belongs to the Host.
+fn worktree_path(value: &str) -> Option<String> {
+    if value.len() > 32768 || value.chars().any(|c| c.is_control()) {
+        return None;
+    }
+    let mut path = value.replace('\\', "/");
+    if path
+        .get(..8)
+        .is_some_and(|p| p.eq_ignore_ascii_case("//?/UNC/"))
+    {
+        path = format!("//{}", &path[8..]);
+    } else if path.starts_with("//?/") {
+        path = path[4..].to_owned();
+    }
+    let drive = path.as_bytes().get(1) == Some(&b':')
+        && path.as_bytes().first().is_some_and(u8::is_ascii_alphabetic)
+        && path.as_bytes().get(2) == Some(&b'/');
+    let unc = path.starts_with("//") && path[2..].split('/').filter(|s| !s.is_empty()).count() >= 2;
+    if !drive && !unc {
+        return None;
+    }
+    for (index, part) in path.split('/').enumerate() {
+        if part == "."
+            || part == ".."
+            || part.ends_with(['.', ' '])
+            || part.contains(['*', '?', '"', '<', '>', '|'])
+            || (part.contains(':') && !(drive && index == 0))
+        {
+            return None;
+        }
+    }
+    Some(path.trim_end_matches('/').to_ascii_lowercase())
+}
+impl WorktreeCommand {
+    fn valid(&self) -> bool {
+        match self {
+            Self::Create {
+                source_project,
+                name,
+                parent,
+                expected_config_revision,
+                expected_head,
+                key,
+            } => {
+                valid_id(source_project)
+                    && !name.trim().is_empty()
+                    && name.len() <= 500
+                    && !parent.trim().is_empty()
+                    && parent.len() <= 32768
+                    && secrets::safe_metadata_text("name", name).is_ok()
+                    && secrets::safe_metadata_path("parent", parent).is_ok()
+                    && worktree_path(parent).is_some()
+                    && (1..=i64::MAX as u64).contains(expected_config_revision)
+                    && commit_oid(expected_head)
+                    && worktree_key(key)
+            }
+            Self::Status {
+                source_project,
+                id,
+                key,
+            } => {
+                valid_id(source_project)
+                    && (id.is_some() != key.is_some())
+                    && id.as_deref().is_none_or(canonical_uuid)
+                    && key.as_deref().is_none_or(worktree_key)
+            }
+            Self::Inspect { source_project, id } => valid_id(source_project) && canonical_uuid(id),
+        }
+    }
 }
 #[derive(Args)]
 struct ProjectConfigArgs {
@@ -514,6 +635,12 @@ impl Failure {
     }
 
     pub fn print(&self, json_output: bool) {
+        if self.code == "worktree_not_succeeded" {
+            if !json_output {
+                eprintln!("工作树未成功完成；请按原 key 查询。不会自动重试、接纳或清理。");
+            }
+            return;
+        }
         // The successful mutation response has already been printed intact.
         // This sentinel controls only the process exit status, not the wire shape.
         if self.code == "plugin_not_converged" {
@@ -605,6 +732,11 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         .map_err(|_| Failure::fixed("internal", "本机服务地址无效", false))?;
 
     let command = match command {
+        Command::Project(ProjectArgs {
+            command: ProjectCommand::Worktree(args),
+        }) => {
+            return worktree_workflow(&client, &origin, json_output, args.command).await;
+        }
         Command::Plugin(args) => return plugin_workflow(&client, &origin, json_output, args).await,
         Command::Network(_)
         | Command::Route(_)
@@ -714,6 +846,216 @@ fn plugin_unknown() -> Failure {
         "插件写入结果未知，可能已提交。请查询 plugin status，并保留原 --key、--enabled 和 --expected-revision 手动回放；不会自动重试。",
         false,
     )
+}
+fn worktree_unknown() -> Failure {
+    Failure::fixed(
+        "operation_result_unknown",
+        "工作树创建结果未知；请用 project worktree status --source-project <原项目> --key <原key> 查询。不会自动重发、接纳或清理。",
+        false,
+    )
+}
+fn worktree_fields(value: &Value, fields: &[&str]) -> bool {
+    value.as_object().is_some_and(|object| {
+        object.len() == fields.len() && fields.iter().all(|field| object.contains_key(*field))
+    })
+}
+fn validate_worktree(
+    receipt: &WorktreeReceipt,
+    source: &str,
+    id: Option<&str>,
+) -> Result<(), Failure> {
+    let parent = worktree_path(&receipt.parent_path).ok_or_else(invalid_response)?;
+    let target = format!("{parent}/nhc-{}", receipt.operation_id);
+    let succeeded = receipt.state == WorktreeState::Succeeded;
+    let has_cause = matches!(
+        receipt.state,
+        WorktreeState::Rejected | WorktreeState::Unknown
+    );
+    if receipt.schema_version != 1
+        || !canonical_uuid(&receipt.operation_id)
+        || receipt.source_project_id.0 != source
+        || !valid_id(source)
+        || id.is_some_and(|id| id != receipt.operation_id)
+        || receipt.name.trim().is_empty()
+        || receipt.name.len() > 500
+        || worktree_path(&receipt.target_path).as_deref() != Some(target.as_str())
+        || receipt.branch != format!("codex/workspace/{}", receipt.operation_id)
+        || !commit_oid(&receipt.expected_head)
+        || receipt.expected_head != receipt.expected_head.to_ascii_lowercase()
+        || !valid_digest(&receipt.request_digest)
+        || !(1..=i64::MAX as u64).contains(&receipt.expected_config_revision)
+        || !(1..=i64::MAX as u64).contains(&receipt.revision)
+        || receipt.created_at < 0
+        || receipt.updated_at < receipt.created_at
+        || succeeded != receipt.project_id.is_some()
+        || has_cause != receipt.cause.is_some()
+        || receipt
+            .project_id
+            .as_ref()
+            .is_some_and(|p| !valid_id(&p.0) || p.0 == source)
+        || !safe_strings(&encoded(receipt)?)
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WorktreeWireError {
+    code: String,
+    message: String,
+    error: String,
+    retryable: bool,
+}
+fn worktree_http_error(bytes: &[u8], status: u16) -> Result<Failure, Failure> {
+    let error: WorktreeWireError = serde_json::from_slice(bytes).map_err(|_| invalid_response())?;
+    let (code, expected) = match error.code.as_str() {
+        "worktree_invalid" => ("worktree_invalid", 400),
+        "worktree_not_found" => ("worktree_not_found", 404),
+        "worktree_revision_conflict" => ("worktree_revision_conflict", 409),
+        "worktree_idempotency_conflict" => ("worktree_idempotency_conflict", 409),
+        "worktree_busy" => ("worktree_busy", 409),
+        "worktree_root_changed" => ("worktree_root_changed", 409),
+        "worktree_conflict" => ("worktree_conflict", 409),
+        "worktree_unsupported" => ("worktree_unsupported", 422),
+        "worktree_unavailable" => ("worktree_unavailable", 503),
+        "worktree_corrupt" => ("worktree_corrupt", 500),
+        "forbidden" => ("forbidden", 403),
+        "request_failed" if matches!(status, 400 | 413 | 415) => ("request_failed", status),
+        _ => return Err(invalid_response()),
+    };
+    if expected != status || error.retryable || error.message != error.error {
+        return Err(invalid_response());
+    }
+    Ok(Failure {
+        code,
+        message: error.message,
+        retryable: false,
+        details: None,
+        after: None,
+    })
+}
+async fn worktree_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: WorktreeCommand,
+) -> Result<(), Failure> {
+    let (source, operation_id, is_create, is_inspect) = match &command {
+        WorktreeCommand::Create { source_project, .. } => {
+            (source_project.as_str(), None, true, false)
+        }
+        WorktreeCommand::Status {
+            source_project, id, ..
+        } => (source_project.as_str(), id.as_deref(), false, false),
+        WorktreeCommand::Inspect { source_project, id } => {
+            (source_project.as_str(), Some(id.as_str()), false, true)
+        }
+    };
+    let bootstrap: Bootstrap =
+        decode(request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?)).await?)?;
+    if bootstrap.token.is_empty() || bootstrap.token.len() > 4096 {
+        return Err(invalid_response());
+    }
+    let mut segments = vec!["api", "projects", source, "worktrees"];
+    let request = match &command {
+        WorktreeCommand::Create { name, parent, expected_config_revision, expected_head, key, .. } => {
+            client.post(endpoint(origin, &segments)?).header("idempotency-key", key)
+                .json(&json!({"name":name,"parent_path":parent,"expected_config_revision":expected_config_revision,"expected_head":expected_head}))
+        }
+        WorktreeCommand::Status { key: Some(key), .. } => {
+            segments.push("lookup");
+            client.post(endpoint(origin, &segments)?).json(&json!({"idempotency_key":key}))
+        }
+        WorktreeCommand::Status { .. } => {
+            segments.push(operation_id.expect("validated id"));
+            client.get(endpoint(origin, &segments)?)
+        }
+        WorktreeCommand::Inspect { id, .. } => {
+            segments.extend([id.as_str(), "inspect"]);
+            client.post(endpoint(origin, &segments)?).json(&json!({}))
+        }
+    }.header("x-peachsh-token", &bootstrap.token);
+    let response = request.send().await.map_err(|_| {
+        if is_create {
+            worktree_unknown()
+        } else {
+            Failure::fixed(
+                "unavailable",
+                "无法读取工作树持久状态或观测；未发起创建",
+                false,
+            )
+        }
+    })?;
+    let status = response.status().as_u16();
+    let process = async {
+        let bytes = limited_body(response).await?;
+        let value: Value = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+        if !safe_strings(&value) || contains_string(&value, &bootstrap.token) { return Err(invalid_response()); }
+        // Read-only POSTs are intentionally not classified as creation requests.
+        if value.get("schema_version").is_none() && !is_inspect
+            || is_inspect && value.get("receipt").is_none()
+        {
+            return Err(worktree_http_error(&bytes, status)?);
+        }
+        let receipt = if is_inspect {
+            if !worktree_fields(&value, &["receipt", "observation"])
+                || !worktree_fields(&value["observation"], &["operation_id", "observed_at", "state", "reason_codes", "observed_head", "observed_branch"])
+            { return Err(invalid_response()); }
+            let inspection: WorktreeInspection = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+            let observation = &inspection.observation;
+            if status != 200 || observation.operation_id != inspection.receipt.operation_id
+                || observation.observed_at < 0
+                || observation.observed_head.as_deref().is_some_and(|head| !commit_oid(head) || head != head.to_ascii_lowercase())
+                || observation.observed_branch.as_deref().is_some_and(|branch| branch.is_empty() || branch.contains(['\r','\n','\0']))
+                || (observation.state == WorktreeObservationState::PresentMatching
+                    && (observation.observed_head.as_deref() != Some(inspection.receipt.expected_head.as_str())
+                        || !matches!(observation.observed_branch.as_deref(), Some(branch) if branch == inspection.receipt.branch || branch == format!("refs/heads/{}", inspection.receipt.branch))))
+            { return Err(invalid_response()); }
+            inspection.receipt
+        } else {
+            serde_json::from_slice::<WorktreeReceipt>(&bytes).map_err(|_| invalid_response())?
+        };
+        let receipt_value = if is_inspect { &value["receipt"] } else { &value };
+        if !worktree_fields(receipt_value, &["schema_version", "operation_id", "source_project_id", "name", "parent_path", "target_path", "branch", "expected_config_revision", "expected_head", "request_digest", "revision", "state", "project_id", "cause", "created_at", "updated_at"]) {
+            return Err(invalid_response());
+        }
+        validate_worktree(&receipt, source, operation_id)?;
+        if let WorktreeCommand::Create { name, parent, expected_config_revision, expected_head, .. } = &command {
+            let expected_status = match receipt.state {
+                WorktreeState::Succeeded => 200,
+                WorktreeState::Claimed | WorktreeState::Unknown => 202,
+                WorktreeState::Rejected => 409,
+            };
+            if status != expected_status || receipt.name != *name || receipt.parent_path != *parent
+                || receipt.expected_config_revision != *expected_config_revision
+                || receipt.expected_head != expected_head.to_ascii_lowercase()
+            { return Err(invalid_response()); }
+        } else if status != 200 { return Err(invalid_response()); }
+        print_value(value, json_output)?;
+        if !json_output {
+            let mut output = io::stdout().lock();
+            writeln!(output, "linked worktree 共享 Git objects/refs/config，不是 OS 沙箱；新 Project 需独立配置与网络授权。unknown 仅诊断，不自动重试、接纳或清理。")
+                .and_then(|()| output.flush())
+                .map_err(|_| Failure::fixed("output_failed", "无法写入标准输出", false))?;
+        }
+        if is_create && receipt.state != WorktreeState::Succeeded {
+            return Err(Failure::fixed("worktree_not_succeeded", "工作树未成功完成", false));
+        }
+        Ok(())
+    }.await;
+    process.map_err(|error| {
+        if is_create
+            && matches!(
+                error.code,
+                "internal" | "output_failed" | "unavailable" | "worktree_corrupt"
+            )
+        {
+            worktree_unknown()
+        } else {
+            error
+        }
+    })
 }
 
 fn validate_plugin(plugin: &PluginStatus) -> Result<(), Failure> {
@@ -1603,6 +1945,7 @@ async fn workflow_inner(
 ) -> Result<(), Failure> {
     let value = match command {
         Command::Project(args) => match args.command {
+            ProjectCommand::Worktree(_) => unreachable!(),
             ProjectCommand::List => {
                 let projects: Vec<Project> = decode(
                     workflow_request(client, origin, &["api", "projects"], None, None).await?,
