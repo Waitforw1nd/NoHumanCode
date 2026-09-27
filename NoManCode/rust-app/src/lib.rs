@@ -22,3 +22,4 @@ pub mod wasm;
 pub mod workspace;
 pub mod workspace_changes;
 pub mod workspace_identity;
+pub mod worktree_management;
