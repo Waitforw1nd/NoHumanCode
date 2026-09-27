@@ -1265,7 +1265,8 @@ mod tests {
                 &plan.expected_head
             )
             .await
-            .unwrap_err(),
+            .err()
+            .unwrap(),
             GitWorktreeError::Conflict
         );
         #[cfg(windows)]
