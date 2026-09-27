@@ -4,14 +4,21 @@ use crate::plugin_catalog::{
     CatalogManifestV1, ExactVersion, InterfaceKey, InterfaceKind, LifecycleKind, RuntimeKind,
     ScopeKey, ScopeKind, Surface,
 };
-use crate::plugin_host::{BuiltinPlugin, InstanceState, PluginContext, PluginError, PluginHost};
+use crate::plugin_host::{
+    BuiltinPlugin, FailureStage, HostError, InstanceState, PluginContext, PluginError,
+    PluginFailureCause, PluginHost,
+};
 use crate::{domain::Task, workspace};
 use anyhow::{Context, Result, bail, ensure};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     future::Future,
     pin::Pin,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{
+        Arc, Mutex, MutexGuard,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 const FILES: &str = "builtin.files";
@@ -111,15 +118,273 @@ impl BuiltinPlugin for ConsumerPlugin {
     }
 }
 
-/// One registry shared by all calls through an Engine. No public raw registry
-/// or service handles: revocation and admission serialize on this mutex.
+/// Safe current observation, without payloads or arbitrary plugin error messages.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FilesRuntimeStatus {
+    pub state: FilesRuntimeState,
+    pub admission_open: bool,
+    pub in_flight: u64,
+    pub draining: bool,
+    pub instances: Vec<FilesInstanceStatus>,
+    pub providers: Vec<FilesProviderStatus>,
+    pub effects_count: u64,
+    pub subscriptions_count: u64,
+    pub recovery: Vec<FilesRecoveryStatus>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FilesRuntimeState {
+    Active,
+    Stopped,
+    Unloaded,
+    Failed,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FilesInstanceState {
+    Registered,
+    Loaded,
+    Active,
+    Stopped,
+    Unloaded,
+    Failed,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FilesFailureStage {
+    Activate,
+    Deactivate,
+    Deliver,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FilesFailureCauseCode {
+    PluginError,
+    Panic,
+    ProvidesNotCovered,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FilesInstanceStatus {
+    pub plugin_id: String,
+    pub state: FilesInstanceState,
+    pub failure_stage: Option<FilesFailureStage>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FilesProviderStatus {
+    pub key: InterfaceKey,
+    pub provider_id: String,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FilesRecoveryStatus {
+    pub plugin_id: String,
+    pub stage: FilesFailureStage,
+    pub cause_code: FilesFailureCauseCode,
+}
+impl From<FailureStage> for FilesFailureStage {
+    fn from(stage: FailureStage) -> Self {
+        match stage {
+            FailureStage::Activate => Self::Activate,
+            FailureStage::Deactivate => Self::Deactivate,
+            FailureStage::Deliver => Self::Deliver,
+        }
+    }
+}
+fn cause_code(cause: &PluginFailureCause) -> FilesFailureCauseCode {
+    match cause {
+        PluginFailureCause::PluginError { .. } => FilesFailureCauseCode::PluginError,
+        PluginFailureCause::Panic => FilesFailureCauseCode::Panic,
+        PluginFailureCause::ProvidesNotCovered { .. } => FilesFailureCauseCode::ProvidesNotCovered,
+    }
+}
+struct RuntimeState {
+    host: PluginHost,
+    admission_open: bool,
+    apply_failed: bool,
+    activation_recovery: Vec<FilesRecoveryStatus>,
+}
+impl std::ops::Deref for RuntimeState {
+    type Target = PluginHost;
+    fn deref(&self) -> &Self::Target {
+        &self.host
+    }
+}
+/// Restricted management view. Registry and execution handles never escape.
+pub(crate) struct FilesControl<'a> {
+    state: &'a mut RuntimeState,
+    in_flight: &'a Arc<AtomicU64>,
+}
+impl FilesControl<'_> {
+    pub(crate) fn snapshot(&self) -> FilesRuntimeStatus {
+        let actual = self.state.host.instances();
+        let instances: Vec<_> = [FILES, CONSUMER]
+            .into_iter()
+            .map(|id| {
+                let state = actual
+                    .iter()
+                    .find(|i| i.id == id)
+                    .map(|i| i.state)
+                    .unwrap_or(InstanceState::Unloaded);
+                let (state, failure_stage) = match state {
+                    InstanceState::Registered => (FilesInstanceState::Registered, None),
+                    InstanceState::Loaded => (FilesInstanceState::Loaded, None),
+                    InstanceState::Active => (FilesInstanceState::Active, None),
+                    InstanceState::Stopped => (FilesInstanceState::Stopped, None),
+                    InstanceState::Unloaded => (FilesInstanceState::Unloaded, None),
+                    InstanceState::Failed { stage } => {
+                        (FilesInstanceState::Failed, Some(stage.into()))
+                    }
+                };
+                FilesInstanceStatus {
+                    plugin_id: id.into(),
+                    state,
+                    failure_stage,
+                }
+            })
+            .collect();
+        let active = ToolRuntime::files_active(&self.state.host);
+        let state = if self.state.apply_failed
+            || instances
+                .iter()
+                .any(|i| i.state == FilesInstanceState::Failed)
+        {
+            FilesRuntimeState::Failed
+        } else if active {
+            FilesRuntimeState::Active
+        } else if instances
+            .iter()
+            .all(|i| i.state == FilesInstanceState::Unloaded)
+        {
+            FilesRuntimeState::Unloaded
+        } else {
+            FilesRuntimeState::Stopped
+        };
+        let effects = self.state.host.effects();
+        let providers = effects
+            .iter()
+            .filter(|e| !e.is_subscription)
+            .map(|e| FilesProviderStatus {
+                key: e.key.clone(),
+                provider_id: e.plugin_id.clone(),
+            })
+            .collect();
+        let mut recovery = self.state.activation_recovery.clone();
+        recovery.extend(self.state.host.pending_recovery().into_iter().map(|r| {
+            FilesRecoveryStatus {
+                plugin_id: r.plugin_id,
+                stage: r.stage.into(),
+                cause_code: cause_code(&r.cause),
+            }
+        }));
+        let in_flight = self.in_flight.load(Ordering::SeqCst);
+        let admission_open = self.state.admission_open && active && !self.state.apply_failed;
+        FilesRuntimeStatus {
+            state,
+            admission_open,
+            in_flight,
+            draining: !admission_open && in_flight > 0,
+            instances,
+            providers,
+            effects_count: effects.len() as u64,
+            subscriptions_count: effects.iter().filter(|e| e.is_subscription).count() as u64,
+            recovery,
+        }
+    }
+    /// Only explicit new intent reconciles. Lifecycle failure is observed state,
+    /// not an error suggesting that the preceding durable commit was rolled back.
+    pub(crate) fn reconcile(&mut self, enabled: bool) -> FilesRuntimeStatus {
+        self.state.admission_open = false;
+        if !enabled {
+            self.stop_active();
+            return self.snapshot();
+        }
+        if ToolRuntime::files_active(&self.state.host) && !self.state.apply_failed {
+            self.state.admission_open = true;
+            return self.snapshot();
+        }
+        // Failed instances must be unloaded, never directly restarted.
+        if !self.stop_active() {
+            return self.snapshot();
+        }
+        for id in [CONSUMER, FILES] {
+            if self.state.host.instances().iter().any(|i| i.id == id)
+                && self.state.host.unload(id).is_err()
+            {
+                self.state.apply_failed = true;
+                return self.snapshot();
+            }
+        }
+        self.state.apply_failed = false;
+        match self.state.host.start(&[CONSUMER.to_owned()]) {
+            Ok(_) => self.state.admission_open = ToolRuntime::files_active(&self.state.host),
+            Err(error) => {
+                self.state.apply_failed = true;
+                let record = match error {
+                    HostError::PluginStartError {
+                        plugin_id,
+                        stage,
+                        cause,
+                        ..
+                    } => Some(FilesRecoveryStatus {
+                        plugin_id,
+                        stage: stage.into(),
+                        cause_code: cause_code(&cause),
+                    }),
+                    HostError::PluginPanic { plugin_id, stage } => Some(FilesRecoveryStatus {
+                        plugin_id,
+                        stage: stage.into(),
+                        cause_code: FilesFailureCauseCode::Panic,
+                    }),
+                    HostError::ProvidesNotCovered { plugin_id, .. } => Some(FilesRecoveryStatus {
+                        plugin_id,
+                        stage: FilesFailureStage::Activate,
+                        cause_code: FilesFailureCauseCode::ProvidesNotCovered,
+                    }),
+                    _ => None,
+                };
+                if let Some(record) = record {
+                    self.state.activation_recovery.push(record);
+                }
+            }
+        }
+        self.snapshot()
+    }
+    fn stop_active(&mut self) -> bool {
+        let mut success = true;
+        // Consumer failure must not leave the provider active.
+        for id in [CONSUMER, FILES] {
+            if self
+                .state
+                .host
+                .instances()
+                .iter()
+                .any(|i| i.id == id && i.state == InstanceState::Active)
+                && self.state.host.stop(id).is_err()
+            {
+                success = false;
+            }
+        }
+        if !success {
+            self.state.apply_failed = true;
+        }
+        success
+    }
+}
+/// Admission and management share this mutex; lease release never acquires it.
 pub struct ToolRuntime {
-    host: Mutex<PluginHost>,
+    host: Mutex<RuntimeState>,
+    in_flight: Arc<AtomicU64>,
+}
+struct FileLeaseCount(Arc<AtomicU64>);
+impl Drop for FileLeaseCount {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 /// Single-use admitted service. Not Clone, not persistent, and not a public
 /// tool execution API. Only Engine's existing approval/perform_tool path calls it.
 pub struct ToolLease {
+    _file_count: Option<FileLeaseCount>,
     service: Service,
     task_id: String,
     workspace: String,
@@ -127,12 +392,22 @@ pub struct ToolLease {
 }
 impl ToolRuntime {
     pub fn builtin() -> Result<Self> {
-        Self::assemble([
-            Arc::new(WorkspaceService("read_file")),
-            Arc::new(WorkspaceService("write_file")),
-        ])
+        Self::builtin_with_enabled(true)
     }
+    pub fn builtin_with_enabled(enabled: bool) -> Result<Self> {
+        Self::assemble_enabled(
+            [
+                Arc::new(WorkspaceService("read_file")),
+                Arc::new(WorkspaceService("write_file")),
+            ],
+            enabled,
+        )
+    }
+    #[cfg(test)]
     fn assemble(services: [Service; 2]) -> Result<Self> {
+        Self::assemble_enabled(services, true)
+    }
+    fn assemble_enabled(services: [Service; 2], enabled: bool) -> Result<Self> {
         let mut host = PluginHost::new(ScopeKey::Host)?;
         host.catalog_mut().register(manifest(FILES, true))?;
         host.catalog_mut().register(manifest(CONSUMER, false))?;
@@ -142,20 +417,46 @@ impl ToolRuntime {
             })
         });
         host.with_factory(CONSUMER, || Box::new(ConsumerPlugin));
-        host.start(&[CONSUMER.to_owned()])?;
-        Ok(Self {
-            host: Mutex::new(host),
-        })
+        let runtime = Self {
+            host: Mutex::new(RuntimeState {
+                host,
+                admission_open: false,
+                apply_failed: false,
+                activation_recovery: vec![],
+            }),
+            in_flight: Arc::new(AtomicU64::new(0)),
+        };
+        if enabled {
+            runtime.with_files_control(|control| {
+                control.reconcile(true);
+                Ok(())
+            })?;
+        }
+        Ok(runtime)
     }
-    fn lock(&self) -> Result<MutexGuard<'_, PluginHost>> {
+    fn lock(&self) -> Result<MutexGuard<'_, RuntimeState>> {
         self.host
             .lock()
             .map_err(|_| anyhow::anyhow!("tool runtime lock poisoned"))
     }
     fn files_active(host: &PluginHost) -> bool {
-        host.instances()
-            .iter()
-            .any(|instance| instance.id == CONSUMER && instance.state == InstanceState::Active)
+        [FILES, CONSUMER].iter().all(|id| {
+            host.instances()
+                .iter()
+                .any(|instance| instance.id == *id && instance.state == InstanceState::Active)
+        })
+    }
+    /// Synchronous short callback only: runtime -> Store; no await, Engine gate,
+    /// runtime re-entry, or filesystem execution.
+    pub(crate) fn with_files_control<R>(
+        &self,
+        f: impl FnOnce(&mut FilesControl<'_>) -> Result<R>,
+    ) -> Result<R> {
+        let mut state = self.lock()?;
+        f(&mut FilesControl {
+            state: &mut state,
+            in_flight: &self.in_flight,
+        })
     }
     fn file_service(host: &PluginHost, name: &str) -> Result<Service> {
         Ok(host.resolve_bound::<Service>(CONSUMER, &key(name))?.payload)
@@ -172,7 +473,7 @@ impl ToolRuntime {
                     .is_some_and(|name| COMPAT_TOOLS.contains(&name))
             })
             .collect::<Vec<_>>();
-        if Self::files_active(&host) {
+        if host.admission_open && !host.apply_failed && Self::files_active(&host) {
             for name in FILE_TOOLS {
                 if !workspace::definitions(task)
                     .iter()
@@ -206,7 +507,16 @@ impl ToolRuntime {
                 .any(|definition| definition["function"]["name"] == name),
             "工具未获任务授权"
         );
-        let service: Service = if FILE_TOOLS.contains(&name) {
+        let is_file = FILE_TOOLS.contains(&name);
+        let service: Service = if is_file {
+            ensure!(
+                host.admission_open && !host.apply_failed && Self::files_active(&host),
+                "file tools unavailable"
+            );
+            ensure!(
+                self.in_flight.load(Ordering::SeqCst) < u64::MAX,
+                "file lease count exhausted"
+            );
             Self::file_service(&host, name)?
         } else if let Some(&name) = COMPAT_TOOLS.iter().find(|candidate| **candidate == name) {
             Arc::new(WorkspaceService(name))
@@ -217,38 +527,44 @@ impl ToolRuntime {
         validate_definition(&definition, name)?;
         // Do all fallible snapshot work before claim, so an admitted call cannot
         // disappear because creating its lease failed afterwards.
-        let lease = ToolLease {
+        let mut lease = ToolLease {
+            _file_count: None,
             service,
             task_id: task.id.clone(),
             workspace: task.workspace.clone(),
             spec: serde_json::to_value(&task.spec)?,
         };
         let admitted = admit()?;
+        if is_file {
+            self.in_flight.fetch_add(1, Ordering::SeqCst);
+            lease._file_count = Some(FileLeaseCount(self.in_flight.clone()));
+        }
         drop(host);
         Ok((lease, admitted))
     }
+    /// Legacy in-memory control only, not persistent management.
     pub fn disable_builtin_files(&self) -> Result<()> {
-        let mut host = self.lock()?;
-        if Self::files_active(&host) {
-            host.stop_subtree(FILES)?;
-        }
-        Ok(())
+        self.with_files_control(|control| {
+            let status = control.reconcile(false);
+            ensure!(
+                status.state != FilesRuntimeState::Failed,
+                "file runtime stop failed"
+            );
+            Ok(())
+        })
     }
+    /// Legacy in-memory unload; preserves recovery history.
     pub fn unload_builtin_files(&self) -> Result<()> {
-        let mut host = self.lock()?;
-        if Self::files_active(&host) {
-            host.stop_subtree(FILES)?;
-        }
-        for id in [CONSUMER, FILES] {
-            if host
-                .instances()
-                .iter()
-                .any(|instance| instance.id == id && instance.state != InstanceState::Unloaded)
-            {
-                host.unload(id)?;
+        self.with_files_control(|control| {
+            control.reconcile(false);
+            for id in [CONSUMER, FILES] {
+                if control.state.host.instances().iter().any(|i| i.id == id) {
+                    control.state.host.unload(id)?;
+                }
             }
-        }
-        Ok(())
+            control.state.apply_failed = false;
+            Ok(())
+        })
     }
 }
 fn validate_definition(definition: &Value, name: &str) -> Result<()> {
