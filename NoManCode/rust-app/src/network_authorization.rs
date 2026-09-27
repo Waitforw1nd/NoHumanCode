@@ -930,6 +930,8 @@ impl Store {
             };
             #[cfg(test)]
             crate::engine::crash_probe::block(&subject.key()?, "network-before-claim", &id);
+            #[cfg(test)]
+            if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-before-claim",&id);}
             tx.execute(
                 "INSERT INTO network_calls(rowid,id,authorization_id,task_id,state,receipt) VALUES (?5,?1,?2,?3,'claimed',?4)",
                 params![
@@ -952,6 +954,8 @@ impl Store {
             tx.commit()?;
             #[cfg(test)]
             crate::engine::crash_probe::block(&subject.key()?, "network-after-claim", &id);
+            #[cfg(test)]
+            if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-after-claim",&id);}
             let permit = crate::provider_transport::ProviderPermit::new(
                 target,
                 current.credential,
@@ -1056,11 +1060,13 @@ impl Store {
             }
         };
         #[cfg(test)]
-        crate::engine::crash_probe::block(
-            &value.subject.key()?,
-            "network-before-finish",
-            &value.call_id,
-        );
+        if value.purpose == NetworkPurpose::Completion {
+            crate::engine::crash_probe::block(
+                &value.subject.key()?,
+                "budget-before-finish",
+                &value.call_id,
+            );
+        }
         let saved = (|| -> AnyResult<()> {
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -1086,7 +1092,16 @@ impl Store {
                 ) {
                     let mut error: NetworkError = (*budget).into();
                     error.dispatch_state = DispatchState::Unknown;
-                    error.calls = vec![value];
+                    if budget.kind == crate::budget::BudgetErrorKind::Conflict {
+                        if let Ok(persisted) = receipt(&self.db.lock().unwrap(), &value.call_id) {
+                            error.dispatch_state = match persisted.state {
+                                CallState::Finished => DispatchState::Finished,
+                                CallState::NotSent => DispatchState::NotSent,
+                                _ => DispatchState::Unknown,
+                            };
+                            error.calls = vec![persisted];
+                        }
+                    }
                     return Err(error);
                 }
             }

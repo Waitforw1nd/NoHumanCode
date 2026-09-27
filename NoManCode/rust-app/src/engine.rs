@@ -505,7 +505,7 @@ pub(crate) mod crash_probe {
             .remove(task_id)
     }
 
-    pub(super) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
+    pub(crate) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
         *PHASE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some((task_id, phase, signal));
     }
 

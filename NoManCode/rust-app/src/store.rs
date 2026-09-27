@@ -1725,6 +1725,7 @@ impl Store {
     pub fn recover(&self) -> Result<usize> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
+        crate::budget::verify_persisted_rows(&tx)?;
         let pending = repository::Repository::new(&tx).nonterminal_turns()?;
         let values: Vec<String> = {
             let mut stmt = tx.prepare("SELECT value FROM tasks")?;
