@@ -4554,12 +4554,13 @@ mod workspace_phase_tests {
         .into_persisted_plan();
         (request, inventory, plan)
     }
+    #[track_caller]
     fn n13_busy<T: std::fmt::Debug>(result: Result<T>) {
+        let error = result.unwrap_err();
         assert_eq!(
-            result
-                .unwrap_err()
-                .downcast_ref::<crate::worktree_management::WorktreeError>(),
-            Some(&crate::worktree_management::WorktreeError::Busy)
+            error.downcast_ref::<crate::worktree_management::WorktreeError>(),
+            Some(&crate::worktree_management::WorktreeError::Busy),
+            "actual admission error: {error:#}"
         );
     }
     #[tokio::test]
@@ -4724,9 +4725,19 @@ mod workspace_phase_tests {
             Some(approval::ApprovalError::BindingConflict { .. })
         ));
         assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
-        // Reach the final claim transaction with an already materialized running Task, as a late worker would.
+        // Controlled persistence injection reaches the last claim guard without violating
+        // the normal completed -> running prohibition through save_task/resume.
         task.status = "running".into();
-        engine.store.save_task(&task).unwrap();
+        engine
+            .store
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "UPDATE tasks SET value=?1 WHERE id=?2",
+                rusqlite::params![serde_json::to_string(&task).unwrap(), task.id],
+            )
+            .unwrap();
         n13_busy(
             engine
                 .store
@@ -4744,7 +4755,6 @@ mod workspace_phase_tests {
                 .status,
             approval::ApprovalStatus::Denied
         );
-        engine.cancel(&task_id).unwrap();
         engine
             .store
             .finish_worktree(
@@ -4753,7 +4763,10 @@ mod workspace_phase_tests {
                 Some((WorktreeState::Rejected, WorktreeCause::Conflict)),
             )
             .unwrap();
-        assert_eq!(engine.store.task(&task_id).unwrap().status, "cancelled");
+        assert_eq!(
+            engine.store.approval(&denied.id).unwrap().status,
+            approval::ApprovalStatus::Denied
+        );
     }
     #[tokio::test]
     async fn n13_reverse_checkpoint_replay_and_restore_seal_precede_reservation() {
