@@ -263,27 +263,51 @@ mod tests {
     fn independent_stores_cas_one_winner() {
         let (dir, first) = store();
         let second = Store::open(&dir.path().join("state.sqlite")).unwrap();
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(3));
-        let workers = [first, second]
-            .into_iter()
-            .enumerate()
-            .map(|(n, store)| {
-                let barrier = barrier.clone();
-                std::thread::spawn(move || {
-                    barrier.wait();
-                    store.set_plugin_desired(
-                        BUILTIN_FILES_ID,
-                        &request(false, 0),
-                        &format!("cas-{n}"),
-                    )
-                })
+        let timeout = std::time::Duration::from_secs(8);
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let mut releases = Vec::new();
+        let mut workers = Vec::new();
+        for (n, store) in [first, second].into_iter().enumerate() {
+            let ready = ready_tx.clone();
+            let done = done_tx.clone();
+            let (release_tx, release_rx) = std::sync::mpsc::channel();
+            releases.push(release_tx);
+            workers.push(std::thread::spawn(move || {
+                ready.send(n).unwrap();
+                release_rx
+                    .recv_timeout(timeout)
+                    .expect("CAS release timeout");
+                let result = store.set_plugin_desired(
+                    BUILTIN_FILES_ID,
+                    &request(false, 0),
+                    &format!("cas-{n}"),
+                );
+                drop(store);
+                done.send(result).unwrap();
+            }));
+        }
+        for _ in 0..2 {
+            ready_rx.recv_timeout(timeout).expect("CAS ready timeout");
+        }
+        for release in releases {
+            release.send(()).unwrap();
+        }
+        let results = (0..2)
+            .map(|_| {
+                done_rx
+                    .recv_timeout(timeout)
+                    .expect("CAS completion timeout")
             })
             .collect::<Vec<_>>();
-        barrier.wait();
-        let results = workers
-            .into_iter()
-            .map(|w| w.join().unwrap())
-            .collect::<Vec<_>>();
+        for worker in workers {
+            let deadline = std::time::Instant::now() + timeout;
+            while !worker.is_finished() && std::time::Instant::now() < deadline {
+                std::thread::yield_now();
+            }
+            assert!(worker.is_finished(), "CAS worker termination timeout");
+            worker.join().unwrap();
+        }
         assert_eq!(results.iter().filter(|r| r.is_ok()).count(), 1);
         assert_eq!(
             results
@@ -308,7 +332,15 @@ mod tests {
     }
     #[test]
     fn schema_12_reopen_marker_constraint_and_data_corruption_rejected() {
-        for mode in ["marker", "constraint", "row", "receipt"] {
+        for mode in [
+            "marker",
+            "constraint",
+            "type",
+            "primary",
+            "foreign",
+            "row",
+            "receipt",
+        ] {
             let (dir, store) = store();
             assert_eq!(store.schema_version().unwrap(), 12);
             assert_eq!(
@@ -329,6 +361,20 @@ mod tests {
                 }
                 "constraint" => {
                     db.execute_batch("PRAGMA writable_schema=ON; UPDATE sqlite_master SET sql=replace(sql, 'revision>=0', 'revision>=-1') WHERE name='plugin_desired'; PRAGMA writable_schema=OFF;").unwrap();
+                }
+                "type" | "primary" | "foreign" => {
+                    let (from, to) = match mode {
+                        "type" => ("enabled INTEGER", "enabled TEXT"),
+                        "primary" => ("PRIMARY KEY", "UNIQUE"),
+                        "foreign" => (
+                            "REFERENCES plugin_desired(plugin_id)",
+                            "REFERENCES projects(id)",
+                        ),
+                        _ => unreachable!(),
+                    };
+                    db.execute_batch("PRAGMA writable_schema=ON").unwrap();
+                    assert_eq!(db.execute("UPDATE sqlite_master SET sql=replace(sql,?1,?2) WHERE name='plugin_management_requests'", params![from,to]).unwrap(),1);
+                    db.execute_batch("PRAGMA writable_schema=OFF").unwrap();
                 }
                 "row" => {
                     db.execute_batch(
