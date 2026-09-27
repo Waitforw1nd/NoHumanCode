@@ -1992,7 +1992,6 @@ mod tests {
     }
     #[tokio::test]
     async fn w06_nonzero_and_timeout_are_unknown_after_spawn() {
-        let f = Fixture::new();
         for (script, timeout) in [
             (
                 "[IO.File]::WriteAllText('pid',[string]$PID); [IO.File]::WriteAllText('partial','present'); exit 7",
@@ -2003,6 +2002,8 @@ mod tests {
                 Duration::from_secs(1),
             ),
         ] {
+            let f = Fixture::new();
+            eprintln!("D08 case deadline_ms={}", timeout.as_millis());
             let mut cmd = Command::new("pwsh.exe");
             cmd.current_dir(&f.aux)
                 .args(["-NoProfile", "-NonInteractive", "-Command", script])
