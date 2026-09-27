@@ -1,7 +1,7 @@
 #[path = "support/network_fixture.rs"]
 mod network_fixture;
 
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
     domain::{Route, RunRequest, SessionKind, Settings, TaskSpec},
     engine::Engine,
@@ -10,7 +10,7 @@ use peachsh::{
 };
 use reqwest::{Client, Response, StatusCode};
 use rusqlite::Connection;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     path::Path,
@@ -126,10 +126,12 @@ fn client() -> Client {
 fn security(response: &Response) {
     assert_eq!(response.headers()["cache-control"], "no-store");
     assert_eq!(response.headers()["x-content-type-options"], "nosniff");
-    assert!(response.headers()["content-security-policy"]
-        .to_str()
-        .unwrap()
-        .contains("default-src 'self'"));
+    assert!(
+        response.headers()["content-security-policy"]
+            .to_str()
+            .unwrap()
+            .contains("default-src 'self'")
+    );
 }
 
 async fn body(response: Response, status: StatusCode) -> Value {
@@ -213,10 +215,12 @@ fn private_absent(text: &str, root: &Path, sealed: &[u8]) {
     assert!(!text.contains(path.as_ref()));
     assert!(!text.contains(&path.replace('\\', "\\\\")));
     assert!(!text.contains(&hex));
-    assert!(!text
-        .as_bytes()
-        .windows(sealed.len())
-        .any(|part| part == sealed));
+    assert!(
+        !text
+            .as_bytes()
+            .windows(sealed.len())
+            .any(|part| part == sealed)
+    );
 }
 
 #[tokio::test]

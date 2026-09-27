@@ -4,10 +4,10 @@ use crate::{
     server::{self, App},
     store::Store,
 };
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use reqwest::{Client, Response, StatusCode};
 use rusqlite::Connection;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     path::Path,
@@ -18,10 +18,15 @@ use tempfile::TempDir;
 
 const TOKEN: &str = "workspace-http-test-token";
 
-type Script = Arc<Mutex<VecDeque<Value>>>;
+type Script = (
+    Arc<Mutex<VecDeque<Value>>>,
+    Arc<std::sync::atomic::AtomicUsize>,
+);
 
 async fn provider(State(script): State<Script>, Json(_): Json<Value>) -> String {
+    script.1.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     let delta = script
+        .0
         .lock()
         .unwrap()
         .pop_front()
@@ -40,6 +45,7 @@ struct Harness {
     dir: TempDir,
     engine: Arc<Engine>,
     origin: String,
+    calls: Arc<std::sync::atomic::AtomicUsize>,
     _provider: tokio::task::JoinHandle<()>,
     _host: tokio::task::JoinHandle<()>,
 }
@@ -64,9 +70,10 @@ async fn harness(replies: Vec<Value>) -> Harness {
     let script = Arc::new(Mutex::new(VecDeque::from(replies)));
     let provider_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}/v1", provider_listener.local_addr().unwrap());
+    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let provider_app = Router::new()
         .route("/v1/chat/completions", post(provider))
-        .with_state(script);
+        .with_state((script, calls.clone()));
     let provider_server = tokio::spawn(async move {
         axum::serve(provider_listener, provider_app).await.unwrap();
     });
@@ -102,6 +109,7 @@ async fn harness(replies: Vec<Value>) -> Harness {
         dir,
         engine,
         origin,
+        calls,
         _provider: provider_server,
         _host: host,
     }
@@ -118,10 +126,12 @@ fn client() -> Client {
 fn security(response: &Response) {
     assert_eq!(response.headers()["cache-control"], "no-store");
     assert_eq!(response.headers()["x-content-type-options"], "nosniff");
-    assert!(response.headers()["content-security-policy"]
-        .to_str()
-        .unwrap()
-        .contains("default-src 'self'"));
+    assert!(
+        response.headers()["content-security-policy"]
+            .to_str()
+            .unwrap()
+            .contains("default-src 'self'")
+    );
 }
 
 async fn body(response: Response, status: StatusCode) -> Value {
@@ -189,7 +199,7 @@ async fn start_task(h: &Harness, paths: &[(&str, &str)]) -> String {
 }
 
 fn authorize_routes(store: &Store) {
-    use crate::{domain::*, network_authorization::*, project_config::*};
+    use crate::{network_authorization::*, project_config::*};
     let settings = store.settings().unwrap().unwrap();
     let project = store
         .register_project(RegisterProject {
@@ -269,14 +279,36 @@ fn assert_files(root: &Path) {
     }
 }
 
-async fn assert_sealed(engine: &Arc<Engine>, task: &str) {
-    use crate::domain::SendChatTurn;
-    assert!(engine.resume(task, "must not retry").await.is_err());
+fn durable_counts(db: &Connection) -> (i64, i64, i64) {
+    db.query_row("SELECT (SELECT count(*) FROM tasks),(SELECT count(*) FROM turns),(SELECT count(*) FROM network_calls)", [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))).unwrap()
+}
+
+async fn assert_sealed(
+    engine: &Arc<Engine>,
+    task: &str,
+    db: &Connection,
+    calls: &std::sync::atomic::AtomicUsize,
+) {
+    use crate::{
+        domain::{ChatTurnError, SendChatTurn},
+        workspace_changes::WorkspaceChangeError,
+    };
+    let counts = durable_counts(db);
+    let previous = serde_json::to_value(engine.store.task(task).unwrap()).unwrap();
+    let call_count = calls.load(std::sync::atomic::Ordering::SeqCst);
+    let resume = engine.resume(task, "must not retry").await.unwrap_err();
+    assert!(
+        matches!(
+            resume.downcast_ref::<WorkspaceChangeError>(),
+            Some(WorkspaceChangeError::Unknown { .. } | WorkspaceChangeError::Unrestorable)
+        ),
+        "resume must fail for restore sealing, got {resume:?}"
+    );
     let context = engine
         .store
         .run_context(&engine.store.task(task).unwrap().run_id)
         .unwrap();
-    assert!(engine
+    let turn = engine
         .send_chat_turn(SendChatTurn {
             session_id: context.session.id,
             agent_id: context.tasks[0].agent_id.clone(),
@@ -285,9 +317,22 @@ async fn assert_sealed(engine: &Arc<Engine>, task: &str) {
             idempotency_key: "partial-sealed-turn".into(),
         })
         .await
-        .is_err());
+        .unwrap_err();
+    assert!(
+        matches!(
+            turn.downcast_ref::<ChatTurnError>(),
+            Some(ChatTurnError::UnresolvedEffects)
+        ),
+        "new turn must fail for unresolved effects, got {turn:?}"
+    );
+    assert_eq!(durable_counts(db), counts);
+    assert_eq!(
+        serde_json::to_value(engine.store.task(task).unwrap()).unwrap(),
+        previous
+    );
+    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), call_count);
+    assert!(!engine.is_busy());
 }
-
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn partial_restore_committed_barrier_http_reopen_no_retry() {
     use crate::engine::restore_probe::Stage;
@@ -399,7 +444,20 @@ async fn partial_restore_committed_barrier_http_reopen_no_retry() {
         assert!(events.iter().any(|e| e.path == "src/b.txt"
             && matches!(e.stage, Stage::ReadCurrent)
             && e.error.as_ref().is_some_and(|codes| codes.io.is_some())));
-        assert!(!events.iter().any(|e| e.path == "src/c.txt"));
+        let committed = events
+            .iter()
+            .position(|e| e.path == "src/a.txt" && matches!(e.stage, Stage::OutcomeCommitted))
+            .expect("A committed event");
+        assert!(
+            !events[committed + 1..]
+                .iter()
+                .any(|e| e.path == "src/c.txt")
+        );
+        assert!(!events.iter().any(|e| e.path == "src/c.txt"
+            && matches!(
+                e.stage,
+                Stage::FileAction | Stage::OutcomePersist | Stage::OutcomeCommitted
+            )));
     }
     for secret in [
         "before-secret",
@@ -410,9 +468,11 @@ async fn partial_restore_committed_barrier_http_reopen_no_retry() {
     ] {
         assert!(!partial.to_string().contains(secret));
     }
-    assert!(!partial
-        .to_string()
-        .contains(h.dir.path().to_string_lossy().as_ref()));
+    assert!(
+        !partial
+            .to_string()
+            .contains(h.dir.path().to_string_lossy().as_ref())
+    );
     drop(lock);
     drop(guard);
     assert_files(h.dir.path());
@@ -436,10 +496,11 @@ async fn partial_restore_committed_barrier_http_reopen_no_retry() {
     )
     .await;
     assert_eq!(retry["receipt"], partial["receipt"]);
-    assert_sealed(&h.engine, &task).await;
+    assert_sealed(&h.engine, &task, &db, &h.calls).await;
     assert_files(h.dir.path());
     assert_eq!(outcome_rows(&db), committed);
     // Stop and join the HTTP servers; reopen actual durable Store/Engine.
+    let calls = h.calls.clone();
     let Harness {
         dir,
         engine,
@@ -475,7 +536,8 @@ async fn partial_restore_committed_barrier_http_reopen_no_retry() {
     )
     .await;
     assert_eq!(reopened["receipt"], partial["receipt"]);
-    assert_sealed(&engine, &task).await;
+    let reopened_db = Connection::open(dir.path().join("workspace.db")).unwrap();
+    assert_sealed(&engine, &task, &reopened_db, &calls).await;
     assert_files(dir.path());
     let db = Connection::open(dir.path().join("workspace.db")).unwrap();
     assert_eq!(outcome_rows(&db), committed);
