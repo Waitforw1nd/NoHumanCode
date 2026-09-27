@@ -718,13 +718,23 @@ fn plugin_unknown() -> Failure {
 
 fn validate_plugin(plugin: &PluginStatus) -> Result<(), Failure> {
     let value = encoded(plugin)?;
+    let (affected, compat) = match plugin.version.as_str() {
+        "1.0.0" => (
+            json!(["read_file", "write_file"]),
+            json!(["list_files", "search_files", "run_command", "run_wasm"]),
+        ),
+        "1.1.0" => (
+            json!(["read_file", "write_file", "list_files", "search_files"]),
+            json!(["run_command", "run_wasm"]),
+        ),
+        _ => return Err(invalid_response()),
+    };
     if plugin.plugin_id != "builtin.files"
-        || plugin.version != "1.0.0"
         || plugin.scope != "host"
         || plugin.desired.plugin_id != "builtin.files"
         || plugin.desired.revision > i64::MAX as u64
-        || value["affected_tools"] != json!(["read_file", "write_file"])
-        || value["compat_tools"] != json!(["list_files", "search_files", "run_command", "run_wasm"])
+        || value["affected_tools"] != affected
+        || value["compat_tools"] != compat
         || value["affected_dependents"] != json!(["builtin.engine-tools"])
         || !safe_strings(&value)
     {
@@ -749,7 +759,9 @@ fn print_plugin(plugin: &PluginStatus) {
         plugin.converged
     );
     println!(
-        "仅影响 read_file/write_file；list_files/search_files/run_command/run_wasm 为 compat，仍受原有权限与项目策略约束。"
+        "影响 {}；{} 为 compat，仍受原有权限与项目策略约束。",
+        plugin.affected_tools.join("/"),
+        plugin.compat_tools.join("/")
     );
 }
 

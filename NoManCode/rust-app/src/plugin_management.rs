@@ -468,17 +468,18 @@ impl PluginStatus {
         };
         Self {
             plugin_id: BUILTIN_FILES_ID.into(),
-            version: "1.0.0".into(),
+            version: crate::tool_runtime::FILES_PLUGIN_VERSION.into(),
             scope: "host".into(),
             desired,
             runtime,
-            affected_tools: vec!["read_file".into(), "write_file".into()],
-            compat_tools: vec![
-                "list_files".into(),
-                "search_files".into(),
-                "run_command".into(),
-                "run_wasm".into(),
-            ],
+            affected_tools: crate::tool_runtime::FILE_TOOLS
+                .iter()
+                .map(|name| (*name).into())
+                .collect(),
+            compat_tools: crate::tool_runtime::COMPAT_TOOLS
+                .iter()
+                .map(|name| (*name).into())
+                .collect(),
             affected_dependents: vec!["builtin.engine-tools".into()],
             converged,
             blocked_reason,

@@ -18,8 +18,14 @@ fn management_status_replay_and_explicit_reconciliation() {
     let engine = engine(&path);
     let first = engine.plugin_status(BUILTIN_FILES_ID).unwrap();
     assert!(first.desired.enabled && first.converged && first.runtime.admission_open);
-    assert_eq!(first.runtime.providers.len(), 2);
-    assert_eq!(first.runtime.effects_count, 2);
+    assert_eq!(first.runtime.providers.len(), 4);
+    assert_eq!(first.runtime.effects_count, 4);
+    assert_eq!(first.version, "1.1.0");
+    assert_eq!(
+        first.affected_tools,
+        ["read_file", "write_file", "list_files", "search_files"]
+    );
+    assert_eq!(first.compat_tools, ["run_command", "run_wasm"]);
     assert_eq!(engine.plugins().unwrap(), vec![first.clone()]);
     let disabled = engine
         .set_plugin_enabled(BUILTIN_FILES_ID, request(false, 0), "disable")

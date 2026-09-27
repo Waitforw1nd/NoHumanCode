@@ -144,23 +144,45 @@ async fn f02_status_is_read_only_and_reports_actual_runtime() {
     let before = h.snapshot();
     let status = h.status().await;
     assert_eq!(status["plugin_id"], "builtin.files");
-    assert_eq!(status["version"], "1.0.0");
+    assert_eq!(status["version"], "1.1.0");
     assert_eq!(status["scope"], "host");
     assert_eq!(status["desired"]["enabled"], true);
     assert_eq!(status["desired"]["revision"], 0);
     assert_eq!(status["runtime"]["state"], "active");
     assert_eq!(status["runtime"]["admission_open"], true);
     assert_eq!(status["converged"], true);
-    assert_eq!(status["affected_tools"], json!(["read_file", "write_file"]));
     assert_eq!(
-        status["compat_tools"],
-        json!(["list_files", "search_files", "run_command", "run_wasm"])
+        status["affected_tools"],
+        json!(["read_file", "write_file", "list_files", "search_files"])
     );
+    assert_eq!(status["compat_tools"], json!(["run_command", "run_wasm"]));
     assert_eq!(
         status["affected_dependents"],
         json!(["builtin.engine-tools"])
     );
-    assert_eq!(status["runtime"]["providers"].as_array().unwrap().len(), 2);
+    assert_eq!(status["runtime"]["providers"].as_array().unwrap().len(), 4);
+    assert_eq!(status["runtime"]["effects_count"], 4);
+    assert_eq!(status["runtime"]["subscriptions_count"], 0);
+    assert_eq!(status["runtime"]["instances"].as_array().unwrap().len(), 2);
+    let mut names = vec![];
+    for provider in status["runtime"]["providers"].as_array().unwrap() {
+        assert_eq!(provider["provider_id"], "builtin.files");
+        assert_eq!(
+            provider["key"]["version"],
+            json!({"major":1,"minor":0,"patch":0})
+        );
+        names.push(provider["key"]["name"].as_str().unwrap());
+    }
+    names.sort();
+    assert_eq!(
+        names,
+        vec![
+            "tool.list_files",
+            "tool.read_file",
+            "tool.search_files",
+            "tool.write_file"
+        ]
+    );
     let list = body(
         h.request(Method::GET, "/api/plugins").send().await.unwrap(),
         200,
@@ -441,6 +463,17 @@ fn cli_ok(output: std::process::Output) -> Value {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_read() {
+    real_host_file_service_case("read_file").await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn l06_real_host_restart_list_and_search_remain_disabled_then_enable() {
+    for tool in ["list_files", "search_files"] {
+        real_host_file_service_case(tool).await;
+    }
+}
+
+async fn real_host_file_service_case(tool: &'static str) {
     use axum::{Json, Router, routing::post};
     use peachsh::domain::{Route, Settings};
     use std::sync::Mutex;
@@ -455,7 +488,13 @@ async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_re
     .unwrap();
     let requests = Arc::new(Mutex::new(Vec::<Value>::new()));
     let captured = requests.clone();
-    let provider=Router::new().route("/v1/chat/completions",post(move |Json(value):Json<Value>|{let captured=captured.clone();async move {let index={let mut requests=captured.lock().unwrap();let index=requests.len();requests.push(value);index};let delta=if index<2 {json!({"tool_calls":[{"index":0,"id":format!("read-{index}"),"type":"function","function":{"name":"read_file","arguments":"{\"path\":\"src/a.txt\"}"}}]})}else{json!({"content":"done"})};let chunk=json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});([("content-type","text/event-stream")],format!("data: {chunk}\n\ndata: [DONE]\n\n"))}}));
+    let args = match tool {
+        "read_file" => json!({"path":"src/a.txt"}),
+        "list_files" => json!({"path":"src"}),
+        "search_files" => json!({"path":"src","query":"read-positive-marker"}),
+        _ => unreachable!(),
+    };
+    let provider=Router::new().route("/v1/chat/completions",post(move |Json(value):Json<Value>|{let captured=captured.clone();let args=args.clone();async move {let index={let mut requests=captured.lock().unwrap();let index=requests.len();requests.push(value);index};let delta=if index<2 {json!({"tool_calls":[{"index":0,"id":format!("file-{index}"),"type":"function","function":{"name":tool,"arguments":args.to_string()}}]})}else{json!({"content":"done"})};let chunk=json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});([("content-type","text/event-stream")],format!("data: {chunk}\n\ndata: [DONE]\n\n"))}}));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}/v1", listener.local_addr().unwrap());
     let provider = tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
@@ -639,12 +678,21 @@ async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_re
         })
         .await
         .unwrap();
+        if index == 0 {
+            let db = rusqlite::Connection::open(root.path().join("data/peachsh.sqlite3")).unwrap();
+            let tool_events: u64 = db.query_row(
+                "SELECT count(*) FROM events WHERE task_id=?1 AND kind IN ('tool_start','tool_result')",
+                [run["tasks"][0]["id"].as_str().unwrap()],
+                |row| row.get(0),
+            ).unwrap();
+            assert_eq!(tool_events, 0);
+        }
         let requests = requests.lock().unwrap();
         assert_eq!(requests.len(), if index == 0 { 1 } else { 3 });
         let first = &requests[index];
         let tools = first["tools"].as_array().cloned().unwrap_or_default();
         assert_eq!(
-            tools.iter().any(|v| v["function"]["name"] == "read_file"),
+            tools.iter().any(|v| v["function"]["name"] == tool),
             index == 1
         );
         if index == 1 {
@@ -652,7 +700,20 @@ async fn f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_re
             let result = messages.iter().find(|v| v["role"] == "tool").unwrap()["content"]
                 .as_str()
                 .unwrap();
-            assert!(result.contains("read-positive-marker"), "{result}");
+            let result: Value = serde_json::from_str(result).unwrap();
+            match tool {
+                "read_file" => assert_eq!(result["content"], "read-positive-marker"),
+                "list_files" => {
+                    assert_eq!(result["files"], json!([{"name":"a.txt","directory":false}]))
+                }
+                "search_files" => {
+                    assert_eq!(result["matches"].as_array().unwrap().len(), 1);
+                    assert_eq!(result["matches"][0]["path"], "src/a.txt");
+                    assert_eq!(result["matches"][0]["line"], 1);
+                    assert_eq!(result["matches"][0]["text"], "read-positive-marker");
+                }
+                _ => unreachable!(),
+            }
         }
     }
     assert_eq!(
