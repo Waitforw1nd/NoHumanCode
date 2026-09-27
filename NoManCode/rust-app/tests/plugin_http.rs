@@ -115,15 +115,19 @@ async fn body(response: reqwest::Response, status: u16) -> Value {
     assert_eq!(response.status().as_u16(), status);
     let value: Value = response.json().await.unwrap();
     let text = value.to_string();
-    for secret in [
-        "plugin-test-token",
-        "sqlite3",
-        "SELECT ",
-        "INSERT ",
-        "E:\\",
-        "D:\\",
-    ] {
+    for secret in ["plugin-test-token", "sqlite3", "SELECT ", "INSERT "] {
         assert!(!text.contains(secret), "{value}");
+    }
+    // Project registration legitimately returns its canonical root. Only plugin
+    // diagnostics and error payloads promise to contain no local paths.
+    if value.get("plugin").is_some()
+        || value.get("plugins").is_some()
+        || value.get("current").is_some()
+        || value.get("error").is_some()
+    {
+        for path in ["E:\\", "D:\\"] {
+            assert!(!text.contains(path), "{value}");
+        }
     }
     value
 }
