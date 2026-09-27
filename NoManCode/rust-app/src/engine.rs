@@ -632,6 +632,20 @@ impl Engine {
             });
         }
     }
+    pub fn worktree_receipt(
+        &self,
+        source: &ProjectId,
+        operation_id: &str,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        self.store.worktree_receipt(source, operation_id)
+    }
+    pub fn lookup_project_worktree(
+        &self,
+        source: &ProjectId,
+        key: &str,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        self.store.lookup_project_worktree(source, key)
+    }
     pub fn plugins(&self) -> Result<Vec<crate::plugin_management::PluginStatus>> {
         // Independent snapshots; never hold both group locks.
         Ok(vec![

@@ -3169,3 +3169,92 @@ mod shell_migration_tests {
         }
     }
 }
+
+pub const WORKTREE_MIGRATION_ID: &str = "git-worktree-operations-v1";
+const WORKTREE_SCHEMA: &[(&str, &str)] = &[
+    (
+        "worktree_operations",
+        "CREATE TABLE worktree_operations (operation_id TEXT NOT NULL PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE CHECK(typeof(idempotency_key)='text' AND length(idempotency_key) BETWEEN 1 AND 200), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), requested_project_id TEXT NOT NULL UNIQUE, request_json TEXT NOT NULL CHECK(typeof(request_json)='text'), request_digest TEXT NOT NULL CHECK(typeof(request_digest)='text' AND length(request_digest)=64), plan TEXT NOT NULL CHECK(typeof(plan)='text'), common_key TEXT NOT NULL CHECK(typeof(common_key)='text' AND length(common_key)=64), target_path TEXT NOT NULL UNIQUE, branch_ref TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('claimed','succeeded','rejected','unknown')), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), UNIQUE(common_key,branch_ref))",
+    ),
+    (
+        "worktree_active_common",
+        "CREATE UNIQUE INDEX worktree_active_common ON worktree_operations(common_key) WHERE state IN ('claimed','unknown')",
+    ),
+    (
+        "worktree_project_reservations",
+        "CREATE TABLE worktree_project_reservations (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL REFERENCES worktree_operations(operation_id))",
+    ),
+    (
+        "project_worktree_origins",
+        "CREATE TABLE project_worktree_origins (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL UNIQUE REFERENCES worktree_operations(operation_id), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), identity TEXT NOT NULL CHECK(typeof(identity)='text'))",
+    ),
+];
+pub(crate) fn apply_schema_14(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let applied = migration_applied(tx, WORKTREE_MIGRATION_ID)?;
+    anyhow::ensure!(
+        migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?,
+        "schema 13 marker missing"
+    );
+    if version == 14 {
+        anyhow::ensure!(applied, "schema 14 marker missing");
+        return verify_schema_14(tx);
+    }
+    anyhow::ensure!(
+        version == 13 && !applied,
+        "schema 14 marker/version mismatch"
+    );
+    verify_schema_13(tx)?;
+    for (_, sql) in WORKTREE_SCHEMA {
+        tx.execute_batch(sql)?;
+    }
+    verify_schema_14(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        params![WORKTREE_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 14)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_14(tx: &Transaction<'_>) -> Result<()> {
+    // Only whitespace and unquoted SQL keyword case are insignificant.
+    fn normalize(sql: &str) -> String {
+        let mut result = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(c) = chars.next() {
+            if let Some(q) = quote {
+                result.push(c);
+                if c == q {
+                    if chars.peek() == Some(&q) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(c, '\'' | '"' | '`') {
+                quote = Some(c);
+                result.push(c);
+            } else if !c.is_whitespace() {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+        result
+    }
+    for (name, sql) in WORKTREE_SCHEMA {
+        let actual: String =
+            tx.query_row("SELECT sql FROM sqlite_master WHERE name=?1", [name], |r| {
+                r.get(0)
+            })?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "worktree schema constraint mismatch"
+        );
+    }
+    crate::worktree_management::verify_persisted_rows(tx)?;
+    let foreign: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(foreign.is_none(), "worktree foreign key violation");
+    Ok(())
+}
