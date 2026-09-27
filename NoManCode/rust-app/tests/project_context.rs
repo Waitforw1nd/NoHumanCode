@@ -220,7 +220,7 @@ fn safe_defaults_cas_restart_and_overlap_are_explicit() {
     );
     drop(store);
     let store = Store::open(&db).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 11);
+    assert_eq!(store.schema_version().unwrap(), 12);
     assert_eq!(
         store.current_project().unwrap().project_id,
         Some(project.id.clone())
