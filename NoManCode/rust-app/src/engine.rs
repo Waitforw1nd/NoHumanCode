@@ -2621,7 +2621,7 @@ mod workspace_phase_tests {
         }
     }
     #[tokio::test]
-    async fn n11_old_schema12_receipt_reopens_as_current_version_without_any_row_changes() {
+    async fn n12_true_schema12_migrates_preserving_all_old_rows_and_schema13_reopens() {
         for enabled in [false, true] {
             let temp = tempfile::tempdir().unwrap();
             let (old, task_id) = two_write_engine_kind(temp.path(), SessionKind::Chat).await;
@@ -2631,13 +2631,20 @@ mod workspace_phase_tests {
             let path = temp.path().join("phase.db");
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
-            // The immutable NEXT-10 receipt has no version/tool-list fields. Seed its exact schema12 representation.
+            // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            {
+                let tx = db.unchecked_transaction().unwrap();
+                crate::repository::apply_schema_12(&tx).unwrap();
+                tx.commit().unwrap();
+            }
+            // The immutable NEXT-10 receipt has no version/tool-list fields.
             db.execute(
-                "UPDATE plugin_desired SET enabled=?1,revision=1,updated_at=123",
+                "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=1,updated_at=123 WHERE plugin_id='builtin.files'",
                 [enabled],
             )
             .unwrap();
-            db.execute("INSERT INTO plugin_management_requests VALUES ('old-1.0-intent','builtin.files',?1,0,1,123)",[enabled]).unwrap();
+            db.execute("INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (71,'old-1.0-intent','builtin.files',?1,0,1,123)",[enabled]).unwrap();
             fn all_rows(
                 db: &rusqlite::Connection,
             ) -> std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>> {
@@ -2648,7 +2655,7 @@ mod workspace_phase_tests {
                     "schema_migrations",
                 ] {
                     let values = db
-                        .prepare(&format!("SELECT * FROM {name} ORDER BY rowid"))
+                        .prepare(&format!("SELECT rowid,* FROM {name} ORDER BY rowid"))
                         .unwrap()
                         .query_map([], |r| {
                             (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
@@ -2662,14 +2669,45 @@ mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 12);
+            assert_eq!(engine.store.schema_version().unwrap(), 13);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.1.0");
             assert_eq!(current.desired.updated_at, 123);
             assert_eq!(current.desired.revision, 1);
             assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });
-            assert_eq!(all_rows(&db), before);
+            let mut expected = before.clone();
+            let after = all_rows(&db);
+            let shell_rows: Vec<_> = after["plugin_desired"]
+                .iter()
+                .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
+                .cloned()
+                .collect();
+            assert_eq!(shell_rows.len(), 1);
+            assert_eq!(shell_rows[0][2], rusqlite::types::Value::Integer(1));
+            assert_eq!(shell_rows[0][3], rusqlite::types::Value::Integer(0));
+            let marker_rows: Vec<_> = after["schema_migrations"]
+                .iter()
+                .filter(|row| {
+                    row[1]
+                        == rusqlite::types::Value::Text(
+                            crate::repository::SHELL_MANAGEMENT_MIGRATION_ID.into(),
+                        )
+                })
+                .cloned()
+                .collect();
+            assert_eq!(marker_rows.len(), 1);
+            expected
+                .get_mut("plugin_desired")
+                .unwrap()
+                .extend(shell_rows);
+            expected
+                .get_mut("schema_migrations")
+                .unwrap()
+                .extend(marker_rows);
+            assert_eq!(after, expected);
+            drop(Store::open(&path).unwrap());
+            assert_eq!(all_rows(&db), expected);
             // If enabled, stop only in memory so a replay attempting reconciliation is observable.
             if enabled {
                 engine.disable_builtin_files().unwrap();
@@ -2688,7 +2726,7 @@ mod workspace_phase_tests {
                 }
             );
             assert_eq!(replay.current, stopped);
-            assert_eq!(all_rows(&db), before);
+            assert_eq!(all_rows(&db), expected);
             let error = engine
                 .resume(&task_id, "must stay sealed")
                 .await
@@ -2697,7 +2735,7 @@ mod workspace_phase_tests {
                 error.downcast_ref::<crate::store::ResumeError>(),
                 Some(&crate::store::ResumeError::Sealed)
             );
-            assert_eq!(all_rows(&db), before);
+            assert_eq!(all_rows(&db), expected);
             assert_eq!(
                 std::fs::read(temp.path().join("src/a.txt")).unwrap(),
                 b"before-a"
@@ -2948,7 +2986,7 @@ mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id='builtin-plugin-management-v1'; PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3003,7 +3041,7 @@ mod workspace_phase_tests {
         assert_eq!(n10_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 12);
+        assert_eq!(migrated.schema_version().unwrap(), 13);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
         assert_eq!(n10_rows(&db), before);
@@ -3083,9 +3121,11 @@ mod workspace_phase_tests {
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
         let committed: (bool, u64) = db
-            .query_row("SELECT enabled,revision FROM plugin_desired", [], |r| {
-                Ok((r.get(0)?, r.get(1)?))
-            })
+            .query_row(
+                "SELECT enabled,revision FROM plugin_desired WHERE plugin_id='builtin.files'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
             .unwrap();
         assert_eq!(committed, (false, 1));
         let receipt: (u64,u64,i64) = db.query_row("SELECT expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key='post-commit-kill'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
