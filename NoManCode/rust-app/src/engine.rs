@@ -23,6 +23,43 @@ use std::{
 use tokio::sync::{Mutex as AsyncMutex, Semaphore, oneshot};
 use tokio_util::sync::CancellationToken;
 
+#[cfg(test)]
+pub(crate) mod restore_probe {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(crate) enum Stage {
+        RootValidation,
+        Resolve,
+        ReadCurrent,
+        FileAction,
+        OutcomePersist,
+        OutcomeCommitted,
+    }
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub(crate) struct ErrorCodes {
+        pub(crate) io: Option<i32>,
+        pub(crate) sqlite: Option<i32>,
+    }
+    #[derive(Clone, Debug)]
+    pub(crate) struct Event {
+        pub(crate) task_id: String,
+        pub(crate) path: String,
+        pub(crate) stage: Stage,
+        pub(crate) error: Option<ErrorCodes>,
+    }
+    pub(super) type Hook = (String, std::sync::Arc<dyn Fn(Event) + Send + Sync>);
+}
+
+// The result is evaluated before observation, so Store guards and transactions
+// have already been dropped. Production expands to the original expression.
+macro_rules! restore_observe {
+    ($engine:expr, $task:expr, $path:expr, $stage:ident, $operation:expr) => {{
+        let result = $operation;
+        #[cfg(test)]
+        $engine.emit_restore_probe($task, $path, restore_probe::Stage::$stage, &result);
+        result
+    }};
+}
+
 struct NetworkSlot {
     permit: Option<tokio::sync::OwnedSemaphorePermit>,
     notify: Arc<tokio::sync::Notify>,
@@ -494,6 +531,8 @@ pub struct Engine {
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
     tool_runtime: ToolRuntime,
+    #[cfg(test)]
+    restore_probe: Mutex<Option<restore_probe::Hook>>,
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
@@ -509,7 +548,63 @@ impl Engine {
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
             tool_runtime: ToolRuntime::builtin()?,
+            #[cfg(test)]
+            restore_probe: Mutex::new(None),
         }))
+    }
+    #[cfg(test)]
+    pub(crate) fn set_restore_probe(
+        &self,
+        task_id: String,
+        callback: Arc<dyn Fn(restore_probe::Event) + Send + Sync>,
+    ) {
+        *self.restore_probe.lock().unwrap() = Some((task_id, callback));
+    }
+    #[cfg(test)]
+    pub(crate) fn clear_restore_probe(&self) {
+        *self.restore_probe.lock().unwrap() = None;
+    }
+    #[cfg(test)]
+    fn emit_restore_probe<T>(
+        &self,
+        task_id: &str,
+        path: &str,
+        stage: restore_probe::Stage,
+        result: &Result<T>,
+    ) {
+        let callback = self
+            .restore_probe
+            .lock()
+            .unwrap()
+            .as_ref()
+            .filter(|(id, _)| id == task_id)
+            .map(|(_, callback)| callback.clone());
+        if let Some(callback) = callback {
+            let error = result
+                .as_ref()
+                .err()
+                .map(|error| restore_probe::ErrorCodes {
+                    io: error.chain().find_map(|cause| {
+                        cause
+                            .downcast_ref::<std::io::Error>()
+                            .and_then(std::io::Error::raw_os_error)
+                    }),
+                    sqlite: error.chain().find_map(|cause| {
+                        match cause.downcast_ref::<rusqlite::Error>() {
+                            Some(rusqlite::Error::SqliteFailure(code, _)) => {
+                                Some(code.extended_code)
+                            }
+                            _ => None,
+                        }
+                    }),
+                });
+            callback(restore_probe::Event {
+                task_id: task_id.to_owned(),
+                path: path.to_owned(),
+                stage,
+                error,
+            });
+        }
     }
     pub fn disable_builtin_files(&self) -> Result<()> {
         self.tool_runtime.disable_builtin_files()
@@ -1923,7 +2018,13 @@ impl Engine {
                 .into())
             };
         }
-        self.store.validate_project_task(&task, true, false)?;
+        restore_observe!(
+            self,
+            id,
+            "",
+            RootValidation,
+            self.store.validate_project_task(&task, true, false)
+        )?;
         let active_ids: Vec<String> = self.active.lock().unwrap().keys().cloned().collect();
         for active_id in active_ids {
             if active_id == id {
@@ -1988,15 +2089,27 @@ impl Engine {
         let mut targets = Vec::new();
         let mut originals = Vec::new();
         for change in &changes {
-            let target = workspace::resolve(
-                std::path::Path::new(&task.workspace),
+            let target = restore_observe!(
+                self,
+                id,
                 &change.path,
-                true,
-                &task.spec.write_scopes,
+                Resolve,
+                workspace::resolve(
+                    std::path::Path::new(&task.workspace),
+                    &change.path,
+                    true,
+                    &task.spec.write_scopes,
+                )
             )
             .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
-            let current = workspace::read_safe_file(&target)
-                .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
+            let current = restore_observe!(
+                self,
+                id,
+                &change.path,
+                ReadCurrent,
+                workspace::read_safe_file(&target)
+            )
+            .map_err(|_| WorkspaceChangeError::Conflict { receipt: None })?;
             if current.as_deref().map(digest) != change.after_digest.as_deref().map(str::to_owned) {
                 return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
             }
@@ -2035,29 +2148,56 @@ impl Engine {
                     !crash_probe::take_restore_failure(id, &change.path),
                     "injected restore path failure"
                 );
-                self.store.validate_project_task(&task, false, false)?;
-                let checked = workspace::resolve(
-                    std::path::Path::new(&task.workspace),
+                restore_observe!(
+                    self,
+                    id,
                     &change.path,
-                    true,
-                    &task.spec.write_scopes,
+                    RootValidation,
+                    self.store.validate_project_task(&task, false, false)
+                )?;
+                let checked = restore_observe!(
+                    self,
+                    id,
+                    &change.path,
+                    Resolve,
+                    workspace::resolve(
+                        std::path::Path::new(&task.workspace),
+                        &change.path,
+                        true,
+                        &task.spec.write_scopes,
+                    )
                 )?;
                 anyhow::ensure!(checked == target, "恢复路径身份发生变化");
-                let current = workspace::read_safe_file(&target)?;
+                let current = restore_observe!(
+                    self,
+                    id,
+                    &change.path,
+                    ReadCurrent,
+                    workspace::read_safe_file(&target)
+                )?;
                 anyhow::ensure!(
                     current.as_deref().map(digest)
                         == change.after_digest.as_deref().map(str::to_owned),
                     "恢复前内容发生变化"
                 );
-                match change.kind {
-                    ChangeKind::Created => std::fs::remove_file(&target)?,
-                    ChangeKind::Modified => {
-                        workspace::atomic_replace(
-                            &target,
-                            original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?,
-                        )?;
-                    }
-                }
+                restore_observe!(
+                    self,
+                    id,
+                    &change.path,
+                    FileAction,
+                    (|| -> Result<()> {
+                        match change.kind {
+                            ChangeKind::Created => std::fs::remove_file(&target)?,
+                            ChangeKind::Modified => {
+                                workspace::atomic_replace(
+                                    &target,
+                                    original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?,
+                                )?;
+                            }
+                        }
+                        Ok(())
+                    })()
+                )?;
                 Ok(())
             })();
             if action.is_err() {
@@ -2082,10 +2222,14 @@ impl Engine {
             }
             #[cfg(test)]
             crash_probe::block(id, "restore_post_fs", &restore_id);
-            if self
-                .store
-                .finish_restore_path(&restore_id, &change.id)
-                .is_err()
+            if restore_observe!(
+                self,
+                id,
+                &change.path,
+                OutcomePersist,
+                self.store.finish_restore_path(&restore_id, &change.id)
+            )
+            .is_err()
             {
                 let unknown = self
                     .store
@@ -2096,6 +2240,13 @@ impl Engine {
                 }
                 .into());
             }
+            #[cfg(test)]
+            self.emit_restore_probe(
+                id,
+                &change.path,
+                restore_probe::Stage::OutcomeCommitted,
+                &Ok(()),
+            );
         }
         match self
             .store
@@ -2435,6 +2586,172 @@ mod workspace_phase_tests {
                 .len(),
             1
         );
+    }
+
+    #[tokio::test]
+    async fn restore_probe_is_scoped_and_committed_callback_holds_no_store_lock() {
+        use restore_probe::Stage;
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        finish_two_writes(&engine, &task_id, usize::MAX).await;
+        let other = Engine::new(engine.store.clone(), 2).unwrap();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let count = hits.clone();
+        engine.set_restore_probe(
+            "different-task".into(),
+            Arc::new(move |_| {
+                count.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+        engine.emit_restore_probe(&task_id, "src/a.txt", Stage::Resolve, &Ok(()));
+        other.emit_restore_probe("different-task", "src/a.txt", Stage::Resolve, &Ok(()));
+        assert_eq!(hits.load(Ordering::SeqCst), 0);
+        let count = hits.clone();
+        let weak = Arc::downgrade(&engine);
+        let path = temp.path().join("phase.db");
+        let root = temp.path().to_owned();
+        let expected_id = task_id.clone();
+        engine.set_restore_probe(
+            task_id.clone(),
+            Arc::new(move |event| {
+                assert_eq!(event.task_id, expected_id);
+                if event.stage == Stage::OutcomeCommitted {
+                    assert!(event.error.is_none());
+                    assert_eq!(event.path, "src/a.txt");
+                    let engine = weak.upgrade().unwrap();
+                    // Both this Store lock and an independent writer must be available.
+                    let receipt = engine
+                        .store
+                        .latest_restore(&event.task_id)
+                        .unwrap()
+                        .unwrap();
+                    assert_eq!(receipt.restored, 1);
+                    let db = rusqlite::Connection::open(&path).unwrap();
+                    db.busy_timeout(Duration::ZERO).unwrap();
+                    db.execute_batch("BEGIN IMMEDIATE; ROLLBACK;").unwrap();
+                    let status: String = db
+                        .query_row("SELECT status FROM workspace_restore_outcomes", [], |r| {
+                            r.get(0)
+                        })
+                        .unwrap();
+                    assert_eq!(status, "complete");
+                    assert_eq!(std::fs::read(root.join("src/a.txt")).unwrap(), b"before-a");
+                    count.fetch_add(1, Ordering::SeqCst);
+                    // Reentrant clearing proves the callback is outside the probe mutex.
+                    engine.clear_restore_probe();
+                }
+            }),
+        );
+        assert_eq!(
+            engine.restore(&task_id).await.unwrap().status,
+            RestoreStatus::Complete
+        );
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+        engine.emit_restore_probe(&task_id, "src/a.txt", Stage::OutcomeCommitted, &Ok(()));
+        assert_eq!(hits.load(Ordering::SeqCst), 1);
+        // A real no-hook positive control in a separate Engine and database.
+        let plain = tempfile::tempdir().unwrap();
+        let (plain_engine, plain_id) = two_write_engine(plain.path()).await;
+        finish_two_writes(&plain_engine, &plain_id, usize::MAX).await;
+        assert_eq!(
+            plain_engine.restore(&plain_id).await.unwrap().status,
+            RestoreStatus::Complete
+        );
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn restore_probe_distinguishes_real_file_action_and_sqlite_outcome_errors() {
+        use restore_probe::Stage;
+        use std::os::windows::fs::OpenOptionsExt;
+        for filesystem_error in [true, false] {
+            let temp = tempfile::tempdir().unwrap();
+            let (engine, task_id) = two_write_engine(temp.path()).await;
+            finish_two_writes(&engine, &task_id, usize::MAX).await;
+            let held = Arc::new(Mutex::new(None));
+            let file = held.clone();
+            let target = temp.path().join("src/a.txt");
+            let errors = Arc::new(Mutex::new(Vec::new()));
+            let captured = errors.clone();
+            let weak = Arc::downgrade(&engine);
+            if !filesystem_error {
+                rusqlite::Connection::open(temp.path().join("phase.db")).unwrap()
+                    .execute_batch("CREATE TRIGGER reject_outcome BEFORE UPDATE ON workspace_restore_outcomes WHEN NEW.status='complete' BEGIN SELECT RAISE(ABORT,'private trigger detail'); END;").unwrap();
+            }
+            engine.set_restore_probe(
+                task_id.clone(),
+                Arc::new(move |event| {
+                    if filesystem_error
+                        && event.stage == Stage::ReadCurrent
+                        && event.error.is_none()
+                        && weak
+                            .upgrade()
+                            .unwrap()
+                            .store
+                            .latest_restore(&event.task_id)
+                            .unwrap()
+                            .is_some()
+                    {
+                        // Read/write sharing is allowed, delete/rename is not: replacement,
+                        // rather than the earlier read, must fail with a real Windows code.
+                        *file.lock().unwrap() = Some(
+                            std::fs::OpenOptions::new()
+                                .read(true)
+                                .share_mode(3)
+                                .open(&target)
+                                .unwrap(),
+                        );
+                    }
+                    if event.error.is_some() || event.stage == Stage::OutcomeCommitted {
+                        captured.lock().unwrap().push(event);
+                    }
+                }),
+            );
+            let error = engine.restore(&task_id).await.unwrap_err();
+            let public = format!("{error:#}");
+            assert!(!public.contains("private trigger detail"));
+            let receipt = engine.store.latest_restore(&task_id).unwrap().unwrap();
+            assert_eq!(receipt.status, RestoreStatus::Unknown);
+            assert_eq!(receipt.restored, 0);
+            assert_eq!(receipt.outcomes.len(), 1);
+            assert_eq!(receipt.outcomes[0].status, RestoreStatus::Unknown);
+            let observed = errors.lock().unwrap();
+            assert_eq!(observed.len(), 1);
+            let event = &observed[0];
+            assert_eq!(event.task_id, task_id);
+            assert_eq!(event.path, "src/a.txt");
+            let codes = event.error.as_ref().unwrap();
+            if filesystem_error {
+                assert_eq!(event.stage, Stage::FileAction);
+                assert!(codes.io.is_some());
+                assert_eq!(codes.sqlite, None);
+            } else {
+                assert_eq!(event.stage, Stage::OutcomePersist);
+                assert_eq!(codes.io, None);
+                assert_eq!(codes.sqlite, Some(1811));
+            }
+            drop(observed);
+            drop(held.lock().unwrap().take());
+            let expected = if filesystem_error {
+                b"after-1".as_slice()
+            } else {
+                b"before-a".as_slice()
+            };
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                expected
+            );
+            engine.clear_restore_probe();
+            assert!(engine.restore(&task_id).await.is_err());
+            assert_eq!(
+                engine.store.latest_restore(&task_id).unwrap().unwrap(),
+                receipt
+            );
+            assert_eq!(
+                std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+                expected
+            );
+        }
     }
 
     async fn provider_reply(
