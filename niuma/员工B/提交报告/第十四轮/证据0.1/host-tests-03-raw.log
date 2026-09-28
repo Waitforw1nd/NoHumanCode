@@ -1,0 +1,32 @@
+   Compiling peachsh v0.2.0 (../nhc-b-host-route-config\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 17.05s
+     Running tests\host_configuration.rs (.local\next15\target\debug\deps\host_configuration-0d6a634af43ffb10.exe)
+
+running 12 tests
+test strict_request_and_target_validation_is_shared_by_store ... ok
+test compatibility_writes_invalidate_cas_without_receipts_and_noop_keeps_revision ... ok
+test fresh_initialization_is_empty_revision_zero_and_cannot_overwrite_history ... ok
+test keep_requires_existing_available_credential_and_same_api_base ... ok
+test replacement_clears_env_and_keeps_legacy_ciphertext ... ok
+test stored_request_contains_only_sealed_digest_and_public_receipt ... ok
+test unavailable_secret_and_damaged_receipt_fail_closed ... ok
+test idempotency_conflicts_cover_secret_route_expected_and_mode_without_writes ... ok
+test receipt_insert_failure_and_revision_overflow_roll_back_every_row ... ok
+test same_key_different_secret_race_has_one_winner_and_two_noops_can_coexist ... ok
+test durable_replay_lookup_and_noop_preserve_original_receipt ... ok
+test two_stores_same_key_converge_and_different_keys_cas_atomically ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests\host_configuration_schema.rs (.local\next15\target\debug\deps\host_configuration_schema-41492cf9604bf106.exe)
+
+running 6 tests
+test actual_database_constraints_reject_invalid_values ... ok
+test migration_failure_rolls_back_ddl_marker_and_version ... ok
+test migration_keeps_all_legacy_rows_rowids_and_opaque_blobs_on_repeated_open ... ok
+test concurrent_migration_opens_converge_on_one_marker_and_singleton ... ok
+test wrong_marker_version_singleton_and_constraint_shapes_are_rejected ... ok
+test receipt_column_identity_and_revisions_are_validated_after_open ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+

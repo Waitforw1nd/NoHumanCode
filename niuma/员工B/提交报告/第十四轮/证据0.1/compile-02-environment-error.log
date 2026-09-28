@@ -1,0 +1,6 @@
+Exception: 
+Line |
+  45 |  … taskMsvc) { throw 'Missing Visual C++ x64 build tools. Install the C+ …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Missing Visual C++ x64 build tools. Install the C++ build tools for Visual Studio, or set VCToolsInstallDir / VSINSTALLDIR to their installation.
+

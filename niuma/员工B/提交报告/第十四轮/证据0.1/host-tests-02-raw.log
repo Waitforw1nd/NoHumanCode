@@ -1,0 +1,30 @@
+   Compiling peachsh v0.2.0 (../nhc-b-host-route-config\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 3.99s
+     Running tests\host_configuration.rs (.local\next15\target\debug\deps\host_configuration-0d6a634af43ffb10.exe)
+
+running 12 tests
+test compatibility_writes_invalidate_cas_without_receipts_and_noop_keeps_revision ... ok
+test keep_requires_existing_available_credential_and_same_api_base ... ok
+
+thread 'strict_request_and_target_validation_is_shared_by_store' (45816) panicked at tests\host_configuration.rs:312:9:
+strict tagged union
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test strict_request_and_target_validation_is_shared_by_store ... FAILED
+test fresh_initialization_is_empty_revision_zero_and_cannot_overwrite_history ... ok
+test stored_request_contains_only_sealed_digest_and_public_receipt ... ok
+test replacement_clears_env_and_keeps_legacy_ciphertext ... ok
+test idempotency_conflicts_cover_secret_route_expected_and_mode_without_writes ... ok
+test receipt_insert_failure_and_revision_overflow_roll_back_every_row ... ok
+test unavailable_secret_and_damaged_receipt_fail_closed ... ok
+test durable_replay_lookup_and_noop_preserve_original_receipt ... ok
+test same_key_different_secret_race_has_one_winner_and_two_noops_can_coexist ... ok
+test two_stores_same_key_converge_and_different_keys_cas_atomically ... ok
+
+failures:
+
+failures:
+    strict_request_and_target_validation_is_shared_by_store
+
+test result: FAILED. 11 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+error: test failed, to rerun pass `--test host_configuration`

@@ -1,0 +1,11 @@
+[
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/freeze-registration-03.json",
+    "original_sha256": "D84F44FC7E589661E5465E3C9FDFADDA5C20F54F94964334F2BE1B88EC6F0791",
+    "original_bytes": 2562,
+    "published": "证据0.3/freeze-registration-03.json",
+    "published_sha256": "FFC5F4DB55886FB14859C8670EBEE59586B13905EE0DDDDA6667D7D11762E852",
+    "published_bytes": 2555,
+    "transformation": "Recorded worktree path normalized in published copy; raw record untouched."
+  }
+]

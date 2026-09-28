@@ -1,0 +1,101 @@
+[
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-integration-01/raw.log",
+    "original_sha256": "926D9B52319A492DE1A38983F385A5E341EEB04BFD0B3076CA674535E472F0C5",
+    "original_bytes": 8692,
+    "published": "证据0.4/fixture-integration-01-raw.log",
+    "published_sha256": "29F74FCE9ACC5AB73FB762EB9336CBDEC70197F1B0F6986DA5A2042272AC3AD9",
+    "published_bytes": 8687,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-integration-01/metadata.json",
+    "original_sha256": "612849B5BA67B96ACD345E013AE38F3D1E5A061EC3F84D33F82680AEF93AE981",
+    "original_bytes": 5429,
+    "published": "证据0.4/fixture-integration-01-metadata.json",
+    "published_sha256": "5FA172DC78DB658068FB7225CC1787EFAE1A3D74E08973EA69E2FD4202FDEA22",
+    "published_bytes": 5422,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-plugin-01/raw.log",
+    "original_sha256": "613F0BCF7C1EBBD9E734A056573541CE8CA09C54A1756F98312A5C4D7B53D02B",
+    "original_bytes": 974,
+    "published": "证据0.4/fixture-plugin-01-raw.log",
+    "published_sha256": "223BA91D835365A034314182C6A2F321600FA58FAEAC14FCC1BE94620378D67D",
+    "published_bytes": 969,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-plugin-01/metadata.json",
+    "original_sha256": "2BFDB91263D92A96B1433A213961D12550EE93DE7DCF5CDA03BB408CA26BB7A9",
+    "original_bytes": 5314,
+    "published": "证据0.4/fixture-plugin-01-metadata.json",
+    "published_sha256": "A4AA10DF170155E717EC5B447C52CAABED73976D1F239E9C0EA11EE2B8B741C6",
+    "published_bytes": 5307,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-clippy-01/raw.log",
+    "original_sha256": "B95E6FBCEB128C88BC9341913D319CA5909320FB191E24F983F65B76F14C1541",
+    "original_bytes": 464,
+    "published": "证据0.4/fixture-clippy-01-raw.log",
+    "published_sha256": "1CB64B674552954DFC1FD9D00B707C8AC4BB95B9B5FA6868BABAF98E14078825",
+    "published_bytes": 454,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-clippy-01/metadata.json",
+    "original_sha256": "1D3A2EB1BA295C5DA33B947948B247259C405416C0CF599F26EF1960F5F39C48",
+    "original_bytes": 5437,
+    "published": "证据0.4/fixture-clippy-01-metadata.json",
+    "published_sha256": "7EE6BAC8611FBBF71634D720B781EE2942C6A15224E36FF1198B0347F6901F9D",
+    "published_bytes": 5430,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-static-01/raw.log",
+    "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "original_bytes": 0,
+    "published": "证据0.4/fixture-static-01-raw.log",
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_bytes": 0,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-static-01/metadata.json",
+    "original_sha256": "B0198946683994CD88A838A6781BC0EA5AEE2F3F847FDEB5848F7894EF444AF5",
+    "original_bytes": 2309,
+    "published": "证据0.4/fixture-static-01-metadata.json",
+    "published_sha256": "5D9A6974BC33E4EDBA3A46E7D8464367FB956D64CB4C592EFB03CB21D7567218",
+    "published_bytes": 2302,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/fixture-static-01/diff-check.log",
+    "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "original_bytes": 0,
+    "published": "证据0.4/fixture-static-01-diff-check.log",
+    "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "published_bytes": 0,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/run.ps1",
+    "original_sha256": "F10393A50057EF56532FE456D005261BD396DBAF6024D138A470970A510E7C8B",
+    "original_bytes": 2758,
+    "published": "证据0.4/run.ps1",
+    "published_sha256": "F10393A50057EF56532FE456D005261BD396DBAF6024D138A470970A510E7C8B",
+    "published_bytes": 2758,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  },
+  {
+    "original": "../nhc-b-host-route-config/NoManCode/rust-app/.local/next15/freeze-fixtures-04.json",
+    "original_sha256": "80C10D2B1B39EFE7242D917731F33A1914269C921576D505907138475FD107B5",
+    "original_bytes": 1846,
+    "published": "证据0.4/freeze-fixtures-04.json",
+    "published_sha256": "065357410476DE6A0A1567799C430DC655013DCB45A6BD01BF8462CC3330A704",
+    "published_bytes": 1839,
+    "transformation": "Published machine paths normalized; UTF-8 without BOM; raw files and results untouched."
+  }
+]

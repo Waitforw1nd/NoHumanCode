@@ -1,0 +1,10 @@
+    Checking wasm-encoder v0.259.0
+    Checking windows-sys v0.59.0
+    Checking wast v259.0.0
+    Checking peachsh-protocol v0.1.0 (../nhc-b-host-route-config\NoManCode\rust-app\crates\protocol)
+    Checking fastrand v2.5.0
+    Checking tempfile v3.27.0
+    Checking wat v1.259.0
+    Checking wasmi v2.0.0
+    Checking peachsh v0.2.0 (../nhc-b-host-route-config\NoManCode\rust-app)
+    Finished `dev` profile [unoptimized] target(s) in 14.24s

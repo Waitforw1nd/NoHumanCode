@@ -1,0 +1,76 @@
+{
+  "recorded_utc": "2026-09-28T15:00:16.5628067Z",
+  "execution_id": "B-R14-01-20260928-E01",
+  "cwd": "../nhc-b-host-route-config",
+  "commands": [
+    {
+      "command": "git status --short",
+      "exit_code": 0,
+      "output": []
+    },
+    {
+      "command": "git diff --cached --name-status",
+      "exit_code": 0,
+      "output": []
+    },
+    {
+      "command": "git ls-files --unmerged",
+      "exit_code": 0,
+      "output": []
+    },
+    {
+      "command": "git rev-parse HEAD HEAD:NoManCode HEAD:NoManCode/rust-app",
+      "exit_code": 0,
+      "output": [
+        "c94a48daded1b0098b560e6f8761d64a7e8c1096",
+        "31c19c0e36049721d2ee024127994b2142dc83d2",
+        "c488adeee35b08dbffd92558e3082dd3d54685bd"
+      ]
+    },
+    {
+      "command": "git branch --show-current",
+      "exit_code": 0,
+      "output": [
+        "codex/b/host-route-config"
+      ]
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "output": []
+    },
+    {
+      "command": "git show --format=fuller --stat HEAD",
+      "exit_code": 0,
+      "output": [
+        "commit c94a48daded1b0098b560e6f8761d64a7e8c1096",
+        "Author:     Peachsh Development <local@peachsh.invalid>",
+        "AuthorDate: Mon Sep 28 22:59:18 2026 +0800",
+        "Commit:     Peachsh Development <local@peachsh.invalid>",
+        "CommitDate: Mon Sep 28 22:59:18 2026 +0800",
+        "",
+        "    feat(host): export integrated credential input module",
+        "",
+        " NoManCode/rust-app/src/lib.rs | 1 +",
+        " 1 file changed, 1 insertion(+)"
+      ]
+    },
+    {
+      "command": "git diff --name-only 5194099ee4d1eb72af5f286826c72c6fd19d29e8 f340358a80cb6a8d8fd74acf313bee02386e3d99 -- NoManCode",
+      "exit_code": 0,
+      "output": [
+        "NoManCode/rust-app/src/engine.rs",
+        "NoManCode/rust-app/src/host_configuration.rs",
+        "NoManCode/rust-app/src/lib.rs",
+        "NoManCode/rust-app/src/network_authorization.rs",
+        "NoManCode/rust-app/src/repository.rs",
+        "NoManCode/rust-app/src/store.rs",
+        "NoManCode/rust-app/tests/host_configuration.rs",
+        "NoManCode/rust-app/tests/host_configuration_schema.rs"
+      ]
+    }
+  ],
+  "process_query": "Get-CimInstance Win32_Process; filter cargo/rustc/clippy-driver/rustfmt/link/host_configuration*/peachsh*.exe",
+  "matching_processes": [],
+  "declaration": "Sustained B source/index/no-build freeze after real credential_input export; await manager release before fixture work. New integrated candidate is not built or tested."
+}

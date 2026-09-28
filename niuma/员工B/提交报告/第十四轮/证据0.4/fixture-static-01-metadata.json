@@ -1,0 +1,56 @@
+{
+  "utc_start": "2026-09-28T15:18:36.3096155Z",
+  "cwd": "../nhc-b-host-route-config\\NoManCode\\rust-app",
+  "head": "0f731efd993ef6ab0a7a931df8e0d41e3e377bc5",
+  "source_tree": "0dc65d6d27f7da1ea8114b615f11c71b510bd014",
+  "rust_tree": "4f923626851e40859080eb80b1e095bcf809e1bb",
+  "status": [],
+  "index": [],
+  "command": "rustfmt --edition 2024 --style-edition 2024 --check tests/approval_gate.rs tests/checkpoint.rs tests/project_context.rs tests/project_migration.rs tests/workspace_changes.rs tests/support/project_fixture.rs src/plugin_management.rs",
+  "rustfmt": "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)",
+  "format_exit_code": 0,
+  "plugin_production_prefix_identical": true,
+  "diff_command": "git diff --check f55cfd8663df04b26eeba31de3c6a6a760a3fa71 HEAD",
+  "diff_exit_code": 0,
+  "changed_files": [
+    "NoManCode/rust-app/src/plugin_management.rs",
+    "NoManCode/rust-app/tests/approval_gate.rs",
+    "NoManCode/rust-app/tests/checkpoint.rs",
+    "NoManCode/rust-app/tests/project_context.rs",
+    "NoManCode/rust-app/tests/project_migration.rs",
+    "NoManCode/rust-app/tests/support/project_fixture.rs",
+    "NoManCode/rust-app/tests/workspace_changes.rs"
+  ],
+  "file_hashes": [
+    {
+      "path": "tests/approval_gate.rs",
+      "sha256": "D0169C7D5432A7DB630B3B676398F49EC665932D7D1E78EBAC5D6875501CAD1E"
+    },
+    {
+      "path": "tests/checkpoint.rs",
+      "sha256": "0F41925E6B8CBD01B454B9042A72A45E36808943FAF00138258DA0C66694C50B"
+    },
+    {
+      "path": "tests/project_context.rs",
+      "sha256": "267249DBB6BE07B06D88B3D94D330E0BCCEE849B9D4E0D9388AEA1F4DE38F391"
+    },
+    {
+      "path": "tests/project_migration.rs",
+      "sha256": "B2E6A79D96EF797227C96B34E046FECAD80FCC9624FCB9C1842B0B165FCD23FA"
+    },
+    {
+      "path": "tests/workspace_changes.rs",
+      "sha256": "82A1D4F3CF8FEB949D7ED2DED71AF566308BA2A320E14BF24B0663A73B987977"
+    },
+    {
+      "path": "tests/support/project_fixture.rs",
+      "sha256": "359E492FF49953D4F078281F24A2B1C1D13B0597075B448CF15B91CB0D372593"
+    },
+    {
+      "path": "src/plugin_management.rs",
+      "sha256": "E624E5E1749BFA970FA924C6CF3B939F5DD3E7DD15262672224ECEBD63D7B599"
+    }
+  ],
+  "utc_end": "2026-09-28T15:18:37.3402775Z",
+  "exit_code": 0
+}
