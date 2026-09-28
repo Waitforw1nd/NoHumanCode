@@ -744,6 +744,9 @@ fn expected_after_worktree_migration(
     mut old: Vec<(String, Vec<Vec<rusqlite::types::Value>>)>,
 ) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
     for name in [
+        "project_budgets",
+        "budget_requests",
+        "budget_calls",
         "worktree_operations",
         "worktree_project_reservations",
         "project_worktree_origins",
