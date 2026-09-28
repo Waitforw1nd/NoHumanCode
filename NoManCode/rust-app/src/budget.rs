@@ -1319,6 +1319,24 @@ mod tests {
         );
         assert!(Store::open(&dir.path().join("budget.db")).is_err());
         assert!(store.recover().is_err());
+        let rejected = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .err()
+            .unwrap();
+        assert_eq!(rejected.kind, NetworkErrorKind::BudgetCorrupt);
+        assert_eq!(rejected.dispatch_state, DispatchState::NotSent);
+        assert!(rejected.calls.is_empty());
+        {
+            let db = store.db.lock().unwrap();
+            for table in ["network_calls", "budget_calls"] {
+                assert_eq!(
+                    db.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r
+                        .get::<_, u64>(0))
+                        .unwrap(),
+                    3
+                );
+            }
+        }
         complete(&store, calls[2].clone(), 2);
         let db = store.db.lock().unwrap();
         verify_structure(&db).unwrap();
