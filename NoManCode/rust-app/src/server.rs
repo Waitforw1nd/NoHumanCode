@@ -5,6 +5,7 @@ use crate::{
     domain::*,
     engine::Engine,
     git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
+    host_configuration::{ConfigureHostRoute, HostConfigError},
     network_authorization::{ConfirmRequest, NetworkError, NetworkErrorKind, NetworkSubject},
     plugin_management::{PluginManagementError, SetPluginEnabled},
     project_config::{
@@ -409,6 +410,9 @@ pub fn router(app: App) -> Router {
         .route("/api/plugins/{id}", get(plugin_status))
         .route("/api/plugins/{id}/enabled", put(set_plugin_enabled))
         .route("/api/settings", get(settings).put(save_settings))
+        .route("/api/host/config", get(host_config))
+        .route("/api/host/routes/{id}", put(configure_host_route))
+        .route("/api/host/config/lookup", post(host_config_lookup))
         .route(
             "/api/routes/{id}/models",
             get(network_get_moved).post(models),
@@ -484,18 +488,27 @@ pub fn router(app: App) -> Router {
 async fn guard(State(app): State<App>, request: Request, next: Next) -> Response {
     let expected_host = app.origin.strip_prefix("http://").unwrap_or(&app.origin);
     let headers = request.headers();
+    let host_configuration = request.uri().path().starts_with("/api/host/");
+    let denied = |message| {
+        if host_configuration {
+            host_config_failure(HostConfigError::Forbidden)
+        } else {
+            forbidden(message)
+        }
+    };
     if headers.get(header::HOST).and_then(|v| v.to_str().ok()) != Some(expected_host) {
-        return forbidden("请通过启动地址访问本机服务");
+        return denied("请通过启动地址访问本机服务");
     }
     if let Some(origin) = headers.get(header::ORIGIN)
         && origin.to_str().ok() != Some(&app.origin)
     {
-        return forbidden("Origin 与本机服务地址不一致");
+        return denied("Origin 与本机服务地址不一致");
     }
     if headers.get("sec-fetch-site").and_then(|v| v.to_str().ok()) == Some("cross-site") {
-        return forbidden("拒绝跨站请求");
+        return denied("拒绝跨站请求");
     }
-    let authenticated_read = request.uri().path().starts_with("/api/network/")
+    let authenticated_read = host_configuration
+        || request.uri().path().starts_with("/api/network/")
         || request.uri().path() == "/api/plugins"
         || request.uri().path().starts_with("/api/plugins/")
         || request.uri().path().starts_with("/api/projects")
@@ -511,7 +524,7 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
         ))
         && headers.get("x-peachsh-token").and_then(|v| v.to_str().ok()) != Some(&app.token)
     {
-        return forbidden("写请求令牌缺失或不正确");
+        return denied("写请求令牌缺失或不正确");
     }
     let mut response = next.run(request).await;
     apply_security_headers(&mut response);
@@ -540,6 +553,91 @@ async fn health(State(app): State<App>) -> Result<Json<Value>> {
 }
 async fn bootstrap(State(app): State<App>) -> Json<Value> {
     Json(json!({"token":app.token,"version":env!("CARGO_PKG_VERSION")}))
+}
+
+fn host_config_error_response(status: StatusCode, error: HostConfigError) -> Response {
+    let mut response = (
+        status,
+        Json(json!({"error":{
+            "code":error.code(),"message":error.message(),"retryable":false
+        }})),
+    )
+        .into_response();
+    apply_security_headers(&mut response);
+    response
+}
+fn host_config_failure(error: HostConfigError) -> Response {
+    let status = StatusCode::from_u16(error.status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    host_config_error_response(status, error)
+}
+// Shared public request DTOs retain the business contract. StrictObject checks
+// duplicate members recursively before those DTOs reject unknown fields/types.
+struct HostConfigJson<T>(T);
+impl<S, T> FromRequest<S> for HostConfigJson<T>
+where
+    S: Send + Sync,
+    T: serde::de::DeserializeOwned + Send,
+{
+    type Rejection = Response;
+    async fn from_request(
+        request: Request,
+        state: &S,
+    ) -> std::result::Result<Self, Self::Rejection> {
+        match Json::<StrictObject<T>>::from_request(request, state).await {
+            Ok(Json(StrictObject(body))) => Ok(Self(body)),
+            Err(error) => Err(host_config_error_response(
+                json_rejection(error).status,
+                HostConfigError::Invalid,
+            )),
+        }
+    }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HostConfigLookup {
+    key: String,
+}
+async fn host_config(State(app): State<App>) -> Response {
+    match app.engine.host_config() {
+        Ok(snapshot) => Json(snapshot).into_response(),
+        Err(error) => host_config_failure(error),
+    }
+}
+async fn host_config_lookup(
+    State(app): State<App>,
+    HostConfigJson(body): HostConfigJson<HostConfigLookup>,
+) -> Response {
+    if secrets::validate_idempotency_key(&body.key).is_err() || body.key.contains(',') {
+        return host_config_failure(HostConfigError::Invalid);
+    }
+    match app.engine.host_config_operation(&body.key) {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => host_config_failure(error),
+    }
+}
+async fn configure_host_route(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
+    HostConfigJson(body): HostConfigJson<ConfigureHostRoute>,
+) -> Response {
+    let Ok(Path(id)) = id else {
+        return host_config_failure(HostConfigError::Invalid);
+    };
+    let mut keys = headers.get_all("idempotency-key").iter();
+    let key = keys.next().and_then(|value| value.to_str().ok());
+    let Some(key) =
+        key.filter(|key| !key.contains(',') && secrets::validate_idempotency_key(key).is_ok())
+    else {
+        return host_config_failure(HostConfigError::Invalid);
+    };
+    if keys.next().is_some() {
+        return host_config_failure(HostConfigError::Invalid);
+    }
+    match app.engine.configure_host_route(&id, body, key).await {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => host_config_failure(error),
+    }
 }
 
 fn plugin_failure(code: &str) -> Response {
