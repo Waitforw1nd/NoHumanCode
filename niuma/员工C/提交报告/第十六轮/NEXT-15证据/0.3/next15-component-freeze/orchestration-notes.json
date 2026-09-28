@@ -1,0 +1,31 @@
+{
+  "type": "Employee C transcribed orchestration notes, not raw Cargo output",
+  "utc": "2026-09-28T15:14:20.9757410Z",
+  "events": [
+    "Initial component launch tool error 267 occurred before process creation; corrected forward-slash E workdir then attempt1 ran normally.",
+    "Read-only rg had unclosed character class exit1; corrected search located actual authorization type. A nonexistent network_workflow.rs lookup produced a read error; real implementation is in cli.rs.",
+    "One functions.exec JavaScript parse failure occurred before patch or shell; corrected call applied the only Rust fix.",
+    "Initial freeze process regex was overescaped. Corrected explicit-name selector in freeze-verification.json is authoritative; original receipt retained.",
+    "Corrected freeze-verification shell ended exit1 only because a final optional lookup of nonexistent next15-receive-b directory failed; verification file was written and separately read back."
+  ],
+  "launches": [
+    {
+      "failed_cargo_exit": 101,
+      "command": "pwsh -NoProfile -File .local/next15-component.ps1 -Attempt attempt1",
+      "outer_exit": 1
+    },
+    {
+      "outer_exit": 0,
+      "command": "pwsh -NoProfile -File .local/next15-component.ps1 -Attempt attempt2"
+    }
+  ],
+  "fix_commit": "aac520b28eed4f3a60cb9e9d2492bd231b13f96e",
+  "documentation_commit": "d43db398244850d69de96c3e3c616b428f872d39",
+  "not_executed": [
+    "final check/test/fmt/clippy/wasm-check gates",
+    "full workspace regression",
+    "release",
+    "paid live Provider",
+    "push"
+  ]
+}

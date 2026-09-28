@@ -1,0 +1,54 @@
+{
+  "attempt": "attempt2",
+  "scope": "authorized components only; not final five gates",
+  "start_utc": "2026-09-28T15:11:01.4206756Z",
+  "head": "aac520b28eed4f3a60cb9e9d2492bd231b13f96e",
+  "no_man_code_tree": "bcf13e4e0c50179f8c041773eed97f0e01758889",
+  "rust_tree": "63a2b26952faa94b8b60f3bcb0eb92c92a730532",
+  "status_before": [],
+  "index_before": [],
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "cwd": "../nhc-c-host-setup-cli\\NoManCode\\rust-app",
+  "tmp": "../nhc-c-host-setup-cli\\.local\\tmp",
+  "target": "../nhc-c-host-setup-cli\\.local\\target",
+  "steps": [
+    {
+      "name": "check",
+      "command": "cargo check -p peachsh --bin peachsh --locked --offline",
+      "start_utc": "2026-09-28T15:11:02.1444339Z",
+      "end_utc": "2026-09-28T15:11:02.5045290Z",
+      "exit_code": 0
+    },
+    {
+      "name": "http",
+      "command": "cargo test --locked --offline --test host_configuration_http -- --nocapture",
+      "start_utc": "2026-09-28T15:11:02.7804786Z",
+      "end_utc": "2026-09-28T15:11:03.2864328Z",
+      "exit_code": 0
+    },
+    {
+      "name": "cli",
+      "command": "cargo test --locked --offline --test host_configuration_cli -- --nocapture",
+      "start_utc": "2026-09-28T15:11:03.5725562Z",
+      "end_utc": "2026-09-28T15:11:05.6601586Z",
+      "exit_code": 0
+    },
+    {
+      "name": "workflow",
+      "command": "cargo test --locked --offline --test host_initialization_workflow -- --nocapture",
+      "start_utc": "2026-09-28T15:11:05.8995327Z",
+      "end_utc": "2026-09-28T15:11:11.4960172Z",
+      "exit_code": 0
+    }
+  ],
+  "msvc": "./.local/toolchains/MSVC/14.43.34808",
+  "sdk": "./.local/toolchains/WindowsKits/10\\",
+  "sdk_version": "10.0.22621.0",
+  "compiler": "./.local/toolchains/MSVC/14.43.34808\\bin\\Hostx86\\x64\\cl.exe",
+  "status_after": [],
+  "index_after": [],
+  "head_after": "aac520b28eed4f3a60cb9e9d2492bd231b13f96e",
+  "no_man_code_tree_after": "bcf13e4e0c50179f8c041773eed97f0e01758889",
+  "rust_tree_after": "63a2b26952faa94b8b60f3bcb0eb92c92a730532"
+}
