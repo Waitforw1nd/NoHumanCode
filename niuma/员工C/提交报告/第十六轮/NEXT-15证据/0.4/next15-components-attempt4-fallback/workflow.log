@@ -1,0 +1,34 @@
+   Compiling peachsh v0.2.0 (../nhc-c-host-setup-cli\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 2.53s
+     Running tests\host_initialization_workflow.rs (../nhc-c-host-setup-cli\.local\target\debug\deps\host_initialization_workflow-8db9ec8529705b84.exe)
+
+running 3 tests
+I01/I10 real Host ready pid=41916
+I01/I10 real Host ready pid=37208
+I01/I10 real Host ready pid=40024
+I01/I10 kill+wait completed pid=37208
+I11 real HTML/JS/CSS loaded; old settings saved/reloaded over HTTP; keys are availability booleans; revision=1, Provider=0
+I10 route configured by CLI; Provider=0 and authorization/call/budget-call rows=0
+I01/I10 real Host ready pid=46188
+I01/I10 kill+wait completed pid=46188
+I11 old update advanced revision 2->3; old receipt remains 2; stale new CAS rejected; no implicit Project/grant/call
+I01/I10 kill+wait completed pid=41916
+I10 explicit Project permissions/selection, budget and Completion authorization ready; Provider=0
+I01/I10 real Host ready pid=42892
+I01/I10 kill+wait completed pid=42892
+I01/I10 real Host ready pid=46920
+I01/I10 kill+wait completed pid=46920
+I11 same database restart preserves legacy settings/key availability and new receipt/current configuration; Provider=0; HTTP-level compatibility, no browser/DOM execution
+test i11_real_host_legacy_web_settings_roundtrip_authentication_and_new_receipts ... ok
+I10 one mock Completion settled; original receipt revision=1, current configuration revision=2
+I01/I10 kill+wait completed pid=40024
+I01/I10 real Host ready pid=45380
+I01/I10 kill+wait completed pid=45380
+test i01_safe_empty_start_explicit_legacy_and_existing_database_are_distinct ... ok
+I01/I10 real Host ready pid=45116
+I01/I10 kill+wait completed pid=45116
+I10 restarted same database; receipt/configuration/selection/budget/grant preserved; Provider=1, no replay
+test i10_same_empty_database_cli_configuration_permissions_budget_completion_and_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.24s
+

@@ -1,0 +1,9 @@
+   Compiling peachsh v0.2.0 (../nhc-c-host-setup-cli\NoManCode\rust-app)
+error[E0432]: unresolved import `reqwest::Method`
+   --> tests\host_initialization_workflow.rs:269:18
+    |
+269 |     use reqwest::Method::{GET, PUT};
+    |                  ^^^^^^ `Method` is a struct, not a module
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `peachsh` (test "host_initialization_workflow") due to 1 previous error

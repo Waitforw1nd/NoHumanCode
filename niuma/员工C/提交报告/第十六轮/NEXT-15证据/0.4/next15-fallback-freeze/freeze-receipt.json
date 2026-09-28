@@ -1,0 +1,31 @@
+{
+  "utc": "2026-09-28T15:24:05.6282049Z",
+  "head": "dd2a66c9bfdde0a85f0831a7bcf8d1f7bc38e521",
+  "no_man_code_tree": "7a3c0c8ea88eea4b830701be607cc8c149c80a3f",
+  "rust_tree": "040de91e08c3bfd6cc3ee3c89ff1755bd121408b",
+  "tested_head": "57f750b3ddcd2c00314ca220f3fb632196970fe6",
+  "tested_rust_tree": "040de91e08c3bfd6cc3ee3c89ff1755bd121408b",
+  "branch": "codex/c/host-setup-cli",
+  "status": [],
+  "index": [],
+  "owned_running_processes": [],
+  "commands": [
+    {
+      "exit_code": 0,
+      "command": "git diff --check"
+    },
+    {
+      "exit_code": 0,
+      "command": "git add -- NoManCode/docs/cli-first-release-acceptance.md"
+    },
+    {
+      "exit_code": 0,
+      "command": "git commit -m 'docs(cli): record real host legacy web compatibility evidence'"
+    },
+    {
+      "exit_code": 0,
+      "command": "git diff --exit-code 57f750b3ddcd2c00314ca220f3fb632196970fe6 HEAD -- NoManCode/rust-app"
+    }
+  ],
+  "statement": "Employee C source/index clean/no-build freeze after legacy HTTP compatibility component verification; no final gates authorized or run"
+}

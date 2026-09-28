@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized] target(s) in 0.29s
+     Running tests\host_configuration_http.rs (../nhc-c-host-setup-cli\.local\target\debug\deps\host_configuration_http-6411dd64f2884d8b.exe)
+
+running 3 tests
+test i07_original_receipt_replay_current_snapshot_and_fixed_errors ... ok
+test i07_all_endpoints_require_host_origin_site_and_token ... ok
+test i07_nested_json_types_keys_limits_and_unsafe_targets_are_atomic_rejections ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+

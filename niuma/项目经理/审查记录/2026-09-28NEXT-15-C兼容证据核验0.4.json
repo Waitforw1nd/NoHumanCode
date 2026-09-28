@@ -1,0 +1,302 @@
+{
+  "utc": "2026-09-28T15:28:57.2425905Z",
+  "candidate": "dd2a66c9bfdde0a85f0831a7bcf8d1f7bc38e521",
+  "noman_tree": "7a3c0c8ea88eea4b830701be607cc8c149c80a3f",
+  "rust_tree": "040de91e08c3bfd6cc3ee3c89ff1755bd121408b",
+  "tested_candidate": "57f750b3ddcd2c00314ca220f3fb632196970fe6",
+  "tested_rust_tree": "040de91e08c3bfd6cc3ee3c89ff1755bd121408b",
+  "pairs": [
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt3-fallback/check.log",
+      "published": "next15-components-attempt3-fallback/check.log",
+      "original_sha256": "51D871DB35B9F10053E70989824D0202F0958884F58B61D6A813108FBEDB33EA",
+      "published_sha256": "51D871DB35B9F10053E70989824D0202F0958884F58B61D6A813108FBEDB33EA",
+      "original_bytes": 61,
+      "published_bytes": 61,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt3-fallback/cli.log",
+      "published": "next15-components-attempt3-fallback/cli.log",
+      "original_sha256": "DA05037382B3DCFFAD534D2A3FE4098BA5D9FCBC14ACEC3C71C31EAF197B0A41",
+      "published_sha256": "C4CA965FA2AAAE3A03427C5ECF14CB495C9F9C5565A67ACAD1C96A2B9ACA1CC2",
+      "original_bytes": 848,
+      "published_bytes": 843,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt3-fallback/http.log",
+      "published": "next15-components-attempt3-fallback/http.log",
+      "original_sha256": "9A39CC02F76AA1DEA03475911E740F9CCA806B235D5CB7FCB9A295A0B5E72C1A",
+      "published_sha256": "D49A8281A100B3C555AB95ECBDB3A862388DDFED32AA05297EB7E675E78FA38A",
+      "original_bytes": 557,
+      "published_bytes": 552,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt3-fallback/meta.json",
+      "published": "next15-components-attempt3-fallback/meta.json",
+      "original_sha256": "EE819A1F7C8AFE2D923A1BBA9A43892FA0821EFD8EE50952C008805AE566D81F",
+      "published_sha256": "AC893014CFA2AD35DF4177EA603BF36418F25A3587DDE830A4169815C4E95C8D",
+      "original_bytes": 2288,
+      "published_bytes": 2154,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt3-fallback/workflow.log",
+      "published": "next15-components-attempt3-fallback/workflow.log",
+      "original_sha256": "754FF7B8C90CC50A34072FEB9621F89521DD1456AB13D701AE656885F53F08F7",
+      "published_sha256": "AD63D8975EAF48F1D22385E1C6843C3786FF4DB281C8B24975BFCBA1A01A3AA2",
+      "original_bytes": 469,
+      "published_bytes": 464,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/check.log",
+      "published": "next15-components-attempt4-fallback/check.log",
+      "original_sha256": "42C8E12B93F9ADB3F72A89F5CF69AABF286600795B614494667275DDAF3D7E64",
+      "published_sha256": "42C8E12B93F9ADB3F72A89F5CF69AABF286600795B614494667275DDAF3D7E64",
+      "original_bytes": 61,
+      "published_bytes": 61,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/cli.log",
+      "published": "next15-components-attempt4-fallback/cli.log",
+      "original_sha256": "FF2357F35325FC7FAD81B763BA2E4BDCACCBECB8CAD541A020B6506D4DF630F2",
+      "published_sha256": "4D2420F310801A64D616D7E9705F1A78083F648CF55489CF918421072CF3BE11",
+      "original_bytes": 848,
+      "published_bytes": 843,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/http.log",
+      "published": "next15-components-attempt4-fallback/http.log",
+      "original_sha256": "02A64E8C23A3B75D1CF397B89E2097191ADB6A5F8B24F8792105A73392AE00F0",
+      "published_sha256": "3834461BF18D71350A8D37FBA705AC126507B561C8AC8F10F550B6ED89C21AEF",
+      "original_bytes": 557,
+      "published_bytes": 552,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/meta.json",
+      "published": "next15-components-attempt4-fallback/meta.json",
+      "original_sha256": "C1C63E876C6A19F3592FB4B00E04029591C7AF1A8AB673BDD0280B2AF7B7030E",
+      "published_sha256": "8824A8B044E75DDECBDB3873388C86A76DA34F97E3E32F31BD3E5D920371AED0",
+      "original_bytes": 2286,
+      "published_bytes": 2152,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/workflow.log",
+      "published": "next15-components-attempt4-fallback/workflow.log",
+      "original_sha256": "6B16ACA8E2235F8D14B8CBFA15A9920E92C90E328E74C5485A48F9DE3271F4CC",
+      "published_sha256": "6B0BBDF72E8DB6B150F4D9EE6010FD68D5F711BE5D7BE3AB4185BB53F2EDF967",
+      "original_bytes": 2080,
+      "published_bytes": 2070,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-candidate/commit.log",
+      "published": "next15-fallback-candidate/commit.log",
+      "original_sha256": "EE2949287A20B882C6E05443B0842F572981A15CC5A97C226BDA195FA431B14B",
+      "published_sha256": "EE2949287A20B882C6E05443B0842F572981A15CC5A97C226BDA195FA431B14B",
+      "original_bytes": 139,
+      "published_bytes": 139,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-candidate/diff-check.log",
+      "published": "next15-fallback-candidate/diff-check.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-candidate/format-check.log",
+      "published": "next15-fallback-candidate/format-check.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-candidate/format.log",
+      "published": "next15-fallback-candidate/format.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-candidate/receipt.json",
+      "published": "next15-fallback-candidate/receipt.json",
+      "original_sha256": "051CCFF6F769894B49D950018F6173C4074D7788F8585546D9334439284172A2",
+      "published_sha256": "051CCFF6F769894B49D950018F6173C4074D7788F8585546D9334439284172A2",
+      "original_bytes": 749,
+      "published_bytes": 749,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-fix/commit.log",
+      "published": "next15-fallback-fix/commit.log",
+      "original_sha256": "21A9EEA61D0C09D4587BFE30EF17682B6AB66D40105A6FBEF7FB384DCB9E89BD",
+      "published_sha256": "21A9EEA61D0C09D4587BFE30EF17682B6AB66D40105A6FBEF7FB384DCB9E89BD",
+      "original_bytes": 143,
+      "published_bytes": 143,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-fix/diff-check.log",
+      "published": "next15-fallback-fix/diff-check.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-fix/format-check.log",
+      "published": "next15-fallback-fix/format-check.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-fix/format.log",
+      "published": "next15-fallback-fix/format.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-fix/receipt.json",
+      "published": "next15-fallback-fix/receipt.json",
+      "original_sha256": "E036156C0BDDF39172CE107642A56A38DCE868098E097378C94BFC6BC0C43AC7",
+      "published_sha256": "E036156C0BDDF39172CE107642A56A38DCE868098E097378C94BFC6BC0C43AC7",
+      "original_bytes": 940,
+      "published_bytes": 940,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-freeze/commit.log",
+      "published": "next15-fallback-freeze/commit.log",
+      "original_sha256": "6434BEC7F923AA6D7F498DDAA5B778E5B20DA4E9E6818EE8ECC3FB5F7E3802A5",
+      "published_sha256": "6434BEC7F923AA6D7F498DDAA5B778E5B20DA4E9E6818EE8ECC3FB5F7E3802A5",
+      "original_bytes": 146,
+      "published_bytes": 146,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-freeze/diff-check.log",
+      "published": "next15-fallback-freeze/diff-check.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-freeze/freeze-receipt.json",
+      "published": "next15-fallback-freeze/freeze-receipt.json",
+      "original_sha256": "8DD6F171F4E3236DE2BF58F8CD6277EC6DBC5099518636B33A237AE756E9B22F",
+      "published_sha256": "8DD6F171F4E3236DE2BF58F8CD6277EC6DBC5099518636B33A237AE756E9B22F",
+      "original_bytes": 1114,
+      "published_bytes": 1114,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-freeze/run-index.json",
+      "published": "next15-fallback-freeze/run-index.json",
+      "original_sha256": "AAF9C36728CB0CAA87764ED2C7EA81DDB6F69BD93ACC30896E1361F61381BC98",
+      "published_sha256": "AAF9C36728CB0CAA87764ED2C7EA81DDB6F69BD93ACC30896E1361F61381BC98",
+      "original_bytes": 1480,
+      "published_bytes": 1480,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-fallback-freeze/tested-rust-equality.log",
+      "published": "next15-fallback-freeze/tested-rust-equality.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-component.ps1",
+      "published": "driver/next15-component.ps1",
+      "original_sha256": "573FB80EDECA9ABD6606FF3D41626EC710B7461E95B35CACC227ED71B58DE7C0",
+      "published_sha256": "573FB80EDECA9ABD6606FF3D41626EC710B7461E95B35CACC227ED71B58DE7C0",
+      "original_bytes": 8591,
+      "published_bytes": 8591,
+      "verified": true
+    }
+  ],
+  "sources": [
+    {
+      "path": "NoManCode/rust-app/src/main.rs",
+      "sha256": "9A5EE18AED33A8C3FE7A842D8AF02BA12F4A42B780274B9AB418D6744491E5B0",
+      "verified": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/cli.rs",
+      "sha256": "91AAE58829B3B021FBC90F486ED1FF6102AFC77E00B9723022E4C61CD41E0156",
+      "verified": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "sha256": "BD450F6DBCB6EC2BABBA8739319FF5EE50B04FA51B46DD32DF0B474720F08BC4",
+      "verified": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_http.rs",
+      "sha256": "654654D423D95E015242AADFD8E60F32459AAD7A855977BFA37D910E25856752",
+      "verified": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_cli.rs",
+      "sha256": "33B02CD533D51DBE440AAF5533A39F080F0CA422DCA164F56CFAC543B9490158",
+      "verified": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_initialization_workflow.rs",
+      "sha256": "6CCB7665B5CE6B7727C4DE517AE38A0A299EF2273CE217FCC721E62B8B6E852C",
+      "verified": true
+    },
+    {
+      "path": "NoManCode/docs/cli-first-release-acceptance.md",
+      "sha256": "D9C3C25CC2A6A7211BAA62AF3441AF45966583CEF7F74428B2384D6D3EF89E38",
+      "verified": true
+    }
+  ],
+  "results": [
+    {
+      "file": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/cli.log",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "file": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/http.log",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "file": "../nhc-c-host-setup-cli/.local/logs/next15-components-attempt4-fallback/workflow.log",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "source_review": "两个C-owned文件差异已完整审阅；真Host旧资产精确比对和真实旧settings/API-CLI读写、鉴权、revision1-2-3/CAS/原receipt及同DB重启/无Provider，明确HTTP级无浏览器DOM"
+}
