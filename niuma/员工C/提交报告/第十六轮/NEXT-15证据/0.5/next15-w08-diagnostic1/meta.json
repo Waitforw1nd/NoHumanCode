@@ -1,0 +1,1310 @@
+{
+  "scope": "One exact existing-binary diagnostic; not a final gate or acceptance rerun",
+  "start_utc": "2026-09-28T16:05:51.5314699Z",
+  "command": "../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe --exact server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries --nocapture",
+  "cwd": "../nhc-c-host-setup-cli\\NoManCode\\rust-app",
+  "tmp": "../nhc-c-host-setup-cli\\.local\\tmp\\next15-w08-diagnostic1",
+  "backtrace": "1",
+  "head": "fa9623785573a8f44decd0368fa73a4e267f4ed6",
+  "no_man_code_tree": "2ec3a9f19c9a0f01721581d3cd0a7752187ae522",
+  "rust_tree": "1fcf1e19dcda993dd1778a37e50e613e971d5153",
+  "status_before": [],
+  "index_before": [],
+  "binary_sha256": "AB2E16C07582435F3DF0A435104484C4F458E775DCE5543A00D4E98BF482CE0B",
+  "snapshot_limitations": "External polling observes files best-effort; individual byte versions are preserved but cross-file SQLite snapshots are not asserted atomic. No source/timeout/assertion changes.",
+  "observations": [
+    {
+      "utc": "2026-09-28T16:05:52.3094202Z",
+      "fixture_path": ".tmp6hr079/child-claim.log",
+      "saved": "snapshots/00001-child-claim.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3127179Z",
+      "fixture_path": ".tmp6hr079/host.sqlite3",
+      "saved": "snapshots/00002-host.sqlite3",
+      "bytes": 450560,
+      "sha256": "4984CC99BB2F0BB6387C531B4DF9C2C08B1B6F7052E0E95F4605D6B6E70AB576"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3133906Z",
+      "fixture_path": ".tmp6hr079/host.sqlite3-shm",
+      "saved": "snapshots/00003-host.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3138102Z",
+      "fixture_path": ".tmp6hr079/host.sqlite3-wal",
+      "saved": "snapshots/00004-host.sqlite3-wal",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3142307Z",
+      "fixture_path": ".tmp6hr079/listen-claim",
+      "saved": "snapshots/00005-listen-claim",
+      "bytes": 22,
+      "sha256": "539F23BBC34EBDABDC84B40088E07D7008C49863F7FD6D5CC3B5B2F843A2CC10"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3164864Z",
+      "fixture_path": ".tmp6hr079/source/tracked",
+      "saved": "snapshots/00006-tracked",
+      "bytes": 8,
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3169721Z",
+      "fixture_path": ".tmp6hr079/source/.git/COMMIT_EDITMSG",
+      "saved": "snapshots/00007-COMMIT_EDITMSG",
+      "bytes": 8,
+      "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3174299Z",
+      "fixture_path": ".tmp6hr079/source/.git/config",
+      "saved": "snapshots/00008-config",
+      "bytes": 130,
+      "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3178438Z",
+      "fixture_path": ".tmp6hr079/source/.git/description",
+      "saved": "snapshots/00009-description",
+      "bytes": 73,
+      "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3187219Z",
+      "fixture_path": ".tmp6hr079/source/.git/HEAD",
+      "saved": "snapshots/00010-HEAD",
+      "bytes": 21,
+      "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3191533Z",
+      "fixture_path": ".tmp6hr079/source/.git/index",
+      "saved": "snapshots/00011-index",
+      "bytes": 137,
+      "sha256": "C7C58F98B3D35B0916C386D8018491B37D48C51D93D2C2D5B2A74B738FC0C4E3"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3195838Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/applypatch-msg.sample",
+      "saved": "snapshots/00012-applypatch-msg.sample",
+      "bytes": 478,
+      "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3200411Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/commit-msg.sample",
+      "saved": "snapshots/00013-commit-msg.sample",
+      "bytes": 896,
+      "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3204942Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/fsmonitor-watchman.sample",
+      "saved": "snapshots/00014-fsmonitor-watchman.sample",
+      "bytes": 4726,
+      "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3209290Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/post-update.sample",
+      "saved": "snapshots/00015-post-update.sample",
+      "bytes": 189,
+      "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3216407Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-applypatch.sample",
+      "saved": "snapshots/00016-pre-applypatch.sample",
+      "bytes": 424,
+      "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3223156Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-commit.sample",
+      "saved": "snapshots/00017-pre-commit.sample",
+      "bytes": 1649,
+      "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3229303Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-merge-commit.sample",
+      "saved": "snapshots/00018-pre-merge-commit.sample",
+      "bytes": 416,
+      "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3235125Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-push.sample",
+      "saved": "snapshots/00019-pre-push.sample",
+      "bytes": 1374,
+      "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3240126Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-rebase.sample",
+      "saved": "snapshots/00020-pre-rebase.sample",
+      "bytes": 4898,
+      "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3244722Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-receive.sample",
+      "saved": "snapshots/00021-pre-receive.sample",
+      "bytes": 544,
+      "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3249404Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/prepare-commit-msg.sample",
+      "saved": "snapshots/00022-prepare-commit-msg.sample",
+      "bytes": 1492,
+      "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3254492Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/push-to-checkout.sample",
+      "saved": "snapshots/00023-push-to-checkout.sample",
+      "bytes": 2783,
+      "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3259880Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/sendemail-validate.sample",
+      "saved": "snapshots/00024-sendemail-validate.sample",
+      "bytes": 2308,
+      "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3265336Z",
+      "fixture_path": ".tmp6hr079/source/.git/hooks/update.sample",
+      "saved": "snapshots/00025-update.sample",
+      "bytes": 3650,
+      "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3270301Z",
+      "fixture_path": ".tmp6hr079/source/.git/info/exclude",
+      "saved": "snapshots/00026-exclude",
+      "bytes": 240,
+      "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3275306Z",
+      "fixture_path": ".tmp6hr079/source/.git/logs/HEAD",
+      "saved": "snapshots/00027-HEAD",
+      "bytes": 151,
+      "sha256": "2260C5C3826BFEE878DCC58F011158D204586886C5C4299D6FCB8A7DC7BAE6EB"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3280299Z",
+      "fixture_path": ".tmp6hr079/source/.git/logs/refs/heads/main",
+      "saved": "snapshots/00028-main",
+      "bytes": 151,
+      "sha256": "2260C5C3826BFEE878DCC58F011158D204586886C5C4299D6FCB8A7DC7BAE6EB"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3285660Z",
+      "fixture_path": ".tmp6hr079/source/.git/objects/4b/100c43842cb1ae9013456c226c1945a53a3a74",
+      "saved": "snapshots/00029-100c43842cb1ae9013456c226c1945a53a3a74",
+      "bytes": 116,
+      "sha256": "B931B2F7C4187FFF5941AC9A246720D9876DC56BB1E1BF41ABF8A641C877E2BE"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3291411Z",
+      "fixture_path": ".tmp6hr079/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+      "saved": "snapshots/00030-f3fd6102e7d7ca113975266a1add530b58aab0",
+      "bytes": 52,
+      "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3297526Z",
+      "fixture_path": ".tmp6hr079/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+      "saved": "snapshots/00031-f3610c08588440112ed977376f26a8fba169b0",
+      "bytes": 23,
+      "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3302539Z",
+      "fixture_path": ".tmp6hr079/source/.git/refs/heads/main",
+      "saved": "snapshots/00032-main",
+      "bytes": 41,
+      "sha256": "1FDD9F42B54C1913FA7F9DC82A33915423A9BF63E8503ECF083E9E206EE7723A"
+    },
+    {
+      "utc": "2026-09-28T16:05:52.3537888Z",
+      "fixture_path": ".tmp6hr079/child-claim.log",
+      "saved": "snapshots/00033-child-claim.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4449766Z",
+      "fixture_path": ".tmp6hr079/child-restart.log",
+      "saved": "snapshots/00034-child-restart.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4455214Z",
+      "fixture_path": ".tmp6hr079/host.sqlite3-shm",
+      "saved": "snapshots/00035-host.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "01748D9B9C40639C3E8F254048667AA433D5656C6D385180982D84D8FC9E8B85"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4460167Z",
+      "fixture_path": ".tmp6hr079/host.sqlite3-wal",
+      "saved": "snapshots/00036-host.sqlite3-wal",
+      "bytes": 45352,
+      "sha256": "8AD48C5BCF07D33CC5F9692D1AA1E82210EDCDCA2ABEEECBC7D2166D9A254B29"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4464310Z",
+      "fixture_path": ".tmp6hr079/listen-restart",
+      "saved": "snapshots/00037-listen-restart",
+      "bytes": 22,
+      "sha256": "ED9C9126B376B5EE0D5F6AA1412C21C4B17B30CF4D2B0E6F9691CB1C487EBFCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4468291Z",
+      "fixture_path": ".tmp6hr079/ready",
+      "saved": "snapshots/00038-ready",
+      "bytes": 36,
+      "sha256": "2D369FA782FC026A654C86C56046306F2836777C1EA1CDC4782CC2C27396533C"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4887248Z",
+      "fixture_path": ".tmp6hr079/child-restart.log",
+      "saved": "snapshots/00039-child-restart.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.9890219Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3",
+      "saved": "snapshots/00040-host.sqlite3",
+      "bytes": 4096,
+      "sha256": "EDBEE11A2E909B4413B8E2265B665C0F156AABA120E5C715A11D8FC30BA789D7"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.9935005Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-shm",
+      "read_error": "IOException",
+      "note": "File changed/disappeared during parent cleanup; no snapshot claimed"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.9984815Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "saved": "snapshots/00041-host.sqlite3-wal",
+      "bytes": 819912,
+      "sha256": "2321BDEDCDA1A425AB4B5E8ABBA0A93794E308D97F54C1D6E7B6CBF97C7C1816"
+    },
+    {
+      "utc": "2026-09-28T16:05:53.9997341Z",
+      "fixture_path": ".tmpou8U5b/source/tracked",
+      "saved": "snapshots/00042-tracked",
+      "bytes": 8,
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0003613Z",
+      "fixture_path": ".tmpou8U5b/source/.git/COMMIT_EDITMSG",
+      "saved": "snapshots/00043-COMMIT_EDITMSG",
+      "bytes": 8,
+      "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0007832Z",
+      "fixture_path": ".tmpou8U5b/source/.git/config",
+      "saved": "snapshots/00044-config",
+      "bytes": 130,
+      "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0012277Z",
+      "fixture_path": ".tmpou8U5b/source/.git/description",
+      "saved": "snapshots/00045-description",
+      "bytes": 73,
+      "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0016325Z",
+      "fixture_path": ".tmpou8U5b/source/.git/HEAD",
+      "saved": "snapshots/00046-HEAD",
+      "bytes": 21,
+      "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0020138Z",
+      "fixture_path": ".tmpou8U5b/source/.git/index",
+      "saved": "snapshots/00047-index",
+      "bytes": 137,
+      "sha256": "E71E648E0F0488759AAE924973618EEA1DD970CF0D48C0D308C1E1F9F38A755F"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0024157Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/applypatch-msg.sample",
+      "saved": "snapshots/00048-applypatch-msg.sample",
+      "bytes": 478,
+      "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0029234Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/commit-msg.sample",
+      "saved": "snapshots/00049-commit-msg.sample",
+      "bytes": 896,
+      "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0033785Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/fsmonitor-watchman.sample",
+      "saved": "snapshots/00050-fsmonitor-watchman.sample",
+      "bytes": 4726,
+      "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0037315Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/post-update.sample",
+      "saved": "snapshots/00051-post-update.sample",
+      "bytes": 189,
+      "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0040693Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-applypatch.sample",
+      "saved": "snapshots/00052-pre-applypatch.sample",
+      "bytes": 424,
+      "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0044285Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-commit.sample",
+      "saved": "snapshots/00053-pre-commit.sample",
+      "bytes": 1649,
+      "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0047776Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-merge-commit.sample",
+      "saved": "snapshots/00054-pre-merge-commit.sample",
+      "bytes": 416,
+      "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0051053Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-push.sample",
+      "saved": "snapshots/00055-pre-push.sample",
+      "bytes": 1374,
+      "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0054705Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-rebase.sample",
+      "saved": "snapshots/00056-pre-rebase.sample",
+      "bytes": 4898,
+      "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0058057Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-receive.sample",
+      "saved": "snapshots/00057-pre-receive.sample",
+      "bytes": 544,
+      "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0061480Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/prepare-commit-msg.sample",
+      "saved": "snapshots/00058-prepare-commit-msg.sample",
+      "bytes": 1492,
+      "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0064989Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/push-to-checkout.sample",
+      "saved": "snapshots/00059-push-to-checkout.sample",
+      "bytes": 2783,
+      "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0068266Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/sendemail-validate.sample",
+      "saved": "snapshots/00060-sendemail-validate.sample",
+      "bytes": 2308,
+      "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0071554Z",
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/update.sample",
+      "saved": "snapshots/00061-update.sample",
+      "bytes": 3650,
+      "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0075082Z",
+      "fixture_path": ".tmpou8U5b/source/.git/info/exclude",
+      "saved": "snapshots/00062-exclude",
+      "bytes": 240,
+      "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0078416Z",
+      "fixture_path": ".tmpou8U5b/source/.git/logs/HEAD",
+      "saved": "snapshots/00063-HEAD",
+      "bytes": 151,
+      "sha256": "257FC480D3F90ED7BC950C6B32865AEBFC42497F84C84A92B853DD386D0A8BA9"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0081640Z",
+      "fixture_path": ".tmpou8U5b/source/.git/logs/refs/heads/main",
+      "saved": "snapshots/00064-main",
+      "bytes": 151,
+      "sha256": "257FC480D3F90ED7BC950C6B32865AEBFC42497F84C84A92B853DD386D0A8BA9"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0086280Z",
+      "fixture_path": ".tmpou8U5b/source/.git/objects/60/b5ad61e9ee66e9b72f0c4d97bec0508f52d88f",
+      "saved": "snapshots/00065-b5ad61e9ee66e9b72f0c4d97bec0508f52d88f",
+      "bytes": 116,
+      "sha256": "89C270771199BD5AF0E51A61E61CF54974948CB7E9CC69F000E01BABF8876665"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0090318Z",
+      "fixture_path": ".tmpou8U5b/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+      "saved": "snapshots/00066-f3fd6102e7d7ca113975266a1add530b58aab0",
+      "bytes": 52,
+      "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0094233Z",
+      "fixture_path": ".tmpou8U5b/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+      "saved": "snapshots/00067-f3610c08588440112ed977376f26a8fba169b0",
+      "bytes": 23,
+      "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0097739Z",
+      "fixture_path": ".tmpou8U5b/source/.git/refs/heads/main",
+      "saved": "snapshots/00068-main",
+      "bytes": 41,
+      "sha256": "B423C997C432C5AFB55B7F8BD1DF615F11F196916B2EDAF600EBBA18858273DF"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0522985Z",
+      "fixture_path": ".tmpou8U5b/child-created.log",
+      "saved": "snapshots/00069-child-created.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0531720Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3",
+      "saved": "snapshots/00070-host.sqlite3",
+      "bytes": 450560,
+      "sha256": "CA15855D73939EB4D136E340DCD9AF543AB2DFD7EC8BEA48B4E7577211716A03"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0536348Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-shm",
+      "saved": "snapshots/00071-host.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0539576Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "saved": "snapshots/00072-host.sqlite3-wal",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0543415Z",
+      "fixture_path": ".tmpou8U5b/listen-created",
+      "saved": "snapshots/00073-listen-created",
+      "bytes": 22,
+      "sha256": "7EF0CFE66952459677E0102C9E957A528D8FDEE7BE0E00CF5536AA224E167952"
+    },
+    {
+      "utc": "2026-09-28T16:05:54.0983949Z",
+      "fixture_path": ".tmpou8U5b/child-created.log",
+      "saved": "snapshots/00074-child-created.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:55.2464296Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "saved": "snapshots/00075-host.sqlite3-wal",
+      "bytes": 37112,
+      "sha256": "0F05329B4EB0A6EDAD03FA3EE1D3097B0F185495CAC9218C66325B615188B959"
+    },
+    {
+      "utc": "2026-09-28T16:05:55.9222432Z",
+      "fixture_path": ".tmpou8U5b/c65d71d6-e742-4d72-bd15-9f7f2961add7/attributes",
+      "saved": "snapshots/00076-attributes",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6825823Z",
+      "fixture_path": ".tmpou8U5b/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/.git",
+      "saved": "snapshots/00077-.git",
+      "bytes": 145,
+      "sha256": "7A2B49DA12FC006AE7EEE9FB3F514854B6A1C5298F64097DE441D04FE78A8AD5"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6829358Z",
+      "fixture_path": ".tmpou8U5b/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/tracked",
+      "saved": "snapshots/00078-tracked",
+      "bytes": 8,
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6834152Z",
+      "fixture_path": ".tmpou8U5b/source/.git/logs/refs/heads/codex/workspace/c65d71d6-e742-4d72-bd15-9f7f2961add7",
+      "saved": "snapshots/00079-c65d71d6-e742-4d72-bd15-9f7f2961add7",
+      "bytes": 198,
+      "sha256": "05D41F69EE9E0EECE4384D572B165F16166CEA083E9B347C9A64664A01C8E1DA"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6841899Z",
+      "fixture_path": ".tmpou8U5b/source/.git/refs/heads/codex/workspace/c65d71d6-e742-4d72-bd15-9f7f2961add7",
+      "saved": "snapshots/00080-c65d71d6-e742-4d72-bd15-9f7f2961add7",
+      "bytes": 41,
+      "sha256": "B423C997C432C5AFB55B7F8BD1DF615F11F196916B2EDAF600EBBA18858273DF"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6845762Z",
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/commondir",
+      "saved": "snapshots/00081-commondir",
+      "bytes": 6,
+      "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6848909Z",
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/gitdir",
+      "saved": "snapshots/00082-gitdir",
+      "bytes": 120,
+      "sha256": "3A75DA7ED7AEF771DFD14B761717FA815CA202D2D044584C4642AAE2666D2539"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6851937Z",
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/HEAD",
+      "saved": "snapshots/00083-HEAD",
+      "bytes": 69,
+      "sha256": "487DE4B5151785C1CF4F34067F4CAACFB5D803DF77B19E1B3BD43A708E093492"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6855016Z",
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/index",
+      "saved": "snapshots/00084-index",
+      "bytes": 137,
+      "sha256": "F5CD49B274323D940FD84DD0CE04FC462C862F4FBE20197D8BAF686BAECAD65E"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6859805Z",
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/ORIG_HEAD",
+      "saved": "snapshots/00085-ORIG_HEAD",
+      "bytes": 41,
+      "sha256": "B423C997C432C5AFB55B7F8BD1DF615F11F196916B2EDAF600EBBA18858273DF"
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6863617Z",
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/logs/HEAD",
+      "saved": "snapshots/00086-HEAD",
+      "bytes": 294,
+      "sha256": "382F978EA46D3CF5C4F3947CBE5ED095DD7885332E64DAAE71BD7253A8642EB7"
+    },
+    {
+      "utc": "2026-09-28T16:05:58.2251348Z",
+      "fixture_path": ".tmpou8U5b/child-restart.log",
+      "saved": "snapshots/00087-child-restart.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:58.2256465Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-shm",
+      "saved": "snapshots/00088-host.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "951DAA74237FBF26A64BC96A3E4B425180A07549D36A252886E73A3722A5E259"
+    },
+    {
+      "utc": "2026-09-28T16:05:58.2260337Z",
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "saved": "snapshots/00089-host.sqlite3-wal",
+      "bytes": 45352,
+      "sha256": "14DD76A27671F263E830E1E1115FE0773866C9B692F356E95729F9265BBBBC80"
+    },
+    {
+      "utc": "2026-09-28T16:05:58.2263453Z",
+      "fixture_path": ".tmpou8U5b/listen-restart",
+      "saved": "snapshots/00090-listen-restart",
+      "bytes": 22,
+      "sha256": "CAA91F13AADA4EADEDACF462C8E65731BF734DDC10DF522E29FB715FC03F5FD5"
+    },
+    {
+      "utc": "2026-09-28T16:05:58.2266495Z",
+      "fixture_path": ".tmpou8U5b/ready",
+      "saved": "snapshots/00091-ready",
+      "bytes": 36,
+      "sha256": "4BF477E7AA7B8842C52EE7268AD9F985CB1B8EBC7AF0B3CFD5F91995E1C20797"
+    },
+    {
+      "utc": "2026-09-28T16:05:58.2715834Z",
+      "fixture_path": ".tmpou8U5b/child-restart.log",
+      "saved": "snapshots/00092-child-restart.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8164596Z",
+      "fixture_path": ".tmpUqAXyD/child-registered.log",
+      "saved": "snapshots/00093-child-registered.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8174125Z",
+      "fixture_path": ".tmpUqAXyD/host.sqlite3",
+      "saved": "snapshots/00094-host.sqlite3",
+      "bytes": 450560,
+      "sha256": "7BF9C0EA5465D9442C0D255C260701261818B85C28EB76FEC77E1E5F73CC1A19"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8178113Z",
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-shm",
+      "saved": "snapshots/00095-host.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8180774Z",
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-wal",
+      "saved": "snapshots/00096-host.sqlite3-wal",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8201709Z",
+      "fixture_path": ".tmpUqAXyD/listen-registered",
+      "saved": "snapshots/00097-listen-registered",
+      "bytes": 22,
+      "sha256": "7CEECD8B8855BB8FFB98AD7670F5C27FF840DA505D5CE6C59F85DFFDDEFF2929"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8205256Z",
+      "fixture_path": ".tmpUqAXyD/source/tracked",
+      "saved": "snapshots/00098-tracked",
+      "bytes": 8,
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8208281Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/COMMIT_EDITMSG",
+      "saved": "snapshots/00099-COMMIT_EDITMSG",
+      "bytes": 8,
+      "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8211163Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/config",
+      "saved": "snapshots/00100-config",
+      "bytes": 130,
+      "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8213912Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/description",
+      "saved": "snapshots/00101-description",
+      "bytes": 73,
+      "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8216604Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/HEAD",
+      "saved": "snapshots/00102-HEAD",
+      "bytes": 21,
+      "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8219499Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/index",
+      "saved": "snapshots/00103-index",
+      "bytes": 137,
+      "sha256": "F0E34ECEF496ACBE2DCC6188FDE0DCBDEF7044AE82EC9D142395D60515641E9C"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8223169Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/applypatch-msg.sample",
+      "saved": "snapshots/00104-applypatch-msg.sample",
+      "bytes": 478,
+      "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8226220Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/commit-msg.sample",
+      "saved": "snapshots/00105-commit-msg.sample",
+      "bytes": 896,
+      "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8229143Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/fsmonitor-watchman.sample",
+      "saved": "snapshots/00106-fsmonitor-watchman.sample",
+      "bytes": 4726,
+      "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8232039Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/post-update.sample",
+      "saved": "snapshots/00107-post-update.sample",
+      "bytes": 189,
+      "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8234925Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-applypatch.sample",
+      "saved": "snapshots/00108-pre-applypatch.sample",
+      "bytes": 424,
+      "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8237762Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-commit.sample",
+      "saved": "snapshots/00109-pre-commit.sample",
+      "bytes": 1649,
+      "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8240438Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-merge-commit.sample",
+      "saved": "snapshots/00110-pre-merge-commit.sample",
+      "bytes": 416,
+      "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8243181Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-push.sample",
+      "saved": "snapshots/00111-pre-push.sample",
+      "bytes": 1374,
+      "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8246014Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-rebase.sample",
+      "saved": "snapshots/00112-pre-rebase.sample",
+      "bytes": 4898,
+      "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8249422Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-receive.sample",
+      "saved": "snapshots/00113-pre-receive.sample",
+      "bytes": 544,
+      "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8252597Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/prepare-commit-msg.sample",
+      "saved": "snapshots/00114-prepare-commit-msg.sample",
+      "bytes": 1492,
+      "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8255475Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/push-to-checkout.sample",
+      "saved": "snapshots/00115-push-to-checkout.sample",
+      "bytes": 2783,
+      "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8258346Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/sendemail-validate.sample",
+      "saved": "snapshots/00116-sendemail-validate.sample",
+      "bytes": 2308,
+      "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8261464Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/update.sample",
+      "saved": "snapshots/00117-update.sample",
+      "bytes": 3650,
+      "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8267849Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/info/exclude",
+      "saved": "snapshots/00118-exclude",
+      "bytes": 240,
+      "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8272514Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/logs/HEAD",
+      "saved": "snapshots/00119-HEAD",
+      "bytes": 151,
+      "sha256": "E82FDCB1D46C22471D1284833982B5940FFE20D8C641960794DE04DDC43807B7"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8275883Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/logs/refs/heads/main",
+      "saved": "snapshots/00120-main",
+      "bytes": 151,
+      "sha256": "E82FDCB1D46C22471D1284833982B5940FFE20D8C641960794DE04DDC43807B7"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8279042Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+      "saved": "snapshots/00121-f3fd6102e7d7ca113975266a1add530b58aab0",
+      "bytes": 52,
+      "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8282010Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+      "saved": "snapshots/00122-f3610c08588440112ed977376f26a8fba169b0",
+      "bytes": 23,
+      "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8284982Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/objects/ad/45740d63f18513a29ab2251ac6df7d21b02c5f",
+      "saved": "snapshots/00123-45740d63f18513a29ab2251ac6df7d21b02c5f",
+      "bytes": 117,
+      "sha256": "3FA55651DE986C237BB87AD82E11C85E633F5AEF3AD0FFC2220BCC0BB445DAB1"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8287819Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/refs/heads/main",
+      "saved": "snapshots/00124-main",
+      "bytes": 41,
+      "sha256": "2230A1B4166B1F19B1124375DCCA2DD5DEB7C857E483A371EA321D992235E4E8"
+    },
+    {
+      "utc": "2026-09-28T16:05:59.8634735Z",
+      "fixture_path": ".tmpUqAXyD/child-registered.log",
+      "saved": "snapshots/00125-child-registered.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:06:00.7456052Z",
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-wal",
+      "saved": "snapshots/00126-host.sqlite3-wal",
+      "bytes": 37112,
+      "sha256": "4771E8E05F92E706965884D93C909D0BF31F6B75C2220A1EB11D8213531586C4"
+    },
+    {
+      "utc": "2026-09-28T16:06:01.4392466Z",
+      "fixture_path": ".tmpUqAXyD/5b650993-5732-4093-a297-bc66ca5faa97/attributes",
+      "saved": "snapshots/00127-attributes",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2129657Z",
+      "fixture_path": ".tmpUqAXyD/nhc-5b650993-5732-4093-a297-bc66ca5faa97/.git",
+      "saved": "snapshots/00128-.git",
+      "bytes": 145,
+      "sha256": "D37F95881ADF7B0E65A297E9E445BE33E9A382EB3FEBD8FBE47D015361E7E9AB"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2137440Z",
+      "fixture_path": ".tmpUqAXyD/nhc-5b650993-5732-4093-a297-bc66ca5faa97/tracked",
+      "saved": "snapshots/00129-tracked",
+      "bytes": 8,
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2143617Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/logs/refs/heads/codex/workspace/5b650993-5732-4093-a297-bc66ca5faa97",
+      "saved": "snapshots/00130-5b650993-5732-4093-a297-bc66ca5faa97",
+      "bytes": 198,
+      "sha256": "4DCEA76DFD9F413CA5A9430B70F68DAE9D4BE75B0DC8A6A16DF59F64779786F3"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2149192Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/refs/heads/codex/workspace/5b650993-5732-4093-a297-bc66ca5faa97",
+      "saved": "snapshots/00131-5b650993-5732-4093-a297-bc66ca5faa97",
+      "bytes": 41,
+      "sha256": "2230A1B4166B1F19B1124375DCCA2DD5DEB7C857E483A371EA321D992235E4E8"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2152239Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/commondir",
+      "saved": "snapshots/00132-commondir",
+      "bytes": 6,
+      "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2155142Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/gitdir",
+      "saved": "snapshots/00133-gitdir",
+      "bytes": 120,
+      "sha256": "21523882F7E30CADA863BC8537BBF95004481A4E5E9FA744984915CB5C70104E"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2158234Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/HEAD",
+      "saved": "snapshots/00134-HEAD",
+      "bytes": 69,
+      "sha256": "75B1D3EEF5617D61F9D5C94F8BE374AA9B54CDC46A67F8575BDDF4875BAD636A"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2161238Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/index",
+      "saved": "snapshots/00135-index",
+      "bytes": 137,
+      "sha256": "17506DD0098AE9E5B9CD0A17393DB32C77F8F7270CA1C9A91BECFFE7F1332B56"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2164508Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/ORIG_HEAD",
+      "saved": "snapshots/00136-ORIG_HEAD",
+      "bytes": 41,
+      "sha256": "2230A1B4166B1F19B1124375DCCA2DD5DEB7C857E483A371EA321D992235E4E8"
+    },
+    {
+      "utc": "2026-09-28T16:06:02.2167221Z",
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/logs/HEAD",
+      "saved": "snapshots/00137-HEAD",
+      "bytes": 294,
+      "sha256": "2924B9A779D78649992FF686641799C6F5D08BFD61B85308A17151DB730DCDA5"
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7428390Z",
+      "fixture_path": ".tmpUqAXyD/child-restart.log",
+      "saved": "snapshots/00138-child-restart.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7432659Z",
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-shm",
+      "saved": "snapshots/00139-host.sqlite3-shm",
+      "bytes": 32768,
+      "sha256": "58385BF111D86176E4EE231E94346C95EF8143F53E8BBB1C92EBE5F58B74720A"
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7437275Z",
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-wal",
+      "saved": "snapshots/00140-host.sqlite3-wal",
+      "bytes": 90672,
+      "sha256": "C94941F25D395AEC856B10AEDE06BA1333747026D6A34861EDF5F72D966AB5B3"
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7440245Z",
+      "fixture_path": ".tmpUqAXyD/listen-restart",
+      "saved": "snapshots/00141-listen-restart",
+      "bytes": 22,
+      "sha256": "03F69E9B2E610A7DB9427D8989C15EB8EBC8BA670FBE7D9CB0A17A94CCBA3E3B"
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7443181Z",
+      "fixture_path": ".tmpUqAXyD/ready",
+      "saved": "snapshots/00142-ready",
+      "bytes": 36,
+      "sha256": "ED85F6086C76B4473861269305C9E8CC8741F60BAEEFE9FD16770972A8668948"
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7748176Z",
+      "fixture_path": ".tmpUqAXyD/child-restart.log",
+      "saved": "snapshots/00143-child-restart.log",
+      "bytes": 16,
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    }
+  ],
+  "process_samples": [
+    {
+      "utc": "2026-09-28T16:05:52.2562027Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:52.8329145Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 28624,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:52.070623+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:53.4013215Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:53.9540531Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:54.5497745Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 43440,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:54.000931+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:55.1185848Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 43440,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:54.000931+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:55.8796401Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 43440,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:54.000931+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:56.6498707Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 43440,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:54.000931+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:57.3922351Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 43440,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:54.000931+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:58.1876379Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:58.9732439Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 47076,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:57.977431+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:05:59.7813617Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:00.5913382Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 44272,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:59.53469+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:01.3973545Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 44272,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:59.53469+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:02.1812687Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 44272,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:59.53469+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:02.9341468Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 44272,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:59.53469+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:03.7133992Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:04.4920052Z",
+      "processes": [
+        {
+          "ProcessId": 47548,
+          "ParentProcessId": 44504,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:05:51.825058+08:00"
+        },
+        {
+          "ProcessId": 10912,
+          "ParentProcessId": 47548,
+          "Name": "peachsh-dc94de63d8d31b10.exe",
+          "CreationDate": "2026-09-29T00:06:03.497358+08:00"
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-28T16:06:05.2212864Z",
+      "processes": []
+    }
+  ],
+  "parent_pid": 47548,
+  "exit_code": 0,
+  "end_utc": "2026-09-28T16:06:05.2588127Z",
+  "status_after": [],
+  "index_after": [],
+  "head_after": "fa9623785573a8f44decd0368fa73a4e267f4ed6",
+  "no_man_code_tree_after": "2ec3a9f19c9a0f01721581d3cd0a7752187ae522",
+  "rust_tree_after": "1fcf1e19dcda993dd1778a37e50e613e971d5153",
+  "remaining_fixture_files": [],
+  "remaining_owned_processes": []
+}

@@ -1,0 +1,1535 @@
+{
+  "execution_id": "C-R16-01-20260928-E01",
+  "utc": "2026-09-28T16:10:54.5931846Z",
+  "candidate": "fa9623785573a8f44decd0368fa73a4e267f4ed6",
+  "no_man_code_tree": "2ec3a9f19c9a0f01721581d3cd0a7752187ae522",
+  "rust_tree": "1fcf1e19dcda993dd1778a37e50e613e971d5153",
+  "scope": "Failed final gate plus single authorized diagnostic; not passed",
+  "evidence": [
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/check-after-source-hashes.json",
+      "published": "next15-final-attempt1/check-after-source-hashes.json",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "path_rewrites": [],
+      "published_bytes": 26755,
+      "transform": "verbatim",
+      "original_bytes": 26755,
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/check-before-source-hashes.json",
+      "published": "next15-final-attempt1/check-before-source-hashes.json",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "path_rewrites": [],
+      "published_bytes": 26755,
+      "transform": "verbatim",
+      "original_bytes": 26755,
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/check.log",
+      "published": "next15-final-attempt1/check.log",
+      "published_sha256": "32618057D07F87C6D8F803A45DB4B42C4F713404AFD41607EC36B66A1703037C",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli"
+      ],
+      "published_bytes": 6273,
+      "transform": "path representations only; original bytes preserved",
+      "original_bytes": 6288,
+      "original_sha256": "1455661EBF4D14144AFFA1AF93EC5F0DC56CA00EE60AA34ED1155A2EDF7BC713"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/diagnostic-fixture-inventory.json",
+      "published": "next15-final-attempt1/diagnostic-fixture-inventory.json",
+      "published_sha256": "BB9861FB317BEB4779CD83D22D9B66AC97B8DFDDD837D3B415BD657BFD8FC7B7",
+      "path_rewrites": [],
+      "published_bytes": 65083,
+      "transform": "verbatim",
+      "original_bytes": 65083,
+      "original_sha256": "BB9861FB317BEB4779CD83D22D9B66AC97B8DFDDD837D3B415BD657BFD8FC7B7"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/freeze-receipt.json",
+      "published": "next15-final-attempt1/freeze-receipt.json",
+      "published_sha256": "7CBF53FD999DDBF4A64D0E2E8378DBDDE02C8A2A6E3C4D9B6C7B6EF8B260F722",
+      "path_rewrites": [],
+      "published_bytes": 686,
+      "transform": "verbatim",
+      "original_bytes": 686,
+      "original_sha256": "7CBF53FD999DDBF4A64D0E2E8378DBDDE02C8A2A6E3C4D9B6C7B6EF8B260F722"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/meta.json",
+      "published": "next15-final-attempt1/meta.json",
+      "published_sha256": "A80DEDB56829E95E28BD5B3CD562BC7E7AFE7B5D4D086287D46DB68A60AE3769",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli",
+        "./.local/toolchains/MSVC/14.43.34808",
+        "./.local/toolchains/WindowsKits/10"
+      ],
+      "published_bytes": 4911,
+      "transform": "path representations only; original bytes preserved",
+      "original_bytes": 5105,
+      "original_sha256": "E595D41096EA37F15B36F08A043A75002EE3DBEF2C1EE138AE0777B51A366CEC"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/result-summary.json",
+      "published": "next15-final-attempt1/result-summary.json",
+      "published_sha256": "9B6497D2826C13CF90FF7416A8069B47B0698116A45D459293D7A5F4FFA04671",
+      "path_rewrites": [],
+      "published_bytes": 1971,
+      "transform": "verbatim",
+      "original_bytes": 1971,
+      "original_sha256": "9B6497D2826C13CF90FF7416A8069B47B0698116A45D459293D7A5F4FFA04671"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/test-after-source-hashes.json",
+      "published": "next15-final-attempt1/test-after-source-hashes.json",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "path_rewrites": [],
+      "published_bytes": 26755,
+      "transform": "verbatim",
+      "original_bytes": 26755,
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/test-before-source-hashes.json",
+      "published": "next15-final-attempt1/test-before-source-hashes.json",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "path_rewrites": [],
+      "published_bytes": 26755,
+      "transform": "verbatim",
+      "original_bytes": 26755,
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/test.log",
+      "published": "next15-final-attempt1/test.log",
+      "published_sha256": "EAE3F7AD97835B254BA8D3088FB4B0F7B785C6B68B0D71207E901D8AC1B934B9",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli"
+      ],
+      "published_bytes": 26875,
+      "transform": "path representations only; original bytes preserved",
+      "original_bytes": 26895,
+      "original_sha256": "72EDCF0687D4D600304C356A9E512A013C07648C39A2173CB59ABECD4F699297"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/meta.json",
+      "published": "next15-w08-diagnostic1/meta.json",
+      "published_sha256": "0E45FA6428FB8FDD38CA64175182CD0067C06C3305CD2C84A229F902A9A71D4C",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli"
+      ],
+      "published_bytes": 50923,
+      "transform": "path representations only; original bytes preserved",
+      "original_bytes": 50944,
+      "original_sha256": "6224BA3419511FC314D286667C209BD4DADD7F8ACBD8D983B1FC756FD4E7609A"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/parent.stderr.log",
+      "published": "next15-w08-diagnostic1/parent.stderr.log",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "path_rewrites": [],
+      "published_bytes": 0,
+      "transform": "verbatim",
+      "original_bytes": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/parent.stdout.log",
+      "published": "next15-w08-diagnostic1/parent.stdout.log",
+      "published_sha256": "EABEE07D91DA4D47410A498DCB9D5F19F691AADFE877FA425181D1719449E1BA",
+      "path_rewrites": [],
+      "published_bytes": 1009,
+      "transform": "verbatim",
+      "original_bytes": 1009,
+      "original_sha256": "EABEE07D91DA4D47410A498DCB9D5F19F691AADFE877FA425181D1719449E1BA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00001-child-claim.log",
+      "published": "next15-w08-diagnostic1/snapshots/00001-child-claim.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00005-listen-claim",
+      "published": "next15-w08-diagnostic1/snapshots/00005-listen-claim",
+      "published_sha256": "539F23BBC34EBDABDC84B40088E07D7008C49863F7FD6D5CC3B5B2F843A2CC10",
+      "path_rewrites": [],
+      "published_bytes": 22,
+      "transform": "verbatim",
+      "original_bytes": 22,
+      "original_sha256": "539F23BBC34EBDABDC84B40088E07D7008C49863F7FD6D5CC3B5B2F843A2CC10"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00033-child-claim.log",
+      "published": "next15-w08-diagnostic1/snapshots/00033-child-claim.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00034-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00034-child-restart.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00037-listen-restart",
+      "published": "next15-w08-diagnostic1/snapshots/00037-listen-restart",
+      "published_sha256": "ED9C9126B376B5EE0D5F6AA1412C21C4B17B30CF4D2B0E6F9691CB1C487EBFCA",
+      "path_rewrites": [],
+      "published_bytes": 22,
+      "transform": "verbatim",
+      "original_bytes": 22,
+      "original_sha256": "ED9C9126B376B5EE0D5F6AA1412C21C4B17B30CF4D2B0E6F9691CB1C487EBFCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00038-ready",
+      "published": "next15-w08-diagnostic1/snapshots/00038-ready",
+      "published_sha256": "2D369FA782FC026A654C86C56046306F2836777C1EA1CDC4782CC2C27396533C",
+      "path_rewrites": [],
+      "published_bytes": 36,
+      "transform": "verbatim",
+      "original_bytes": 36,
+      "original_sha256": "2D369FA782FC026A654C86C56046306F2836777C1EA1CDC4782CC2C27396533C"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00039-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00039-child-restart.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00069-child-created.log",
+      "published": "next15-w08-diagnostic1/snapshots/00069-child-created.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00073-listen-created",
+      "published": "next15-w08-diagnostic1/snapshots/00073-listen-created",
+      "published_sha256": "7EF0CFE66952459677E0102C9E957A528D8FDEE7BE0E00CF5536AA224E167952",
+      "path_rewrites": [],
+      "published_bytes": 22,
+      "transform": "verbatim",
+      "original_bytes": 22,
+      "original_sha256": "7EF0CFE66952459677E0102C9E957A528D8FDEE7BE0E00CF5536AA224E167952"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00074-child-created.log",
+      "published": "next15-w08-diagnostic1/snapshots/00074-child-created.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00087-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00087-child-restart.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00090-listen-restart",
+      "published": "next15-w08-diagnostic1/snapshots/00090-listen-restart",
+      "published_sha256": "CAA91F13AADA4EADEDACF462C8E65731BF734DDC10DF522E29FB715FC03F5FD5",
+      "path_rewrites": [],
+      "published_bytes": 22,
+      "transform": "verbatim",
+      "original_bytes": 22,
+      "original_sha256": "CAA91F13AADA4EADEDACF462C8E65731BF734DDC10DF522E29FB715FC03F5FD5"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00091-ready",
+      "published": "next15-w08-diagnostic1/snapshots/00091-ready",
+      "published_sha256": "4BF477E7AA7B8842C52EE7268AD9F985CB1B8EBC7AF0B3CFD5F91995E1C20797",
+      "path_rewrites": [],
+      "published_bytes": 36,
+      "transform": "verbatim",
+      "original_bytes": 36,
+      "original_sha256": "4BF477E7AA7B8842C52EE7268AD9F985CB1B8EBC7AF0B3CFD5F91995E1C20797"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00092-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00092-child-restart.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00093-child-registered.log",
+      "published": "next15-w08-diagnostic1/snapshots/00093-child-registered.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00097-listen-registered",
+      "published": "next15-w08-diagnostic1/snapshots/00097-listen-registered",
+      "published_sha256": "7CEECD8B8855BB8FFB98AD7670F5C27FF840DA505D5CE6C59F85DFFDDEFF2929",
+      "path_rewrites": [],
+      "published_bytes": 22,
+      "transform": "verbatim",
+      "original_bytes": 22,
+      "original_sha256": "7CEECD8B8855BB8FFB98AD7670F5C27FF840DA505D5CE6C59F85DFFDDEFF2929"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00125-child-registered.log",
+      "published": "next15-w08-diagnostic1/snapshots/00125-child-registered.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00138-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00138-child-restart.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00141-listen-restart",
+      "published": "next15-w08-diagnostic1/snapshots/00141-listen-restart",
+      "published_sha256": "03F69E9B2E610A7DB9427D8989C15EB8EBC8BA670FBE7D9CB0A17A94CCBA3E3B",
+      "path_rewrites": [],
+      "published_bytes": 22,
+      "transform": "verbatim",
+      "original_bytes": 22,
+      "original_sha256": "03F69E9B2E610A7DB9427D8989C15EB8EBC8BA670FBE7D9CB0A17A94CCBA3E3B"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00142-ready",
+      "published": "next15-w08-diagnostic1/snapshots/00142-ready",
+      "published_sha256": "ED85F6086C76B4473861269305C9E8CC8741F60BAEEFE9FD16770972A8668948",
+      "path_rewrites": [],
+      "published_bytes": 36,
+      "transform": "verbatim",
+      "original_bytes": 36,
+      "original_sha256": "ED85F6086C76B4473861269305C9E8CC8741F60BAEEFE9FD16770972A8668948"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00143-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00143-child-restart.log",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_rewrites": [],
+      "published_bytes": 16,
+      "transform": "verbatim",
+      "original_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-final-gates.ps1",
+      "published": "drivers/next15-final-gates.ps1",
+      "published_sha256": "E5AEC6F11E9846D2426DFE250555CCCC0DD66AE8382C15C3ECBFCCFC989B27D4",
+      "path_rewrites": [],
+      "published_bytes": 6600,
+      "transform": "verbatim",
+      "original_bytes": 6600,
+      "original_sha256": "E5AEC6F11E9846D2426DFE250555CCCC0DD66AE8382C15C3ECBFCCFC989B27D4"
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-w08-diagnostic.ps1",
+      "published": "drivers/next15-w08-diagnostic.ps1",
+      "published_sha256": "C7D3B276AFCCDC5A01F3F59DCD27E35831B6925ACD1543CD43DED3586415CF6D",
+      "path_rewrites": [],
+      "published_bytes": 6017,
+      "transform": "verbatim",
+      "original_bytes": 6017,
+      "original_sha256": "C7D3B276AFCCDC5A01F3F59DCD27E35831B6925ACD1543CD43DED3586415CF6D"
+    }
+  ],
+  "raw_fixture_versions": [
+    {
+      "fixture_path": ".tmp6hr079/child-claim.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:52.3094202Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00001-child-claim.log"
+    },
+    {
+      "fixture_path": ".tmp6hr079/host.sqlite3",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4984CC99BB2F0BB6387C531B4DF9C2C08B1B6F7052E0E95F4605D6B6E70AB576",
+      "observed_utc": "2026-09-28T16:05:52.3127179Z",
+      "bytes": 450560,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00002-host.sqlite3"
+    },
+    {
+      "fixture_path": ".tmp6hr079/host.sqlite3-shm",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+      "observed_utc": "2026-09-28T16:05:52.3133906Z",
+      "bytes": 32768,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00003-host.sqlite3-shm"
+    },
+    {
+      "fixture_path": ".tmp6hr079/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "observed_utc": "2026-09-28T16:05:52.3138102Z",
+      "bytes": 0,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00004-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmp6hr079/listen-claim",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "539F23BBC34EBDABDC84B40088E07D7008C49863F7FD6D5CC3B5B2F843A2CC10",
+      "observed_utc": "2026-09-28T16:05:52.3142307Z",
+      "bytes": 22,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00005-listen-claim"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/tracked",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5",
+      "observed_utc": "2026-09-28T16:05:52.3164864Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00006-tracked"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/COMMIT_EDITMSG",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F",
+      "observed_utc": "2026-09-28T16:05:52.3169721Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00007-COMMIT_EDITMSG"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/config",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC",
+      "observed_utc": "2026-09-28T16:05:52.3174299Z",
+      "bytes": 130,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00008-config"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/description",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE",
+      "observed_utc": "2026-09-28T16:05:52.3178438Z",
+      "bytes": 73,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00009-description"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80",
+      "observed_utc": "2026-09-28T16:05:52.3187219Z",
+      "bytes": 21,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00010-HEAD"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/index",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "C7C58F98B3D35B0916C386D8018491B37D48C51D93D2C2D5B2A74B738FC0C4E3",
+      "observed_utc": "2026-09-28T16:05:52.3191533Z",
+      "bytes": 137,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00011-index"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/applypatch-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7",
+      "observed_utc": "2026-09-28T16:05:52.3195838Z",
+      "bytes": 478,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00012-applypatch-msg.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/commit-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437",
+      "observed_utc": "2026-09-28T16:05:52.3200411Z",
+      "bytes": 896,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00013-commit-msg.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/fsmonitor-watchman.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0",
+      "observed_utc": "2026-09-28T16:05:52.3204942Z",
+      "bytes": 4726,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00014-fsmonitor-watchman.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/post-update.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5",
+      "observed_utc": "2026-09-28T16:05:52.320929Z",
+      "bytes": 189,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00015-post-update.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-applypatch.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475",
+      "observed_utc": "2026-09-28T16:05:52.3216407Z",
+      "bytes": 424,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00016-pre-applypatch.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-commit.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B",
+      "observed_utc": "2026-09-28T16:05:52.3223156Z",
+      "bytes": 1649,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00017-pre-commit.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-merge-commit.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53",
+      "observed_utc": "2026-09-28T16:05:52.3229303Z",
+      "bytes": 416,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00018-pre-merge-commit.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-push.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A",
+      "observed_utc": "2026-09-28T16:05:52.3235125Z",
+      "bytes": 1374,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00019-pre-push.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-rebase.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3",
+      "observed_utc": "2026-09-28T16:05:52.3240126Z",
+      "bytes": 4898,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00020-pre-rebase.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/pre-receive.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989",
+      "observed_utc": "2026-09-28T16:05:52.3244722Z",
+      "bytes": 544,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00021-pre-receive.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/prepare-commit-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619",
+      "observed_utc": "2026-09-28T16:05:52.3249404Z",
+      "bytes": 1492,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00022-prepare-commit-msg.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/push-to-checkout.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F",
+      "observed_utc": "2026-09-28T16:05:52.3254492Z",
+      "bytes": 2783,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00023-push-to-checkout.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/sendemail-validate.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92",
+      "observed_utc": "2026-09-28T16:05:52.325988Z",
+      "bytes": 2308,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00024-sendemail-validate.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/hooks/update.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106",
+      "observed_utc": "2026-09-28T16:05:52.3265336Z",
+      "bytes": 3650,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00025-update.sample"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/info/exclude",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1",
+      "observed_utc": "2026-09-28T16:05:52.3270301Z",
+      "bytes": 240,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00026-exclude"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/logs/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2260C5C3826BFEE878DCC58F011158D204586886C5C4299D6FCB8A7DC7BAE6EB",
+      "observed_utc": "2026-09-28T16:05:52.3275306Z",
+      "bytes": 151,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00027-HEAD"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/logs/refs/heads/main",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2260C5C3826BFEE878DCC58F011158D204586886C5C4299D6FCB8A7DC7BAE6EB",
+      "observed_utc": "2026-09-28T16:05:52.3280299Z",
+      "bytes": 151,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00028-main"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/objects/4b/100c43842cb1ae9013456c226c1945a53a3a74",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "B931B2F7C4187FFF5941AC9A246720D9876DC56BB1E1BF41ABF8A641C877E2BE",
+      "observed_utc": "2026-09-28T16:05:52.328566Z",
+      "bytes": 116,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00029-100c43842cb1ae9013456c226c1945a53a3a74"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8",
+      "observed_utc": "2026-09-28T16:05:52.3291411Z",
+      "bytes": 52,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00030-f3fd6102e7d7ca113975266a1add530b58aab0"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64",
+      "observed_utc": "2026-09-28T16:05:52.3297526Z",
+      "bytes": 23,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00031-f3610c08588440112ed977376f26a8fba169b0"
+    },
+    {
+      "fixture_path": ".tmp6hr079/source/.git/refs/heads/main",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "1FDD9F42B54C1913FA7F9DC82A33915423A9BF63E8503ECF083E9E206EE7723A",
+      "observed_utc": "2026-09-28T16:05:52.3302539Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00032-main"
+    },
+    {
+      "fixture_path": ".tmp6hr079/child-claim.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:52.3537888Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00033-child-claim.log"
+    },
+    {
+      "fixture_path": ".tmp6hr079/child-restart.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:53.4449766Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00034-child-restart.log"
+    },
+    {
+      "fixture_path": ".tmp6hr079/host.sqlite3-shm",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "01748D9B9C40639C3E8F254048667AA433D5656C6D385180982D84D8FC9E8B85",
+      "observed_utc": "2026-09-28T16:05:53.4455214Z",
+      "bytes": 32768,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00035-host.sqlite3-shm"
+    },
+    {
+      "fixture_path": ".tmp6hr079/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8AD48C5BCF07D33CC5F9692D1AA1E82210EDCDCA2ABEEECBC7D2166D9A254B29",
+      "observed_utc": "2026-09-28T16:05:53.4460167Z",
+      "bytes": 45352,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00036-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmp6hr079/listen-restart",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "ED9C9126B376B5EE0D5F6AA1412C21C4B17B30CF4D2B0E6F9691CB1C487EBFCA",
+      "observed_utc": "2026-09-28T16:05:53.446431Z",
+      "bytes": 22,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00037-listen-restart"
+    },
+    {
+      "fixture_path": ".tmp6hr079/ready",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2D369FA782FC026A654C86C56046306F2836777C1EA1CDC4782CC2C27396533C",
+      "observed_utc": "2026-09-28T16:05:53.4468291Z",
+      "bytes": 36,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00038-ready"
+    },
+    {
+      "fixture_path": ".tmp6hr079/child-restart.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:53.4887248Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00039-child-restart.log"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "EDBEE11A2E909B4413B8E2265B665C0F156AABA120E5C715A11D8FC30BA789D7",
+      "observed_utc": "2026-09-28T16:05:53.9890219Z",
+      "bytes": 4096,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00040-host.sqlite3"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2321BDEDCDA1A425AB4B5E8ABBA0A93794E308D97F54C1D6E7B6CBF97C7C1816",
+      "observed_utc": "2026-09-28T16:05:53.9984815Z",
+      "bytes": 819912,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00041-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/tracked",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5",
+      "observed_utc": "2026-09-28T16:05:53.9997341Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00042-tracked"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/COMMIT_EDITMSG",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F",
+      "observed_utc": "2026-09-28T16:05:54.0003613Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00043-COMMIT_EDITMSG"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/config",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC",
+      "observed_utc": "2026-09-28T16:05:54.0007832Z",
+      "bytes": 130,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00044-config"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/description",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE",
+      "observed_utc": "2026-09-28T16:05:54.0012277Z",
+      "bytes": 73,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00045-description"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80",
+      "observed_utc": "2026-09-28T16:05:54.0016325Z",
+      "bytes": 21,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00046-HEAD"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/index",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E71E648E0F0488759AAE924973618EEA1DD970CF0D48C0D308C1E1F9F38A755F",
+      "observed_utc": "2026-09-28T16:05:54.0020138Z",
+      "bytes": 137,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00047-index"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/applypatch-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7",
+      "observed_utc": "2026-09-28T16:05:54.0024157Z",
+      "bytes": 478,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00048-applypatch-msg.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/commit-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437",
+      "observed_utc": "2026-09-28T16:05:54.0029234Z",
+      "bytes": 896,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00049-commit-msg.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/fsmonitor-watchman.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0",
+      "observed_utc": "2026-09-28T16:05:54.0033785Z",
+      "bytes": 4726,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00050-fsmonitor-watchman.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/post-update.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5",
+      "observed_utc": "2026-09-28T16:05:54.0037315Z",
+      "bytes": 189,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00051-post-update.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-applypatch.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475",
+      "observed_utc": "2026-09-28T16:05:54.0040693Z",
+      "bytes": 424,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00052-pre-applypatch.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-commit.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B",
+      "observed_utc": "2026-09-28T16:05:54.0044285Z",
+      "bytes": 1649,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00053-pre-commit.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-merge-commit.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53",
+      "observed_utc": "2026-09-28T16:05:54.0047776Z",
+      "bytes": 416,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00054-pre-merge-commit.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-push.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A",
+      "observed_utc": "2026-09-28T16:05:54.0051053Z",
+      "bytes": 1374,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00055-pre-push.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-rebase.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3",
+      "observed_utc": "2026-09-28T16:05:54.0054705Z",
+      "bytes": 4898,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00056-pre-rebase.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/pre-receive.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989",
+      "observed_utc": "2026-09-28T16:05:54.0058057Z",
+      "bytes": 544,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00057-pre-receive.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/prepare-commit-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619",
+      "observed_utc": "2026-09-28T16:05:54.006148Z",
+      "bytes": 1492,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00058-prepare-commit-msg.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/push-to-checkout.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F",
+      "observed_utc": "2026-09-28T16:05:54.0064989Z",
+      "bytes": 2783,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00059-push-to-checkout.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/sendemail-validate.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92",
+      "observed_utc": "2026-09-28T16:05:54.0068266Z",
+      "bytes": 2308,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00060-sendemail-validate.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/hooks/update.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106",
+      "observed_utc": "2026-09-28T16:05:54.0071554Z",
+      "bytes": 3650,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00061-update.sample"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/info/exclude",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1",
+      "observed_utc": "2026-09-28T16:05:54.0075082Z",
+      "bytes": 240,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00062-exclude"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/logs/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "257FC480D3F90ED7BC950C6B32865AEBFC42497F84C84A92B853DD386D0A8BA9",
+      "observed_utc": "2026-09-28T16:05:54.0078416Z",
+      "bytes": 151,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00063-HEAD"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/logs/refs/heads/main",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "257FC480D3F90ED7BC950C6B32865AEBFC42497F84C84A92B853DD386D0A8BA9",
+      "observed_utc": "2026-09-28T16:05:54.008164Z",
+      "bytes": 151,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00064-main"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/objects/60/b5ad61e9ee66e9b72f0c4d97bec0508f52d88f",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "89C270771199BD5AF0E51A61E61CF54974948CB7E9CC69F000E01BABF8876665",
+      "observed_utc": "2026-09-28T16:05:54.008628Z",
+      "bytes": 116,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00065-b5ad61e9ee66e9b72f0c4d97bec0508f52d88f"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8",
+      "observed_utc": "2026-09-28T16:05:54.0090318Z",
+      "bytes": 52,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00066-f3fd6102e7d7ca113975266a1add530b58aab0"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64",
+      "observed_utc": "2026-09-28T16:05:54.0094233Z",
+      "bytes": 23,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00067-f3610c08588440112ed977376f26a8fba169b0"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/refs/heads/main",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "B423C997C432C5AFB55B7F8BD1DF615F11F196916B2EDAF600EBBA18858273DF",
+      "observed_utc": "2026-09-28T16:05:54.0097739Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00068-main"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/child-created.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:54.0522985Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00069-child-created.log"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "CA15855D73939EB4D136E340DCD9AF543AB2DFD7EC8BEA48B4E7577211716A03",
+      "observed_utc": "2026-09-28T16:05:54.053172Z",
+      "bytes": 450560,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00070-host.sqlite3"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3-shm",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+      "observed_utc": "2026-09-28T16:05:54.0536348Z",
+      "bytes": 32768,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00071-host.sqlite3-shm"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "observed_utc": "2026-09-28T16:05:54.0539576Z",
+      "bytes": 0,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00072-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/listen-created",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "7EF0CFE66952459677E0102C9E957A528D8FDEE7BE0E00CF5536AA224E167952",
+      "observed_utc": "2026-09-28T16:05:54.0543415Z",
+      "bytes": 22,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00073-listen-created"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/child-created.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:54.0983949Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00074-child-created.log"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0F05329B4EB0A6EDAD03FA3EE1D3097B0F185495CAC9218C66325B615188B959",
+      "observed_utc": "2026-09-28T16:05:55.2464296Z",
+      "bytes": 37112,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00075-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/c65d71d6-e742-4d72-bd15-9f7f2961add7/attributes",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "observed_utc": "2026-09-28T16:05:55.9222432Z",
+      "bytes": 0,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00076-attributes"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/.git",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "7A2B49DA12FC006AE7EEE9FB3F514854B6A1C5298F64097DE441D04FE78A8AD5",
+      "observed_utc": "2026-09-28T16:05:56.6825823Z",
+      "bytes": 145,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00077-.git"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/tracked",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5",
+      "observed_utc": "2026-09-28T16:05:56.6829358Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00078-tracked"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/logs/refs/heads/codex/workspace/c65d71d6-e742-4d72-bd15-9f7f2961add7",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "05D41F69EE9E0EECE4384D572B165F16166CEA083E9B347C9A64664A01C8E1DA",
+      "observed_utc": "2026-09-28T16:05:56.6834152Z",
+      "bytes": 198,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00079-c65d71d6-e742-4d72-bd15-9f7f2961add7"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/refs/heads/codex/workspace/c65d71d6-e742-4d72-bd15-9f7f2961add7",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "B423C997C432C5AFB55B7F8BD1DF615F11F196916B2EDAF600EBBA18858273DF",
+      "observed_utc": "2026-09-28T16:05:56.6841899Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00080-c65d71d6-e742-4d72-bd15-9f7f2961add7"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/commondir",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47",
+      "observed_utc": "2026-09-28T16:05:56.6845762Z",
+      "bytes": 6,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00081-commondir"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/gitdir",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "3A75DA7ED7AEF771DFD14B761717FA815CA202D2D044584C4642AAE2666D2539",
+      "observed_utc": "2026-09-28T16:05:56.6848909Z",
+      "bytes": 120,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00082-gitdir"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "487DE4B5151785C1CF4F34067F4CAACFB5D803DF77B19E1B3BD43A708E093492",
+      "observed_utc": "2026-09-28T16:05:56.6851937Z",
+      "bytes": 69,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00083-HEAD"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/index",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "F5CD49B274323D940FD84DD0CE04FC462C862F4FBE20197D8BAF686BAECAD65E",
+      "observed_utc": "2026-09-28T16:05:56.6855016Z",
+      "bytes": 137,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00084-index"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/ORIG_HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "B423C997C432C5AFB55B7F8BD1DF615F11F196916B2EDAF600EBBA18858273DF",
+      "observed_utc": "2026-09-28T16:05:56.6859805Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00085-ORIG_HEAD"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/source/.git/worktrees/nhc-c65d71d6-e742-4d72-bd15-9f7f2961add7/logs/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "382F978EA46D3CF5C4F3947CBE5ED095DD7885332E64DAAE71BD7253A8642EB7",
+      "observed_utc": "2026-09-28T16:05:56.6863617Z",
+      "bytes": 294,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00086-HEAD"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/child-restart.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:58.2251348Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00087-child-restart.log"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3-shm",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "951DAA74237FBF26A64BC96A3E4B425180A07549D36A252886E73A3722A5E259",
+      "observed_utc": "2026-09-28T16:05:58.2256465Z",
+      "bytes": 32768,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00088-host.sqlite3-shm"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "14DD76A27671F263E830E1E1115FE0773866C9B692F356E95729F9265BBBBC80",
+      "observed_utc": "2026-09-28T16:05:58.2260337Z",
+      "bytes": 45352,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00089-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/listen-restart",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "CAA91F13AADA4EADEDACF462C8E65731BF734DDC10DF522E29FB715FC03F5FD5",
+      "observed_utc": "2026-09-28T16:05:58.2263453Z",
+      "bytes": 22,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00090-listen-restart"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/ready",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4BF477E7AA7B8842C52EE7268AD9F985CB1B8EBC7AF0B3CFD5F91995E1C20797",
+      "observed_utc": "2026-09-28T16:05:58.2266495Z",
+      "bytes": 36,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00091-ready"
+    },
+    {
+      "fixture_path": ".tmpou8U5b/child-restart.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:58.2715834Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00092-child-restart.log"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/child-registered.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:59.8164596Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00093-child-registered.log"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/host.sqlite3",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "7BF9C0EA5465D9442C0D255C260701261818B85C28EB76FEC77E1E5F73CC1A19",
+      "observed_utc": "2026-09-28T16:05:59.8174125Z",
+      "bytes": 450560,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00094-host.sqlite3"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-shm",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+      "observed_utc": "2026-09-28T16:05:59.8178113Z",
+      "bytes": 32768,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00095-host.sqlite3-shm"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "observed_utc": "2026-09-28T16:05:59.8180774Z",
+      "bytes": 0,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00096-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/listen-registered",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "7CEECD8B8855BB8FFB98AD7670F5C27FF840DA505D5CE6C59F85DFFDDEFF2929",
+      "observed_utc": "2026-09-28T16:05:59.8201709Z",
+      "bytes": 22,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00097-listen-registered"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/tracked",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5",
+      "observed_utc": "2026-09-28T16:05:59.8205256Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00098-tracked"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/COMMIT_EDITMSG",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F",
+      "observed_utc": "2026-09-28T16:05:59.8208281Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00099-COMMIT_EDITMSG"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/config",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC",
+      "observed_utc": "2026-09-28T16:05:59.8211163Z",
+      "bytes": 130,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00100-config"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/description",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE",
+      "observed_utc": "2026-09-28T16:05:59.8213912Z",
+      "bytes": 73,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00101-description"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80",
+      "observed_utc": "2026-09-28T16:05:59.8216604Z",
+      "bytes": 21,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00102-HEAD"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/index",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "F0E34ECEF496ACBE2DCC6188FDE0DCBDEF7044AE82EC9D142395D60515641E9C",
+      "observed_utc": "2026-09-28T16:05:59.8219499Z",
+      "bytes": 137,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00103-index"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/applypatch-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7",
+      "observed_utc": "2026-09-28T16:05:59.8223169Z",
+      "bytes": 478,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00104-applypatch-msg.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/commit-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437",
+      "observed_utc": "2026-09-28T16:05:59.822622Z",
+      "bytes": 896,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00105-commit-msg.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/fsmonitor-watchman.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0",
+      "observed_utc": "2026-09-28T16:05:59.8229143Z",
+      "bytes": 4726,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00106-fsmonitor-watchman.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/post-update.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5",
+      "observed_utc": "2026-09-28T16:05:59.8232039Z",
+      "bytes": 189,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00107-post-update.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-applypatch.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475",
+      "observed_utc": "2026-09-28T16:05:59.8234925Z",
+      "bytes": 424,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00108-pre-applypatch.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-commit.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B",
+      "observed_utc": "2026-09-28T16:05:59.8237762Z",
+      "bytes": 1649,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00109-pre-commit.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-merge-commit.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53",
+      "observed_utc": "2026-09-28T16:05:59.8240438Z",
+      "bytes": 416,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00110-pre-merge-commit.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-push.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A",
+      "observed_utc": "2026-09-28T16:05:59.8243181Z",
+      "bytes": 1374,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00111-pre-push.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-rebase.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3",
+      "observed_utc": "2026-09-28T16:05:59.8246014Z",
+      "bytes": 4898,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00112-pre-rebase.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/pre-receive.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989",
+      "observed_utc": "2026-09-28T16:05:59.8249422Z",
+      "bytes": 544,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00113-pre-receive.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/prepare-commit-msg.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619",
+      "observed_utc": "2026-09-28T16:05:59.8252597Z",
+      "bytes": 1492,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00114-prepare-commit-msg.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/push-to-checkout.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F",
+      "observed_utc": "2026-09-28T16:05:59.8255475Z",
+      "bytes": 2783,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00115-push-to-checkout.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/sendemail-validate.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92",
+      "observed_utc": "2026-09-28T16:05:59.8258346Z",
+      "bytes": 2308,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00116-sendemail-validate.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/hooks/update.sample",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106",
+      "observed_utc": "2026-09-28T16:05:59.8261464Z",
+      "bytes": 3650,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00117-update.sample"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/info/exclude",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1",
+      "observed_utc": "2026-09-28T16:05:59.8267849Z",
+      "bytes": 240,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00118-exclude"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/logs/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E82FDCB1D46C22471D1284833982B5940FFE20D8C641960794DE04DDC43807B7",
+      "observed_utc": "2026-09-28T16:05:59.8272514Z",
+      "bytes": 151,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00119-HEAD"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/logs/refs/heads/main",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E82FDCB1D46C22471D1284833982B5940FFE20D8C641960794DE04DDC43807B7",
+      "observed_utc": "2026-09-28T16:05:59.8275883Z",
+      "bytes": 151,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00120-main"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8",
+      "observed_utc": "2026-09-28T16:05:59.8279042Z",
+      "bytes": 52,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00121-f3fd6102e7d7ca113975266a1add530b58aab0"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64",
+      "observed_utc": "2026-09-28T16:05:59.828201Z",
+      "bytes": 23,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00122-f3610c08588440112ed977376f26a8fba169b0"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/objects/ad/45740d63f18513a29ab2251ac6df7d21b02c5f",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "3FA55651DE986C237BB87AD82E11C85E633F5AEF3AD0FFC2220BCC0BB445DAB1",
+      "observed_utc": "2026-09-28T16:05:59.8284982Z",
+      "bytes": 117,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00123-45740d63f18513a29ab2251ac6df7d21b02c5f"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/refs/heads/main",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2230A1B4166B1F19B1124375DCCA2DD5DEB7C857E483A371EA321D992235E4E8",
+      "observed_utc": "2026-09-28T16:05:59.8287819Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00124-main"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/child-registered.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:05:59.8634735Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00125-child-registered.log"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4771E8E05F92E706965884D93C909D0BF31F6B75C2220A1EB11D8213531586C4",
+      "observed_utc": "2026-09-28T16:06:00.7456052Z",
+      "bytes": 37112,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00126-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/5b650993-5732-4093-a297-bc66ca5faa97/attributes",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "observed_utc": "2026-09-28T16:06:01.4392466Z",
+      "bytes": 0,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00127-attributes"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/nhc-5b650993-5732-4093-a297-bc66ca5faa97/.git",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "D37F95881ADF7B0E65A297E9E445BE33E9A382EB3FEBD8FBE47D015361E7E9AB",
+      "observed_utc": "2026-09-28T16:06:02.2129657Z",
+      "bytes": 145,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00128-.git"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/nhc-5b650993-5732-4093-a297-bc66ca5faa97/tracked",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5",
+      "observed_utc": "2026-09-28T16:06:02.213744Z",
+      "bytes": 8,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00129-tracked"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/logs/refs/heads/codex/workspace/5b650993-5732-4093-a297-bc66ca5faa97",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "4DCEA76DFD9F413CA5A9430B70F68DAE9D4BE75B0DC8A6A16DF59F64779786F3",
+      "observed_utc": "2026-09-28T16:06:02.2143617Z",
+      "bytes": 198,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00130-5b650993-5732-4093-a297-bc66ca5faa97"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/refs/heads/codex/workspace/5b650993-5732-4093-a297-bc66ca5faa97",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2230A1B4166B1F19B1124375DCCA2DD5DEB7C857E483A371EA321D992235E4E8",
+      "observed_utc": "2026-09-28T16:06:02.2149192Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00131-5b650993-5732-4093-a297-bc66ca5faa97"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/commondir",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47",
+      "observed_utc": "2026-09-28T16:06:02.2152239Z",
+      "bytes": 6,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00132-commondir"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/gitdir",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "21523882F7E30CADA863BC8537BBF95004481A4E5E9FA744984915CB5C70104E",
+      "observed_utc": "2026-09-28T16:06:02.2155142Z",
+      "bytes": 120,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00133-gitdir"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "75B1D3EEF5617D61F9D5C94F8BE374AA9B54CDC46A67F8575BDDF4875BAD636A",
+      "observed_utc": "2026-09-28T16:06:02.2158234Z",
+      "bytes": 69,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00134-HEAD"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/index",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "17506DD0098AE9E5B9CD0A17393DB32C77F8F7270CA1C9A91BECFFE7F1332B56",
+      "observed_utc": "2026-09-28T16:06:02.2161238Z",
+      "bytes": 137,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00135-index"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/ORIG_HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2230A1B4166B1F19B1124375DCCA2DD5DEB7C857E483A371EA321D992235E4E8",
+      "observed_utc": "2026-09-28T16:06:02.2164508Z",
+      "bytes": 41,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00136-ORIG_HEAD"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/source/.git/worktrees/nhc-5b650993-5732-4093-a297-bc66ca5faa97/logs/HEAD",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "2924B9A779D78649992FF686641799C6F5D08BFD61B85308A17151DB730DCDA5",
+      "observed_utc": "2026-09-28T16:06:02.2167221Z",
+      "bytes": 294,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00137-HEAD"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/child-restart.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:06:03.742839Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00138-child-restart.log"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-shm",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "58385BF111D86176E4EE231E94346C95EF8143F53E8BBB1C92EBE5F58B74720A",
+      "observed_utc": "2026-09-28T16:06:03.7432659Z",
+      "bytes": 32768,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00139-host.sqlite3-shm"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/host.sqlite3-wal",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "C94941F25D395AEC856B10AEDE06BA1333747026D6A34861EDF5F72D966AB5B3",
+      "observed_utc": "2026-09-28T16:06:03.7437275Z",
+      "bytes": 90672,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00140-host.sqlite3-wal"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/listen-restart",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "03F69E9B2E610A7DB9427D8989C15EB8EBC8BA670FBE7D9CB0A17A94CCBA3E3B",
+      "observed_utc": "2026-09-28T16:06:03.7440245Z",
+      "bytes": 22,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00141-listen-restart"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/ready",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "ED85F6086C76B4473861269305C9E8CC8741F60BAEEFE9FD16770972A8668948",
+      "observed_utc": "2026-09-28T16:06:03.7443181Z",
+      "bytes": 36,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00142-ready"
+    },
+    {
+      "fixture_path": ".tmpUqAXyD/child-restart.log",
+      "note": "New diagnostic individual file observation, not original failed run or atomic database image",
+      "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "observed_utc": "2026-09-28T16:06:03.7748176Z",
+      "bytes": 16,
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00143-child-restart.log"
+    }
+  ],
+  "raw_fixture_policy": "143 raw versions remain in the owned E worktree; child logs and readiness markers have published copies, all other fixture versions remain original-only with this hash inventory; no live DB consistency is claimed",
+  "source_hash_files": [
+    "check-before-source-hashes.json",
+    "check-after-source-hashes.json",
+    "test-before-source-hashes.json",
+    "test-after-source-hashes.json"
+  ],
+  "source_file_count": 154,
+  "source_manifest_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1"
+}

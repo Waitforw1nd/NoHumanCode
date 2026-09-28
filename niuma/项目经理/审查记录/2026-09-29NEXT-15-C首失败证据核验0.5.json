@@ -1,0 +1,344 @@
+{
+  "utc": "2026-09-28T16:13:56.6350954Z",
+  "candidate": "fa9623785573a8f44decd0368fa73a4e267f4ed6",
+  "manifest_sha256": "E144DF08257E3A70D263572BE7C9A2EBEB3EF14393DDAE3222DE69D4DE10B9C7",
+  "verified_pairs": [
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/check-after-source-hashes.json",
+      "published": "next15-final-attempt1/check-after-source-hashes.json",
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/check-before-source-hashes.json",
+      "published": "next15-final-attempt1/check-before-source-hashes.json",
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/check.log",
+      "published": "next15-final-attempt1/check.log",
+      "original_sha256": "1455661EBF4D14144AFFA1AF93EC5F0DC56CA00EE60AA34ED1155A2EDF7BC713",
+      "published_sha256": "32618057D07F87C6D8F803A45DB4B42C4F713404AFD41607EC36B66A1703037C",
+      "verified": true,
+      "transform": "path representations only; original bytes preserved",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli"
+      ]
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/diagnostic-fixture-inventory.json",
+      "published": "next15-final-attempt1/diagnostic-fixture-inventory.json",
+      "original_sha256": "BB9861FB317BEB4779CD83D22D9B66AC97B8DFDDD837D3B415BD657BFD8FC7B7",
+      "published_sha256": "BB9861FB317BEB4779CD83D22D9B66AC97B8DFDDD837D3B415BD657BFD8FC7B7",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/freeze-receipt.json",
+      "published": "next15-final-attempt1/freeze-receipt.json",
+      "original_sha256": "7CBF53FD999DDBF4A64D0E2E8378DBDDE02C8A2A6E3C4D9B6C7B6EF8B260F722",
+      "published_sha256": "7CBF53FD999DDBF4A64D0E2E8378DBDDE02C8A2A6E3C4D9B6C7B6EF8B260F722",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/meta.json",
+      "published": "next15-final-attempt1/meta.json",
+      "original_sha256": "E595D41096EA37F15B36F08A043A75002EE3DBEF2C1EE138AE0777B51A366CEC",
+      "published_sha256": "A80DEDB56829E95E28BD5B3CD562BC7E7AFE7B5D4D086287D46DB68A60AE3769",
+      "verified": true,
+      "transform": "path representations only; original bytes preserved",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli",
+        "./.local/toolchains/MSVC/14.43.34808",
+        "./.local/toolchains/WindowsKits/10"
+      ]
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/result-summary.json",
+      "published": "next15-final-attempt1/result-summary.json",
+      "original_sha256": "9B6497D2826C13CF90FF7416A8069B47B0698116A45D459293D7A5F4FFA04671",
+      "published_sha256": "9B6497D2826C13CF90FF7416A8069B47B0698116A45D459293D7A5F4FFA04671",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/test-after-source-hashes.json",
+      "published": "next15-final-attempt1/test-after-source-hashes.json",
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/test-before-source-hashes.json",
+      "published": "next15-final-attempt1/test-before-source-hashes.json",
+      "original_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "published_sha256": "7358ED10088435B079E31938673B4545977C1E21505423471F6B64ABACA6C1B1",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt1/test.log",
+      "published": "next15-final-attempt1/test.log",
+      "original_sha256": "72EDCF0687D4D600304C356A9E512A013C07648C39A2173CB59ABECD4F699297",
+      "published_sha256": "EAE3F7AD97835B254BA8D3088FB4B0F7B785C6B68B0D71207E901D8AC1B934B9",
+      "verified": true,
+      "transform": "path representations only; original bytes preserved",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli"
+      ]
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/meta.json",
+      "published": "next15-w08-diagnostic1/meta.json",
+      "original_sha256": "6224BA3419511FC314D286667C209BD4DADD7F8ACBD8D983B1FC756FD4E7609A",
+      "published_sha256": "0E45FA6428FB8FDD38CA64175182CD0067C06C3305CD2C84A229F902A9A71D4C",
+      "verified": true,
+      "transform": "path representations only; original bytes preserved",
+      "path_rewrites": [
+        "../nhc-c-host-setup-cli"
+      ]
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/parent.stderr.log",
+      "published": "next15-w08-diagnostic1/parent.stderr.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/parent.stdout.log",
+      "published": "next15-w08-diagnostic1/parent.stdout.log",
+      "original_sha256": "EABEE07D91DA4D47410A498DCB9D5F19F691AADFE877FA425181D1719449E1BA",
+      "published_sha256": "EABEE07D91DA4D47410A498DCB9D5F19F691AADFE877FA425181D1719449E1BA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00001-child-claim.log",
+      "published": "next15-w08-diagnostic1/snapshots/00001-child-claim.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00005-listen-claim",
+      "published": "next15-w08-diagnostic1/snapshots/00005-listen-claim",
+      "original_sha256": "539F23BBC34EBDABDC84B40088E07D7008C49863F7FD6D5CC3B5B2F843A2CC10",
+      "published_sha256": "539F23BBC34EBDABDC84B40088E07D7008C49863F7FD6D5CC3B5B2F843A2CC10",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00033-child-claim.log",
+      "published": "next15-w08-diagnostic1/snapshots/00033-child-claim.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00034-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00034-child-restart.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00037-listen-restart",
+      "published": "next15-w08-diagnostic1/snapshots/00037-listen-restart",
+      "original_sha256": "ED9C9126B376B5EE0D5F6AA1412C21C4B17B30CF4D2B0E6F9691CB1C487EBFCA",
+      "published_sha256": "ED9C9126B376B5EE0D5F6AA1412C21C4B17B30CF4D2B0E6F9691CB1C487EBFCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00038-ready",
+      "published": "next15-w08-diagnostic1/snapshots/00038-ready",
+      "original_sha256": "2D369FA782FC026A654C86C56046306F2836777C1EA1CDC4782CC2C27396533C",
+      "published_sha256": "2D369FA782FC026A654C86C56046306F2836777C1EA1CDC4782CC2C27396533C",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00039-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00039-child-restart.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00069-child-created.log",
+      "published": "next15-w08-diagnostic1/snapshots/00069-child-created.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00073-listen-created",
+      "published": "next15-w08-diagnostic1/snapshots/00073-listen-created",
+      "original_sha256": "7EF0CFE66952459677E0102C9E957A528D8FDEE7BE0E00CF5536AA224E167952",
+      "published_sha256": "7EF0CFE66952459677E0102C9E957A528D8FDEE7BE0E00CF5536AA224E167952",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00074-child-created.log",
+      "published": "next15-w08-diagnostic1/snapshots/00074-child-created.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00087-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00087-child-restart.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00090-listen-restart",
+      "published": "next15-w08-diagnostic1/snapshots/00090-listen-restart",
+      "original_sha256": "CAA91F13AADA4EADEDACF462C8E65731BF734DDC10DF522E29FB715FC03F5FD5",
+      "published_sha256": "CAA91F13AADA4EADEDACF462C8E65731BF734DDC10DF522E29FB715FC03F5FD5",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00091-ready",
+      "published": "next15-w08-diagnostic1/snapshots/00091-ready",
+      "original_sha256": "4BF477E7AA7B8842C52EE7268AD9F985CB1B8EBC7AF0B3CFD5F91995E1C20797",
+      "published_sha256": "4BF477E7AA7B8842C52EE7268AD9F985CB1B8EBC7AF0B3CFD5F91995E1C20797",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00092-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00092-child-restart.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00093-child-registered.log",
+      "published": "next15-w08-diagnostic1/snapshots/00093-child-registered.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00097-listen-registered",
+      "published": "next15-w08-diagnostic1/snapshots/00097-listen-registered",
+      "original_sha256": "7CEECD8B8855BB8FFB98AD7670F5C27FF840DA505D5CE6C59F85DFFDDEFF2929",
+      "published_sha256": "7CEECD8B8855BB8FFB98AD7670F5C27FF840DA505D5CE6C59F85DFFDDEFF2929",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00125-child-registered.log",
+      "published": "next15-w08-diagnostic1/snapshots/00125-child-registered.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00138-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00138-child-restart.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00141-listen-restart",
+      "published": "next15-w08-diagnostic1/snapshots/00141-listen-restart",
+      "original_sha256": "03F69E9B2E610A7DB9427D8989C15EB8EBC8BA670FBE7D9CB0A17A94CCBA3E3B",
+      "published_sha256": "03F69E9B2E610A7DB9427D8989C15EB8EBC8BA670FBE7D9CB0A17A94CCBA3E3B",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00142-ready",
+      "published": "next15-w08-diagnostic1/snapshots/00142-ready",
+      "original_sha256": "ED85F6086C76B4473861269305C9E8CC8741F60BAEEFE9FD16770972A8668948",
+      "published_sha256": "ED85F6086C76B4473861269305C9E8CC8741F60BAEEFE9FD16770972A8668948",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-diagnostic1/snapshots/00143-child-restart.log",
+      "published": "next15-w08-diagnostic1/snapshots/00143-child-restart.log",
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-final-gates.ps1",
+      "published": "drivers/next15-final-gates.ps1",
+      "original_sha256": "E5AEC6F11E9846D2426DFE250555CCCC0DD66AE8382C15C3ECBFCCFC989B27D4",
+      "published_sha256": "E5AEC6F11E9846D2426DFE250555CCCC0DD66AE8382C15C3ECBFCCFC989B27D4",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-w08-diagnostic.ps1",
+      "published": "drivers/next15-w08-diagnostic.ps1",
+      "original_sha256": "C7D3B276AFCCDC5A01F3F59DCD27E35831B6925ACD1543CD43DED3586415CF6D",
+      "published_sha256": "C7D3B276AFCCDC5A01F3F59DCD27E35831B6925ACD1543CD43DED3586415CF6D",
+      "verified": true,
+      "transform": "verbatim",
+      "path_rewrites": []
+    }
+  ],
+  "raw_fixture_versions_verified": 143,
+  "source_binding_audit": "2026-09-29NEXT-15首轮门禁与W08诊断核验.json",
+  "boundary": "Failure archived; not accepted final gates; diagnosis1 passed but original cause unresolved"
+}
