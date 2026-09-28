@@ -666,7 +666,7 @@ fn k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints() {
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
         network_fixture::drop_network_schema(&db);
-        db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
         db.execute_batch("INSERT INTO config VALUES ('sentinel','original-bytes'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository';").unwrap();
         if version < 8 {
             db.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DELETE FROM schema_migrations WHERE id='workspace-change-repository';").unwrap();
@@ -677,7 +677,7 @@ fn k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints() {
         db.pragma_update(None, "user_version", version).unwrap();
         drop(db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 14);
+        assert_eq!(store.schema_version().unwrap(), 15);
         drop(store);
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
@@ -744,6 +744,9 @@ fn expected_after_worktree_migration(
     mut old: Vec<(String, Vec<Vec<rusqlite::types::Value>>)>,
 ) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
     for name in [
+        "project_budgets",
+        "budget_requests",
+        "budget_calls",
         "worktree_operations",
         "worktree_project_reservations",
         "project_worktree_origins",
@@ -819,7 +822,7 @@ async fn k05_real_schema8_migration_preserves_every_business_value_and_ciphertex
     let path = temp.path().join("workspace.db");
     let db = Connection::open(&path).unwrap();
     network_fixture::drop_network_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.execute_batch("DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=8;").unwrap();
     let old_rows = business_rows(&db);
     let before_blob: Vec<u8> = db
@@ -852,7 +855,7 @@ fn k05_version9_without_marker_is_not_silently_repaired() {
     drop(Store::open(&path).unwrap());
     let db = Connection::open(&path).unwrap();
     network_fixture::drop_network_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.execute_batch("DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository';").unwrap();
     drop(db);
     assert!(Store::open(&path).is_err());
@@ -1050,7 +1053,7 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
     let path = temp.path().join("workspace.db");
     let db = Connection::open(&path).unwrap();
     network_fixture::drop_network_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.pragma_update(None, "user_version", 9).unwrap();
     let before = business_rows(&db);
     let checkpoints: Vec<Vec<rusqlite::types::Value>> = {
@@ -1064,7 +1067,7 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
     };
     drop(db);
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 14);
+    assert_eq!(store.schema_version().unwrap(), 15);
     assert_eq!(store.network_calls_for_task(&task).unwrap().len(), 0);
     drop(store);
     drop(Store::open(&path).unwrap());
@@ -1125,7 +1128,7 @@ async fn completed_restore_replays_after_legacy_migration_and_original_root_is_o
         .unwrap();
     let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
     network_fixture::project_fixture::drop_project_schema(&raw);
-    raw.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    raw.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     raw.pragma_update(None, "user_version", 10).unwrap();
     let all_before = all_schema10_rows(&raw);
     for table in [
@@ -1194,7 +1197,7 @@ async fn completed_restore_replays_after_legacy_migration_and_original_root_is_o
         all_schema10_rows(&raw),
         expected_after_worktree_migration(all_before)
     );
-    assert_eq!(engine.store.schema_version().unwrap(), 14);
+    assert_eq!(engine.store.schema_version().unwrap(), 15);
 }
 
 #[tokio::test]
@@ -1214,7 +1217,7 @@ async fn schema10_unbound_checkpoint_is_history_only_and_cannot_restore() {
     drop(engine);
     let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
     network_fixture::project_fixture::drop_project_schema(&raw);
-    raw.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    raw.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     raw.pragma_update(None, "user_version", 10).unwrap();
     let before = business_rows(&raw);
     drop(raw);

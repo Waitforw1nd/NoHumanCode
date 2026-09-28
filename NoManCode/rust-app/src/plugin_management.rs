@@ -409,7 +409,7 @@ mod tests {
             let tx = db
                 .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
                 .unwrap();
-            tx.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            tx.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
             crate::repository::apply_schema_12(&tx).unwrap();
             tx.execute_batch("UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical','builtin.files',0,0,1,17); INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
             crate::repository::verify_schema_12(&tx).unwrap();
@@ -444,7 +444,7 @@ mod tests {
         for worker in workers {
             worker.join().unwrap();
         }
-        assert!(results.iter().any(|r| matches!(r, Ok(14))));
+        assert!(results.iter().any(|r| matches!(r, Ok(15))));
         for result in results {
             if let Err(error) = result {
                 let sqlite = error
@@ -458,7 +458,7 @@ mod tests {
         }
         for _ in 0..2 {
             let store = Store::open(&path).unwrap();
-            assert_eq!(store.schema_version().unwrap(), 14);
+            assert_eq!(store.schema_version().unwrap(), 15);
             let mut db = store.db.lock().unwrap();
             let tx = db.transaction().unwrap();
             crate::repository::verify_schema_13(&tx).unwrap();
@@ -466,8 +466,11 @@ mod tests {
             crate::repository::verify_schema_14(&tx).unwrap();
             tx.commit().unwrap();
             let after = b02_snapshot(&db);
-            assert_eq!(after.len(), before.len() + 3);
+            assert_eq!(after.len(), before.len() + 6);
             for name in [
+                "project_budgets",
+                "budget_requests",
+                "budget_calls",
                 "worktree_operations",
                 "worktree_project_reservations",
                 "project_worktree_origins",
@@ -483,8 +486,11 @@ mod tests {
                 .unwrap(),
                 1
             );
-            assert_eq!(after.len(), before.len() + 3);
+            assert_eq!(after.len(), before.len() + 6);
             for name in [
+                "project_budgets",
+                "budget_requests",
+                "budget_calls",
                 "worktree_operations",
                 "worktree_project_reservations",
                 "project_worktree_origins",
@@ -505,7 +511,7 @@ mod tests {
                 if name == "plugin_desired" || name == "schema_migrations" {
                     assert_eq!(
                         rows.len(),
-                        old.len() + if name == "schema_migrations" { 2 } else { 1 }
+                        old.len() + if name == "schema_migrations" { 3 } else { 1 }
                     );
                     for row in old {
                         assert!(rows.contains(row));
@@ -705,7 +711,7 @@ mod tests {
             "receipt",
         ] {
             let (dir, store) = store();
-            assert_eq!(store.schema_version().unwrap(), 14);
+            assert_eq!(store.schema_version().unwrap(), 15);
             assert_eq!(
                 Store::open(&dir.path().join("state.sqlite"))
                     .unwrap()
