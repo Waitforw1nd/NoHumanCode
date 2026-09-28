@@ -1500,4 +1500,164 @@ mod tests {
             server.abort();
         }
     }
+    #[test]
+    fn two_legal_project_scopes_isolate_budget_and_reject_global_key_crossing() {
+        let (_dir, store, a) = fixture();
+        let other = tempfile::tempdir().unwrap();
+        let p = store
+            .register_project(RegisterProject {
+                name: "sibling".into(),
+                root_path: other.path().to_string_lossy().into(),
+                idempotency_key: "sibling-root".into(),
+            })
+            .unwrap()
+            .id;
+        store
+            .configure_project(ConfigureProject {
+                project_id: p.clone(),
+                expected_revision: 1,
+                config: ProjectConfig {
+                    allowed_route_ids: vec!["route".into()],
+                    default_route_id: Some("route".into()),
+                    tools: false,
+                    write_scopes: vec![],
+                    allow_commands: false,
+                },
+            })
+            .unwrap();
+        let b = NetworkSubject {
+            project_id: Some(p.clone()),
+            ..a.clone()
+        };
+        let preview = store.network_preview(b.clone()).unwrap();
+        store
+            .network_confirm(
+                b.clone(),
+                ConfirmRequest {
+                    config_revision: preview.config_revision,
+                    credential_revision: preview.credential_revision,
+                    binding_digest: preview.binding_digest,
+                    purposes: vec![NetworkPurpose::Completion],
+                },
+                "sibling-grant",
+            )
+            .unwrap();
+        let req = ConfigureBudget {
+            project_id: a.project_id.clone().unwrap(),
+            expected_revision: 0,
+            idempotency_key: "global-budget-key".into(),
+            config: BudgetConfig {
+                limit_tokens: 100,
+                per_call_reservation_tokens: 100,
+            },
+        };
+        store.configure_budget(req.clone()).unwrap();
+        let mut cross = req;
+        cross.project_id = p.clone();
+        assert_eq!(
+            store.configure_budget(cross).unwrap_err().kind,
+            BudgetErrorKind::Conflict
+        );
+        configure(&store, &b, 100, 100);
+        let ca = claim(&store, &a);
+        let cb = claim(&store, &b);
+        store
+            .finish_completion(ca, Err(TransportError::Unknown))
+            .unwrap_err();
+        complete(&store, cb, 5);
+        assert_eq!(
+            store
+                .budget_status(a.project_id.as_ref().unwrap())
+                .unwrap()
+                .blocked_reason,
+            Some(BudgetBlockedReason::Unresolved)
+        );
+        assert_eq!(
+            store.budget_status(&p).unwrap().blocked_reason,
+            Some(BudgetBlockedReason::Exceeded)
+        );
+        configure(&store, &b, 200, 100);
+        let cb = claim(&store, &b);
+        complete(&store, cb, 5);
+        assert_eq!(store.budget_status(&p).unwrap().spent_tokens, 10);
+        store
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "UPDATE budget_requests SET project_id=?1 WHERE key='global-budget-key'",
+                [&p.0],
+            )
+            .unwrap();
+        assert_eq!(
+            store.budget_status(&p).unwrap_err().kind,
+            BudgetErrorKind::Corrupt
+        );
+        assert!(store.recover().is_err());
+    }
+    #[test]
+    fn configuration_cas_race_and_reductions_preserve_claim_snapshot() {
+        let (dir, store, subject) = fixture();
+        let p = subject.project_id.as_ref().unwrap();
+        configure(&store, &subject, 200, 100);
+        let call = claim(&store, &subject);
+        let other = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
+        let barrier = Arc::new(Barrier::new(3));
+        let workers: Vec<_> = [store.clone(), other]
+            .into_iter()
+            .enumerate()
+            .map(|(i, store)| {
+                let p = p.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    store.configure_budget(ConfigureBudget {
+                        project_id: p,
+                        expected_revision: 1,
+                        idempotency_key: format!("cas-{i}"),
+                        config: BudgetConfig {
+                            limit_tokens: 1,
+                            per_call_reservation_tokens: 2,
+                        },
+                    })
+                })
+            })
+            .collect();
+        barrier.wait();
+        let results: Vec<_> = workers.into_iter().map(|w| w.join().unwrap()).collect();
+        assert_eq!(results.iter().filter(|r| r.is_ok()).count(), 1);
+        assert_eq!(
+            results.iter().find_map(|r| r.as_ref().err()).unwrap().kind,
+            BudgetErrorKind::RevisionConflict
+        );
+        let entry = store.budget_call(p, &call.call_id).unwrap();
+        assert_eq!(
+            (entry.budget_revision, entry.reserved_tokens),
+            (Some(1), Some(100))
+        );
+        assert_eq!(store.budget_status(p).unwrap().held_tokens, 100);
+        assert_eq!(
+            store
+                .network_admit(&subject, NetworkPurpose::Completion, None)
+                .err()
+                .unwrap()
+                .kind,
+            NetworkErrorKind::BudgetExceeded
+        );
+        complete(&store, call, 0);
+        assert_eq!(
+            store.budget_status(p).unwrap().blocked_reason,
+            Some(BudgetBlockedReason::Exceeded)
+        );
+        configure(&store, &subject, 0, 1);
+        assert_eq!(store.budget_status(p).unwrap().available_tokens, Some(0));
+        assert_eq!(
+            store
+                .network_admit(&subject, NetworkPurpose::Completion, None)
+                .err()
+                .unwrap()
+                .kind,
+            NetworkErrorKind::BudgetExceeded
+        );
+    }
 }
