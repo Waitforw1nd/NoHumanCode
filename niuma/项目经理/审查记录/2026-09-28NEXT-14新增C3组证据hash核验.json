@@ -1,0 +1,23 @@
+[
+  {
+    "original": "../nhc-c-budget-interface/.local/logs/attempt3/budget-cli.log",
+    "published": "budget-cli.log",
+    "original_sha256": "7ABFC8729F8BC3F65A65C73FE1CE82A8BB35581FEFF9A1BBAD2E7CFD59ADE556",
+    "published_sha256": "1CC2DBEB95739B31B19862A45DBAFD59E14FB19C92EE69771CD8EBB222CF21A0",
+    "verified": true
+  },
+  {
+    "original": "../nhc-c-budget-interface/.local/logs/attempt3/check.log",
+    "published": "check.log",
+    "original_sha256": "747E169848B91A5A37FDD24971E88B07D59A708E96C297A4A145CBEE18E9E9E6",
+    "published_sha256": "747E169848B91A5A37FDD24971E88B07D59A708E96C297A4A145CBEE18E9E9E6",
+    "verified": true
+  },
+  {
+    "original": "../nhc-c-budget-interface/.local/logs/attempt3/meta.txt",
+    "published": "meta.txt",
+    "original_sha256": "7A8E9A0C94D2FCF4B209B3AFF1EBAECE4CB9C3343252247CD6B57DAF1CD2C3AF",
+    "published_sha256": "93CBA78A6F345590E9DA5DE6477759C37A378AD4094539C33A165E00DA0034FF",
+    "verified": true
+  }
+]

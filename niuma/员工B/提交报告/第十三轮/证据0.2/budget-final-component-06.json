@@ -1,0 +1,12 @@
+{
+  "log_hash": "A11F0F06932EF03F0F052488AEC2F34AD5592633082193090CB5D366AB2E894F",
+  "started": "2026-09-28T06:11:45.1503765Z",
+  "exit": 0,
+  "trees": [
+    "41923d3439082268bb6df09a556d290ebea049ca",
+    "46ed1e95cd12d994604e6c3ed5cadb4b2894f91b"
+  ],
+  "finished": "2026-09-28T06:12:04.7453304Z",
+  "command": "cargo test --lib --test budget budget --locked -- --nocapture",
+  "head": "2dae551fddfeb967f4f35dde3b0ee1d91927d4d7"
+}

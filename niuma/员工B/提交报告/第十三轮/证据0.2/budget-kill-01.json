@@ -1,0 +1,12 @@
+{
+  "trees": [
+    "a0c7ba53c68317143e98a98a88cb46ccabe8604a",
+    "ea6ee6d56f76d4bd10acdc4ecda0346048c03770"
+  ],
+  "started": "2026-09-28T05:59:46.0384328Z",
+  "finished": "2026-09-28T06:00:04.8060959Z",
+  "command": "cargo test --lib budget::tests::real_process_kill --locked -- --nocapture",
+  "log_hash": "7C0910AAE62BA3928FB50DE029A2A28B4C15B447B901D30ECC60AA482857AC94",
+  "head": "5b056ec6e854060f1e88f5bf717b2f7fbac579a1",
+  "exit": 101
+}

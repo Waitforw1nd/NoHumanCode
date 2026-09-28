@@ -1,0 +1,39 @@
+   Compiling peachsh v0.2.0 (../nhc-b-budget-ledger\NoManCode\rust-app)
+warning: method `code` is never used
+  --> src\provider_usage.rs:33:8
+   |
+32 | impl UsageInvalidReason {
+   | ----------------------- method in this implementation
+33 |     fn code(self) -> &'static str {
+   |        ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: methods `observe` and `into_value` are never used
+   --> src\provider_usage.rs:111:19
+    |
+109 | impl UsageObservation {
+    | --------------------- methods in this implementation
+110 |     /// Repeated snapshots are not additive. Once invalid, later data cannot repair them.
+111 |     pub(crate) fn observe(&mut self, value: &Value) {
+    |                   ^^^^^^^
+...
+126 |     pub(crate) fn into_value(self) -> Value {
+    |                   ^^^^^^^^^^
+
+warning: `peachsh` (lib test) generated 2 warnings
+    Finished `test` profile [unoptimized] target(s) in 14.71s
+     Running unittests src\lib.rs (../nhc-b-budget-ledger\.local\target\debug\deps\peachsh-6d9ccee191326ccc.exe)
+
+running 8 tests
+test budget::tests::configuration_forward_coverage_cas_and_historical_unknown ... ok
+test budget::tests::network_and_budget_failures_roll_back_together ... ok
+test budget::tests::exact_settlement_replay_conflict_and_overrun_preserve_first_fact ... ok
+test budget::tests::competing_stores_atomically_reserve_last_allowance ... ok
+test budget::tests::not_sent_refunds_but_other_inflight_calls_can_settle_after_block ... ok
+test budget::tests::missing_covered_row_and_single_sided_terminal_fail_closed_on_recovery ... ok
+test budget::tests::request_sql_scope_and_policy_history_are_verified ... ok
+test budget::tests::missing_invalid_and_transport_failures_hold_reservation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 201 filtered out; finished in 0.25s
+
