@@ -477,6 +477,15 @@ fn database_receipt(root: &Path) -> Option<RouteConfigReceipt> {
 }
 
 fn assert_no_plaintext_files(root: &Path, forbidden: &[String]) {
+    // Only call after kill + wait. Capture DB/WAL/SHM before opening another
+    // SQLite connection: Windows byte-range locks forbid whole-file reads
+    // while the Host or this scanner holds an active SQLite connection.
+    let artifacts: Vec<Vec<u8>> = fs::read_dir(root)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.is_file())
+        .map(|path| fs::read(path).expect("retained artifact after Host kill + wait"))
+        .collect();
     let db = read_db(root);
     let mut needles: Vec<Vec<u8>> = forbidden.iter().map(|s| s.as_bytes().to_vec()).collect();
     for secret in forbidden {
@@ -498,16 +507,12 @@ fn assert_no_plaintext_files(root: &Path, forbidden: &[String]) {
         needles.push(hex.into_bytes());
         needles.push(digest);
     }
-    for entry in fs::read_dir(root).unwrap() {
-        let path = entry.unwrap().path();
-        if path.is_file() {
-            let contents = fs::read(path).expect("retained fixture artifact");
-            for needle in &needles {
-                assert!(
-                    !contains(&contents, needle),
-                    "plaintext credential/token/fingerprint persisted in fixture artifacts"
-                );
-            }
+    for contents in artifacts {
+        for needle in &needles {
+            assert!(
+                !contains(&contents, needle),
+                "plaintext credential/token/fingerprint persisted in fixture artifacts"
+            );
         }
     }
 }
@@ -630,8 +635,8 @@ async fn exercise_crash(phase: &'static str) {
     let before_db = db_snapshot(&root);
     assert_secret(&root, ROUTE, &old);
     assert_secret(&root, OTHER_ROUTE, &other);
-    assert_no_plaintext_files(&root, &forbidden);
     seed.process.kill_and_wait("seed-complete");
+    assert_no_plaintext_files(&root, &forbidden);
 
     let mut stopped = start_host(&root, "at-stop", Some(phase), &client, &forbidden).await;
     forbidden.push(stopped.token.clone());
@@ -693,7 +698,6 @@ async fn exercise_crash(phase: &'static str) {
     assert_eq!(durable_receipt.is_some(), committed);
     assert_secret(&root, ROUTE, if committed { &new } else { &old });
     assert_secret(&root, OTHER_ROUTE, &other);
-    assert_no_plaintext_files(&root, &forbidden);
     assert!(
         !pending.is_finished(),
         "after-commit stop must still precede HTTP response"
@@ -707,6 +711,7 @@ async fn exercise_crash(phase: &'static str) {
         interrupted.is_err(),
         "terminated Host must not deliver a successful response"
     );
+    assert_no_plaintext_files(&root, &forbidden);
     event(
         &root,
         json!({"kind":"original_put_transport_lost","phase":phase}),
