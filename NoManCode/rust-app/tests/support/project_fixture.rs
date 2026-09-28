@@ -45,5 +45,5 @@ pub fn configured_project(store: &Store) -> ProjectId {
 // Migration targets remove the new schema explicitly before exercising historical versions.
 #[allow(dead_code)]
 pub fn drop_project_schema(db: &rusqlite::Connection) {
-    db.execute_batch("DROP TABLE IF EXISTS task_project_bindings; DROP TABLE IF EXISTS project_registration_keys; DROP TABLE IF EXISTS project_selection; DROP TABLE IF EXISTS project_root_bindings; DROP TABLE IF EXISTS project_configs; DELETE FROM schema_migrations WHERE id='project-config-root-binding-v1';").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS task_project_bindings; DROP TABLE IF EXISTS project_registration_keys; DROP TABLE IF EXISTS project_selection; DROP TABLE IF EXISTS project_root_bindings; DROP TABLE IF EXISTS project_configs; DELETE FROM schema_migrations WHERE id='project-config-root-binding-v1';").unwrap();
 }

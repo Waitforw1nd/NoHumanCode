@@ -234,6 +234,14 @@ fn policy(db: &Connection, project: &ProjectId) -> AnyResult<Option<Policy>> {
             }
             integer(revision)?;
             integer(boundary)?;
+            let maximum: u64 = db.query_row(
+                "SELECT COALESCE(MAX(rowid),0) FROM network_calls",
+                [],
+                |r| r.get(0),
+            )?;
+            if boundary > maximum {
+                return Err(corrupt());
+            }
             Ok(Policy {
                 snapshot: BudgetConfigSnapshot {
                     project_id: project.clone(),
@@ -404,7 +412,7 @@ fn checked_call(db: &Connection, network: CallReceipt) -> AnyResult<Option<Budge
     }
     Ok(entry)
 }
-pub(crate) fn verify_persisted_rows(db: &Connection) -> AnyResult<()> {
+pub(crate) fn verify_structure(db: &Connection) -> AnyResult<()> {
     let projects: Vec<String> = db
         .prepare("SELECT project_id FROM project_budgets")?
         .query_map([], |r| r.get(0))?
@@ -420,18 +428,21 @@ pub(crate) fn verify_persisted_rows(db: &Connection) -> AnyResult<()> {
     if orphan {
         return Err(corrupt());
     }
-    let requests: Vec<(String, String, String, String)> = db
-        .prepare("SELECT key,request,result,project_id FROM budget_requests")?
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+    let requests: Vec<(String, String, String, String, String)> = db
+        .prepare("SELECT key,request,result,project_id,request_digest FROM budget_requests")?
+        .query_map([], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })?
         .collect::<rusqlite::Result<_>>()?;
     let mut revisions = std::collections::BTreeMap::<(String, u64), BudgetConfig>::new();
-    for (key, request, result, sql_project) in requests {
+    for (key, request, result, sql_project, request_digest) in requests {
         let request: ConfigureBudget = serde_json::from_str(&request).map_err(|_| corrupt())?;
         let result: BudgetMutationResult = serde_json::from_str(&result).map_err(|_| corrupt())?;
         request.config.validate().map_err(|_| corrupt())?;
         crate::secrets::validate_idempotency_key(&key).map_err(|_| corrupt())?;
         let current = policy(db, &request.project_id)?.ok_or_else(corrupt)?;
-        if request.idempotency_key != key
+        if crate::workspace_changes::digest(&serde_json::to_vec(&request)?) != request_digest
+            || request.idempotency_key != key
             || sql_project != request.project_id.0
             || result.replayed
             || result.snapshot.project_id != request.project_id
@@ -486,8 +497,22 @@ pub(crate) fn verify_persisted_rows(db: &Connection) -> AnyResult<()> {
     }
     Ok(())
 }
+pub(crate) fn verify_persisted_rows(db: &Connection) -> AnyResult<()> {
+    verify_structure(db)?;
+    let projects: Vec<String> = db
+        .prepare("SELECT project_id FROM project_budgets")?
+        .query_map([], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    for project in projects {
+        status_calculate(db, &ProjectId(project))?;
+    }
+    Ok(())
+}
 fn status_tx(db: &Connection, project: &ProjectId) -> AnyResult<BudgetStatus> {
     verify_persisted_rows(db)?;
+    status_calculate(db, project)
+}
+fn status_calculate(db: &Connection, project: &ProjectId) -> AnyResult<BudgetStatus> {
     project_exists(db, project)?;
     let config = policy(db, project)?;
     let mut result = BudgetStatus {
@@ -636,7 +661,7 @@ impl Store {
             };
             let result=BudgetMutationResult{snapshot:BudgetConfigSnapshot{project_id:request.project_id.clone(),revision:plus(request.expected_revision,1)?,config:Some(request.config)},replayed:false};
             tx.execute("INSERT INTO project_budgets VALUES(?1,?2,?3,?4,?5) ON CONFLICT(project_id) DO UPDATE SET revision=excluded.revision,limit_tokens=excluded.limit_tokens,reservation_tokens=excluded.reservation_tokens",params![request.project_id.0,result.snapshot.revision,request.config.limit_tokens,request.config.per_call_reservation_tokens,boundary])?;
-            tx.execute("INSERT INTO budget_requests VALUES(?1,?2,?3,?4)",params![request.idempotency_key,request.project_id.0,serde_json::to_string(&request)?,serde_json::to_string(&result)?])?;
+            tx.execute("INSERT INTO budget_requests VALUES(?1,?2,?3,?4,?5)",params![request.idempotency_key,request.project_id.0,serde_json::to_string(&request)?,serde_json::to_string(&result)?,crate::workspace_changes::digest(&serde_json::to_vec(&request)?)])?;
             tx.commit()?;Ok(result)
         })().map_err(safe_error)
     }
@@ -704,7 +729,7 @@ pub(crate) fn finish_tx(
     candidate: &CallReceipt,
     observation: Option<UsageObservation>,
 ) -> AnyResult<Option<CallReceipt>> {
-    verify_persisted_rows(db)?;
+    verify_structure(db)?;
     let current = crate::network_authorization::receipt(db, &candidate.call_id)?;
     let Some(mut entry) = checked_call(db, current.clone())? else {
         return Ok(None);
@@ -1268,6 +1293,51 @@ mod tests {
                     )
                     .unwrap();
             }
+            assert_eq!(
+                store
+                    .budget_status(subject.project_id.as_ref().unwrap())
+                    .unwrap_err()
+                    .kind,
+                BudgetErrorKind::Corrupt
+            );
+            assert!(Store::open(&dir.path().join("budget.db")).is_err());
+        }
+    }
+    #[test]
+    fn aggregate_overflow_blocks_reads_open_recover_but_retains_inflight_actuals() {
+        let (dir, store, subject) = fixture();
+        configure(&store, &subject, 300, 100);
+        let calls: Vec<_> = (0..3).map(|_| claim(&store, &subject)).collect();
+        complete(&store, calls[0].clone(), i64::MAX as u64);
+        complete(&store, calls[1].clone(), 1);
+        assert_eq!(
+            store
+                .budget_status(subject.project_id.as_ref().unwrap())
+                .unwrap_err()
+                .kind,
+            BudgetErrorKind::Corrupt
+        );
+        assert!(Store::open(&dir.path().join("budget.db")).is_err());
+        assert!(store.recover().is_err());
+        complete(&store, calls[2].clone(), 2);
+        let db = store.db.lock().unwrap();
+        verify_structure(&db).unwrap();
+        assert!(verify_persisted_rows(&db).is_err());
+        for (i, n) in [i64::MAX as u64, 1, 2].into_iter().enumerate() {
+            let entry = load_entry(&db, &calls[i].call_id).unwrap().unwrap();
+            assert_eq!(entry.usage.unwrap().total_tokens, n);
+            assert_eq!(entry.call.state, CallState::Finished);
+        }
+    }
+    #[test]
+    fn request_digest_and_coverage_high_water_corruption_are_rejected() {
+        for sql in [
+            "UPDATE budget_requests SET request_digest=printf('%064d',0)",
+            "UPDATE project_budgets SET coverage_start_call_rowid=900",
+        ] {
+            let (dir, store, subject) = fixture();
+            configure(&store, &subject, 100, 100);
+            store.db.lock().unwrap().execute_batch(sql).unwrap();
             assert_eq!(
                 store
                     .budget_status(subject.project_id.as_ref().unwrap())
