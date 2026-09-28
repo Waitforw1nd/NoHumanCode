@@ -3302,7 +3302,7 @@ fn validate_budget_status(value: &Value, status: &BudgetStatus, id: &str) -> Res
             }
         }
         Some(config) => {
-            let available = config.limit_tokens.checked_sub(occupied).unwrap_or(0);
+            let available = config.limit_tokens.saturating_sub(occupied);
             let blocked = if status.unresolved_count > 0 {
                 Some(BudgetBlockedReason::Unresolved)
             } else if status.overrun_count > 0 {
