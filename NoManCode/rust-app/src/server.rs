@@ -2866,7 +2866,10 @@ mod worktree_http_crash_tests {
             .open(root.join("lifecycle.jsonl"))
             .and_then(|mut file| file.write_all(format!("{event}\n").as_bytes()));
         if saved.is_err() {
-            eprintln!("W08 could not persist lifecycle evidence");
+            let _ = writeln!(
+                std::io::stderr().lock(),
+                "W08 could not persist lifecycle evidence"
+            );
         }
     }
     struct ChildGuard(Child, PathBuf, String);
