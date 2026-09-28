@@ -511,7 +511,7 @@ mod tests {
                 if name == "plugin_desired" || name == "schema_migrations" {
                     assert_eq!(
                         rows.len(),
-                        old.len() + if name == "schema_migrations" { 2 } else { 1 }
+                        old.len() + if name == "schema_migrations" { 3 } else { 1 }
                     );
                     for row in old {
                         assert!(rows.contains(row));
