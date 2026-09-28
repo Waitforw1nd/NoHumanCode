@@ -1,6 +1,6 @@
 # 第一版 CLI：现状与待验收操作清单
 
-本说明随 NEXT-15 安全初始化开发。NEXT-14预算切片已有独立验收；NEXT-15真实B/D依赖已整合，C限定编译及I01/I07/I08/I10组件专项已执行通过，最终固定组合五门禁和经理验收仍待放行。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
+本说明随 NEXT-15 安全初始化开发。NEXT-14预算切片已有独立验收；NEXT-15真实B/D依赖已整合，C限定编译及I01/I07/I08/I10、I11旧网页HTTP兼容组件专项已执行通过，最终固定组合五门禁和经理验收仍待放行。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
 
 ## 使用前置与已知缺口
 
@@ -85,7 +85,7 @@ peachsh --port 3090 --json project budget call --id PROJECT --call-id CALL
 
 ## 首版验收登记（组件已执行，完整主路径待验收）
 
-2026-09-28组件受测候选为 `aac520b28eed4f3a60cb9e9d2492bd231b13f96e`，Rust tree为 `63a2b26952faa94b8b60f3bcb0eb92c92a730532`。限定bin check和三个专项文件均exit0：HTTP 3/0/0、CLI 6/0/0、初始化2/0/0，合计11 passed / 0 failed / 0 ignored。这是本地mock及真实Host/CLI组件证据，未执行最终五门禁，也不是APPROVED。首轮I10曾因测试误读网络授权响应封装而失败，修复后重新从组件check串行执行；失败记录及原始/发布证据hash见主仓 `niuma/员工C/提交报告/第十六轮/NEXT-15提交报告0.3.md`。
+2026-09-28最新组件受测候选为 `57f750b3ddcd2c00314ca220f3fb632196970fe6`，Rust tree为 `040de91e08c3bfd6cc3ee3c89ff1755bd121408b`。限定bin check和三个专项文件均exit0：HTTP 3/0/0、CLI 6/0/0、初始化及旧网页兼容3/0/0，合计12 passed / 0 failed / 0 ignored。这是本地mock及真实Host/CLI组件证据，未执行最终五门禁，也不是APPROVED。此前11项结果与首轮I10断言失败保留在主仓 `niuma/员工C/提交报告/第十六轮/NEXT-15提交报告0.3.md`；本次兼容补证初次测试编译失败、修复后从组件check重跑的完整记录及原始/发布hash见新增 `NEXT-15提交报告0.4.md`。
 
 | 事项 | 当前证据边界与待补项 |
 | --- | --- |
@@ -94,7 +94,7 @@ peachsh --port 3090 --json project budget call --id PROJECT --call-id CALL
 | 预算 U01–U10 | NEXT-14已有冻结范围验收；NEXT-15组合回归及I10实际usage另记新证据，不把旧结果写成本轮重跑。 |
 | 凭据与错误 | I07/I08组件通过，包括严格HTTP、CLI JSON/human输出检查、PUT后断线/不可信响应/stdout失败为unknown且不自动重发。不能以C组件结果替代D输入/crash范围或最终组合验收。 |
 | 默认插件组合 | 对照项目书逐项映射能力和真实撤销行为；不以插件数目相等代替验收。 |
-| 旧fallback | 仍须实际可启动；未执行不能写通过。 |
+| 旧fallback | I11旧网页HTTP兼容组件通过：真实Host加载原HTML/JS/CSS，模拟app.js原形状GET/PUT/read-back，保存Key后只返回可用性布尔值；旧更新推进Host revision，原新接口receipt不变且过期CAS被拒绝，同DB重启后保持，Provider=0。沿用同源旧GET无需写令牌、PUT需令牌及Host/Origin/site边界；新config GET仍需令牌。未启动浏览器或执行DOM，不能称浏览器交互验收或完整I11通过。 |
 | 标准门禁 | 完整候选冻结后唯一串行check/test/fmt/clippy/wasm-check；本说明不构成放行。 |
 | 付费真实Provider | 未运行；mock传输和真实本地Host不代表付费全流程试用。 |
 
