@@ -3445,6 +3445,84 @@ mod worktree_schema_tests {
     }
 }
 
+pub const HOST_CONFIG_MIGRATION_ID: &str = "host-route-configuration-v1";
+const HOST_CONFIG_SCHEMA: &[(&str, &str)] = &[
+    (
+        "host_config_state",
+        "CREATE TABLE host_config_state (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0 AND revision<=9223372036854775807))",
+    ),
+    (
+        "host_config_requests",
+        "CREATE TABLE host_config_requests (key TEXT NOT NULL PRIMARY KEY CHECK(typeof(key)='text' AND length(key) BETWEEN 1 AND 200), operation_id TEXT NOT NULL UNIQUE CHECK(typeof(operation_id)='text'), route_id TEXT NOT NULL CHECK(typeof(route_id)='text'), expected_revision INTEGER NOT NULL CHECK(typeof(expected_revision)='integer' AND expected_revision>=0), result_revision INTEGER NOT NULL CHECK(typeof(result_revision)='integer' AND result_revision>=expected_revision AND result_revision<=9223372036854775807), request_fingerprint_blob BLOB NOT NULL CHECK(typeof(request_fingerprint_blob)='blob' AND length(request_fingerprint_blob)>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), committed_at INTEGER NOT NULL CHECK(typeof(committed_at)='integer' AND committed_at>=0), CHECK(result_revision=expected_revision OR (expected_revision<9223372036854775807 AND result_revision=expected_revision+1)))",
+    ),
+];
+pub(crate) fn apply_schema_16(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let applied = migration_applied(tx, HOST_CONFIG_MIGRATION_ID)?;
+    anyhow::ensure!(
+        migration_applied(tx, BUDGET_MIGRATION_ID)?,
+        "schema 15 marker missing"
+    );
+    if version == 16 {
+        anyhow::ensure!(applied, "schema 16 marker missing");
+        return verify_schema_16(tx);
+    }
+    anyhow::ensure!(
+        version == 15 && !applied,
+        "schema 16 marker/version mismatch"
+    );
+    // No legacy settings/secret/subject decryption or rewriting during migration.
+    for (_, sql) in HOST_CONFIG_SCHEMA {
+        tx.execute_batch(sql)?;
+    }
+    tx.execute("INSERT INTO host_config_state(id,revision) VALUES(1,0)", [])?;
+    verify_schema_16(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        params![HOST_CONFIG_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 16)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_16(tx: &Transaction<'_>) -> Result<()> {
+    fn normalize(sql: &str) -> String {
+        let mut result = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(c) = chars.next() {
+            if let Some(q) = quote {
+                result.push(c);
+                if c == q {
+                    if chars.peek() == Some(&q) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(c, '\'' | '"' | '`') {
+                quote = Some(c);
+                result.push(c);
+            } else if !c.is_whitespace() {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+        result
+    }
+    for (name, sql) in HOST_CONFIG_SCHEMA {
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [name],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "host configuration schema constraint mismatch"
+        );
+    }
+    crate::host_configuration::verify_persisted_rows(tx)?;
+    Ok(())
+}
+
 pub const BUDGET_MIGRATION_ID: &str = "completion-budget-v1";
 const BUDGET_SCHEMA: &[(&str, &str)] = &[
     (
@@ -3467,7 +3545,7 @@ pub(crate) fn apply_schema_15(tx: &Transaction<'_>) -> Result<()> {
         migration_applied(tx, WORKTREE_MIGRATION_ID)?,
         "schema 14 marker missing"
     );
-    if version == 15 {
+    if version >= 15 {
         anyhow::ensure!(applied, "schema 15 marker missing");
         return verify_schema_15(tx);
     }

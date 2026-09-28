@@ -1141,57 +1141,54 @@ impl Store {
         keys: &std::collections::HashMap<String, String>,
     ) -> AnyResult<()> {
         settings.validate()?;
-        let sealed: Vec<_> = keys
-            .iter()
-            .map(|(id, key)| Ok((id.clone(), secrets::seal(key.as_bytes())?)))
-            .collect::<AnyResult<_>>()?;
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        tx.execute("INSERT INTO config VALUES ('settings',?1) ON CONFLICT(id) DO UPDATE SET value=excluded.value",[serde_json::to_string(settings)?])?;
-        for (id, blob) in sealed {
-            tx.execute("INSERT INTO secrets VALUES (?1,?2) ON CONFLICT(id) DO UPDATE SET value=excluded.value",params![id,blob])?;
-        }
-        let subjects: Vec<NetworkSubject> = {
-            let mut stmt = tx.prepare("SELECT snapshot FROM network_subjects")?;
-            let values: Vec<String> = stmt
-                .query_map([], |r| r.get(0))?
-                .collect::<rusqlite::Result<_>>()?;
-            values
-                .iter()
-                .map(|v| Ok(json::<SubjectSnapshot>(v)?.subject))
-                .collect::<AnyResult<_>>()?
-        };
-        for subject in subjects {
-            if subject.kind == NetworkSubjectKind::Route && subject.project_id.is_none() {
-                continue;
-            }
-            match current_subject(&tx, &subject) {
-                Ok(current) => {
-                    refresh_subject(&tx, current)?;
-                }
-                Err(error)
-                    if error.downcast_ref::<NetworkError>().is_some_and(|e| {
-                        matches!(
-                            e.kind,
-                            NetworkErrorKind::NotFound
-                                | NetworkErrorKind::Required
-                                | NetworkErrorKind::Invalid
-                        )
-                    }) =>
-                {
-                    tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
-                }
-                Err(error)
-                    if error
-                        .downcast_ref::<crate::project_config::ProjectError>()
-                        .is_some() =>
-                {
-                    tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
-                }
-                Err(error) => return Err(error),
-            }
-        }
+        crate::host_configuration::save_configuration_tx(&tx, Some(settings), keys)?;
         tx.commit()?;
         Ok(())
     }
+}
+
+pub(crate) fn refresh_configuration_subjects_tx(tx: &Connection) -> AnyResult<()> {
+    let subjects: Vec<NetworkSubject> = {
+        let mut stmt = tx.prepare("SELECT snapshot FROM network_subjects")?;
+        let values: Vec<String> = stmt
+            .query_map([], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        values
+            .iter()
+            .map(|v| Ok(json::<SubjectSnapshot>(v)?.subject))
+            .collect::<AnyResult<_>>()?
+    };
+    for subject in subjects {
+        if subject.kind == NetworkSubjectKind::Route && subject.project_id.is_none() {
+            continue;
+        }
+        match current_subject(tx, &subject) {
+            Ok(current) => {
+                refresh_subject(tx, current)?;
+            }
+            Err(error)
+                if error.downcast_ref::<NetworkError>().is_some_and(|e| {
+                    matches!(
+                        e.kind,
+                        NetworkErrorKind::NotFound
+                            | NetworkErrorKind::Required
+                            | NetworkErrorKind::Invalid
+                    )
+                }) =>
+            {
+                tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
+            }
+            Err(error)
+                if error
+                    .downcast_ref::<crate::project_config::ProjectError>()
+                    .is_some() =>
+            {
+                tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
 }

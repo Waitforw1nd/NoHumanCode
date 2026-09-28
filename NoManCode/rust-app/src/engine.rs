@@ -975,6 +975,45 @@ impl Engine {
     pub fn is_busy(&self) -> bool {
         !self.active.lock().unwrap().is_empty()
     }
+    pub fn host_config(
+        &self,
+    ) -> Result<
+        crate::host_configuration::HostConfigSnapshot,
+        crate::host_configuration::HostConfigError,
+    > {
+        self.store.host_config()
+    }
+    pub fn host_config_operation(
+        &self,
+        key: &str,
+    ) -> Result<
+        crate::host_configuration::RouteConfigResult,
+        crate::host_configuration::HostConfigError,
+    > {
+        self.store.host_config_operation(key)
+    }
+    pub async fn configure_host_route(
+        &self,
+        route_id: &str,
+        request: crate::host_configuration::ConfigureHostRoute,
+        key: &str,
+    ) -> Result<
+        crate::host_configuration::RouteConfigResult,
+        crate::host_configuration::HostConfigError,
+    > {
+        let _gate = self.gate.lock().await;
+        let busy =
+            self.is_busy() || self.slots.available_permits() != *self.slot_capacity.lock().unwrap();
+        // The Store checks a matching durable replay before applying this busy
+        // condition or CAS; no old request is turned into a new write.
+        let result = self
+            .store
+            .configure_host_route_guarded(route_id, request, key, busy)?;
+        if !result.replayed && result.receipt.changed {
+            self.key_slots.lock().unwrap().clear();
+        }
+        Ok(result)
+    }
     pub async fn configure(&self, settings: Settings) -> Result<()> {
         self.configure_with_keys(settings, HashMap::new()).await
     }

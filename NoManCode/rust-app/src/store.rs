@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 15;
+pub const SCHEMA_VERSION: u32 = 16;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -126,8 +126,13 @@ impl Store {
         );
         anyhow::ensure!(
             repository::migration_applied(&preflight, repository::BUDGET_MIGRATION_ID)?
-                == (version == 15),
+                == (version >= 15),
             "schema 15 marker/version mismatch"
+        );
+        anyhow::ensure!(
+            repository::migration_applied(&preflight, repository::HOST_CONFIG_MIGRATION_ID)?
+                == (version >= 16),
+            "schema 16 marker/version mismatch"
         );
         preflight.commit()?;
         if version < 2 {
@@ -306,6 +311,11 @@ impl Store {
             repository::apply_schema_15(&tx)?;
             tx.commit()?;
         }
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            repository::apply_schema_16(&tx)?;
+            tx.commit()?;
+        }
         Ok(Self { db: Mutex::new(db) })
     }
     pub fn schema_version(&self) -> Result<u32> {
@@ -327,15 +337,21 @@ impl Store {
             .transpose()
     }
     pub fn save_settings(&self, value: &Settings) -> Result<()> {
-        self.db.lock().unwrap().execute("INSERT INTO config VALUES ('settings',?1) ON CONFLICT(id) DO UPDATE SET value=excluded.value", [serde_json::to_string(value)?])?;
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        crate::host_configuration::save_configuration_tx(&tx, Some(value), &Default::default())?;
+        tx.commit()?;
         Ok(())
     }
     pub fn put_secret(&self, id: &str, secret: &str) -> Result<()> {
-        let bytes = secrets::seal(secret.as_bytes())?;
-        self.db.lock().unwrap().execute(
-            "INSERT INTO secrets VALUES (?1,?2) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
-            params![id, bytes],
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        crate::host_configuration::save_configuration_tx(
+            &tx,
+            None,
+            &std::collections::HashMap::from([(id.to_owned(), secret.to_owned())]),
         )?;
+        tx.commit()?;
         Ok(())
     }
     pub fn secret(&self, id: &str) -> Result<Option<String>> {
@@ -2702,6 +2718,35 @@ fn insert_legacy_task(tx: &rusqlite::Transaction<'_>, task: &Task) -> Result<()>
         params![task.id, task.run_id, value.to_string()],
     )?;
     Ok(())
+}
+
+/// Initialize only a truly fresh Host. Never reads legacy files or credentials.
+pub fn fresh_settings(store: &Store, workspace: &Path) -> Result<Settings> {
+    let mut db = store.db.lock().unwrap();
+    let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    crate::host_configuration::verify_persisted_rows(&tx)?;
+    if let Some(settings) = crate::host_configuration::settings_tx(&tx)? {
+        return Ok(settings);
+    }
+    let history: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM secrets) OR EXISTS(SELECT 1 FROM host_config_requests) OR EXISTS(SELECT 1 FROM network_subjects)", [], |r| r.get(0))?;
+    anyhow::ensure!(
+        !history && crate::host_configuration::revision_tx(&tx)? == 0,
+        "fresh Host configuration requires empty history"
+    );
+    std::fs::create_dir_all(workspace)?;
+    let settings = Settings {
+        workspace: workspace.canonicalize()?.to_string_lossy().into_owned(),
+        max_concurrency: 3,
+        routes: vec![],
+        newapi: None,
+    };
+    settings.validate()?;
+    tx.execute(
+        "INSERT INTO config(id,value) VALUES('settings',?1)",
+        [serde_json::to_string(&settings)?],
+    )?;
+    tx.commit()?;
+    Ok(settings)
 }
 
 // Read-only import. The Node installation and its session files are never rewritten.

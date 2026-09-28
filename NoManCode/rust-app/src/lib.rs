@@ -6,6 +6,7 @@ pub mod domain;
 pub mod engine;
 pub mod git_diff;
 pub(crate) mod git_worktree;
+pub mod host_configuration;
 pub mod network_authorization;
 pub mod plugin_catalog;
 pub mod plugin_host;
