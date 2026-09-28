@@ -1,0 +1,59 @@
+{
+  "utc": "2026-09-28T16:19:29.7703736Z",
+  "candidate": "d2a0b6878a1e83bd3d48c2884fd4cea649ae4e88",
+  "no_man_code_tree": "0002c7fd00c5384acb3166049e43a50a56ce5d3f",
+  "rust_tree": "8148741e2cbd1863518c56d84e787c273266e5ec",
+  "source_receipt_sha256": "FE282564781B3BA6D217DC220E630F9D68035D16E4DB8FE9B6CCB8C445993E70",
+  "raw_static_evidence": [
+    {
+      "name": "candidate-receipt.json",
+      "bytes": 1714,
+      "sha256": "FE282564781B3BA6D217DC220E630F9D68035D16E4DB8FE9B6CCB8C445993E70"
+    },
+    {
+      "name": "commit.log",
+      "bytes": 160,
+      "sha256": "409CB646A8A043993CD8B8542235C1DAA92F041C336DFD6DCCA8F93B29C6536D"
+    },
+    {
+      "name": "diff-check.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "format-check.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "format.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "w08.diff",
+      "bytes": 12329,
+      "sha256": "AF40897EE042C6C2483465D3B0D3049E9F96303A7D528D116DD98A10BAC6E09B"
+    }
+  ],
+  "only_changed_path": "NoManCode/rust-app/src/server.rs",
+  "outside_w08_identical": true,
+  "original_assertions": 28,
+  "candidate_assertions": 28,
+  "original_duration_sequence_preserved": [
+    "Duration::from_secs(5)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(5)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(12)",
+    "Duration::from_secs(10)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(20)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(60)",
+    "Duration::from_secs(10)",
+    "Duration::from_secs(10)"
+  ],
+  "dynamic_tests": "not yet run",
+  "original_timeout_cause": "unknown; single exact diagnostic did not reproduce"
+}

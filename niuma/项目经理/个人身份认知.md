@@ -1,3 +1,18 @@
+## 2026-09-29 4c9c1d8完整静态交付已核，五门禁准确重放行（最新）
+
+C报告0.6及22对证据已经理完整审/独立hash核，实际HEAD4c9c1d8bca17de4e83e50c7893806cd351031463 / NoManCode f8700cfc0c5890912dacdc94f2b661eae2dc04e6 / Rust 9fe47da3d89637f08ae436bead69817fab4d26bb，本人持续clean/no-build和实际状态均核。review0.6仅静态APPROVED，纠正review0.5旧stderr防护表述。旧d2精确授权已暂停且未执行。
+
+任务/2026-09-29NEXT-15最终门禁放行修订01.md是唯一有效重放行：C更新本地驱动绑定并留旧原件，本人核当前三SHA后新attempt2从check→test→fmt→clippy→wasm-check完整执行。source/index仍冻结，原时限/并发/业务断言不变，失败停并保留真实W08现场；原超时根因仍未知，不以诊断成绩代全套。下一第一操作：核C真实接收和全部新门禁，随后独立证据review、联合验收、main串行整合及结项；B/D继续冻结，完整阶段一未完成。
+## 2026-09-29 d2a0b687放行暂停，待stderr单点最终冻结（最新）
+
+C在收到d2a0b687放行时已在原W08模块补stderr提示写失败不二次panic的单点修订；本人主动拒绝把旧SHA授权用于新源码，未执行新门禁。经理核确只将eprintln改为忽略写失败的stderr锁写，仍属补充05，并明确暂停旧放行。review0.5对日志失败不二次panic的表述尚缺该stderr防护，将在后续增量review纠正，旧记录保留。
+
+下一第一操作：等C完成此单点静态提交、报告0.6/manifest与完整三SHA及本人持续冻结后，再独立核最终差异并重发准确放行。从check起五门禁尚未重跑；B/D持续冻结，main产品未合NEXT15。所有旧报告/失败/授权历史保留，经理不代实现或正式测试，本轮目标保持active。
+## 2026-09-29 第二候选静态审查通过并放行五门禁（最新）
+
+经理已完整review C补充05固定d2a0b6878a1e83bd3d48c2884fd4cea649ae4e88 / NoManCode 0002c7fd00c5384acb3166049e43a50a56ce5d3f / Rust 8148741e2cbd1863518c56d84e787c273266e5ec。仅W08测试模块169行diff；生产前缀/其后模块不变，28原断言和全部Duration序列一致，完整JSON行缓冲append避免格式化交错。原始六件静态证据及C本人16:16:49Z持续clean/no-build已核，review0.5只静态限定APPROVED，不是新动态或原超时根因修复。
+
+已在原C对话正式放行完成0.6静态封存后本人核新三SHA/clean，从check→test→fmt→clippy→wasm-check完整attempt2；source/index仍冻结、只解除no-build。原全套并发/时限不变，失败即停并查保留现场；不得盲目反复运行或覆盖原attempt1/diagnostic1。放行单为任务/2026-09-29NEXT-15最终五门禁第二候选放行.md。下一第一操作：核C真实接收与新完整结果，验证原始统计/源码/证据后联合验收与main整合，未完成不得结项。B/D持续冻结，main产品仍NEXT14，完整阶段一未完成。
 ## 2026-09-29 W08单次诊断通过，C获最小取证修补窗口（最新）
 
 同fa962378既有binary精确W08诊断1/0/0，三个原停点均完成，原超时未复现，根因仍未知；不是最终门禁或原失败被推翻。旧测试共用wait与tempfile析构造成明确取证缺口。经理冻结补充05，只允许唯一C在server.rs既有worktree_http_crash_tests里保留现场、分phase/PID/通知并观察提前HTTP结果，保留所有断言/原时限/真实kill+wait，不改生产或B/D，不串行化全套或循环重跑。

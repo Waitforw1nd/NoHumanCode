@@ -1,0 +1,144 @@
+{
+  "utc": "2026-09-28T16:25:25.5809122Z",
+  "candidate": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "server_sha256": "DCE96D03D00E6960D36BE3C7085FC456C60163C1991B390668C787C2E1565AB5",
+  "pairs": [
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static/diff-check.log",
+      "published": "next15-w08-static/diff-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static/format-check.log",
+      "published": "next15-w08-static/format-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static/format.log",
+      "published": "next15-w08-static/format.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static/static-check.json",
+      "published": "next15-w08-static/static-check.json",
+      "sha256": "CADDAFDF982279FBA82FD4E2B85583E2B112AE28695AF44A2BE76466293C1F4D",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static/w08.diff",
+      "published": "next15-w08-static/w08.diff",
+      "sha256": "C32C53AFE72A0CFFEF5D2EB419A2C433026C04EB150FBF30C597D4BC9E0657D8",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-final/candidate-receipt.json",
+      "published": "next15-w08-static-final/candidate-receipt.json",
+      "sha256": "FE282564781B3BA6D217DC220E630F9D68035D16E4DB8FE9B6CCB8C445993E70",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-final/commit.log",
+      "published": "next15-w08-static-final/commit.log",
+      "sha256": "409CB646A8A043993CD8B8542235C1DAA92F041C336DFD6DCCA8F93B29C6536D",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-final/diff-check.log",
+      "published": "next15-w08-static-final/diff-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-final/format-check.log",
+      "published": "next15-w08-static-final/format-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-final/format.log",
+      "published": "next15-w08-static-final/format.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-final/w08.diff",
+      "published": "next15-w08-static-final/w08.diff",
+      "sha256": "AF40897EE042C6C2483465D3B0D3049E9F96303A7D528D116DD98A10BAC6E09B",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/candidate-receipt.json",
+      "published": "next15-w08-static-stderr/candidate-receipt.json",
+      "sha256": "F3929B6D6C8BD445D8704A189C01CCC545B60E84646EA62CC7AC5FC21C9BF398",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/commands.json",
+      "published": "next15-w08-static-stderr/commands.json",
+      "sha256": "5BDA4643EC1C048284FD9F4C35BF113DF1B1C4F92295B73EA7363DA98D08A017",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/commit.log",
+      "published": "next15-w08-static-stderr/commit.log",
+      "sha256": "4402E07BC86E9606496038D6C3B81040D4985669B46429DBD7B48E78DCD918DF",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/diff-check.log",
+      "published": "next15-w08-static-stderr/diff-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/format-check.log",
+      "published": "next15-w08-static-stderr/format-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/format.log",
+      "published": "next15-w08-static-stderr/format.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/git-add.log",
+      "published": "next15-w08-static-stderr/git-add.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/staged.diff",
+      "published": "next15-w08-static-stderr/staged.diff",
+      "sha256": "5549816ECE96A7453D87F056D93F24B7540A131B6B2F5E98D987C1547ABE52A1",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/stderr-only.diff",
+      "published": "next15-w08-static-stderr/stderr-only.diff",
+      "sha256": "5549816ECE96A7453D87F056D93F24B7540A131B6B2F5E98D987C1547ABE52A1",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/transport-observations.json",
+      "published": "next15-w08-static-stderr/transport-observations.json",
+      "sha256": "FDFA637D30236B124F96291B99D64EA00833E0C467A2874DB4B25BE1C3F61F6B",
+      "verbatim": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-w08-static-stderr/w08-cumulative.diff",
+      "published": "next15-w08-static-stderr/w08-cumulative.diff",
+      "sha256": "9EF11AB313375955F7BAA8EFB92FE41A22266CB857EA563DF69F451B5FB90361",
+      "verbatim": true
+    }
+  ],
+  "manifest_sha256": "2310BE82B4A9EB1C4E08C8CD7537F44FC4F22A88D2AB4619D6B98330C5537BA0",
+  "personal_freeze": "0.6 report and original candidate-receipt at 16:21:30Z; employee final reply clean/no-build",
+  "prior_review_correction": "d2 stderr eprintln could panic; 4c9c1d8 ignores stderr I/O error. Earlier release paused and not run."
+}

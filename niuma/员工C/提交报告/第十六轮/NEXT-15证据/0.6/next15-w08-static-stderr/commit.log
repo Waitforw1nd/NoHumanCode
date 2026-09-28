@@ -1,0 +1,2 @@
+[codex/c/host-setup-cli 4c9c1d8b] test(worktree): ignore diagnostic stderr write failures
+ 1 file changed, 4 insertions(+), 1 deletion(-)

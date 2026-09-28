@@ -1,0 +1,72 @@
+{
+  "utc": "2026-09-28T16:21:30.2943023Z",
+  "baseline": "fa9623785573a8f44decd0368fa73a4e267f4ed6",
+  "previous_candidate": "d2a0b6878a1e83bd3d48c2884fd4cea649ae4e88",
+  "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "branch": "codex/c/host-setup-cli",
+  "status": [],
+  "index": [],
+  "unmerged": [],
+  "owned_running_processes": [],
+  "server_sha256": "DCE96D03D00E6960D36BE3C7085FC456C60163C1991B390668C787C2E1565AB5",
+  "outside_w08_unchanged": true,
+  "original_assertions": 28,
+  "candidate_assertions": 28,
+  "unchanged_duration_sequence": [
+    "Duration::from_secs(5)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(5)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(12)",
+    "Duration::from_secs(10)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(20)",
+    "Duration::from_millis(10)",
+    "Duration::from_secs(60)",
+    "Duration::from_secs(10)",
+    "Duration::from_secs(10)"
+  ],
+  "commands": [
+    {
+      "command": "rustfmt --edition 2024 --config style_edition=2024,skip_children=true src/server.rs",
+      "cwd": "NoManCode/rust-app",
+      "start_utc": "2026-09-28T16:21:28.8509512Z",
+      "end_utc": "2026-09-28T16:21:28.9922960Z",
+      "exit_code": 0
+    },
+    {
+      "command": "rustfmt --check --edition 2024 --config style_edition=2024,skip_children=true src/server.rs",
+      "cwd": "NoManCode/rust-app",
+      "start_utc": "2026-09-28T16:21:29.0052085Z",
+      "end_utc": "2026-09-28T16:21:29.1148035Z",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "cwd": "NoManCode/rust-app",
+      "start_utc": "2026-09-28T16:21:29.1168224Z",
+      "end_utc": "2026-09-28T16:21:29.1708522Z",
+      "exit_code": 0
+    },
+    {
+      "command": "git add -- src/server.rs",
+      "cwd": "NoManCode/rust-app",
+      "start_utc": "2026-09-28T16:21:29.5317025Z",
+      "end_utc": "2026-09-28T16:21:29.5843856Z",
+      "exit_code": 0
+    },
+    {
+      "command": "git commit -m 'test(worktree): ignore diagnostic stderr write failures'",
+      "cwd": "NoManCode/rust-app",
+      "start_utc": "2026-09-28T16:21:29.6308862Z",
+      "end_utc": "2026-09-28T16:21:29.7515828Z",
+      "exit_code": 0
+    }
+  ],
+  "rustfmt": "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)",
+  "dynamic_runs": "none",
+  "release_received": "second-candidate release pins previous_candidate only; not applied to changed source",
+  "statement": "source/index clean/no-build; original timeout cause unresolved; awaiting review and exact new candidate release"
+}
