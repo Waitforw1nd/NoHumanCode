@@ -471,3 +471,100 @@ async fn budget_cli_raw_duplicate_and_broken_wire_are_not_accepted_or_retried() 
         let _ = task.await;
     }
 }
+#[tokio::test]
+async fn budget_cli_received_put_then_real_transport_truncation_is_unknown_once() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    for partial_response in [false, true] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let puts = Arc::new(AtomicUsize::new(0));
+        let count = puts.clone();
+        let (done_tx, mut done_rx) = tokio::sync::oneshot::channel::<()>();
+        let server = tokio::spawn(async move {
+            loop {
+                let (mut socket, _) = tokio::select! { result=listener.accept()=>result.unwrap(), _=&mut done_rx=>break };
+                let mut bytes = Vec::new();
+                let mut chunk = [0u8; 1024];
+                let header_end = loop {
+                    let read = socket.read(&mut chunk).await.unwrap();
+                    assert!(read > 0);
+                    bytes.extend_from_slice(&chunk[..read]);
+                    if let Some(index) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                        break index + 4;
+                    }
+                    assert!(bytes.len() < 8192);
+                };
+                let header = String::from_utf8(bytes[..header_end].to_vec()).unwrap();
+                let length = header
+                    .lines()
+                    .find_map(|line| {
+                        line.split_once(':')
+                            .filter(|(name, _)| name.eq_ignore_ascii_case("content-length"))
+                            .map(|(_, value)| value.trim().parse::<usize>().unwrap())
+                    })
+                    .unwrap_or(0);
+                while bytes.len() < header_end + length {
+                    let read = socket.read(&mut chunk).await.unwrap();
+                    assert!(read > 0);
+                    bytes.extend_from_slice(&chunk[..read]);
+                }
+                if header.starts_with("GET /api/bootstrap ") {
+                    let body = "{\"token\":\"local-test-token\"}";
+                    socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).as_bytes()).await.unwrap();
+                } else {
+                    assert!(header.starts_with("PUT /api/projects/project-a/budget "));
+                    let body: Value =
+                        serde_json::from_slice(&bytes[header_end..header_end + length]).unwrap();
+                    assert_eq!(
+                        body,
+                        json!({"expected_revision":0,"idempotency_key":"budget-1","config":{"limit_tokens":100,"per_call_reservation_tokens":10}})
+                    );
+                    count.fetch_add(1, Ordering::SeqCst);
+                    if partial_response {
+                        socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 500\r\nConnection: close\r\n\r\n{\"snapshot\":").await.unwrap();
+                    }
+                }
+                socket.shutdown().await.unwrap();
+            }
+        });
+        let output = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"))
+                .args(["--port", &port.to_string(), "--json"])
+                .args(SET)
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let failure = error(output);
+        assert_eq!(failure["code"], "operation_result_unknown");
+        assert_eq!(failure["retryable"], false);
+        assert!(failure.get("calls").is_none());
+        done_tx.send(()).unwrap();
+        server.await.unwrap();
+        assert_eq!(puts.load(Ordering::SeqCst), 1);
+    }
+}
+#[tokio::test]
+async fn budget_cli_route_check_accepts_budget_rejection_with_finished_models_receipt() {
+    let mut receipt = call("settled")["call"].clone();
+    receipt["purpose"] = json!("models");
+    receipt["method"] = json!("GET");
+    let h=Host::new(vec![(409,json!({"error":{"code":"budget_exceeded","message":"预算不足","dispatch_state":"not_sent","calls":[receipt.clone()],"retryable":false}}))]).await;
+    let failure = error(
+        h.cli(&["route", "check", "route-a", "--project", "project-a"])
+            .await,
+    );
+    assert_eq!(failure["code"], "budget_exceeded");
+    assert_eq!(failure["dispatch_state"], "not_sent");
+    assert_eq!(failure["calls"], json!([receipt]));
+    assert_eq!(failure["retryable"], false);
+    let requests = h.state.requests.lock().unwrap();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].0, "POST");
+    assert_eq!(requests[0].1, "/api/routes/route-a/check");
+    assert!(requests[0].3);
+}
