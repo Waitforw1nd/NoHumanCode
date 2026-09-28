@@ -143,6 +143,16 @@ pub enum NetworkErrorKind {
     ProjectCorrupt,
     ProjectInternal,
     WorkspaceSelectionManaged,
+    BudgetInvalid,
+    BudgetNotFound,
+    BudgetRevisionConflict,
+    BudgetConflict,
+    BudgetBusy,
+    BudgetExceeded,
+    BudgetUnresolved,
+    BudgetOverrun,
+    BudgetCorrupt,
+    BudgetInternal,
     Invalid,
     NotFound,
     Required,
@@ -178,6 +188,26 @@ impl NetworkError {
     }
 }
 impl NetworkErrorKind {
+    pub fn budget_code(&self) -> Option<&'static str> {
+        use crate::budget::BudgetErrorKind as B;
+        Some(
+            match self {
+                Self::BudgetInvalid => B::Invalid,
+                Self::BudgetNotFound => B::NotFound,
+                Self::BudgetRevisionConflict => B::RevisionConflict,
+                Self::BudgetConflict => B::Conflict,
+                Self::BudgetBusy => B::Busy,
+                Self::BudgetExceeded => B::Exceeded,
+                Self::BudgetUnresolved => B::Unresolved,
+                Self::BudgetOverrun => B::Overrun,
+                Self::BudgetCorrupt => B::Corrupt,
+                Self::BudgetInternal => B::Internal,
+                _ => return None,
+            }
+            .code(),
+        )
+    }
+
     pub fn project_code(&self) -> Option<&'static str> {
         use crate::project_config::ProjectError;
         Some(match self {
@@ -220,9 +250,26 @@ impl From<crate::project_config::ProjectError> for NetworkError {
         })
     }
 }
+impl From<crate::budget::BudgetError> for NetworkError {
+    fn from(error: crate::budget::BudgetError) -> Self {
+        use crate::budget::BudgetErrorKind as B;
+        Self::not_sent(match error.kind {
+            B::Invalid => NetworkErrorKind::BudgetInvalid,
+            B::NotFound => NetworkErrorKind::BudgetNotFound,
+            B::RevisionConflict => NetworkErrorKind::BudgetRevisionConflict,
+            B::Conflict => NetworkErrorKind::BudgetConflict,
+            B::Busy => NetworkErrorKind::BudgetBusy,
+            B::Exceeded => NetworkErrorKind::BudgetExceeded,
+            B::Unresolved => NetworkErrorKind::BudgetUnresolved,
+            B::Overrun => NetworkErrorKind::BudgetOverrun,
+            B::Corrupt => NetworkErrorKind::BudgetCorrupt,
+            B::Internal => NetworkErrorKind::BudgetInternal,
+        })
+    }
+}
 impl std::fmt::Display for NetworkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(code) = self.kind.project_code() {
+        if let Some(code) = self.kind.budget_code().or(self.kind.project_code()) {
             return f.write_str(code);
         }
         f.write_str(match self.kind {
@@ -254,6 +301,9 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::json;
 
 pub(crate) fn safe_error(error: anyhow::Error) -> NetworkError {
+    if let Some(budget) = error.downcast_ref::<crate::budget::BudgetError>() {
+        return (*budget).into();
+    }
     error
         .downcast_ref::<NetworkError>()
         .cloned()
@@ -702,7 +752,7 @@ pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyRe
     )?;
     Ok(())
 }
-fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
+pub(crate) fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
     let row: Option<(String, String, Option<String>, String)> = db
         .query_row(
             "SELECT receipt,authorization_id,task_id,state FROM network_calls WHERE id=?1",
@@ -820,6 +870,7 @@ pub(crate) fn recover_calls_tx(db: &rusqlite::Transaction<'_>) -> AnyResult<usiz
         value.state = CallState::Unknown;
         value.result = Some(CallResult::Interrupted);
         value.finished_at = Some(now());
+        crate::budget::finish_tx(db, &value, None)?;
         save_receipt(db, &value)?;
     }
     Ok(ids.len())
@@ -845,6 +896,7 @@ impl Store {
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             let (grant, current) = checked_authorization(&tx, subject, &[purpose], task)?;
+            crate::budget::admit_check_tx(&tx,subject,purpose)?;
             let target = validate_target(&current.snapshot.base_url, purpose)
                 .map_err(|_| failure(NetworkErrorKind::Invalid))?;
             let id = uuid::Uuid::new_v4().to_string();
@@ -878,15 +930,19 @@ impl Store {
             };
             #[cfg(test)]
             crate::engine::crash_probe::block(&subject.key()?, "network-before-claim", &id);
+            #[cfg(test)]
+            if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-before-claim",&id);}
             tx.execute(
-                "INSERT INTO network_calls VALUES (?1,?2,?3,'claimed',?4)",
+                "INSERT INTO network_calls(rowid,id,authorization_id,task_id,state,receipt) VALUES (?5,?1,?2,?3,'claimed',?4)",
                 params![
                     id,
                     value.authorization_id,
                     value.task_id,
-                    serde_json::to_string(&value)?
+                    serde_json::to_string(&value)?,
+                    crate::budget::next_network_rowid(&tx)?
                 ],
             )?;
+            crate::budget::reserve_tx(&tx,&value)?;
             if let Some(task) = task {
                 crate::store::task_event_tx(
                     &tx,
@@ -898,6 +954,8 @@ impl Store {
             tx.commit()?;
             #[cfg(test)]
             crate::engine::crash_probe::block(&subject.key()?, "network-after-claim", &id);
+            #[cfg(test)]
+            if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-after-claim",&id);}
             let permit = crate::provider_transport::ProviderPermit::new(
                 target,
                 current.credential,
@@ -942,8 +1000,30 @@ impl Store {
     }
     pub(crate) fn finish_network<T>(
         &self,
+        value: CallReceipt,
+        result: Result<T, crate::provider_transport::TransportError>,
+    ) -> Result<NetworkResponse<T>, NetworkError> {
+        self.finish_network_observed(value, result, None)
+    }
+    pub(crate) fn finish_completion(
+        &self,
+        value: CallReceipt,
+        result: Result<
+            (serde_json::Value, serde_json::Value),
+            crate::provider_transport::TransportError,
+        >,
+    ) -> Result<NetworkResponse<(serde_json::Value, serde_json::Value)>, NetworkError> {
+        let observed = result
+            .as_ref()
+            .ok()
+            .map(|(_, usage)| crate::provider_usage::classify_usage(usage));
+        self.finish_network_observed(value, result, observed)
+    }
+    fn finish_network_observed<T>(
+        &self,
         mut value: CallReceipt,
         result: Result<T, crate::provider_transport::TransportError>,
+        observed: Option<crate::provider_usage::UsageObservation>,
     ) -> Result<NetworkResponse<T>, NetworkError> {
         use crate::provider_transport::TransportError;
         value.finished_at = Some(now());
@@ -979,18 +1059,52 @@ impl Store {
                 Some(NetworkErrorKind::Unknown)
             }
         };
+        #[cfg(test)]
+        if value.purpose == NetworkPurpose::Completion {
+            crate::engine::crash_probe::block(
+                &value.subject.key()?,
+                "budget-before-finish",
+                &value.call_id,
+            );
+        }
         let saved = (|| -> AnyResult<()> {
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             let old = receipt(&tx, &value.call_id)?;
-            if old.state != CallState::Claimed {
+            let managed = crate::budget::finish_tx(&tx, &value, observed)?;
+            if let Some(record) = managed {
+                value = record;
+            } else if old.state != CallState::Claimed {
                 return Err(failure(NetworkErrorKind::Conflict));
             }
-            save_receipt(&tx, &value)?;
+            if old.state == CallState::Claimed {
+                save_receipt(&tx, &value)?;
+            }
             tx.commit()?;
             Ok(())
         })();
-        if saved.is_err() {
+        if let Err(error) = saved {
+            if let Some(budget) = error.downcast_ref::<crate::budget::BudgetError>() {
+                if matches!(
+                    budget.kind,
+                    crate::budget::BudgetErrorKind::Conflict
+                        | crate::budget::BudgetErrorKind::Corrupt
+                ) {
+                    let mut error: NetworkError = (*budget).into();
+                    error.dispatch_state = DispatchState::Unknown;
+                    if budget.kind == crate::budget::BudgetErrorKind::Conflict {
+                        if let Ok(persisted) = receipt(&self.db.lock().unwrap(), &value.call_id) {
+                            error.dispatch_state = match persisted.state {
+                                CallState::Finished => DispatchState::Finished,
+                                CallState::NotSent => DispatchState::NotSent,
+                                _ => DispatchState::Unknown,
+                            };
+                            error.calls = vec![persisted];
+                        }
+                    }
+                    return Err(error);
+                }
+            }
             value.state = CallState::Unknown;
             value.success = None;
             value.http_status = None;

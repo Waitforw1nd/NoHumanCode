@@ -187,6 +187,31 @@ impl Engine {
             ),
         })
     }
+    pub fn budget_config(
+        &self,
+        project: &ProjectId,
+    ) -> Result<crate::budget::BudgetConfigSnapshot, crate::budget::BudgetError> {
+        self.store.budget_config(project)
+    }
+    pub fn configure_budget(
+        &self,
+        request: crate::budget::ConfigureBudget,
+    ) -> Result<crate::budget::BudgetMutationResult, crate::budget::BudgetError> {
+        self.store.configure_budget(request)
+    }
+    pub fn budget_status(
+        &self,
+        project: &ProjectId,
+    ) -> Result<crate::budget::BudgetStatus, crate::budget::BudgetError> {
+        self.store.budget_status(project)
+    }
+    pub fn budget_call(
+        &self,
+        project: &ProjectId,
+        call: &str,
+    ) -> Result<crate::budget::BudgetCall, crate::budget::BudgetError> {
+        self.store.budget_call(project, call)
+    }
     pub async fn network_preview(
         &self,
         subject: NetworkSubject,
@@ -318,7 +343,7 @@ impl Engine {
         route.max_tokens = 128;
         let completion = self
             .store
-            .finish_network(
+            .finish_completion(
                 receipt,
                 provider::complete(
                     &self.client,
@@ -480,7 +505,7 @@ pub(crate) mod crash_probe {
             .remove(task_id)
     }
 
-    pub(super) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
+    pub(crate) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
         *PHASE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some((task_id, phase, signal));
     }
 
@@ -1556,18 +1581,30 @@ impl Engine {
                 },
             );
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
-            let result = self.store.finish_network(receipt, result);
+            let result = self.store.finish_completion(receipt, result);
             task.output.push_str(&text);
             let (message, usage) = result?.result;
-            if usage.is_object() {
-                if !task.usage.is_object() {
-                    task.usage = json!({});
+            if let crate::provider_usage::UsageObservation::Valid(usage) =
+                crate::provider_usage::classify_usage(&usage)
+            {
+                let mut projection = if task.usage.is_object() {
+                    task.usage.clone()
+                } else {
+                    json!({})
+                };
+                for (field, n) in [
+                    ("prompt_tokens", usage.prompt_tokens),
+                    ("completion_tokens", usage.completion_tokens),
+                    ("total_tokens", usage.total_tokens),
+                ] {
+                    let old = projection[field].as_u64().unwrap_or(0);
+                    let value = old
+                        .checked_add(n)
+                        .filter(|v| *v <= i64::MAX as u64)
+                        .context("任务用量投影超出范围；持久预算结果保持")?;
+                    projection[field] = json!(value);
                 }
-                for field in ["prompt_tokens", "completion_tokens", "total_tokens"] {
-                    if let Some(n) = usage[field].as_u64() {
-                        task.usage[field] = json!(task.usage[field].as_u64().unwrap_or(0) + n);
-                    }
-                }
+                task.usage = projection;
             }
             if let Some(calls) = message["tool_calls"].as_array() {
                 validate_new_tool_group(&task.messages, calls)?;

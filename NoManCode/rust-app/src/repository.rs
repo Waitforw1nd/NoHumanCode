@@ -3196,7 +3196,7 @@ pub(crate) fn apply_schema_14(tx: &Transaction<'_>) -> Result<()> {
         migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?,
         "schema 13 marker missing"
     );
-    if version == 14 {
+    if version >= 14 {
         anyhow::ensure!(applied, "schema 14 marker missing");
         return verify_schema_14(tx);
     }
@@ -3437,4 +3437,89 @@ mod worktree_schema_tests {
             assert_eq!(rows(&db), before);
         }
     }
+}
+
+pub const BUDGET_MIGRATION_ID: &str = "completion-budget-v1";
+const BUDGET_SCHEMA: &[(&str, &str)] = &[
+    (
+        "project_budgets",
+        "CREATE TABLE project_budgets (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), limit_tokens INTEGER NOT NULL CHECK(typeof(limit_tokens)='integer' AND limit_tokens>=0 AND limit_tokens<=1000000000000), reservation_tokens INTEGER NOT NULL CHECK(typeof(reservation_tokens)='integer' AND reservation_tokens>=1 AND reservation_tokens<=1000000000), coverage_start_call_rowid INTEGER NOT NULL CHECK(typeof(coverage_start_call_rowid)='integer' AND coverage_start_call_rowid>=0))",
+    ),
+    (
+        "budget_requests",
+        "CREATE TABLE budget_requests (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_budgets(project_id), request TEXT NOT NULL CHECK(typeof(request)='text'), result TEXT NOT NULL CHECK(typeof(result)='text'))",
+    ),
+    (
+        "budget_calls",
+        "CREATE TABLE budget_calls (call_id TEXT NOT NULL PRIMARY KEY REFERENCES network_calls(id), project_id TEXT NOT NULL REFERENCES project_budgets(project_id), budget_revision INTEGER NOT NULL CHECK(typeof(budget_revision)='integer' AND budget_revision>0), reserved_tokens INTEGER NOT NULL CHECK(typeof(reserved_tokens)='integer' AND reserved_tokens>=1 AND reserved_tokens<=1000000000), state TEXT NOT NULL CHECK(state IN ('claimed','settled','not_sent','usage_missing','usage_invalid','unknown','overrun')), record TEXT NOT NULL CHECK(typeof(record)='text'), terminal_fingerprint TEXT CHECK(terminal_fingerprint IS NULL OR length(terminal_fingerprint)=64), CHECK((state='claimed' AND terminal_fingerprint IS NULL) OR (state<>'claimed' AND terminal_fingerprint IS NOT NULL)))",
+    ),
+];
+pub(crate) fn apply_schema_15(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let applied = migration_applied(tx, BUDGET_MIGRATION_ID)?;
+    anyhow::ensure!(
+        migration_applied(tx, WORKTREE_MIGRATION_ID)?,
+        "schema 14 marker missing"
+    );
+    if version == 15 {
+        anyhow::ensure!(applied, "schema 15 marker missing");
+        return verify_schema_15(tx);
+    }
+    anyhow::ensure!(
+        version == 14 && !applied,
+        "schema 15 marker/version mismatch"
+    );
+    verify_schema_14(tx)?;
+    for (_, sql) in BUDGET_SCHEMA {
+        tx.execute_batch(sql)?;
+    }
+    verify_schema_15(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        params![BUDGET_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 15)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_15(tx: &Transaction<'_>) -> Result<()> {
+    fn normalize(sql: &str) -> String {
+        let mut result = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(c) = chars.next() {
+            if let Some(q) = quote {
+                result.push(c);
+                if c == q {
+                    if chars.peek() == Some(&q) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(c, '\'' | '"' | '`') {
+                quote = Some(c);
+                result.push(c);
+            } else if !c.is_whitespace() {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+        result
+    }
+    for (name, sql) in BUDGET_SCHEMA {
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [name],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "budget schema constraint mismatch"
+        );
+    }
+    crate::budget::verify_persisted_rows(tx)?;
+    let foreign: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(foreign.is_none(), "budget foreign key violation");
+    Ok(())
 }
