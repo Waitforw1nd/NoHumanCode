@@ -3226,14 +3226,13 @@ fn budget_snapshot(
     {
         return Err(invalid_response());
     }
-    if let Some(config) = &snapshot.config {
-        if !worktree_fields(
+    if let Some(config) = &snapshot.config
+        && (!worktree_fields(
             &value["config"],
             &["limit_tokens", "per_call_reservation_tokens"],
-        ) || config.validate().is_err()
-        {
-            return Err(invalid_response());
-        }
+        ) || config.validate().is_err())
+    {
+        return Err(invalid_response());
     }
     Ok(())
 }
