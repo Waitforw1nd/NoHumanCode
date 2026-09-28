@@ -1,0 +1,33 @@
+{
+  "note": "candidate-receipt.json preserves the original PowerShell array-concatenation metadata defect; this separate index records the three actual sequential commands without rewriting that raw receipt.",
+  "cwd": "NoManCode/rust-app",
+  "commands": [
+    "rustfmt --edition 2024 --config style_edition=2024,skip_children=true src/main.rs src/cli.rs src/server.rs tests/host_configuration_http.rs tests/host_configuration_cli.rs tests/host_initialization_workflow.rs",
+    "rustfmt --check --edition 2024 --config style_edition=2024,skip_children=true src/main.rs src/cli.rs src/server.rs tests/host_configuration_http.rs tests/host_configuration_cli.rs tests/host_initialization_workflow.rs",
+    "git diff --check"
+  ],
+  "exit_codes": [
+    0,
+    0,
+    0
+  ],
+  "earlier_attempts": [
+    {
+      "cwd": "repository root",
+      "command": "rustfmt --edition 2024 --config skip_children=true <same six files with NoManCode/rust-app prefix>",
+      "tool": "rustfmt 1.7.1",
+      "exit_code": 0,
+      "meaning": "older-tool formatting only; not current-tool verification"
+    },
+    {
+      "cwd": "repository root",
+      "command": "rustfmt --edition 2024 --config style_edition=2024,skip_children=true <same six files with NoManCode/rust-app prefix>",
+      "tool": "rustfmt 1.7.1",
+      "exit_code": 1,
+      "meaning": "invalid config key style_edition; log retained"
+    }
+  ],
+  "no_compilation": true,
+  "no_runtime_tests": true,
+  "no_final_gates": true
+}

@@ -1,0 +1,140 @@
+{
+  "execution_id": "C-R16-01-20260928-E01",
+  "candidate": "1681233b222731397c9631178eadeed4fcdf1ad8",
+  "no_man_code_tree": "fd1d41de9e785a6d460a5eebbfd49c05c9291ee0",
+  "rust_tree": "83d938b89b07874a52508503919f77ea2c2fd1b8",
+  "utc": "2026-09-28T14:21:45.8376623Z",
+  "pairs": [
+    {
+      "name": "candidate-receipt.json",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/candidate-receipt.json",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/candidate-receipt.json",
+      "length": 1419,
+      "original_sha256": "6E8BE2CD23906700A612BAC4A35F9092AC4495E58E9DFE2013EC4AB878F48B32",
+      "published_sha256": "6E8BE2CD23906700A612BAC4A35F9092AC4495E58E9DFE2013EC4AB878F48B32",
+      "equal": true
+    },
+    {
+      "name": "command-index.json",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/command-index.json",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/command-index.json",
+      "length": 1508,
+      "original_sha256": "75433AAC5F792A680104780CF268C3D57BE9A07989F6533FB72955464BED4306",
+      "published_sha256": "75433AAC5F792A680104780CF268C3D57BE9A07989F6533FB72955464BED4306",
+      "equal": true
+    },
+    {
+      "name": "diff-check3.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/diff-check3.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/diff-check3.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "diff-check4.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/diff-check4.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/diff-check4.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "rustfmt-check3.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/rustfmt-check3.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/rustfmt-check3.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "rustfmt-check4.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/rustfmt-check4.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/rustfmt-check4.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "rustfmt-write.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/rustfmt-write.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/rustfmt-write.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "rustfmt-write2.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/rustfmt-write2.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/rustfmt-write2.log",
+      "length": 44,
+      "original_sha256": "532215524D9859757B040ECC0AD484CAA6BD38F14E97F5316C2A87D52A8A157B",
+      "published_sha256": "532215524D9859757B040ECC0AD484CAA6BD38F14E97F5316C2A87D52A8A157B",
+      "equal": true
+    },
+    {
+      "name": "rustfmt-write3.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/rustfmt-write3.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/rustfmt-write3.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "rustfmt-write4.log",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/rustfmt-write4.log",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/rustfmt-write4.log",
+      "length": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "equal": true
+    },
+    {
+      "name": "static-meta3.json",
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-static/static-meta3.json",
+      "published": "niuma/员工C/提交报告/第十六轮/NEXT-15证据/0.1/static-meta3.json",
+      "length": 802,
+      "original_sha256": "AEB6E1FFA9199AE8E3E47F9D72DA5900C67B21D444ADE2126ADC846AD16B1934",
+      "published_sha256": "AEB6E1FFA9199AE8E3E47F9D72DA5900C67B21D444ADE2126ADC846AD16B1934",
+      "equal": true
+    }
+  ],
+  "sources": [
+    {
+      "path": "NoManCode/rust-app/src/main.rs",
+      "sha256": "9A5EE18AED33A8C3FE7A842D8AF02BA12F4A42B780274B9AB418D6744491E5B0"
+    },
+    {
+      "path": "NoManCode/rust-app/src/cli.rs",
+      "sha256": "91AAE58829B3B021FBC90F486ED1FF6102AFC77E00B9723022E4C61CD41E0156"
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "sha256": "BD450F6DBCB6EC2BABBA8739319FF5EE50B04FA51B46DD32DF0B474720F08BC4"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_http.rs",
+      "sha256": "654654D423D95E015242AADFD8E60F32459AAD7A855977BFA37D910E25856752"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_cli.rs",
+      "sha256": "33B02CD533D51DBE440AAF5533A39F080F0CA422DCA164F56CFAC543B9490158"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_initialization_workflow.rs",
+      "sha256": "BE38211023300F812047686711178CE5CC67DB4BFF9718B4D1BE229B6C10F0B8"
+    },
+    {
+      "path": "NoManCode/docs/cli-first-release-acceptance.md",
+      "sha256": "743D82757F6A8FB1D758A125B6929556234EEA60AE8F691E33E959DB84952A81"
+    }
+  ],
+  "runtime_tests": "not executed",
+  "final_gates": "not authorized; not executed"
+}
