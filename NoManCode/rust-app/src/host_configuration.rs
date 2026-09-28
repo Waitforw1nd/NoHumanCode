@@ -543,6 +543,7 @@ pub(crate) fn save_configuration_tx(
     db: &Connection,
     settings: Option<&Settings>,
     keys: &HashMap<String, String>,
+    refresh_network: bool,
 ) -> AnyResult<bool> {
     verify_persisted_rows(db)?;
     let revision = revision_tx(db)?;
@@ -570,7 +571,9 @@ pub(crate) fn save_configuration_tx(
     if !settings_changed && sealed.is_empty() {
         // Environment credentials can change without a Host revision. Preserve
         // the legacy save path's binding recheck even for a local no-op.
-        crate::network_authorization::refresh_configuration_subjects_tx(db)?;
+        if refresh_network {
+            crate::network_authorization::refresh_configuration_subjects_tx(db)?;
+        }
         return Ok(false);
     }
     let next = revision
@@ -583,7 +586,9 @@ pub(crate) fn save_configuration_tx(
     for (id, blob) in sealed {
         db.execute("INSERT INTO secrets(id,value) VALUES(?1,?2) ON CONFLICT(id) DO UPDATE SET value=excluded.value", params![id,blob])?;
     }
-    crate::network_authorization::refresh_configuration_subjects_tx(db)?;
+    if refresh_network {
+        crate::network_authorization::refresh_configuration_subjects_tx(db)?;
+    }
     db.execute(
         "UPDATE host_config_state SET revision=?1 WHERE id=1",
         [next],
@@ -690,7 +695,7 @@ impl Store {
             else { settings.routes.push(route.clone()); }
             settings.validate().map_err(|_| HostConfigError::Invalid)?;
             let sealed = secrets::seal(&digest).map_err(|_| HostConfigError::Unavailable)?;
-            let changed = save_configuration_tx(&tx, Some(&settings), &keys)?;
+            let changed = save_configuration_tx(&tx, Some(&settings), &keys, true)?;
             let view = view_tx(&tx, &route)?;
             if matches!(view.credential_source, CredentialSource::Missing | CredentialSource::Unavailable) { return Err(HostConfigError::Unavailable.into()); }
             let receipt = RouteConfigReceipt { operation_id: domain::id(), route_id: route_id.to_owned(), revision: revision_tx(&tx)?, route: view, changed, committed_at: domain::now() };

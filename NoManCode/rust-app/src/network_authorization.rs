@@ -1151,7 +1151,7 @@ impl Store {
         settings.validate()?;
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        crate::host_configuration::save_configuration_tx(&tx, Some(settings), keys)?;
+        crate::host_configuration::save_configuration_tx(&tx, Some(settings), keys, true)?;
         tx.commit()?;
         Ok(())
     }

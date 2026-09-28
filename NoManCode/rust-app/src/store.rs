@@ -339,7 +339,14 @@ impl Store {
     pub fn save_settings(&self, value: &Settings) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        crate::host_configuration::save_configuration_tx(&tx, Some(value), &Default::default())?;
+        // Keep the low-level writer's deferred network binding check. The Host
+        // CAS revision still changes atomically with the persisted settings.
+        crate::host_configuration::save_configuration_tx(
+            &tx,
+            Some(value),
+            &Default::default(),
+            false,
+        )?;
         tx.commit()?;
         Ok(())
     }
@@ -350,6 +357,7 @@ impl Store {
             &tx,
             None,
             &std::collections::HashMap::from([(id.to_owned(), secret.to_owned())]),
+            false,
         )?;
         tx.commit()?;
         Ok(())

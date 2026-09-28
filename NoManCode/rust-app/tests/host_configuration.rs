@@ -1052,7 +1052,9 @@ fn stored_request_contains_only_sealed_digest_and_public_receipt() {
         )
         .unwrap();
     assert_ne!(sealed.len(), 32);
-    assert_eq!(peachsh::secrets::open(&sealed).unwrap().len(), 32);
+    let request_digest = peachsh::secrets::open(&sealed).unwrap();
+    assert_eq!(request_digest.len(), 32);
+    let digest_hex: String = request_digest.iter().map(|b| format!("{b:02x}")).collect();
     let output = serde_json::to_string(&result).unwrap();
     for text in [&receipt, &output] {
         assert!(!text.contains("fixture-value-n15"));
@@ -1064,6 +1066,12 @@ fn stored_request_contains_only_sealed_digest_and_public_receipt() {
     drop(store);
     for suffix in ["host.db", "host.db-wal"] {
         if let Ok(bytes) = std::fs::read(dir.path().join(suffix)) {
+            assert!(!bytes.windows(32).any(|w| w == request_digest));
+            assert!(
+                !bytes
+                    .windows(digest_hex.len())
+                    .any(|w| w == digest_hex.as_bytes())
+            );
             assert!(
                 !bytes
                     .windows(b"fixture-value-n15".len())
