@@ -1,0 +1,251 @@
+{
+  "utc": "2026-09-28T16:39:34.7890341Z",
+  "candidate": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "manifest_sha256": "81B6B7A5858B0FD7B00D9FBCD9F31608E6B8C1518F6253A96AEBB57EFA66ADF6",
+  "pair_count": 39,
+  "pairs": [
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/archive-observations.json",
+      "published": "next15-final-attempt2/archive-observations.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/check-after-source-hashes.json",
+      "published": "next15-final-attempt2/check-after-source-hashes.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/check-before-source-hashes.json",
+      "published": "next15-final-attempt2/check-before-source-hashes.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/check.log",
+      "published": "next15-final-attempt2/check.log",
+      "transform": "path representations only; original bytes preserved",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/freeze-receipt.json",
+      "published": "next15-final-attempt2/freeze-receipt.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/integration-freeze-receipt.json",
+      "published": "next15-final-attempt2/integration-freeze-receipt.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/meta.json",
+      "published": "next15-final-attempt2/meta.json",
+      "transform": "path representations only; original bytes preserved",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/process-observation.json",
+      "published": "next15-final-attempt2/process-observation.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/publication-observations.json",
+      "published": "next15-final-attempt2/publication-observations.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/s06-readonly-notes.json",
+      "published": "next15-final-attempt2/s06-readonly-notes.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/suite-summary-corrected.json",
+      "published": "next15-final-attempt2/suite-summary-corrected.json",
+      "transform": "path representations only; original bytes preserved",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/suite-summary.json",
+      "published": "next15-final-attempt2/suite-summary.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/test-after-source-hashes.json",
+      "published": "next15-final-attempt2/test-after-source-hashes.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/test-before-source-hashes.json",
+      "published": "next15-final-attempt2/test-before-source-hashes.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/test.log",
+      "published": "next15-final-attempt2/test.log",
+      "transform": "path representations only; original bytes preserved",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixture-inventory.json",
+      "published": "next15-final-attempt2/w08-fixture-inventory.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixture-snapshot.json",
+      "published": "next15-final-attempt2/w08-fixture-snapshot.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-lifecycle-summary.json",
+      "published": "next15-final-attempt2/w08-lifecycle-summary.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-final-gates-attempt2.ps1",
+      "published": "drivers/next15-final-gates-attempt2.ps1",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-attempt2-summary.ps1",
+      "published": "drivers/next15-attempt2-summary.ps1",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/next15-attempt2-before.json",
+      "published": "drivers/next15-attempt2-before.json",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/registered/child-registered.log",
+      "published": "w08/registered/child-registered.log",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/registered/child-restart.log",
+      "published": "w08/registered/child-restart.log",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/registered/lifecycle.jsonl",
+      "published": "w08/registered/lifecycle.jsonl",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/registered/listen-registered",
+      "published": "w08/registered/listen-registered",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/registered/listen-restart",
+      "published": "w08/registered/listen-restart",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/registered/ready",
+      "published": "w08/registered/ready",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/created/child-created.log",
+      "published": "w08/created/child-created.log",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/created/child-restart.log",
+      "published": "w08/created/child-restart.log",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/created/lifecycle.jsonl",
+      "published": "w08/created/lifecycle.jsonl",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/created/listen-created",
+      "published": "w08/created/listen-created",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/created/listen-restart",
+      "published": "w08/created/listen-restart",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/created/ready",
+      "published": "w08/created/ready",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/claim/child-claim.log",
+      "published": "w08/claim/child-claim.log",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/claim/child-restart.log",
+      "published": "w08/claim/child-restart.log",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/claim/lifecycle.jsonl",
+      "published": "w08/claim/lifecycle.jsonl",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/claim/listen-claim",
+      "published": "w08/claim/listen-claim",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/claim/listen-restart",
+      "published": "w08/claim/listen-restart",
+      "transform": "verbatim",
+      "verified": true
+    },
+    {
+      "original": "../nhc-c-host-setup-cli/.local/logs/next15-final-attempt2/w08-fixtures/claim/ready",
+      "published": "w08/claim/ready",
+      "transform": "verbatim",
+      "verified": true
+    }
+  ],
+  "fixture_audit": "niuma/项目经理/审查记录/2026-09-29NEXT-15第二轮门禁与W08现场核验.json",
+  "scope": "Evidence review only; attempt2 failed S06; not acceptance",
+  "snapshot_files_verified": 124,
+  "exact_path_only_transform_verified": [
+    "next15-final-attempt2/check.log",
+    "next15-final-attempt2/meta.json",
+    "next15-final-attempt2/suite-summary-corrected.json",
+    "next15-final-attempt2/test.log"
+  ]
+}

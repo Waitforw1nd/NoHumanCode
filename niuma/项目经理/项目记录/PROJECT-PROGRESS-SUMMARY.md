@@ -1,3 +1,15 @@
+## 2026-09-29 S06补充06已合后本人核收，第二轮原件核验完成
+
+经理已核C/D双方本人持续冻结及实际状态并完成C→D普通整合：D合后a510e548f3947eb8e8b6a7b6065e0ad38462f553，NoManCode f8700cfc0c5890912dacdc94f2b661eae2dc04e6 / Rust 9fe47da3d89637f08ae436bead69817fab4d26bb。D本人00:32:38北京时间实核三SHA、原分支及source/status/index/unmerged空，已真实接收补充06；仅command_execution.rs授权test-only静态修补，no-build保持，固定候选后限定组件另放行。C/B继续冻结。
+
+经理只读核attempt2四份源码清单一致，154源文件绑定；W08三停点原124文件及独立124文件副本全部hash/长度一致，原JSONL每组22事件、共6个distinct child成功kill并reaped；drop_reaped不重复计数。C0.7共39对原始/发布hash和长度通过（35原样/4路径表示转换；转换正文另核）。审计工具Get-Item对隐藏.git需Force，已重核真实文件，无原件丢失；汇总计数的PowerShell字典投影空值已修正并回读。此为经理证据核验，不是新产品测试或完整验收。attempt2仍check0/test101、lib236/1/0，S06原失败根因未定，后三门禁未执行，main产品仍NEXT14。
+
+下一第一操作：审D最小静态候选并对准确SHA放行必要组件；核C0.7全文与转换，归档失败review；双方当前本人冻结后D→C，C本人核收后从check完整重启五门禁。目标active直至全套通过、main整合及三人结项，完整阶段一未完成，不派NEXT16。
+## 2026-09-29 attempt2止于S06，按D原所有权继续定位（最新）
+
+C在4c9c1d8最终attempt2的check0、test101，lib236/1/0；W08本次通过且保留新现场。唯一首失败command_execution::tests::s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown报direct command pid43204 remains；原断言仅外部pwsh裸PID查询，缺注入子场景/原出生身份/查询具体退出码，现不能断言泄漏或PID复用。后三门禁未执行，原超时和本失败均保留。
+
+经理按历史D所有权冻结补充06，仅command_execution.rs测试与必要cfg(test)只读原child探针；生产回收/时限/并发不授权改动，不裸PID杀进程。先收C/D当前本人持续冻结，经理C→D完整4c组合，D核收后只读定位/精确最小身份核验修补，限定组件另放行；再D→C/C核收/五门禁从check重启。下一第一操作：核双方回执与真实Git并完成受控依赖整合，审D根因和最小变更。main未合NEXT15、目标active，完整阶段一未完成。
 ## 2026-09-29 4c9c1d8完整静态交付已核，五门禁准确重放行（最新）
 
 C报告0.6及22对证据已经理完整审/独立hash核，实际HEAD4c9c1d8bca17de4e83e50c7893806cd351031463 / NoManCode f8700cfc0c5890912dacdc94f2b661eae2dc04e6 / Rust 9fe47da3d89637f08ae436bead69817fab4d26bb，本人持续clean/no-build和实际状态均核。review0.6仅静态APPROVED，纠正review0.5旧stderr防护表述。旧d2精确授权已暂停且未执行。

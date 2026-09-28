@@ -1,0 +1,1298 @@
+{
+  "utc": "2026-09-28T16:38:51.2371249Z",
+  "role": "Manager read-only evidence audit, no product tests",
+  "candidate": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "source_count": 154,
+  "source_files": [
+    {
+      "path": "NoManCode/AGENTS.md",
+      "sha256": "50290C76EC3FDBEE4343B2A61D12BEB0D79B69C0275C16EB8E09AE8578626B1B",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/README.md",
+      "sha256": "1CE67793C9F448C87FE1E11A72A379DE55B1E1A4DDC4286E8EA23FDF456855D8",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/apply-overrides.ps1",
+      "sha256": "804BCFF65D2A14D9FD2239F4A06CDC722FD8F81D65965AF253301A613D5CE159",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/config/README.md",
+      "sha256": "C90864ADDA6B984EA43199AFE82D67CB1418E42B7CD5F8724ADA986121BEC48F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/config/peachsh.providers.yaml",
+      "sha256": "3CDAA8A63CA1A38261BEE673246DB238D6D4BC0702F23FF066921BC9227CD36A",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/docs/cli-first-release-acceptance.md",
+      "sha256": "D9C3C25CC2A6A7211BAA62AF3441AF45966583CEF7F74428B2384D6D3EF89E38",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/dsh-peachsh.cmd",
+      "sha256": "BB23E12A0B4038F55514F65E5C5DCB5FF589BE19A54047A27A8F78C742FA8383",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/newapi.cmd",
+      "sha256": "BC7C3E6146C4566003DACC99CAD47F10E9ED27863A8C3744D1A53F26CAA0C4D9",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "sha256": "440BDD9F5DDA5DD3C2C0D8BCCC263FF413624C49E99F4953C2B7FFACBC2DEB65",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "sha256": "13252EB94AB75176994C693A73440CD6599F39E356A8EF956945AF3C3099C9E1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "sha256": "32D346CDE51710B21C57A7A76001EF9C1CFF4BAB406832B1AA743E0D1D9A9332",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "sha256": "FCA87AC480AC4DB4E2BBBC79855FAC23494DCB19A985BA87DD1F47F16DF208BB",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js",
+      "sha256": "736EAF3F0C035EBA3138854009CA4360FC82938E47606808031125F5BAF09D26",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "sha256": "546B2A8CB0B94D63A70A6246D196C430E44C825E4EC9CEF1644E9F41B02CD74E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "sha256": "440BDD9F5DDA5DD3C2C0D8BCCC263FF413624C49E99F4953C2B7FFACBC2DEB65",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "sha256": "13252EB94AB75176994C693A73440CD6599F39E356A8EF956945AF3C3099C9E1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "sha256": "32D346CDE51710B21C57A7A76001EF9C1CFF4BAB406832B1AA743E0D1D9A9332",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "sha256": "FCA87AC480AC4DB4E2BBBC79855FAC23494DCB19A985BA87DD1F47F16DF208BB",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "sha256": "546B2A8CB0B94D63A70A6246D196C430E44C825E4EC9CEF1644E9F41B02CD74E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/package.json",
+      "sha256": "B5598A5C9541F7C78562F82BDB0551EFF6F066239001403E80A04AA68CEC23D0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/pnpm-lock.yaml",
+      "sha256": "17C814B167307942D3609C7B9D916CEDDB85839573AB39BAA114E30EDB132A1A",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/.gitignore",
+      "sha256": "3A471A3D48F2626877780A22158A5FF15FBB1E018F902D837269934BBD51F6AA",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/ARCHITECTURE-AUDIT-DRAFT.md",
+      "sha256": "7A06DD046815F0455D956A71AF8B76C2BE7BA261578668F6E58140A59D74D9CF",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/ARCHITECTURE-REBUTTAL.md",
+      "sha256": "CF2EA59BAD06C2D0F7EC6287E67291B5E9B3448C43EB7748013877B7EE5C2FD0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/ASSESSMENT-LIVE-2026-09-20.md",
+      "sha256": "4D75FF59C5E170FA227CBDC7C9984A524D6594CCC41177BB06CB69573A23A4FB",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.lock",
+      "sha256": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.toml",
+      "sha256": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/EVALUATION-2026-09-20.md",
+      "sha256": "D59D6E4BF27BF0C128F45C940772384B42891BFA36D4D9819B22CF64CF9CE9AD",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/FRAMEWORK-DECISION-2026-09-21.md",
+      "sha256": "44F7121158F466649BE8C95D9FD61C6A4B49564DE691694F2DC7EA81D81EF50F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/FRESH-INTEGRATION-AUDIT.md",
+      "sha256": "0876FAC87A647C1DF65FA780F124E8EA6F0DC6FDDB44EF7E086DA16CA1AA15B1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md",
+      "sha256": "CDFBE02F79182454AE80F4AD4B4F7402E130670762B985C6A3FB4738FDB58374",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/ITERATION-PLAN.md",
+      "sha256": "4026D85F1A8B4ECAAC2842694CBDBE4981B06C7C28313661B5A8D7B2C163A2D5",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md",
+      "sha256": "6EDF6E803AF243707365463246813FDFFC7DBF925EC81896C1B0639AB199A8A9",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/PHASE0-NEXT-AUDIT.md",
+      "sha256": "018835E6AD89E66C48F4ECDD4D7E07F815AFDFFD3E7C4EC88A0D3A8F8A343A58",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/PI-DESKTOP-ADAPTATION-2026-09-21.md",
+      "sha256": "6B4A47F9080DCC8723258F173DEFCEA463049AF27E315755FD8B2C85FB140EF1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/PRODUCT-GAP-AUDIT-2026-09-20.md",
+      "sha256": "CB66C33CAD36AE801F84953048E5338C7713433FCAEAC85AE0E25972EB38F58A",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/PROJECT-REORGANIZATION-2026-09-21.md",
+      "sha256": "2E02EB1264953BD233F0A893E6853DCBEA6468C4BCE7E2BE7078EFFEF069AAA7",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/PROTOCOL-MIGRATION-TEST-PLAN.md",
+      "sha256": "962B7DA95B2D9F3C019032351E143AD9FCA2E8A7BEE9CA48CE273EA31CC535BC",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/README.md",
+      "sha256": "B71F356B1EF57D87062063B142E4C039B094E77FDB85B75D77FAEA187AC01C87",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/VALIDATION.md",
+      "sha256": "14D3165E320A6A525B07E816F4ADD1DA434CF18207928AFB652C01AFF60F090F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/adversarial.log",
+      "sha256": "7F023A7F9B27FFF44EEE130C3F4C7A8C836FA50606D39F55680CA7701CBFC664",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/baseline.log",
+      "sha256": "AB4C1A4D28A5BAF7E540E5136C74228F88DC3EE4630F6282C3C43B8BD2EF2EF1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/http-results.json",
+      "sha256": "6A900AF74579834A78459C831D5B0F13E7D109BEDCE2A95F9FB92E9F0E89BDEC",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/live-evidence.json",
+      "sha256": "EE3B033B1B82AC170FABA3C665FA31A6389DD0117C89439BF8913EEB798B1546",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/recovery.json",
+      "sha256": "D40213E64322CF60644D1E5B0822E099E657C2C6EE5E6F8369E5B18AB9980648",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/build.ps1",
+      "sha256": "48CBBF0BBA93E23DE117647E54E0E74BA9777AA0AFD081AE15A834E9E01F7ECD",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+      "sha256": "C08CAAF927C6AAC2617FDA42782247C789CBBEED17C3E0266D2F3D5E658EB9C0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/src/lib.rs",
+      "sha256": "7E94BA099F0AB9E87E122CD273C6A9A81B3ADACE874FA3BA1ED2305FDEC3F52B",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+      "sha256": "A711032CB89732C3642F968415953BBEE07B81FCEB7AE5E57CE324E0BEB67EE0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/README.md",
+      "sha256": "828F48AAB6D2CE8266631A0AE1C84AE24CD2AA07E68D24E44D349AE0F2061CDB",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/src/lib.rs",
+      "sha256": "9E6A41743AB03FF7B0B61DD8B29F735461BE371E1A68DAFEAD6AD5758A5F82E9",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/examples/wasm-echo/README.md",
+      "sha256": "44339D7A19C6C750DBB5F2AAF6F5EC8BFE04DCFA04676C1A659ED6349F71F50C",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/rust-toolchain.toml",
+      "sha256": "E8E5900C9696B384BF21A5582D895B5FED111261187E15A4D3A56F61A6CFD34E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/approval.rs",
+      "sha256": "046FC5E50E2C37F70CE6CF974EB706FFAB0721DF000315AD85D73C0A43FDF11D",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/budget.rs",
+      "sha256": "293FD0A0FFA8EA054C9895C117D00460C0265E6466029A33433C9454C7317433",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/checkpoint.rs",
+      "sha256": "C8C3B288A7200A78D578EA8D2A793A53FECE929B8826D98DFF5E97FCB18374D2",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/cli.rs",
+      "sha256": "91AAE58829B3B021FBC90F486ED1FF6102AFC77E00B9723022E4C61CD41E0156",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/command_execution.rs",
+      "sha256": "BD955D0169191FC3791998F92E2EA5C907F29899DAD2EF755C75A19D108B2E11",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/credential_input.rs",
+      "sha256": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/domain.rs",
+      "sha256": "18C7CFCA8D9E7E462F5BBD192B3FB16548F95A4117C240DB9722240CD7E422CF",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "sha256": "ED8A9DEB722E5BC83BAAFB3F9597FA9B5D5F217D1E8FC7B105DF6BAE788585CF",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/git_diff.rs",
+      "sha256": "DB5BD32F9B6A391E203587B55BBD4AE80245A29F8AC7DDBEEA1944208A109651",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/git_worktree.rs",
+      "sha256": "0F1966231C5DA968E69ACB97E9531FFA29B9D5B05BA45D787E52E4C45EF5B48E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/host_configuration.rs",
+      "sha256": "0409A92F98C08B013899D70A4C16A746268868515E7D0C814E4346EC155619D6",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/host_configuration_crash_tests.rs",
+      "sha256": "EAD2CE7AE36002C67E8AD8A6854C5635C9ABC0E51E02A8BC9431F50848C25601",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "sha256": "C17D24BFF15AB16F1D07ECBB5C9538915D9FEE1622E2CA33C7B8C7B31D9B9588",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/main.rs",
+      "sha256": "9A5EE18AED33A8C3FE7A842D8AF02BA12F4A42B780274B9AB418D6744491E5B0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/network_authorization.rs",
+      "sha256": "7FFF46F6C7295624B6C59E19067EA7EF4880FC8EB620D4009D2ED39A879DB7E2",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_catalog.rs",
+      "sha256": "1676D308AC41228642EE4C0DDA550B468FE78E050B68CF72E6209CD79FBB1482",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_host.rs",
+      "sha256": "1051EDDCA4FAE92C314C3DA86E27C1344B9B0B2518DFAC4B3F31BE657DAB7883",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_management.rs",
+      "sha256": "E624E5E1749BFA970FA924C6CF3B939F5DD3E7DD15262672224ECEBD63D7B599",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/project_config.rs",
+      "sha256": "4E372F5157A399F6C673FC093E158E0130D17CD6C89226972BDEE2AEF4522A02",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider.rs",
+      "sha256": "753398FA9567CB7E8C85048EF75A536DD6A97E4B412104AFC7B0C9DD53862351",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_transport.rs",
+      "sha256": "3F6041C5D11F84ED90436D3A7440055A0513ED9E900DC98AF439869E15971F27",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_usage.rs",
+      "sha256": "64D6EE74EE5D533D907DCE6E43DCAD188E6580AE028166D8FB91F8C5A1FCA02E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/repository.rs",
+      "sha256": "2878B177FC278BE402AD35233174AFF1E07DA97A92615E4B4F4210279A7D1200",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/restore_http_tests.rs",
+      "sha256": "6393352F193A71739E3443DA0EA589B2067AD98BADD64AE6C91ADEB71A21F823",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/secrets.rs",
+      "sha256": "218A18756159849D76DB2F8A6CD0A5A98B9EEC718506D558AD810BB96AF514F4",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "sha256": "DCE96D03D00E6960D36BE3C7085FC456C60163C1991B390668C787C2E1565AB5",
+      "binding": "new raw Git blob verified"
+    },
+    {
+      "path": "NoManCode/rust-app/src/store.rs",
+      "sha256": "495F7E1F5EC04A637ED9EB6E884E0F7DB47656D53A9DDCE42887BAC5BCCB5E53",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_runtime.rs",
+      "sha256": "49EB2477434B792439D2FE94427BFA0C958630EF793BE596DA1C99C7AB29B9D4",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/wasm.rs",
+      "sha256": "580C183567A74FB526B3789C587D2340997C9D89F3723B6C5AA5A82B9FD7814C",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace.rs",
+      "sha256": "EDA646C9E2EE126EAC08E99328C0D182762B629E102772F350BA09BA227650FD",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace_changes.rs",
+      "sha256": "B4DF86AEABF7562556A6B030880114B8754BDA7B4474902480D79C8576E5CD1F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace_identity.rs",
+      "sha256": "C4EC520EB00EE668E0FD8F77AE595F307F5679A863B24A56C48FDA2FEE21E6E6",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/src/worktree_management.rs",
+      "sha256": "81029C06E5DB5F6A59D34BB2A8FB7B4913E2B55420A1D45B990984A594372038",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_gate.rs",
+      "sha256": "D0169C7D5432A7DB630B3B676398F49EC665932D7D1E78EBAC5D6875501CAD1E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_http.rs",
+      "sha256": "E67911EE3B38C9072D306F1846C28B594B49B877DFAEE6AD9B742FA2944A9056",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment-fixture.mjs",
+      "sha256": "B4B84C47EC71B89D37F1D947B3BAFA161241D827C09B8B657AACB70360EEE1EF",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment-http.mjs",
+      "sha256": "46DD5A0BB47665E0F90B649FCD9B692AF765F465657FF235FC12AC5921679126",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment_adversarial.rs",
+      "sha256": "BB94C1062ADC3D5BD2C674C506797706C65039E67DCFF358081F7E58B1ACE785",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/budget.rs",
+      "sha256": "1DC817D0DD6EAF5F743E4811004A0AC08248C80ACAC9AEA6D973D32D3A20467A",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/budget_cli.rs",
+      "sha256": "B4676E068A2310390DB4A31DA50079387B0A4BC2C4F1C8DEB796619BF7BB5224",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/budget_http.rs",
+      "sha256": "5E075ED75DF19CFA273B39BF9ED4B3D096924D1E75773B7F3046F7BC11D445B4",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/checkpoint.rs",
+      "sha256": "0F41925E6B8CBD01B454B9042A72A45E36808943FAF00138258DA0C66694C50B",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/checkpoint_http.rs",
+      "sha256": "0E577556B03E393C41F043E5D7B58313341F714A1DFE8B072DEC59264ED41EAA",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/cli.rs",
+      "sha256": "D8076CEAD9AA6373A2784B61BBD9A4FE6C49F2C2E742425A84AC5759BAB915BC",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/cli_workflow.rs",
+      "sha256": "EAF2BDAA859C2A3771244A21C1CA869896DAB2A101B9BAA67EDB429831624E9D",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/final_acceptance.rs",
+      "sha256": "BAA509F57DAC469E974EC763D39D87849D085AB06A82DC00BA60A6B56482C834",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/git_diff.rs",
+      "sha256": "FAB79980B0CACE34E481B7E9891260C0EF6B13C1FE449CDDC7DAA4CCC9D4C6DE",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration.rs",
+      "sha256": "D181CAFE36E8672A33570FB4C6A019AB2E0CD4B65A5D72F3F3205607FD466AFC",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_cli.rs",
+      "sha256": "33B02CD533D51DBE440AAF5533A39F080F0CA422DCA164F56CFAC543B9490158",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_http.rs",
+      "sha256": "654654D423D95E015242AADFD8E60F32459AAD7A855977BFA37D910E25856752",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_schema.rs",
+      "sha256": "8E8526FD10446734AB2E07D19DB4AE31ADB42AA23D4BB42B7ADDB1644084D2D0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_security.rs",
+      "sha256": "0DDC41225FB25F260E59267501EDC63F1479FD3FF8103A2DA3C690A432E2EA35",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_initialization_workflow.rs",
+      "sha256": "6CCB7665B5CE6B7727C4DE517AE38A0A299EF2273CE217FCC721E62B8B6E852C",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "sha256": "06E8915AB4F8F16DD9A475F52F8A4FA1F2096E045BB65DF2E89DC71BD88983B8",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/live.rs",
+      "sha256": "46FF3142B66838BF0E6B177B9EB47EEB447D66C6E5EBE2032EE580CFE62264B3",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_authorization.rs",
+      "sha256": "10E753295EC3B2486248DA20E4AFF9195BB201535DA1D3ECFD679D05203BD57F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_cli.rs",
+      "sha256": "7862362CD37498F91ABFED2B7B0FACD5B12D1576BE3B9492F43A13033904CE9C",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_http.rs",
+      "sha256": "8877507FDBA8674828FA6E67D1A7658C04B933CDB3B63EBEAB6F2D0306C8F5D1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_catalog.rs",
+      "sha256": "2367FFECEC26C35036B971D7AC4A1DC89E33764C4EC4ECB44A4998F125F4D250",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_cli.rs",
+      "sha256": "39D2C71DC46F020DEDF0063F45A843B5D8E06A2D1332A502B1C7B3E323CCC30D",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_host.rs",
+      "sha256": "14B859876E05B33DDBE6C54BEC1650ED46369BFBEFDD89F054A0CDFC5D47DFC1",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_http.rs",
+      "sha256": "47EFA995DA5B97051B65D0737C54E9A12FBD2CAEA332C2C1E738B0D7D3795E35",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_management.rs",
+      "sha256": "51934656726AFFC9AA6845C6E1CA2710082B6BB25CFE74C86FEE51A07232CA4F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project-web.mjs",
+      "sha256": "E3AA69468FA7EDBE14FDC1922308A7A675AA2E0CD085FC77D2A13B7F4BDA8D7B",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_cli.rs",
+      "sha256": "DABA16ECC313E5BB94D282785FBB352713BB9522C91308B2F45628AE31FC8A6F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_context.rs",
+      "sha256": "267249DBB6BE07B06D88B3D94D330E0BCCEE849B9D4E0D9388AEA1F4DE38F391",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_http.rs",
+      "sha256": "0C83D5235830E185D1F0B3C5DCCB67E0263B9B98E1085A874851D30C96ADDD6F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_migration.rs",
+      "sha256": "B2E6A79D96EF797227C96B34E046FECAD80FCC9624FCB9C1842B0B165FCD23FA",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/provider_network.rs",
+      "sha256": "90724944D608AF5A653B2B3F75A9BABE2073A5741B3A18618CD05D9E91CF2831",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/provider_usage.rs",
+      "sha256": "79D39F94468C2E0D0D6746EEE9C5E56567E96201E2905DB14D1ED93CFE9E7B89",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/review_cli.rs",
+      "sha256": "DB6FB4F7CC5747E55D329592BFF5A4EA9C35B0E5566990F641628C3C43CC0CBB",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/runtime.rs",
+      "sha256": "12EDEFD341A67ACE55472FA3F3B0C29C0006B0EDF2F77B500EF7DE51C5A767F8",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/session_turns.rs",
+      "sha256": "00A1A9DAC54026681787478D9F2056AE2F8E7B41FF45C4DF503A7A18DC465687",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/network_fixture.rs",
+      "sha256": "8C43C56D565C6DF0BA2EC79598CDC8A38BA2C1E9F17855050E7A6633C33B2268",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/project_fixture.rs",
+      "sha256": "359E492FF49953D4F078281F24A2B1C1D13B0597075B448CF15B91CB0D372593",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_runtime.rs",
+      "sha256": "E97F4588859E99013B8A25A1FF141674F54EDBF26CDB5C0655B63BB3360E2FA2",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_session_turns.rs",
+      "sha256": "568AC52BB8783C1AF83A89BDEE5262069F14E6720F5AA4BB2A16E4E62671CA77",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/turn_http.rs",
+      "sha256": "18B9CF6579475B3BB2622E729659DA7FDC88DCD6849C1CC32A9CBF8D3BFD3CCD",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/ui-fixture.mjs",
+      "sha256": "D7D15B9A616F01CDA6A90B2B8B46A56C3A8D1FB27C7F7958C0D7772088A40ACF",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_changes.rs",
+      "sha256": "82A1D4F3CF8FEB949D7ED2DED71AF566308BA2A320E14BF24B0663A73B987977",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_crash.rs",
+      "sha256": "F77FFF4A6FCE9AA80C74BCFB2CB7BD180C505D6F78BA93E3AB8248C7280E0469",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_http.rs",
+      "sha256": "C739F84F35E6839980238BE22A0C7E1494F1450711DCB40B12E80C9D9871FA8F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_identity.rs",
+      "sha256": "827BB7D4D62AE305D34174CB3A9410A66F1D752739DE10D15DF7A9A4F8C80875",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/worktree_cli.rs",
+      "sha256": "CAD08A55BF0869ED70B19E9E4F461A3FF442F3210B0A3DF9E81EDB04A9479F2A",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/worktree_http.rs",
+      "sha256": "EDC5F6B20DC22A3564A6B4A990DB4761BAD1F1C9BD4727E7512345235C01439F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/web/app.js",
+      "sha256": "6C26F05BDB6FF1EE90B8B6A620F402F83A6F932A1CAE94689436F83288439A1F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/web/index.html",
+      "sha256": "F472C95B381315A75AEB903FC4CFE3B01719D4AEE32533C8FDBFABE58B82A14E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/rust-app/web/style.css",
+      "sha256": "EEFFCF62A860E6F6972C566B8047CF8582F85CC423567B989D23E8068010E466",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/set-peachsh-key.ps1",
+      "sha256": "9B91F2385A66AB2A53E46F0B17E3F247615EDBA34FA5CE7E878103EA013BD911",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/start-peachsh-legacy.cmd",
+      "sha256": "BA6F0D5CF675CFDA25BB8599E72C9FCC04F8955DC2E817FC14D2C51AF4D24EAB",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/start-peachsh.cmd",
+      "sha256": "030D320E403E5C792F9EC31FC2F541E98975D968EB079B6AD6B860E197787AFE",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/README.md",
+      "sha256": "61E9DC56B93ACC81FD103265238B6B1EAA38D45D43AE2D2912F2E60C22EF828F",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/discover-peachsh-models.mjs",
+      "sha256": "5E2A0245E3B0B2AC2A63A315E8CF69445A1C48810E168DB9EA19ABC6089439F0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/dump-config.txt",
+      "sha256": "59E1E658F3291D9FFCAC4E9AA8847D216531E0D74A0C8875AAD15BE4C030E262",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-newapi-balance.mjs",
+      "sha256": "14BC6B1910613C73407EBF90059528612F89FFC84D925088E3467C2F0F28040E",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-openai-parallel.mjs",
+      "sha256": "67EC7B4AAF494B47D8B9094383C15382237635FF6AC03B9EAA108848D6DC405D",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-skill-discovery.mjs",
+      "sha256": "E79D89AE58E4BB810E32A6390C989E920454212FEC173CD6BC0BD176EF035BF2",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-team-membership-guard.mjs",
+      "sha256": "E804F22AF4AB0030463038FB63B7BA841FB40F09061671B3F50DDC032BE9D3B2",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-team-model-routing.mjs",
+      "sha256": "A754C307D6E20DD698282AEE0C37EE48B3F6BC0A5F64DB3FE66581D84675F505",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-team-swarm-routing.mjs",
+      "sha256": "A04D6043463CB96963941A61DF03916EB6AD7CCC7A75D10B1D0B5D0C4A5C6450",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    },
+    {
+      "path": "NoManCode/tests/test-xpeach-live.mjs",
+      "sha256": "9B8C0C9BBAB55000B44909485994666EE82C955C448015BDFE0B9FA2411437E0",
+      "binding": "unchanged Git blob and prior verified byte binding"
+    }
+  ],
+  "four_source_manifests_identical": true,
+  "source_manifest_sha256": "3D4F023EEF2F279ADC5B19179EF3FD2CC5DC7BE83D1F96473A4B4A9DE32EC33E",
+  "fixtures": [
+    {
+      "phase": "registered",
+      "root": ".local/tmp/.tmp95d1MS",
+      "file_count": 45,
+      "event_count": 22,
+      "lifecycle_sha256": "9EBEAB27B9D37C535CE5C602A834AE84324D5E01CCAF5B6F0B5C978AC84EF186",
+      "all_original_files_hash_and_size_verified": true,
+      "events": [
+        {
+          "at_unix_ms": 1790612890274,
+          "event": "fixture_retained",
+          "parent_pid": 48656,
+          "phase": "registered"
+        },
+        {
+          "at_unix_ms": 1790612890505,
+          "event": "spawned",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612890505,
+          "event": "wait_begin",
+          "notification": "listen-registered",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612890509,
+          "event": "child_started",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612890550,
+          "event": "notification_observed",
+          "notification": "listen-registered",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612890550,
+          "event": "wait_begin",
+          "notification": "ready",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612894923,
+          "event": "notification_observed",
+          "notification": "ready",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612894923,
+          "event": "kill_requested",
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612894923,
+          "event": "kill_result",
+          "ok": true,
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612894925,
+          "connect": false,
+          "event": "original_http_transport_error",
+          "phase": "registered",
+          "request": true,
+          "timeout": false
+        },
+        {
+          "at_unix_ms": 1790612894934,
+          "event": "reaped",
+          "exit_code": 1,
+          "phase": "registered",
+          "pid": 35088,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612894977,
+          "event": "spawned",
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612894977,
+          "event": "wait_begin",
+          "notification": "listen-restart",
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612894982,
+          "event": "child_started",
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612895023,
+          "event": "notification_observed",
+          "notification": "listen-restart",
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612896311,
+          "event": "kill_requested",
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612896311,
+          "event": "kill_result",
+          "ok": true,
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612896322,
+          "event": "reaped",
+          "exit_code": 1,
+          "phase": "restart",
+          "pid": 48652,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612896324,
+          "event": "drop_kill_result",
+          "ok": true,
+          "phase": "restart",
+          "pid": 48652
+        },
+        {
+          "at_unix_ms": 1790612896324,
+          "event": "drop_reaped",
+          "exit_code": 1,
+          "phase": "restart",
+          "pid": 48652,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612896324,
+          "event": "drop_kill_result",
+          "ok": true,
+          "phase": "registered",
+          "pid": 35088
+        },
+        {
+          "at_unix_ms": 1790612896325,
+          "event": "drop_reaped",
+          "exit_code": 1,
+          "phase": "registered",
+          "pid": 35088,
+          "success": false
+        }
+      ]
+    },
+    {
+      "phase": "created",
+      "root": ".local/tmp/.tmpM1HRzo",
+      "file_count": 45,
+      "event_count": 22,
+      "lifecycle_sha256": "4430204ED3E8CA0D3F114B46551F6F62790C768853813741BCF865ECDA3D9568",
+      "all_original_files_hash_and_size_verified": true,
+      "events": [
+        {
+          "at_unix_ms": 1790612881979,
+          "event": "fixture_retained",
+          "parent_pid": 48656,
+          "phase": "created"
+        },
+        {
+          "at_unix_ms": 1790612882374,
+          "event": "spawned",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612882374,
+          "event": "wait_begin",
+          "notification": "listen-created",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612882393,
+          "event": "child_started",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612882467,
+          "event": "notification_observed",
+          "notification": "listen-created",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612882467,
+          "event": "wait_begin",
+          "notification": "ready",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612888549,
+          "event": "notification_observed",
+          "notification": "ready",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612888550,
+          "event": "kill_requested",
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612888557,
+          "event": "kill_result",
+          "ok": true,
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612888558,
+          "connect": false,
+          "event": "original_http_transport_error",
+          "phase": "created",
+          "request": true,
+          "timeout": false
+        },
+        {
+          "at_unix_ms": 1790612888568,
+          "event": "reaped",
+          "exit_code": 1,
+          "phase": "created",
+          "pid": 36976,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612888619,
+          "event": "spawned",
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612888619,
+          "event": "wait_begin",
+          "notification": "listen-restart",
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612888623,
+          "event": "child_started",
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612888666,
+          "event": "notification_observed",
+          "notification": "listen-restart",
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612890250,
+          "event": "kill_requested",
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612890251,
+          "event": "kill_result",
+          "ok": true,
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612890261,
+          "event": "reaped",
+          "exit_code": 1,
+          "phase": "restart",
+          "pid": 14744,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612890273,
+          "event": "drop_kill_result",
+          "ok": true,
+          "phase": "restart",
+          "pid": 14744
+        },
+        {
+          "at_unix_ms": 1790612890273,
+          "event": "drop_reaped",
+          "exit_code": 1,
+          "phase": "restart",
+          "pid": 14744,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612890273,
+          "event": "drop_kill_result",
+          "ok": true,
+          "phase": "created",
+          "pid": 36976
+        },
+        {
+          "at_unix_ms": 1790612890274,
+          "event": "drop_reaped",
+          "exit_code": 1,
+          "phase": "created",
+          "pid": 36976,
+          "success": false
+        }
+      ]
+    },
+    {
+      "phase": "claim",
+      "root": ".local/tmp/.tmpNPzAma",
+      "file_count": 34,
+      "event_count": 22,
+      "lifecycle_sha256": "D02F883478AB2BB496B5E8548780CBFA86934290002F6C28C953E94A693CB434",
+      "all_original_files_hash_and_size_verified": true,
+      "events": [
+        {
+          "at_unix_ms": 1790612877869,
+          "event": "fixture_retained",
+          "parent_pid": 48656,
+          "phase": "claim"
+        },
+        {
+          "at_unix_ms": 1790612878383,
+          "event": "spawned",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612878384,
+          "event": "wait_begin",
+          "notification": "listen-claim",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612878398,
+          "event": "child_started",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612878467,
+          "event": "notification_observed",
+          "notification": "listen-claim",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612878467,
+          "event": "wait_begin",
+          "notification": "ready",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612881030,
+          "event": "notification_observed",
+          "notification": "ready",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612881031,
+          "event": "kill_requested",
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612881031,
+          "event": "kill_result",
+          "ok": true,
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612881034,
+          "connect": false,
+          "event": "original_http_transport_error",
+          "phase": "claim",
+          "request": true,
+          "timeout": false
+        },
+        {
+          "at_unix_ms": 1790612881042,
+          "event": "reaped",
+          "exit_code": 1,
+          "phase": "claim",
+          "pid": 34956,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612881131,
+          "event": "spawned",
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881131,
+          "event": "wait_begin",
+          "notification": "listen-restart",
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881137,
+          "event": "child_started",
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881202,
+          "event": "notification_observed",
+          "notification": "listen-restart",
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881963,
+          "event": "kill_requested",
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881964,
+          "event": "kill_result",
+          "ok": true,
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881974,
+          "event": "reaped",
+          "exit_code": 1,
+          "phase": "restart",
+          "pid": 39732,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612881977,
+          "event": "drop_kill_result",
+          "ok": true,
+          "phase": "restart",
+          "pid": 39732
+        },
+        {
+          "at_unix_ms": 1790612881978,
+          "event": "drop_reaped",
+          "exit_code": 1,
+          "phase": "restart",
+          "pid": 39732,
+          "success": false
+        },
+        {
+          "at_unix_ms": 1790612881978,
+          "event": "drop_kill_result",
+          "ok": true,
+          "phase": "claim",
+          "pid": 34956
+        },
+        {
+          "at_unix_ms": 1790612881978,
+          "event": "drop_reaped",
+          "exit_code": 1,
+          "phase": "claim",
+          "pid": 34956,
+          "success": false
+        }
+      ]
+    }
+  ],
+  "fixture_files": 124,
+  "gates": [
+    {
+      "action": "check",
+      "exit_code": 0,
+      "start_utc": "2026-09-28T16:26:24.7982697Z",
+      "end_utc": "2026-09-28T16:26:32.5678857Z"
+    },
+    {
+      "action": "test",
+      "exit_code": 101,
+      "start_utc": "2026-09-28T16:26:33.3609536Z",
+      "end_utc": "2026-09-28T16:28:18.633974Z"
+    }
+  ],
+  "not_executed": [
+    "fmt",
+    "clippy",
+    "wasm-check"
+  ],
+  "lib_passed": 236,
+  "lib_failed": 1,
+  "lib_ignored": 0,
+  "w08": "passed this attempt; old timeout root cause remains unknown",
+  "s06": "Original pid-query failure does not establish leak or PID reuse; subcase and query status absent",
+  "hidden_file_note": "Get-Item -Force used for hidden .git files; original hash and size verified",
+  "lifecycle_original_jsonl_verified": true,
+  "unique_child_kill_reaped_count": 6
+}
