@@ -1,0 +1,12 @@
+{
+  "started": "2026-09-27T17:51:15.9729609Z",
+  "finished": "2026-09-27T17:51:52.3680027Z",
+  "head": "c29fdc2d65b20b2fb8079182a0150c10f0892437",
+  "trees": [
+    "916f76ab4a2eb61d7bfa88c6d8ec32a394d73f31",
+    "ee77e7e605026ebb7be32543daf97d353859ca77"
+  ],
+  "exit": 0,
+  "log_hash": "CE5D32E8FD53EF31DA68848ECA05B8F503F6EC477559C3FFCC6E34864BD3E6F0",
+  "command": "cargo check --lib --locked"
+}

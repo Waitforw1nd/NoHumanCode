@@ -1,0 +1,50 @@
+[
+  {
+    "published": "证据0.1/budget-unit-01.json",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/budget-unit-01.json",
+    "original_sha256": "F0C0E9AFEB4AE3E1936D69EB71E7D4AE8A857AA2EFED879903D0780126EDB4D9",
+    "published_sha256": "F0C0E9AFEB4AE3E1936D69EB71E7D4AE8A857AA2EFED879903D0780126EDB4D9"
+  },
+  {
+    "published": "证据0.1/budget-unit-01.log",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/budget-unit-01.log",
+    "original_sha256": "8C00ED70CB5DD48C13F3EF62B3A1F6D18A5465BE57D76242B0357B3DC32A621B",
+    "published_sha256": "B3437059A37B008B8F1B2E23DA00B632C5FC12320D41E280190F4B2F75D21E6D"
+  },
+  {
+    "published": "证据0.1/budget-unit-02.json",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/budget-unit-02.json",
+    "original_sha256": "2360857FFF5D609D016C0E764C0D4AEFFBB6896FB75A7C9C2D2ED3A3CC15FF23",
+    "published_sha256": "2360857FFF5D609D016C0E764C0D4AEFFBB6896FB75A7C9C2D2ED3A3CC15FF23"
+  },
+  {
+    "published": "证据0.1/budget-unit-02.log",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/budget-unit-02.log",
+    "original_sha256": "7FCDABF76C8C0E0EB1121967F686B475721CDFD087318C9B1269D03D7A5117F3",
+    "published_sha256": "2ADAE77D897A5D7393DE606A5F022EB59CEF9CE5DFC9D7D94F7E2CA7C9B03190"
+  },
+  {
+    "published": "证据0.1/compile-01-environment.json",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/compile-01-environment.json",
+    "original_sha256": "C30C3AD709ABD5C5AE80BEC08053180FAD7618B93C693473CC0299E2F145DFF3",
+    "published_sha256": "C30C3AD709ABD5C5AE80BEC08053180FAD7618B93C693473CC0299E2F145DFF3"
+  },
+  {
+    "published": "证据0.1/compile-01-environment.log",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/compile-01-environment.log",
+    "original_sha256": "DF2143251C34F9DDD56378E14EB6645CAA0DE3AF93818AABBE9E7B1534B9CDE6",
+    "published_sha256": "DF2143251C34F9DDD56378E14EB6645CAA0DE3AF93818AABBE9E7B1534B9CDE6"
+  },
+  {
+    "published": "证据0.1/compile-02.json",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/compile-02.json",
+    "original_sha256": "BE700D2EB82FDCE026C2DD9C9CE2F097C9582B41892B389DCEC5D179C29195C0",
+    "published_sha256": "BE700D2EB82FDCE026C2DD9C9CE2F097C9582B41892B389DCEC5D179C29195C0"
+  },
+  {
+    "published": "证据0.1/compile-02.log",
+    "original": "../nhc-b-budget-ledger/.local/review-evidence/compile-02.log",
+    "original_sha256": "CE5D32E8FD53EF31DA68848ECA05B8F503F6EC477559C3FFCC6E34864BD3E6F0",
+    "published_sha256": "C30D179BB069D881403E7A99E69D7FFCBB5D715F36AD8FCD5735F192BE2F359C"
+  }
+]

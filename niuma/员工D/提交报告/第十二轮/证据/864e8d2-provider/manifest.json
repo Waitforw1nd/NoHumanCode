@@ -1,0 +1,104 @@
+{
+  "candidate": "864e8d2df28988fd8556044620c2b8e799c58c60",
+  "noman_code_tree": "ad82fc69e93bfaae63dbebff3e0c0644fc07913d",
+  "rust_tree": "e1e172002af2e5350f18b4b2dd3dc5ada3c35ae8",
+  "transformation": "Only worktree and detected toolchain absolute paths replaced by repository-relative logical paths; original files preserved. Embedded log_sha256 in metadata remains the original log hash.",
+  "files": [
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/check-attempt1.json",
+      "published": "证据/864e8d2-provider/check-attempt1.json",
+      "original_sha256": "6F58624DF4107B37744009D48ABAD9CC91DF46710A4F4BF7368ACB2A47CC2C25",
+      "published_sha256": "0EFD681428A793540140345CB1F0DE856A9DE1F958CEF9BD5ABED5CB1BB4976E",
+      "original_bytes": 1076,
+      "published_bytes": 997
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/check-attempt1.log",
+      "published": "证据/864e8d2-provider/check-attempt1.log",
+      "original_sha256": "0162C749F9DC7499BB54B83913F82B62F826158543E6A4773C528AF4FE54A72E",
+      "published_sha256": "E7A9681FF6BCF48EE056EDE6484D76275EB3CAC0D56F66456A9E3AA4F16B0291",
+      "original_bytes": 5559,
+      "published_bytes": 5549
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/clippy-attempt1.json",
+      "published": "证据/864e8d2-provider/clippy-attempt1.json",
+      "original_sha256": "4FEBBCBB5AF649D4BA3C489E1C4B0CFB371254B0212FBF5BAC1AA60BF1253A2E",
+      "published_sha256": "6E2DACB45E91CE624E2D3BE8DEE10766C5DBFCD9D95A363B41C967D4F4A083E9",
+      "original_bytes": 1114,
+      "published_bytes": 1035
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/clippy-attempt1.log",
+      "published": "证据/864e8d2-provider/clippy-attempt1.log",
+      "original_sha256": "E86DFB26B4661C65B46690EE6A2B6D67DAA222366FF13E90C8E980AA499E5AEF",
+      "published_sha256": "5BE9A01B550BDE2E367594F466423D6271F50F32D3124FABB13524AED09BA1E8",
+      "original_bytes": 424,
+      "published_bytes": 414
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/fmt-attempt1.json",
+      "published": "证据/864e8d2-provider/fmt-attempt1.json",
+      "original_sha256": "8EB971502F9085A4606C67B1C4E6FBBDC801AC59AFA4A78F44A7546D09F5B6B1",
+      "published_sha256": "31A4CC4A155C2EC6822DF614D461E958D5E1D43711A7628D0E438FD8EB6409C9",
+      "original_bytes": 1076,
+      "published_bytes": 997
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/fmt-attempt1.log",
+      "published": "证据/864e8d2-provider/fmt-attempt1.log",
+      "original_sha256": "33EA79839EE69B2E625A89E37089D91C412A29D1FDB7AAA37C13E6ACF4219D04",
+      "published_sha256": "6A22E20E5406BB18DDAF4816A27D783E9A464FBB72364156FBC000ED2AF9A7ED",
+      "original_bytes": 4017,
+      "published_bytes": 3972
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/fmt-owned-attempt1.json",
+      "published": "证据/864e8d2-provider/fmt-owned-attempt1.json",
+      "original_sha256": "2CD79C316E617C7858FC15B18657732DB3DABA204AC74C78A628F9E4DA1B5745",
+      "published_sha256": "4F8DE6588C3E7FF0D2D2976D0D81FE2EE83B5427B5FF58C587C298E11F384DFE",
+      "original_bytes": 1142,
+      "published_bytes": 1063
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/fmt-owned-attempt1.log",
+      "published": "证据/864e8d2-provider/fmt-owned-attempt1.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_bytes": 0
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/provider-attempt1.json",
+      "published": "证据/864e8d2-provider/provider-attempt1.json",
+      "original_sha256": "6754F05D577BDE7EFAAA81E9C6CA5E29500333B8E28FCD462AF72DA0BD5E4D98",
+      "published_sha256": "CDDCEA776F3D3D6DD569AD3F2C0EF8B04357EEE3EF24912D7D73A2762AE6ADF1",
+      "original_bytes": 1106,
+      "published_bytes": 1027
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/provider-attempt1.log",
+      "published": "证据/864e8d2-provider/provider-attempt1.log",
+      "original_sha256": "7FF9E4CA36FE5F6F8A36756B5597F8B97433132C6F57ACE8AF4E5A865F53F1B9",
+      "published_sha256": "BC69420317B8AB1F271159220E59D19041BCA5E384C1AB58AB39B85F7A901921",
+      "original_bytes": 1925,
+      "published_bytes": 1915
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/usage-attempt1.json",
+      "published": "证据/864e8d2-provider/usage-attempt1.json",
+      "original_sha256": "C987ED1B2CF87AACA0BE8478BF6FE20A754F523BDF7BDDAEFBB0D300C49A4561",
+      "published_sha256": "2C8C3315AA0322360CC34A01C282AF29E49DF7B83D0FBBAC2F9DEAA0BD453885",
+      "original_bytes": 1111,
+      "published_bytes": 1032
+    },
+    {
+      "original": "../nhc-d-provider-usage/.local/logs/usage-attempt1.log",
+      "published": "证据/864e8d2-provider/usage-attempt1.log",
+      "original_sha256": "46C9CA3DFD181DC980E1350DEBB5709C89659ED1D7C521B2E6579FE66EEFA1D0",
+      "published_sha256": "BF317677A3726CE33E8808AF371385D09AD83606D8F8C636ACEE41F4B76FD095",
+      "original_bytes": 5660,
+      "published_bytes": 5645
+    }
+  ]
+}

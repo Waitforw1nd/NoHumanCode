@@ -1,0 +1,26 @@
+{
+  "command": "cargo check --lib --locked",
+  "start_utc": "2026-09-27T18:06:16.2246688Z",
+  "end_utc": "2026-09-27T18:06:54.3132117Z",
+  "exit_code": 0,
+  "before": [
+    "864e8d2df28988fd8556044620c2b8e799c58c60",
+    "ad82fc69e93bfaae63dbebff3e0c0644fc07913d",
+    "e1e172002af2e5350f18b4b2dd3dc5ada3c35ae8"
+  ],
+  "after": [
+    "864e8d2df28988fd8556044620c2b8e799c58c60",
+    "ad82fc69e93bfaae63dbebff3e0c0644fc07913d",
+    "e1e172002af2e5350f18b4b2dd3dc5ada3c35ae8"
+  ],
+  "status_before": [],
+  "status_after": [],
+  "cwd": "../nhc-d-provider-usage\\NoManCode\\rust-app",
+  "target": "../nhc-d-provider-usage\\.local\\target",
+  "temp": "../nhc-d-provider-usage\\.local\\tmp",
+  "msvc": "./.local/toolchains/msvc-readonly",
+  "sdk": "./.local/toolchains/windows-sdk-readonly/",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "log_sha256": "0162C749F9DC7499BB54B83913F82B62F826158543E6A4773C528AF4FE54A72E"
+}

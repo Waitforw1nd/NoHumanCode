@@ -1,0 +1,1 @@
+compile-01 environment preparation failed before cargo invocation: Missing Visual C++ x64 build tools. No compile result. Existing installation discovery only; no toolchain installation/update performed.
