@@ -1348,4 +1348,137 @@ mod tests {
             assert!(Store::open(&dir.path().join("budget.db")).is_err());
         }
     }
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        if let Ok(phase) = std::env::var("NHC_BUDGET_KILL_PHASE") {
+            let root = std::path::PathBuf::from(std::env::var("NHC_BUDGET_KILL_ROOT").unwrap());
+            let store = Store::open(&root.join("budget.db")).unwrap();
+            let subject: NetworkSubject =
+                serde_json::from_slice(&std::fs::read(root.join("subject.json")).unwrap()).unwrap();
+            let phase = match phase.as_str() {
+                "before" => "budget-before-claim",
+                "after" => "budget-after-claim",
+                _ => "budget-before-finish",
+            };
+            crate::engine::crash_probe::arm(subject.key().unwrap(), phase, root.join("signal"));
+            let (permit, receipt) = store
+                .network_admit(&subject, NetworkPurpose::Completion, None)
+                .unwrap();
+            let route = store.settings().unwrap().unwrap().routes[0].clone();
+            let result = crate::provider::complete(
+                &crate::provider_transport::ProviderClient::new().unwrap(),
+                permit,
+                &route,
+                &[json!({"role":"user","content":"hello"})],
+                &[],
+                |_| Ok(()),
+            )
+            .await;
+            let _ = store.finish_completion(receipt, result);
+            panic!("must block before exit");
+        }
+        for phase in ["before", "after", "finish"] {
+            let (dir, store, mut subject) = fixture();
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let mut settings = store.settings().unwrap().unwrap();
+            settings.routes[0].base_url = format!("http://{address}");
+            store.save_settings(&settings).unwrap();
+            let preview = store.network_preview(subject.clone()).unwrap();
+            store
+                .network_confirm(
+                    subject.clone(),
+                    ConfirmRequest {
+                        config_revision: preview.config_revision,
+                        credential_revision: preview.credential_revision,
+                        binding_digest: preview.binding_digest,
+                        purposes: vec![NetworkPurpose::Completion],
+                    },
+                    "kill-grant",
+                )
+                .unwrap();
+            configure(&store, &subject, 1000, 100);
+            subject.project_id = Some(subject.project_id.unwrap());
+            std::fs::write(
+                dir.path().join("subject.json"),
+                serde_json::to_vec(&subject).unwrap(),
+            )
+            .unwrap();
+            drop(store);
+            let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let count = hits.clone();
+            let server = tokio::spawn(async move {
+                loop {
+                    let (mut socket, _) = listener.accept().await.unwrap();
+                    count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    let mut buffer = [0; 8192];
+                    let _ = socket.read(&mut buffer).await;
+                    let chunk = json!({"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}],"usage":usage(20)});
+                    let body = format!("data: {chunk}\n\ndata: [DONE]\n\n");
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
+                    );
+                    let _ = socket.write_all(response.as_bytes()).await;
+                }
+            });
+            let mut child=std::process::Command::new(std::env::current_exe().unwrap()).args(["--exact","budget::tests::real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends","--nocapture"]).env("NHC_BUDGET_KILL_PHASE",phase).env("NHC_BUDGET_KILL_ROOT",dir.path()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+            while !dir.path().join("signal").exists() {
+                if std::time::Instant::now() > deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    panic!("budget kill signal missing {phase}");
+                }
+                if let Some(status) = child.try_wait().unwrap() {
+                    panic!("child exited early {phase} {status}");
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+            let signal = std::fs::read_to_string(dir.path().join("signal")).unwrap();
+            child.kill().unwrap();
+            let exited = child.wait().unwrap();
+            assert!(!exited.success());
+            let store = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
+            let engine = crate::engine::Engine::new(store.clone(), 2).unwrap();
+            let project = subject.project_id.as_ref().unwrap();
+            let status = engine.budget_status(project).unwrap();
+            if phase == "before" {
+                assert_eq!((status.held_tokens, status.unresolved_count), (0, 0));
+                assert_eq!(
+                    store
+                        .network_call(signal.lines().nth(1).unwrap())
+                        .unwrap_err()
+                        .kind,
+                    NetworkErrorKind::NotFound
+                );
+            } else {
+                assert_eq!(
+                    (
+                        status.held_tokens,
+                        status.unresolved_count,
+                        status.claimed_count
+                    ),
+                    (100, 1, 0)
+                );
+                let receipt = engine
+                    .budget_call(project, signal.lines().nth(1).unwrap())
+                    .unwrap();
+                assert_eq!(receipt.reason, Some(BudgetCallReason::Interrupted));
+                store.recover().unwrap();
+                assert_eq!(
+                    engine.budget_call(project, &receipt.call_id).unwrap(),
+                    receipt
+                );
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            assert_eq!(
+                hits.load(std::sync::atomic::Ordering::SeqCst),
+                usize::from(phase == "finish")
+            );
+            server.abort();
+        }
+    }
 }
