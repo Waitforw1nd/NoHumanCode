@@ -2,6 +2,7 @@ pub mod approval;
 pub mod budget;
 pub mod checkpoint;
 mod command_execution;
+pub mod credential_input;
 pub mod domain;
 pub mod engine;
 pub mod git_diff;
