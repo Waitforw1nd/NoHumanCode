@@ -8,6 +8,8 @@ pub mod engine;
 pub mod git_diff;
 pub(crate) mod git_worktree;
 pub mod host_configuration;
+#[cfg(all(test, windows))]
+mod host_configuration_crash_tests;
 pub mod network_authorization;
 pub mod plugin_catalog;
 pub mod plugin_host;
