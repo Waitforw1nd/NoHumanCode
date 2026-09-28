@@ -3050,7 +3050,7 @@ mod shell_migration_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
-        tx.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         apply_schema_12(&tx).unwrap();
         tx.execute(
             "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=2,updated_at=41",
@@ -3307,7 +3307,7 @@ mod worktree_schema_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
-        tx.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
+        tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
             UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files';
             INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical-files','builtin.files',0,0,1,17);
             INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
@@ -3318,6 +3318,23 @@ mod worktree_schema_tests {
     fn assert_migrated(db: &Connection, before: Rows) {
         let after = rows(db);
         let mut expected = before;
+        assert!(
+            expected
+                .insert(
+                    "host_config_state".into(),
+                    vec![vec![
+                        rusqlite::types::Value::Integer(1),
+                        rusqlite::types::Value::Integer(1),
+                        rusqlite::types::Value::Integer(0)
+                    ]]
+                )
+                .is_none()
+        );
+        assert!(
+            expected
+                .insert("host_config_requests".into(), vec![])
+                .is_none()
+        );
         for name in [
             "project_budgets",
             "budget_requests",
@@ -3333,16 +3350,17 @@ mod worktree_schema_tests {
             .filter(|r| {
                 r[1] == rusqlite::types::Value::Text(WORKTREE_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
             })
             .cloned()
             .collect();
-        assert_eq!(new.len(), 2);
+        assert_eq!(new.len(), 3);
         expected.get_mut("schema_migrations").unwrap().extend(new);
         assert_eq!(after, expected);
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            15
+            16
         );
     }
     #[test]
@@ -3350,7 +3368,7 @@ mod worktree_schema_tests {
         let (_dir, path, db) = historical13();
         let before = rows(&db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 15);
+        assert_eq!(store.schema_version().unwrap(), 16);
         assert_migrated(&db, before);
         let after = rows(&db);
         drop(store);
@@ -3395,7 +3413,7 @@ mod worktree_schema_tests {
             })
             .collect();
         for handle in handles {
-            assert_eq!(handle.join().unwrap().unwrap(), 15);
+            assert_eq!(handle.join().unwrap().unwrap(), 16);
         }
         assert_migrated(&db, before);
     }
@@ -3650,21 +3668,41 @@ mod budget_schema_tests {
             .unwrap();
         drop(store);
         let db = Connection::open(&path).unwrap();
-        db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE budget_calls; DROP TABLE budget_requests; DROP TABLE project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; PRAGMA user_version=14; INSERT INTO config VALUES('sentinel','old exact bytes'); INSERT INTO secrets VALUES('opaque',X'0001FFFE'); UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,0,1,17);").unwrap();
+        db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE budget_calls; DROP TABLE budget_requests; DROP TABLE project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; PRAGMA user_version=14; INSERT INTO config VALUES('sentinel','old exact bytes'); INSERT INTO secrets VALUES('opaque',X'0001FFFE'); UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,0,1,17);").unwrap();
         (dir, path, db)
     }
     fn assert_migrated(db: &Connection, before: Rows) {
         let after = rows(db);
         let mut expected = before;
+        assert!(
+            expected
+                .insert(
+                    "host_config_state".into(),
+                    vec![vec![
+                        rusqlite::types::Value::Integer(1),
+                        rusqlite::types::Value::Integer(1),
+                        rusqlite::types::Value::Integer(0)
+                    ]]
+                )
+                .is_none()
+        );
+        assert!(
+            expected
+                .insert("host_config_requests".into(), vec![])
+                .is_none()
+        );
         for table in ["project_budgets", "budget_requests", "budget_calls"] {
             assert!(expected.insert(table.into(), vec![]).is_none());
         }
         let marker: Vec<_> = after["schema_migrations"]
             .iter()
-            .filter(|r| r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into()))
+            .filter(|r| {
+                r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
+            })
             .cloned()
             .collect();
-        assert_eq!(marker.len(), 1);
+        assert_eq!(marker.len(), 2);
         expected
             .get_mut("schema_migrations")
             .unwrap()
@@ -3673,7 +3711,7 @@ mod budget_schema_tests {
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            15
+            16
         );
     }
     #[test]
@@ -3722,7 +3760,7 @@ mod budget_schema_tests {
             .collect();
         gate.wait();
         for h in handles {
-            assert_eq!(h.join().unwrap().unwrap(), 15);
+            assert_eq!(h.join().unwrap().unwrap(), 16);
         }
         assert_migrated(&db, before);
     }

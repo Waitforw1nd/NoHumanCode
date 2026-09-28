@@ -2728,7 +2728,7 @@ pub fn fresh_settings(store: &Store, workspace: &Path) -> Result<Settings> {
     if let Some(settings) = crate::host_configuration::settings_tx(&tx)? {
         return Ok(settings);
     }
-    let history: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM secrets) OR EXISTS(SELECT 1 FROM host_config_requests) OR EXISTS(SELECT 1 FROM network_subjects)", [], |r| r.get(0))?;
+    let history = crate::host_configuration::configuration_history_tx(&tx)?;
     anyhow::ensure!(
         !history && crate::host_configuration::revision_tx(&tx)? == 0,
         "fresh Host configuration requires empty history"

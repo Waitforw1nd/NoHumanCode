@@ -342,7 +342,13 @@ fn read_secret(db: &Connection, id: &str) -> AnyResult<Option<String>> {
         .query_row("SELECT value FROM secrets WHERE id=?1", [id], |r| r.get(0))
         .optional()?;
     value
-        .map(|v| String::from_utf8(secrets::open(&v)?).map_err(Into::into))
+        .map(|v| {
+            String::from_utf8(
+                secrets::open(&v)
+                    .map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?,
+            )
+            .map_err(Into::into)
+        })
         .transpose()
 }
 fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<CurrentSubject> {
@@ -479,7 +485,9 @@ fn matches_current(
     current: &CurrentSubject,
 ) -> AnyResult<bool> {
     Ok(same_config(snapshot, &current.snapshot)
-        && secrets::open(sealed)? == current.credential.as_bytes())
+        && secrets::open(sealed)
+            .map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?
+            == current.credential.as_bytes())
 }
 fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
     Ok(digest(&serde_json::to_vec(
@@ -514,7 +522,7 @@ fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<Subjec
         "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
         [&key],
     )?;
-    db.execute("INSERT INTO network_subjects(subject,snapshot,credential_blob) VALUES (?1,?2,?3) ON CONFLICT(subject) DO UPDATE SET snapshot=excluded.snapshot,credential_blob=excluded.credential_blob",params![key,serde_json::to_string(&snapshot)?,secrets::seal(current.credential.as_bytes())?])?;
+    db.execute("INSERT INTO network_subjects(subject,snapshot,credential_blob) VALUES (?1,?2,?3) ON CONFLICT(subject) DO UPDATE SET snapshot=excluded.snapshot,credential_blob=excluded.credential_blob",params![key,serde_json::to_string(&snapshot)?,secrets::seal(current.credential.as_bytes()).map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?])?;
     Ok(snapshot)
 }
 fn allowed(subject: &NetworkSubject) -> Vec<NetworkPurpose> {

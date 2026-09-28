@@ -90,6 +90,7 @@ pub struct RouteConfigView {
     pub model: String,
     pub max_tokens: u32,
     pub parallel_limit: usize,
+    #[serde(deserialize_with = "required_option")]
     pub key_env: Option<String>,
     pub credential_source: CredentialSource,
 }
@@ -99,6 +100,11 @@ pub struct RouteConfigView {
 pub struct HostConfigSnapshot {
     pub revision: u64,
     pub routes: Vec<RouteConfigView>,
+}
+fn required_option<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    Option::<String>::deserialize(deserializer)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -270,6 +276,21 @@ fn safe_error(error: anyhow::Error) -> HostConfigError {
     if let Some(error) = error.downcast_ref::<HostConfigError>() {
         return *error;
     }
+    if let Some(error) = error.downcast_ref::<crate::network_authorization::NetworkError>()
+        && error.kind == crate::network_authorization::NetworkErrorKind::Corrupt
+    {
+        return HostConfigError::Corrupt;
+    }
+    if matches!(
+        error.downcast_ref::<rusqlite::Error>(),
+        Some(
+            rusqlite::Error::InvalidColumnType(..)
+                | rusqlite::Error::IntegralValueOutOfRange(..)
+                | rusqlite::Error::FromSqlConversionFailure(..)
+        )
+    ) {
+        return HostConfigError::Corrupt;
+    }
     if let Some(rusqlite::Error::SqliteFailure(error, _)) = error.downcast_ref::<rusqlite::Error>()
     {
         return match error.code {
@@ -294,6 +315,9 @@ pub(crate) fn revision_tx(db: &Connection) -> AnyResult<u64> {
         [(1, revision)] if *revision >= 0 => Ok(*revision as u64),
         _ => Err(HostConfigError::Corrupt.into()),
     }
+}
+pub(crate) fn configuration_history_tx(db: &Connection) -> AnyResult<bool> {
+    Ok(db.query_row("SELECT EXISTS(SELECT 1 FROM config) OR EXISTS(SELECT 1 FROM secrets) OR EXISTS(SELECT 1 FROM host_config_requests) OR EXISTS(SELECT 1 FROM network_subjects) OR EXISTS(SELECT 1 FROM network_authorizations) OR EXISTS(SELECT 1 FROM project_budgets) OR EXISTS(SELECT 1 FROM projects) OR EXISTS(SELECT 1 FROM tasks)", [], |r| r.get(0))?)
 }
 pub(crate) fn settings_tx(db: &Connection) -> AnyResult<Option<Settings>> {
     let raw: Option<String> = db
@@ -544,6 +568,9 @@ pub(crate) fn save_configuration_tx(
         }
     }
     if !settings_changed && sealed.is_empty() {
+        // Environment credentials can change without a Host revision. Preserve
+        // the legacy save path's binding recheck even for a local no-op.
+        crate::network_authorization::refresh_configuration_subjects_tx(db)?;
         return Ok(false);
     }
     let next = revision
@@ -572,6 +599,9 @@ impl Store {
             verify_persisted_rows(&tx)?;
             let revision = revision_tx(&tx)?;
             let settings = settings_tx(&tx)?;
+            if settings.is_none() && (revision != 0 || configuration_history_tx(&tx)?) {
+                return Err(HostConfigError::Corrupt.into());
+            }
             let routes = settings.map(|s| s.routes).unwrap_or_default();
             let mut ids = std::collections::HashSet::new();
             let mut views = Vec::new();
@@ -694,6 +724,60 @@ mod crash_probe {
         .expect("test stop signal");
         loop {
             std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    /// D may run this exact test in a child with NHC_HOST_CONFIG_TEST_ROOT and
+    /// NHC_HOST_CONFIG_TEST_PHASE=before_commit/after_commit. request.json has
+    /// route_id, key, request; host.db is the parent's isolated database.
+    #[test]
+    fn transaction_child() {
+        if let Some(root) = std::env::var_os("NHC_HOST_CONFIG_TEST_ROOT") {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Input {
+                route_id: String,
+                key: String,
+                request: ConfigureHostRoute,
+            }
+            let root = std::path::PathBuf::from(root);
+            let input: Input = serde_json::from_slice(
+                &std::fs::read(root.join("request.json")).expect("test input"),
+            )
+            .unwrap_or_else(|_| panic!("invalid test input"));
+            let store = Store::open(&root.join("host.db")).expect("test database");
+            store
+                .configure_host_route(&input.route_id, input.request, &input.key)
+                .expect("test transaction");
+        } else {
+            let dir = tempfile::tempdir().unwrap();
+            let store = Store::open(&dir.path().join("host.db")).unwrap();
+            crate::store::fresh_settings(&store, dir.path()).unwrap();
+            let request = ConfigureHostRoute {
+                expected_revision: 0,
+                route: RouteInput {
+                    name: "Mock".into(),
+                    base_url: "https://example.invalid/v1".into(),
+                    model: "mock".into(),
+                    max_tokens: 128,
+                    parallel_limit: 1,
+                },
+                credential: CredentialUpdate::Replace {
+                    value: "transaction-fixture".into(),
+                },
+            };
+            let result = store
+                .configure_host_route("route", request, "smoke")
+                .unwrap();
+            assert_eq!(result.receipt.revision, 1);
+            assert_eq!(
+                store.host_config_operation("smoke").unwrap().receipt,
+                result.receipt
+            );
         }
     }
 }
