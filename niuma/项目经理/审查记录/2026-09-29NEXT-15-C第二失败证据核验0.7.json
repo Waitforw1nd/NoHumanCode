@@ -247,5 +247,7 @@
     "next15-final-attempt2/meta.json",
     "next15-final-attempt2/suite-summary-corrected.json",
     "next15-final-attempt2/test.log"
-  ]
+  ],
+  "report_sha256": "E212F656B3820A3AC36D5811BDA224F4FB79B040A4E8A773685DDABB0C6DB7CE",
+  "report_review": "niuma/员工C/审查记录/第十六轮/经理review0.7.md"
 }
