@@ -1,5 +1,9 @@
 use clap::{Args, Subcommand, ValueEnum};
 use futures_util::StreamExt;
+use peachsh::budget::{
+    BudgetBlockedReason, BudgetCall, BudgetCallReason, BudgetCallState, BudgetConfig,
+    BudgetConfigSnapshot, BudgetMode, BudgetMutationResult, BudgetStatus,
+};
 use peachsh::network_authorization::{
     CallReceipt, CallResult, CallState, DispatchState, NetworkAuthorization, NetworkDecision,
     NetworkPreview, NetworkPurpose, NetworkSubject, NetworkSubjectKind,
@@ -81,6 +85,7 @@ impl Command {
                     }
                 },
                 ProjectCommand::Worktree(args) => args.command.valid(),
+                ProjectCommand::Budget(args) => args.command.valid(),
             },
             Self::Route(args) => match &args.command {
                 RouteCommand::Models { id, project } | RouteCommand::Check { id, project } => {
@@ -194,6 +199,7 @@ pub struct ProjectArgs {
 }
 #[derive(Subcommand)]
 enum ProjectCommand {
+    Budget(BudgetArgs),
     /// Explicit linked-worktree Project creation and read-only diagnostics.
     Worktree(WorktreeArgs),
     List,
@@ -215,6 +221,81 @@ enum ProjectCommand {
         expected_revision: u64,
     },
     Config(ProjectConfigArgs),
+}
+#[derive(Args)]
+struct BudgetArgs {
+    #[command(subcommand)]
+    command: BudgetCommand,
+}
+#[derive(Subcommand)]
+enum BudgetCommand {
+    Config(BudgetConfigArgs),
+    Status {
+        #[arg(long)]
+        id: String,
+    },
+    Call {
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        call_id: String,
+    },
+}
+#[derive(Args)]
+struct BudgetConfigArgs {
+    #[command(subcommand)]
+    command: BudgetConfigCommand,
+}
+#[derive(Subcommand)]
+enum BudgetConfigCommand {
+    Get {
+        #[arg(long)]
+        id: String,
+    },
+    Set {
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        expected_revision: u64,
+        #[arg(long)]
+        limit_tokens: u64,
+        #[arg(long)]
+        per_call_reservation_tokens: u64,
+        #[arg(long)]
+        key: String,
+    },
+}
+impl BudgetCommand {
+    fn valid(&self) -> bool {
+        match self {
+            Self::Status { id }
+            | Self::Config(BudgetConfigArgs {
+                command: BudgetConfigCommand::Get { id },
+            }) => valid_id(id),
+            Self::Call { id, call_id } => valid_id(id) && valid_id(call_id),
+            Self::Config(BudgetConfigArgs {
+                command:
+                    BudgetConfigCommand::Set {
+                        id,
+                        expected_revision,
+                        limit_tokens,
+                        per_call_reservation_tokens,
+                        key,
+                    },
+            }) => {
+                valid_id(id)
+                    && *expected_revision < i64::MAX as u64
+                    && BudgetConfig {
+                        limit_tokens: *limit_tokens,
+                        per_call_reservation_tokens: *per_call_reservation_tokens,
+                    }
+                    .validate()
+                    .is_ok()
+                    && secrets::validate_idempotency_key(key).is_ok()
+                    && !key.contains(',')
+            }
+        }
+    }
 }
 #[derive(Args)]
 struct WorktreeArgs {
@@ -722,6 +803,7 @@ struct ApprovalList {
 
 pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(), Failure> {
     let client = Client::builder()
+        .retry(reqwest::retry::never())
         .no_proxy()
         .redirect(Policy::none())
         .connect_timeout(Duration::from_secs(2))
@@ -732,6 +814,9 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         .map_err(|_| Failure::fixed("internal", "本机服务地址无效", false))?;
 
     let command = match command {
+        Command::Project(ProjectArgs {
+            command: ProjectCommand::Budget(args),
+        }) => return budget_workflow(&client, &origin, json_output, args.command).await,
         Command::Project(ProjectArgs {
             command: ProjectCommand::Worktree(args),
         }) => {
@@ -1723,6 +1808,9 @@ fn operation_unknown(operation: &str) -> Failure {
     let message = match operation {
         "start" => "启动结果未知，请查询 run list；仅可用原参数和原 key 手动查询式重放",
         "send" => "新回合结果未知，请查询 session turns；仅可用原参数和原 key 手动重放",
+        "budget-config" => {
+            "预算配置结果未知，请 GET 查询配置或使用原 key 原参数显式重放，不要自动重复写入"
+        }
         "resume" => "继续结果未知，请查询原任务所在 run status，不要自动重复继续",
         "cancel" => "取消结果未知，请查询原任务所在 run status",
         "checkpoint" => "检查点创建结果未知，请仅用原任务和原 key 手动查询式重放",
@@ -1955,7 +2043,7 @@ async fn workflow_inner(
 ) -> Result<(), Failure> {
     let value = match command {
         Command::Project(args) => match args.command {
-            ProjectCommand::Worktree(_) => unreachable!(),
+            ProjectCommand::Worktree(_) | ProjectCommand::Budget(_) => unreachable!(),
             ProjectCommand::List => {
                 let projects: Vec<Project> = decode(
                     workflow_request(client, origin, &["api", "projects"], None, None).await?,
@@ -2532,7 +2620,10 @@ fn network_http_failure(value: Value) -> Result<Failure, Failure> {
         "unknown" => "unknown",
         "internal" => "internal",
         "upstream" => "upstream",
-        other => project_error_code(other).ok_or_else(invalid_response)?,
+        other => budget_error_code(other)
+            .map(|(code, _)| code)
+            .or_else(|| project_error_code(other))
+            .ok_or_else(invalid_response)?,
     };
     Ok(Failure {
         code,
@@ -2595,6 +2686,7 @@ async fn network_request(
         "required" | "stale" | "revoked" | "conflict" | "unknown" => 409,
         "corrupt" | "internal" | "project_corrupt" | "project_internal" => 500,
         "upstream" => 502,
+        code if budget_error_code(code).is_some() => budget_error_code(code).unwrap().1,
         code if project_error_code(code).is_some() => 409,
         _ => status.as_u16(),
     };
@@ -3099,4 +3191,382 @@ async fn observe_inner(
             }
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BudgetWireError {
+    error: NetworkHttpError,
+}
+fn budget_error_code(code: &str) -> Option<(&'static str, u16)> {
+    Some(match code {
+        "budget_invalid" => ("budget_invalid", 400),
+        "budget_not_found" => ("budget_not_found", 404),
+        "budget_revision_conflict" => ("budget_revision_conflict", 409),
+        "budget_conflict" => ("budget_conflict", 409),
+        "budget_busy" => ("budget_busy", 409),
+        "budget_exceeded" => ("budget_exceeded", 409),
+        "budget_unresolved" => ("budget_unresolved", 409),
+        "budget_overrun" => ("budget_overrun", 409),
+        "budget_corrupt" => ("budget_corrupt", 500),
+        "budget_internal" => ("budget_internal", 500),
+        _ => return None,
+    })
+}
+fn budget_snapshot(
+    value: &Value,
+    snapshot: &BudgetConfigSnapshot,
+    id: &str,
+) -> Result<(), Failure> {
+    if !worktree_fields(value, &["project_id", "revision", "config"])
+        || snapshot.project_id.0 != id
+        || !valid_id(id)
+        || snapshot.revision > i64::MAX as u64
+        || (snapshot.revision == 0) != snapshot.config.is_none()
+    {
+        return Err(invalid_response());
+    }
+    if let Some(config) = &snapshot.config
+        && (!worktree_fields(
+            &value["config"],
+            &["limit_tokens", "per_call_reservation_tokens"],
+        ) || config.validate().is_err())
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+fn validate_budget_status(value: &Value, status: &BudgetStatus, id: &str) -> Result<(), Failure> {
+    if !worktree_fields(
+        value,
+        &[
+            "project_id",
+            "snapshot",
+            "mode",
+            "spent_tokens",
+            "held_tokens",
+            "available_tokens",
+            "claimed_count",
+            "unresolved_count",
+            "overrun_count",
+            "blocked_reason",
+            "coverage",
+            "coverage_start_call_rowid",
+        ],
+    ) || status.project_id.0 != id
+        || status.coverage != "since_configuration"
+        || [
+            status.spent_tokens,
+            status.held_tokens,
+            status.claimed_count,
+            status.unresolved_count,
+            status.overrun_count,
+        ]
+        .iter()
+        .any(|n| *n > i64::MAX as u64)
+        || status
+            .coverage_start_call_rowid
+            .is_some_and(|n| n > i64::MAX as u64)
+    {
+        return Err(invalid_response());
+    }
+    budget_snapshot(&value["snapshot"], &status.snapshot, id)?;
+    let occupied = status
+        .spent_tokens
+        .checked_add(status.held_tokens)
+        .filter(|n| *n <= i64::MAX as u64)
+        .ok_or_else(invalid_response)?;
+    let held_count = status
+        .claimed_count
+        .checked_add(status.unresolved_count)
+        .filter(|n| *n <= i64::MAX as u64)
+        .ok_or_else(invalid_response)?;
+    if status.held_tokens < held_count
+        || (held_count == 0) != (status.held_tokens == 0)
+        || (status.overrun_count > 0 && status.spent_tokens == 0)
+    {
+        return Err(invalid_response());
+    }
+    match status.snapshot.config {
+        None => {
+            if status.mode != BudgetMode::Unconfigured
+                || occupied != 0
+                || held_count != 0
+                || status.overrun_count != 0
+                || status.available_tokens.is_some()
+                || status.coverage_start_call_rowid.is_some()
+                || status.blocked_reason.is_some()
+            {
+                return Err(invalid_response());
+            }
+        }
+        Some(config) => {
+            let available = config.limit_tokens.saturating_sub(occupied);
+            let blocked = if status.unresolved_count > 0 {
+                Some(BudgetBlockedReason::Unresolved)
+            } else if status.overrun_count > 0 {
+                Some(BudgetBlockedReason::Overrun)
+            } else if available < config.per_call_reservation_tokens {
+                Some(BudgetBlockedReason::Exceeded)
+            } else {
+                None
+            };
+            if status.mode != BudgetMode::Configured
+                || status.coverage_start_call_rowid.is_none()
+                || status.available_tokens != Some(available)
+                || status.blocked_reason != blocked
+            {
+                return Err(invalid_response());
+            }
+        }
+    }
+    Ok(())
+}
+fn validate_budget_call(
+    value: &Value,
+    budget: &BudgetCall,
+    id: &str,
+    call_id: &str,
+) -> Result<(), Failure> {
+    if !worktree_fields(
+        value,
+        &[
+            "project_id",
+            "call_id",
+            "call",
+            "managed",
+            "budget_revision",
+            "reserved_tokens",
+            "state",
+            "usage",
+            "reason",
+        ],
+    ) || !worktree_fields(
+        &value["call"],
+        &[
+            "call_id",
+            "authorization_id",
+            "subject",
+            "task_id",
+            "purpose",
+            "method",
+            "origin",
+            "endpoint_digest",
+            "state",
+            "claimed_at",
+            "finished_at",
+            "success",
+            "http_status",
+            "result",
+        ],
+    ) || budget.project_id.0 != id
+        || budget.call_id != call_id
+        || budget.call.call_id != call_id
+        || budget
+            .call
+            .subject
+            .project_id
+            .as_ref()
+            .map(|p| p.0.as_str())
+            != Some(id)
+        || budget.call.purpose != NetworkPurpose::Completion
+    {
+        return Err(invalid_response());
+    }
+    validate_network_calls(std::slice::from_ref(&budget.call))?;
+    if !budget.managed {
+        if budget.budget_revision.is_some()
+            || budget.reserved_tokens.is_some()
+            || budget.state.is_some()
+            || budget.usage.is_some()
+            || budget.reason.is_some()
+        {
+            return Err(invalid_response());
+        }
+        return Ok(());
+    }
+    if !matches!(budget.budget_revision, Some(1..=9223372036854775807))
+        || !matches!(budget.reserved_tokens, Some(1..=1_000_000_000))
+    {
+        return Err(invalid_response());
+    }
+    let reservation = budget.reserved_tokens.unwrap();
+    let success = budget.call.state == CallState::Finished && budget.call.success == Some(true);
+    let valid = match budget.state {
+        Some(BudgetCallState::Claimed) => {
+            budget.call.state == CallState::Claimed
+                && budget.reason.is_none()
+                && budget.usage.is_none()
+        }
+        Some(BudgetCallState::Settled | BudgetCallState::Overrun) => {
+            let usage = budget.usage.as_ref().ok_or_else(invalid_response)?;
+            if !worktree_fields(
+                &value["usage"],
+                &["prompt_tokens", "completion_tokens", "total_tokens"],
+            ) || usage.validate().is_err()
+            {
+                return Err(invalid_response());
+            }
+            success
+                && if budget.state == Some(BudgetCallState::Settled) {
+                    usage.total_tokens <= reservation && budget.reason.is_none()
+                } else {
+                    usage.total_tokens > reservation
+                        && budget.reason == Some(BudgetCallReason::ReservationOverrun)
+                }
+        }
+        Some(BudgetCallState::NotSent) => {
+            budget.call.state == CallState::NotSent
+                && budget.usage.is_none()
+                && budget.reason == Some(BudgetCallReason::PreflightRejected)
+        }
+        Some(BudgetCallState::UsageMissing) => {
+            success
+                && budget.usage.is_none()
+                && budget.reason == Some(BudgetCallReason::UsageMissing)
+        }
+        Some(BudgetCallState::UsageInvalid) => {
+            success
+                && budget.usage.is_none()
+                && budget.reason == Some(BudgetCallReason::UsageInvalid)
+        }
+        Some(BudgetCallState::Unknown) => {
+            budget.usage.is_none()
+                && match (budget.call.state, budget.call.result, budget.reason) {
+                    (
+                        CallState::Unknown,
+                        Some(CallResult::TransportUnknown),
+                        Some(BudgetCallReason::TransportUnknown),
+                    )
+                    | (
+                        CallState::Unknown,
+                        Some(CallResult::Interrupted),
+                        Some(BudgetCallReason::Interrupted),
+                    )
+                    | (
+                        CallState::Unknown,
+                        Some(CallResult::PersistenceUnknown),
+                        Some(BudgetCallReason::PersistenceUnknown),
+                    ) => true,
+                    (
+                        CallState::Finished,
+                        Some(CallResult::HttpFailure | CallResult::InvalidResponse),
+                        Some(BudgetCallReason::TransportUnknown),
+                    ) => budget.call.success == Some(false),
+                    _ => false,
+                }
+        }
+        None => false,
+    };
+    if !valid {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+async fn budget_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: BudgetCommand,
+) -> Result<(), Failure> {
+    let (id, call_id, write) = match &command {
+        BudgetCommand::Status { id }
+        | BudgetCommand::Config(BudgetConfigArgs {
+            command: BudgetConfigCommand::Get { id },
+        }) => (id.as_str(), None, None),
+        BudgetCommand::Call { id, call_id } => (id.as_str(), Some(call_id.as_str()), None),
+        BudgetCommand::Config(BudgetConfigArgs {
+            command:
+                BudgetConfigCommand::Set {
+                    id,
+                    expected_revision,
+                    limit_tokens,
+                    per_call_reservation_tokens,
+                    key,
+                },
+        }) => (
+            id.as_str(),
+            None,
+            Some((
+                *expected_revision,
+                BudgetConfig {
+                    limit_tokens: *limit_tokens,
+                    per_call_reservation_tokens: *per_call_reservation_tokens,
+                },
+                key.as_str(),
+            )),
+        ),
+    };
+    let bootstrap: Bootstrap =
+        decode(request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?)).await?)?;
+    if bootstrap.token.is_empty() || bootstrap.token.len() > 4096 {
+        return Err(invalid_response());
+    }
+    let mut segments = vec!["api", "projects", id, "budget"];
+    if matches!(command, BudgetCommand::Status { .. }) {
+        segments.push("status");
+    }
+    if let Some(call) = call_id {
+        segments.extend(["calls", call]);
+    }
+    let url = endpoint(origin, &segments)?;
+    let request = if let Some((revision, config, key)) = write {
+        client
+            .put(url)
+            .json(&json!({"expected_revision":revision,"idempotency_key":key,"config":config}))
+    } else {
+        client.get(url)
+    }
+    .header("x-peachsh-token", &bootstrap.token);
+    let result: Result<(), Failure> = async {
+        let response = request.send().await.map_err(|_| Failure::fixed("unavailable", "无法连接本机服务", true))?;
+        let status = response.status().as_u16();
+        let bytes = limited_body(response).await?;
+        let value: Value = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+        if contains_string(&value, &bootstrap.token) || !safe_strings(&value) { return Err(invalid_response()); }
+        if status != 200 {
+            if let Some(error) = value.get("error").filter(|v| v.is_object()) {
+                if !worktree_fields(&value, &["error"]) || !worktree_fields(error, &["code", "message", "dispatch_state", "calls", "retryable"]) { return Err(invalid_response()); }
+                let parsed = serde_json::from_slice::<BudgetWireError>(&bytes).map_err(|_| invalid_response())?.error;
+                if !(budget_error_code(&parsed.code).map(|(_, expected)| expected) == Some(status) || (parsed.code == "budget_invalid" && matches!(status, 413 | 415))) || parsed.dispatch_state != DispatchState::NotSent || !parsed.calls.is_empty() { return Err(invalid_response()); }
+                return Err(network_http_failure(value)?);
+            }
+            let error = http_failure(value)?;
+            if error.code != "forbidden" || status != 403 { return Err(invalid_response()); }
+            return Err(error);
+        }
+        if let Some((revision, config, _)) = write {
+            let result: BudgetMutationResult = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+            if !worktree_fields(&value, &["snapshot", "replayed"]) { return Err(invalid_response()); }
+            budget_snapshot(&value["snapshot"], &result.snapshot, id)?;
+            if result.snapshot.config != Some(config) || revision.checked_add(1) != Some(result.snapshot.revision) { return Err(invalid_response()); }
+        } else { match &command {
+            BudgetCommand::Status { .. } => {
+                let status: BudgetStatus = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+                validate_budget_status(&value, &status, id)?;
+            }
+            BudgetCommand::Call { call_id, .. } => {
+                let call: BudgetCall = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+                validate_budget_call(&value, &call, id, call_id)?;
+            }
+            BudgetCommand::Config(_) => {
+                let snapshot: BudgetConfigSnapshot = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+                budget_snapshot(&value, &snapshot, id)?;
+            }
+        }}
+        print_value(value, json_output)?;
+        if !json_output {
+            let mut output = io::stdout().lock();
+            writeln!(output, "token准入不是真实费用或实际消耗硬上限；unconfigured表示未启用且历史未覆盖。unknown/usage_missing/usage_invalid保留预约，overrun已计实际用量；均无自动解除或重试。")
+                .and_then(|()| output.flush()).map_err(|_| Failure::fixed("output_failed", "无法写入标准输出", false))?;
+        }
+        Ok(())
+    }.await;
+    result.map_err(|error| {
+        if write.is_some() && budget_error_code(error.code).is_none() && error.code != "forbidden" {
+            operation_unknown("budget-config")
+        } else {
+            error
+        }
+    })
 }

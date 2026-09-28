@@ -28,7 +28,7 @@ fn schema11_preserves_v1_network_ciphertext_digest_grant_and_historical_confirm_
     drop(Store::open(&path).unwrap());
     let db = Connection::open(&path).unwrap();
     project_fixture::drop_project_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.pragma_update(None, "user_version", 10).unwrap();
     let subject = NetworkSubject {
         kind: NetworkSubjectKind::Route,
@@ -99,7 +99,7 @@ fn schema11_preserves_v1_network_ciphertext_digest_grant_and_historical_confirm_
     let before: Vec<_> = tables.iter().map(|t| rows(&db, t)).collect();
     drop(db);
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 14);
+    assert_eq!(store.schema_version().unwrap(), 15);
     assert!(
         store
             .network_confirm(subject.clone(), request.clone(), "old-confirm")
@@ -197,7 +197,7 @@ fn failed_schema11_transaction_keeps_schema10_version_and_marker() {
     drop(Store::open(&path).unwrap());
     let db = Connection::open(&path).unwrap();
     project_fixture::drop_project_schema(&db);
-    db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1');").unwrap();
     db.pragma_update(None, "user_version", 10).unwrap();
     db.execute_batch("CREATE TRIGGER block_project_marker BEFORE INSERT ON schema_migrations WHEN NEW.id='project-config-root-binding-v1' BEGIN SELECT RAISE(ABORT,'blocked marker'); END;").unwrap();
     drop(db);
@@ -220,5 +220,5 @@ fn failed_schema11_transaction_keeps_schema10_version_and_marker() {
     db.execute_batch("DROP TRIGGER block_project_marker")
         .unwrap();
     drop(db);
-    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 14);
+    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 15);
 }

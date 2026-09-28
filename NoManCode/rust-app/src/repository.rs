@@ -3050,7 +3050,7 @@ mod shell_migration_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
-        tx.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        tx.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         apply_schema_12(&tx).unwrap();
         tx.execute(
             "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=2,updated_at=41",
@@ -3196,7 +3196,7 @@ pub(crate) fn apply_schema_14(tx: &Transaction<'_>) -> Result<()> {
         migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?,
         "schema 13 marker missing"
     );
-    if version == 14 {
+    if version >= 14 {
         anyhow::ensure!(applied, "schema 14 marker missing");
         return verify_schema_14(tx);
     }
@@ -3307,7 +3307,7 @@ mod worktree_schema_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
-        tx.execute_batch("DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
+        tx.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
             UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files';
             INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical-files','builtin.files',0,0,1,17);
             INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
@@ -3319,6 +3319,9 @@ mod worktree_schema_tests {
         let after = rows(db);
         let mut expected = before;
         for name in [
+            "project_budgets",
+            "budget_requests",
+            "budget_calls",
             "worktree_operations",
             "worktree_project_reservations",
             "project_worktree_origins",
@@ -3327,16 +3330,19 @@ mod worktree_schema_tests {
         }
         let new: Vec<_> = after["schema_migrations"]
             .iter()
-            .filter(|r| r[1] == rusqlite::types::Value::Text(WORKTREE_MIGRATION_ID.into()))
+            .filter(|r| {
+                r[1] == rusqlite::types::Value::Text(WORKTREE_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
+            })
             .cloned()
             .collect();
-        assert_eq!(new.len(), 1);
+        assert_eq!(new.len(), 2);
         expected.get_mut("schema_migrations").unwrap().extend(new);
         assert_eq!(after, expected);
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            14
+            15
         );
     }
     #[test]
@@ -3344,7 +3350,7 @@ mod worktree_schema_tests {
         let (_dir, path, db) = historical13();
         let before = rows(&db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 14);
+        assert_eq!(store.schema_version().unwrap(), 15);
         assert_migrated(&db, before);
         let after = rows(&db);
         drop(store);
@@ -3389,7 +3395,7 @@ mod worktree_schema_tests {
             })
             .collect();
         for handle in handles {
-            assert_eq!(handle.join().unwrap().unwrap(), 14);
+            assert_eq!(handle.join().unwrap().unwrap(), 15);
         }
         assert_migrated(&db, before);
     }
@@ -3433,6 +3439,227 @@ mod worktree_schema_tests {
                 .is_ok()
         );
         for _ in 0..2 {
+            assert!(Store::open(&path).is_err());
+            assert_eq!(rows(&db), before);
+        }
+    }
+}
+
+pub const BUDGET_MIGRATION_ID: &str = "completion-budget-v1";
+const BUDGET_SCHEMA: &[(&str, &str)] = &[
+    (
+        "project_budgets",
+        "CREATE TABLE project_budgets (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), limit_tokens INTEGER NOT NULL CHECK(typeof(limit_tokens)='integer' AND limit_tokens>=0 AND limit_tokens<=1000000000000), reservation_tokens INTEGER NOT NULL CHECK(typeof(reservation_tokens)='integer' AND reservation_tokens>=1 AND reservation_tokens<=1000000000), coverage_start_call_rowid INTEGER NOT NULL CHECK(typeof(coverage_start_call_rowid)='integer' AND coverage_start_call_rowid>=0))",
+    ),
+    (
+        "budget_requests",
+        "CREATE TABLE budget_requests (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_budgets(project_id), request TEXT NOT NULL CHECK(typeof(request)='text'), result TEXT NOT NULL CHECK(typeof(result)='text'), request_digest TEXT NOT NULL CHECK(length(request_digest)=64))",
+    ),
+    (
+        "budget_calls",
+        "CREATE TABLE budget_calls (call_id TEXT NOT NULL PRIMARY KEY REFERENCES network_calls(id), project_id TEXT NOT NULL REFERENCES project_budgets(project_id), budget_revision INTEGER NOT NULL CHECK(typeof(budget_revision)='integer' AND budget_revision>0), reserved_tokens INTEGER NOT NULL CHECK(typeof(reserved_tokens)='integer' AND reserved_tokens>=1 AND reserved_tokens<=1000000000), state TEXT NOT NULL CHECK(state IN ('claimed','settled','not_sent','usage_missing','usage_invalid','unknown','overrun')), record TEXT NOT NULL CHECK(typeof(record)='text'), terminal_fingerprint TEXT CHECK(terminal_fingerprint IS NULL OR length(terminal_fingerprint)=64), CHECK((state='claimed' AND terminal_fingerprint IS NULL) OR (state<>'claimed' AND terminal_fingerprint IS NOT NULL)))",
+    ),
+];
+pub(crate) fn apply_schema_15(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let applied = migration_applied(tx, BUDGET_MIGRATION_ID)?;
+    anyhow::ensure!(
+        migration_applied(tx, WORKTREE_MIGRATION_ID)?,
+        "schema 14 marker missing"
+    );
+    if version == 15 {
+        anyhow::ensure!(applied, "schema 15 marker missing");
+        return verify_schema_15(tx);
+    }
+    anyhow::ensure!(
+        version == 14 && !applied,
+        "schema 15 marker/version mismatch"
+    );
+    verify_schema_14(tx)?;
+    for (_, sql) in BUDGET_SCHEMA {
+        tx.execute_batch(sql)?;
+    }
+    verify_schema_15(tx)?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        params![BUDGET_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 15)?;
+    Ok(())
+}
+pub(crate) fn verify_schema_15(tx: &Transaction<'_>) -> Result<()> {
+    fn normalize(sql: &str) -> String {
+        let mut result = String::new();
+        let mut quote = None;
+        let mut chars = sql.chars().peekable();
+        while let Some(c) = chars.next() {
+            if let Some(q) = quote {
+                result.push(c);
+                if c == q {
+                    if chars.peek() == Some(&q) {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        quote = None;
+                    }
+                }
+            } else if matches!(c, '\'' | '"' | '`') {
+                quote = Some(c);
+                result.push(c);
+            } else if !c.is_whitespace() {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+        result
+    }
+    for (name, sql) in BUDGET_SCHEMA {
+        let actual: String = tx.query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
+            [name],
+            |r| r.get(0),
+        )?;
+        anyhow::ensure!(
+            normalize(&actual) == normalize(sql),
+            "budget schema constraint mismatch"
+        );
+    }
+    crate::budget::verify_persisted_rows(tx)?;
+    let foreign: Option<String> = tx
+        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
+        .optional()?;
+    anyhow::ensure!(foreign.is_none(), "budget foreign key violation");
+    Ok(())
+}
+
+#[cfg(test)]
+mod budget_schema_tests {
+    use super::*;
+    use crate::{project_config::RegisterProject, store::Store};
+    type Rows = std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>>;
+    fn rows(db: &Connection) -> Rows {
+        let names: Vec<String> = db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        names
+            .into_iter()
+            .map(|name| {
+                let data = db
+                    .prepare(&format!("SELECT rowid,* FROM {name} ORDER BY rowid"))
+                    .unwrap()
+                    .query_map([], |r| {
+                        (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
+                    })
+                    .unwrap()
+                    .collect::<rusqlite::Result<_>>()
+                    .unwrap();
+                (name, data)
+            })
+            .collect()
+    }
+    fn historical14() -> (tempfile::TempDir, std::path::PathBuf, Connection) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("db.sqlite");
+        let store = Store::open(&path).unwrap();
+        store
+            .register_project(RegisterProject {
+                name: "old-project".into(),
+                root_path: dir.path().to_string_lossy().into(),
+                idempotency_key: "old-project".into(),
+            })
+            .unwrap();
+        drop(store);
+        let db = Connection::open(&path).unwrap();
+        db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE budget_calls; DROP TABLE budget_requests; DROP TABLE project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; PRAGMA user_version=14; INSERT INTO config VALUES('sentinel','old exact bytes'); INSERT INTO secrets VALUES('opaque',X'0001FFFE'); UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,0,1,17);").unwrap();
+        (dir, path, db)
+    }
+    fn assert_migrated(db: &Connection, before: Rows) {
+        let after = rows(db);
+        let mut expected = before;
+        for table in ["project_budgets", "budget_requests", "budget_calls"] {
+            assert!(expected.insert(table.into(), vec![]).is_none());
+        }
+        let marker: Vec<_> = after["schema_migrations"]
+            .iter()
+            .filter(|r| r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into()))
+            .cloned()
+            .collect();
+        assert_eq!(marker.len(), 1);
+        expected
+            .get_mut("schema_migrations")
+            .unwrap()
+            .extend(marker);
+        assert_eq!(after, expected);
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
+                .unwrap(),
+            15
+        );
+    }
+    #[test]
+    fn n14_nonempty_migration_preserves_exact_old_rows_and_reopen() {
+        let (_dir, path, db) = historical14();
+        let before = rows(&db);
+        drop(Store::open(&path).unwrap());
+        assert_migrated(&db, before);
+        let after = rows(&db);
+        drop(Store::open(&path).unwrap());
+        assert_eq!(rows(&db), after);
+    }
+    #[test]
+    fn n14_marker_failure_rolls_back_all_new_objects() {
+        let (_dir, path, db) = historical14();
+        let before = rows(&db);
+        db.execute_batch("CREATE TRIGGER fail_budget_marker BEFORE INSERT ON schema_migrations WHEN NEW.id='completion-budget-v1' BEGIN SELECT RAISE(ABORT,'fixture'); END").unwrap();
+        for _ in 0..2 {
+            assert!(Store::open(&path).is_err());
+            assert_eq!(rows(&db), before);
+            assert_eq!(
+                db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
+                    .unwrap(),
+                14
+            );
+        }
+        assert_eq!(db.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('project_budgets','budget_requests','budget_calls')",[],|r|r.get::<_,u64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_budget_marker").unwrap();
+        drop(Store::open(&path).unwrap());
+        assert_migrated(&db, before);
+    }
+    #[test]
+    fn n14_concurrent_open_serializes_migration() {
+        let (_dir, path, db) = historical14();
+        let before = rows(&db);
+        let gate = std::sync::Arc::new(std::sync::Barrier::new(3));
+        let handles: Vec<_> = (0..2)
+            .map(|_| {
+                let path = path.clone();
+                let gate = gate.clone();
+                std::thread::spawn(move || {
+                    gate.wait();
+                    Store::open(&path).map(|s| s.schema_version().unwrap())
+                })
+            })
+            .collect();
+        gate.wait();
+        for h in handles {
+            assert_eq!(h.join().unwrap().unwrap(), 15);
+        }
+        assert_migrated(&db, before);
+    }
+    #[test]
+    fn n14_bad_ddl_marker_and_orphan_never_self_repair() {
+        for sql in [
+            "PRAGMA writable_schema=ON; UPDATE sqlite_master SET sql=replace(sql,'revision>0','revision>=0') WHERE name='project_budgets'; PRAGMA writable_schema=OFF;",
+            "DELETE FROM schema_migrations WHERE id='completion-budget-v1'",
+            "PRAGMA user_version=14",
+            "PRAGMA foreign_keys=OFF; INSERT INTO project_budgets VALUES('orphan',1,100,100,0); PRAGMA foreign_keys=ON;",
+        ] {
+            let (_dir, path, db) = historical14();
+            drop(Store::open(&path).unwrap());
+            db.execute_batch(sql).unwrap();
+            let before = rows(&db);
             assert!(Store::open(&path).is_err());
             assert_eq!(rows(&db), before);
         }

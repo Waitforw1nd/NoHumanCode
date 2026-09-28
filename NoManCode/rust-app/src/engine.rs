@@ -187,6 +187,31 @@ impl Engine {
             ),
         })
     }
+    pub fn budget_config(
+        &self,
+        project: &ProjectId,
+    ) -> Result<crate::budget::BudgetConfigSnapshot, crate::budget::BudgetError> {
+        self.store.budget_config(project)
+    }
+    pub fn configure_budget(
+        &self,
+        request: crate::budget::ConfigureBudget,
+    ) -> Result<crate::budget::BudgetMutationResult, crate::budget::BudgetError> {
+        self.store.configure_budget(request)
+    }
+    pub fn budget_status(
+        &self,
+        project: &ProjectId,
+    ) -> Result<crate::budget::BudgetStatus, crate::budget::BudgetError> {
+        self.store.budget_status(project)
+    }
+    pub fn budget_call(
+        &self,
+        project: &ProjectId,
+        call: &str,
+    ) -> Result<crate::budget::BudgetCall, crate::budget::BudgetError> {
+        self.store.budget_call(project, call)
+    }
     pub async fn network_preview(
         &self,
         subject: NetworkSubject,
@@ -318,7 +343,7 @@ impl Engine {
         route.max_tokens = 128;
         let completion = self
             .store
-            .finish_network(
+            .finish_completion(
                 receipt,
                 provider::complete(
                     &self.client,
@@ -480,7 +505,7 @@ pub(crate) mod crash_probe {
             .remove(task_id)
     }
 
-    pub(super) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
+    pub(crate) fn arm(task_id: String, phase: &'static str, signal: PathBuf) {
         *PHASE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some((task_id, phase, signal));
     }
 
@@ -1556,18 +1581,30 @@ impl Engine {
                 },
             );
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
-            let result = self.store.finish_network(receipt, result);
+            let result = self.store.finish_completion(receipt, result);
             task.output.push_str(&text);
             let (message, usage) = result?.result;
-            if usage.is_object() {
-                if !task.usage.is_object() {
-                    task.usage = json!({});
+            if let crate::provider_usage::UsageObservation::Valid(usage) =
+                crate::provider_usage::classify_usage(&usage)
+            {
+                let mut projection = if task.usage.is_object() {
+                    task.usage.clone()
+                } else {
+                    json!({})
+                };
+                for (field, n) in [
+                    ("prompt_tokens", usage.prompt_tokens),
+                    ("completion_tokens", usage.completion_tokens),
+                    ("total_tokens", usage.total_tokens),
+                ] {
+                    let old = projection[field].as_u64().unwrap_or(0);
+                    let value = old
+                        .checked_add(n)
+                        .filter(|v| *v <= i64::MAX as u64)
+                        .context("任务用量投影超出范围；持久预算结果保持")?;
+                    projection[field] = json!(value);
                 }
-                for field in ["prompt_tokens", "completion_tokens", "total_tokens"] {
-                    if let Some(n) = usage[field].as_u64() {
-                        task.usage[field] = json!(task.usage[field].as_u64().unwrap_or(0) + n);
-                    }
-                }
+                task.usage = projection;
             }
             if let Some(calls) = message["tool_calls"].as_array() {
                 validate_new_tool_group(&task.messages, calls)?;
@@ -2906,7 +2943,7 @@ mod workspace_phase_tests {
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
             // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
-            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
             {
                 let tx = db.unchecked_transaction().unwrap();
                 crate::repository::apply_schema_12(&tx).unwrap();
@@ -2943,7 +2980,7 @@ mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 14);
+            assert_eq!(engine.store.schema_version().unwrap(), 15);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.2.0");
@@ -2952,6 +2989,9 @@ mod workspace_phase_tests {
             assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });
             let mut expected = before.clone();
             for name in [
+                "project_budgets",
+                "budget_requests",
+                "budget_calls",
                 "worktree_operations",
                 "worktree_project_reservations",
                 "project_worktree_origins",
@@ -2966,10 +3006,14 @@ mod workspace_phase_tests {
                         == rusqlite::types::Value::Text(
                             crate::repository::WORKTREE_MIGRATION_ID.into(),
                         )
+                        || row[1]
+                            == rusqlite::types::Value::Text(
+                                crate::repository::BUDGET_MIGRATION_ID.into(),
+                            )
                 })
                 .cloned()
                 .collect();
-            assert_eq!(worktree_markers.len(), 1);
+            assert_eq!(worktree_markers.len(), 2);
             let shell_rows: Vec<_> = after["plugin_desired"]
                 .iter()
                 .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
@@ -3282,7 +3326,7 @@ mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3337,11 +3381,14 @@ mod workspace_phase_tests {
         assert_eq!(n10_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 14);
+        assert_eq!(migrated.schema_version().unwrap(), 15);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
         let mut before = before;
         for name in [
+            "project_budgets",
+            "budget_requests",
+            "budget_calls",
             "worktree_operations",
             "worktree_project_reservations",
             "project_worktree_origins",

@@ -1,4 +1,5 @@
 pub mod approval;
+pub mod budget;
 pub mod checkpoint;
 mod command_execution;
 pub mod domain;
@@ -12,6 +13,7 @@ pub mod plugin_management;
 pub mod project_config;
 pub mod provider;
 pub mod provider_transport;
+pub mod provider_usage;
 pub mod repository;
 #[cfg(all(test, windows))]
 mod restore_http_tests;
