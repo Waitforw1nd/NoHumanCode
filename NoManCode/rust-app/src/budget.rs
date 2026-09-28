@@ -573,7 +573,7 @@ fn status_calculate(db: &Connection, project: &ProjectId) -> AnyResult<BudgetSta
     if let Some(config) = config {
         let cfg = config.snapshot.config.unwrap();
         let occupied = plus(result.spent_tokens, result.held_tokens)?;
-        result.available_tokens = Some(cfg.limit_tokens.checked_sub(occupied).unwrap_or(0));
+        result.available_tokens = Some(cfg.limit_tokens.saturating_sub(occupied));
         result.blocked_reason = if result.unresolved_count > 0 {
             Some(BudgetBlockedReason::Unresolved)
         } else if result.overrun_count > 0 {

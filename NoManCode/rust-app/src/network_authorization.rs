@@ -1084,26 +1084,26 @@ impl Store {
             Ok(())
         })();
         if let Err(error) = saved {
-            if let Some(budget) = error.downcast_ref::<crate::budget::BudgetError>() {
-                if matches!(
+            if let Some(budget) = error.downcast_ref::<crate::budget::BudgetError>()
+                && matches!(
                     budget.kind,
                     crate::budget::BudgetErrorKind::Conflict
                         | crate::budget::BudgetErrorKind::Corrupt
-                ) {
-                    let mut error: NetworkError = (*budget).into();
-                    error.dispatch_state = DispatchState::Unknown;
-                    if budget.kind == crate::budget::BudgetErrorKind::Conflict {
-                        if let Ok(persisted) = receipt(&self.db.lock().unwrap(), &value.call_id) {
-                            error.dispatch_state = match persisted.state {
-                                CallState::Finished => DispatchState::Finished,
-                                CallState::NotSent => DispatchState::NotSent,
-                                _ => DispatchState::Unknown,
-                            };
-                            error.calls = vec![persisted];
-                        }
-                    }
-                    return Err(error);
+                )
+            {
+                let mut error: NetworkError = (*budget).into();
+                error.dispatch_state = DispatchState::Unknown;
+                if budget.kind == crate::budget::BudgetErrorKind::Conflict
+                    && let Ok(persisted) = receipt(&self.db.lock().unwrap(), &value.call_id)
+                {
+                    error.dispatch_state = match persisted.state {
+                        CallState::Finished => DispatchState::Finished,
+                        CallState::NotSent => DispatchState::NotSent,
+                        _ => DispatchState::Unknown,
+                    };
+                    error.calls = vec![persisted];
                 }
+                return Err(error);
             }
             value.state = CallState::Unknown;
             value.success = None;
