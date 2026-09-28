@@ -437,7 +437,7 @@ async fn i10_same_empty_database_cli_configuration_permissions_budget_completion
             project_id,
         ])
         .await;
-    let authorization = host
+    let decision = host
         .ok(&[
             "network",
             "authorize",
@@ -457,6 +457,8 @@ async fn i10_same_empty_database_cli_configuration_permissions_budget_completion
             "first-network",
         ])
         .await;
+    assert_eq!(decision["replayed"], false);
+    let authorization = &decision["authorization"];
     assert_eq!(authorization["purposes"], json!(["completion"]));
     provider.count(0);
     println!(
