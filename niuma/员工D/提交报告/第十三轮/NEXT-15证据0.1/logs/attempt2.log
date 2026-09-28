@@ -1,0 +1,45 @@
+     Locking 10 packages to latest Rust 1.98.1 compatible versions
+      Adding windows-sys v0.59.0 (available: v0.61.2)
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling windows-targets v0.52.6
+   Compiling windows-sys v0.59.0
+   Compiling credential-input-component v0.0.0 (../nhc-d-credential-input\.local\credential-input-component)
+warning: unnecessary `unsafe` block
+   --> ..\..\NoManCode\rust-app\src\credential_input.rs:407:21
+    |
+407 |                     unsafe {
+    |                     ^^^^^^ unnecessary `unsafe` block
+    |
+    = note: `#[warn(unused_unsafe)]` (part of `#[warn(unused)]`) on by default
+
+warning: `credential-input-component` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized] target(s) in 1.60s
+     Running unittests ..\..\NoManCode\rust-app\src\credential_input.rs (../nhc-d-credential-input\.local\credential-input-component\target\debug\deps\credential_input_component-aac4f9e99660861a.exe)
+
+running 10 tests
+test tests::byte_limit_is_exact_with_each_line_ending ... ok
+test tests::error_output_is_fixed_and_has_no_underlying_payload ... ok
+test tests::partial_reads_and_read_failures_never_return_partial_secret ... ok
+test tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back ... FAILED
+test tests::redirected_preserves_single_line_and_only_removes_one_ending ... ok
+test tests::redirected_process_child ... ok
+test tests::unending_stream_is_read_only_to_the_fixed_bound ... ok
+test tests::whitespace_controls_and_bad_encoding_fail_without_trimming ... ok
+test windows_console::tests::isolated_console_child ... ok
+test windows_console::tests::private_console_prompt_has_no_echo_and_restores_on_all_normal_exits ... ok
+
+failures:
+
+---- tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back stdout ----
+
+thread 'tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back' (42172) panicked at ..\..\NoManCode\rust-app\src\credential_input.rs:651:21:
+input fixture exceeded its deadline
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back
+
+test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.96s
+
+error: test failed, to rerun pass `--lib`

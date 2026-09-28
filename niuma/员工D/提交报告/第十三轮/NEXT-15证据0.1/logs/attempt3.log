@@ -1,0 +1,24 @@
+   Compiling credential-input-component v0.0.0 (../nhc-d-credential-input\.local\credential-input-component)
+    Finished `test` profile [unoptimized] target(s) in 0.42s
+     Running unittests ..\..\NoManCode\rust-app\src\credential_input.rs (../nhc-d-credential-input\.local\credential-input-component\target\debug\deps\credential_input_component-aac4f9e99660861a.exe)
+
+running 10 tests
+test tests::byte_limit_is_exact_with_each_line_ending ... ok
+test tests::error_output_is_fixed_and_has_no_underlying_payload ... ok
+test tests::partial_reads_and_read_failures_never_return_partial_secret ... ok
+test tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back ... ok
+test tests::redirected_preserves_single_line_and_only_removes_one_ending ... ok
+test tests::redirected_process_child ... ok
+test tests::unending_stream_is_read_only_to_the_fixed_bound ... ok
+test tests::whitespace_controls_and_bad_encoding_fail_without_trimming ... ok
+test windows_console::tests::isolated_console_child ... ok
+test windows_console::tests::private_console_prompt_has_no_echo_and_restores_on_all_normal_exits ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+   Doc-tests credential_input_component
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

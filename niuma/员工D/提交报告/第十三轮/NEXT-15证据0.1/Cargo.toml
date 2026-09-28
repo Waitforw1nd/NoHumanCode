@@ -1,0 +1,9 @@
+[package]
+name = "credential-input-component"
+version = "0.0.0"
+edition = "2024"
+[workspace]
+[lib]
+path = "../../NoManCode/rust-app/src/credential_input.rs"
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.59.0", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Console"] }

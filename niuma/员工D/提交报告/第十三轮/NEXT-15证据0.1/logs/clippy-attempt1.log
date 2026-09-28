@@ -1,0 +1,5 @@
+    Checking windows_x86_64_msvc v0.52.6
+    Checking windows-targets v0.52.6
+    Checking windows-sys v0.59.0
+    Checking credential-input-component v0.0.0 (../nhc-d-credential-input\.local\credential-input-component)
+    Finished `dev` profile [unoptimized] target(s) in 1.16s

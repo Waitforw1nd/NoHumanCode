@@ -1,0 +1,68 @@
+{
+  "label": "attempt2",
+  "action": "test",
+  "command": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "../nhc-d-credential-input\\.local\\credential-input-component\\Cargo.toml",
+    "--offline",
+    "--",
+    "--test-threads=1"
+  ],
+  "cwd": "../nhc-d-credential-input\\NoManCode\\rust-app",
+  "before": {
+    "head": "5194099ee4d1eb72af5f286826c72c6fd19d29e8",
+    "source_tree": "f48df8d01f64095ad32b1412ac5a4db45b849182",
+    "rust_tree": "dfdedbfda40aba9502f1606cc466f2f32aa4e3d0",
+    "status": [
+      " M Cargo.toml",
+      "?? src/credential_input.rs"
+    ],
+    "files": [
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\credential_input.rs",
+        "Hash": "5F5D0B612EE03B8875F25C638050398559F0BB8E6FBE1EF6427611871F913DD2"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.toml",
+        "Hash": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.lock",
+        "Hash": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+      }
+    ],
+    "utc": "2026-09-28T14:12:49.4308121Z"
+  },
+  "end_utc": "2026-09-28T14:13:08.4501472Z",
+  "exit_code": 101,
+  "after_head": "5194099ee4d1eb72af5f286826c72c6fd19d29e8",
+  "after_status": [
+    " M Cargo.toml",
+    "?? src/credential_input.rs"
+  ],
+  "after_files": [
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\credential_input.rs",
+      "Hash": "5F5D0B612EE03B8875F25C638050398559F0BB8E6FBE1EF6427611871F913DD2"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.toml",
+      "Hash": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.lock",
+      "Hash": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+    }
+  ],
+  "environment": {
+    "MSVC": "./.local/toolchains/msvc\\14.40.33807",
+    "CARGO_TARGET_DIR": "../nhc-d-credential-input\\.local\\credential-input-component\\target",
+    "CARGO_NET_OFFLINE": "true",
+    "TEMP": "../nhc-d-credential-input\\.local\\credential-input-component\\tmp",
+    "SDK": "./.local/toolchains/windows-sdk/",
+    "TMP": "../nhc-d-credential-input\\.local\\credential-input-component\\tmp"
+  },
+  "log_sha256": "A19C2488108B879ADB996C5AFF74E1E2479E4B606C19E4FFF4A60486F178A661"
+}

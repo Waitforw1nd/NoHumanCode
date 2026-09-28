@@ -1,0 +1,60 @@
+{
+  "label": "candidate-format",
+  "action": "format",
+  "command": [
+    "rustfmt",
+    "--edition",
+    "2024",
+    "--check",
+    "src/credential_input.rs"
+  ],
+  "cwd": "../nhc-d-credential-input\\NoManCode\\rust-app",
+  "before": {
+    "head": "3675e3afeebb7c6ce73200a888588775bc55e3e9",
+    "source_tree": "d0a79d25547e01d11d2b5117b6739423353292b5",
+    "rust_tree": "44af58b76b067b7e34a29689ebe9c9f720a52309",
+    "status": [],
+    "files": [
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\credential_input.rs",
+        "Hash": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.toml",
+        "Hash": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.lock",
+        "Hash": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+      }
+    ],
+    "utc": "2026-09-28T14:17:09.2227224Z"
+  },
+  "end_utc": "2026-09-28T14:17:09.3614873Z",
+  "exit_code": 0,
+  "after_head": "3675e3afeebb7c6ce73200a888588775bc55e3e9",
+  "after_status": [],
+  "after_files": [
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\credential_input.rs",
+      "Hash": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.toml",
+      "Hash": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.lock",
+      "Hash": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+    }
+  ],
+  "environment": {
+    "TEMP": "../nhc-d-credential-input\\.local\\credential-input-component\\tmp",
+    "MSVC": "./.local/toolchains/msvc\\14.40.33807",
+    "SDK": "./.local/toolchains/windows-sdk/",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_TARGET_DIR": "../nhc-d-credential-input\\.local\\credential-input-component\\target",
+    "TMP": "../nhc-d-credential-input\\.local\\credential-input-component\\tmp"
+  },
+  "log_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+}

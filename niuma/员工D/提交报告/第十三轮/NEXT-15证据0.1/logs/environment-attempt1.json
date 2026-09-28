@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-28",
+  "command": "pwsh -NoProfile -File .local/credential-input-component/run-component.ps1 -Label attempt1 -Action test",
+  "cwd": "NoManCode/rust-app",
+  "exit_code": 1,
+  "phase": "environment discovery before cargo",
+  "message": "Missing Visual C++ x64 build tools",
+  "compiled": false,
+  "tested": false,
+  "tool_result": "818bd9"
+}
