@@ -1,4 +1,5 @@
-//! I01/I10. Real binary, initially absent database, all route writes through CLI.
+//! I01/I10/I11. Real binary, initially absent database, route writes through CLI
+//! or the existing HTML/JS settings HTTP workflow (I11 compatibility only).
 //! Store is never used to inject settings, routes, credentials, grants or budgets.
 #![cfg(windows)]
 use axum::{
@@ -199,6 +200,39 @@ impl Host {
         assert!(output.stderr.is_empty());
         serde_json::from_slice(&output.stdout).unwrap()
     }
+    fn web_request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
+        let origin = format!("http://127.0.0.1:{}", self.port);
+        client()
+            .request(method, format!("{origin}{path}"))
+            .header("origin", origin)
+            .header("sec-fetch-site", "same-origin")
+            .header("content-type", "application/json")
+    }
+    async fn web_text(
+        &self,
+        request: reqwest::RequestBuilder,
+        status: u16,
+        content_type: &str,
+    ) -> String {
+        let response = request.send().await.unwrap();
+        assert_eq!(response.status().as_u16(), status);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        assert!(
+            response.headers()["content-type"]
+                .to_str()
+                .unwrap()
+                .starts_with(content_type)
+        );
+        let text = response.text().await.unwrap();
+        assert!(
+            !text.contains(SECRET) && !text.contains(LEGACY_SECRET) && !text.contains(&self.token),
+            "legacy HTTP output does not expose known credentials or bootstrap token"
+        );
+        text
+    }
+    async fn web_json(&self, request: reqwest::RequestBuilder, status: u16) -> Value {
+        serde_json::from_str(&self.web_text(request, status, "application/json").await).unwrap()
+    }
     fn sql(&self) -> rusqlite::Connection {
         rusqlite::Connection::open_with_flags(
             self.data.join("peachsh.sqlite3"),
@@ -228,6 +262,214 @@ fn synthetic_legacy(root: &Path, base: &str) {
         json!({"refs":{"NHC_INIT_LEGACY_KEY":LEGACY_SECRET}}).to_string(),
     )
     .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn i11_real_host_legacy_web_settings_roundtrip_authentication_and_new_receipts() {
+    const GET: reqwest::Method = reqwest::Method::GET;
+    const PUT: reqwest::Method = reqwest::Method::PUT;
+
+    let root = tempfile::tempdir().unwrap();
+    let provider = Provider::new().await;
+    assert!(!root.path().join("web-state/peachsh.sqlite3").exists());
+    let mut host = Host::launch(root.path(), "web-state", false).await;
+    // Fetch the actual embedded assets from the real binary, then exercise the
+    // same JSON read/save/reload workflow as app.js. No browser/DOM is claimed.
+    for (path, content_type, expected) in [
+        ("/", "text/html", include_str!("../web/index.html")),
+        ("/app.js", "text/javascript", include_str!("../web/app.js")),
+        ("/style.css", "text/css", include_str!("../web/style.css")),
+    ] {
+        assert_eq!(
+            host.web_text(host.web_request(GET, path), 200, content_type)
+                .await,
+            expected
+        );
+    }
+    // Existing settings GET remains locally readable without the write token;
+    // the new Host config GET still requires that token. Both enforce origin.
+    let empty = host
+        .web_json(host.web_request(GET, "/api/settings"), 200)
+        .await;
+    assert_eq!(empty["settings"]["routes"], json!([]));
+    assert_eq!(empty["keys"], json!({}));
+    assert_eq!(empty["newapi_key"], false);
+    host.web_json(host.web_request(GET, "/api/host/config"), 403)
+        .await;
+    let mut settings = empty["settings"].clone();
+    settings["routes"] = json!([{"id":"local","name":"Legacy web route","base_url":provider.base,"model":"mock-model","max_tokens":128,"parallel_limit":1,"key_env":null}]);
+    let body = json!({"settings":settings,"keys":{"local":SECRET}});
+    for request in [
+        host.web_request(PUT, "/api/settings"),
+        host.web_request(PUT, "/api/settings")
+            .header("x-peachsh-token", "wrong-write-token"),
+        host.web_request(PUT, "/api/settings")
+            .header("x-peachsh-token", &host.token)
+            .header("host", "untrusted.invalid"),
+        client()
+            .put(format!("http://127.0.0.1:{}/api/settings", host.port))
+            .header("x-peachsh-token", &host.token)
+            .header("origin", "https://untrusted.invalid"),
+        client()
+            .put(format!("http://127.0.0.1:{}/api/settings", host.port))
+            .header("x-peachsh-token", &host.token)
+            .header("sec-fetch-site", "cross-site"),
+    ] {
+        host.web_json(request.json(&body), 403).await;
+    }
+    for request in [
+        host.web_request(GET, "/api/settings")
+            .header("host", "untrusted.invalid"),
+        client()
+            .get(format!("http://127.0.0.1:{}/api/settings", host.port))
+            .header("origin", "https://untrusted.invalid"),
+        client()
+            .get(format!("http://127.0.0.1:{}/api/settings", host.port))
+            .header("sec-fetch-site", "cross-site"),
+    ] {
+        host.web_json(request, 403).await;
+    }
+    assert_eq!(
+        host.web_json(host.web_request(GET, "/api/settings"), 200)
+            .await,
+        empty
+    );
+    assert_eq!(
+        host.ok(&["host", "config", "get"]).await,
+        json!({"revision":0,"routes":[]})
+    );
+    assert_eq!(
+        host.web_json(
+            host.web_request(PUT, "/api/settings")
+                .header("x-peachsh-token", &host.token)
+                .json(&body),
+            200,
+        )
+        .await,
+        json!({"ok":true})
+    );
+    let stored = host
+        .web_json(
+            host.web_request(GET, "/api/settings")
+                .header("x-peachsh-token", &host.token),
+            200,
+        )
+        .await;
+    assert_eq!(stored["settings"], settings);
+    assert_eq!(stored["keys"], json!({"local":true}));
+    assert_eq!(stored["newapi_key"], false);
+    assert_eq!(host.ok(&["host", "config", "get"]).await["revision"], 1);
+    host.no_permission_or_calls();
+    provider.count(0);
+    println!(
+        "I11 real HTML/JS/CSS loaded; old settings saved/reloaded over HTTP; keys are availability booleans; revision=1, Provider=0"
+    );
+
+    let first = host
+        .ok(&[
+            "host",
+            "route",
+            "set",
+            "local",
+            "--expected-revision",
+            "1",
+            "--name",
+            "CLI route",
+            "--base-url",
+            &provider.base,
+            "--model",
+            "mock-model",
+            "--max-tokens",
+            "128",
+            "--parallel-limit",
+            "1",
+            "--key",
+            "legacy-web-cli",
+            "--keep-credential",
+        ])
+        .await;
+    assert_eq!(first["receipt"]["revision"], 2);
+    let original = host
+        .ok(&["host", "config", "operation", "--key", "legacy-web-cli"])
+        .await;
+    assert_eq!(original["receipt"], first["receipt"]);
+    assert_eq!(original["replayed"], true);
+    let after_cli = host
+        .web_json(host.web_request(GET, "/api/settings"), 200)
+        .await;
+    assert_eq!(after_cli["settings"]["routes"][0]["name"], "CLI route");
+    // app.js omits entries for blank password fields, preserving saved keys.
+    let mut changed = after_cli["settings"].clone();
+    changed["routes"][0]["name"] = json!("Legacy web renamed");
+    host.web_json(
+        host.web_request(PUT, "/api/settings")
+            .header("x-peachsh-token", &host.token)
+            .json(&json!({"settings":changed,"keys":{}})),
+        200,
+    )
+    .await;
+    let legacy_current = host
+        .web_json(host.web_request(GET, "/api/settings"), 200)
+        .await;
+    assert_eq!(legacy_current["settings"], changed);
+    assert_eq!(legacy_current["keys"], json!({"local":true}));
+    let current = host.ok(&["host", "config", "get"]).await;
+    assert_eq!(current["revision"], 3);
+    assert_eq!(current["routes"][0]["name"], "Legacy web renamed");
+    let stale = host
+        .web_json(
+            host.web_request(PUT, "/api/host/routes/local")
+                .header("x-peachsh-token", &host.token)
+                .header("idempotency-key", "legacy-web-stale")
+                .json(&json!({"expected_revision":2,"route":{"name":"Stale overwrite","base_url":provider.base,"model":"mock-model","max_tokens":128,"parallel_limit":1},"credential":{"mode":"keep"}})),
+            409,
+        )
+        .await;
+    assert_eq!(stale["error"]["code"], "host_config_revision_conflict");
+    assert_eq!(host.ok(&["host", "config", "get"]).await, current);
+    assert_eq!(
+        host.ok(&["host", "config", "operation", "--key", "legacy-web-cli"])
+            .await,
+        original
+    );
+    let receipt_count: i64 = host
+        .sql()
+        .query_row("SELECT COUNT(*) FROM host_config_requests", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(
+        receipt_count, 1,
+        "old writes and stale CAS invent no receipt"
+    );
+    assert_eq!(host.ok(&["project", "list"]).await, json!([]));
+    host.no_permission_or_calls();
+    provider.count(0);
+    println!(
+        "I11 old update advanced revision 2->3; old receipt remains 2; stale new CAS rejected; no implicit Project/grant/call"
+    );
+    host.stop().await;
+    let mut restarted = Host::launch(root.path(), "web-state", false).await;
+    assert_ne!(restarted.token, host.token);
+    assert_eq!(
+        restarted
+            .web_json(restarted.web_request(GET, "/api/settings"), 200)
+            .await,
+        legacy_current
+    );
+    assert_eq!(restarted.ok(&["host", "config", "get"]).await, current);
+    assert_eq!(
+        restarted
+            .ok(&["host", "config", "operation", "--key", "legacy-web-cli"])
+            .await,
+        original
+    );
+    restarted.no_permission_or_calls();
+    provider.count(0);
+    restarted.stop().await;
+    println!(
+        "I11 same database restart preserves legacy settings/key availability and new receipt/current configuration; Provider=0; HTTP-level compatibility, no browser/DOM execution"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -437,7 +679,7 @@ async fn i10_same_empty_database_cli_configuration_permissions_budget_completion
             project_id,
         ])
         .await;
-    let authorization = host
+    let decision = host
         .ok(&[
             "network",
             "authorize",
@@ -457,6 +699,8 @@ async fn i10_same_empty_database_cli_configuration_permissions_budget_completion
             "first-network",
         ])
         .await;
+    assert_eq!(decision["replayed"], false);
+    let authorization = &decision["authorization"];
     assert_eq!(authorization["purposes"], json!(["completion"]));
     provider.count(0);
     println!(
