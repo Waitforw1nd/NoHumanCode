@@ -975,6 +975,45 @@ impl Engine {
     pub fn is_busy(&self) -> bool {
         !self.active.lock().unwrap().is_empty()
     }
+    pub fn host_config(
+        &self,
+    ) -> Result<
+        crate::host_configuration::HostConfigSnapshot,
+        crate::host_configuration::HostConfigError,
+    > {
+        self.store.host_config()
+    }
+    pub fn host_config_operation(
+        &self,
+        key: &str,
+    ) -> Result<
+        crate::host_configuration::RouteConfigResult,
+        crate::host_configuration::HostConfigError,
+    > {
+        self.store.host_config_operation(key)
+    }
+    pub async fn configure_host_route(
+        &self,
+        route_id: &str,
+        request: crate::host_configuration::ConfigureHostRoute,
+        key: &str,
+    ) -> Result<
+        crate::host_configuration::RouteConfigResult,
+        crate::host_configuration::HostConfigError,
+    > {
+        let _gate = self.gate.lock().await;
+        let busy =
+            self.is_busy() || self.slots.available_permits() != *self.slot_capacity.lock().unwrap();
+        // The Store checks a matching durable replay before applying this busy
+        // condition or CAS; no old request is turned into a new write.
+        let result = self
+            .store
+            .configure_host_route_guarded(route_id, request, key, busy)?;
+        if !result.replayed && result.receipt.changed {
+            self.key_slots.lock().unwrap().clear();
+        }
+        Ok(result)
+    }
     pub async fn configure(&self, settings: Settings) -> Result<()> {
         self.configure_with_keys(settings, HashMap::new()).await
     }
@@ -2943,7 +2982,7 @@ mod workspace_phase_tests {
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
             // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
-            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
             {
                 let tx = db.unchecked_transaction().unwrap();
                 crate::repository::apply_schema_12(&tx).unwrap();
@@ -2980,7 +3019,7 @@ mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 15);
+            assert_eq!(engine.store.schema_version().unwrap(), 16);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.2.0");
@@ -2988,6 +3027,22 @@ mod workspace_phase_tests {
             assert_eq!(current.desired.revision, 1);
             assert_eq!(current.runtime.effects_count, if enabled { 4 } else { 0 });
             let mut expected = before.clone();
+            assert!(
+                expected
+                    .insert(
+                        "host_config_state".into(),
+                        vec![vec![
+                            rusqlite::types::Value::Integer(1),
+                            rusqlite::types::Value::Integer(0)
+                        ]]
+                    )
+                    .is_none()
+            );
+            assert!(
+                expected
+                    .insert("host_config_requests".into(), vec![])
+                    .is_none()
+            );
             for name in [
                 "project_budgets",
                 "budget_requests",
@@ -3010,10 +3065,14 @@ mod workspace_phase_tests {
                             == rusqlite::types::Value::Text(
                                 crate::repository::BUDGET_MIGRATION_ID.into(),
                             )
+                        || row[1]
+                            == rusqlite::types::Value::Text(
+                                crate::repository::HOST_CONFIG_MIGRATION_ID.into(),
+                            )
                 })
                 .cloned()
                 .collect();
-            assert_eq!(worktree_markers.len(), 2);
+            assert_eq!(worktree_markers.len(), 3);
             let shell_rows: Vec<_> = after["plugin_desired"]
                 .iter()
                 .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
@@ -3326,7 +3385,7 @@ mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3381,10 +3440,26 @@ mod workspace_phase_tests {
         assert_eq!(n10_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 15);
+        assert_eq!(migrated.schema_version().unwrap(), 16);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
         let mut before = before;
+        assert!(
+            before
+                .insert(
+                    "host_config_state".into(),
+                    vec![vec![
+                        rusqlite::types::Value::Integer(1),
+                        rusqlite::types::Value::Integer(0)
+                    ]]
+                )
+                .is_none()
+        );
+        assert!(
+            before
+                .insert("host_config_requests".into(), vec![])
+                .is_none()
+        );
         for name in [
             "project_budgets",
             "budget_requests",

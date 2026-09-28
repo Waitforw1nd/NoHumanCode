@@ -3,7 +3,7 @@ use clap::Parser;
 use peachsh::{
     engine::Engine,
     server::{self, App},
-    store::{Store, initial_settings},
+    store::{Store, fresh_settings, initial_settings},
 };
 use std::{path::PathBuf, sync::Arc};
 
@@ -16,10 +16,14 @@ struct Args {
     port: u16,
     #[arg(long)]
     data_dir: Option<PathBuf>,
+    /// Explicitly import legacy settings/credentials on first initialization only.
+    /// Without this option a new database starts with no routes or account.
     #[arg(long)]
     legacy_data: Option<PathBuf>,
     #[arg(long)]
     workspace: Option<PathBuf>,
+    /// Validate startup; may create/migrate the database and initialize settings.
+    /// This is not a read-only check. Legacy import requires --legacy-data.
     #[arg(long)]
     check: bool,
     #[arg(long)]
@@ -37,7 +41,18 @@ fn nonzero_port(value: &str) -> std::result::Result<u16, String> {
 }
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Args::parse();
+    let args = Args::try_parse().unwrap_or_else(|error| {
+        // Clap may echo invalid argument values. The Host setup namespace never
+        // echoes untrusted input, including an accidentally pasted credential.
+        if error.use_stderr() && std::env::args_os().any(|arg| arg == "host") {
+            clap::Error::raw(
+                clap::error::ErrorKind::ValueValidation,
+                "Host 命令参数无效；秘密只能通过隐藏提示或重定向 stdin 输入，请使用 --help",
+            )
+            .exit();
+        }
+        error.exit()
+    });
     if let Some(command) = args.command {
         if args.check {
             clap::Error::raw(
@@ -72,7 +87,6 @@ async fn main() -> Result<()> {
     let data_dir = args
         .data_dir
         .unwrap_or_else(|| PathBuf::from("../data-rust"));
-    let legacy_data = args.legacy_data.unwrap_or_else(|| PathBuf::from("../data"));
     let workspace = args
         .workspace
         .unwrap_or_else(|| PathBuf::from("../workspace"));
@@ -93,7 +107,10 @@ async fn main() -> Result<()> {
     let store = Arc::new(Store::open(&data_dir.join("peachsh.sqlite3"))?);
     let settings = match store.settings()? {
         Some(s) => s,
-        None => initial_settings(&store, &legacy_data, &workspace)?,
+        None => match args.legacy_data.as_deref() {
+            Some(legacy_data) => initial_settings(&store, legacy_data, &workspace)?,
+            None => fresh_settings(&store, &workspace)?,
+        },
     };
     settings.validate()?;
     if args.check {
