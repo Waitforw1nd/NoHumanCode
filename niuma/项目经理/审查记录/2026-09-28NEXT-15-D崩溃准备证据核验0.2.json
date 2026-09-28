@@ -1,0 +1,153 @@
+{
+  "product_tests_run_by_manager": false,
+  "checked_at": "2026-09-28T23:08:09.7006343+08:00",
+  "pair_count": 16,
+  "dynamic_tests": "not executed",
+  "candidate": "a5a4ac64fe2d6b9175afada7bfde4f796c19fe13",
+  "entries": [
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-commit.log",
+      "verified": true,
+      "published_sha256": "0BBE0B3EA51B1844855FE53882D3BF9B115036403649B9592912671E3D1468A2",
+      "original_sha256": "0BBE0B3EA51B1844855FE53882D3BF9B115036403649B9592912671E3D1468A2",
+      "published_bytes": 210,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-commit.log",
+      "original_bytes": 210
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-delta.log",
+      "verified": true,
+      "published_sha256": "7F52E986999108A4AD264B5C3BDC8DF309200BB434AC2CC054F3AE049650B889",
+      "original_sha256": "7F52E986999108A4AD264B5C3BDC8DF309200BB434AC2CC054F3AE049650B889",
+      "published_bytes": 60,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-delta.log",
+      "original_bytes": 60
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-diff-check.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-diff-check.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-freeze.json",
+      "verified": true,
+      "published_sha256": "638B3B4EB32700D62536898147A3C51438D6853D411E5CFD9BDE609EEB95C62C",
+      "original_sha256": "7743B15574CA6F4208CEB5F2B1A590EFC84AF4294C53F37C8CD0E49A11D4E66B",
+      "published_bytes": 3715,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-freeze.json",
+      "original_bytes": 3722
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-index.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-index.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-status.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-status.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/candidate-trees.log",
+      "verified": true,
+      "published_sha256": "16BE37779C2F041045570E50E27E23E12EA63C6D5C620452311334788AAAC144",
+      "original_sha256": "16BE37779C2F041045570E50E27E23E12EA63C6D5C620452311334788AAAC144",
+      "published_bytes": 126,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/candidate-trees.log",
+      "original_bytes": 126
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/dependency-observations.json",
+      "verified": true,
+      "published_sha256": "F6AA6701E14D47261B8409F317DCC1B62100FA0836605459A1931CFD17DCDE81",
+      "original_sha256": "36215D25F5C3508BF472831D4A0DE274DCCFD7A735EF737F4B473BC360701625",
+      "published_bytes": 1985,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/dependency-observations.json",
+      "original_bytes": 2015
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/diff-check.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/diff-check.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/rustfmt-check.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/rustfmt-check.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/rustfmt-final-write.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/rustfmt-final-write.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/rustfmt-write.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/rustfmt-write.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/staged-diff-check.log",
+      "verified": true,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/staged-diff-check.log",
+      "original_bytes": 0
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/static-checks.json",
+      "verified": true,
+      "published_sha256": "7D2FBF51FEC63562A0BBB7D425873FB88EB70811E8100937F4C3657074DE639D",
+      "original_sha256": "112600FCD16868F07EED1255749DC0B8229EB257B343857D14EA7165668BED90",
+      "published_bytes": 2102,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/static-checks.json",
+      "original_bytes": 2158
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/report-write-tool-failure.json",
+      "verified": true,
+      "published_sha256": "6331E438BAC0D2F175E42A5FFB9E5059CFE2DE378C86A532315C591562236C4A",
+      "original_sha256": "6331E438BAC0D2F175E42A5FFB9E5059CFE2DE378C86A532315C591562236C4A",
+      "published_bytes": 501,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/report-write-tool-failure.json",
+      "original_bytes": 501
+    },
+    {
+      "published": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.2/continuous-source-freeze.json",
+      "verified": true,
+      "published_sha256": "1CDE6BD42E05D324DA1BE8A305AB471A787C24437809B96F14F6A531930858EC",
+      "original_sha256": "83AF739CCA776350438425BBB539702B7169F603BE8E0FEF8D2A3ECC1CB52286",
+      "published_bytes": 1529,
+      "original": "../nhc-d-credential-input/.local/host-crash-preparation-02/logs/continuous-source-freeze.json",
+      "original_bytes": 1536
+    }
+  ]
+}

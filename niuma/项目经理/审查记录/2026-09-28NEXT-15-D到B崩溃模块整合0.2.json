@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-09-28T23:08:09.9530691+08:00",
+  "source_head": "a5a4ac64fe2d6b9175afada7bfde4f796c19fe13",
+  "receiver_before": "c94a48daded1b0098b560e6f8761d64a7e8c1096",
+  "source_identity_sha256": "4BF44856AD27AC537C760495FE0FCAA015A434BCC6A71A8D55E3840AB635700C",
+  "receiver_identity_sha256": "866473AA02DF00E4A0FFBB2B3F803D90AA391FC9ACED85F6480BECEBEF9DC458",
+  "current_standing_freezes_verified": true,
+  "status_before_clean": true,
+  "product_tests_run_by_manager": false,
+  "receiver_after": "67de9282b198bd7ed310e13a3987455845cab54c",
+  "source_tree": "cafd063db13989fbd6fc0b60e7d7260b6e53a415",
+  "rust_tree": "1f6682e2254a83610e61f4a76d07166a9ef6e0c1",
+  "status_after": [],
+  "employee_ack": "pending"
+}
