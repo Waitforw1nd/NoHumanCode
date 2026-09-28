@@ -1,0 +1,9 @@
+{
+  "utc": "2026-09-28T16:29:26.2939201Z",
+  "failed_pid": 43204,
+  "pid_observation": [],
+  "scoped_other_processes": [],
+  "limitations": "Read-only later snapshot; numeric PID alone does not establish original process identity or original failure-time liveness; no process terminated",
+  "driver_tool_exit_code": 1,
+  "test_build_exit_code": 101
+}

@@ -1,0 +1,119 @@
+{
+  "attempt": "attempt2",
+  "execution_id": "C-R16-01-20260928-E01",
+  "scope": "Manager authorized final gates; source/index frozen",
+  "start_utc": "2026-09-28T16:26:24.0812062Z",
+  "status": "failed_test",
+  "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "cwd": "../nhc-c-host-setup-cli\\NoManCode\\rust-app",
+  "environment": {
+    "RUSTUP_AUTO_INSTALL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "TMP": "../nhc-c-host-setup-cli\\.local\\tmp",
+    "TEMP": "../nhc-c-host-setup-cli\\.local\\tmp",
+    "CARGO_TARGET_DIR": "../nhc-c-host-setup-cli\\.local\\target",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "2",
+    "VCToolsInstallDir": "./.local/toolchains/MSVC/14.43.34808",
+    "WindowsSdkDir": "./.local/toolchains/WindowsKits/10"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustfmt": "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)",
+  "installed_targets": [
+    "wasm32-unknown-unknown",
+    "x86_64-pc-windows-msvc"
+  ],
+  "msvc": "./.local/toolchains/MSVC/14.43.34808",
+  "sdk_version": "10.0.22621.0",
+  "compiler": "./.local/toolchains/MSVC/14.43.34808\\bin\\Hostx86\\x64\\cl.exe",
+  "build_ps1_sha256": "48CBBF0BBA93E23DE117647E54E0E74BA9777AA0AFD081AE15A834E9E01F7ECD",
+  "driver_sha256": "98417F13C29ED186C5E55419130541A8D14178741F6823D27DDF0FCAF6947D76",
+  "steps": [
+    {
+      "action": "check",
+      "command": "pwsh -NoProfile -File ./build.ps1 -Action check",
+      "cargo_command": "cargo check --workspace --locked",
+      "start_utc": "2026-09-28T16:26:24.7982697Z",
+      "end_utc": "2026-09-28T16:26:32.5678857Z",
+      "exit_code": 0,
+      "log": "check.log",
+      "before": {
+        "utc": "2026-09-28T16:26:24.5130162Z",
+        "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+        "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+        "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+        "branch": "codex/c/host-setup-cli",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 154,
+        "source_hash_file": "check-before-source-hashes.json",
+        "source_hash_manifest_sha256": "3D4F023EEF2F279ADC5B19179EF3FD2CC5DC7BE83D1F96473A4B4A9DE32EC33E",
+        "invariant_ok": true
+      },
+      "after": {
+        "utc": "2026-09-28T16:26:32.6877741Z",
+        "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+        "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+        "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+        "branch": "codex/c/host-setup-cli",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 154,
+        "source_hash_file": "check-after-source-hashes.json",
+        "source_hash_manifest_sha256": "3D4F023EEF2F279ADC5B19179EF3FD2CC5DC7BE83D1F96473A4B4A9DE32EC33E",
+        "invariant_ok": true
+      },
+      "source_hashes_unchanged": true
+    },
+    {
+      "action": "test",
+      "command": "pwsh -NoProfile -File ./build.ps1 -Action test",
+      "cargo_command": "cargo test --workspace --locked",
+      "start_utc": "2026-09-28T16:26:33.3609536Z",
+      "end_utc": "2026-09-28T16:28:18.6339740Z",
+      "exit_code": 101,
+      "log": "test.log",
+      "before": {
+        "utc": "2026-09-28T16:26:33.0666234Z",
+        "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+        "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+        "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+        "branch": "codex/c/host-setup-cli",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 154,
+        "source_hash_file": "test-before-source-hashes.json",
+        "source_hash_manifest_sha256": "3D4F023EEF2F279ADC5B19179EF3FD2CC5DC7BE83D1F96473A4B4A9DE32EC33E",
+        "invariant_ok": true
+      },
+      "after": {
+        "utc": "2026-09-28T16:28:18.7072344Z",
+        "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+        "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+        "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+        "branch": "codex/c/host-setup-cli",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 154,
+        "source_hash_file": "test-after-source-hashes.json",
+        "source_hash_manifest_sha256": "3D4F023EEF2F279ADC5B19179EF3FD2CC5DC7BE83D1F96473A4B4A9DE32EC33E",
+        "invariant_ok": true
+      },
+      "source_hashes_unchanged": true
+    }
+  ],
+  "not_executed": [
+    "fmt",
+    "clippy",
+    "wasm-check"
+  ]
+}

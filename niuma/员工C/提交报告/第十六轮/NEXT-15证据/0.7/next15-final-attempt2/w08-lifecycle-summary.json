@@ -1,0 +1,347 @@
+[
+  {
+    "phase": "registered",
+    "root": ".local/tmp/.tmp95d1MS",
+    "parent_pid": 48656,
+    "file_count": 45,
+    "events": 22,
+    "spawns": [
+      {
+        "phase": "registered",
+        "pid": 35088
+      },
+      {
+        "phase": "restart",
+        "pid": 48652
+      }
+    ],
+    "waits": [
+      {
+        "event": "wait_begin",
+        "phase": "registered",
+        "notification": "listen-registered",
+        "pid": 35088
+      },
+      {
+        "event": "notification_observed",
+        "phase": "registered",
+        "notification": "listen-registered",
+        "pid": 35088
+      },
+      {
+        "event": "wait_begin",
+        "phase": "registered",
+        "notification": "ready",
+        "pid": 35088
+      },
+      {
+        "event": "notification_observed",
+        "phase": "registered",
+        "notification": "ready",
+        "pid": 35088
+      },
+      {
+        "event": "wait_begin",
+        "phase": "restart",
+        "notification": "listen-restart",
+        "pid": 48652
+      },
+      {
+        "event": "notification_observed",
+        "phase": "restart",
+        "notification": "listen-restart",
+        "pid": 48652
+      }
+    ],
+    "reaps": [
+      {
+        "event": "kill_result",
+        "phase": "registered",
+        "pid": 35088,
+        "ok": true,
+        "exit_code": null,
+        "success": null
+      },
+      {
+        "event": "reaped",
+        "phase": "registered",
+        "pid": 35088,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "kill_result",
+        "phase": "restart",
+        "pid": 48652,
+        "ok": true,
+        "exit_code": null,
+        "success": null
+      },
+      {
+        "event": "reaped",
+        "phase": "restart",
+        "pid": 48652,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "drop_reaped",
+        "phase": "restart",
+        "pid": 48652,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "drop_reaped",
+        "phase": "registered",
+        "pid": 35088,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      }
+    ],
+    "http": [
+      {
+        "at_unix_ms": 1790612894925,
+        "connect": false,
+        "event": "original_http_transport_error",
+        "phase": "registered",
+        "request": true,
+        "timeout": false
+      }
+    ]
+  },
+  {
+    "phase": "created",
+    "root": ".local/tmp/.tmpM1HRzo",
+    "parent_pid": 48656,
+    "file_count": 45,
+    "events": 22,
+    "spawns": [
+      {
+        "phase": "created",
+        "pid": 36976
+      },
+      {
+        "phase": "restart",
+        "pid": 14744
+      }
+    ],
+    "waits": [
+      {
+        "event": "wait_begin",
+        "phase": "created",
+        "notification": "listen-created",
+        "pid": 36976
+      },
+      {
+        "event": "notification_observed",
+        "phase": "created",
+        "notification": "listen-created",
+        "pid": 36976
+      },
+      {
+        "event": "wait_begin",
+        "phase": "created",
+        "notification": "ready",
+        "pid": 36976
+      },
+      {
+        "event": "notification_observed",
+        "phase": "created",
+        "notification": "ready",
+        "pid": 36976
+      },
+      {
+        "event": "wait_begin",
+        "phase": "restart",
+        "notification": "listen-restart",
+        "pid": 14744
+      },
+      {
+        "event": "notification_observed",
+        "phase": "restart",
+        "notification": "listen-restart",
+        "pid": 14744
+      }
+    ],
+    "reaps": [
+      {
+        "event": "kill_result",
+        "phase": "created",
+        "pid": 36976,
+        "ok": true,
+        "exit_code": null,
+        "success": null
+      },
+      {
+        "event": "reaped",
+        "phase": "created",
+        "pid": 36976,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "kill_result",
+        "phase": "restart",
+        "pid": 14744,
+        "ok": true,
+        "exit_code": null,
+        "success": null
+      },
+      {
+        "event": "reaped",
+        "phase": "restart",
+        "pid": 14744,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "drop_reaped",
+        "phase": "restart",
+        "pid": 14744,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "drop_reaped",
+        "phase": "created",
+        "pid": 36976,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      }
+    ],
+    "http": [
+      {
+        "at_unix_ms": 1790612888558,
+        "connect": false,
+        "event": "original_http_transport_error",
+        "phase": "created",
+        "request": true,
+        "timeout": false
+      }
+    ]
+  },
+  {
+    "phase": "claim",
+    "root": ".local/tmp/.tmpNPzAma",
+    "parent_pid": 48656,
+    "file_count": 34,
+    "events": 22,
+    "spawns": [
+      {
+        "phase": "claim",
+        "pid": 34956
+      },
+      {
+        "phase": "restart",
+        "pid": 39732
+      }
+    ],
+    "waits": [
+      {
+        "event": "wait_begin",
+        "phase": "claim",
+        "notification": "listen-claim",
+        "pid": 34956
+      },
+      {
+        "event": "notification_observed",
+        "phase": "claim",
+        "notification": "listen-claim",
+        "pid": 34956
+      },
+      {
+        "event": "wait_begin",
+        "phase": "claim",
+        "notification": "ready",
+        "pid": 34956
+      },
+      {
+        "event": "notification_observed",
+        "phase": "claim",
+        "notification": "ready",
+        "pid": 34956
+      },
+      {
+        "event": "wait_begin",
+        "phase": "restart",
+        "notification": "listen-restart",
+        "pid": 39732
+      },
+      {
+        "event": "notification_observed",
+        "phase": "restart",
+        "notification": "listen-restart",
+        "pid": 39732
+      }
+    ],
+    "reaps": [
+      {
+        "event": "kill_result",
+        "phase": "claim",
+        "pid": 34956,
+        "ok": true,
+        "exit_code": null,
+        "success": null
+      },
+      {
+        "event": "reaped",
+        "phase": "claim",
+        "pid": 34956,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "kill_result",
+        "phase": "restart",
+        "pid": 39732,
+        "ok": true,
+        "exit_code": null,
+        "success": null
+      },
+      {
+        "event": "reaped",
+        "phase": "restart",
+        "pid": 39732,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "drop_reaped",
+        "phase": "restart",
+        "pid": 39732,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      },
+      {
+        "event": "drop_reaped",
+        "phase": "claim",
+        "pid": 34956,
+        "ok": null,
+        "exit_code": 1,
+        "success": false
+      }
+    ],
+    "http": [
+      {
+        "at_unix_ms": 1790612881034,
+        "connect": false,
+        "event": "original_http_transport_error",
+        "phase": "claim",
+        "request": true,
+        "timeout": false
+      }
+    ]
+  }
+]

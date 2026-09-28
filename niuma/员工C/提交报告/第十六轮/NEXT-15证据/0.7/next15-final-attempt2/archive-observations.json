@@ -1,0 +1,9 @@
+{
+  "utc": "2026-09-28T16:32:21.6190581Z",
+  "product_reruns": 0,
+  "notes": [
+    "Initial summary parser used case-insensitive Running and mislabeled suite as running 237 tests; entries/counts unaffected. Original kept, corrected summary separately written.",
+    "First correction guard did not match Windows separator and exited1 before writing corrected output; corrected guard now validates actual Cargo header and counts.",
+    "First integration-freeze collection had a PowerShell missing closing brace parser error and exited1 before collection. Identity was briefly updated before actual receipt; corrected command completed read-only verification at 16:31:45.6157407Z and identity was bound to that actual receipt. No process was killed and no product command rerun."
+  ]
+}

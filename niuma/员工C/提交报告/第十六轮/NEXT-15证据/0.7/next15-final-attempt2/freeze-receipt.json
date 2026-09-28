@@ -1,0 +1,13 @@
+{
+  "utc": "2026-09-28T16:29:28.3610898Z",
+  "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "branch": "codex/c/host-setup-cli",
+  "status": [],
+  "index": [],
+  "unmerged": [],
+  "owned_running_processes": [],
+  "gate_status": "failed_test",
+  "statement": "source/index clean/no-build after final attempt2; no further gate or diagnostic run"
+}

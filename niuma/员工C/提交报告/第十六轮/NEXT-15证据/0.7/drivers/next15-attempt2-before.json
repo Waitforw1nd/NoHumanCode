@@ -1,0 +1,24 @@
+{
+  "utc": "2026-09-28T16:26:22.8578613Z",
+  "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "branch": "codex/c/host-setup-cli",
+  "status": [],
+  "index": [],
+  "unmerged": [],
+  "old_driver_sha256": "E5AEC6F11E9846D2426DFE250555CCCC0DD66AE8382C15C3ECBFCCFC989B27D4",
+  "new_driver_sha256": "98417F13C29ED186C5E55419130541A8D14178741F6823D27DDF0FCAF6947D76",
+  "existing_lifecycle_files": [
+    {
+      "relative_path": ".local/tmp/nhc-i09-after_commit-d042db40-2d87-4c22-b47b-5e2c075c0ac9/lifecycle.jsonl",
+      "bytes": 2369,
+      "sha256": "95E8D41965FFEFC3C91B45CDB42FEF17DD8E57B72855BCFE8080E392F143A511"
+    },
+    {
+      "relative_path": ".local/tmp/nhc-i09-before_commit-a0da035e-1d73-4976-ac97-d599b91a0d44/lifecycle.jsonl",
+      "bytes": 2375,
+      "sha256": "B99A5A8E26270855FDEE790D4C5EA99D786AA3C63D8201C608A10D3718A7C35A"
+    }
+  ]
+}

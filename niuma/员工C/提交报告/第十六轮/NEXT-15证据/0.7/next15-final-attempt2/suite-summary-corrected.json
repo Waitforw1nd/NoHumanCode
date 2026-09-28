@@ -1,0 +1,1983 @@
+{
+  "utc": "2026-09-28T16:29:27.7285854Z",
+  "candidate": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "status": "failed_test",
+  "test_log_sha256": "9487AFD0691E0E1B246F58ED32D716CA291197F6E40CF4E912B6E7A59139C933",
+  "suite_count": 1,
+  "totals": {
+    "passed": 236,
+    "failed": 1,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  "suites": [
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 257,
+      "result": "FAILED",
+      "passed": 236,
+      "failed": 1,
+      "ignored": 0,
+      "measured": 0,
+      "filtered": 0,
+      "tail": " finished in 23.93s"
+    }
+  ],
+  "helper_entries": [
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 9,
+      "name": "credential_input::tests::redirected_process_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 15,
+      "name": "credential_input::windows_console::tests::isolated_console_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 59,
+      "name": "git_worktree::tests::w05_isolated_environment_helper",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 71,
+      "name": "host_configuration::tests::transaction_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 72,
+      "name": "host_configuration_crash_tests::host_process_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 96,
+      "name": "provider::network_tests::proxy_environment_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    }
+  ],
+  "ignored_entries": [],
+  "all_test_entry_count": 237,
+  "entries": [
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 8,
+      "name": "approval::tests::classification_defaults_unknown_tools_to_approval_deny",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 9,
+      "name": "credential_input::tests::redirected_process_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 10,
+      "name": "credential_input::tests::whitespace_controls_and_bad_encoding_fail_without_trimming",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 11,
+      "name": "approval::tests::digest_is_stable_and_preview_omits_secret_and_body",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 12,
+      "name": "credential_input::tests::error_output_is_fixed_and_has_no_underlying_payload",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 13,
+      "name": "credential_input::tests::byte_limit_is_exact_with_each_line_ending",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 14,
+      "name": "credential_input::tests::unending_stream_is_read_only_to_the_fixed_bound",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 15,
+      "name": "credential_input::windows_console::tests::isolated_console_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 16,
+      "name": "credential_input::tests::redirected_preserves_single_line_and_only_removes_one_ending",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 17,
+      "name": "domain::tests::project_session_turn_ids_do_not_follow_display_names",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 18,
+      "name": "domain::tests::session_kind_is_explicit_and_name_independent",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 19,
+      "name": "domain::tests::paths_and_names",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 20,
+      "name": "credential_input::tests::partial_reads_and_read_failures_never_return_partial_secret",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 21,
+      "name": "engine::network_gate_tests::queued_management_rechecks_revocation_before_creating_a_call",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 22,
+      "name": "budget::tests::aggregate_overflow_blocks_reads_open_recover_but_retains_inflight_actuals",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 23,
+      "name": "credential_input::tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 24,
+      "name": "budget::tests::network_and_budget_failures_roll_back_together",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 25,
+      "name": "budget::tests::not_sent_refunds_but_other_inflight_calls_can_settle_after_block",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 26,
+      "name": "engine::workspace_phase_tests::n10_commit_before_apply_child_kill_wait_restart_keeps_unknown_and_grants",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 27,
+      "name": "budget::tests::exact_settlement_replay_conflict_and_overrun_preserve_first_fact",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 28,
+      "name": "engine::network_gate_tests::slot_acquisition_is_gate_serialized_and_wait_registration_cannot_lose_release",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 29,
+      "name": "budget::tests::configuration_forward_coverage_cas_and_historical_unknown",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 30,
+      "name": "engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 31,
+      "name": "budget::tests::two_legal_project_scopes_isolate_budget_and_reject_global_key_crossing",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 32,
+      "name": "engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 33,
+      "name": "engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 34,
+      "name": "budget::tests::competing_stores_atomically_reserve_last_allowance",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 35,
+      "name": "budget::tests::configuration_cas_race_and_reductions_preserve_claim_snapshot",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 36,
+      "name": "engine::workspace_phase_tests::n10_disable_first_preserves_decision_and_refuses_claim_without_side_effects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 37,
+      "name": "engine::workspace_phase_tests::n10_claim_first_real_write_finishes_with_durable_receipt_and_drains",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 38,
+      "name": "engine::workspace_phase_tests::checkpoint_creation_and_both_restore_routes_share_real_gate",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 39,
+      "name": "engine::workspace_phase_tests::checkpoint_partial_failure_keeps_single_receipt_and_blocks_new_turn",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 40,
+      "name": "engine::workspace_phase_tests::n12_claim_before_spawn_child_kill_wait_recovers_unknown_without_retry",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 41,
+      "name": "engine::workspace_phase_tests::n11_three_reads_recheck_durable_desired_and_project_permissions",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 42,
+      "name": "engine::workspace_phase_tests::n07_send_and_restore_wait_on_same_production_gate",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 43,
+      "name": "budget::tests::missing_covered_row_and_single_sided_terminal_fail_closed_on_recovery",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 44,
+      "name": "engine::workspace_phase_tests::n12_spawned_typed_unknown_keeps_claim_and_stops_provider",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 45,
+      "name": "engine::workspace_phase_tests::n12_pending_disable_then_approval_ack_keeps_decision_without_claim",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 46,
+      "name": "engine::workspace_phase_tests::n10_schema11_migration_preserves_nonempty_all_business_rows_and_ciphertext",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 47,
+      "name": "engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 48,
+      "name": "budget::tests::request_digest_and_coverage_high_water_corruption_are_rejected",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 49,
+      "name": "engine::workspace_phase_tests::n11_real_discovery_leases_finish_after_persistent_disable_and_record_results",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 50,
+      "name": "engine::network_gate_tests::real_process_kill_before_and_after_network_claim_recovers_without_resend",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 51,
+      "name": "engine::workspace_phase_tests::n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 52,
+      "name": "command_execution::tests::s06_real_timeout_reaps_child_and_readers_without_false_unknown",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 53,
+      "name": "budget::tests::request_sql_scope_and_policy_history_are_verified",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 54,
+      "name": "engine::workspace_phase_tests::failed_prepare_does_not_pollute_later_or_earlier_success",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 55,
+      "name": "engine::workspace_phase_tests::recheck_io_failure_after_prepare_is_failed_without_file_effect",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 56,
+      "name": "git_worktree::tests::w04_structural_plan_validation_and_windows_path_aliases",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 57,
+      "name": "engine::workspace_phase_tests::restore_gate_serializes_competitors_and_seals_resumed_writes",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 58,
+      "name": "budget::tests::missing_invalid_and_transport_failures_hold_reservation",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 59,
+      "name": "git_worktree::tests::w05_isolated_environment_helper",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 60,
+      "name": "command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 61,
+      "name": "engine::workspace_phase_tests::write_prepare_before_fs_real_process_stop",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 62,
+      "name": "engine::workspace_phase_tests::n12_shell_tools_commands_project_and_ack_are_required",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 63,
+      "name": "engine::workspace_phase_tests::start_and_resume_wait_for_production_workspace_gate",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 64,
+      "name": "git_worktree::tests::w06_original_handle_rejects_live_process_and_accepts_waited_exit",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 65,
+      "name": "engine::workspace_phase_tests::no_restore_resume_executes_and_checkpoint_keeps_original_error",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 66,
+      "name": "engine::workspace_phase_tests::sealed_pending_resume_and_failed_commit_leave_no_deferred_input",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 67,
+      "name": "engine::workspace_phase_tests::n12_true_schema12_migrates_preserving_all_old_rows_and_schema13_reopens",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 68,
+      "name": "budget::tests::real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 69,
+      "name": "engine::workspace_phase_tests::restore_probe_distinguishes_real_file_action_and_sqlite_outcome_errors",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 70,
+      "name": "engine::workspace_phase_tests::restore_probe_is_scoped_and_committed_callback_holds_no_store_lock",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 71,
+      "name": "host_configuration::tests::transaction_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 72,
+      "name": "host_configuration_crash_tests::host_process_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 73,
+      "name": "plugin_catalog::tests::display_name_rules",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 74,
+      "name": "plugin_catalog::tests::exact_version_orders_as_numeric_triple",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 75,
+      "name": "plugin_catalog::tests::name_charset_rules",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 76,
+      "name": "plugin_catalog::tests::register_failure_keeps_catalog_unchanged",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 77,
+      "name": "plugin_catalog::tests::scope_identity_uses_persisted_id_rules",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 78,
+      "name": "plugin_catalog::tests::strict_json_rejects_duplicate_members_everywhere",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 79,
+      "name": "plugin_host::tests::display_name_is_not_identity",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 80,
+      "name": "plugin_host::tests::effect_ids_increase_deterministically",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 81,
+      "name": "plugin_host::tests::invalid_scope_rejected",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 82,
+      "name": "plugin_host::tests::scope_kind_is_enforced_by_catalog",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 83,
+      "name": "plugin_host::tests::stop_without_dependents_succeeds_and_revokes",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 84,
+      "name": "plugin_host::tests::unknown_ids_are_typed",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 85,
+      "name": "plugin_management::tests::b02_concurrent_open_migrates_true12_once_without_losing_rows",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 86,
+      "name": "plugin_management::tests::b02_corrupt_shell_rows_fail_without_repair",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 87,
+      "name": "engine::workspace_phase_tests::n12_claimed_shell_finishes_after_disable_and_normal_cancel",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 88,
+      "name": "plugin_management::tests::independent_stores_cas_one_winner",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 89,
+      "name": "engine::workspace_phase_tests::partial_and_unknown_restore_histories_seal_resumed_writes",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 90,
+      "name": "plugin_management::tests::b02_shell_cas_and_cross_plugin_global_key_race",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 91,
+      "name": "plugin_management::tests::shell_global_key_and_independent_revisions",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 92,
+      "name": "plugin_management::tests::store_cas_replay_conflicts_and_atomic_failure",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 93,
+      "name": "provider::network_tests::account_uses_only_bound_header_and_target",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 94,
+      "name": "provider::network_tests::all_redirect_statuses_do_not_reach_second_origin_or_replay_post",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 95,
+      "name": "provider::network_tests::mismatched_target_model_user_or_purpose_is_invalid_and_zero_connections",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 96,
+      "name": "provider::network_tests::proxy_environment_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": true
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 97,
+      "name": "provider::network_tests::json_limit_is_enforced_before_eof_and_exact_limit_succeeds",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 98,
+      "name": "provider::network_tests::response_errors_distinguish_complete_invalid_and_truncated",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 99,
+      "name": "credential_input::windows_console::tests::private_console_prompt_has_no_echo_and_restores_on_all_normal_exits",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 100,
+      "name": "provider::network_tests::sse_requires_finish_and_complete_done_and_never_ignores_read_failure",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 101,
+      "name": "provider::network_tests::usage_real_transport_accepts_zero_normal_and_identical_snapshots_once",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 102,
+      "name": "provider::network_tests::usage_real_transport_done_does_not_wait_for_connection_close",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 103,
+      "name": "provider::network_tests::usage_real_transport_missing_and_invalid_keep_network_success_and_safe_values",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 104,
+      "name": "provider::network_tests::sse_exact_limit_finishes_and_over_limit_fails_before_eof",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 105,
+      "name": "provider::tests::balance_validation",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 106,
+      "name": "provider::tests::done_does_not_wait_for_connection_close",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 107,
+      "name": "provider::tests::truncated_stream_fails",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 108,
+      "name": "provider::tests::utf8_sse_and_fragmented_tools",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 109,
+      "name": "provider_transport::tests::permit_rejects_header_injection_and_wrong_identity_shape",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 110,
+      "name": "provider_transport::tests::targets_have_one_canonical_origin_and_preserve_base_path",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 111,
+      "name": "provider_transport::tests::targets_reject_ambiguity_before_url_parser_normalizes_it",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 112,
+      "name": "provider_transport::tests::transport_errors_never_retain_upstream_sources",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 113,
+      "name": "provider::network_tests::usage_real_transport_never_salvages_usage_from_failed_completion_or_retries",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 114,
+      "name": "repository::budget_schema_tests::n14_concurrent_open_serializes_migration",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 115,
+      "name": "git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 116,
+      "name": "plugin_management::tests::schema_13_reopen_marker_constraint_and_data_corruption_rejected",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 117,
+      "name": "repository::schema_tests::current_marker_does_not_hide_missing_tables_or_bad_event_columns",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 118,
+      "name": "repository::schema_tests::failed_marker_write_rolls_back_all_schema_changes",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 119,
+      "name": "repository::budget_schema_tests::n14_marker_failure_rolls_back_all_new_objects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 120,
+      "name": "repository::schema_tests::forged_named_indexes_are_rejected_even_with_valid_marker",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 121,
+      "name": "repository::schema_tests::marked_schema_6_repairs_only_the_missing_legacy_unique_index",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 122,
+      "name": "repository::schema_tests::malformed_schema_never_advances_version_or_marker",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 123,
+      "name": "repository::schema_tests::missing_index_repair_refuses_duplicate_and_crossed_task_ids",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 124,
+      "name": "repository::schema_tests::partial_schema_with_missing_indexes_retries_atomically",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 125,
+      "name": "repository::schema_tests::session_unique_constraint_cannot_be_replaced_by_a_partial_index",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 126,
+      "name": "repository::budget_schema_tests::n14_nonempty_migration_preserves_exact_old_rows_and_reopen",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 127,
+      "name": "repository::task_identity_tests::event_resolution_rejects_preexisting_cross_table_identity_collision",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 128,
+      "name": "repository::task_identity_tests::events_normalize_task_ids_and_preserve_session_and_project_scope",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 129,
+      "name": "repository::task_identity_tests::legacy_replay_checks_relational_identity_and_redacts_historical_tasks",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 130,
+      "name": "repository::task_identity_tests::new_task_id_cannot_claim_an_unrelated_legacy_task",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 131,
+      "name": "repository::task_identity_tests::repository_uses_path_and_http_idempotency_limits",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 132,
+      "name": "provider::network_tests::proxy_environment_isolated_process_has_zero_proxy_connections_with_positive_control",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 133,
+      "name": "repository::shell_migration_tests::shell_schema13_preserves_old_rows_and_reopens",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 134,
+      "name": "repository::budget_schema_tests::n14_bad_ddl_marker_and_orphan_never_self_repair",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 135,
+      "name": "repository::worktree_schema_tests::n13_schema_concurrent_open_serializes_migration",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 136,
+      "name": "command_execution::tests::s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown",
+      "outcome": "FAILED",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 137,
+      "name": "repository::worktree_schema_tests::n13_schema_marker_failure_rolls_back_every_new_object",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 138,
+      "name": "secrets::tests::authorization_assignments_redact_scheme_and_credential",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 139,
+      "name": "secrets::tests::credential_fields_redact_independently_without_token_shaped_values",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 140,
+      "name": "secrets::tests::credential_text_is_checked_throughout_metadata",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 141,
+      "name": "secrets::tests::dpapi_roundtrip",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 142,
+      "name": "secrets::tests::identifier_key_and_path_limits_match_their_contracts",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 143,
+      "name": "secrets::tests::ordinary_metadata_and_code_are_preserved",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 144,
+      "name": "secrets::tests::persisted_values_redact_nested_and_non_sk_tokens",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 145,
+      "name": "secrets::tests::redaction",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 146,
+      "name": "repository::worktree_schema_tests::n13_schema_orphan_origin_foreign_key_is_rejected_without_repair",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 147,
+      "name": "server::review_transport_tests::review_json_requires_exact_objects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 148,
+      "name": "server::review_transport_tests::review_typed_errors_are_static_and_nonretryable",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 149,
+      "name": "server::tests::approval_error_keeps_corruption_500_and_busy_retryable",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 150,
+      "name": "server::tests::approval_error_maps_typed_variants_through_context_and_source",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 151,
+      "name": "repository::worktree_schema_tests::n13_schema_nonempty_true13_rows_preserved_and_reopen_is_read_only",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 152,
+      "name": "server::tests::required_idempotency_key_accepts_exactly_one_clean_value",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 153,
+      "name": "server::tests::run_context_error_preserves_typed_status_without_context_leaks",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 154,
+      "name": "server::tests::turn_command_error_keeps_typed_classification_inside_a_chain",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 155,
+      "name": "server::tests::turn_command_error_maps_every_stable_variant",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 156,
+      "name": "server::tests::turn_command_error_never_turns_unknown_failures_into_4xx",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 157,
+      "name": "server::tests::changing_newapi_origin_requires_new_token",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 158,
+      "name": "store::tests::dependencies_are_same_turn_and_acyclic",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 159,
+      "name": "repository::shell_migration_tests::shell_schema13_failures_rollback_with_foreign_keys_on",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 160,
+      "name": "store::tests::event_task_must_belong_to_turn_or_session",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 161,
+      "name": "store::tests::legacy_create_run_redacts_prompt_messages_and_errors",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 162,
+      "name": "store::tests::interrupted_schema_6_retries_without_advancing_early",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 163,
+      "name": "repository::worktree_schema_tests::n13_schema_corrupt14_is_rejected_without_self_repair",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 164,
+      "name": "engine::workspace_phase_tests::n13_reverse_actual_running_task_wins_then_cancel_allows_claim",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 165,
+      "name": "store::tests::partial_schema_6_table_stops_before_user_version",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 166,
+      "name": "store::tests::safe_tool_result_json_is_stable_and_roundtrips_unicode",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 167,
+      "name": "store::tests::recover_marks_running_turn_interrupted",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 168,
+      "name": "store::tests::legacy_idempotency_replay_is_explicit",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 169,
+      "name": "tool_runtime::tests::builtin_executes_existing_file_implementation_and_preserves_path_checks",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 170,
+      "name": "tool_runtime::tests::f02_f10_snapshot_is_read_only_and_repeated_control_has_exact_registry",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 171,
+      "name": "tool_runtime::tests::f04_cancelling_in_progress_future_releases_count_without_reopening_admission",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 172,
+      "name": "store::tests::review_fixes_redact_replay_and_real_legacy_run",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 173,
+      "name": "tool_runtime::tests::f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 174,
+      "name": "tool_runtime::tests::f07_f10_disabled_constructor_never_activates_and_lifecycle_order_is_exact",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 175,
+      "name": "tool_runtime::tests::f07_failed_persistence_callback_does_not_apply_and_poison_is_fail_closed",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 176,
+      "name": "tool_runtime::tests::f07_new_disabled_intent_finishes_old_failed_cleanup_without_retrying_hooks",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 177,
+      "name": "tool_runtime::tests::f07_stop_failure_closes_admission_cleans_both_members_and_keeps_history",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 178,
+      "name": "tool_runtime::tests::l01_l02_four_registry_services_and_revocation_have_no_discovery_fallback",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 179,
+      "name": "store::tests::turn_identity_idempotency_and_rollback",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 180,
+      "name": "store::tests::schema_5_migrates_once_and_keeps_legacy_rows",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 181,
+      "name": "tool_runtime::tests::l03_each_pending_discovery_abort_releases_lease",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 182,
+      "name": "restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 183,
+      "name": "tool_runtime::tests::l04_missing_fourth_registration_fails_closed_and_explicit_rebuild_recovers",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 184,
+      "name": "tool_runtime::tests::lease_cannot_be_retargeted_to_another_task_or_permission_snapshot",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 185,
+      "name": "tool_runtime::tests::l03_each_discovery_admission_wins_bounded_stop_then_real_result_finishes",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 186,
+      "name": "tool_runtime::tests::n08_definition_and_execution_use_actual_registry_payload",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 187,
+      "name": "tool_runtime::tests::l03_mixed_file_leases_drop_error_and_binding_rejection_release_exactly_once",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 188,
+      "name": "tool_runtime::tests::n09_claim_failure_returns_no_lease_and_releases_lock_for_stop",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 189,
+      "name": "tool_runtime::tests::n09_admit_first_can_finish_after_stop_without_retaining_registry_effects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 190,
+      "name": "tool_runtime::tests::n09_stop_first_rejects_admission_and_unload_leaves_no_effects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 191,
+      "name": "tool_runtime::tests::s01_all_desired_combinations_and_shell_unpolled_binding_counts",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 192,
+      "name": "tool_runtime::tests::l01_real_discovery_results_permissions_and_path_policy_are_preserved",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 193,
+      "name": "engine::workspace_phase_tests::n13_reverse_approval_creation_approval_claim_and_deny_preserve_old_priority",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 194,
+      "name": "tool_runtime::tests::s05_worker_channel_loss_is_unknown_and_releases_owned_count",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 195,
+      "name": "tool_runtime::tests::s08_durable_acceptance_survives_real_shell_apply_failure_and_replay",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 196,
+      "name": "wasm::tests::echo_and_limits",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 197,
+      "name": "wasm::tests::manifest_rejects_imports",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 198,
+      "name": "workspace::tests::file_boundaries",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 199,
+      "name": "workspace::tests::search_reports_project_matches",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 200,
+      "name": "tool_runtime::tests::s05_shell_binding_rejection_errors_and_admitted_after_disable",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 201,
+      "name": "engine::workspace_phase_tests::n13_reverse_command_ack_replay_and_blocked_ack_are_atomic",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 202,
+      "name": "command_execution::tests::s06_deadline_covers_inherited_pipe_after_direct_parent_exit",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 203,
+      "name": "engine::workspace_phase_tests::n13_reverse_checkpoint_replay_and_restore_seal_precede_reservation",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 204,
+      "name": "tool_runtime::tests::f04_real_write_lease_finishes_after_disable_and_all_release_paths_count",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 205,
+      "name": "engine::workspace_phase_tests::n13_reverse_existing_restore_replay_and_sealed_resume_precede_reservation",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 206,
+      "name": "engine::workspace_phase_tests::n13_reverse_new_turn_resume_restore_checkpoint_and_registration_are_atomic",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 207,
+      "name": "tool_runtime::tests::s05_caller_abort_keeps_real_worker_lease_through_disable_and_completion",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 208,
+      "name": "git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 209,
+      "name": "host_configuration_crash_tests::after_commit_before_response_kill_wait_restores_one_receipt_twice",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 210,
+      "name": "host_configuration_crash_tests::before_commit_kill_wait_restores_all_old_state_twice",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 211,
+      "name": "server::budget_http_crash_tests::u07_real_router_budget_three_boundaries_kill_wait",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 212,
+      "name": "tool_runtime::tests::s02_missing_registration_and_lifecycle_failure_do_not_cross_groups",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 213,
+      "name": "git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 214,
+      "name": "tool_runtime::tests::s01_s02_real_registry_and_independent_disable_unload",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 215,
+      "name": "git_worktree::tests::w10_missing_target_with_admin_residue_is_not_absent",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 216,
+      "name": "worktree_management::tests::n13_cancelled_task_unresolved_restore_or_write_blocks_claim",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 217,
+      "name": "git_worktree::tests::w04_real_config_over_limit_is_rejected_without_effects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 218,
+      "name": "worktree_management::tests::n13_stale_configuration_and_head_fail_before_claim",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 219,
+      "name": "git_worktree::tests::w04_nested_root_reparse_and_existing_branch_are_rejected",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 220,
+      "name": "git_worktree::tests::w05_filters_include_and_alternates_leave_external_marker_absent",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 221,
+      "name": "worktree_management::tests::n13_same_database_two_store_claim_race_has_one_winner",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 222,
+      "name": "worktree_management::tests::n13_same_key_two_store_race_replays_one_operation",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 223,
+      "name": "worktree_management::tests::n13_diagnose_offline_source_and_other_project_are_observations_not_errors",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 224,
+      "name": "git_worktree::tests::w04_special_repository_states_and_parent_replacement",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 225,
+      "name": "git_worktree::tests::w10_unrelated_missing_or_replaced_root_is_unavailable",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 226,
+      "name": "worktree_management::tests::n13_all_terminal_replays_and_recovery_keep_unknown_reserved",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 227,
+      "name": "worktree_management::tests::n13_registration_inventory_and_claim_race_has_no_unreserved_new_member",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 228,
+      "name": "git_worktree::tests::w05_project_git_executable_and_inherited_environment_are_excluded",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 229,
+      "name": "git_worktree::tests::w05_real_hooks_and_fsmonitor_markers_are_not_executed",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 230,
+      "name": "git_worktree::tests::w01_sibling_parent_and_w10_real_deleted_target_admin_residue",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 231,
+      "name": "git_worktree::tests::w04_dirty_expected_head_and_existing_target_are_rejected",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 232,
+      "name": "git_worktree::tests::w04_unsupported_configs_and_tree_modes_fail_before_worktree_effects",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 233,
+      "name": "worktree_management::tests::n13_dropped_caller_owned_worker_still_registers_once",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 234,
+      "name": "worktree_management::tests::n13_origin_saved_admin_relationship_and_online_identity_are_enforced",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 235,
+      "name": "git_worktree::tests::w04_common_key_stable_across_windows_case_and_detached_head",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 236,
+      "name": "git_worktree::tests::w01_real_worktree_and_registered_result_diagnosis_are_read_only",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 237,
+      "name": "worktree_management::tests::n13_removed_sibling_reservation_is_detected_and_source_scopes_do_not_leak",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 238,
+      "name": "worktree_management::tests::n13_success_defaults_replay_and_diagnosis_are_read_only",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 239,
+      "name": "worktree_management::tests::n13_persisted_request_plan_members_and_receipt_corruption_rejected_without_repair",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 240,
+      "name": "git_worktree::tests::w10_present_result_with_unrelated_offline_root_is_unavailable",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 241,
+      "name": "worktree_management::tests::n13_two_real_worktrees_cannot_substitute_each_others_saved_admin",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 242,
+      "name": "server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 243,
+      "name": "worktree_management::tests::n13_real_process_three_durable_stops_kill_wait_recover_without_repeat",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    },
+    {
+      "suite": "Running unittests src\\lib.rs (../nhc-c-host-setup-cli\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+      "line": 244,
+      "name": "git_worktree::tests::w01_dirty_result_diagnosis_preserves_content_and_index",
+      "outcome": "ok",
+      "detail": "",
+      "helper": false
+    }
+  ],
+  "warning": "Raw Cargo result blocks retained; helper exclusions are separately stated, not substituted for raw totals",
+  "correction": {
+    "utc": "2026-09-28T16:32:21.5532534Z",
+    "original_summary_sha256": "F837814C7F9B8BD320A5D67A0AB3B2283D100F818059ABBBAD7C216D846ABCFE",
+    "reason": "Initial case-insensitive header match labeled suite as running 237 tests; corrected with case-sensitive Cargo Running/Doc-tests anchors. Original entries/counts unchanged; original summary preserved."
+  }
+}

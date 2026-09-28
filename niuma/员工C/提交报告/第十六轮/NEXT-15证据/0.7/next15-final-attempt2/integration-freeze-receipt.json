@@ -1,0 +1,32 @@
+{
+  "utc": "2026-09-28T16:31:45.6157407Z",
+  "head": "4c9c1d8bca17de4e83e50c7893806cd351031463",
+  "no_man_code_tree": "f8700cfc0c5890912dacdc94f2b661eae2dc04e6",
+  "rust_tree": "9fe47da3d89637f08ae436bead69817fab4d26bb",
+  "branch": "codex/c/host-setup-cli",
+  "status": [],
+  "index": [],
+  "unmerged": [],
+  "gate_driver_tool_exit_code": 1,
+  "check_exit_code": 0,
+  "test_exit_code": 101,
+  "not_executed": [
+    "fmt",
+    "clippy",
+    "wasm-check"
+  ],
+  "observed_known_pids": [
+    14744,
+    34956,
+    35088,
+    36976,
+    39732,
+    43204,
+    48652,
+    48656
+  ],
+  "known_pid_matches": [],
+  "source_tree_process_matches": [],
+  "statement": "Gate driver ended; current source/index clean/no-build frozen for manager dependency integration; no more diagnostics or source edits",
+  "limitations": "Later read-only path/command-line and numeric PID observations, not retained original process handles; cannot establish identity or liveness at original S06 assertion time; no process killed"
+}
