@@ -266,7 +266,8 @@ fn synthetic_legacy(root: &Path, base: &str) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn i11_real_host_legacy_web_settings_roundtrip_authentication_and_new_receipts() {
-    use reqwest::Method::{GET, PUT};
+    const GET: reqwest::Method = reqwest::Method::GET;
+    const PUT: reqwest::Method = reqwest::Method::PUT;
 
     let root = tempfile::tempdir().unwrap();
     let provider = Provider::new().await;
