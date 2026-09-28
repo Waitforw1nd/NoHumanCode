@@ -1442,6 +1442,7 @@ mod tests {
             let exited = child.wait().unwrap();
             assert!(!exited.success());
             let store = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
+            store.recover().unwrap();
             let engine = crate::engine::Engine::new(store.clone(), 2).unwrap();
             let project = subject.project_id.as_ref().unwrap();
             let status = engine.budget_status(project).unwrap();
