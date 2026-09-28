@@ -31,8 +31,473 @@ use std::{
 
 const RESPONSE_LIMIT: usize = 1_048_576;
 
+#[derive(Args)]
+pub struct HostArgs {
+    #[command(subcommand)]
+    command: HostCommand,
+}
+#[derive(Subcommand)]
+enum HostCommand {
+    Config(HostConfigArgs),
+    Route(HostRouteArgs),
+}
+#[derive(Args)]
+struct HostConfigArgs {
+    #[command(subcommand)]
+    command: HostConfigCommand,
+}
+#[derive(Subcommand)]
+enum HostConfigCommand {
+    /// Read current local configuration, not an earlier operation receipt.
+    Get,
+    /// Read the original receipt; 404 does not resolve an in-flight PUT.
+    Operation {
+        #[arg(long)]
+        key: String,
+    },
+}
+#[derive(Args)]
+struct HostRouteArgs {
+    #[command(subcommand)]
+    command: HostRouteCommand,
+}
+#[derive(Subcommand)]
+enum HostRouteCommand {
+    /// Save local configuration only; does not grant access or contact a Provider.
+    Set(HostRouteSet),
+}
+#[derive(Args)]
+#[command(group(clap::ArgGroup::new("credential").required(true).multiple(false)
+    .args(["credential_prompt", "credential_stdin", "keep_credential"])))]
+struct HostRouteSet {
+    id: String,
+    #[arg(long)]
+    expected_revision: u64,
+    #[arg(long)]
+    name: String,
+    #[arg(long)]
+    base_url: String,
+    #[arg(long)]
+    model: String,
+    #[arg(long)]
+    max_tokens: u32,
+    #[arg(long)]
+    parallel_limit: usize,
+    #[arg(long)]
+    key: String,
+    /// Read from a real console with echo disabled.
+    #[arg(long)]
+    credential_prompt: bool,
+    /// Read one bounded UTF-8 line from redirected stdin; a TTY is rejected.
+    #[arg(long)]
+    credential_stdin: bool,
+    /// Keep an existing usable credential; changing the API base requires replacement.
+    #[arg(long)]
+    keep_credential: bool,
+}
+fn host_key_valid(key: &str) -> bool {
+    secrets::validate_idempotency_key(key).is_ok() && !key.contains(',')
+}
+fn host_route_id_valid(id: &str) -> bool {
+    peachsh::domain::valid_name(id) && id != "newapi-account"
+}
+impl HostRouteSet {
+    fn input(&self) -> peachsh::host_configuration::RouteInput {
+        peachsh::host_configuration::RouteInput {
+            name: self.name.clone(),
+            base_url: self.base_url.clone(),
+            model: self.model.clone(),
+            max_tokens: self.max_tokens,
+            parallel_limit: self.parallel_limit,
+        }
+    }
+    fn valid(&self) -> bool {
+        host_route_id_valid(&self.id)
+            && self.expected_revision <= i64::MAX as u64
+            && host_key_valid(&self.key)
+            && secrets::safe_metadata_text("name", &self.name).is_ok()
+            && secrets::safe_metadata_text("model", &self.model).is_ok()
+            && self.name.len() <= 500
+            && self.model.len() <= 500
+            && !self.name.trim().is_empty()
+            && !self.model.trim().is_empty()
+            && self.input().normalized().is_ok()
+            && (16..=65536).contains(&self.max_tokens)
+            && (1..=8).contains(&self.parallel_limit)
+            && [
+                self.credential_prompt,
+                self.credential_stdin,
+                self.keep_credential,
+            ]
+            .into_iter()
+            .filter(|enabled| *enabled)
+            .count()
+                == 1
+    }
+    fn route(&self) -> Result<Value, Failure> {
+        self.input()
+            .normalized()
+            .map(|route| json!(route))
+            .map_err(|_| {
+                Failure::fixed("host_config_invalid", "配置参数无效，配置PUT未发送", false)
+            })
+    }
+}
+impl HostCommand {
+    fn valid(&self) -> bool {
+        match self {
+            Self::Config(HostConfigArgs {
+                command: HostConfigCommand::Get,
+            }) => true,
+            Self::Config(HostConfigArgs {
+                command: HostConfigCommand::Operation { key },
+            }) => host_key_valid(key),
+            Self::Route(HostRouteArgs {
+                command: HostRouteCommand::Set(args),
+            }) => args.valid(),
+        }
+    }
+}
+fn host_unknown() -> Failure {
+    Failure::fixed(
+        "operation_result_unknown",
+        "配置结果未知，可能已提交；先用 host config operation --key <原key> 查询原回执，再用 host config get 查询当前配置。lookup 404不能排除原请求仍在途；不会自动重发或换key。",
+        false,
+    )
+}
+// No Debug/Display/Serialize. reqwest/serde and the OS may retain other copies;
+// this only clears the plaintext buffer owned by this CLI scope, best effort.
+struct HostSecret(String);
+impl HostSecret {
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+impl Drop for HostSecret {
+    fn drop(&mut self) {
+        // SAFETY: exclusively borrowed live bytes; zero is valid UTF-8 and this
+        // String is never read again before deallocation.
+        for byte in unsafe { self.0.as_bytes_mut() } {
+            unsafe { std::ptr::write_volatile(byte, 0) };
+        }
+        std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
+    }
+}
+fn host_error_code(code: &str) -> Option<(&'static str, u16, &'static str)> {
+    Some(match code {
+        "host_config_invalid" => ("host_config_invalid", 400, "配置请求无效"),
+        "forbidden" => ("forbidden", 403, "本机Host访问被拒绝"),
+        "host_config_not_found" => (
+            "host_config_not_found",
+            404,
+            "查询快照未见原回执；原PUT可能仍在途，不要因此换key或自动重发。请随后查询原回执及当前配置",
+        ),
+        "host_config_revision_conflict" => (
+            "host_config_revision_conflict",
+            409,
+            "Host配置版本冲突，请查询当前配置",
+        ),
+        "host_config_idempotency_conflict" => (
+            "host_config_idempotency_conflict",
+            409,
+            "原key与配置请求不一致",
+        ),
+        "host_config_busy" => ("host_config_busy", 409, "Host仍有活动任务或网络调用"),
+        "host_config_credential_required" => (
+            "host_config_credential_required",
+            409,
+            "此配置需要重新输入凭据",
+        ),
+        "host_config_corrupt" => ("host_config_corrupt", 500, "Host配置持久状态损坏"),
+        "host_config_unavailable" => ("host_config_unavailable", 500, "Host配置或凭据不可用"),
+        "host_config_internal" => ("host_config_internal", 500, "Host配置操作失败"),
+        _ => return None,
+    })
+}
+
+// Transport parsing only: duplicates at any depth are rejected before projection.
+struct HostWireValue(Value);
+impl<'de> Deserialize<'de> for HostWireValue {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = HostWireValue;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("unambiguous JSON")
+            }
+            fn visit_bool<E: serde::de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(HostWireValue(json!(v)))
+            }
+            fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(HostWireValue(json!(v)))
+            }
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(HostWireValue(json!(v)))
+            }
+            fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                serde_json::Number::from_f64(v)
+                    .map(|v| HostWireValue(Value::Number(v)))
+                    .ok_or_else(|| E::custom("invalid number"))
+            }
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(HostWireValue(json!(v)))
+            }
+            fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(HostWireValue(Value::String(v)))
+            }
+            fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                Ok(HostWireValue(Value::Null))
+            }
+            fn visit_none<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+                self.visit_unit()
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                mut seq: A,
+            ) -> Result<Self::Value, A::Error> {
+                let mut items = Vec::new();
+                while let Some(HostWireValue(value)) = seq.next_element()? {
+                    items.push(value);
+                }
+                Ok(HostWireValue(Value::Array(items)))
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> Result<Self::Value, A::Error> {
+                let mut values = serde_json::Map::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if values.contains_key(&key) {
+                        return Err(serde::de::Error::custom("duplicate member"));
+                    }
+                    let HostWireValue(value) = map.next_value()?;
+                    values.insert(key, value);
+                }
+                Ok(HostWireValue(Value::Object(values)))
+            }
+        }
+        deserializer.deserialize_any(Visitor)
+    }
+}
+fn host_revision(value: &Value) -> bool {
+    value.as_u64().is_some_and(|n| n <= i64::MAX as u64)
+}
+fn host_view(value: &Value) -> Result<(), Failure> {
+    if !worktree_fields(value, &["id","name","base_url","model","max_tokens","parallel_limit","key_env","credential_source"])
+        || !value["id"].as_str().is_some_and(host_route_id_valid)
+        || !["name","model"].into_iter().all(|field| value[field].as_str().is_some_and(|v|
+            !v.trim().is_empty() && v.len() <= 500 && secrets::safe_metadata_text(field,v).is_ok()))
+        // Legacy routes remain visible even if they use non-loopback HTTP.
+        || !value["base_url"].as_str().is_some_and(|v| peachsh::domain::validate_url(v).is_ok()
+            && secrets::safe_metadata_path("base_url",v).is_ok())
+        || !value["max_tokens"].as_u64().is_some_and(|n| (16..=65536).contains(&n))
+        || !value["parallel_limit"].as_u64().is_some_and(|n| (1..=8).contains(&n))
+        || !(value["key_env"].is_null() || value["key_env"].as_str().is_some_and(|v|
+            !v.is_empty() && v.len() <= 500 && secrets::safe_metadata_text("key_env",v).is_ok()
+                && v.bytes().enumerate().all(|(i,b)| b==b'_' || b.is_ascii_alphabetic() || (i>0 && b.is_ascii_digit()))))
+        || !matches!(value["credential_source"].as_str(),Some("stored"|"environment"|"legacy"|"missing"|"unavailable"))
+    {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+fn host_snapshot(value: &Value) -> Result<(), Failure> {
+    let _: peachsh::host_configuration::HostConfigSnapshot = decode(value.clone())?;
+    if !worktree_fields(value, &["revision", "routes"]) || !host_revision(&value["revision"]) {
+        return Err(invalid_response());
+    }
+    let mut ids = std::collections::HashSet::new();
+    for route in value["routes"].as_array().ok_or_else(invalid_response)? {
+        host_view(route)?;
+        if !ids.insert(route["id"].as_str().unwrap()) {
+            return Err(invalid_response());
+        }
+    }
+    Ok(())
+}
+fn host_result(value: &Value, write: Option<&HostRouteSet>) -> Result<(), Failure> {
+    let _: peachsh::host_configuration::RouteConfigResult = decode(value.clone())?;
+    let receipt = &value["receipt"];
+    if !worktree_fields(value, &["receipt", "replayed"])
+        || !value["replayed"].is_boolean()
+        || !worktree_fields(
+            receipt,
+            &[
+                "operation_id",
+                "route_id",
+                "revision",
+                "route",
+                "changed",
+                "committed_at",
+            ],
+        )
+        || !receipt["operation_id"]
+            .as_str()
+            .is_some_and(|id| uuid::Uuid::parse_str(id).is_ok_and(|v| v.to_string() == id))
+        || !host_revision(&receipt["revision"])
+        || !receipt["changed"].is_boolean()
+        || !receipt["committed_at"].as_u64().is_some_and(|n| n > 0)
+        || receipt["route_id"] != receipt["route"]["id"]
+    {
+        return Err(invalid_response());
+    }
+    host_view(&receipt["route"])?;
+    if let Some(write) = write {
+        let expected = write.route()?;
+        let revision = if receipt["changed"] == true {
+            write.expected_revision.checked_add(1)
+        } else {
+            Some(write.expected_revision)
+        };
+        if receipt["route_id"] != write.id
+            || receipt["revision"].as_u64() != revision
+            || expected
+                .as_object()
+                .unwrap()
+                .iter()
+                .any(|(key, v)| receipt["route"][key] != *v)
+            || (!write.keep_credential
+                && (receipt["route"]["credential_source"] != "stored"
+                    || !receipt["route"]["key_env"].is_null()))
+            || (write.keep_credential
+                && !matches!(
+                    receipt["route"]["credential_source"].as_str(),
+                    Some("stored" | "environment" | "legacy")
+                ))
+        {
+            return Err(invalid_response());
+        }
+    } else if value["replayed"] != true {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+async fn host_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: HostCommand,
+) -> Result<(), Failure> {
+    use peachsh::credential_input::{CredentialInputError, CredentialInputMode, read_credential};
+    let write = match &command {
+        HostCommand::Route(HostRouteArgs {
+            command: HostRouteCommand::Set(args),
+        }) => Some(args),
+        _ => None,
+    };
+    // Only the controlled wire body below contains the secret; never Debug it.
+    let secret = if let Some(args) = write.filter(|args| !args.keep_credential) {
+        let mode = if args.credential_prompt {
+            CredentialInputMode::Prompt
+        } else {
+            CredentialInputMode::Stdin
+        };
+        Some(HostSecret(
+            read_credential(mode)
+                .map_err(|error| match error {
+                    CredentialInputError::Cancelled => Failure::fixed(
+                        "credential_cancelled",
+                        "秘密输入已取消，配置PUT未发送",
+                        false,
+                    ),
+                    CredentialInputError::Unavailable => Failure::fixed(
+                        "credential_unavailable",
+                        "安全秘密输入不可用，配置PUT未发送",
+                        false,
+                    ),
+                    CredentialInputError::Invalid => {
+                        Failure::fixed("credential_invalid", "秘密输入无效，配置PUT未发送", false)
+                    }
+                })?
+                .into_string(),
+        ))
+    } else {
+        None
+    };
+    let bootstrap: Bootstrap = decode(
+        request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?))
+            .await
+            .map_err(|_| {
+                Failure::fixed(
+                    "host_config_unavailable",
+                    "bootstrap失败，配置PUT未发送",
+                    false,
+                )
+            })?,
+    )
+    .map_err(|_| {
+        Failure::fixed(
+            "host_config_unavailable",
+            "bootstrap无效，配置PUT未发送",
+            false,
+        )
+    })?;
+    if bootstrap.token.is_empty()
+        || bootstrap.token.len() > 4096
+        || reqwest::header::HeaderValue::from_str(&bootstrap.token).is_err()
+    {
+        return Err(Failure::fixed(
+            "host_config_unavailable",
+            "bootstrap无效，配置PUT未发送",
+            false,
+        ));
+    }
+    let request=match &command {
+        HostCommand::Config(HostConfigArgs { command: HostConfigCommand::Get }) => client.get(endpoint(origin,&["api","host","config"])?),
+        HostCommand::Config(HostConfigArgs { command: HostConfigCommand::Operation { key } }) => client.post(endpoint(origin,&["api","host","config","lookup"])?).json(&json!({"key":key})),
+        HostCommand::Route(HostRouteArgs { command: HostRouteCommand::Set(args) }) => {
+            let credential=match &secret { Some(secret)=>json!({"mode":"replace","value":secret.as_str()}), None=>json!({"mode":"keep"}) };
+            client.put(endpoint(origin,&["api","host","routes",&args.id])?).header("Idempotency-Key",&args.key)
+                .json(&json!({"expected_revision":args.expected_revision,"route":args.route()?,"credential":credential}))
+        }
+    }.header("x-peachsh-token",&bootstrap.token);
+    let result: Result<(),Failure>=async {
+        let response=request.send().await.map_err(|_| Failure::fixed("host_transport_unavailable","无法完成本机Host请求",false))?;
+        let status=response.status().as_u16();
+        if !response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|v|v.to_str().ok())
+            .is_some_and(|v|v.split(';').next().is_some_and(|v|v.trim().eq_ignore_ascii_case("application/json"))) { return Err(invalid_response()); }
+        let bytes=limited_body(response).await?;
+        let HostWireValue(value)=serde_json::from_slice(&bytes).map_err(|_|invalid_response())?;
+        let serialized=value.to_string();
+        if !safe_strings(&value) || contains_string(&value,&bootstrap.token) || serialized.contains(&bootstrap.token)
+            || secret.as_ref().is_some_and(|s| contains_string(&value,s.as_str()) || serialized.contains(s.as_str())) { return Err(invalid_response()); }
+        if status!=200 {
+            let error=&value["error"];
+            if !worktree_fields(&value,&["error"]) || !worktree_fields(error,&["code","message","retryable"])
+                || error["retryable"]!=false || !error["message"].is_string() { return Err(invalid_response()); }
+            let (code,expected,message)=error["code"].as_str().and_then(host_error_code).ok_or_else(invalid_response)?;
+            if expected!=status && !(code=="host_config_invalid" && matches!(status,413|415)) { return Err(invalid_response()); }
+            return Err(Failure::fixed(code,message,false));
+        }
+        match &command {
+            HostCommand::Config(HostConfigArgs { command: HostConfigCommand::Get }) => host_snapshot(&value)?,
+            _ => host_result(&value,write)?,
+        }
+        let unavailable=value["routes"].as_array().is_some_and(|routes|routes.iter().any(|v|v["credential_source"]=="unavailable"));
+        print_value(value,json_output)?;
+        if !json_output {
+            let message=if matches!(command,HostCommand::Config(HostConfigArgs{command:HostConfigCommand::Get})) {
+                if unavailable { "当前配置；凭据来源unavailable表示无法读取，不等于missing或Provider验证失败。" }
+                else { "这是当前本地配置；凭据来源只表示本地状态，不表示Provider已经验证或联网已获授权。" }
+            } else { "这是提交时的原回执，可能早于当前配置；仅保存本地配置，未授权联网、未验证Provider。当前值请查 host config get。" };
+            let mut output=io::stdout().lock();
+            writeln!(output,"{message}").and_then(|()|output.flush()).map_err(|_|Failure::fixed("output_failed","无法写入标准输出",false))?;
+        }
+        Ok(())
+    }.await;
+    result.map_err(|error| {
+        if write.is_some() && host_error_code(error.code).is_none() {
+            host_unknown()
+        } else {
+            error
+        }
+    })
+}
+
 #[derive(Subcommand)]
 pub enum Command {
+    /// Configure this local Host; saving does not authorize or contact a Provider.
+    Host(HostArgs),
     Plugin(PluginArgs),
     Project(ProjectArgs),
     Run(RunArgs),
@@ -54,6 +519,7 @@ fn valid_message(message: &str) -> bool {
 impl Command {
     pub fn valid_ids(&self) -> bool {
         match self {
+            Self::Host(args) => args.command.valid(),
             Self::Plugin(args) => match &args.command {
                 PluginCommand::List => true,
                 PluginCommand::Status { id } => valid_id(id),
@@ -814,6 +1280,9 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         .map_err(|_| Failure::fixed("internal", "本机服务地址无效", false))?;
 
     let command = match command {
+        Command::Host(args) => {
+            return host_workflow(&client, &origin, json_output, args.command).await;
+        }
         Command::Project(ProjectArgs {
             command: ProjectCommand::Budget(args),
         }) => return budget_workflow(&client, &origin, json_output, args.command).await,
@@ -2474,7 +2943,8 @@ async fn workflow_inner(
             )?,
             TaskCommand::Approvals { .. } | TaskCommand::NetworkCalls { .. } => unreachable!(),
         },
-        Command::Plugin(_)
+        Command::Host(_)
+        | Command::Plugin(_)
         | Command::Approval(_)
         | Command::Network(_)
         | Command::Route(_)
