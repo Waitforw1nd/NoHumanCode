@@ -3,6 +3,7 @@ use crate::{
     provider_transport::{
         NetworkPurpose, ProviderClient, ProviderPermit, RESPONSE_LIMIT, TransportError,
     },
+    provider_usage::UsageObservation,
 };
 use anyhow::{Context, Result, bail, ensure};
 use futures_util::StreamExt;
@@ -85,6 +86,7 @@ pub struct Decoder {
     pub text: String,
     tools: BTreeMap<usize, ToolParts>,
     pub usage: Value,
+    usage_observation: UsageObservation,
 }
 impl Decoder {
     pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
@@ -123,9 +125,8 @@ impl Decoder {
         if !chunk["error"].is_null() {
             bail!("模型流返回错误");
         }
-        if chunk["usage"].is_object() {
-            self.usage = chunk["usage"].clone();
-        }
+        self.usage_observation.observe(&chunk["usage"]);
+        self.usage = self.usage_observation.into_value();
         if let Some(choice) = chunk["choices"].as_array().and_then(|v| v.first()) {
             let delta = &choice["delta"];
             if let Some(text) = delta["content"].as_str() {
@@ -779,6 +780,229 @@ mod network_tests {
             .unwrap_err(),
             TransportError::Unknown
         );
+        mock.stop().await;
+    }
+
+    fn usage_stream(observations: &[Value], finish: &str, done: bool) -> String {
+        let mut body = format!(
+            "data: {}\n\n",
+            json!({"choices":[{"delta":{"content":"桃子"}}]})
+        );
+        for usage in observations {
+            body.push_str(&format!(
+                "data: {}\r\n\r\n",
+                json!({"choices":[],"usage":usage})
+            ));
+        }
+        body.push_str(&format!(
+            "data: {}\n\n",
+            json!({"choices":[{"delta":{},"finish_reason":finish}]})
+        ));
+        if done {
+            body.push_str("data: [DONE]\n\n");
+        }
+        body
+    }
+
+    async fn usage_complete(mock: &Mock) -> std::result::Result<(Value, Value), TransportError> {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            complete(
+                &client().unwrap(),
+                permit(&mock.base, NetworkPurpose::Completion, Some("m"), None),
+                &route(&mock.base),
+                &[],
+                &[],
+                |_| Ok(()),
+            ),
+        )
+        .await
+        .expect("local mock completion timed out")
+    }
+
+    #[tokio::test]
+    async fn usage_real_transport_accepts_zero_normal_and_identical_snapshots_once() {
+        use crate::provider_usage::{TokenUsage, UsageObservation, classify_usage};
+        let normal = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
+        let mut details = normal.clone();
+        details["completion_tokens_details"] =
+            json!({"reasoning_tokens":2,"secret":"do-not-retain"});
+        for (observations, expected) in [
+            (
+                vec![json!({"prompt_tokens":0,"completion_tokens":0,"total_tokens":0})],
+                TokenUsage {
+                    prompt_tokens: 0,
+                    completion_tokens: 0,
+                    total_tokens: 0,
+                },
+            ),
+            (
+                vec![normal.clone()],
+                TokenUsage {
+                    prompt_tokens: 7,
+                    completion_tokens: 2,
+                    total_tokens: 9,
+                },
+            ),
+            (
+                vec![normal, Value::Null, details],
+                TokenUsage {
+                    prompt_tokens: 7,
+                    completion_tokens: 2,
+                    total_tokens: 9,
+                },
+            ),
+            (
+                vec![
+                    json!({"prompt_tokens":i64::MAX,"completion_tokens":0,"total_tokens":i64::MAX}),
+                ],
+                TokenUsage {
+                    prompt_tokens: i64::MAX as u64,
+                    completion_tokens: 0,
+                    total_tokens: i64::MAX as u64,
+                },
+            ),
+        ] {
+            let body = usage_stream(&observations, "stop", true);
+            // HTTP chunk boundaries include individual UTF-8 bytes and SSE delimiters.
+            let mut wire = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: text/event-stream\r\n\r\n".to_vec();
+            for byte in body.bytes() {
+                wire.extend_from_slice(b"1\r\n");
+                wire.push(byte);
+                wire.extend_from_slice(b"\r\n");
+            }
+            wire.extend_from_slice(b"0\r\n\r\n");
+            let mock = Mock::start(wire, false).await;
+            let (message, usage) = usage_complete(&mock).await.unwrap();
+            assert_eq!(message["content"], "桃子");
+            assert_eq!(classify_usage(&usage), UsageObservation::Valid(expected));
+            assert_eq!(usage.as_object().unwrap().len(), 3);
+            assert!(!usage.to_string().contains("do-not-retain"));
+            assert_eq!(mock.hits(), 1);
+            let request = mock.request();
+            let request_body: Value =
+                serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+            assert_eq!(request_body["stream_options"]["include_usage"], true);
+            assert_eq!(request_body["max_tokens"], 128);
+            mock.stop().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn usage_real_transport_missing_and_invalid_keep_network_success_and_safe_values() {
+        use crate::provider_usage::{
+            UsageInvalidReason as R, UsageObservation as O, classify_usage,
+        };
+        let normal = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
+        let cases = [
+            (vec![], O::Missing),
+            (vec![Value::Null], O::Missing),
+            (vec![json!("do-not-retain")], O::Invalid(R::InvalidShape)),
+            (
+                vec![json!({"prompt_tokens":7})],
+                O::Invalid(R::MissingField),
+            ),
+            (
+                vec![json!({"prompt_tokens":7,"completion_tokens":-1,"total_tokens":6})],
+                O::Invalid(R::InvalidInteger),
+            ),
+            (
+                vec![json!({"prompt_tokens":7,"completion_tokens":2.0,"total_tokens":9})],
+                O::Invalid(R::InvalidInteger),
+            ),
+            (
+                vec![json!({"prompt_tokens":"7","completion_tokens":2,"total_tokens":9})],
+                O::Invalid(R::InvalidInteger),
+            ),
+            (
+                vec![
+                    json!({"prompt_tokens":u64::MAX,"completion_tokens":0,"total_tokens":u64::MAX}),
+                ],
+                O::Invalid(R::OutOfRange),
+            ),
+            (
+                vec![json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":10})],
+                O::Invalid(R::InconsistentTotal),
+            ),
+            (
+                vec![
+                    normal.clone(),
+                    json!({"prompt_tokens":8,"completion_tokens":1,"total_tokens":9}),
+                    normal.clone(),
+                ],
+                O::Invalid(R::ConflictingDuplicate),
+            ),
+            (
+                vec![
+                    json!({"prompt_tokens":7}),
+                    json!({"completion_tokens":2,"total_tokens":9}),
+                    normal.clone(),
+                ],
+                O::Invalid(R::MissingField),
+            ),
+            (
+                vec![
+                    normal.clone(),
+                    json!({"secret":"do-not-retain"}),
+                    Value::Null,
+                    normal,
+                ],
+                O::Invalid(R::MissingField),
+            ),
+        ];
+        for (observations, expected) in cases {
+            let body = usage_stream(&observations, "stop", true);
+            let mock = Mock::start(response(200, body.as_bytes(), ""), false).await;
+            let (message, usage) = usage_complete(&mock).await.unwrap();
+            assert_eq!(message["content"], "桃子");
+            assert_eq!(classify_usage(&usage), expected);
+            assert!(!usage.to_string().contains("do-not-retain"));
+            assert!(usage.get("total_tokens").is_none());
+            assert_eq!(mock.hits(), 1);
+            mock.stop().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn usage_real_transport_never_salvages_usage_from_failed_completion_or_retries() {
+        let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
+        for (status, finish, done, expected) in [
+            (200, "stop", false, TransportError::Unknown),
+            (200, "length", true, TransportError::Unknown),
+            (200, "content_filter", true, TransportError::Unknown),
+            (429, "stop", true, TransportError::Response { status: 429 }),
+            (500, "stop", true, TransportError::Response { status: 500 }),
+        ] {
+            let body = usage_stream(std::slice::from_ref(&usage), finish, done);
+            let mock = Mock::start(response(status, body.as_bytes(), ""), false).await;
+            assert_eq!(usage_complete(&mock).await.unwrap_err(), expected);
+            assert_eq!(mock.hits(), 1);
+            mock.stop().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn usage_real_transport_done_does_not_wait_for_connection_close() {
+        use crate::provider_usage::{UsageObservation, classify_usage};
+        let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
+        let body = usage_stream(std::slice::from_ref(&usage), "stop", true);
+        // Claim an unfinished HTTP body, but send a complete SSE DONE. The protocol
+        // completion is sufficient; bytes arriving later are deliberately unobserved.
+        let mut wire = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
+            body.len() + 100
+        )
+        .into_bytes();
+        wire.extend_from_slice(body.as_bytes());
+        let mock = Mock::start(wire, true).await;
+        let (message, observed) = usage_complete(&mock).await.unwrap();
+        assert_eq!(message["content"], "桃子");
+        assert!(matches!(
+            classify_usage(&observed),
+            UsageObservation::Valid(_)
+        ));
+        assert_eq!(observed, usage);
+        assert_eq!(mock.hits(), 1);
         mock.stop().await;
     }
 
