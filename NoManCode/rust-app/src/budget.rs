@@ -1444,7 +1444,16 @@ mod tests {
             });
             let mut child=std::process::Command::new(std::env::current_exe().unwrap()).args(["--exact","budget::tests::real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends","--nocapture"]).env("NHC_BUDGET_KILL_PHASE",phase).env("NHC_BUDGET_KILL_ROOT",dir.path()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().unwrap();
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-            while !dir.path().join("signal").exists() {
+            let signal = loop {
+                if let Ok(signal) = std::fs::read_to_string(dir.path().join("signal")) {
+                    let lines: Vec<_> = signal.lines().collect();
+                    if lines.len() == 2
+                        && lines[0] == subject.key().unwrap()
+                        && uuid::Uuid::parse_str(lines[1]).is_ok()
+                    {
+                        break signal;
+                    }
+                }
                 if std::time::Instant::now() > deadline {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -1454,8 +1463,7 @@ mod tests {
                     panic!("child exited early {phase} {status}");
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-            let signal = std::fs::read_to_string(dir.path().join("signal")).unwrap();
+            };
             child.kill().unwrap();
             let exited = child.wait().unwrap();
             assert!(!exited.success());
