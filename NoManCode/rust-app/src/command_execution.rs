@@ -100,6 +100,8 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
         probe
             .pid
             .store(child.id().unwrap(), std::sync::atomic::Ordering::SeqCst);
+        #[cfg(windows)]
+        probe.capture_process(&child);
     }
     #[cfg(test)]
     let forced_unknown = take_unknown_fault(&task.id);
@@ -222,12 +224,189 @@ mod tests {
     tokio::task_local! { pub(super) static PROBE: Arc<Probe>; }
     #[derive(Default)]
     pub(super) struct Probe {
+        pub case: &'static str,
         pub reader_error: bool,
         pub wait_error: bool,
         pub cleanup_unknown: bool,
         pub pid: AtomicU32,
         pub parent_waited: AtomicBool,
         readers: AtomicUsize,
+        #[cfg(windows)]
+        original: std::sync::Mutex<Option<std::result::Result<ProcessObservation, String>>>,
+    }
+    #[cfg(windows)]
+    struct ProcessObservation {
+        handle: std::os::windows::io::OwnedHandle,
+        pid: u32,
+        created: u64,
+    }
+    #[cfg(windows)]
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetProcessTimes(
+            handle: *mut std::ffi::c_void,
+            created: *mut u64,
+            exited: *mut u64,
+            kernel: *mut u64,
+            user: *mut u64,
+        ) -> i32;
+        fn WaitForSingleObject(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
+        fn GetCurrentProcess() -> *mut std::ffi::c_void;
+        fn GetProcessId(handle: *mut std::ffi::c_void) -> u32;
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
+        fn DuplicateHandle(
+            source_process: *mut std::ffi::c_void,
+            source: *mut std::ffi::c_void,
+            target_process: *mut std::ffi::c_void,
+            target: *mut *mut std::ffi::c_void,
+            access: u32,
+            inherit: i32,
+            options: u32,
+        ) -> i32;
+        fn TerminateProcess(handle: *mut std::ffi::c_void, exit_code: u32) -> i32;
+    }
+    #[cfg(windows)]
+    #[derive(Debug)]
+    struct ExitSignal {
+        wait_status: u32,
+        query_error: Option<i32>,
+    }
+    #[cfg(windows)]
+    impl ExitSignal {
+        fn require_exited(&self) -> Result<()> {
+            ensure!(
+                self.wait_status == 0 && self.query_error.is_none(),
+                "original process exit not confirmed: {self:?}"
+            );
+            Ok(())
+        }
+    }
+    #[cfg(windows)]
+    impl ProcessObservation {
+        fn capture(child: &tokio::process::Child) -> Result<Self> {
+            use std::os::windows::io::BorrowedHandle;
+            let pid = child.id().context("original child has no process id")?;
+            let raw = child.raw_handle().context("original child has no handle")?;
+            // The actual Child still owns this handle before any wait is polled.
+            let handle = unsafe { BorrowedHandle::borrow_raw(raw) }.try_clone_to_owned()?;
+            Self::from_handle(handle, pid)
+        }
+        fn from_handle(handle: std::os::windows::io::OwnedHandle, pid: u32) -> Result<Self> {
+            use std::os::windows::io::AsRawHandle;
+            let actual_pid = unsafe { GetProcessId(handle.as_raw_handle()) };
+            if actual_pid == 0 {
+                return Err(std::io::Error::last_os_error()).context("GetProcessId");
+            }
+            ensure!(actual_pid == pid, "original handle PID mismatch");
+            let created = Self::creation_time(handle.as_raw_handle())?;
+            Ok(Self {
+                handle,
+                pid,
+                created,
+            })
+        }
+        fn creation_time(handle: *mut std::ffi::c_void) -> Result<u64> {
+            let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
+            if unsafe { GetProcessTimes(handle, &mut created, &mut exited, &mut kernel, &mut user) }
+                == 0
+            {
+                return Err(std::io::Error::last_os_error()).context("GetProcessTimes");
+            }
+            Ok(created)
+        }
+        fn signal(&self, case: &str, phase: &str) -> ExitSignal {
+            use std::os::windows::io::AsRawHandle;
+            let wait_status = unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) };
+            let query_error = (wait_status == u32::MAX)
+                .then(|| std::io::Error::last_os_error().raw_os_error())
+                .flatten();
+            let signal = ExitSignal {
+                wait_status,
+                query_error,
+            };
+            eprintln!(
+                "s06-process {}",
+                json!({
+                    "case":case, "phase":phase, "pid":self.pid, "created":self.created,
+                    "wait_status":wait_status, "query_error":query_error,
+                    "exit_confirmed":signal.require_exited().is_ok()
+                })
+            );
+            signal
+        }
+        async fn terminate_fixture(&self, case: &str) -> Result<()> {
+            use std::os::windows::io::AsRawHandle;
+            let deadline = Instant::now() + Duration::from_secs(6);
+            let signal = self.signal(case, "before-fixture-cleanup");
+            if signal.wait_status == 0 {
+                return signal.require_exited();
+            }
+            ensure!(
+                signal.wait_status == 258,
+                "fixture query failed: {signal:?}"
+            );
+            let terminated = unsafe { TerminateProcess(self.handle.as_raw_handle(), 1) };
+            let error = (terminated == 0).then(std::io::Error::last_os_error);
+            eprintln!(
+                "s06-process {}",
+                json!({
+                    "case":case, "phase":"terminate-original-fixture", "pid":self.pid,
+                    "created":self.created, "terminate_result":terminated,
+                    "terminate_error":error.as_ref().and_then(std::io::Error::raw_os_error)
+                })
+            );
+            // A concurrent natural exit needs the same original handle signaled.
+            if let Some(error) = error {
+                return self
+                    .signal(case, "terminate-failed-query")
+                    .require_exited()
+                    .with_context(|| format!("TerminateProcess failed: {error}"));
+            }
+            let handle = self.handle.try_clone()?;
+            let signal = timeout_at(
+                deadline,
+                tokio::task::spawn_blocking(move || {
+                    use std::os::windows::io::AsRawHandle;
+                    let wait_status = unsafe { WaitForSingleObject(handle.as_raw_handle(), 6000) };
+                    let query_error = (wait_status == u32::MAX)
+                        .then(|| std::io::Error::last_os_error().raw_os_error())
+                        .flatten();
+                    ExitSignal {
+                        wait_status,
+                        query_error,
+                    }
+                }),
+            )
+            .await??;
+            eprintln!(
+                "s06-process {}",
+                json!({
+                    "case":case, "phase":"fixture-cleanup-wait", "pid":self.pid,
+                    "created":self.created, "wait_status":signal.wait_status,
+                    "query_error":signal.query_error
+                })
+            );
+            signal.require_exited()
+        }
+    }
+    #[cfg(windows)]
+    impl Probe {
+        pub(super) fn capture_process(&self, child: &tokio::process::Child) {
+            use std::io::Write;
+            // Retain failures for the test assertion; never interrupt product cleanup.
+            let captured = ProcessObservation::capture(child).map_err(|error| format!("{error:#}"));
+            let _ = writeln!(
+                std::io::stderr().lock(),
+                "s06-process {}",
+                json!({
+                    "case":self.case, "phase":"capture-original-child",
+                    "pid":child.id(), "created":captured.as_ref().ok().map(|p| p.created),
+                    "probe_error":captured.as_ref().err(), "reader_error":self.reader_error,
+                    "cleanup_unknown":self.cleanup_unknown, "wait_error":self.wait_error
+                })
+            );
+            *self.original.lock().unwrap() = Some(captured);
+        }
     }
     pub(super) struct ReaderGuard(Option<Arc<Probe>>);
     impl ReaderGuard {
@@ -254,51 +433,255 @@ mod tests {
             "workspace":root.to_str().unwrap(),"status":"running","output":"","error":null,"messages":[],
             "usage":null,"created_at":0,"updated_at":0})).unwrap()
     }
-    async fn assert_pid_exited(pid: u32) {
-        let mut query = Command::new("pwsh.exe");
-        query.args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            &format!("if (Get-Process -Id {pid} -ErrorAction SilentlyContinue) {{ exit 9 }}"),
-        ]);
-        query.kill_on_drop(true);
+    fn original_exit(probe: &Probe) -> Result<()> {
         #[cfg(windows)]
-        query.creation_flags(0x08000000);
-        let mut child = query.spawn().unwrap();
+        {
+            let captured = probe.original.lock().unwrap();
+            let observation = captured
+                .as_ref()
+                .with_context(|| format!("{}: original process probe missing", probe.case))?
+                .as_ref()
+                .map_err(|error| {
+                    anyhow::anyhow!("{}: original process capture failed: {error}", probe.case)
+                })?;
+            ensure!(
+                observation.pid == probe.pid.load(Ordering::SeqCst),
+                "probe PID mismatch"
+            );
+            observation
+                .signal(probe.case, "assert-original-exited")
+                .require_exited()
+        }
+        #[cfg(not(windows))]
+        bail!(
+            "{}: stable original process observation requires Windows (pid={})",
+            probe.case,
+            probe.pid.load(Ordering::SeqCst)
+        )
+    }
+    #[cfg(windows)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct TransferredProcess {
+        handle: usize,
+        pid: u32,
+        created: u64,
+    }
+    #[cfg(windows)]
+    fn receive_descendant(root: &std::path::Path) -> Result<ProcessObservation> {
+        use std::os::windows::io::{FromRawHandle, OwnedHandle};
+        let transfer: TransferredProcess =
+            serde_json::from_slice(&std::fs::read(root.join("descendant-ready"))?)?;
+        ensure!(
+            transfer.handle != 0 && transfer.handle != usize::MAX,
+            "invalid transferred handle"
+        );
+        // The fixture duplicates its own live process handle into this test process.
+        // The atomic ready file transfers ownership exactly once; no PID is reopened.
+        let handle =
+            unsafe { OwnedHandle::from_raw_handle(transfer.handle as *mut std::ffi::c_void) };
+        let observation = ProcessObservation::from_handle(handle, transfer.pid)?;
+        ensure!(
+            observation.created == transfer.created,
+            "transferred creation time mismatch"
+        );
+        eprintln!(
+            "s06-process {}",
+            json!({
+                "case":"inherited-pipe", "phase":"receive-original-descendant",
+                "pid":observation.pid, "created":observation.created, "probe_error":null
+            })
+        );
+        Ok(observation)
+    }
+    #[cfg(windows)]
+    #[test]
+    fn s06_inherited_pipe_child() {
+        use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+        let Ok(observer_pid) = std::env::var("NHC_S06_OBSERVER_PID") else {
+            return;
+        };
+        let observer_pid: u32 = observer_pid.parse().unwrap();
+        let root = std::path::PathBuf::from(std::env::var_os("NHC_S06_OBSERVATION_ROOT").unwrap());
+        // Only the still-running test observer is opened by PID. The observed
+        // descendant is this actual process, never a later numeric PID lookup.
+        let observer = unsafe { OpenProcess(0x0040, 0, observer_pid) };
+        assert!(
+            !observer.is_null(),
+            "OpenProcess(observer): {}",
+            std::io::Error::last_os_error()
+        );
+        let observer = unsafe { OwnedHandle::from_raw_handle(observer) };
+        let current = unsafe { GetCurrentProcess() };
+        let created = ProcessObservation::creation_time(current).unwrap();
+        let mut transferred = std::ptr::null_mut();
+        assert_ne!(
+            unsafe {
+                DuplicateHandle(
+                    current,
+                    current,
+                    observer.as_raw_handle(),
+                    &mut transferred,
+                    0x00100000 | 0x1000 | 0x0001,
+                    0,
+                    0,
+                )
+            },
+            0,
+            "DuplicateHandle(descendant): {}",
+            std::io::Error::last_os_error()
+        );
+        let transfer = TransferredProcess {
+            handle: transferred as usize,
+            pid: std::process::id(),
+            created,
+        };
+        let publish: Result<()> = (|| {
+            std::fs::write(
+                root.join("descendant-pending"),
+                serde_json::to_vec(&transfer)?,
+            )?;
+            std::fs::rename(
+                root.join("descendant-pending"),
+                root.join("descendant-ready"),
+            )?;
+            Ok(())
+        })();
+        if let Err(error) = publish {
+            // Publication failed: recover and close the unconsumed remote handle.
+            let mut recovered = std::ptr::null_mut();
+            let closed = unsafe {
+                DuplicateHandle(
+                    observer.as_raw_handle(),
+                    transferred,
+                    current,
+                    &mut recovered,
+                    0,
+                    0,
+                    0x0001 | 0x0002,
+                )
+            };
+            if closed != 0 {
+                drop(unsafe { OwnedHandle::from_raw_handle(recovered) });
+            }
+            panic!("descendant identity publication failed: {error:#}; recovered={closed}");
+        }
+        eprintln!(
+            "s06-process {}",
+            json!({
+                "case":"inherited-pipe", "phase":"transfer-live-self",
+                "pid":transfer.pid, "created":created, "observer_pid":observer_pid,
+                "duplicate_result":true
+            })
+        );
+        // Same five-second fixture fallback as before, not product cleanup.
+        std::thread::sleep(Duration::from_secs(5));
+    }
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn s06_original_handle_rejects_live_and_query_failure_accepts_exit() {
+        use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+        let mut command = Command::new("pwsh.exe");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Start-Sleep -Seconds 20",
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .creation_flags(0x08000000);
+        let mut child = command.spawn().unwrap();
+        let observed = ProcessObservation::capture(&child);
+        let checks: Result<(ExitSignal, ExitSignal)> = (|| {
+            let observation = observed
+                .as_ref()
+                .map_err(|error| anyhow::anyhow!("{error:#}"))?;
+            let live = observation.signal("identity-controls", "live-original");
+            let current = unsafe { GetCurrentProcess() };
+            let mut query_only = std::ptr::null_mut();
+            // A valid original-process handle without SYNCHRONIZE must fail a wait.
+            if unsafe {
+                DuplicateHandle(
+                    current,
+                    observation.handle.as_raw_handle(),
+                    current,
+                    &mut query_only,
+                    0x1000,
+                    0,
+                    0,
+                )
+            } == 0
+            {
+                return Err(std::io::Error::last_os_error()).context("DuplicateHandle(query-only)");
+            }
+            let query_only = ProcessObservation::from_handle(
+                unsafe { OwnedHandle::from_raw_handle(query_only) },
+                observation.pid,
+            )?;
+            let failed = query_only.signal("identity-controls", "query-without-synchronize");
+            Ok((live, failed))
+        })();
+        // Clean the actual Child before asserting the controls, even on capture failure.
+        child.start_kill().unwrap();
         let status = timeout_at(Instant::now() + Duration::from_secs(5), child.wait())
             .await
             .unwrap()
             .unwrap();
-        assert!(status.success(), "direct command pid remains: {pid}");
+        eprintln!(
+            "s06-process {}",
+            json!({"case":"identity-controls",
+            "phase":"original-child-wait", "exit_code":status.code()})
+        );
+        let observation = observed.unwrap();
+        let (live, failed) = checks.unwrap();
+        assert_eq!(live.wait_status, 258);
+        assert!(live.require_exited().is_err(), "a live original must fail");
+        assert_eq!(failed.wait_status, u32::MAX);
+        assert_eq!(failed.query_error, Some(5));
+        assert!(
+            failed.require_exited().is_err(),
+            "a query failure must fail"
+        );
+        observation
+            .signal("identity-controls", "waited-original")
+            .require_exited()
+            .unwrap();
     }
     #[tokio::test]
     async fn s06_real_timeout_reaps_child_and_readers_without_false_unknown() {
         let root = tempfile::tempdir().unwrap();
         let task = task(root.path());
-        let probe = Arc::new(Probe::default());
+        let probe = Arc::new(Probe {
+            case: "real-timeout",
+            ..Probe::default()
+        });
         let start = Instant::now();
         let error = PROBE.scope(probe.clone(), execute(&task, &json!({
             "command":"[IO.File]::WriteAllText((Join-Path $PWD 'ready'), 'ready'); Start-Sleep -Seconds 20",
             "timeout_seconds":1
         }))).await.unwrap_err();
+        let original_exit = original_exit(&probe);
         assert!(root.path().join("ready").exists());
         assert!(!error.is::<CommandOutcomeUnknown>(), "{error:#}");
         assert!(error.to_string().contains("超过 1 秒"));
         assert!(start.elapsed() < Duration::from_secs(7));
         assert_eq!(probe.readers.load(Ordering::SeqCst), 0);
-        assert_pid_exited(probe.pid.load(Ordering::SeqCst)).await;
+        original_exit.unwrap();
     }
     #[tokio::test]
     async fn s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown() {
         let root = tempfile::tempdir().unwrap();
         let task = task(root.path());
-        for (reader_error, cleanup_unknown, wait_error) in [
-            (true, false, false),
-            (false, true, false),
-            (false, false, true),
+        for (case, reader_error, cleanup_unknown, wait_error) in [
+            ("reader-error", true, false, false),
+            ("cleanup-unknown", false, true, false),
+            ("wait-error", false, false, true),
         ] {
             let probe = Arc::new(Probe {
+                case,
                 reader_error,
                 cleanup_unknown,
                 wait_error,
@@ -307,59 +690,78 @@ mod tests {
             let error = PROBE.scope(probe.clone(), execute(&task, &json!({
                 "command": if wait_error { "exit 0" } else { "Start-Sleep -Seconds 20" }, "timeout_seconds":1
             }))).await.unwrap_err();
+            let original_exit = original_exit(&probe);
             assert!(error.is::<CommandOutcomeUnknown>());
             assert!(!error.to_string().contains("已停止"));
             assert_eq!(probe.readers.load(Ordering::SeqCst), 0);
-            assert_pid_exited(probe.pid.load(Ordering::SeqCst)).await;
+            original_exit.unwrap();
         }
     }
     #[tokio::test]
     async fn s06_deadline_covers_inherited_pipe_after_direct_parent_exit() {
-        let root = tempfile::tempdir().unwrap();
-        let task = task(root.path());
-        // No stdout/stderr redirect: the child inherits the parent's handles.
-        // Its independent five-second lifetime is a test fallback, not product cleanup.
-        let script = root.path().join("descendant.ps1");
-        std::fs::write(&script, "[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'descendant-ready'), [string]$PID); Start-Sleep -Seconds 5").unwrap();
-        let command = "$p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-NonInteractive'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $child=[Diagnostics.Process]::Start($p); $deadline=[DateTime]::UtcNow.AddSeconds(1); while (!(Test-Path (Join-Path $PWD 'descendant-ready'))) { if ([DateTime]::UtcNow -gt $deadline) { exit 97 }; Start-Sleep -Milliseconds 10 }; [Console]::Out.Write('parent-exit')";
-        let probe = Arc::new(Probe::default());
-        let begin = Instant::now();
-        let result = PROBE
-            .scope(
-                probe.clone(),
-                execute(&task, &json!({"command":command,"timeout_seconds":2})),
-            )
-            .await;
-        let parent_waited = probe.parent_waited.load(Ordering::SeqCst);
-        let elapsed = begin.elapsed();
-        // Always clean our own known test descendant before assertions, including failures.
-        let descendant = std::fs::read_to_string(root.path().join("descendant-ready")).unwrap();
-        let descendant: u32 = descendant.trim().parse().unwrap();
-        let mut killer = Command::new("pwsh.exe");
-        killer.args(["-NoProfile", "-NonInteractive", "-Command", &format!("$p=Get-Process -Id {descendant} -ErrorAction SilentlyContinue; if ($p) {{ $p.Kill(); $p.WaitForExit() }}")]).kill_on_drop(true);
         #[cfg(windows)]
-        killer.creation_flags(0x08000000);
-        let mut helper = killer.spawn().unwrap();
-        assert!(
-            timeout_at(Instant::now() + Duration::from_secs(6), helper.wait())
+        {
+            let root = tempfile::tempdir().unwrap();
+            let task = task(root.path());
+            // No stdout/stderr redirect: the real helper inherits the parent's pipes.
+            // It transfers its own original handle before publishing readiness.
+            let executable = std::env::current_exe()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('\'', "''");
+            let observer_pid = std::process::id();
+            let command = format!(
+                "$p=[Diagnostics.ProcessStartInfo]::new('{executable}'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.ArgumentList.Add('--exact'); $p.ArgumentList.Add('command_execution::tests::s06_inherited_pipe_child'); $p.ArgumentList.Add('--nocapture'); $p.Environment['NHC_S06_OBSERVER_PID']='{observer_pid}'; $p.Environment['NHC_S06_OBSERVATION_ROOT']=[string]$PWD; $child=[Diagnostics.Process]::Start($p); $deadline=[DateTime]::UtcNow.AddSeconds(1); while (!(Test-Path (Join-Path $PWD 'descendant-ready'))) {{ if ([DateTime]::UtcNow -gt $deadline) {{ exit 97 }}; Start-Sleep -Milliseconds 10 }}; [Console]::Out.Write('parent-exit')"
+            );
+            let probe = Arc::new(Probe {
+                case: "inherited-pipe",
+                ..Probe::default()
+            });
+            let begin = Instant::now();
+            let result = PROBE
+                .scope(
+                    probe.clone(),
+                    execute(&task, &json!({"command":command,"timeout_seconds":2})),
+                )
+                .await;
+            let parent_waited = probe.parent_waited.load(Ordering::SeqCst);
+            let elapsed = begin.elapsed();
+            // Snapshot now; fixture cleanup must not provide extra time for the parent.
+            let original_exit = original_exit(&probe);
+            // Cleanup is bound to the transferred original handle, including failure paths.
+            let descendant = receive_descendant(root.path())
+                .inspect_err(|error| {
+                    eprintln!(
+                        "s06-process {}",
+                        json!({"case":"inherited-pipe",
+                "phase":"receive-original-descendant", "probe_error":format!("{error:#}")})
+                    );
+                })
+                .unwrap();
+            descendant
+                .terminate_fixture("inherited-pipe")
                 .await
-                .unwrap()
-                .unwrap()
-                .success()
-        );
-        assert!(
-            parent_waited,
-            "fixture did not observe direct parent exit before deadline"
-        );
-        let error = result.unwrap_err();
-        assert!(!error.is::<CommandOutcomeUnknown>(), "{error:#}");
-        assert!(
-            elapsed < Duration::from_secs(4),
-            "pipe did not obey execution deadline: {elapsed:?}"
-        );
-        assert_eq!(probe.readers.load(Ordering::SeqCst), 0);
-        assert_pid_exited(probe.pid.load(Ordering::SeqCst)).await;
-        assert_pid_exited(descendant).await;
+                .unwrap();
+            assert!(
+                parent_waited,
+                "fixture did not observe direct parent exit before deadline"
+            );
+            let error = result.unwrap_err();
+            assert!(!error.is::<CommandOutcomeUnknown>(), "{error:#}");
+            assert!(
+                elapsed < Duration::from_secs(4),
+                "pipe did not obey execution deadline: {elapsed:?}"
+            );
+            assert_eq!(probe.readers.load(Ordering::SeqCst), 0);
+            original_exit.unwrap();
+            descendant
+                .signal("inherited-pipe", "assert-descendant-exited")
+                .require_exited()
+                .unwrap();
+        }
+        #[cfg(not(windows))]
+        panic!("stable inherited-pipe process observation requires Windows");
     }
     #[tokio::test]
     async fn s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn() {
@@ -376,7 +778,10 @@ mod tests {
                 .unwrap()["stdout"],
             "other"
         );
-        let probe = Arc::new(Probe::default());
+        let probe = Arc::new(Probe {
+            case: "task-scoped-unknown",
+            ..Probe::default()
+        });
         let error = PROBE
             .scope(
                 probe.clone(),
@@ -386,7 +791,7 @@ mod tests {
             .unwrap_err();
         assert!(error.is::<CommandOutcomeUnknown>());
         assert_ne!(probe.pid.load(Ordering::SeqCst), 0);
-        assert_pid_exited(probe.pid.load(Ordering::SeqCst)).await;
+        original_exit(&probe).unwrap();
         assert_eq!(probe.readers.load(Ordering::SeqCst), 0);
         assert_eq!(
             execute(
