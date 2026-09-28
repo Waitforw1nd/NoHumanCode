@@ -1,0 +1,9 @@
+{
+  "utc": "2026-09-28T15:25:33.6171058Z",
+  "command": "rustfmt --edition 2024 --config style_edition=2024,skip_children=true NoManCode/rust-app/src/host_configuration_crash_tests.rs NoManCode/rust-app/tests/host_configuration_security.rs",
+  "exit_code": 1,
+  "error": "invalid key=val pair: style_edition=2024",
+  "cause": "Unquoted PowerShell comma argument",
+  "next": "Quote the whole config argument",
+  "product_test_started": false
+}

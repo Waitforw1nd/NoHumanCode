@@ -1,0 +1,45 @@
+{
+  "checked_utc": "2026-09-28T15:06:25.3748440Z",
+  "task": "D-R13-01-20260928-E01",
+  "author": "Employee D / GPT-6-astra",
+  "cwd": "../nhc-d-credential-input",
+  "branch": "codex/d/credential-input",
+  "head": "a5a4ac64fe2d6b9175afada7bfde4f796c19fe13",
+  "source_tree": "7c7b9e51dfaade60f0337eac214c452179302cb3",
+  "rust_tree": "f28f6fae4decf583f2732d497a85e1e66515a989",
+  "source_status": [],
+  "index": [],
+  "exit_codes": {
+    "status": 0,
+    "index": 0,
+    "branch": 0,
+    "rev_parse": 0
+  },
+  "commands": [
+    "git rev-parse HEAD HEAD:NoManCode HEAD:NoManCode/rust-app",
+    "git branch --show-current",
+    "git status --short --untracked-files=all",
+    "git diff --cached --name-status"
+  ],
+  "observed_build_or_test_processes": [
+    {
+      "ProcessId": 17196,
+      "Name": "cargo.exe",
+      "ExecutablePath": "C:\\Users\\Administrator\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe"
+    },
+    {
+      "ProcessId": 47164,
+      "Name": "rustc.exe",
+      "ExecutablePath": "C:\\Users\\Administrator\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rustc.exe"
+    },
+    {
+      "ProcessId": 6040,
+      "Name": "rustc.exe",
+      "ExecutablePath": null
+    }
+  ],
+  "d_started_or_running_builds": 0,
+  "source_freeze": "CONTINUOUS CLEAN/NO-BUILD from D; independent of archive/report publication; no edits or builds until manager integration is received and personally verified",
+  "compilation": "NOT RUN",
+  "i09": "NOT RUN"
+}

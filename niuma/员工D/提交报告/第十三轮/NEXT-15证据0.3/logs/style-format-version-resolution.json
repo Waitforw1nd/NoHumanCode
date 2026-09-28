@@ -1,0 +1,15 @@
+{
+  "utc": "2026-09-28T15:27:53.7473056Z",
+  "path_default": "<existing-cargo>\\bin\\rustfmt.exe",
+  "path_default_version": "rustfmt 1.7.1-stable (f6e511ee 2024-10-15)",
+  "second_failed_command": "rustfmt --edition 2024 --config 'style_edition=2024,skip_children=true' <D-owned files>",
+  "second_exit_code": 1,
+  "error": "invalid key=val pair: style_edition=2024",
+  "correction_to_first_diagnosis": "Not PowerShell quoting: old PATH rustfmt does not support style_edition; first diagnosis was a hypothesis",
+  "additional_transport_failure": "SyntaxError: Unexpected identifier '$Action'; shell not started, exit code not applicable",
+  "selected_existing_tool": "<existing-rustup>/toolchains/stable-x86_64-pc-windows-msvc/bin/rustfmt.exe",
+  "selected_version": [
+    "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)"
+  ],
+  "installed_or_updated": false
+}

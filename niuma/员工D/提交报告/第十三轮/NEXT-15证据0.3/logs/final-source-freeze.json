@@ -1,0 +1,104 @@
+{
+  "checked_utc": "2026-09-28T15:41:40.5082711Z",
+  "author": "Employee D / GPT-6-astra",
+  "task": "D-R13-01-20260928-E01",
+  "head": "cb5e20d9cac1dcb2747eadd3e516a9945b539ab7",
+  "source_tree": "7715c222077ce1c0bdbc084faf5e32e704d23b47",
+  "rust_tree": "ce3c7c470d9eee59860dc703f8570f22cb66b2cd",
+  "branch": "codex/d/credential-input",
+  "status": [],
+  "index": [],
+  "unmerged": [],
+  "fixed_verifications": [
+    {
+      "action": "inputs",
+      "exit_code": 0,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--lib",
+        "credential_input::",
+        "--",
+        "--test-threads=1"
+      ],
+      "start": "2026-09-28T15:39:38.2881133Z",
+      "end": "2026-09-28T15:39:59.9398289Z",
+      "log_sha256": "17C3F523AD11DCDA7132F882B3D42DA725670C87E79A9143833B9DD12C316E06"
+    },
+    {
+      "action": "i09",
+      "exit_code": 0,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--lib",
+        "host_configuration_crash_tests",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "start": "2026-09-28T15:40:27.1605618Z",
+      "end": "2026-09-28T15:40:30.674508Z",
+      "log_sha256": "D89E8F103A07DDBD28DBC3A6B4D67B2BE43745B70DD84A2EFD59A4ED24D547A4"
+    },
+    {
+      "action": "security",
+      "exit_code": 0,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--test",
+        "host_configuration_security",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "start": "2026-09-28T15:40:31.3321611Z",
+      "end": "2026-09-28T15:40:45.437835Z",
+      "log_sha256": "29F635344F01FE9DFCC079D38D43159449D18ED408B5DFE8BE4218C3C137A7DD"
+    },
+    {
+      "action": "format",
+      "exit_code": 0,
+      "command": [
+        "<existing-rustup>/toolchains/stable-x86_64-pc-windows-msvc/bin/rustfmt.exe",
+        "--edition",
+        "2024",
+        "--config",
+        "style_edition=2024,skip_children=true",
+        "--check",
+        "src/credential_input.rs",
+        "src/host_configuration_crash_tests.rs",
+        "tests/host_configuration_security.rs"
+      ],
+      "start": "2026-09-28T15:40:46.1638493Z",
+      "end": "2026-09-28T15:40:46.2471443Z",
+      "log_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "action": "clippy",
+      "exit_code": 0,
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--lib",
+        "--test",
+        "host_configuration_security",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "start": "2026-09-28T15:40:46.9163399Z",
+      "end": "2026-09-28T15:40:48.0402323Z",
+      "log_sha256": "B2FBC91A7D3551D7A5E0EED65FFF13287F72A8450C3EC5497442696215C70792"
+    }
+  ],
+  "observed_build_or_test_processes": [],
+  "d_active_builds_or_tests": 0,
+  "source_freeze": "Continuous source/index clean and no-build; component commands complete; manager alone merges",
+  "gate_scope": "Not final workspace five gates; no release/live/push/tool installation"
+}

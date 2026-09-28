@@ -1,0 +1,1 @@
+{"receipt":{"changed":true,"committed_at":1790610041,"operation_id":"0175347e-35e8-4a7d-abd6-15cc421179f2","revision":1,"route":{"base_url":"http://127.0.0.1:52032","credential_source":"stored","id":"route","key_env":null,"max_tokens":128,"model":"mock","name":"Local fixture","parallel_limit":2},"route_id":"route"},"replayed":true}

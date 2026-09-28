@@ -1,0 +1,52 @@
+   Compiling peachsh v0.2.0 (../nhc-d-credential-input\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 15.91s
+     Running tests\host_configuration_security.rs (../nhc-d-credential-input\.local\next15-security-03\target\debug\deps\host_configuration_security-4ec7dd3b1333a030.exe)
+
+running 6 tests
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-nonempty-budget-1a26acda-5d05-4cab-8dd0-81e566d853f5
+
+thread 'configuration_preserves_nonempty_unknown_budget_old_task_and_grants' (44360) panicked at tests\host_configuration_security.rs:1105:5:
+assertion `left == right` failed
+  left: 3
+ right: 2
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test configuration_preserves_nonempty_unknown_budget_old_task_and_grants ... FAILED
+test environment_host_child ... ok
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-environment-parent-17612b59-13ed-4616-b731-ff0ba768f11d
+test i04_environment_namespace_dpapi_and_http_in_isolated_process ... ok
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-invalid-input-b6755125-3747-4e8a-bd38-b09e83695b2d
+test i04_rejected_pipe_inputs_make_no_put_or_db_change ... ok
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-inflight-404-008261b6-e03c-4bd0-b58f-fcb05b81d4ec
+
+thread 'i08_lookup_404_during_received_put_does_not_resolve_unknown' (17788) panicked at tests\host_configuration_security.rs:936:5:
+assertion failed: lookup.status.success()
+test i08_lookup_404_during_received_put_does_not_resolve_unknown ... FAILED
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-0-true-3eab4c0b-f088-4b78-91ec-00ad51d96de3
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-0-false-5a97a2a2-9928-4a82-a276-d03ae178ff72
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-1-true-234f63e7-3e6e-4390-83f8-17e31986b218
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-1-false-fce433f8-182f-4212-a07f-84134fcc06e5
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-2-true-2833c73e-7e23-42c5-8ef1-a18ac672c078
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-2-false-d3e77940-9f36-4d60-a008-599cdc2a3003
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-3-true-0331b965-4e5e-432f-8a34-cd189ecaa244
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-3-false-203892f1-a336-402f-ab87-1bbefe698530
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-4-true-5b145ec6-7ecb-457b-8e48-fd28f79d28c9
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-4-false-64b7bb1f-a818-45c9-bfec-856d1c2843cd
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-5-true-87bc9a2b-5ed6-4693-a732-d82c846ca300
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-5-false-4350e8a8-6d2d-4e83-986b-b94f92f56fc5
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-6-true-a3cd1196-990d-4383-aa7e-9b3c37677900
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-6-false-1f331a24-8bf1-4a1f-875b-a0872663563b
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-7-true-cbb3473e-8608-427e-aa6d-429b1ab51d82
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-7-false-4c675580-3308-429e-a6af-19370725e0b6
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-8-true-ae86b12c-d8a7-4e37-bb90-c95921b32b2a
+D security retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-security-hostile-8-false-3027b7d7-7fc6-4147-9954-bd50424a19f2
+test i08_real_commits_then_hostile_responses_are_unknown_without_retries ... ok
+
+failures:
+
+failures:
+    configuration_preserves_nonempty_unknown_budget_old_task_and_grants
+    i08_lookup_404_during_received_put_does_not_resolve_unknown
+
+test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.31s
+
+error: test failed, to rerun pass `--test host_configuration_security`

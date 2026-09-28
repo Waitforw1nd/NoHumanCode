@@ -1,0 +1,9 @@
+{
+  "utc": "2026-09-28T15:29:54.5173355Z",
+  "tool": "apply_patch",
+  "error": "Expected Reply::Duplicate anchor missing after rustfmt",
+  "source_written": false,
+  "test_started": false,
+  "exit_code": null,
+  "repair": "Use exact current anchors; preserve earlier results"
+}

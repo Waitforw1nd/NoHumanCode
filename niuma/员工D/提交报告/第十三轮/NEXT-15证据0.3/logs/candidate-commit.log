@@ -1,0 +1,3 @@
+[codex/d/credential-input cb5e20d] test(host-config): verify real crash recovery and credential security
+ 2 files changed, 1353 insertions(+), 12 deletions(-)
+ create mode 100644 NoManCode/rust-app/tests/host_configuration_security.rs

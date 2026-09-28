@@ -1,0 +1,119 @@
+{
+  "started_utc": "2026-09-28T15:01:10.8590280Z",
+  "checked_utc": "2026-09-28T15:01:12.1532954Z",
+  "cwd": "../nhc-d-credential-input",
+  "task": "D-R13-01-20260928-E01",
+  "branch": "codex/d/credential-input",
+  "head": "a5a4ac64fe2d6b9175afada7bfde4f796c19fe13",
+  "source_tree": "7c7b9e51dfaade60f0337eac214c452179302cb3",
+  "rust_tree": "f28f6fae4decf583f2732d497a85e1e66515a989",
+  "status": [],
+  "index": [],
+  "delta": [
+    "A\tNoManCode/rust-app/src/host_configuration_crash_tests.rs"
+  ],
+  "commands": [
+    {
+      "command": "git diff --cached --check",
+      "arguments": [
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "staged-diff-check.log"
+    },
+    {
+      "command": "git commit -m test(host-config): prepare real HTTP crash recovery harness -m D-R13-01 supplement02: add the Windows library test harness in the sole D-owned file. Not compiled or executed; B/C integration and B lib registration remain pending.",
+      "arguments": [
+        "commit",
+        "-m",
+        "test(host-config): prepare real HTTP crash recovery harness",
+        "-m",
+        "D-R13-01 supplement02: add the Windows library test harness in the sole D-owned file. Not compiled or executed; B/C integration and B lib registration remain pending."
+      ],
+      "exit_code": 0,
+      "log": "candidate-commit.log"
+    },
+    {
+      "command": "git rev-parse HEAD HEAD:NoManCode HEAD:NoManCode/rust-app",
+      "arguments": [
+        "rev-parse",
+        "HEAD",
+        "HEAD:NoManCode",
+        "HEAD:NoManCode/rust-app"
+      ],
+      "exit_code": 0,
+      "log": "candidate-trees.log"
+    },
+    {
+      "command": "git status --short",
+      "arguments": [
+        "status",
+        "--short"
+      ],
+      "exit_code": 0,
+      "log": "candidate-status.log"
+    },
+    {
+      "command": "git diff --cached --name-status",
+      "arguments": [
+        "diff",
+        "--cached",
+        "--name-status"
+      ],
+      "exit_code": 0,
+      "log": "candidate-index.log"
+    },
+    {
+      "command": "git diff --name-status HEAD^ HEAD",
+      "arguments": [
+        "diff",
+        "--name-status",
+        "HEAD^",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "log": "candidate-delta.log"
+    },
+    {
+      "command": "git diff --check",
+      "arguments": [
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "candidate-diff-check.log"
+    }
+  ],
+  "files": [
+    {
+      "path": "NoManCode/rust-app/src/host_configuration_crash_tests.rs",
+      "sha256": "DDA1CE2AEE0BD9A463E1547CCB0026D77D024FF74B3C11AD9202052DE513BD70"
+    },
+    {
+      "path": "NoManCode/rust-app/src/credential_input.rs",
+      "sha256": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.toml",
+      "sha256": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.lock",
+      "sha256": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+    },
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "sha256": "FC38A7144768ED4D90E82230A13AFFE437C54F4206610BA316847864EC28B84D"
+    }
+  ],
+  "observed_build_or_test_processes": [],
+  "d_owned_builds_started_this_continuation": 0,
+  "compilation": "NOT RUN",
+  "clippy": "NOT RUN",
+  "i09": "NOT RUN",
+  "reason": "B/C not merged; B lib registration absent",
+  "freeze": "Continuous source/index clean and no-build after candidate commit; await manager integration",
+  "legacy_integration_crash_file_exists": false
+}

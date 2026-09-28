@@ -1,0 +1,7 @@
+
+thread 'credential_input::windows_console::tests::isolated_console_child' (45364) panicked at src\credential_input.rs:488:21:
+intentional restoration probe
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'credential_input::windows_console::tests::isolated_console_child' (45364) panicked at src\credential_input.rs:488:21:
+intentional restoration probe

@@ -1,0 +1,12 @@
+{
+  "recorded_utc": "2026-09-28T15:05:16.4974613Z",
+  "phase": "Report0.2 write tool-input construction",
+  "tool": "functions.exec",
+  "error": "SyntaxError: Unexpected identifier 'codex'",
+  "shell_started": false,
+  "shell_exit_code": null,
+  "source_changed": false,
+  "report_written": false,
+  "cause": "Unescaped Markdown backticks inside JavaScript template literal",
+  "repair": "Use a plain quoted patch payload for report; keep shell input free of Markdown template delimiters"
+}

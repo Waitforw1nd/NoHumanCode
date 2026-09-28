@@ -1,0 +1,15 @@
+{
+  "utc": "2026-09-28T15:40:26.4574977Z",
+  "head": "cb5e20d9cac1dcb2747eadd3e516a9945b539ab7",
+  "stage": "Verification runner continuation",
+  "completed": "fixed-inputs: cargo exit0, 10 passed",
+  "failure": "Relative runner path no longer resolved after first script set cwd to Rust directory",
+  "outer_exit_code": 1,
+  "not_started": [
+    "fixed-i09",
+    "fixed-security",
+    "fixed-format",
+    "fixed-clippy"
+  ],
+  "repair": "Use absolute E-drive runner path; do not rerun completed inputs"
+}

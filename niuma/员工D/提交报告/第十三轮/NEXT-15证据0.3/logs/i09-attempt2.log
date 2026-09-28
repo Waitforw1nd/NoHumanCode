@@ -1,0 +1,13 @@
+   Compiling peachsh v0.2.0 (../nhc-d-credential-input\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 20.44s
+     Running unittests src\lib.rs (../nhc-d-credential-input\.local\next15-security-03\target\debug\deps\peachsh-c82d43bb87a9486d.exe)
+
+running 3 tests
+I09 retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-i09-after_commit-b29e6989-ce0a-4e97-a40a-242f11d99a82
+test host_configuration_crash_tests::after_commit_before_response_kill_wait_restores_one_receipt_twice ... ok
+I09 retained fixture: ../nhc-d-credential-input\.local\next15-security-03\tmp\nhc-i09-before_commit-fb7ad536-f003-44ac-aefb-823b5128b109
+test host_configuration_crash_tests::before_commit_kill_wait_restores_all_old_state_twice ... ok
+test host_configuration_crash_tests::host_process_child ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 234 filtered out; finished in 3.18s
+

@@ -1,0 +1,1 @@
+operation_result_unknown: 配置结果未知，可能已提交；先用 host config operation --key <原key> 查询原回执，再用 host config get 查询当前配置。lookup 404不能排除原请求仍在途；不会自动重发或换key。

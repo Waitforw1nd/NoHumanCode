@@ -1,0 +1,1 @@
+{"code":"host_config_not_found","error":"查询快照未见原回执；原PUT可能仍在途，不要因此换key或自动重发。请随后查询原回执及当前配置","message":"查询快照未见原回执；原PUT可能仍在途，不要因此换key或自动重发。请随后查询原回执及当前配置","retryable":false}

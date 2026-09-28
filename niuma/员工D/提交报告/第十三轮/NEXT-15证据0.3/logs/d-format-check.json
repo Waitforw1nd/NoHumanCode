@@ -1,0 +1,94 @@
+{
+  "label": "d-format-check",
+  "action": "format",
+  "command": [
+    "<existing-rustup>/toolchains/stable-x86_64-pc-windows-msvc/bin/rustfmt.exe",
+    "--edition",
+    "2024",
+    "--config",
+    "style_edition=2024,skip_children=true",
+    "--check",
+    "src/credential_input.rs",
+    "src/host_configuration_crash_tests.rs",
+    "tests/host_configuration_security.rs"
+  ],
+  "cwd": "../nhc-d-credential-input\\NoManCode\\rust-app",
+  "before": {
+    "head": "95c34b61038f409bf91d7a6082f889212e1a11a7",
+    "source_tree": "0dba4fe3deb896f52a9e12f72db42e4e99c7ae64",
+    "rust_tree": "3aa3171157cd145fd117f12a42369be0ef1d8d6a",
+    "status": [
+      " M src/host_configuration_crash_tests.rs",
+      "?? tests/host_configuration_security.rs"
+    ],
+    "files": [
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\credential_input.rs",
+        "Hash": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\host_configuration_crash_tests.rs",
+        "Hash": "EAD2CE7AE36002C67E8AD8A6854C5635C9ABC0E51E02A8BC9431F50848C25601"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\tests\\host_configuration_security.rs",
+        "Hash": "53D55FD494510825B57E917ED78A46DE8B614A963937CB4C076BDAAA29A81E0E"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.toml",
+        "Hash": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.lock",
+        "Hash": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+      },
+      {
+        "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\lib.rs",
+        "Hash": "C17D24BFF15AB16F1D07ECBB5C9538915D9FEE1622E2CA33C7B8C7B31D9B9588"
+      }
+    ],
+    "utc": "2026-09-28T15:31:10.7008500Z"
+  },
+  "end_utc": "2026-09-28T15:31:10.7939336Z",
+  "exit_code": 0,
+  "after_head": "95c34b61038f409bf91d7a6082f889212e1a11a7",
+  "after_status": [
+    " M src/host_configuration_crash_tests.rs",
+    "?? tests/host_configuration_security.rs"
+  ],
+  "after_files": [
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\credential_input.rs",
+      "Hash": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\host_configuration_crash_tests.rs",
+      "Hash": "EAD2CE7AE36002C67E8AD8A6854C5635C9ABC0E51E02A8BC9431F50848C25601"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\tests\\host_configuration_security.rs",
+      "Hash": "53D55FD494510825B57E917ED78A46DE8B614A963937CB4C076BDAAA29A81E0E"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.toml",
+      "Hash": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\Cargo.lock",
+      "Hash": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+    },
+    {
+      "Path": "../nhc-d-credential-input\\NoManCode\\rust-app\\src\\lib.rs",
+      "Hash": "C17D24BFF15AB16F1D07ECBB5C9538915D9FEE1622E2CA33C7B8C7B31D9B9588"
+    }
+  ],
+  "environment": {
+    "TMP": "../nhc-d-credential-input\\.local\\next15-security-03\\tmp",
+    "CARGO_TARGET_DIR": "../nhc-d-credential-input\\.local\\next15-security-03\\target",
+    "TEMP": "../nhc-d-credential-input\\.local\\next15-security-03\\tmp",
+    "MSVC": "<existing-msvc>\\14.40.33807",
+    "CARGO_NET_OFFLINE": "true",
+    "SDK": "<existing-windows-sdk>\\"
+  },
+  "log_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+}

@@ -1,0 +1,11 @@
+{
+  "utc": "2026-09-28T15:17:09.4826103Z",
+  "command": "./.local/next15-security-03/run-scoped.ps1 -Label i09-attempt1 -Action i09",
+  "cwd": "../nhc-d-credential-input",
+  "exit_code": 1,
+  "stage": "Existing MSVC discovery before cargo invocation",
+  "error": "Missing Visual C++ x64 build tools",
+  "cargo_started": false,
+  "installed_or_updated_tools": false,
+  "next": "Reuse verified existing toolchain paths from input component evidence"
+}
