@@ -33,13 +33,13 @@ impl HostComposition {
         let tools = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
         let agent = store.plugin_desired_for("builtin.chat-agent")?;
         let provider = store.plugin_desired_for("builtin.provider-xpeach")?;
-        Ok(Self::new(
+        Self::new(
             store,
             tools,
             crate::provider_runtime::ProviderRuntime::builtin_with_state(provider.enabled)?,
             crate::agent_runtime::AgentRuntime::builtin_with_state(agent.enabled)?,
             recovery,
-        ))
+        )
     }
     pub(crate) fn new(
         store: Arc<Store>,
@@ -47,7 +47,8 @@ impl HostComposition {
         provider: crate::provider_runtime::ProviderRuntime,
         agent: crate::agent_runtime::AgentRuntime,
         recovery: host_services::RecoveryService,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
+        anyhow::ensure!(recovery.owns(&store), "recovery store identity mismatch");
         let gate = Arc::new(AsyncMutex::new(()));
         let active = Arc::new(Mutex::new(HashMap::new()));
         #[cfg(test)]
@@ -67,7 +68,7 @@ impl HostComposition {
             #[cfg(test)]
             restore_probe.clone(),
         );
-        Self {
+        Ok(Self {
             store,
             gate,
             active,
@@ -82,7 +83,7 @@ impl HostComposition {
             review_recovery,
             #[cfg(test)]
             restore_probe,
-        }
+        })
     }
 }
 
@@ -133,17 +134,27 @@ fn plugin(
     manifest: crate::plugin_catalog::CatalogManifestV1,
     names: &[&str],
     dependencies: &[&'static str],
-) -> CompositionCapability {
-    let interfaces = manifest
+) -> anyhow::Result<CompositionCapability> {
+    let interfaces: Vec<_> = manifest
         .provides
         .into_iter()
-        .filter(|k| names.contains(&k.name.as_str()))
+        .filter(|k| {
+            k.kind == crate::plugin_catalog::InterfaceKind::Service
+                && names.contains(&k.name.as_str())
+        })
         .map(|k| CompositionInterface {
             name: k.name,
             version: k.version.to_string(),
         })
         .collect();
-    CompositionCapability {
+    anyhow::ensure!(
+        interfaces.len() == names.len()
+            && interfaces
+                .iter()
+                .all(|interface| interface.version == "1.0.0"),
+        "runtime interface binding mismatch"
+    );
+    Ok(CompositionCapability {
         id,
         binding_kind: "plugin_runtime",
         provider_id: manifest.id,
@@ -151,14 +162,14 @@ fn plugin(
         interfaces,
         lifecycle: "managed",
         dependencies: dependencies.to_vec(),
-    }
+    })
 }
 impl HostComposition {
     pub(crate) fn snapshot(
         &self,
         plugins: Vec<crate::plugin_management::PluginStatus>,
         runtimes: Vec<crate::runtime_management::RuntimeComponentStatus>,
-    ) -> CompositionSnapshot {
+    ) -> anyhow::Result<CompositionSnapshot> {
         use host_services::{
             ApprovalService as A, ProjectService as P, RecoveryService as R, ReviewRecovery as RR,
             SessionService as S, WorkspaceSafety as W,
@@ -170,16 +181,16 @@ impl HostComposition {
             host("workspace", W::ID, W::VERSION, &["core"]),
             plugin(
                 "provider-xpeach",
-                crate::provider_runtime::composition_manifest(),
+                self.provider.composition_manifest()?,
                 &["provider.completion-codec"],
                 &["core"],
-            ),
+            )?,
             plugin(
                 "file-read-search",
-                crate::tool_runtime::composition_manifest("builtin.files"),
+                self.tools.composition_manifest("builtin.files")?,
                 &["tool.read_file", "tool.list_files", "tool.search_files"],
                 &["workspace", "local-project", "approval-policy"],
-            ),
+            )?,
             host(
                 "approval-policy",
                 A::ID,
@@ -188,16 +199,16 @@ impl HostComposition {
             ),
             plugin(
                 "file-write",
-                crate::tool_runtime::composition_manifest("builtin.files"),
+                self.tools.composition_manifest("builtin.files")?,
                 &["tool.write_file"],
                 &["workspace", "local-project", "approval-policy"],
-            ),
+            )?,
             plugin(
                 "shell",
-                crate::tool_runtime::composition_manifest("builtin.shell"),
+                self.tools.composition_manifest("builtin.shell")?,
                 &["tool.run_command"],
                 &["workspace", "local-project", "approval-policy"],
-            ),
+            )?,
             host(
                 "git-diff",
                 RR::ID,
@@ -208,22 +219,22 @@ impl HostComposition {
                 "checkpoint-restore",
                 RR::ID,
                 RR::VERSION,
-                &["workspace", "local-project", "approval-policy"],
+                &["workspace", "local-project"],
             ),
             host("recovery", R::ID, R::VERSION, &["core"]),
             plugin(
                 "chat-agent",
-                crate::agent_runtime::composition_manifest(),
+                self.agent.composition_manifest()?,
                 &["agent.strategy"],
                 &["core", "approval-policy"],
-            ),
+            )?,
         ];
-        CompositionSnapshot {
+        Ok(CompositionSnapshot {
             version: 1,
             consistency: "per_component",
             capabilities,
             plugins,
             runtimes,
-        }
+        })
     }
 }

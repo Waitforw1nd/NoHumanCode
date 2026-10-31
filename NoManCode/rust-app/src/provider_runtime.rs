@@ -59,9 +59,6 @@ fn key() -> InterfaceKey {
         },
     }
 }
-pub(crate) fn composition_manifest() -> CatalogManifestV1 {
-    manifest(PROVIDER, true)
-}
 fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
     CatalogManifestV1 {
         manifest_version: 1,
@@ -170,6 +167,31 @@ fn account_response_bytes(size: &mut usize, additional: usize) -> Result<(), Cod
     Ok(())
 }
 impl ProviderRuntime {
+    pub(crate) fn composition_manifest(&self) -> Result<CatalogManifestV1> {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("provider catalog unavailable"))?;
+        let host = state
+            .host
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("provider transitioning"))?;
+        host.catalog()
+            .descriptors()
+            .into_iter()
+            .find(|m| m.id == PROVIDER)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("provider binding missing"))
+    }
+    #[cfg(test)]
+    pub(crate) fn with_manifest_patch_for_test(patch: u32) -> Result<Self> {
+        let mut host = PluginHost::new(ScopeKey::Host)?;
+        let mut descriptor = manifest(PROVIDER, true);
+        descriptor.version.patch = patch;
+        host.catalog_mut().register(descriptor)?;
+        Self::from_host_with_state(host, false)
+    }
+
     #[cfg(test)]
     pub(crate) fn builtin() -> Result<Self> {
         Self::assemble(Arc::new(crate::provider::BuiltinCompletionCodec))

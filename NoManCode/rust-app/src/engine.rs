@@ -899,7 +899,7 @@ impl Engine {
             provider_runtime,
             agent_runtime,
             recovery,
-        );
+        )?;
         Self::assemble_composition(composition, max_concurrency)
     }
     fn assemble_composition(
@@ -1250,7 +1250,7 @@ impl Engine {
     pub fn composition(&self) -> Result<CompositionSnapshot> {
         let plugins = self.plugins()?;
         let runtimes = self.runtime_components().map_err(anyhow::Error::new)?;
-        Ok(self.composition.snapshot(plugins, runtimes))
+        self.composition.snapshot(plugins, runtimes)
     }
     pub fn plugins(&self) -> Result<Vec<crate::plugin_management::PluginStatus>> {
         // Independent snapshots; never hold both group locks.
@@ -6544,6 +6544,36 @@ mod network_gate_tests {
 #[cfg(test)]
 mod composition_tests {
     use super::*;
+    #[test]
+    fn composition_rejects_recovery_from_another_store() {
+        let dir = tempfile::tempdir().unwrap();
+        let first = Arc::new(Store::open(&dir.path().join("first.db")).unwrap());
+        let second = Arc::new(Store::open(&dir.path().join("second.db")).unwrap());
+        let recovery = host_services::RecoveryService::new(second);
+        let result = composition::HostComposition::new(
+            first,
+            ToolRuntime::builtin().unwrap(),
+            crate::provider_runtime::ProviderRuntime::builtin().unwrap(),
+            crate::agent_runtime::AgentRuntime::builtin().unwrap(),
+            recovery,
+        );
+        assert!(result.is_err());
+    }
+    #[test]
+    fn composition_reports_the_injected_provider_catalog_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(Store::open(&dir.path().join("provider-catalog.db")).unwrap());
+        let provider =
+            crate::provider_runtime::ProviderRuntime::with_manifest_patch_for_test(7).unwrap();
+        let engine = Engine::new_with_provider_runtime_for_test(store, 1, provider).unwrap();
+        let snapshot = engine.composition().unwrap();
+        let capability = snapshot
+            .capabilities
+            .iter()
+            .find(|c| c.id == "provider-xpeach")
+            .unwrap();
+        assert_eq!(capability.provider_version, "1.0.7");
+    }
     #[test]
     fn composition_uses_shared_resources_and_real_runtime_states() {
         let dir = tempfile::tempdir().unwrap();
