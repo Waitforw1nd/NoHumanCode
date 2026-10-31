@@ -1,0 +1,9 @@
+{
+  "rust_tree": "c3279badad53a87f4160ead3407358cb69019597",
+  "exit_code": 0,
+  "head": "0ed5859d1229f433847a1e3c87ecd1c2a785ca2e",
+  "command": "cargo check --offline --locked --workspace --all-targets",
+  "started_utc": "2026-10-31T17:44:29.2936092Z",
+  "product_tree": "be3d84b833802491693f0d1704b7a6fc28282024",
+  "ended_utc": "2026-10-31T17:44:45.2859549Z"
+}

@@ -1,0 +1,4 @@
+{"at_unix_ms":1793467452249,"event":"wait_begin","notification":"ready","phase":"ready-and-http","pid":58800}
+{"at_unix_ms":1793467452250,"event":"early_completion","notification":"ready","phase":"ready-and-http","pid":58800,"reason":"request completed before kill"}
+{"at_unix_ms":1793467452250,"event":"drop_kill_result","ok":true,"phase":"ready-and-http","pid":58800}
+{"at_unix_ms":1793467452261,"event":"drop_reaped","exit_code":1,"phase":"ready-and-http","pid":58800,"success":false}

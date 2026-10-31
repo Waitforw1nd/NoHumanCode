@@ -1,0 +1,1 @@
+phase=before-stdout descendant_signal=0

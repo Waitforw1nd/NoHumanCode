@@ -1,0 +1,1 @@
+case=pipe-eof-between phase=job-drop cleanup_ok=true error=None

@@ -1,0 +1,1 @@
+case=pipe-eof-between phase=descendant-owned parent_pid=56924 parent_created=134379410309792429 descendant_pid=45600 descendant_created=134379410312849449

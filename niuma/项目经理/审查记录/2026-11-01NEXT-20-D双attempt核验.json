@@ -1,0 +1,304 @@
+[
+  {
+    "attempt": "next20-d-44391a64-attempt1",
+    "candidate": "44391a64a7b5720546c0a2a23aab075971d7a794",
+    "product_tree": "2f2b70112b004654ce96b695e336ffbfd26569bc",
+    "rust_tree": "999c149dd7b10e6b60f25bcbc49d35c37ba81e79",
+    "source_inputs_against_git": 180,
+    "identical_source_manifests": 7,
+    "retained_old_files_unchanged": 11501,
+    "retained_all_files_verified": 13114,
+    "steps": [
+      {
+        "step": "01-check",
+        "exit_code": 0,
+        "command": "cargo check --offline --locked --workspace --all-targets",
+        "test_results": []
+      },
+      {
+        "step": "02-build-cli",
+        "exit_code": 0,
+        "command": "cargo build --offline --locked --bin peachsh",
+        "test_results": []
+      },
+      {
+        "step": "03-negative",
+        "exit_code": 0,
+        "command": "cargo test --offline --locked --lib process_fixture_failure_controls_reap_job -- --nocapture",
+        "test_results": [
+          [
+            "1",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      {
+        "step": "04-lib",
+        "exit_code": 101,
+        "command": "cargo test --offline --locked --lib -- --nocapture",
+        "test_results": [
+          [
+            "371",
+            "1",
+            "0"
+          ]
+        ]
+      }
+    ],
+    "controlled_exit_scenes": [
+      {
+        "scene": ".tmp1IvRCg",
+        "evidence": "phase=after-stdout-pending descendant_signal=0\n",
+        "sha256": "11902b68e7fd3aefb21e6643c4af0a24e49ddb94a0c81a2a2b6332fc9e355033"
+      },
+      {
+        "scene": ".tmpMJfXOo",
+        "evidence": "phase=before-stdout descendant_signal=0\n",
+        "sha256": "b4631437446245e861b35c8b3285c01c6592b28623e5498aca2544f03772da26"
+      },
+      {
+        "scene": ".tmpsfCrxp",
+        "evidence": "phase=after-stdout-pending descendant_signal=0\n",
+        "sha256": "11902b68e7fd3aefb21e6643c4af0a24e49ddb94a0c81a2a2b6332fc9e355033"
+      },
+      {
+        "scene": ".tmpvW1gBY",
+        "evidence": "phase=before-stdout descendant_signal=0\n",
+        "sha256": "b4631437446245e861b35c8b3285c01c6592b28623e5498aca2544f03772da26"
+      }
+    ],
+    "published_evidence": {
+      "attempt": "44391a64-attempt1",
+      "files_verified": 138,
+      "manifest_sha256": "6b93c19b4c8289b18cc61845ecdc9324203c266c76368c2beb20fee7c74712bb",
+      "exact_path_conversion_verified": true
+    }
+  },
+  {
+    "attempt": "next20-d-0ed5859d-attempt2",
+    "candidate": "0ed5859d1229f433847a1e3c87ecd1c2a785ca2e",
+    "product_tree": "be3d84b833802491693f0d1704b7a6fc28282024",
+    "rust_tree": "c3279badad53a87f4160ead3407358cb69019597",
+    "source_inputs_against_git": 180,
+    "identical_source_manifests": 7,
+    "retained_old_files_unchanged": 13155,
+    "retained_all_files_verified": 14718,
+    "steps": [
+      {
+        "step": "01-check",
+        "exit_code": 0,
+        "command": "cargo check --offline --locked --workspace --all-targets",
+        "test_results": []
+      },
+      {
+        "step": "02-build-cli",
+        "exit_code": 0,
+        "command": "cargo build --offline --locked --bin peachsh",
+        "test_results": []
+      },
+      {
+        "step": "03-negative",
+        "exit_code": 0,
+        "command": "cargo test --offline --locked --lib process_fixture_failure_controls_reap_job -- --nocapture",
+        "test_results": [
+          [
+            "1",
+            "0",
+            "0"
+          ]
+        ]
+      },
+      {
+        "step": "04-lib",
+        "exit_code": 101,
+        "command": "cargo test --offline --locked --lib -- --nocapture",
+        "test_results": [
+          [
+            "370",
+            "2",
+            "0"
+          ]
+        ]
+      }
+    ],
+    "controlled_exit_scenes": [
+      {
+        "scene": ".tmp70LQca",
+        "evidence": "phase=before-stdout descendant_signal=0\n",
+        "sha256": "b4631437446245e861b35c8b3285c01c6592b28623e5498aca2544f03772da26"
+      },
+      {
+        "scene": ".tmplqDyda",
+        "evidence": "phase=before-stdout descendant_signal=0\n",
+        "sha256": "b4631437446245e861b35c8b3285c01c6592b28623e5498aca2544f03772da26"
+      },
+      {
+        "scene": ".tmpOLUEbR",
+        "evidence": "phase=after-stdout-pending descendant_signal=0\n",
+        "sha256": "11902b68e7fd3aefb21e6643c4af0a24e49ddb94a0c81a2a2b6332fc9e355033"
+      },
+      {
+        "scene": ".tmpThRESZ",
+        "evidence": "phase=after-stdout-pending descendant_signal=0\n",
+        "sha256": "11902b68e7fd3aefb21e6643c4af0a24e49ddb94a0c81a2a2b6332fc9e355033"
+      }
+    ],
+    "n20_f02a_observation": {
+      "relative_scene": "tmp/.tmpO6px9i",
+      "diagnostic_sha256": "dcdfd17e99268d0ea34eadaa8271ea94af44aa2034fdbbe45db8fc0f0eb86a6f",
+      "completed_git_waits": 22,
+      "git_wait_exit_codes": [
+        {
+          "command": 1,
+          "exit": 0
+        },
+        {
+          "command": 2,
+          "exit": 0
+        },
+        {
+          "command": 3,
+          "exit": 0
+        },
+        {
+          "command": 4,
+          "exit": 0
+        },
+        {
+          "command": 5,
+          "exit": 0
+        },
+        {
+          "command": 6,
+          "exit": 0
+        },
+        {
+          "command": 7,
+          "exit": 0
+        },
+        {
+          "command": 8,
+          "exit": 0
+        },
+        {
+          "command": 9,
+          "exit": 0
+        },
+        {
+          "command": 10,
+          "exit": 0
+        },
+        {
+          "command": 11,
+          "exit": 0
+        },
+        {
+          "command": 12,
+          "exit": 0
+        },
+        {
+          "command": 13,
+          "exit": 0
+        },
+        {
+          "command": 14,
+          "exit": 0
+        },
+        {
+          "command": 15,
+          "exit": 1
+        },
+        {
+          "command": 16,
+          "exit": 0
+        },
+        {
+          "command": 17,
+          "exit": 0
+        },
+        {
+          "command": 18,
+          "exit": 0
+        },
+        {
+          "command": 19,
+          "exit": 0
+        },
+        {
+          "command": 20,
+          "exit": 0
+        },
+        {
+          "command": 21,
+          "exit": 0
+        },
+        {
+          "command": 22,
+          "exit": 0
+        }
+      ],
+      "milestones": [
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6797707,
+          "exit": null,
+          "phase": "prepare_ok",
+          "pid": 57520
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6798169,
+          "exit": null,
+          "phase": "project_probe_begin",
+          "pid": 57520
+        }
+      ],
+      "last_events": [
+        {
+          "case": "n13",
+          "child_pid": 10424,
+          "command": 23,
+          "detail": "",
+          "elapsed_us": 9639145,
+          "exit": null,
+          "phase": "git_wait_begin",
+          "pid": 57520
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 10012693,
+          "exit": null,
+          "phase": "n13_timeout_ready_pending",
+          "pid": 57520
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 10012848,
+          "exit": null,
+          "phase": "n13_timeout_caller_pending",
+          "pid": 57520
+        }
+      ],
+      "limits": "Timeout in pre-claim project probing; precise delay cause unknown. raw-observed copies are live and not a consistent snapshot."
+    },
+    "published_evidence": {
+      "attempt": "0ed5859d-attempt2",
+      "files_verified": 139,
+      "manifest_sha256": "52f5d168d2743f7979955b90a8d6bf60429fa5e22a23f1e702d91663abfb82c6",
+      "exact_path_conversion_verified": true
+    }
+  }
+]

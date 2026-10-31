@@ -1,0 +1,1 @@
+case=pipe-eof-between phase=preparation-failed error=stderr EOF after parent exit

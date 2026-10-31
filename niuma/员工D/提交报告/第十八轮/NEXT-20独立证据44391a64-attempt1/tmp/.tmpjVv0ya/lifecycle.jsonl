@@ -1,0 +1,4 @@
+{"at_unix_ms":1793467452709,"event":"wait_begin","notification":"ready","phase":"child-before-ready","pid":57992}
+{"at_unix_ms":1793467452709,"event":"early_completion","notification":"ready","phase":"child-before-ready","pid":57992,"reason":"child exited before kill"}
+{"at_unix_ms":1793467452710,"event":"drop_kill_result","ok":true,"phase":"child-before-ready","pid":57992}
+{"at_unix_ms":1793467452710,"event":"drop_reaped","exit_code":0,"phase":"child-before-ready","pid":57992,"success":true}

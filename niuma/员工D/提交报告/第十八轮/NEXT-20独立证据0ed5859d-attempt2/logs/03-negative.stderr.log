@@ -1,0 +1,21 @@
+   Compiling peachsh v0.2.0 (../nhc-d-default-composition\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 44.29s
+     Running unittests src\lib.rs (../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-3a1ea4f-attempt1\target\debug\deps\peachsh-c82d43bb87a9486d.exe)
+fixture case=no-marker phase=retained root=../nhc-d-default-composition\NoManCode\rust-app\.local\next20-d-0ed5859d-attempt2\tmp\.tmpaDTMj9
+case=no-marker phase=preparation-failed error=fixture preparation exceeded 15 seconds: deadline has elapsed
+case=no-marker phase=job-drop cleanup_ok=true error=None
+fixture case=parent-exit phase=retained root=../nhc-d-default-composition\NoManCode\rust-app\.local\next20-d-0ed5859d-attempt2\tmp\.tmpbTNvxk
+case=parent-exit phase=preparation-failed error=parent exited before handle publication: code=Some(42)
+case=parent-exit phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof phase=retained root=../nhc-d-default-composition\NoManCode\rust-app\.local\next20-d-0ed5859d-attempt2\tmp\.tmplqDyda
+case=pipe-eof phase=descendant-owned parent_pid=4304 parent_created=134379423901715696 descendant_pid=20128 descendant_created=134379423905172517
+case=pipe-eof phase=preparation-failed error=stdout EOF after parent exit and sentinel
+case=pipe-eof phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof-between phase=retained root=../nhc-d-default-composition\NoManCode\rust-app\.local\next20-d-0ed5859d-attempt2\tmp\.tmpOLUEbR
+case=pipe-eof-between phase=descendant-owned parent_pid=58316 parent_created=134379423908951806 descendant_pid=56168 descendant_created=134379423912327652
+case=pipe-eof-between phase=preparation-failed error=stderr EOF after parent exit
+case=pipe-eof-between phase=job-drop cleanup_ok=true error=None
+fixture case=ack-fail phase=retained root=../nhc-d-default-composition\NoManCode\rust-app\.local\next20-d-0ed5859d-attempt2\tmp\.tmpj9FU3X
+case=ack-fail phase=descendant-owned parent_pid=56980 parent_created=134379423916622195 descendant_pid=22408 descendant_created=134379423919727849
+case=ack-fail phase=preparation-failed error=injected ack failure
+case=ack-fail phase=job-drop cleanup_ok=true error=None
