@@ -1,0 +1,248 @@
+{
+  "date": "2026-10-31",
+  "scope": "B NEXT-17 limited component evidence",
+  "first_candidate": "a0a9a592709b5cd7e53d70a70123fd7074f4425a",
+  "passed_candidate": "6a7d1f27a9e4543f8813e4c1a3f81ae194bd102d",
+  "method": "Originals unchanged; published files differ solely by listed byte substitutions; no encoding/newline normalization. Empty logs remain empty.",
+  "source_manifest_sha256": "087F054758ECE829249DB82412BAB08C723BFCA267A84A0BF30ED527CB6C0FB8",
+  "files": [
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/01-check.json",
+      "published": "logs/01-check.json",
+      "original_sha256": "7053403DF56361672E5827221D9A494C39801DEA82FA08759DCBA0CD8FB0E552",
+      "original_bytes": 379,
+      "published_sha256": "7053403DF56361672E5827221D9A494C39801DEA82FA08759DCBA0CD8FB0E552",
+      "published_bytes": 379,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/01-check.log",
+      "published": "logs/01-check.log",
+      "original_sha256": "969F0A687275C50E9947BFD84B5D8C040F01B5C3937036796DD3555B8A5E40CE",
+      "original_bytes": 6411,
+      "published_sha256": "D212E4B1CDD8FC5D1FC179460AD836DF448BE909EA1AAC29E04040BFE929FF7A",
+      "published_bytes": 6401,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/02-provider-lib.json",
+      "published": "logs/02-provider-lib.json",
+      "original_sha256": "59C44B037771BCE739C9EB969987A292AEBC7B1DE3D25434CDBBC4C5BCAE103B",
+      "original_bytes": 411,
+      "published_sha256": "59C44B037771BCE739C9EB969987A292AEBC7B1DE3D25434CDBBC4C5BCAE103B",
+      "published_bytes": 411,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/02-provider-lib.log",
+      "published": "logs/02-provider-lib.log",
+      "original_sha256": "BA18D2676B7FE90FEF0B9B002ADA7FA47A709C42B19FABE024E3D45459601082",
+      "original_bytes": 9190,
+      "published_sha256": "38BCF7FE62BCFB721BBAC06F525D3A46C5F067C09960319F9CC39AF3252863BA",
+      "published_bytes": 9180,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/03-sessions.json",
+      "published": "logs/03-sessions.json",
+      "original_sha256": "2C120DE4F7EFCA5F141B426B05FEF887C3DFA55A71F6652E43B22008A0361626",
+      "original_bytes": 437,
+      "published_sha256": "2C120DE4F7EFCA5F141B426B05FEF887C3DFA55A71F6652E43B22008A0361626",
+      "published_bytes": 437,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/03-sessions.log",
+      "published": "logs/03-sessions.log",
+      "original_sha256": "BFD12B4AAD34E92C627B078352D383FE057FAF1F3FC6477AA306B9F357EB8156",
+      "original_bytes": 3459,
+      "published_sha256": "331482239895DD505F6B4A985EFA78470E00072845F2807064DFD87AED03E42C",
+      "published_bytes": 3454,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/04-clippy.json",
+      "published": "logs/04-clippy.json",
+      "original_sha256": "5A0C26040669FC591B802A968E92164539738DE48CB15D398FC578E41E41B0FE",
+      "original_bytes": 398,
+      "published_sha256": "5A0C26040669FC591B802A968E92164539738DE48CB15D398FC578E41E41B0FE",
+      "published_bytes": 398,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/04-clippy.log",
+      "published": "logs/04-clippy.log",
+      "original_sha256": "D555B297ABB58EB0FDB107C5B0071AED11497733CCA9CDF8A36DDC843FE0D4DF",
+      "original_bytes": 1118,
+      "published_sha256": "A243EDA0546B56B7D4DA9D6411AE6E4CC2D8D89A42B5001C123B9BF306862684",
+      "published_bytes": 1108,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/01-check.json",
+      "published": "logs/attempt2/01-check.json",
+      "original_sha256": "3CB0E27632028999FF421D318968B63CC7EE114590F72E8C93A5FF2B95CAC140",
+      "original_bytes": 379,
+      "published_sha256": "3CB0E27632028999FF421D318968B63CC7EE114590F72E8C93A5FF2B95CAC140",
+      "published_bytes": 379,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/01-check.log",
+      "published": "logs/attempt2/01-check.log",
+      "original_sha256": "ABEBDDCE6DD2761AA7A6BA51B8272C65E8FB050F38462A1ADD0C9133DE974830",
+      "original_bytes": 139,
+      "published_sha256": "B44C01E5922B1AAC20AB70286B9D6F0F7E9A5CCFB1FB1D4C2D6DC59D622708D6",
+      "published_bytes": 134,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/02-provider-lib.json",
+      "published": "logs/attempt2/02-provider-lib.json",
+      "original_sha256": "9B2756DEC3F044F6F191676BF4FB27C1D8DC6BB4D77E796E2E6C50B2E6177FDC",
+      "original_bytes": 411,
+      "published_sha256": "9B2756DEC3F044F6F191676BF4FB27C1D8DC6BB4D77E796E2E6C50B2E6177FDC",
+      "published_bytes": 411,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/02-provider-lib.log",
+      "published": "logs/attempt2/02-provider-lib.log",
+      "original_sha256": "350FFF673EE99980131AB4F06185CF07BA60BCB457271EC63795578E415A8906",
+      "original_bytes": 4404,
+      "published_sha256": "37FC6A41F45F872CAC2C59DC4F3672BC2850D45D61011F2EB368BC22180B5C77",
+      "published_bytes": 4399,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/03-sessions.json",
+      "published": "logs/attempt2/03-sessions.json",
+      "original_sha256": "6444D6B5838B969FD4BE50E6B6354C0755055E17AF07C266665E313898FE6C43",
+      "original_bytes": 437,
+      "published_sha256": "6444D6B5838B969FD4BE50E6B6354C0755055E17AF07C266665E313898FE6C43",
+      "published_bytes": 437,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/03-sessions.log",
+      "published": "logs/attempt2/03-sessions.log",
+      "original_sha256": "D24C7B0A083272700BCC049E85566D212FA19024B4E7AF233524F66F935BA0B9",
+      "original_bytes": 2605,
+      "published_sha256": "DF8BFEF398507118756FFDFB02A9929560B1ACCAED4B9B59B4F5BE40E4B8DB97",
+      "published_bytes": 2600,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/04-clippy.json",
+      "published": "logs/attempt2/04-clippy.json",
+      "original_sha256": "8450F56307BE30EF7C6F972EEE31E0EAE5891B8827420D634AE0D4939929BD38",
+      "original_bytes": 396,
+      "published_sha256": "8450F56307BE30EF7C6F972EEE31E0EAE5891B8827420D634AE0D4939929BD38",
+      "published_bytes": 396,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/04-clippy.log",
+      "published": "logs/attempt2/04-clippy.log",
+      "original_sha256": "406AF337DEB73041F958DB59BB1B5CBEE68F2A5C277163C10C9C89275A443DCA",
+      "original_bytes": 139,
+      "published_sha256": "F86B594A3C7B23B8C1A75617FD7B19453B54BEB54A53209ACE9A3F691BE2FFA3",
+      "published_bytes": 134,
+      "conversions": [
+        {
+          "kind": "B worktree",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/05-fmt.json",
+      "published": "logs/attempt2/05-fmt.json",
+      "original_sha256": "A54A56255B2577511B45F4178E581CD1DC323EC67DD3238E282431383436B0E9",
+      "original_bytes": 367,
+      "published_sha256": "A54A56255B2577511B45F4178E581CD1DC323EC67DD3238E282431383436B0E9",
+      "published_bytes": 367,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/logs/attempt2/05-fmt.log",
+      "published": "logs/attempt2/05-fmt.log",
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "original_bytes": 0,
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_bytes": 0,
+      "conversions": []
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/run.ps1",
+      "published": "run.ps1",
+      "original_sha256": "5430A6BB462FC30F7A416A780CB1B030F3A275E621AB8872335A6D3754BD4536",
+      "original_bytes": 2036,
+      "published_sha256": "65B0759614EB540779DE7A01C46C1D586C03F5882D92B75877A721E2C5EE2F0E",
+      "published_bytes": 1935,
+      "conversions": [
+        {
+          "kind": "MSVC toolchain",
+          "occurrences": 1
+        },
+        {
+          "kind": "Windows SDK",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "original": "../nhc-b-agent-runtime/NoManCode/rust-app/.local/next17-b/run2.ps1",
+      "published": "run2.ps1",
+      "original_sha256": "1F782161F0BE74CA4C9973A461494B37CDA9434BF58D6C8529182883C8F596BF",
+      "original_bytes": 2056,
+      "published_sha256": "0016AEFCD6DC42A30349FCE4212E5024DF572501C5789C90C9B5D479E4CEE416",
+      "published_bytes": 1955,
+      "conversions": [
+        {
+          "kind": "MSVC toolchain",
+          "occurrences": 1
+        },
+        {
+          "kind": "Windows SDK",
+          "occurrences": 1
+        }
+      ]
+    }
+  ]
+}

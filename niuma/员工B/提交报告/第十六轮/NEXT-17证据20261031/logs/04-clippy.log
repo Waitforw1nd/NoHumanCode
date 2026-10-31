@@ -1,0 +1,27 @@
+    Checking peachsh-protocol v0.1.0 (../nhc-b-agent-runtime\NoManCode\rust-app\crates\protocol)
+    Checking peachsh v0.2.0 (../nhc-b-agent-runtime\NoManCode\rust-app)
+error: variant `Deny` is never constructed
+  --> src\agent_runtime.rs:66:5
+   |
+64 | pub(crate) enum ToolVote {
+   |                 -------- variant in this enum
+65 |     ApplyHostPolicy,
+66 |     Deny,
+   |     ^^^^
+   |
+   = note: `ToolVote` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `-D dead-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: variant `Stop` is never constructed
+  --> src\agent_runtime.rs:73:5
+   |
+69 | pub(crate) enum StrategyAction {
+   |                 -------------- variant in this enum
+...
+73 |     Stop,
+   |     ^^^^
+   |
+   = note: `StrategyAction` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+error: could not compile `peachsh` (lib) due to 2 previous errors

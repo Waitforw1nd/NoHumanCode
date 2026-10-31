@@ -1,0 +1,10 @@
+{
+  "name": "02-provider-lib",
+  "started": "2026-10-31T11:59:37.9815959+08:00",
+  "rust_tree": "90da4e3dadd589cfc36e97dabeafb1831bd6d44f",
+  "command": "cargo test --offline --locked --lib provider:: -- --nocapture",
+  "exit_code": 0,
+  "head": "a0a9a592709b5cd7e53d70a70123fd7074f4425a",
+  "ended": "2026-10-31T12:00:25.4956479+08:00",
+  "product_tree": "682b02254cbbbbed6d1b704aae6734e9fad85eec"
+}

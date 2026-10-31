@@ -1,0 +1,10 @@
+{
+  "name": "05-fmt",
+  "command": "cargo fmt --all -- --check",
+  "started": "2026-10-31T12:04:45.3094153+08:00",
+  "head": "6a7d1f27a9e4543f8813e4c1a3f81ae194bd102d",
+  "ended": "2026-10-31T12:04:46.8228918+08:00",
+  "exit_code": 0,
+  "product_tree": "6fc1adaf88254fa0310193a205f749628cc3d4b8",
+  "rust_tree": "d62851c21f1c8d87ba97f664d76908b08cb81a9f"
+}
