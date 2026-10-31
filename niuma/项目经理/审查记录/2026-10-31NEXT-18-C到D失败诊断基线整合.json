@@ -1,0 +1,15 @@
+{
+  "source": "../nhc-c-runtime-management-interface",
+  "destination": "../nhc-d-runtime-management-tests",
+  "before": "283a29858b914c1f26318f3a9603739ebc46be1d",
+  "after": "7fce5b2e187a1147f4fcc784b5d07580eb6afe2c",
+  "product_tree": "da5787dfff470eda857fff8c7934432ba5fc8cc3",
+  "rust_tree": "b5846dcd4c4a8584d2b36fe0a2c95e688c2fbf83",
+  "mode": "manager fast-forward after C release and D frozen",
+  "changed_paths": [
+    "NoManCode/rust-app/tests/runtime_management_cli.rs",
+    "NoManCode/rust-app/tests/runtime_management_workflow.rs"
+  ],
+  "new_test_owner": "D: NoManCode/rust-app/tests/workspace_crash.rs",
+  "scope": "N18-F01 static diagnosis only; no build window"
+}

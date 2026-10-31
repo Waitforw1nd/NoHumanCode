@@ -1,0 +1,297 @@
+{
+  "candidate": "7fce5b2e187a1147f4fcc784b5d07580eb6afe2c",
+  "scope": "Failed final attempt1 only; no product tests run by manager; raw databases not opened.",
+  "steps": [
+    {
+      "action": "build",
+      "command": "cargo build --offline --locked --bin peachsh",
+      "exit_code": 0
+    },
+    {
+      "action": "check",
+      "command": "cargo check --offline --locked --workspace --all-targets",
+      "exit_code": 0
+    },
+    {
+      "action": "test",
+      "command": "cargo test --offline --locked --workspace -- --nocapture",
+      "exit_code": 101
+    }
+  ],
+  "not_executed": [
+    "fmt",
+    "clippy",
+    "wasm"
+  ],
+  "source_manifest_count": 6,
+  "source_count": 168,
+  "source_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+  "exact_git_blob_matches": 164,
+  "crlf_checkout_matches": [
+    "NoManCode/dsh-peachsh.cmd",
+    "NoManCode/newapi.cmd",
+    "NoManCode/start-peachsh-legacy.cmd",
+    "NoManCode/start-peachsh.cmd"
+  ],
+  "result_blocks": 49,
+  "partial_totals": {
+    "passed": 741,
+    "failed": 1,
+    "ignored": 1
+  },
+  "failure": "workspace_crash::write_crash_after_file_before_finish_commit_is_unknown",
+  "failure_observation": "File remained before-crash; workspace_changes.state was failed; Task.status and root cause not established.",
+  "fixture_kinds": {
+    "w08": 3,
+    "runtime": 13,
+    "a10-root": 5,
+    "a10-snapshot": 15
+  },
+  "preserved_file_pairs": 538,
+  "fixture_pairs": [
+    {
+      "kind": "w08",
+      "phase": "claim",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpO0nrN2",
+      "files": 34
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.chat-agent runtime_intent_before_commit",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime-intent-crash-e8JDGN",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_before_rebuild",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-2rXF2R",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.chat-agent runtime_intent_after_commit",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime-intent-crash-IEcLZy",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_drop",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-OyYE9n",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.provider-xpeach runtime_intent_before_commit",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime-intent-crash-JogHxX",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_create",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-1jEHWv",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.provider-xpeach runtime_intent_after_commit",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime-intent-crash-SKhAS3",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_restore",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-aWyssB",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_insert",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-GIjXx9",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_verify",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-SLS13A",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_marker",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-tiRGvE",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_before_commit",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-W9f2Z2",
+      "files": 18
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_commit",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/nhc-runtime17-crash-3IlcHc",
+      "files": 18
+    },
+    {
+      "kind": "w08",
+      "phase": "created",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpWLpGf4",
+      "files": 45
+    },
+    {
+      "kind": "w08",
+      "phase": "registered",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpt9AHuM",
+      "files": 45
+    },
+    {
+      "kind": "a10-root",
+      "phase": "write_pre_fs",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmp8yJk5D",
+      "files": 12
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_after_applied_result",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpgTKmMM",
+      "files": 12
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_before_denied_result",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpHoTd2s",
+      "files": 12
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_after_assistant_save",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpJSih0W",
+      "files": 12
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_after_denied_result",
+      "original": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpNNTSKK",
+      "files": 12
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "write_pre_fs-killed",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/896946ef-5d7c-4fb6-bfe1-0b7c7d1b3723",
+      "files": 5
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_assistant_save-killed",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/ed1d0402-95fc-4fe4-a2c8-e6868af33d33",
+      "files": 5
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "write_pre_fs-unknown-1",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/8a9c5cb3-5abe-427c-bd57-77a41cbfc872",
+      "files": 8
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "write_pre_fs-unknown-2",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/5c7a65b9-e056-4cfd-8403-b9d07e8d8c82",
+      "files": 11
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_assistant_save-recovery-1",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/a66dfffc-d156-4ca2-b9e1-6cf51cf96d00",
+      "files": 8
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_assistant_save-recovery-2",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/504d81e1-21e1-4edc-92f4-af308c7995e2",
+      "files": 11
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_before_denied_result-killed",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/5007df5e-b580-4715-aac0-30fe83d79808",
+      "files": 5
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_before_denied_result-recovery-1",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/72ad417c-3e8a-4d38-8d11-3018bc8a872a",
+      "files": 8
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_before_denied_result-recovery-2",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/d2be0623-7281-4a1c-8529-9fee04b8b029",
+      "files": 11
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_denied_result-killed",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/979a4752-991c-4806-835c-252693a0b3b6",
+      "files": 5
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_denied_result-recovery-1",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/1187f37d-197f-4020-973d-6195acbbf3fb",
+      "files": 8
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_denied_result-recovery-2",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/de8dd907-06df-4168-bfc5-e947dc4595de",
+      "files": 11
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_applied_result-killed",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/29bb8337-1d5b-4a79-8450-0a34b1542185",
+      "files": 5
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_applied_result-recovery-1",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/9f39a8ba-2747-4f83-ae59-60d665ddf087",
+      "files": 8
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_applied_result-recovery-2",
+      "original": "../nhc-c-runtime-management-interface/.local/next17-a10-evidence/9bf05abc-9e05-471c-b2d1-98afcf9c308a",
+      "files": 11
+    }
+  ],
+  "a10_root_phase_mapping_from_log": [
+    {
+      "phase": "write_pre_fs",
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmp8yJk5D"
+    },
+    {
+      "phase": "agent_after_assistant_save",
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpJSih0W"
+    },
+    {
+      "phase": "agent_before_denied_result",
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpHoTd2s"
+    },
+    {
+      "phase": "agent_after_denied_result",
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpNNTSKK"
+    },
+    {
+      "phase": "agent_after_applied_result",
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt1/.tmpgTKmMM"
+    }
+  ],
+  "runtime_semantics_audit": "niuma/项目经理/审查记录/2026-10-31NEXT-18-C最终runtime现场核验.json",
+  "text_pairs_verified": 14,
+  "path_only_transformed_pairs": 5,
+  "manifest_sha256": "7559B7BE7228D55A47E0EA7AEE6C48A2D1521536C4BA726013B4AD682FD6A3BB",
+  "fixture_index_sha256": "5EB7C90225158B7AF926E88D90ECCDA9E577A9DCEE2EB867D32D401937554E54",
+  "failed_workspace_fixture": "Not attributable: no root or task ID in log, employee search found no matching retained directory."
+}
