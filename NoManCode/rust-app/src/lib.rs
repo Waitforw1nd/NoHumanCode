@@ -36,6 +36,8 @@ mod runtime_management_tests;
 pub mod secrets;
 pub mod server;
 pub mod store;
+mod tool_call_application;
+mod tool_results;
 pub mod tool_runtime;
 pub mod wasm;
 pub mod workspace;

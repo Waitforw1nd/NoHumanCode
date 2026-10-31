@@ -233,6 +233,38 @@ pub fn binding_digest(
     allow_commands: bool,
     args: &Value,
 ) -> Result<String> {
+    binding_digest_from_args_digest(
+        task_id,
+        session_id,
+        turn_id,
+        tool_call_id,
+        tool_name,
+        workspace,
+        write_scopes,
+        allow_commands,
+        &args_digest(args)?,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn binding_digest_from_args_digest(
+    task_id: &str,
+    session_id: Option<&str>,
+    turn_id: Option<&str>,
+    tool_call_id: &str,
+    tool_name: &str,
+    workspace: &str,
+    write_scopes: &[String],
+    allow_commands: bool,
+    args_digest: &str,
+) -> Result<String> {
+    anyhow::ensure!(
+        args_digest.len() == 64
+            && args_digest
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "invalid argument digest"
+    );
     let value = serde_json::json!({
         "version": "approval-binding-v2",
         "task_id": task_id,
@@ -243,7 +275,7 @@ pub fn binding_digest(
         "workspace": workspace,
         "write_scopes": write_scopes,
         "allow_commands": allow_commands,
-        "args_digest": args_digest(args)?,
+        "args_digest": args_digest,
     });
     let bytes = serde_json::to_vec(&canonical_json(&value))?;
     Ok(format!("{:x}", Sha256::digest(bytes)))
@@ -351,6 +383,57 @@ fn canonical_json(value: &Value) -> Value {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn binding_from_digest_matches_v2_and_rejects_invalid_digest() {
+        let args = json!({"path":"a","content":"x"});
+        let scopes = vec!["src".to_owned(), "tests".to_owned()];
+        let direct = binding_digest(
+            "task",
+            None,
+            Some("turn"),
+            "call",
+            "write_file",
+            "workspace",
+            &scopes,
+            false,
+            &args,
+        )
+        .unwrap();
+        let from_digest = binding_digest_from_args_digest(
+            "task",
+            None,
+            Some("turn"),
+            "call",
+            "write_file",
+            "workspace",
+            &scopes,
+            false,
+            &args_digest(&args).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(direct, from_digest);
+        assert_eq!(
+            direct,
+            "6dac927da50ce55561b4f19217fd4e6ad43bde0f1bee743bc47ac4d53a6a9189"
+        );
+        for invalid in [String::new(), "A".repeat(64), "0".repeat(63)] {
+            assert!(
+                binding_digest_from_args_digest(
+                    "task",
+                    None,
+                    Some("turn"),
+                    "call",
+                    "write_file",
+                    "workspace",
+                    &scopes,
+                    false,
+                    &invalid
+                )
+                .is_err()
+            );
+        }
+    }
 
     #[test]
     fn classification_defaults_unknown_tools_to_approval_deny() {
