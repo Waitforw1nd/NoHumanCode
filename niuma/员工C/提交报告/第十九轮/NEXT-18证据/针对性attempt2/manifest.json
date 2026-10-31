@@ -1,0 +1,158 @@
+{
+  "scope": "C targeted attempt2; path-only substitution; originals retained",
+  "files": [
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/build-after-source.json",
+      "published": "build-after-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/build-before-source.json",
+      "published": "build-before-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/build.log",
+      "published": "build.log",
+      "original_bytes": 154,
+      "published_bytes": 124,
+      "original_sha256": "681EC6F3D4109BE88C93D4A19CAEB13C404C3DF1022AC076E53867B415F32023",
+      "published_sha256": "54CF512719CB0DE504D422C3736F61581486EE7C05EE70188DAD52D643385B21",
+      "path_replacements": 1
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/check-after-source.json",
+      "published": "check-after-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/check-before-source.json",
+      "published": "check-before-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/check.log",
+      "published": "check.log",
+      "original_bytes": 154,
+      "published_bytes": 124,
+      "original_sha256": "16082DB77515B19345CFEFCADAA08A6625A764769EFFD7B93560A207BC2D6127",
+      "published_sha256": "1DD6C47C4D3117A2B531D9E5025D22A93C1FCC7018BCB390BB91044623B52A67",
+      "path_replacements": 1
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/clippy-after-source.json",
+      "published": "clippy-after-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/clippy-before-source.json",
+      "published": "clippy-before-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/clippy.log",
+      "published": "clippy.log",
+      "original_bytes": 272,
+      "published_bytes": 212,
+      "original_sha256": "C5B309E1AB435EF9AD4C5F15DFC568743DED826D8AE262DA763868F69B776DC6",
+      "published_sha256": "EAD33DDB95A2AE10B08479B478318E4492558C745A158547B50B2F3AD8D66519",
+      "path_replacements": 2
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/fmt-after-source.json",
+      "published": "fmt-after-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/fmt-before-source.json",
+      "published": "fmt-before-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/fmt.log",
+      "published": "fmt.log",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/integration-after-source.json",
+      "published": "integration-after-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/integration-before-source.json",
+      "published": "integration-before-source.json",
+      "original_bytes": 29253,
+      "published_bytes": 29253,
+      "original_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "published_sha256": "E4CD832FA945582873311F3109F715EDB7F3DF5DEA951505E8C8F983D2773CD8",
+      "path_replacements": 0
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/integration.log",
+      "published": "integration.log",
+      "original_bytes": 2318,
+      "published_bytes": 2228,
+      "original_sha256": "6733654C14244303E37F072AD063A6BF97F5DDA8C5E65178B9D962E8F80CF122",
+      "published_sha256": "7540DE732635115B26177573DC145984B890371C1C15179D646BFE47541419E9",
+      "path_replacements": 3
+    },
+    {
+      "original": ".local/logs/next18-c-targeted-attempt2/meta.json",
+      "published": "meta.json",
+      "original_bytes": 9018,
+      "published_bytes": 8740,
+      "original_sha256": "E4B532298CF0EE806BBDA18888561854E0FA352EF9B8F5401681DC5816538E4C",
+      "published_sha256": "D62165A18CA7F8B0E75F6C6626020518DA584D936F63359FC6CD13D8EDF7297E",
+      "path_replacements": 8
+    },
+    {
+      "original": ".local/next18-c-targeted-attempt2.ps1",
+      "published": "next18-c-targeted-attempt2.ps1",
+      "original_bytes": 6367,
+      "published_bytes": 6351,
+      "original_sha256": "A3946D47BFEEA357C59A87BB1B211FE40043C7607AE3F4CE24568D44BCC0529E",
+      "published_sha256": "DC685275F0F2FE64068618B86386EDC3C5F12B6634D7CDAFEFB904A2FF3D83D3",
+      "path_replacements": 1
+    }
+  ]
+}
