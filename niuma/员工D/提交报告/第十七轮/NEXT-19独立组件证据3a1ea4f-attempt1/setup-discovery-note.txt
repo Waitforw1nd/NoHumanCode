@@ -1,0 +1,1 @@
+Preflight setup attempt before any cargo command: failed to discover MSVC because VCToolsInstallDir and WindowsSdkDir were unset. The documented previously used MSVC/SDK paths were then set in the runner. No build, test, or Cargo command ran during this setup attempt.

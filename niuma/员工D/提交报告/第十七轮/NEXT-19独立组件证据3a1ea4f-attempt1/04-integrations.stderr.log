@@ -1,0 +1,29 @@
+   Compiling peachsh v0.2.0 (../nhc-d-tool-result-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 34.46s
+     Running tests\approval_gate.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\approval_gate-1b3df4abe1ca7b56.exe)
+
+thread 'ap03_ap09_denied_and_decision_conflicts' (5896) panicked at tests\approval_gate.rs:416:5:
+assertion failed: done.messages.iter().any(|m|
+        m["role"] == "tool" &&
+            m["content"] == approval::tool_error(ApprovalStatus::Denied))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'ap18_cancel_before_new_waiter_resume_has_safe_cancel_result' (43644) panicked at tests\approval_gate.rs:1363:9:
+assertion failed: done.messages.iter().any(|m|
+        m["role"] == "tool" &&
+            m["content"] == approval::tool_error(ApprovalStatus::Cancelled))
+
+thread 'ap08_restart_public_cancel_is_idempotent_without_active_runtime' (31532) panicked at tests\approval_gate.rs:580:13:
+assertion failed: done.messages.iter().any(|message|
+        {
+            message["role"] == "tool" &&
+                message["content"] ==
+                    approval::tool_error(ApprovalStatus::Cancelled)
+        })
+
+thread 'ap10_ap11_safe_previews_independent_calls' (27880) panicked at tests\approval_gate.rs:150:6:
+bounded durable observation: Elapsed(())
+
+thread 'ap14_redacted_arguments_cannot_resume_as_substitute' (32980) panicked at tests\approval_gate.rs:150:6:
+bounded durable observation: Elapsed(())
+error: test failed, to rerun pass `--test approval_gate`

@@ -1,0 +1,29 @@
+{
+  "call": "call",
+  "files": [
+    {
+      "bytes": 450560,
+      "name": "test.db",
+      "present": true,
+      "sha256": "7501ea1193c183ecd2ba8cae8bc2686b20db30a5f4cfb3d134cf5feb08403513"
+    },
+    {
+      "bytes": 20632,
+      "name": "test.db-wal",
+      "present": true,
+      "sha256": "a045f7a7c25256e7193dd0b379afe326922c98c8333a968bbb1f1ccafd57daab"
+    },
+    {
+      "bytes": 32768,
+      "name": "test.db-shm",
+      "present": true,
+      "sha256": "c79db657b77cb3e504a7bb14908b2eb3500450fb53fcf22ab7b8db0758af1f4b"
+    }
+  ],
+  "kill": "ok",
+  "phase": "after_commit",
+  "pid": 35956,
+  "reaped": true,
+  "task": "task",
+  "wait": "ExitStatus(ExitStatus(1))"
+}
