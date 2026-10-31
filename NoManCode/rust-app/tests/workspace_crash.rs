@@ -9,7 +9,7 @@ use peachsh::{
     store::Store,
     workspace_changes::RestoreStatus,
 };
-use rusqlite::{Connection, ErrorCode};
+use rusqlite::{Connection, ErrorCode, OptionalExtension};
 use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
@@ -237,6 +237,211 @@ fn spawn_write_child(root: &Path) -> ChildGuard {
         .spawn()
         .unwrap();
     ChildGuard(child)
+}
+
+struct WriteEvidence {
+    child: ChildGuard,
+    root: PathBuf,
+    task_id: Option<String>,
+    target: &'static str,
+    captured: bool,
+}
+
+impl WriteEvidence {
+    fn capture(&mut self, phase: &str) -> anyhow::Result<PathBuf> {
+        let pid = self.child.0.id();
+        let task_id = self
+            .task_id
+            .clone()
+            .or_else(|| std::fs::read_to_string(self.root.join("child-task-id")).ok());
+        let evidence = self.root.join("write-evidence");
+        let raw = evidence.join("raw");
+        let query_source = evidence.join("query-source");
+        let recovery = evidence.join("recovery");
+        for path in [&raw, &query_source, &recovery] {
+            std::fs::create_dir_all(path)?;
+        }
+        let mut process = json!({
+            "phase": phase,
+            "target": self.target,
+            "pid": pid,
+            "task_id": task_id.as_deref(),
+            "fixture_root": &self.root,
+            "try_wait": "not-attempted",
+            "kill": "not-attempted",
+            "wait": "not-attempted",
+            "reaped": false,
+        });
+        let save_process = |record: &Value| -> anyhow::Result<()> {
+            std::fs::write(
+                evidence.join("process.json"),
+                serde_json::to_vec_pretty(record)?,
+            )?;
+            Ok(())
+        };
+        save_process(&process)?;
+        self.captured = true;
+        let status = match self.child.0.try_wait() {
+            Ok(Some(status)) => {
+                process["try_wait"] = json!("already-exited");
+                process["kill"] = json!("not-needed");
+                process["wait"] = json!(format!("{status:?}"));
+                process["reaped"] = json!(true);
+                status
+            }
+            Ok(None) => {
+                process["try_wait"] = json!("running");
+                match self.child.0.kill() {
+                    Ok(()) => process["kill"] = json!("killed"),
+                    Err(error) => {
+                        process["kill"] = json!(format!("error: {error}"));
+                        save_process(&process)?;
+                        return Err(error.into());
+                    }
+                }
+                save_process(&process)?;
+                match self.child.0.wait() {
+                    Ok(status) => {
+                        process["wait"] = json!(format!("{status:?}"));
+                        process["reaped"] = json!(true);
+                        status
+                    }
+                    Err(error) => {
+                        process["wait"] = json!(format!("error: {error}"));
+                        save_process(&process)?;
+                        return Err(error.into());
+                    }
+                }
+            }
+            Err(error) => {
+                process["try_wait"] = json!(format!("error: {error}"));
+                save_process(&process)?;
+                return Err(error.into());
+            }
+        };
+        let task_id =
+            task_id.or_else(|| std::fs::read_to_string(self.root.join("child-task-id")).ok());
+        process["task_id"] = json!(task_id.as_deref());
+        process["success"] = json!(status.success());
+        save_process(&process)?;
+        let mut raw_files = Vec::new();
+        for name in ["workspace.db", "workspace.db-wal", "workspace.db-shm"] {
+            let source = self.root.join(name);
+            if source.exists() {
+                let source_bytes = std::fs::read(&source)?;
+                std::fs::copy(&source, raw.join(name))?;
+                let bytes = std::fs::read(raw.join(name))?;
+                anyhow::ensure!(bytes == source_bytes, "raw copy differs: {name}");
+                use sha2::{Digest, Sha256};
+                raw_files.push(json!({
+                    "name": name,
+                    "present": true,
+                    "bytes": bytes.len(),
+                    "sha256": format!("{:x}", Sha256::digest(&bytes)),
+                }));
+                std::fs::copy(raw.join(name), query_source.join(name))?;
+                std::fs::copy(raw.join(name), recovery.join(name))?;
+            } else {
+                raw_files.push(json!({"name": name, "present": false}));
+            }
+        }
+        std::fs::write(
+            evidence.join("raw-manifest.json"),
+            serde_json::to_vec_pretty(&raw_files)?,
+        )?;
+        anyhow::ensure!(raw.join("workspace.db").is_file(), "raw database missing");
+
+        // SQLite may recover WAL when opened; only the copy is opened.
+        let query_db = Connection::open(query_source.join("workspace.db"))?;
+        let snapshot = evidence.join("queryable.db");
+        query_db.execute("VACUUM INTO ?1", [snapshot.to_string_lossy().as_ref()])?;
+        drop(query_db);
+        let db =
+            Connection::open_with_flags(&snapshot, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        if let Some(id) = task_id.as_deref() {
+            let task: Option<String> = db
+                .query_row("SELECT value FROM tasks WHERE id=?1", [id], |r| r.get(0))
+                .optional()?;
+            let mut events =
+                db.prepare("SELECT kind,data FROM events WHERE task_id=?1 ORDER BY seq")?;
+            let events = events
+                .query_map([id], |r| {
+                    Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let mut approvals = db.prepare(
+                "SELECT id,tool_call_id,tool_name,status,execution_state FROM approvals WHERE task_id=?1 ORDER BY rowid",
+            )?;
+            let approvals = approvals
+                .query_map([id], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?,
+                        r.get::<_, String>(4)?,
+                    ))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let mut changes = db.prepare(
+                "SELECT id,tool_call_id,path,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY rowid",
+            )?;
+            let changes = changes
+                .query_map([id], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?,
+                        r.get::<_, String>(4)?,
+                    ))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let mut calls = db.prepare(
+                "SELECT id,state,receipt FROM network_calls WHERE task_id=?1 ORDER BY rowid",
+            )?;
+            let calls = calls
+                .query_map([id], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                    ))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            std::fs::write(
+                evidence.join("observed.json"),
+                serde_json::to_vec_pretty(&json!({
+                    "task_id": id,
+                    "task_value": task,
+                    "events": events,
+                    "approvals": approvals,
+                    "changes": changes,
+                    "network_calls": calls,
+                    "file": std::fs::read(self.root.join("src/a.txt")).ok(),
+                }))?,
+            )?;
+        }
+        println!(
+            "workspace-write-evidence phase={phase} pid={pid} root={} task={}",
+            self.root.display(),
+            task_id.as_deref().unwrap_or("<unpublished>")
+        );
+        Ok(recovery)
+    }
+}
+
+impl Drop for WriteEvidence {
+    fn drop(&mut self) {
+        if !self.captured
+            && let Err(error) = self.capture("early-exit-or-timeout")
+        {
+            eprintln!(
+                "workspace-write-evidence failed root={} error={error:#}",
+                self.root.display()
+            );
+        }
+    }
 }
 
 #[tokio::test]
@@ -499,8 +704,16 @@ async fn restore_http_crash_after_complete_commit_keeps_stable_receipt() {
 }
 
 async fn write_crash_case(block_finish: bool) {
-    let temp = tempfile::tempdir().unwrap();
-    let root = temp.path();
+    let retained = tempfile::Builder::new()
+        .prefix("workspace-write-crash-")
+        .tempdir()
+        .unwrap()
+        .keep();
+    let root = retained.as_path();
+    println!(
+        "workspace-write-fixture root={} block_finish={block_finish}",
+        root.display()
+    );
     std::fs::create_dir(root.join("src")).unwrap();
     std::fs::write(root.join("src/a.txt"), BEFORE).unwrap();
     let db_path = root.join("workspace.db");
@@ -508,7 +721,22 @@ async fn write_crash_case(block_finish: bool) {
     if block_finish {
         install_write_finish_barrier(&db_path);
     }
-    let mut child = spawn_write_child(root);
+    let mut evidence = WriteEvidence {
+        child: spawn_write_child(root),
+        root: root.to_owned(),
+        task_id: None,
+        target: if block_finish {
+            "file-before-finish"
+        } else {
+            "finished-after-commit"
+        },
+        captured: false,
+    };
+    println!(
+        "workspace-write-child root={} pid={}",
+        root.display(),
+        evidence.child.0.id()
+    );
     let deadline = Instant::now() + Duration::from_secs(20);
     let task_id = loop {
         if let Ok(id) = std::fs::read_to_string(root.join("child-task-id")) {
@@ -523,13 +751,18 @@ async fn write_crash_case(block_finish: bool) {
             }
         }
         assert!(
-            child.0.try_wait().unwrap().is_none(),
+            evidence.child.0.try_wait().unwrap().is_none(),
             "write child exited early: {}",
             std::fs::read_to_string(root.join("write-child.stderr")).unwrap()
         );
         assert!(Instant::now() < deadline, "child task ID not published");
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
+    println!(
+        "workspace-write-task root={} task_id={task_id}",
+        root.display()
+    );
+    evidence.task_id = Some(task_id.clone());
     loop {
         let written = std::fs::read(root.join("src/a.txt")).unwrap() == AFTER.as_bytes();
         if written {
@@ -551,7 +784,7 @@ async fn write_crash_case(block_finish: bool) {
             }
         }
         assert!(
-            child.0.try_wait().unwrap().is_none(),
+            evidence.child.0.try_wait().unwrap().is_none(),
             "write child exited early: {}",
             std::fs::read_to_string(root.join("write-child.stderr")).unwrap()
         );
@@ -572,16 +805,18 @@ async fn write_crash_case(block_finish: bool) {
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
-    child.0.kill().unwrap();
-    assert!(
-        !child.0.wait().unwrap().success(),
-        "child was not terminated"
-    );
-    let engine = open_engine(root);
+    let recovery = evidence.capture("target-boundary").unwrap();
+    let process: Value =
+        serde_json::from_slice(&std::fs::read(root.join("write-evidence/process.json")).unwrap())
+            .unwrap();
+    assert_eq!(process["kill"], "killed");
+    assert_eq!(process["reaped"], true);
+    assert_eq!(process["success"], false);
+    let engine = open_engine(&recovery);
     let changes = engine.changes(&task_id).unwrap();
     assert_eq!(changes.len(), 1);
     let expected_state = if block_finish { "unknown" } else { "finished" };
-    let db = Connection::open(&db_path).unwrap();
+    let db = Connection::open(recovery.join("workspace.db")).unwrap();
     let state: String = db
         .query_row(
             "SELECT state FROM workspace_changes WHERE task_id=?1",
