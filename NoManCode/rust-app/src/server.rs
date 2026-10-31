@@ -3091,7 +3091,7 @@ mod worktree_http_crash_tests {
             event["phase"] = json!(self.2);
             trace(&self.1, event);
         }
-        fn kill_wait(&mut self) -> Result<(), String> {
+        fn kill_wait(&mut self) -> std::result::Result<(), String> {
             self.record(json!({"event":"kill_requested"}));
             let killed = self.0.kill();
             self.record(json!({"event":"kill_result","ok":killed.is_ok()}));
@@ -3159,7 +3159,7 @@ mod worktree_http_crash_tests {
         path: &FsPath,
         process: &mut ChildGuard,
         request: Option<&HttpRequest>,
-    ) -> Result<String, String> {
+    ) -> std::result::Result<String, String> {
         let notification = path.file_name().unwrap().to_string_lossy().into_owned();
         process.record(json!({"event":"wait_begin","notification":notification}));
         let budget = if request.is_some() { 60 } else { 10 };
