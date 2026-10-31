@@ -104,6 +104,22 @@ fn unavailable_runtime_fails_composition_query_closed() {
 }
 
 #[test]
+fn missing_injected_provider_binding_does_not_use_default_manifest() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Arc::new(Store::open(&dir.path().join("host.db")).unwrap());
+    let host = crate::plugin_host::PluginHost::new(crate::plugin_catalog::ScopeKey::Host).unwrap();
+    let runtime =
+        crate::provider_runtime::ProviderRuntime::from_host_with_state_for_test(host, false)
+            .unwrap();
+    let engine = Engine::new_with_provider_runtime_for_test(store, 1, runtime).unwrap();
+    let error = match engine.composition() {
+        Ok(_) => panic!("missing provider binding unexpectedly yielded a composition"),
+        Err(error) => error,
+    };
+    assert!(format!("{error:#}").contains("provider binding missing"));
+}
+
+#[test]
 fn ordinary_constructor_does_not_recover_but_recovered_constructor_does() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("host.db");
