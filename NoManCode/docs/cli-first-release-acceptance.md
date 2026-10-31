@@ -6,7 +6,7 @@ NEXT-15 安全初始化已完成联合验收并整合主线，固定组合五门
 
 `peachsh --port 3090 --json host composition` 查询当前 Host 的默认能力绑定；去掉 `--json` 可阅读说明。返回的 13 项是已装配能力，不代表已启用或已获用户授权：`plugins` 与 `runtimes` 分别显示期望和进程状态。`host_required` 服务不能热关闭，文件读搜与写入共用 files 开关；`per_component` 不承诺跨域原子快照。权限、审批、网络授权和项目限制仍分别生效。
 
-NEXT-20 组合 CLI 与同一公开工作流本次属于待验证候选，尚未联合验收或整合主线；第三方 runtime、Desktop 和完整产品仍未完成。历史记录按其当时状态保留。
+NEXT-20 固定候选 `5d7e26857b8192912412a1456f3aa0b091dd6288`（Rust tree `3672895f5b4083c3d0a7a09d9d520c4a9ceadada`）的 workspace check、CLI build、完整 workspace test、fmt、all-targets Clippy 和 UI wasm-check 均 exit 0；62 个测试结果块合计 837 passed / 0 failed / 1 ignored（含 helper，唯一 ignored 为付费真实 Provider）。组合 CLI、新旧公开工作流各实际通过；联合验收与主线整合另见经理记录。第三方 runtime、Desktop 和完整产品仍未完成，历史未归因事件不因本次通过关闭。
 
 ## 使用前置与已知缺口
 
