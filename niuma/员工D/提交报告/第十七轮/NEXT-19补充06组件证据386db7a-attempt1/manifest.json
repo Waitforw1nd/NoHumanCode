@@ -1,0 +1,222 @@
+{
+  "original_root": "../nhc-d-tool-result-tests/NoManCode/rust-app/.local/next19-d-386db7a-s06-attempt1",
+  "entries": [
+    {
+      "original": "run.ps1",
+      "original_bytes": 6151,
+      "original_sha256": "c6a024a14518806821d6458c48a188d42dd1bcc96b7ba238a4b97bf13bae42f3",
+      "published": "run.ps1",
+      "published_bytes": 6078,
+      "published_sha256": "bb841e05b6e3cba2d3938545abb75246501b75246fa64442b874e8e5455be415",
+      "path_replacements": [
+        {
+          "kind": "windows-sdk",
+          "count": 1
+        },
+        {
+          "kind": "visual-studio",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "original": "sources.py",
+      "original_bytes": 992,
+      "original_sha256": "1c486e431d6a89d00c8bd49d1586b6e8c9023c1e5f5fe37d5bfe63168d12af63",
+      "published": "sources.py",
+      "published_bytes": 992,
+      "published_sha256": "1c486e431d6a89d00c8bd49d1586b6e8c9023c1e5f5fe37d5bfe63168d12af63",
+      "path_replacements": []
+    },
+    {
+      "original": "inventory.py",
+      "original_bytes": 1173,
+      "original_sha256": "a7e3fee46d05ea19d27d4607b764ed3e4224c3251a87ada61895849f6c1f4b58",
+      "published": "inventory.py",
+      "published_bytes": 1173,
+      "published_sha256": "a7e3fee46d05ea19d27d4607b764ed3e4224c3251a87ada61895849f6c1f4b58",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/01-check.json",
+      "original_bytes": 364,
+      "original_sha256": "15904b5b04fecb4f57ccf5afc57658544b43fd992f27d389c752ff7016482edb",
+      "published": "logs/01-check.json",
+      "published_bytes": 364,
+      "published_sha256": "15904b5b04fecb4f57ccf5afc57658544b43fd992f27d389c752ff7016482edb",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/01-check.stderr.log",
+      "original_bytes": 8107,
+      "original_sha256": "4c2cec5dbda1cfa791ac2506889514d61aa11db544f9d88ebec3c5814da05de8",
+      "published": "logs/01-check.stderr.log",
+      "published_bytes": 8102,
+      "published_sha256": "da8220cfb281e3fd5e010ebb167f15ef1f061c35f686c3c9794650fe4a4630d0",
+      "path_replacements": [
+        {
+          "kind": "d-tree",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "original": "logs/01-check.stdout.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published": "logs/01-check.stdout.log",
+      "published_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/environment.json",
+      "original_bytes": 660,
+      "original_sha256": "3e34c1edee6f902dc8f66458c4e7cd547f0caa2c04fe7e8ff5680ccdabdcfb9d",
+      "published": "logs/environment.json",
+      "published_bytes": 566,
+      "published_sha256": "63e71b0bb16166945fd6a677402703ff6646d17eb15db76b9d61a0a1c1e765ef",
+      "path_replacements": [
+        {
+          "kind": "d-tree",
+          "count": 2
+        },
+        {
+          "kind": "windows-sdk",
+          "count": 1
+        },
+        {
+          "kind": "visual-studio",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "original": "logs/final.json",
+      "original_bytes": 93,
+      "original_sha256": "fc426f790f3ab74f211e1b86c34cdd6f5689ce4020c180290a530f6e9b7bae82",
+      "published": "logs/final.json",
+      "published_bytes": 93,
+      "published_sha256": "fc426f790f3ab74f211e1b86c34cdd6f5689ce4020c180290a530f6e9b7bae82",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/postflight.json",
+      "original_bytes": 323,
+      "original_sha256": "624f8e3b882a1ec06229bde0e0de8d6538ba9fa3faa075edf2b85b508bc6990d",
+      "published": "logs/postflight.json",
+      "published_bytes": 323,
+      "published_sha256": "624f8e3b882a1ec06229bde0e0de8d6538ba9fa3faa075edf2b85b508bc6990d",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/preflight.json",
+      "original_bytes": 323,
+      "original_sha256": "3906d7941a898e5da00c2ad5da5d72aece8647914a8d4e8e760fc688a2c8028e",
+      "published": "logs/preflight.json",
+      "published_bytes": 323,
+      "published_sha256": "3906d7941a898e5da00c2ad5da5d72aece8647914a8d4e8e760fc688a2c8028e",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/retained-after-summary.txt",
+      "original_bytes": 31,
+      "original_sha256": "03990c619819e9fe0013e2fa5a054b9710e3886c59e5d6c1ad73ae14d120edec",
+      "published": "logs/retained-after-summary.txt",
+      "published_bytes": 31,
+      "published_sha256": "03990c619819e9fe0013e2fa5a054b9710e3886c59e5d6c1ad73ae14d120edec",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/retained-after.json",
+      "original_bytes": 335981,
+      "original_sha256": "77d4b51cbac185646d9bedd6b6b60e98dca4e4da0a78b70f87964b8cd52f69bd",
+      "published": "logs/retained-after.json",
+      "published_bytes": 335981,
+      "published_sha256": "77d4b51cbac185646d9bedd6b6b60e98dca4e4da0a78b70f87964b8cd52f69bd",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/retained-before.json",
+      "original_bytes": 335981,
+      "original_sha256": "77d4b51cbac185646d9bedd6b6b60e98dca4e4da0a78b70f87964b8cd52f69bd",
+      "published": "logs/retained-before.json",
+      "published_bytes": 335981,
+      "published_sha256": "77d4b51cbac185646d9bedd6b6b60e98dca4e4da0a78b70f87964b8cd52f69bd",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/runner.stderr.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published": "logs/runner.stderr.log",
+      "published_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/runner.stdout.log",
+      "original_bytes": 97,
+      "original_sha256": "f3070ed01019bc58e57ad685ddd950a9d94303932b75626a80da2391ab747ba4",
+      "published": "logs/runner.stdout.log",
+      "published_bytes": 97,
+      "published_sha256": "f3070ed01019bc58e57ad685ddd950a9d94303932b75626a80da2391ab747ba4",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/source-after-01-check.json",
+      "original_bytes": 42602,
+      "original_sha256": "4851d4b005a756a796b7c72320d94fe0e75bd1ca60e43f3d12bd5f049222a874",
+      "published": "logs/source-after-01-check.json",
+      "published_bytes": 42602,
+      "published_sha256": "4851d4b005a756a796b7c72320d94fe0e75bd1ca60e43f3d12bd5f049222a874",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/source-final-summary.txt",
+      "original_bytes": 45,
+      "original_sha256": "b512deb50a4574e8683c02ba464d33225f8dbc4b581e0423054285a1057a0e6a",
+      "published": "logs/source-final-summary.txt",
+      "published_bytes": 45,
+      "published_sha256": "b512deb50a4574e8683c02ba464d33225f8dbc4b581e0423054285a1057a0e6a",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/source-final.json",
+      "original_bytes": 42602,
+      "original_sha256": "4851d4b005a756a796b7c72320d94fe0e75bd1ca60e43f3d12bd5f049222a874",
+      "published": "logs/source-final.json",
+      "published_bytes": 42602,
+      "published_sha256": "4851d4b005a756a796b7c72320d94fe0e75bd1ca60e43f3d12bd5f049222a874",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/source-preflight.json",
+      "original_bytes": 42602,
+      "original_sha256": "4851d4b005a756a796b7c72320d94fe0e75bd1ca60e43f3d12bd5f049222a874",
+      "published": "logs/source-preflight.json",
+      "published_bytes": 42602,
+      "published_sha256": "4851d4b005a756a796b7c72320d94fe0e75bd1ca60e43f3d12bd5f049222a874",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/source-summary-01-check.txt",
+      "original_bytes": 45,
+      "original_sha256": "b512deb50a4574e8683c02ba464d33225f8dbc4b581e0423054285a1057a0e6a",
+      "published": "logs/source-summary-01-check.txt",
+      "published_bytes": 45,
+      "published_sha256": "b512deb50a4574e8683c02ba464d33225f8dbc4b581e0423054285a1057a0e6a",
+      "path_replacements": []
+    },
+    {
+      "original": "logs/state-after-01-check.json",
+      "original_bytes": 323,
+      "original_sha256": "a97ea33efd26389eeb45aa911290c5ccf0b9706ecaa19127b30110cbc874a5e8",
+      "published": "logs/state-after-01-check.json",
+      "published_bytes": 323,
+      "published_sha256": "a97ea33efd26389eeb45aa911290c5ccf0b9706ecaa19127b30110cbc874a5e8",
+      "path_replacements": []
+    }
+  ],
+  "notes": "Text copies normalize local paths and UTF-8 BOM where present; original files untouched."
+}
