@@ -18,6 +18,8 @@ mod plugin_callback;
 pub mod plugin_catalog;
 pub mod plugin_host;
 pub mod plugin_management;
+#[cfg(all(test, windows))]
+mod process_test_fixture;
 pub mod project_config;
 pub mod provider;
 pub mod provider_runtime;

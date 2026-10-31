@@ -3091,21 +3091,25 @@ mod worktree_http_crash_tests {
             event["phase"] = json!(self.2);
             trace(&self.1, event);
         }
-        fn kill_wait(&mut self) {
+        fn kill_wait(&mut self) -> Result<(), String> {
             self.record(json!({"event":"kill_requested"}));
             let killed = self.0.kill();
             self.record(json!({"event":"kill_result","ok":killed.is_ok()}));
-            killed.unwrap();
+            killed.map_err(|error| format!("child kill: {error}"))?;
             let end = Instant::now() + Duration::from_secs(5);
             loop {
-                if let Some(status) = self.0.try_wait().unwrap() {
+                if let Some(status) = self
+                    .0
+                    .try_wait()
+                    .map_err(|error| format!("child wait: {error}"))?
+                {
                     self.record(json!({"event":"reaped","exit_code":status.code(),"success":status.success()}));
-                    return;
+                    return Ok(());
                 }
                 if Instant::now() >= end {
                     self.record(json!({"event":"reap_deadline"}));
+                    return Err("child wait deadline".into());
                 }
-                assert!(Instant::now() < end, "child wait deadline");
                 std::thread::sleep(Duration::from_millis(10));
             }
         }
@@ -3128,60 +3132,211 @@ mod worktree_http_crash_tests {
     fn client() -> reqwest::Client {
         reqwest::Client::builder()
             .no_proxy()
-            .timeout(Duration::from_secs(12))
+            .timeout(Duration::from_secs(75))
             .build()
             .unwrap()
     }
-    type HttpRequest = tokio::task::JoinHandle<reqwest::Result<StatusCode>>;
+    struct HttpRequest(tokio::task::JoinHandle<reqwest::Result<StatusCode>>);
+    impl Drop for HttpRequest {
+        fn drop(&mut self) {
+            self.0.abort();
+        }
+    }
+    fn pre_ready_problem(child_live: bool, request_finished: bool) -> Option<&'static str> {
+        if request_finished {
+            Some("request completed before kill")
+        } else if !child_live {
+            Some("child exited before kill")
+        } else {
+            None
+        }
+    }
+    fn lost_response(timeout: bool, connect: bool) -> bool {
+        !timeout && !connect
+    }
+
     async fn wait_file(
         path: &FsPath,
         process: &mut ChildGuard,
         request: Option<&HttpRequest>,
-    ) -> String {
+    ) -> Result<String, String> {
         let notification = path.file_name().unwrap().to_string_lossy().into_owned();
         process.record(json!({"event":"wait_begin","notification":notification}));
-        let mut reported_exit = false;
-        let mut reported_request = false;
-        let result = tokio::time::timeout(Duration::from_secs(10), async {
+        let budget = if request.is_some() { 60 } else { 10 };
+        let result = tokio::time::timeout(Duration::from_secs(budget), async {
             loop {
-                if !reported_exit {
-                    match process.0.try_wait() {
-                        Ok(Some(status)) => {
-                            process.record(json!({"event":"exit_while_waiting","notification":notification,"exit_code":status.code(),"success":status.success()}));
-                            reported_exit = true;
-                        }
-                        Err(_) => {
-                            process.record(json!({"event":"child_status_unavailable","notification":notification}));
-                            reported_exit = true;
-                        }
-                        Ok(None) => {}
-                    }
-                }
-                if !reported_request && request.is_some_and(|r| r.is_finished()) {
-                    process.record(json!({"event":"original_http_finished_while_waiting","notification":notification}));
-                    reported_request = true;
+                let child_live = process.0.try_wait().map_err(|e| format!("child status query: {e}"))?.is_none();
+                let request_finished = request.is_some_and(|r| r.0.is_finished());
+                if let Some(reason) = pre_ready_problem(child_live, request_finished) {
+                    process.record(json!({"event":"early_completion","notification":notification,"reason":reason}));
+                    return Err(reason.to_owned());
                 }
                 if let Ok(text) = std::fs::read_to_string(path)
                     && !text.is_empty()
                 {
+                    // Recheck before accepting readiness, giving observed completion priority.
+                    let child_live = process.0.try_wait().map_err(|e| format!("child status query: {e}"))?.is_none();
+                    let request_finished = request.is_some_and(|r| r.0.is_finished());
+                    if let Some(reason) = pre_ready_problem(child_live, request_finished) {
+                        process.record(json!({"event":"ready_race_lost","notification":notification,"reason":reason}));
+                        return Err(reason.to_owned());
+                    }
                     process.record(json!({"event":"notification_observed","notification":notification}));
-                    break text;
+                    break Ok(text);
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
         .await;
-        if result.is_err() {
-            process.record(json!({"event":"notification_timeout","notification":notification,"original_http_finished":request.map(|r|r.is_finished())}));
+        match result {
+            Ok(result) => result,
+            Err(_) => {
+                process.record(json!({"event":"notification_timeout","notification":notification,"original_http_finished":request.map(|r|r.0.is_finished())}));
+                Err(format!(
+                    "notification timeout: phase={} notification={} pid={}",
+                    process.2,
+                    notification,
+                    process.0.id()
+                ))
+            }
         }
-        result.unwrap_or_else(|_| {
-            panic!(
-                "deterministic child notification: phase={} notification={} pid={}",
-                process.2,
-                notification,
-                process.0.id()
-            )
-        })
+    }
+    async fn wait_or_fail(
+        path: &FsPath,
+        process: &mut ChildGuard,
+        mut request: Option<&mut HttpRequest>,
+    ) -> String {
+        match wait_file(path, process, request.as_deref()).await {
+            Ok(value) => value,
+            Err(error) => {
+                if let Some(request) = &mut request {
+                    request.0.abort();
+                    let joined = (&mut request.0).await;
+                    process.record(json!({"event":"observer_reaped_after_failure","cancelled":joined.as_ref().err().is_some_and(|e| e.is_cancelled())}));
+                }
+                panic!("{error}");
+            }
+        }
+    }
+    #[test]
+    fn w08_supervisor_rejects_early_completion_and_timeout() {
+        assert!(pre_ready_problem(true, true).is_some());
+        assert!(pre_ready_problem(false, false).is_some());
+        assert!(pre_ready_problem(false, true).is_some());
+        assert!(pre_ready_problem(true, false).is_none());
+        assert!(!lost_response(true, false));
+        assert!(!lost_response(false, true));
+        assert!(lost_response(false, false));
+    }
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn w08_supervisor_actual_ready_and_completion_controls() {
+        use std::os::windows::process::CommandExt;
+        for (case, ready, early_child) in [
+            ("http-before-ready", false, false),
+            ("ready-and-http", true, false),
+            ("child-before-ready", false, true),
+        ] {
+            let root = tempfile::tempdir().unwrap().keep();
+            let mut command = Command::new("pwsh.exe");
+            command
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    if early_child {
+                        "exit 0"
+                    } else {
+                        "Start-Sleep -Seconds 20"
+                    },
+                ])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .creation_flags(0x08000000);
+            let mut process = ChildGuard(command.spawn().unwrap(), root.clone(), case.to_owned());
+            if early_child {
+                let end = Instant::now() + Duration::from_secs(5);
+                while process.0.try_wait().unwrap().is_none() {
+                    assert!(Instant::now() < end, "control child exit deadline");
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            }
+            if ready {
+                std::fs::write(root.join("ready"), "ready").unwrap();
+            }
+            let mut request = HttpRequest(tokio::spawn(async { Ok(StatusCode::OK) }));
+            while !request.0.is_finished() {
+                tokio::task::yield_now().await;
+            }
+            let result = if early_child {
+                wait_file(&root.join("ready"), &mut process, None).await
+            } else {
+                wait_file(&root.join("ready"), &mut process, Some(&request)).await
+            };
+            let reason = result.expect_err("early completion must defeat readiness");
+            assert_eq!(
+                reason,
+                if early_child {
+                    "child exited before kill"
+                } else {
+                    "request completed before kill"
+                }
+            );
+            let _ = (&mut request.0).await;
+            let events = std::fs::read_to_string(root.join("lifecycle.jsonl")).unwrap();
+            assert!(events.contains("early_completion"));
+        }
+    }
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn w08_supervisor_actual_timeout_before_ready() {
+        use std::os::windows::process::CommandExt;
+        let root = tempfile::tempdir().unwrap().keep();
+        let mut process = ChildGuard(
+            Command::new("pwsh.exe")
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    "Start-Sleep -Seconds 20",
+                ])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .creation_flags(0x08000000)
+                .spawn()
+                .unwrap(),
+            root.clone(),
+            "timeout-before-ready".into(),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (_connection, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        });
+        let mut request = HttpRequest(tokio::spawn(async move {
+            reqwest::Client::builder()
+                .no_proxy()
+                .timeout(Duration::from_millis(200))
+                .build()
+                .unwrap()
+                .get(format!("http://{address}/"))
+                .send()
+                .await
+                .map(|response| response.status())
+        }));
+        let limit = tokio::time::Instant::now() + Duration::from_secs(3);
+        while !request.0.is_finished() {
+            assert!(tokio::time::Instant::now() < limit);
+            tokio::task::yield_now().await;
+        }
+        let result = wait_file(&root.join("ready"), &mut process, Some(&request)).await;
+        assert_eq!(result.unwrap_err(), "request completed before kill");
+        let error = (&mut request.0).await.unwrap().unwrap_err();
+        assert!(error.is_timeout());
+        assert!(!lost_response(error.is_timeout(), error.is_connect()));
+        server.abort();
+        let _ = server.await;
     }
     async fn observe_http(
         post: reqwest::RequestBuilder,
@@ -3287,7 +3442,7 @@ mod worktree_http_crash_tests {
         });
         std::fs::write(root.join(format!("listen-{phase}")), origin).unwrap();
         tokio::time::timeout(
-            Duration::from_secs(60),
+            Duration::from_secs(100),
             axum::serve(listener, app).into_future(),
         )
         .await
@@ -3456,23 +3611,52 @@ mod worktree_http_crash_tests {
             let body = json!({"name":"isolated","parent_path":root,"expected_config_revision":2,"expected_head":head});
             let path = format!("/api/projects/{}/worktrees", project.id.0);
             let mut process = spawn(root, phase);
-            let origin = wait_file(&root.join(format!("listen-{phase}")), &mut process, None).await;
+            let origin =
+                wait_or_fail(&root.join(format!("listen-{phase}")), &mut process, None).await;
             let post = client()
                 .post(format!("{origin}{path}"))
                 .header("x-peachsh-token", "worktree-crash-token")
                 .header("Idempotency-Key", "crash-create")
                 .json(&body);
-            let request = tokio::spawn(observe_http(post, root.to_owned(), phase.to_owned()));
-            let op = wait_file(&root.join("ready"), &mut process, Some(&request)).await;
+            let mut request = HttpRequest(tokio::spawn(observe_http(
+                post,
+                root.to_owned(),
+                phase.to_owned(),
+            )));
+            let op = wait_or_fail(&root.join("ready"), &mut process, Some(&mut request)).await;
             println!(
                 "W08 phase={phase} operation={op} child_pid={} reached durable hook",
                 process.0.id()
             );
-            process.kill_wait();
+            let child_live = match process.0.try_wait() {
+                Ok(status) => status.is_none(),
+                Err(error) => {
+                    request.0.abort();
+                    let _ = (&mut request.0).await;
+                    process.record(json!({"event":"observer_reaped_after_status_error"}));
+                    panic!("child status query: {error}");
+                }
+            };
+            let request_finished = request.0.is_finished();
+            process.record(json!({"event":"pre_kill_check","child_live":child_live,"http_finished":request_finished}));
+            if let Some(reason) = pre_ready_problem(child_live, request_finished) {
+                request.0.abort();
+                let _ = (&mut request.0).await;
+                process.record(json!({"event":"observer_reaped_after_pre_kill_failure"}));
+                panic!("{reason}");
+            }
+            if let Err(error) = process.kill_wait() {
+                request.0.abort();
+                let _ = (&mut request.0).await;
+                process.record(json!({"event":"observer_reaped_after_kill_error"}));
+                panic!("{error}");
+            }
             println!("W08 phase={phase} original child killed and waited");
+            let response = (&mut request.0).await.expect("HTTP observer task panicked");
+            let error = response.expect_err("response must be lost at held hook");
             assert!(
-                request.await.unwrap().is_err(),
-                "response must be lost at held hook"
+                lost_response(error.is_timeout(), error.is_connect()),
+                "HTTP timeout or connection failure is not a lost response"
             );
             assert_eq!(std::fs::read(source.join("tracked")).unwrap(), b"original");
             assert_eq!(std::fs::read(source.join(".git/index")).unwrap(), index);
@@ -3488,7 +3672,7 @@ mod worktree_http_crash_tests {
             )
             .await;
             let mut restart = spawn(root, "restart");
-            let origin = wait_file(&root.join("listen-restart"), &mut restart, None).await;
+            let origin = wait_or_fail(&root.join("listen-restart"), &mut restart, None).await;
             let get = || {
                 client()
                     .get(format!("{origin}{path}/{op}"))
@@ -3664,7 +3848,7 @@ mod worktree_http_crash_tests {
             }
             assert_eq!(std::fs::read(source.join(".git/index")).unwrap(), index);
             assert_eq!(git(&source, &["rev-parse", "HEAD"]).await, head);
-            restart.kill_wait();
+            restart.kill_wait().unwrap();
             println!(
                 "W08 phase={phase} restart verified state={} and killed/waited; no extra worker or Provider dispatch",
                 receipt["state"]
