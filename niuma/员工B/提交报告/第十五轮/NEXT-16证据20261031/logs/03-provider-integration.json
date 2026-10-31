@@ -1,0 +1,10 @@
+{
+  "head": "404d64004fdf5a96d22129d105c2403d00905dd6",
+  "started": "2026-10-31T10:27:06.7926346+08:00",
+  "rust_tree": "504e329e1fb9ba0ab588068e65fd8ebb2a70a30d",
+  "exit_code": 101,
+  "product_tree": "c817bd8c223b19a671019685b7eff3757d9bc9de",
+  "ended": "2026-10-31T10:27:23.3873368+08:00",
+  "command": "cargo test --offline --locked --test provider_network --test provider_usage -- --nocapture",
+  "name": "03-provider-integration"
+}

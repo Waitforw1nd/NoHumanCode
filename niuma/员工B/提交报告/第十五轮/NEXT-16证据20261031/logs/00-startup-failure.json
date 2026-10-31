@@ -1,0 +1,7 @@
+{
+  "exit_code": 1,
+  "head": "404d64004fdf5a96d22129d105c2403d00905dd6",
+  "event": "startup",
+  "outcome": "build.ps1 environment discovery reported Missing Visual C++ x64 build tools; cargo was not started",
+  "observed": "2026-10-31T10:23:24+08:00"
+}
