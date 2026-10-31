@@ -5,7 +5,7 @@ mod network_fixture;
 
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
-    approval::{ApprovalStatus, ExecutionState},
+    approval::{self, ApprovalStatus, ExecutionState},
     domain::*,
     engine::Engine,
     server::{self, App},
@@ -255,6 +255,27 @@ fn card(h: &Harness, task: &mut Task, call: &str, name: &str, args: Value) -> St
         .unwrap()
         .0
         .id
+}
+
+fn card_group(h: &Harness, task: &mut Task, calls: &[(&str, &str, Value)]) -> Vec<String> {
+    let group: Vec<_> = calls
+        .iter()
+        .map(|(call, name, args)| tool_call(call, name, args.clone()))
+        .collect();
+    task.messages
+        .push(json!({"role":"assistant", "tool_calls":group}));
+    h.engine.store.save_task(task).unwrap();
+    calls
+        .iter()
+        .map(|(call, name, args)| {
+            h.engine
+                .store
+                .ensure_approval(task, call, name, args)
+                .unwrap()
+                .0
+                .id
+        })
+        .collect()
 }
 
 fn event_count(h: &Harness, task: &Task, kind: &str) -> usize {
@@ -1060,20 +1081,24 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
     let mut a = seed_task(&h.engine.store, h._dir.path(), "task-a");
     let mut b = seed_task(&h.engine.store, h._dir.path(), "task-b");
     let secret = "mock-http-secret";
-    let a1 = card(
+    let [a1, a2]: [String; 2] = card_group(
         &h,
         &mut a,
-        "same-call",
-        "write_file",
-        json!({"path":"src/a.txt","content":secret}),
-    );
-    let a2 = card(
-        &h,
-        &mut a,
-        "command",
-        "run_command",
-        json!({"command":format!("Bearer {secret} {}", "界".repeat(200))}),
-    );
+        &[
+            (
+                "same-call",
+                "write_file",
+                json!({"path":"src/a.txt","content":secret}),
+            ),
+            (
+                "command",
+                "run_command",
+                json!({"command":format!("Bearer {secret} {}", "界".repeat(200))}),
+            ),
+        ],
+    )
+    .try_into()
+    .unwrap();
     let b1 = card(
         &h,
         &mut b,
@@ -1164,7 +1189,9 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
         let expected = if event.kind == "approval.requested" {
             [
                 "approval_id",
+                "evidence_version",
                 "preview",
+                "safe_call_digest",
                 "session_id",
                 "task_id",
                 "tool_call_id",
@@ -1181,11 +1208,78 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
                 .collect()
         };
         assert_eq!(fields, expected);
+        if event.kind == "approval.requested" {
+            assert_eq!(event.data["evidence_version"], 1);
+            let digest = event.data["safe_call_digest"].as_str().unwrap();
+            assert_eq!(digest.len(), 64);
+            assert!(
+                digest
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            );
+        }
         let serialized = serde_json::to_string(&event).unwrap();
         for forbidden in [secret, "content", "arguments"] {
             assert!(!serialized.contains(forbidden));
         }
     }
+
+    let (args_digest, binding_digest): (String, String) = Connection::open(&h.db_path)
+        .unwrap()
+        .query_row(
+            "SELECT args_digest,binding_digest FROM approvals WHERE id=?1",
+            [&a1],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    let mut stream = client()
+        .get(format!("{}/api/runs/{}/events", h.origin, a.run_id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(stream.status(), StatusCode::OK);
+    let mut buffer = String::new();
+    let requested = loop {
+        let frame = next_sse(&mut stream, &mut buffer).await;
+        if frame.event == "approval.requested" && frame.data["data"]["approval_id"] == a1 {
+            break frame;
+        }
+    };
+    let data = &requested.data["data"];
+    let fields: BTreeSet<_> = data.as_object().unwrap().keys().cloned().collect();
+    assert_eq!(
+        fields,
+        [
+            "approval_id",
+            "evidence_version",
+            "preview",
+            "safe_call_digest",
+            "session_id",
+            "task_id",
+            "tool_call_id",
+            "tool_name",
+            "turn_id"
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+    );
+    assert_eq!(data["evidence_version"], 1);
+    assert_eq!(data["safe_call_digest"].as_str().unwrap().len(), 64);
+    let wire = requested.data.to_string();
+    for forbidden in [
+        secret,
+        "arguments",
+        "args_digest",
+        "binding_digest",
+        "write_scopes",
+        "allow_commands",
+        args_digest.as_str(),
+        binding_digest.as_str(),
+    ] {
+        assert!(!wire.contains(forbidden));
+    }
+    drop(stream);
 
     let single: Value = client()
         .get(format!("{}/api/approvals/{a1}", h.origin))
@@ -1224,13 +1318,16 @@ async fn ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency() {
     let h = live_harness(vec![]).await;
     let started = start_live(&h, true).await;
     let mut task = settled(&h, &started.id).await;
-    let id = card(
+    let [id, race]: [String; 2] = card_group(
         &h,
         &mut task,
-        "write",
-        "write_file",
-        json!({"path":"src/a","content":"x"}),
-    );
+        &[
+            ("write", "write_file", json!({"path":"src/a","content":"x"})),
+            ("race", "write_file", json!({"path":"src/r","content":"r"})),
+        ],
+    )
+    .try_into()
+    .unwrap();
     let url = format!("{}/api/approvals/{id}/decision", h.origin);
     let first = client()
         .post(&url)
@@ -1261,13 +1358,6 @@ async fn ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency() {
     .await;
     assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
 
-    let race = card(
-        &h,
-        &mut task,
-        "race",
-        "write_file",
-        json!({"path":"src/r","content":"r"}),
-    );
     let race_url = format!("{}/api/approvals/{race}/decision", h.origin);
     let mut requests = tokio::task::JoinSet::new();
     let barrier = Arc::new(tokio::sync::Barrier::new(9));
@@ -1485,13 +1575,20 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
 async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
     let h = harness().await;
     let mut task = seed_task(&h.engine.store, h._dir.path(), "fault-task");
-    let busy_id = card(
+    let [busy_id, corrupt_id]: [String; 2] = card_group(
         &h,
         &mut task,
-        "busy",
-        "write_file",
-        json!({"path":"src/a","content":"x"}),
-    );
+        &[
+            ("busy", "write_file", json!({"path":"src/a","content":"x"})),
+            (
+                "corrupt",
+                "write_file",
+                json!({"path":"src/b","content":"x"}),
+            ),
+        ],
+    )
+    .try_into()
+    .unwrap();
     let lock = Connection::open(&h.db_path).unwrap();
     lock.execute_batch("BEGIN IMMEDIATE").unwrap();
     let response = client()
@@ -1514,13 +1611,6 @@ async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
         ApprovalStatus::Pending
     );
 
-    let corrupt_id = card(
-        &h,
-        &mut task,
-        "corrupt",
-        "write_file",
-        json!({"path":"src/b","content":"x"}),
-    );
     let db = Connection::open(&h.db_path).unwrap();
     db.execute_batch("PRAGMA foreign_keys=OFF").unwrap();
     db.execute(
@@ -2027,4 +2117,368 @@ async fn ah15_command_network_ack_is_explicit_and_legacy_approved_waits_without_
     );
     assert!(!write._dir.path().join("src/no-ack.txt").exists());
     assert_eq!(http_decide(&write, &record.id, "deny").await.status(), 200);
+}
+
+#[test]
+fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
+    let bearer = "Bearer n19fixturetoken 普通🙂 \"quoted\" \\ path";
+    for (content, secret, cancelled) in [
+        ("sk-abc", "sk-abc", false),
+        ("sk-abc", "sk-abc", true),
+        (bearer, "n19fixturetoken", false),
+        (bearer, "n19fixturetoken", true),
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let db_path = temp.path().join("proof-restart.db");
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (task, approval, base) = runtime.block_on(async {
+            let (base, _calls, _provider) = provider_server(vec![vec![tool_call(
+                "redacted-call",
+                "write_file",
+                json!({"path":"src/proof.txt","content":content}),
+            )]])
+            .await;
+            let store = Arc::new(Store::open(&db_path).unwrap());
+            // configure_live registers/selects the project and authorizes its route
+            // through the production commands in network_fixture.
+            configure_live(&store, temp.path(), &base);
+            let project = store.current_project().unwrap().project_id.unwrap();
+            let engine = Engine::new(store, 2).unwrap();
+            let mut request = run_request(false);
+            request.kind = SessionKind::Chat;
+            let task = engine.start(request).await.unwrap().tasks.remove(0);
+            let binding = engine.task_project_binding(&task.id).unwrap().unwrap();
+            assert_eq!(binding.project_id, project);
+            let approval = pending_engine(&engine, &task.id).await;
+            let persisted = engine.store.task(&task.id).unwrap();
+            assert!(!serde_json::to_string(&persisted).unwrap().contains(secret));
+            let call = persisted
+                .messages
+                .iter()
+                .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+                .find(|c| c["id"] == "redacted-call")
+                .unwrap();
+            let args: Value =
+                serde_json::from_str(call["function"]["arguments"].as_str().unwrap()).unwrap();
+            assert!(args.is_object());
+            assert_eq!(args["path"], "src/proof.txt");
+            if secret == "n19fixturetoken" {
+                assert_eq!(
+                    args["content"],
+                    "bearer [redacted] 普通🙂 \"quoted\" \\ path"
+                );
+            }
+            let raw: String = Connection::open(&db_path)
+                .unwrap()
+                .query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {
+                    r.get(0)
+                })
+                .unwrap();
+            assert!(!raw.contains(secret));
+            let db_task: Value = serde_json::from_str(&raw).unwrap();
+            assert!(!db_task.to_string().contains(secret));
+            let db_call = db_task["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+                .find(|c| c["id"] == "redacted-call")
+                .unwrap();
+            let db_arguments = db_call["function"]["arguments"].as_str().unwrap();
+            assert_eq!(
+                db_arguments,
+                call["function"]["arguments"].as_str().unwrap()
+            );
+            assert_eq!(serde_json::from_str::<Value>(db_arguments).unwrap(), args);
+            assert!(!temp.path().join("src/proof.txt").exists());
+            (task, approval, base)
+        });
+        runtime.shutdown_timeout(Duration::from_secs(2));
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(async {
+            let address = base
+                .strip_prefix("http://")
+                .unwrap()
+                .strip_suffix("/v1")
+                .unwrap();
+            let (base, calls, _provider) = provider_server_at(vec![vec![], vec![]], address).await;
+            let store = Arc::new(Store::open(&db_path).unwrap());
+            configure_live(&store, temp.path(), &base);
+            let engine = Engine::new(store, 2).unwrap();
+            engine.store.recover().unwrap();
+            let (origin, token, _http) = serve_http_engine(engine.clone()).await;
+            let response = client()
+                .get(format!("{origin}/api/approvals/{}", approval.id))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let public_approval: Value = response.json().await.unwrap();
+            let dto_fields: BTreeSet<String> = [
+                "command_network_ack",
+                "network_notice",
+                "created_at",
+                "decided_at",
+                "decided_by",
+                "execution_state",
+                "id",
+                "preview",
+                "session_id",
+                "status",
+                "task_id",
+                "tool_call_id",
+                "tool_name",
+                "turn_id",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+            assert_eq!(
+                public_approval
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                dto_fields
+            );
+            let list = client()
+                .get(format!("{origin}/api/tasks/{}/approvals", task.id))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(list.status(), StatusCode::OK);
+            let list: Value = list.json().await.unwrap();
+            let records = list["approvals"].as_array().unwrap();
+            assert_eq!(records.len(), 1);
+            assert_eq!(records[0]["id"], approval.id);
+            assert_eq!(
+                records[0]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                dto_fields
+            );
+            let exposed = format!("{} {}", public_approval, list);
+            for secret in [
+                secret,
+                "safe_call_digest",
+                "args_digest",
+                "binding_digest",
+                "write_scopes",
+                "allow_commands",
+            ] {
+                assert!(!exposed.contains(secret));
+            }
+            for forbidden in [&approval.args_digest, &approval.binding_digest] {
+                assert!(!exposed.contains(forbidden.as_str()));
+            }
+            if cancelled {
+                assert_eq!(
+                    engine
+                        .store
+                        .cancel_pending_approvals(&task.id)
+                        .unwrap()
+                        .len(),
+                    1
+                );
+            } else {
+                let response = client()
+                    .post(format!("{origin}/api/approvals/{}/decision", approval.id))
+                    .header("x-peachsh-token", token)
+                    .json(&json!({"decision":"deny"}))
+                    .send()
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+            }
+            let before = engine.store.events(&task.run_id, 0).unwrap();
+            let proofs: Vec<_> = before
+                .iter()
+                .filter(|e| e.kind == "approval.requested")
+                .collect();
+            assert_eq!(proofs.len(), 1);
+            assert_eq!(proofs[0].data["evidence_version"], 1);
+            let proof_fields: BTreeSet<String> = [
+                "approval_id",
+                "evidence_version",
+                "preview",
+                "safe_call_digest",
+                "session_id",
+                "task_id",
+                "tool_call_id",
+                "tool_name",
+                "turn_id",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+            assert_eq!(
+                proofs[0]
+                    .data
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                proof_fields
+            );
+            let safe_digest = proofs[0].data["safe_call_digest"].as_str().unwrap();
+            assert_eq!(safe_digest.len(), 64);
+            assert!(
+                safe_digest
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            );
+            assert_eq!(proofs[0].data["approval_id"], approval.id);
+            assert_eq!(proofs[0].data["tool_call_id"], "redacted-call");
+            let proof = proofs[0].data.to_string();
+            for forbidden in [
+                secret,
+                "args_digest",
+                "binding_digest",
+                approval.args_digest.as_str(),
+                approval.binding_digest.as_str(),
+            ] {
+                assert!(!proof.contains(forbidden));
+            }
+            let mut stream = client()
+                .get(format!("{origin}/api/runs/{}/events", task.run_id))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(stream.status(), StatusCode::OK);
+            let mut buffer = String::new();
+            let requested = loop {
+                let frame = next_sse(&mut stream, &mut buffer).await;
+                if frame.event == "approval.requested"
+                    && frame.data["data"]["approval_id"] == approval.id
+                {
+                    break frame;
+                }
+            };
+            let data = &requested.data["data"];
+            assert_eq!(
+                data.as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                proof_fields
+            );
+            assert_eq!(data["evidence_version"], 1);
+            assert_eq!(data["safe_call_digest"], safe_digest);
+            let wire = requested.data.to_string();
+            for forbidden in [
+                secret,
+                "args_digest",
+                "binding_digest",
+                approval.args_digest.as_str(),
+                approval.binding_digest.as_str(),
+            ] {
+                assert!(!wire.contains(forbidden));
+            }
+            drop(stream);
+            engine.resume(&task.id, "continue").await.unwrap();
+            let done = settled_engine(&engine, &task.id).await;
+            assert_eq!(done.status, "completed");
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+            assert!(!temp.path().join("src/proof.txt").exists());
+            let events = engine.store.events(&task.run_id, 0).unwrap();
+            assert!(!events.iter().any(|e| e.kind == "tool_start"));
+            let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+            assert_eq!(results.len(), 1);
+            let status = if cancelled {
+                ApprovalStatus::Cancelled
+            } else {
+                ApprovalStatus::Denied
+            };
+            let expected = if cancelled {
+                "审批已取消，工具未执行。"
+            } else {
+                "审批已拒绝，工具未执行。"
+            };
+            assert_eq!(approval::tool_error(status), expected);
+            assert_eq!(results[0].data["origin_version"], 1);
+            assert_eq!(results[0].data["name"], "write_file");
+            assert_eq!(results[0].data["tool_call_id"], "redacted-call");
+            assert_eq!(results[0].data["result"].as_str(), Some(expected));
+            assert_eq!(
+                results[0].data["origin"],
+                if cancelled {
+                    "approval_cancelled"
+                } else {
+                    "approval_denied"
+                }
+            );
+            assert_eq!(
+                done.messages
+                    .iter()
+                    .filter(|m| m["tool_call_id"] == "redacted-call")
+                    .count(),
+                1
+            );
+            let message = done
+                .messages
+                .iter()
+                .find(|m| m["tool_call_id"] == "redacted-call")
+                .unwrap();
+            assert_eq!(message["role"], "tool");
+            assert_eq!(message["content"].as_str(), Some(expected));
+            let (session, agent, turn): (String, String, String) = Connection::open(&db_path)
+                .unwrap()
+                .query_row(
+                    "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+                    [&task.id],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )
+                .unwrap();
+            let receipt = engine
+                .send_chat_turn(SendChatTurn {
+                    session_id: SessionId(session),
+                    agent_id: AgentId(agent),
+                    expected_last_turn_id: TurnId(turn),
+                    message: "next".into(),
+                    idempotency_key: "n19-proof-next".into(),
+                })
+                .await
+                .unwrap();
+            assert_eq!(
+                settled_engine(&engine, &receipt.task.legacy_task_id)
+                    .await
+                    .status,
+                "completed"
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), 2);
+        });
+        runtime.shutdown_timeout(Duration::from_secs(2));
+        let reopened = Store::open(&db_path).unwrap();
+        reopened.recover().unwrap();
+        reopened.recover().unwrap();
+        let saved = reopened.task(&task.id).unwrap();
+        let messages: Vec<_> = saved
+            .messages
+            .iter()
+            .filter(|m| m["tool_call_id"] == "redacted-call")
+            .collect();
+        assert_eq!(messages.len(), 1);
+        let expected = if cancelled {
+            "审批已取消，工具未执行。"
+        } else {
+            "审批已拒绝，工具未执行。"
+        };
+        assert_eq!(messages[0]["content"].as_str(), Some(expected));
+        assert_eq!(
+            reopened
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .filter(|e| e.kind == "tool_result")
+                .count(),
+            1
+        );
+        assert!(!temp.path().join("src/proof.txt").exists());
+    }
 }

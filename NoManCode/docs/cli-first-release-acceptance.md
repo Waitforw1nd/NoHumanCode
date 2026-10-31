@@ -120,3 +120,9 @@ peachsh --port 3090 --json project budget call --id PROJECT --call-id CALL
 启用使用新的 key 和查询到的当前 revision。返回的 receipt 证明意图提交；current 是当前进程的独立观测，`converged=false` 表示尚未收敛。Agent 已准入任务可排空；Provider 开关只控制 Completion，Models/Balance 不受此开关控制。实时状态不保证跨进程广播，Agent 原只读诊断及 files/shell 原插件管理接口保留。
 
 写入后断线、超时或不可信响应可能意味着命令已提交，客户端不会自动重发。查询当前状态不能证明特定 key 是否提交；如需取回回执，人工使用原 key、原 ID、原 enabled 和原 expected-revision 显式回放，不换 key 猜测。重启按持久意图恢复，已发生的网络和预算事实不因切换而消失。NEXT-18 的限定切片已完成联合验收并整合主线；历史事件 N18-F01 仍为 OPEN_UNATTRIBUTED，原失败原因未知，不能称为已修复。该验收不代表完整阶段一或整个项目已完成。
+
+## NEXT-19 公开工具调用续接（最终门禁记录）
+
+固定候选 `b903963b13fb0fa53f04a7585379061d3380a6d6`、Rust tree `9d6b09f50d0925f0644f59fbc048548ec6f5dcab` 的 workspace check、显式 CLI build、workspace test、fmt、all-targets Clippy 和 UI wasm-check 均 exit 0；workspace test 的 60 个结果块合计 819 passed / 0 failed / 1 ignored，包含 helper 入口，唯一 ignored 为付费真实 Provider 测试。新增 `tool_call_workflow` 和原 `first_user_workflow` 各 1/0/0，实际执行通过。
+
+新增流程以全新数据库、真实 Host/CLI 和本机受控 Provider 验证首 Turn 读取与分别拒绝写文件/命令，次 Turn 分别批准写入/命令、检查事件游标，再真实 kill/wait、分离停机 raw/query 并重启后继续新 Turn。原流程继续覆盖 Diff、Checkpoint 与恢复冲突。本次通过不追认历史故障根因，不代表付费 Provider 或完整项目通过；NEXT-19 联合验收与主线整合另见经理记录。

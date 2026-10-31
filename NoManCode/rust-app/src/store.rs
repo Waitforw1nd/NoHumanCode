@@ -1,9 +1,8 @@
 use crate::{approval, domain::*, repository, secrets, workspace_changes::*};
 use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, OptionalExtension, params};
-use serde::Serialize;
 use serde_json::{Value, json};
-use std::{io::Write, path::Path, sync::Mutex};
+use std::{path::Path, sync::Mutex};
 
 pub const SCHEMA_VERSION: u32 = 17;
 
@@ -464,6 +463,382 @@ impl Store {
         tx.commit()?;
         Ok(())
     }
+
+    pub(crate) fn save_running_snapshot(&self, task: &Task) -> Result<()> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let protected = protect_running_projection(&tx, task)?;
+        save_task_tx(&tx, &protected, false)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub(crate) fn recover_legacy_read_result(
+        &self,
+        caller: &Task,
+        call_id: &str,
+        name: &str,
+    ) -> Result<Option<Task>> {
+        use crate::tool_results::ToolResultError;
+        if !matches!(name, "read_file" | "list_files" | "search_files") {
+            return Ok(None);
+        }
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let mut durable = legacy_task_row(&tx, &caller.id)?;
+        if safe_task_value(caller)?["messages"] != safe_task_value(&durable)?["messages"]
+            || caller.run_id != durable.run_id
+            || !crate::workspace::definitions(&durable)
+                .iter()
+                .any(|tool| tool["function"]["name"] == name)
+        {
+            return Err(ToolResultError::Conflict.into());
+        }
+        approval::validate_call_history(&durable.messages).map_err(|_| ToolResultError::Corrupt)?;
+        let (turn, session) = approval_scope(&tx, &durable.id)?;
+        let event_session = repository::Repository::new(&tx)
+            .session_by_legacy_run_of_task(&durable.id)?
+            .map(|session| session.id.0);
+        let inherited =
+            inherited_message_count(&tx, &durable, turn.as_deref(), session.as_deref())?;
+        let existing: Vec<(String, Option<String>, Option<String>)> = {
+            let mut stmt = tx.prepare("SELECT data,turn_id,session_id FROM events WHERE task_id=?1 AND kind='tool_result' ORDER BY seq")?;
+            let rows = stmt.query_map([&durable.id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        if existing.iter().any(|(_, event_turn, event_session_id)| {
+            event_turn != &turn || event_session_id != &event_session
+        }) {
+            return Err(ToolResultError::Corrupt.into());
+        }
+        let messages = &durable.messages[inherited..];
+        let answers: Vec<_> = messages.iter().filter(|m| m["role"] == "tool").collect();
+        if existing.len() == answers.len() {
+            return Ok(None);
+        }
+        if existing.len() != answers.len() + 1 {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let events: Vec<Value> = existing
+            .iter()
+            .map(|(raw, _, _)| serde_json::from_str(raw).map_err(|_| ToolResultError::Corrupt))
+            .collect::<std::result::Result<_, _>>()?;
+        validate_owned_result_events(messages, &events[..answers.len()])?;
+        let event = events.last().ok_or(ToolResultError::Corrupt)?;
+        if event.get("origin").is_some()
+            || event.get("origin_version").is_some()
+            || event["name"] != name
+            || event.get("result").is_none()
+            || event
+                .get("tool_call_id")
+                .is_some_and(|event_id| event_id != call_id)
+            || (event.get("tool_call_id").is_none()
+                && events[..answers.len()].iter().any(|previous| {
+                    previous["name"] == event["name"] && previous["result"] == event["result"]
+                }))
+        {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let group_index = durable
+            .messages
+            .iter()
+            .rposition(|m| m.get("tool_calls").is_some())
+            .ok_or(ToolResultError::Corrupt)?;
+        if group_index < inherited {
+            return Err(ToolResultError::Conflict.into());
+        }
+        validate_prior_groups(&durable.messages[inherited..group_index])?;
+        let group = durable.messages[group_index]["tool_calls"]
+            .as_array()
+            .ok_or(ToolResultError::Corrupt)?;
+        let preceding = &durable.messages[group_index + 1..];
+        if group
+            .get(preceding.len())
+            .is_none_or(|call| call["id"] != call_id || call["function"]["name"] != name)
+            || preceding.iter().zip(group).any(|(answer, call)| {
+                answer["role"] != "tool" || answer["tool_call_id"] != call["id"]
+            })
+        {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let unsafe_facts: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM approvals WHERE task_id=?1 AND (tool_call_id=?2 OR status='pending' OR execution_state IN ('claimed','unknown') OR (status='approved' AND execution_state NOT IN ('finished','cancelled')))) OR EXISTS(SELECT 1 FROM workspace_changes WHERE task_id=?1 AND (tool_call_id=?2 OR state IN ('prepared','unknown') OR restore_state='unknown')) OR EXISTS(SELECT 1 FROM workspace_restores WHERE task_id=?1 AND status IN ('claimed','partial','unknown')) OR EXISTS(SELECT 1 FROM workspace_restore_outcomes o JOIN workspace_restores r ON r.id=o.restore_id WHERE r.task_id=?1 AND o.status IN ('claimed','unknown'))",
+            params![durable.id, call_id], |row| row.get(0),
+        )?;
+        if unsafe_facts {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let content = stable_safe_json(&event["result"])?;
+        durable
+            .messages
+            .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
+        durable.updated_at = now();
+        save_task_tx(&tx, &durable, false)?;
+        tx.commit()?;
+        Ok(Some(durable))
+    }
+
+    pub(crate) fn commit_tool_result(
+        &self,
+        caller: &Task,
+        call_id: &str,
+        name: &str,
+        content: &str,
+        origin: crate::tool_results::Origin,
+    ) -> Result<(Task, crate::tool_results::CommitDisposition)> {
+        use crate::tool_results::{CommitDisposition, Origin, ToolResultError};
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let mut durable = legacy_task_row(&tx, &caller.id)?;
+        let safe_caller = safe_task_value(caller)?;
+        let safe_durable = safe_task_value(&durable)?;
+        for field in ["id", "run_id", "spec", "route", "workspace", "created_at"] {
+            if safe_caller[field] != safe_durable[field] {
+                return Err(ToolResultError::Conflict.into());
+            }
+        }
+        if !crate::workspace::definitions(&durable)
+            .iter()
+            .any(|tool| tool["function"]["name"] == name)
+            && !(origin == Origin::HostDenied
+                && matches!(
+                    approval::evaluate(&durable, name),
+                    approval::PolicyDecision::Deny { .. }
+                ))
+        {
+            return Err(ToolResultError::Conflict.into());
+        }
+        approval::validate_call_history(&durable.messages).map_err(|_| ToolResultError::Corrupt)?;
+        let result = serde_json::from_str::<Value>(content)
+            .unwrap_or_else(|_| Value::String(content.to_owned()));
+        let result = secrets::redact_persisted(&result);
+        let content = if matches!(
+            origin,
+            Origin::ApprovalDenied | Origin::ApprovalCancelled | Origin::InterruptedWithoutClaim
+        ) {
+            result.as_str().ok_or(ToolResultError::Conflict)?.to_owned()
+        } else {
+            stable_safe_json(&result)?
+        };
+        let (turn_id, session_id) = approval_scope(&tx, &durable.id)?;
+        let inherited =
+            inherited_message_count(&tx, &durable, turn_id.as_deref(), session_id.as_deref())?;
+        let event_session = repository::Repository::new(&tx)
+            .session_by_legacy_run_of_task(&durable.id)?
+            .map(|session| session.id.0);
+        let existing: Vec<(String, Option<String>, Option<String>)> = {
+            let mut stmt = tx.prepare(
+                "SELECT data,turn_id,session_id FROM events WHERE task_id=?1 AND kind='tool_result' ORDER BY seq",
+            )?;
+            let rows = stmt.query_map([&durable.id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        if existing
+            .iter()
+            .any(|(_, turn, session)| turn != &turn_id || session != &event_session)
+        {
+            return Err(ToolResultError::Corrupt.into());
+        }
+        let events: Vec<Value> = existing
+            .iter()
+            .map(|(raw, _, _)| serde_json::from_str(raw).map_err(|_| ToolResultError::Corrupt))
+            .collect::<std::result::Result<Vec<Value>, _>>()?;
+        let matching: Vec<_> = events
+            .iter()
+            .filter(|event| event["tool_call_id"] == call_id)
+            .collect();
+        let answers: Vec<_> = durable
+            .messages
+            .iter()
+            .filter(|message| message["role"] == "tool" && message["tool_call_id"] == call_id)
+            .collect();
+        let replay = !answers.is_empty() || !matching.is_empty();
+        validate_owned_result_events(&durable.messages[inherited..], &events)?;
+        let caller_messages = safe_caller["messages"]
+            .as_array()
+            .ok_or(ToolResultError::Conflict)?;
+        let durable_messages = safe_durable["messages"]
+            .as_array()
+            .ok_or(ToolResultError::Corrupt)?;
+        if (!replay && caller_messages != durable_messages)
+            || (replay && !durable_messages.starts_with(caller_messages))
+        {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let group_index = durable
+            .messages
+            .iter()
+            .position(|m| {
+                m["tool_calls"]
+                    .as_array()
+                    .is_some_and(|calls| calls.iter().any(|call| call["id"] == call_id))
+            })
+            .ok_or(ToolResultError::Corrupt)?;
+        if group_index < inherited {
+            return Err(ToolResultError::Conflict.into());
+        }
+        validate_prior_groups(&durable.messages[inherited..group_index])?;
+        let group = durable.messages[group_index]["tool_calls"]
+            .as_array()
+            .ok_or(ToolResultError::Corrupt)?;
+        let call_index = group
+            .iter()
+            .position(|call| call["id"] == call_id)
+            .ok_or(ToolResultError::Corrupt)?;
+        let preceding = durable
+            .messages
+            .get(group_index + 1..group_index + 1 + call_index)
+            .ok_or(ToolResultError::Corrupt)?;
+        let call = &group[call_index];
+        if durable.messages[group_index]["role"] != "assistant"
+            || call["id"] != call_id
+            || call["function"]["name"] != name
+            || preceding.iter().zip(group).any(|(message, call)| {
+                message["role"] != "tool" || message["tool_call_id"] != call["id"]
+            })
+        {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let raw_call = caller
+            .messages
+            .iter()
+            .filter_map(|message| message["tool_calls"].as_array())
+            .flatten()
+            .find(|candidate| candidate["id"] == call_id)
+            .ok_or(ToolResultError::Conflict)?;
+        let args: Value = serde_json::from_str(
+            raw_call["function"]["arguments"]
+                .as_str()
+                .ok_or(ToolResultError::Conflict)?,
+        )
+        .map_err(|_| ToolResultError::Conflict)?;
+        if !args.is_object() || call["type"] != "function" {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let record =
+            repository::Repository::new(&tx).approval_by_tool_call(&durable.id, call_id)?;
+        if let Some(record) = &record {
+            verify_denied_approval(&tx, &durable, caller, record)?;
+        }
+        let has_change: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM workspace_changes WHERE task_id=?1 AND tool_call_id=?2)",
+            params![durable.id, call_id],
+            |row| row.get(0),
+        )?;
+        if has_change {
+            return Err(ToolResultError::Conflict.into());
+        }
+        if origin == Origin::HostDenied {
+            let has_unmatched_start: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM events WHERE task_id=?1 AND kind='tool_start' AND seq>COALESCE((SELECT MAX(seq) FROM events WHERE task_id=?1 AND kind='tool_result'),0))",
+                [&durable.id], |row| row.get(0),
+            )?;
+            if has_unmatched_start {
+                return Err(ToolResultError::Conflict.into());
+            }
+            let mut stmt =
+                tx.prepare("SELECT data FROM events WHERE task_id=?1 AND kind='tool_start'")?;
+            let starts = stmt.query_map([&durable.id], |row| row.get::<_, String>(0))?;
+            for start in starts {
+                let data: Value =
+                    serde_json::from_str(&start?).map_err(|_| ToolResultError::Corrupt)?;
+                if data["tool_call_id"] == call_id {
+                    return Err(ToolResultError::Conflict.into());
+                }
+            }
+        }
+        let valid = match origin {
+            Origin::ReadCompleted => record.is_none()
+                && matches!(name, "read_file" | "list_files" | "search_files"),
+            Origin::AgentDenied => record.is_none()
+                && result == json!({"error":"blocked_by_agent_policy"}),
+            Origin::HostDenied => record.is_none()
+                && matches!(approval::evaluate(&durable, name), approval::PolicyDecision::Deny { reason } if result == Value::String(reason.into())),
+            Origin::InterruptedWithoutClaim => record.is_none()
+                && result == Value::String("Execution was interrupted. Inspect files before repeating a write or command.".into()),
+            Origin::ApprovalDenied | Origin::ApprovalCancelled => record.as_ref().is_some_and(|record| {
+                let status = if origin == Origin::ApprovalDenied {
+                    approval::ApprovalStatus::Denied
+                } else {
+                    approval::ApprovalStatus::Cancelled
+                };
+                record.tool_name == name
+                    && record.turn_id == turn_id && record.session_id == session_id
+                    && (record.status == status || (status == approval::ApprovalStatus::Cancelled
+                        && record.execution_state == approval::ExecutionState::Cancelled))
+                    && !matches!(record.execution_state, approval::ExecutionState::Claimed | approval::ExecutionState::Finished | approval::ExecutionState::Unknown)
+                    && result == Value::String(approval::tool_error(status))
+            }),
+        };
+        if !valid {
+            return Err(ToolResultError::Conflict.into());
+        }
+        if replay {
+            let answer = durable.messages.get(group_index + 1 + call_index);
+            if answers.len() != 1
+                || matching.len() != 1
+                || answer != answers.first().copied()
+                || matching[0]["name"] != name
+                || matching[0]["result"] != result
+                || matching[0]["origin_version"] != 1
+                || matching[0]["origin"] != origin.as_str()
+                || answers[0]["content"].as_str().map(tool_result_value) != Some(result)
+            {
+                return Err(ToolResultError::Conflict.into());
+            }
+            tx.commit()?;
+            return Ok((durable, CommitDisposition::Replayed));
+        }
+        if group_index + 1 + call_index != durable.messages.len() {
+            return Err(ToolResultError::Conflict.into());
+        }
+        let caller_output = safe_caller["output"]
+            .as_str()
+            .ok_or(ToolResultError::Conflict)?;
+        let durable_output = safe_durable["output"]
+            .as_str()
+            .ok_or(ToolResultError::Corrupt)?;
+        if caller_output.starts_with(durable_output) {
+            durable.output = caller.output.clone();
+        } else if !durable_output.starts_with(caller_output)
+            && !output_matches_delta_history(&tx, &durable.id, durable_output, caller_output)?
+        {
+            return Err(ToolResultError::Conflict.into());
+        } else if !durable_output.starts_with(caller_output) {
+            durable.output = caller.output.clone();
+        }
+        durable.usage = merge_usage(&durable.usage, &caller.usage)?;
+        durable
+            .messages
+            .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
+        durable.updated_at = now();
+        save_task_tx(&tx, &durable, false)?;
+        task_event_tx(
+            &tx,
+            &durable.id,
+            "tool_result",
+            json!({
+                "name":name,"tool_call_id":call_id,"result":result,
+                "origin_version":1,"origin":origin.as_str()
+            }),
+        )?;
+        #[cfg(test)]
+        let database: String = tx.query_row(
+            "SELECT file FROM pragma_database_list WHERE name='main'",
+            [],
+            |row| row.get(0),
+        )?;
+        #[cfg(test)]
+        crate::tool_results::crash_probe::block(&database, &durable.id, call_id, "before_commit");
+        tx.commit()?;
+        #[cfg(test)]
+        crate::tool_results::crash_probe::block(&database, &durable.id, call_id, "after_commit");
+        Ok((durable, CommitDisposition::Inserted))
+    }
     pub(crate) fn save_new_assistant_group(&self, task: &Task) -> Result<()> {
         let calls = task
             .messages
@@ -482,7 +857,8 @@ impl Store {
             )?;
             anyhow::ensure!(!exists, "new tool call conflicts with existing approval");
         }
-        save_task_tx(&tx, task, false)?;
+        let protected = protect_running_projection(&tx, task)?;
+        save_task_tx(&tx, &protected, false)?;
         tx.commit()?;
         Ok(())
     }
@@ -596,6 +972,17 @@ impl Store {
         })
     }
     pub fn event(&self, task_id: &str, kind: &str, data: Value) -> Result<()> {
+        anyhow::ensure!(
+            kind != "tool_result"
+                || (data.get("origin").is_none() && data.get("origin_version").is_none()),
+            "tool_result origin is reserved for the result transaction"
+        );
+        anyhow::ensure!(
+            kind != "approval.requested"
+                || (data.get("evidence_version").is_none()
+                    && data.get("safe_call_digest").is_none()),
+            "approval evidence is reserved for the approval transaction"
+        );
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
         // Status events are projections of durable state, never a second
@@ -1405,8 +1792,32 @@ impl Store {
         tool_name: &str,
         args: &Value,
     ) -> Result<(approval::ApprovalRecord, bool)> {
+        self.ensure_approval_inner(task, tool_call_id, tool_name, args, false)
+    }
+
+    pub(crate) fn ensure_current_approval(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+    ) -> Result<(approval::ApprovalRecord, bool)> {
+        self.ensure_approval_inner(task, tool_call_id, tool_name, args, true)
+    }
+
+    fn ensure_approval_inner(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+        require_current: bool,
+    ) -> Result<(approval::ApprovalRecord, bool)> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if require_current {
+            validate_current_approval_call(&tx, task, tool_call_id, tool_name)?;
+        }
         let repo = repository::Repository::new(&tx);
         let (turn_id, session_id, binding) =
             approval_binding(&tx, task, tool_call_id, tool_name, args)?;
@@ -1468,6 +1879,24 @@ impl Store {
             decided_at: None,
             decided_by: None,
         };
+        let safe_call_digest = safe_approval_call_digest(&tx, &durable, &record)?;
+        {
+            let mut stmt =
+                tx.prepare("SELECT task_id,data FROM events WHERE kind='approval.requested'")?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            for row in rows {
+                let (event_task, raw) = row?;
+                let event: Value = serde_json::from_str(&raw)?;
+                anyhow::ensure!(
+                    event["approval_id"] != record.id
+                        && !(event_task == record.task_id
+                            && event["tool_call_id"] == record.tool_call_id),
+                    "审批请求事实冲突"
+                );
+            }
+        }
         insert_approval(&tx, &record)?;
         approval_event(
             &tx,
@@ -1480,7 +1909,9 @@ impl Store {
                 "preview": record.preview,
                 "task_id": record.task_id,
                 "turn_id": record.turn_id,
-                "session_id": record.session_id
+                "session_id": record.session_id,
+                "evidence_version": 1,
+                "safe_call_digest": safe_call_digest
             }),
         )?;
         tx.commit()?;
@@ -1657,8 +2088,32 @@ impl Store {
         tool_name: &str,
         args: &Value,
     ) -> Result<approval::ApprovalRecord> {
+        self.claim_approval_inner(task, tool_call_id, tool_name, args, false)
+    }
+
+    pub(crate) fn claim_current_approval(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+    ) -> Result<approval::ApprovalRecord> {
+        self.claim_approval_inner(task, tool_call_id, tool_name, args, true)
+    }
+
+    fn claim_approval_inner(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+        require_current: bool,
+    ) -> Result<approval::ApprovalRecord> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if require_current {
+            validate_current_approval_call(&tx, task, tool_call_id, tool_name)?;
+        }
         let current = repository::Repository::new(&tx)
             .approval_by_tool_call(&task.id, tool_call_id)?
             .ok_or_else(|| approval::ApprovalError::NotFound {
@@ -1946,40 +2401,8 @@ fn restore_receipt(db: &Connection, id: &str) -> Result<RestoreReceipt> {
     })
 }
 
-struct UnicodeStringFormatter;
-
-impl serde_json::ser::Formatter for UnicodeStringFormatter {
-    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> std::io::Result<()>
-    where
-        W: ?Sized + Write,
-    {
-        for unit in fragment.encode_utf16() {
-            write!(writer, "\\u{unit:04x}")?;
-        }
-        Ok(())
-    }
-}
-
-fn stable_safe_json(value: &Value) -> Result<String> {
-    let compact = value.to_string();
-    if secrets::redact_persisted(&Value::String(compact.clone())) == Value::String(compact.clone())
-    {
-        return Ok(compact);
-    }
-    // Encode string fragments only after structural redaction. This keeps a
-    // second task-level text redaction from consuming JSON delimiters while
-    // preserving the same parsed value for the event integrity check.
-    let mut bytes = Vec::new();
-    let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, UnicodeStringFormatter);
-    value.serialize(&mut serializer)?;
-    let encoded = String::from_utf8(bytes)?;
-    anyhow::ensure!(
-        serde_json::from_str::<Value>(&encoded)? == *value
-            && secrets::redact_persisted(&Value::String(encoded.clone()))
-                == Value::String(encoded.clone()),
-        "安全工具结果无法稳定序列化"
-    );
-    Ok(encoded)
+fn tool_result_value(content: &str) -> Value {
+    serde_json::from_str(content).unwrap_or_else(|_| Value::String(content.into()))
 }
 
 fn command_message(task: &Task) -> String {
@@ -2098,8 +2521,7 @@ fn closed_calls(messages: &[Value]) -> Result<Vec<ClosedCall<'_>>> {
             calls.push(ClosedCall {
                 id,
                 name,
-                result: serde_json::from_str(content)
-                    .unwrap_or_else(|_| Value::String(content.into())),
+                result: tool_result_value(content),
             });
             index += 1;
         }
@@ -2189,16 +2611,25 @@ fn chat_continuation_prefix_tx(
             .iter()
             .filter(|call| !owners.contains_key(call.id))
             .collect();
-        let mut events_stmt = tx.prepare("SELECT data FROM events WHERE task_id=?1 AND turn_id=?2 AND session_id=?3 AND kind='tool_result' ORDER BY seq")?;
+        let mut events_stmt = tx.prepare("SELECT data,turn_id,session_id FROM events WHERE task_id=?1 AND kind='tool_result' ORDER BY seq")?;
         let events = events_stmt
-            .query_map(params![task.id, turn.id.0, session.id.0], |row| {
-                row.get::<_, String>(0)
+            .query_map(params![task.id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         if events.len() != new_calls.len() {
             return Err(ChatTurnError::UnsupportedSession.into());
         }
-        for (call, raw_event) in new_calls.into_iter().zip(events) {
+        for (call, (raw_event, event_turn, event_session)) in new_calls.into_iter().zip(events) {
+            if event_turn.as_deref() != Some(turn.id.0.as_str())
+                || event_session.as_deref() != Some(session.id.0.as_str())
+            {
+                return Err(ChatTurnError::CorruptState.into());
+            }
             let event: Value =
                 serde_json::from_str(&raw_event).map_err(|_| ChatTurnError::CorruptState)?;
             // Legacy readonly/denied events have no call id. Their owned task,
@@ -2209,10 +2640,79 @@ fn chat_continuation_prefix_tx(
             {
                 return Err(ChatTurnError::CorruptState.into());
             }
+            let has_origin = event.get("origin").is_some() || event.get("origin_version").is_some();
+            let trusted_denial = if has_origin {
+                if event["origin_version"] != 1 || event["tool_call_id"] != call.id {
+                    return Err(ChatTurnError::CorruptState.into());
+                }
+                let approval = approvals
+                    .iter()
+                    .find(|record| record.tool_call_id == call.id);
+                match event["origin"].as_str() {
+                    Some("agent_denied") if approval.is_none()
+                        && call.result == json!({"error":"blocked_by_agent_policy"}) => true,
+                    Some("host_denied") if approval.is_none()
+                        && matches!(approval::evaluate(&task, call.name), approval::PolicyDecision::Deny { reason } if call.result == Value::String(reason.into())) => true,
+                    Some("read_completed") if approval.is_none()
+                        && matches!(call.name, "read_file" | "list_files" | "search_files") => false,
+                    Some("interrupted_without_claim") if approval.is_none()
+                        && call.result == Value::String("Execution was interrupted. Inspect files before repeating a write or command.".into()) => false,
+                    Some("approval_denied") if approval.is_some_and(|record|
+                        record.status == ApprovalStatus::Denied
+                            && call.result == Value::String(approval::tool_error(ApprovalStatus::Denied))) => false,
+                    Some("approval_cancelled") if approval.is_some_and(|record|
+                        (record.status == ApprovalStatus::Cancelled || record.execution_state == ExecutionState::Cancelled)
+                            && call.result == Value::String(approval::tool_error(ApprovalStatus::Cancelled))) => false,
+                    _ => return Err(ChatTurnError::CorruptState.into()),
+                }
+            } else {
+                false
+            };
+            if matches!(
+                event["origin"].as_str(),
+                Some("approval_denied" | "approval_cancelled")
+            ) {
+                let record = approvals
+                    .iter()
+                    .find(|record| record.tool_call_id == call.id)
+                    .ok_or(ChatTurnError::CorruptState)?;
+                if matches!(
+                    record.execution_state,
+                    ExecutionState::Claimed | ExecutionState::Finished | ExecutionState::Unknown
+                ) {
+                    return Err(ChatTurnError::CorruptState.into());
+                }
+                verify_denied_approval(tx, &task, &task, record)
+                    .map_err(|_| ChatTurnError::CorruptState)?;
+            }
+            if has_origin {
+                let conflicting_change: bool = tx.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM workspace_changes WHERE task_id=?1 AND tool_call_id=?2)",
+                    params![task.id, call.id],
+                    |row| row.get(0),
+                )?;
+                if conflicting_change {
+                    return Err(ChatTurnError::CorruptState.into());
+                }
+                if event["origin"] != "read_completed" {
+                    let mut starts = tx.prepare(
+                        "SELECT data FROM events WHERE task_id=?1 AND kind='tool_start'",
+                    )?;
+                    let rows = starts.query_map([&task.id], |row| row.get::<_, String>(0))?;
+                    for row in rows {
+                        let start: Value =
+                            serde_json::from_str(&row?).map_err(|_| ChatTurnError::CorruptState)?;
+                        if start["tool_call_id"] == call.id {
+                            return Err(ChatTurnError::CorruptState.into());
+                        }
+                    }
+                }
+            }
             if approval::evaluate(&task, call.name) == approval::PolicyDecision::RequireApproval
                 && !approvals
                     .iter()
                     .any(|record| record.tool_call_id == call.id)
+                && !trusted_denial
             {
                 return Err(ChatTurnError::UnresolvedEffects.into());
             }
@@ -2275,6 +2775,61 @@ fn candidate_continues_snapshot(
         && last.get("tool_calls").is_none()
 }
 
+fn validate_current_approval_call(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    call_id: &str,
+    name: &str,
+) -> Result<()> {
+    let conflict = || approval::ApprovalError::BindingConflict {
+        id: call_id.to_owned(),
+    };
+    let durable = legacy_task_row(tx, &task.id)?;
+    let saved = safe_task_value(&durable)?;
+    let caller = safe_task_value(task)?;
+    for field in [
+        "id",
+        "run_id",
+        "spec",
+        "route",
+        "workspace",
+        "created_at",
+        "messages",
+    ] {
+        if saved[field] != caller[field] {
+            return Err(conflict().into());
+        }
+    }
+    approval::validate_call_history(&durable.messages)?;
+    let (turn, session) = approval_scope(tx, &durable.id)?;
+    let inherited = inherited_message_count(tx, &durable, turn.as_deref(), session.as_deref())?;
+    let index = durable
+        .messages
+        .iter()
+        .rposition(|message| message.get("tool_calls").is_some())
+        .ok_or_else(conflict)?;
+    if index < inherited {
+        return Err(conflict().into());
+    }
+    validate_prior_groups(&durable.messages[inherited..index])?;
+    let group = durable.messages[index]["tool_calls"]
+        .as_array()
+        .ok_or_else(conflict)?;
+    let prior = &durable.messages[index + 1..];
+    let call = group.get(prior.len()).ok_or_else(conflict)?;
+    if durable.messages[index]["role"] != "assistant"
+        || call["id"] != call_id
+        || call["type"] != "function"
+        || call["function"]["name"] != name
+        || prior.iter().zip(group).any(|(answer, previous)| {
+            answer["role"] != "tool" || answer["tool_call_id"] != previous["id"]
+        })
+    {
+        return Err(conflict().into());
+    }
+    Ok(())
+}
+
 fn approval_binding(
     tx: &rusqlite::Transaction<'_>,
     task: &Task,
@@ -2322,19 +2877,10 @@ fn approval_binding(
         .as_str()
         .ok_or_else(conflict)?;
     let raw_value: Value = serde_json::from_str(raw_args).map_err(|_| conflict())?;
-    let safe = secrets::redact_persisted(&Value::String(raw_args.into()));
-    let persisted = &call["function"]["arguments"];
-    let equivalent = safe == *persisted
-        || match (
-            safe.as_str()
-                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
-            persisted
-                .as_str()
-                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
-        ) {
-            (Some(a), Some(b)) => approval::args_digest(&a)? == approval::args_digest(&b)?,
-            _ => false,
-        };
+    let persisted = call["function"]["arguments"]
+        .as_str()
+        .ok_or_else(conflict)?;
+    let equivalent = safe_tool_arguments_equal(raw_args, persisted)?;
     if call["function"]["name"] != name
         || !equivalent
         || approval::args_digest(&raw_value)? != approval::args_digest(args)?
@@ -2371,6 +2917,306 @@ fn approval_scope(
         Some((turn_id, session_id)) => (Some(turn_id), Some(session_id)),
         None => (None, None),
     })
+}
+
+fn safe_approval_call_digest(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    record: &approval::ApprovalRecord,
+) -> Result<String> {
+    use crate::tool_results::ToolResultError;
+    let (turn, session) = approval_scope(tx, &task.id)?;
+    if record.task_id != task.id
+        || record.turn_id != turn
+        || record.session_id != session
+        || record.workspace != task.workspace
+        || record.write_scopes != task.spec.write_scopes
+        || record.allow_commands != task.spec.allow_commands
+    {
+        return Err(ToolResultError::Conflict.into());
+    }
+    let binding = approval::binding_digest_from_args_digest(
+        &task.id,
+        session.as_deref(),
+        turn.as_deref(),
+        &record.tool_call_id,
+        &record.tool_name,
+        &task.workspace,
+        &task.spec.write_scopes,
+        task.spec.allow_commands,
+        &record.args_digest,
+    )?;
+    if binding != record.binding_digest {
+        return Err(ToolResultError::Conflict.into());
+    }
+    approval::validate_call_history(&task.messages).map_err(|_| ToolResultError::Corrupt)?;
+    let inherited = inherited_message_count(tx, task, turn.as_deref(), session.as_deref())?;
+    let (index, call) = task
+        .messages
+        .iter()
+        .enumerate()
+        .find_map(|(index, message)| {
+            message["tool_calls"].as_array().and_then(|calls| {
+                calls
+                    .iter()
+                    .find(|call| call["id"] == record.tool_call_id)
+                    .map(|call| (index, call))
+            })
+        })
+        .ok_or(ToolResultError::Conflict)?;
+    if index < inherited
+        || task.messages[index]["role"] != "assistant"
+        || call["type"] != "function"
+        || call["function"]["name"] != record.tool_name
+    {
+        return Err(ToolResultError::Conflict.into());
+    }
+    validate_prior_groups(&task.messages[inherited..index])?;
+    let args: Value = serde_json::from_str(
+        call["function"]["arguments"]
+            .as_str()
+            .ok_or(ToolResultError::Corrupt)?,
+    )
+    .map_err(|_| ToolResultError::Corrupt)?;
+    if !args.is_object() {
+        return Err(ToolResultError::Corrupt.into());
+    }
+    approval::args_digest(&json!({
+        "version":"approval-safe-call-v1",
+        "approval_id":record.id,
+        "task_id":task.id,
+        "run_id":task.run_id,
+        "turn_id":turn,
+        "session_id":session,
+        "tool_call_id":record.tool_call_id,
+        "tool_name":record.tool_name,
+        "safe_args":args
+    }))
+}
+
+fn verify_denied_approval(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    caller: &Task,
+    record: &approval::ApprovalRecord,
+) -> Result<()> {
+    use crate::tool_results::ToolResultError;
+    let digest = safe_approval_call_digest(tx, task, record)?;
+    let mut stmt = tx.prepare("SELECT data,turn_id,session_id,task_id FROM events WHERE kind='approval.requested' ORDER BY seq")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, Option<String>>(1)?,
+            row.get::<_, Option<String>>(2)?,
+            row.get::<_, String>(3)?,
+        ))
+    })?;
+    let mut relevant = Vec::new();
+    for row in rows {
+        let (raw, turn, session, event_task) = row?;
+        let event: Value = serde_json::from_str(&raw).map_err(|_| ToolResultError::Corrupt)?;
+        if event_task == task.id
+            && (event.get("evidence_version").is_some() || event.get("safe_call_digest").is_some())
+            && (event["approval_id"].as_str().is_none() || event["tool_call_id"].as_str().is_none())
+        {
+            return Err(ToolResultError::Corrupt.into());
+        }
+        if event["approval_id"] == record.id
+            || (event_task == task.id && event["tool_call_id"] == record.tool_call_id)
+        {
+            relevant.push((event, turn, session, event_task));
+        }
+    }
+    if relevant.len() > 1 {
+        return Err(ToolResultError::Corrupt.into());
+    }
+    if let Some((event, turn, session, event_task)) = relevant.first() {
+        if *turn != record.turn_id
+            || *session != record.session_id
+            || *event_task != task.id
+            || event["approval_id"] != record.id
+            || event["tool_call_id"] != record.tool_call_id
+            || event["tool_name"] != record.tool_name
+            || event["task_id"] != record.task_id
+            || event["turn_id"] != json!(record.turn_id)
+            || event["session_id"] != json!(record.session_id)
+            || event["preview"] != record.preview
+        {
+            return Err(ToolResultError::Corrupt.into());
+        }
+        if event.get("evidence_version").is_some() || event.get("safe_call_digest").is_some() {
+            if event.get("turn_id").is_none()
+                || event.get("session_id").is_none()
+                || event["evidence_version"] != 1
+                || event["safe_call_digest"] != digest
+            {
+                return Err(ToolResultError::Corrupt.into());
+            }
+            return Ok(());
+        }
+    }
+    let raw_call = caller
+        .messages
+        .iter()
+        .filter_map(|message| message["tool_calls"].as_array())
+        .flatten()
+        .find(|call| call["id"] == record.tool_call_id)
+        .ok_or(ToolResultError::Conflict)?;
+    let args: Value = serde_json::from_str(
+        raw_call["function"]["arguments"]
+            .as_str()
+            .ok_or(ToolResultError::Conflict)?,
+    )
+    .map_err(|_| ToolResultError::Conflict)?;
+    let (turn, session, binding) =
+        approval_binding(tx, caller, &record.tool_call_id, &record.tool_name, &args)?;
+    if turn != record.turn_id
+        || session != record.session_id
+        || binding != record.binding_digest
+        || approval::args_digest(&args)? != record.args_digest
+    {
+        return Err(ToolResultError::Conflict.into());
+    }
+    Ok(())
+}
+
+fn validate_prior_groups(messages: &[Value]) -> Result<()> {
+    use crate::tool_results::ToolResultError;
+    let mut index = 0;
+    while index < messages.len() {
+        let message = &messages[index];
+        if let Some(calls) = message.get("tool_calls") {
+            let calls = calls.as_array().ok_or(ToolResultError::Corrupt)?;
+            if message["role"] != "assistant" || calls.is_empty() {
+                return Err(ToolResultError::Corrupt.into());
+            }
+            for call in calls {
+                index += 1;
+                let answer = messages.get(index).ok_or(ToolResultError::Conflict)?;
+                if answer["role"] != "tool" || answer["tool_call_id"] != call["id"] {
+                    return Err(ToolResultError::Conflict.into());
+                }
+            }
+        } else if message["role"] == "tool" {
+            return Err(ToolResultError::Corrupt.into());
+        }
+        index += 1;
+    }
+    Ok(())
+}
+
+fn validate_owned_result_events(messages: &[Value], events: &[Value]) -> Result<()> {
+    use crate::tool_results::ToolResultError;
+    let answers: Vec<_> = messages
+        .iter()
+        .filter(|message| message["role"] == "tool")
+        .collect();
+    if answers.len() != events.len() {
+        return Err(ToolResultError::Conflict.into());
+    }
+    for (answer, event) in answers.iter().zip(events) {
+        let id = answer["tool_call_id"]
+            .as_str()
+            .ok_or(ToolResultError::Corrupt)?;
+        let call = messages
+            .iter()
+            .filter_map(|m| m["tool_calls"].as_array())
+            .flatten()
+            .find(|call| call["id"] == id)
+            .ok_or(ToolResultError::Corrupt)?;
+        let content = answer["content"].as_str().ok_or(ToolResultError::Corrupt)?;
+        let result = tool_result_value(content);
+        if event.get("result").is_none()
+            || event["name"] != call["function"]["name"]
+            || event["result"] != result
+            || event.get("tool_call_id").is_some_and(|value| value != id)
+        {
+            return Err(ToolResultError::Corrupt.into());
+        }
+        if event.get("origin").is_some() || event.get("origin_version").is_some() {
+            if event["origin_version"] != 1
+                || event["tool_call_id"] != id
+                || !matches!(
+                    event["origin"].as_str(),
+                    Some(
+                        "read_completed"
+                            | "agent_denied"
+                            | "host_denied"
+                            | "approval_denied"
+                            | "approval_cancelled"
+                            | "interrupted_without_claim"
+                    )
+                )
+            {
+                return Err(ToolResultError::Corrupt.into());
+            }
+            let name = call["function"]["name"]
+                .as_str()
+                .ok_or(ToolResultError::Corrupt)?;
+            let valid_semantics = match event["origin"].as_str() {
+                Some("read_completed") => matches!(name, "read_file" | "list_files" | "search_files"),
+                Some("agent_denied") => result == json!({"error":"blocked_by_agent_policy"}),
+                Some("host_denied") => approval::classify(name) == approval::ToolEffect::Unknown
+                    && result == Value::String("未分类工具拒绝执行".into()),
+                Some("approval_denied") => result == Value::String(approval::tool_error(approval::ApprovalStatus::Denied)),
+                Some("approval_cancelled") => result == Value::String(approval::tool_error(approval::ApprovalStatus::Cancelled)),
+                Some("interrupted_without_claim") => result == Value::String("Execution was interrupted. Inspect files before repeating a write or command.".into()),
+                _ => false,
+            };
+            if !valid_semantics {
+                return Err(ToolResultError::Corrupt.into());
+            }
+        }
+    }
+    Ok(())
+}
+
+fn inherited_message_count(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    turn_id: Option<&str>,
+    session_id: Option<&str>,
+) -> Result<usize> {
+    use crate::tool_results::ToolResultError;
+    let (Some(turn_id), Some(session_id)) = (turn_id, session_id) else {
+        return Ok(0);
+    };
+    let repo = repository::Repository::new(tx);
+    let session = repo.session(&SessionId(session_id.to_owned()))?;
+    let turn = repo.turn(&TurnId(turn_id.to_owned()))?;
+    if session.legacy_run_id != task.run_id
+        || turn.session_id != session.id
+        || turn.project_id != session.project_id
+    {
+        return Err(ToolResultError::Corrupt.into());
+    }
+    if session.kind != SessionKind::Chat {
+        return Ok(0);
+    }
+    let previous: Option<(String, String)> = tx.query_row(
+        "SELECT tt.legacy_task_id,tt.turn_id FROM turn_tasks tt JOIN events e ON e.turn_id=tt.turn_id AND e.session_id=tt.session_id WHERE tt.session_id=?1 AND tt.turn_id<>?2 GROUP BY tt.turn_id,tt.legacy_task_id HAVING MIN(e.seq)<(SELECT MIN(seq) FROM events WHERE turn_id=?2 AND session_id=?1) ORDER BY MIN(e.seq) DESC LIMIT 1",
+        params![session_id, turn_id], |row| Ok((row.get(0)?, row.get(1)?)),
+    ).optional()?;
+    let Some((previous, previous_turn)) = previous else {
+        return Ok(0);
+    };
+    let count: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM turn_tasks WHERE turn_id=?1 AND session_id=?2",
+        params![previous_turn, session_id],
+        |row| row.get(0),
+    )?;
+    if count != 1 {
+        return Err(ToolResultError::Corrupt.into());
+    }
+    let predecessor = legacy_task_row(tx, &previous)?;
+    if predecessor.run_id != task.run_id
+        || predecessor.status != "completed"
+        || !task.messages.starts_with(&predecessor.messages)
+        || closed_calls(&predecessor.messages).is_err()
+    {
+        return Err(ToolResultError::Corrupt.into());
+    }
+    Ok(predecessor.messages.len())
 }
 
 fn insert_approval(
@@ -2514,6 +3360,128 @@ fn set_turn_status_tx(
     )
 }
 
+fn protect_running_projection(tx: &rusqlite::Transaction<'_>, task: &Task) -> Result<Task> {
+    let previous = legacy_task_row(tx, &task.id)?;
+    let old = safe_task_value(&previous)?;
+    let new = safe_task_value(task)?;
+    let old_output = old["output"]
+        .as_str()
+        .context("persisted output is not a string")?;
+    let new_output = new["output"]
+        .as_str()
+        .context("candidate output is not a string")?;
+    let mut protected = task.clone();
+    if old_output.starts_with(new_output) {
+        protected.output = previous.output.clone();
+    } else {
+        anyhow::ensure!(
+            new_output.starts_with(old_output)
+                || output_matches_delta_history(tx, &task.id, old_output, new_output)?,
+            "任务输出前缀冲突"
+        );
+    }
+    protected.usage = merge_usage(&previous.usage, &task.usage)?;
+    Ok(protected)
+}
+
+fn output_matches_delta_history(
+    tx: &rusqlite::Transaction<'_>,
+    task_id: &str,
+    old_output: &str,
+    new_output: &str,
+) -> Result<bool> {
+    let (turn, _) = approval_scope(tx, task_id)?;
+    let session = repository::Repository::new(tx)
+        .session_by_legacy_run_of_task(task_id)?
+        .map(|session| session.id.0);
+    let mut stmt = tx.prepare(
+        "SELECT data,turn_id,session_id FROM events WHERE task_id=?1 AND kind='delta' ORDER BY seq",
+    )?;
+    let rows = stmt.query_map([task_id], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, Option<String>>(1)?,
+            row.get::<_, Option<String>>(2)?,
+        ))
+    })?;
+    let mut text = String::new();
+    let mut saw_old = old_output.is_empty();
+    for row in rows {
+        let (raw, event_turn, event_session) = row?;
+        if event_turn != turn || event_session != session {
+            return Ok(false);
+        }
+        let data: Value = serde_json::from_str(&raw)?;
+        let Some(delta) = data["text"].as_str() else {
+            return Ok(false);
+        };
+        text.push_str(delta);
+        if !saw_old {
+            saw_old = secrets::redact_persisted(&Value::String(text.clone()))
+                == Value::String(old_output.to_owned());
+        }
+    }
+    Ok(saw_old
+        && secrets::redact_persisted(&Value::String(text)) == Value::String(new_output.to_owned()))
+}
+
+fn merge_usage(persisted: &Value, candidate: &Value) -> Result<Value> {
+    if persisted == candidate {
+        return Ok(persisted.clone());
+    }
+    if !persisted.is_object() && candidate.is_object() {
+        return Ok(candidate.clone());
+    }
+    if !candidate.is_object() && persisted.is_object() {
+        return Ok(persisted.clone());
+    }
+    let (Some(old), Some(new)) = (persisted.as_object(), candidate.as_object()) else {
+        return Err(crate::tool_results::ToolResultError::Conflict.into());
+    };
+    let mut old_ahead = false;
+    let mut new_ahead = false;
+    let mut merged = old.clone();
+    for key in old
+        .keys()
+        .chain(new.keys())
+        .collect::<std::collections::HashSet<_>>()
+    {
+        match (old.get(key), new.get(key)) {
+            (Some(a), Some(b)) if a == b => {}
+            (a, b)
+                if matches!(
+                    key.as_str(),
+                    "prompt_tokens" | "completion_tokens" | "total_tokens"
+                ) =>
+            {
+                let old_number = a.and_then(Value::as_u64);
+                let new_number = b.and_then(Value::as_u64);
+                let a = old_number.unwrap_or(0);
+                let b = new_number.unwrap_or(0);
+                old_ahead |= a > b;
+                new_ahead |= b > a;
+                if let Some(n) = old_number.or(new_number) {
+                    merged.insert(key.clone(), json!(n.max(a).max(b)));
+                } else if let Some(value) = new.get(key) {
+                    if old.get(key).is_some_and(|prior| prior != value) {
+                        return Err(crate::tool_results::ToolResultError::Conflict.into());
+                    }
+                    merged.insert(key.clone(), value.clone());
+                }
+            }
+            (None, Some(value)) => {
+                merged.insert(key.clone(), value.clone());
+            }
+            (Some(_), None) => {}
+            _ => return Err(crate::tool_results::ToolResultError::Conflict.into()),
+        }
+    }
+    if old_ahead && new_ahead {
+        return Err(crate::tool_results::ToolResultError::Conflict.into());
+    }
+    Ok(Value::Object(merged))
+}
+
 fn save_task_tx(tx: &rusqlite::Transaction<'_>, task: &Task, resume: bool) -> Result<()> {
     secrets::validate_persisted_id("task_id", &task.id)?;
     let (run_id, previous): (String, String) = tx
@@ -2526,15 +3494,31 @@ fn save_task_tx(tx: &rusqlite::Transaction<'_>, task: &Task, resume: bool) -> Re
     let previous: Task = serde_json::from_str(&previous)?;
     // A stale background snapshot must never undo committed cancellation.
     // It may still append the real result of a claim which won before cancel.
-    let mut cancelled_task;
-    let task = if !resume && previous.status == "cancelled" {
-        cancelled_task = task.clone();
-        cancelled_task.status = "cancelled".into();
-        cancelled_task.error = previous.error.clone();
-        &cancelled_task
+    let mut protected = task.clone();
+    if !resume && previous.status == "cancelled" {
+        protected.status = "cancelled".into();
+        protected.error = previous.error.clone();
+    }
+    let old_messages = safe_task_value(&previous)?["messages"]
+        .as_array()
+        .context("persisted messages are not an array")?
+        .clone();
+    let new_messages = safe_task_value(task)?["messages"]
+        .as_array()
+        .context("candidate messages are not an array")?
+        .clone();
+    if old_messages.starts_with(&new_messages) {
+        if old_messages.len() != new_messages.len() {
+            anyhow::ensure!(
+                !resume && matches!(protected.status.as_str(), "failed" | "cancelled"),
+                "旧任务快照不能推进状态"
+            );
+        }
+        protected.messages = previous.messages.clone();
     } else {
-        task
-    };
+        anyhow::ensure!(new_messages.starts_with(&old_messages), "任务消息前缀冲突");
+    }
+    let task = &protected;
     anyhow::ensure!(
         task.run_id == run_id && previous.id == task.id && previous.run_id == run_id,
         "任务身份与持久化关联不一致"
@@ -3099,6 +4083,779 @@ mod tests {
         let error = json!({"error":"path rejected"});
         let encoded = stable_safe_json(&error).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), error);
+    }
+
+    #[test]
+    fn r04_task_tool_arguments_are_safe_objects_and_idempotent() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("safe-args.db")).unwrap();
+        let (_, _, _, _, _, mut task) = sample_graph(&store);
+        let args = json!({"content":"Bearer mock-secret-value", "env":{"API_KEY":"nested-secret"},
+            "unicode":"普通🙂", "literal":"null", "text":r#"quote " and slash \"#});
+        task.messages = vec![
+            json!({"role":"user","content":"Bearer other-secret"}),
+            json!({"role":"assistant","content":null,"tool_calls":[
+                {"id":"one","type":"function","function":{"name":"write_file","arguments":args.to_string()}},
+                {"id":"broken","type":"function","function":{"name":"write_file","arguments":"{broken"}},
+                {"id":"array","type":"function","function":{"name":"write_file","arguments":"[1,2]"}}
+            ]}),
+            json!({"role":"assistant","content":"ordinary"}),
+        ];
+        let safe = safe_task_value(&task).unwrap();
+        let serialized = safe.to_string();
+        assert!(!serialized.contains("mock-secret-value"));
+        assert!(!serialized.contains("nested-secret"));
+        assert!(!serialized.contains("other-secret"));
+        let calls = safe["messages"][1]["tool_calls"].as_array().unwrap();
+        let parsed: Value =
+            serde_json::from_str(calls[0]["function"]["arguments"].as_str().unwrap()).unwrap();
+        assert!(parsed.is_object());
+        assert_eq!(parsed["content"], "bearer [redacted]");
+        assert_eq!(parsed["env"]["API_KEY"], "[redacted]");
+        assert_eq!(parsed["unicode"], "普通🙂");
+        assert_eq!(parsed["literal"], "null");
+        assert_eq!(calls[1]["function"]["arguments"], "{broken");
+        assert_eq!(calls[2]["function"]["arguments"], "[1,2]");
+        assert!(safe["messages"][2].get("tool_calls").is_none());
+        let restored: Task = serde_json::from_value(safe.clone()).unwrap();
+        assert_eq!(safe_task_value(&restored).unwrap(), safe);
+        assert!(safe_tool_arguments("{broken").unwrap().is_none());
+        assert!(safe_tool_arguments("[1,2]").unwrap().is_none());
+        let legacy = r#" { "z" : 1, "a" : "普通" } "#;
+        assert_eq!(
+            safe_tool_arguments(legacy).unwrap().as_deref(),
+            Some(legacy)
+        );
+        assert!(safe_tool_arguments_equal(legacy, r#"{"a":"普通","z":1}"#).unwrap());
+    }
+
+    #[test]
+    fn r03_result_comparison_keeps_json_string_types_and_plain_text() {
+        for (text, expected) in [
+            ("null", Value::Null),
+            ("123", json!(123)),
+            (r#""null""#, json!("null")),
+            (r#""123""#, json!("123")),
+            ("plain 文本🙂", json!("plain 文本🙂")),
+        ] {
+            assert_eq!(tool_result_value(text), expected);
+        }
+    }
+
+    #[test]
+    fn r03_interrupted_plain_text_replays_without_a_claim() {
+        use crate::tool_results::{CommitDisposition, Origin};
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("interrupted.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{
+                "id":"interrupted","type":"function",
+                "function":{"name":"write_file","arguments":"{\"path\":\"src/a\",\"content\":\"x\"}"}
+            }]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let text = "Execution was interrupted. Inspect files before repeating a write or command.";
+        let (committed, disposition) = store
+            .commit_tool_result(
+                &task,
+                "interrupted",
+                "write_file",
+                text,
+                Origin::InterruptedWithoutClaim,
+            )
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Inserted);
+        assert_eq!(committed.messages.last().unwrap()["content"], text);
+        let (replayed, disposition) = store
+            .commit_tool_result(
+                &task,
+                "interrupted",
+                "write_file",
+                text,
+                Origin::InterruptedWithoutClaim,
+            )
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Replayed);
+        assert_eq!(replayed.messages, committed.messages);
+        assert!(
+            store
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .any(|event| event.kind == "tool_result" && event.data["result"] == text)
+        );
+    }
+
+    #[test]
+    fn running_usage_merge_preserves_legacy_fields_and_rejects_divergence() {
+        let old = json!({"prompt_tokens":"invalid","legacy":"keep"});
+        let new = json!({"prompt_tokens":3,"completion_tokens":2,"total_tokens":5,"legacy":"keep"});
+        assert_eq!(merge_usage(&old, &new).unwrap(), new);
+        assert_eq!(merge_usage(&new, &old).unwrap(), new);
+        assert!(
+            merge_usage(
+                &json!({"prompt_tokens":4,"completion_tokens":1,"total_tokens":5}),
+                &json!({"prompt_tokens":3,"completion_tokens":3,"total_tokens":6}),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn running_output_accepts_token_boundary_when_delta_history_proves_append() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("output.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        store
+            .event(&task.id, "delta", json!({"text":"sk-"}))
+            .unwrap();
+        task.output = "sk-".into();
+        store.save_running_snapshot(&task).unwrap();
+        store
+            .event(&task.id, "delta", json!({"text":"abc"}))
+            .unwrap();
+        task.output.push_str("abc");
+        store.save_running_snapshot(&task).unwrap();
+        assert_eq!(store.task(&task.id).unwrap().output, "[redacted]");
+        task.output = "unrelated".into();
+        assert!(store.save_running_snapshot(&task).is_err());
+    }
+
+    #[test]
+    fn agent_denial_result_is_atomic_and_replay_does_not_append() {
+        use crate::tool_results::{CommitDisposition, Origin};
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("result.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec![".".into()];
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{
+                "id":"call-one","type":"function",
+                "function":{"name":"write_file","arguments":"{\"path\":\"a\",\"content\":\"x\"}"}
+            }]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let content = r#"{"error":"blocked_by_agent_policy"}"#;
+        let (committed, disposition) = store
+            .commit_tool_result(
+                &task,
+                "call-one",
+                "write_file",
+                content,
+                Origin::AgentDenied,
+            )
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Inserted);
+        assert_eq!(committed.messages.len(), task.messages.len() + 1);
+        let (replayed, disposition) = store
+            .commit_tool_result(
+                &task,
+                "call-one",
+                "write_file",
+                content,
+                Origin::AgentDenied,
+            )
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Replayed);
+        assert_eq!(replayed.messages, committed.messages);
+        assert!(
+            store
+                .commit_tool_result(
+                    &task,
+                    "call-one",
+                    "write_file",
+                    r#"{"error":"different"}"#,
+                    Origin::AgentDenied
+                )
+                .is_err()
+        );
+        assert!(
+            store
+                .event(&task.id, "tool_result", json!({"origin_version":1}))
+                .is_err()
+        );
+        assert!(
+            store
+                .event(&task.id, "tool_result", json!({"origin":"agent_denied"}))
+                .is_err()
+        );
+        let db = store.db.lock().unwrap();
+        let count: i64 = db
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE task_id=?1 AND kind='tool_result'",
+                [&task.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn result_event_failure_rolls_back_task_message() {
+        use crate::tool_results::Origin;
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("rollback.db");
+        let store = Store::open(&path).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec![".".into()];
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{
+                "id":"call-one","type":"function",
+                "function":{"name":"write_file","arguments":"{\"path\":\"a\",\"content\":\"x\"}"}
+            }]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        Connection::open(&path).unwrap().execute_batch(
+            "CREATE TRIGGER reject_result BEFORE INSERT ON events WHEN NEW.kind='tool_result' BEGIN SELECT RAISE(ABORT,'injected'); END;"
+        ).unwrap();
+        assert!(
+            store
+                .commit_tool_result(
+                    &task,
+                    "call-one",
+                    "write_file",
+                    r#"{"error":"blocked_by_agent_policy"}"#,
+                    Origin::AgentDenied
+                )
+                .is_err()
+        );
+        assert_eq!(store.task(&task.id).unwrap().messages, task.messages);
+        let db = store.db.lock().unwrap();
+        let count: i64 = db
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE task_id=?1 AND kind='tool_result'",
+                [&task.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn legacy_orphan_read_result_is_recovered_without_another_event() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("legacy-result.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{
+                "id":"read-one","type":"function",
+                "function":{"name":"read_file","arguments":"{\"path\":\"a\"}"}
+            }]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        store
+            .event(
+                &task.id,
+                "tool_result",
+                json!({"name":"read_file","result":{"content":"text"}}),
+            )
+            .unwrap();
+        let recovered = store
+            .recover_legacy_read_result(&task, "read-one", "read_file")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            recovered.messages.last().unwrap()["tool_call_id"],
+            "read-one"
+        );
+        assert_eq!(
+            serde_json::from_str::<Value>(
+                recovered.messages.last().unwrap()["content"]
+                    .as_str()
+                    .unwrap()
+            )
+            .unwrap(),
+            json!({"content":"text"})
+        );
+        let db = store.db.lock().unwrap();
+        let count: i64 = db
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE task_id=?1 AND kind='tool_result'",
+                [&task.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn denied_approval_uses_persisted_safe_call_after_reload() {
+        use crate::tool_results::Origin;
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("approval-evidence.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        let args = json!({"path":"src/a","content":"sk-abc"});
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{
+                "id":"write-one","type":"function",
+                "function":{"name":"write_file","arguments":args.to_string()}
+            }]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let (record, created) = store
+            .ensure_approval(&task, "write-one", "write_file", &args)
+            .unwrap();
+        assert!(created);
+        assert!(
+            !store
+                .ensure_approval(&task, "write-one", "write_file", &args)
+                .unwrap()
+                .1
+        );
+        store.decide_approval(&record.id, false, "user").unwrap();
+        let reloaded = store.task(&task.id).unwrap();
+        assert!(!serde_json::to_string(&reloaded).unwrap().contains("sk-abc"));
+        let original: String = {
+            let db = store.db.lock().unwrap();
+            db.query_row(
+                "SELECT data FROM events WHERE task_id=?1 AND kind='approval.requested'",
+                [&task.id],
+                |row| row.get(0),
+            )
+            .unwrap()
+        };
+        let mut corrupt: Value = serde_json::from_str(&original).unwrap();
+        corrupt["evidence_version"] = json!(2);
+        {
+            let db = store.db.lock().unwrap();
+            db.execute(
+                "UPDATE events SET data=?2 WHERE task_id=?1 AND kind='approval.requested'",
+                params![task.id, corrupt.to_string()],
+            )
+            .unwrap();
+        }
+        assert!(
+            store
+                .commit_tool_result(
+                    &reloaded,
+                    "write-one",
+                    "write_file",
+                    &approval::tool_error(approval::ApprovalStatus::Denied),
+                    Origin::ApprovalDenied
+                )
+                .is_err()
+        );
+        assert_eq!(store.task(&task.id).unwrap().messages, reloaded.messages);
+        {
+            let db = store.db.lock().unwrap();
+            db.execute(
+                "UPDATE events SET data=?2 WHERE task_id=?1 AND kind='approval.requested'",
+                params![task.id, original],
+            )
+            .unwrap();
+        }
+        let (result, _) = store
+            .commit_tool_result(
+                &reloaded,
+                "write-one",
+                "write_file",
+                &approval::tool_error(approval::ApprovalStatus::Denied),
+                Origin::ApprovalDenied,
+            )
+            .unwrap();
+        assert_eq!(result.messages.last().unwrap()["tool_call_id"], "write-one");
+        assert_eq!(
+            result.messages.last().unwrap()["content"],
+            approval::tool_error(approval::ApprovalStatus::Denied)
+        );
+        let (replayed, disposition) = store
+            .commit_tool_result(
+                &reloaded,
+                "write-one",
+                "write_file",
+                &approval::tool_error(approval::ApprovalStatus::Denied),
+                Origin::ApprovalDenied,
+            )
+            .unwrap();
+        assert_eq!(
+            disposition,
+            crate::tool_results::CommitDisposition::Replayed
+        );
+        assert_eq!(replayed.messages, result.messages);
+        let events = store.events(&task.run_id, 0).unwrap();
+        assert!(events.iter().any(|event| event.kind == "tool_result"
+            && event.data["result"] == approval::tool_error(approval::ApprovalStatus::Denied)));
+        let requests: Vec<_> = events
+            .iter()
+            .filter(|event| event.kind == "approval.requested")
+            .collect();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].data["evidence_version"], 1);
+        assert!(
+            requests[0].data["safe_call_digest"]
+                .as_str()
+                .is_some_and(|digest| digest.len() == 64)
+        );
+        assert!(
+            !serde_json::to_string(&requests[0].data)
+                .unwrap()
+                .contains("sk-abc")
+        );
+        assert!(
+            store
+                .event(
+                    &task.id,
+                    "approval.requested",
+                    json!({"evidence_version":1})
+                )
+                .is_err()
+        );
+        assert!(
+            store
+                .event(
+                    &task.id,
+                    "approval.requested",
+                    json!({"safe_call_digest":null})
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn r04_reopened_approval_cannot_claim_with_redacted_arguments() {
+        use crate::network_authorization::{ConfirmRequest, NetworkSubject, NetworkSubjectKind};
+        use crate::project_config::{ConfigureProject, ProjectConfig, RegisterProject};
+        use crate::provider_transport::NetworkPurpose;
+
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("project");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        let target = root.join("src/a");
+        std::fs::write(&target, b"original sentinel").unwrap();
+        let path = temp.path().join("r04-reopen.db");
+        let store = Store::open(&path).unwrap();
+        let route = Route {
+            id: "route".into(),
+            name: "route".into(),
+            base_url: "http://127.0.0.1:32001/v1".into(),
+            model: "mock".into(),
+            max_tokens: 128,
+            parallel_limit: 1,
+            key_env: None,
+        };
+        store
+            .save_settings(&Settings {
+                workspace: root.to_string_lossy().into(),
+                max_concurrency: 1,
+                routes: vec![route.clone()],
+                newapi: None,
+            })
+            .unwrap();
+        store
+            .put_secret("route::route", "fixture-credential")
+            .unwrap();
+        let project = store
+            .register_project(RegisterProject {
+                name: "r04 project".into(),
+                root_path: root.to_string_lossy().into(),
+                idempotency_key: "r04-project".into(),
+            })
+            .unwrap();
+        let initial = store.project_config(&project.id).unwrap();
+        let config = store
+            .configure_project(ConfigureProject {
+                project_id: project.id.clone(),
+                expected_revision: initial.revision,
+                config: ProjectConfig {
+                    allowed_route_ids: vec!["route".into()],
+                    default_route_id: Some("route".into()),
+                    tools: true,
+                    write_scopes: vec!["src".into()],
+                    allow_commands: false,
+                },
+            })
+            .unwrap();
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: "route".into(),
+            project_id: Some(project.id.clone()),
+        };
+        let preview = store.network_preview(subject.clone()).unwrap();
+        store
+            .network_confirm(
+                subject,
+                ConfirmRequest {
+                    config_revision: preview.config_revision,
+                    credential_revision: preview.credential_revision,
+                    binding_digest: preview.binding_digest,
+                    purposes: vec![NetworkPurpose::Completion],
+                },
+                "r04-grant",
+            )
+            .unwrap();
+        let session = Session {
+            id: SessionId::from("r04-session"),
+            project_id: project.id.clone(),
+            kind: SessionKind::Chat,
+            title: "r04 session".into(),
+            legacy_run_id: "r04-session".into(),
+            created_at: 10,
+            updated_at: 10,
+        };
+        let agent = Agent {
+            id: AgentId::from("r04-agent"),
+            session_id: session.id.clone(),
+            display_name: "agent".into(),
+            role: "worker".into(),
+            created_at: 10,
+        };
+        let turn = Turn {
+            id: TurnId::from("r04-turn"),
+            session_id: session.id.clone(),
+            project_id: project.id.clone(),
+            status: LifecycleStatus::Queued,
+            request_hash: "digest-a".into(),
+            idempotency_key: Some("idem-a".into()),
+            created_at: 10,
+            updated_at: 10,
+        };
+        let projected = TurnTask {
+            id: TaskId::from("r04-projected"),
+            turn_id: turn.id.clone(),
+            session_id: session.id.clone(),
+            agent_id: agent.id.clone(),
+            legacy_task_id: "r04-task".into(),
+            depends_on: vec![],
+            status: LifecycleStatus::Queued,
+            created_at: 10,
+            updated_at: 10,
+        };
+        let args = json!({"path":"src/a","content":"Bearer mock-approval-secret","env":{"API_KEY":"nested-secret"}});
+        let mut task = Task {
+            id: projected.legacy_task_id.clone(),
+            run_id: session.legacy_run_id.clone(),
+            spec: TaskSpec {
+                name: "worker".into(),
+                role: "worker".into(),
+                route_id: "route".into(),
+                prompt: "hello".into(),
+                depends_on: vec![],
+                write_scopes: vec!["src".into()],
+                tools: true,
+                allow_commands: false,
+                max_rounds: 1,
+            },
+            route,
+            workspace: project.root_path.clone(),
+            status: "queued".into(),
+            output: String::new(),
+            error: None,
+            messages: vec![
+                json!({"role":"user","content":"hello"}),
+                json!({"role":"assistant","content":null,"tool_calls":[{"id":"r04-call","type":"function",
+                    "function":{"name":"write_file","arguments":args.to_string()}}]}),
+            ],
+            usage: Value::Null,
+            created_at: 10,
+            updated_at: 10,
+        };
+        store
+            .commit_turn_bundle_in_project(
+                TurnBundle {
+                    project: &project,
+                    session: &session,
+                    agents: std::slice::from_ref(&agent),
+                    turn: &turn,
+                    tasks: std::slice::from_ref(&projected),
+                    legacy_tasks: std::slice::from_ref(&task),
+                },
+                Some("idem-a"),
+                config.revision,
+            )
+            .unwrap();
+        let binding = store.task_project_binding(&task.id).unwrap().unwrap();
+        assert_eq!(binding.project_id, project.id);
+        assert_eq!(binding.config_revision, config.revision);
+        assert_eq!(
+            store
+                .validate_project_task(&task, true, true)
+                .unwrap()
+                .permission_digest,
+            binding.permission_digest
+        );
+        task.status = "running".into();
+        store.save_task(&task).unwrap();
+        let (record, created) = store
+            .ensure_approval(&task, "r04-call", "write_file", &args)
+            .unwrap();
+        assert!(created);
+        let digest = approval::args_digest(&args).unwrap();
+        assert_eq!(record.args_digest, digest);
+        let approved = store.decide_approval(&record.id, true, "user").unwrap();
+        assert_eq!(approved.status, approval::ApprovalStatus::Approved);
+        assert_eq!(
+            approved.execution_state,
+            approval::ExecutionState::NotStarted
+        );
+        assert_eq!(approved.args_digest, digest);
+        assert_eq!(approved.binding_digest, record.binding_digest);
+        drop(store);
+        let reopened = Store::open(&path).unwrap();
+        reopened.recover().unwrap();
+        let mut saved = reopened.task(&task.id).unwrap();
+        assert_eq!(saved.status, "interrupted");
+        assert_eq!(
+            reopened
+                .task_project_binding(&task.id)
+                .unwrap()
+                .unwrap()
+                .project_id,
+            project.id
+        );
+        assert_eq!(
+            reopened
+                .validate_project_task(&saved, true, true)
+                .unwrap()
+                .permission_digest,
+            binding.permission_digest
+        );
+        let recovered = reopened.approval(&record.id).unwrap();
+        assert_eq!(recovered.status, approval::ApprovalStatus::Approved);
+        assert_eq!(
+            recovered.execution_state,
+            approval::ExecutionState::NotStarted
+        );
+        assert_eq!(recovered.args_digest, digest);
+        assert_eq!(recovered.binding_digest, record.binding_digest);
+        let serialized = serde_json::to_string(&saved).unwrap();
+        assert!(!serialized.contains("mock-approval-secret"));
+        assert!(!serialized.contains("nested-secret"));
+        let safe_args: Value = serde_json::from_str(
+            saved.messages[1]["tool_calls"][0]["function"]["arguments"]
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(safe_args.is_object());
+        assert_ne!(approval::args_digest(&safe_args).unwrap(), digest);
+        saved.status = "queued".into();
+        saved.error = None;
+        reopened.resume_task(&saved, "continue").unwrap();
+        saved.status = "running".into();
+        reopened.save_task(&saved).unwrap();
+        assert_eq!(reopened.task(&task.id).unwrap().status, "running");
+        reopened.validate_project_task(&saved, true, true).unwrap();
+        let error = reopened
+            .claim_approval(&saved, "r04-call", "write_file", &safe_args)
+            .unwrap_err();
+        assert!(matches!(
+            error.downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::BindingConflict { .. })
+        ));
+        let after = reopened.approval(&record.id).unwrap();
+        assert_eq!(after.status, approval::ApprovalStatus::Approved);
+        assert_eq!(after.execution_state, approval::ExecutionState::NotStarted);
+        assert_eq!(after.args_digest, digest);
+        assert_eq!(after.binding_digest, record.binding_digest);
+        assert!(
+            reopened
+                .workspace_changes_for_task(&task.id)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            !reopened
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .any(|event| event.kind == "tool_start")
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"original sentinel");
+    }
+
+    #[test]
+    fn r02_public_approval_allows_multiple_pending_calls_in_one_group() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("r02-approvals.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        let args = json!({"path":"src/a","content":"ordinary"});
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[
+                {"id":"r02-0","type":"function","function":{"name":"write_file","arguments":args.to_string()}},
+                {"id":"r02-1","type":"function","function":{"name":"write_file","arguments":args.to_string()}}
+            ]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let first = store
+            .ensure_approval(&task, "r02-0", "write_file", &args)
+            .unwrap();
+        let second = store
+            .ensure_approval(&task, "r02-1", "write_file", &args)
+            .unwrap();
+        assert!(first.1 && second.1);
+        let replay = store
+            .ensure_approval(&task, "r02-1", "write_file", &args)
+            .unwrap();
+        assert!(!replay.1);
+        assert_eq!(replay.0.id, second.0.id);
+        assert_eq!(store.approvals_for_task(&task.id).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn r01_current_approval_rechecks_persisted_messages_in_transaction() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("r01-stale.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        let args = json!({"path":"src/a","content":"sk-abc"});
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[
+                {"id":"r01-stale","type":"function","function":{"name":"write_file","arguments":args.to_string()}}
+            ]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let mut newer = task.clone();
+        newer.messages.push(
+            json!({"role":"tool","tool_call_id":"r01-stale","content":"\"already answered\""}),
+        );
+        store.save_task(&newer).unwrap();
+        let error = store
+            .ensure_current_approval(&task, "r01-stale", "write_file", &args)
+            .unwrap_err();
+        assert!(matches!(
+            error.downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::BindingConflict { .. })
+        ));
+        assert!(store.approvals_for_task(&task.id).unwrap().is_empty());
+        assert_eq!(
+            store.task(&task.id).unwrap().messages.last().unwrap()["tool_call_id"],
+            "r01-stale"
+        );
     }
 
     fn legacy_schema_5(path: &Path) {

@@ -4,11 +4,11 @@ use crate::project_config::{
     SelectProject, StartInProject, TaskProjectBinding,
 };
 use crate::{
-    approval::{self, ApprovalStatus, PolicyDecision},
+    approval::{self, ApprovalStatus},
     domain::*,
     provider, secrets,
     store::{IdempotencyConflict, Store, TurnBundle},
-    tool_runtime::{ToolLease, ToolRuntime},
+    tool_runtime::ToolRuntime,
     workspace,
     workspace_changes::{self, *},
 };
@@ -20,7 +20,9 @@ use std::{
     hash::{Hash, Hasher},
     sync::{Arc, Mutex},
 };
-use tokio::sync::{Mutex as AsyncMutex, Semaphore, oneshot};
+#[cfg(test)]
+use tokio::sync::oneshot;
+use tokio::sync::{Mutex as AsyncMutex, Semaphore};
 use tokio_util::sync::CancellationToken;
 
 #[cfg(test)]
@@ -690,7 +692,7 @@ pub(crate) mod crash_probe {
             .insert(task_id);
     }
 
-    pub(super) fn take_recheck_failure(task_id: &str) -> bool {
+    pub(crate) fn take_recheck_failure(task_id: &str) -> bool {
         READ_FAILURE
             .get_or_init(|| Mutex::new(HashSet::new()))
             .lock()
@@ -755,15 +757,15 @@ type AgentBeforeSaveProbe = (String, AgentBeforeSaveCallback);
 pub struct Engine {
     pub store: Arc<Store>,
     pub client: crate::provider_transport::ProviderClient,
-    gate: AsyncMutex<()>,
+    gate: Arc<AsyncMutex<()>>,
     active: Mutex<HashMap<String, Active>>,
     slots: Arc<Semaphore>,
     slot_capacity: Mutex<usize>,
     slot_notify: Arc<tokio::sync::Notify>,
     key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
-    approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
-    tool_runtime: ToolRuntime,
+    tool_runtime: Arc<ToolRuntime>,
+    tool_calls: crate::tool_call_application::ToolCallApplication,
     provider_runtime: crate::provider_runtime::ProviderRuntime,
     agent_runtime: crate::agent_runtime::AgentRuntime,
     #[cfg(test)]
@@ -771,11 +773,13 @@ pub struct Engine {
     #[cfg(test)]
     worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
+    worktree_diagnostics: Mutex<Option<Arc<crate::worktree_diagnostics::Case>>>,
+    #[cfg(test)]
     plugin_commit_probe: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     #[cfg(test)]
     restore_probe: Mutex<Option<restore_probe::Hook>>,
     #[cfg(test)]
-    shell_claim_probe: Mutex<Option<ShellClaimProbe>>,
+    shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
@@ -867,18 +871,29 @@ impl Engine {
         provider_runtime: crate::provider_runtime::ProviderRuntime,
         agent_runtime: crate::agent_runtime::AgentRuntime,
     ) -> Result<Arc<Self>> {
+        let gate = Arc::new(AsyncMutex::new(()));
+        let tool_runtime = Arc::new(tool_runtime);
+        #[cfg(test)]
+        let shell_claim_probe = Arc::new(Mutex::new(None));
+        let tool_calls = crate::tool_call_application::ToolCallApplication::new(
+            store.clone(),
+            tool_runtime.clone(),
+            gate.clone(),
+            #[cfg(test)]
+            shell_claim_probe.clone(),
+        );
         Ok(Arc::new(Self {
             store,
             client: provider::client()?,
-            gate: AsyncMutex::new(()),
+            gate,
             active: Mutex::new(HashMap::new()),
             slots: Arc::new(Semaphore::new(max_concurrency)),
             slot_capacity: Mutex::new(max_concurrency),
             slot_notify: Arc::new(tokio::sync::Notify::new()),
             key_slots: Mutex::new(HashMap::new()),
-            approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
             tool_runtime,
+            tool_calls,
             provider_runtime,
             agent_runtime,
             #[cfg(test)]
@@ -886,11 +901,13 @@ impl Engine {
             #[cfg(test)]
             worktree_probe: Mutex::new(None),
             #[cfg(test)]
+            worktree_diagnostics: Mutex::new(None),
+            #[cfg(test)]
             plugin_commit_probe: Mutex::new(None),
             #[cfg(test)]
             restore_probe: Mutex::new(None),
             #[cfg(test)]
-            shell_claim_probe: Mutex::new(None),
+            shell_claim_probe,
         }))
     }
     #[cfg(test)]
@@ -958,16 +975,42 @@ impl Engine {
             probe(phase, operation);
         }
     }
+    #[cfg(test)]
+    pub(crate) fn set_worktree_diagnostics(
+        &self,
+        case: Option<Arc<crate::worktree_diagnostics::Case>>,
+    ) {
+        if let Ok(mut slot) = self.worktree_diagnostics.lock() {
+            *slot = case;
+        }
+    }
+    #[cfg(test)]
+    pub(crate) fn worktree_diagnostics(&self) -> Option<Arc<crate::worktree_diagnostics::Case>> {
+        self.worktree_diagnostics
+            .lock()
+            .ok()
+            .and_then(|slot| slot.clone())
+    }
     pub async fn create_project_worktree(
         self: &Arc<Self>,
         request: crate::worktree_management::CreateWorktree,
     ) -> Result<crate::worktree_management::WorktreeReceipt> {
         use crate::{git_worktree as git, worktree_management::*};
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("engine_entry");
         let request = normalize_request(request)?;
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("replay_begin");
         if let Some(prior) = self.store.worktree_replay(&request)? {
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("replay_hit");
             return Ok(prior);
         }
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("inventory_begin");
         let inventory = self.store.worktree_inventory()?;
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("roots_begin");
         let roots = inventory.roots()?;
         let source = roots
             .iter()
@@ -975,6 +1018,8 @@ impl Engine {
             .ok_or(WorktreeError::NotFound)?
             .1
             .clone();
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("config_begin");
         let config = self.store.project_config(&request.source_project_id)?;
         ensure!(
             config.revision == request.expected_config_revision,
@@ -987,6 +1032,8 @@ impl Engine {
         ))
         .map_err(|_| WorktreeError::RootChanged)?;
         let operation = uuid::Uuid::new_v4().to_string();
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("prepare_begin");
         let prepared = git::prepare(
             &context,
             &source,
@@ -994,15 +1041,27 @@ impl Engine {
             &operation,
             &request.expected_head,
         )
-        .await
-        .map_err(map_git)?;
+        .await;
+        #[cfg(test)]
+        crate::worktree_diagnostics::event(if prepared.is_ok() {
+            "prepare_ok"
+        } else {
+            "prepare_error"
+        });
+        let prepared = prepared.map_err(map_git)?;
         let common = prepared.plan().repository.common_key().map_err(map_git)?;
         let mut members = Vec::new();
         for (id, root) in &roots {
-            match git::probe_project_git(&context, root)
-                .await
-                .map_err(map_git)?
-            {
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("project_probe_begin");
+            let observation = git::probe_project_git(&context, root).await;
+            #[cfg(test)]
+            crate::worktree_diagnostics::event(if observation.is_ok() {
+                "project_probe_ok"
+            } else {
+                "project_probe_error"
+            });
+            match observation.map_err(map_git)? {
                 git::ProjectGitObservation::NotGit => {}
                 git::ProjectGitObservation::Repository(repository) => {
                     if repository.common_key().map_err(map_git)? == common {
@@ -1021,16 +1080,33 @@ impl Engine {
                 WorktreeError::Conflict
             );
         }
-        let (receipt, replayed) = self
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("claim_begin");
+        let claim = self
             .store
-            .claim_worktree(&request, &inventory, &members, &plan)?;
+            .claim_worktree(&request, &inventory, &members, &plan);
+        #[cfg(test)]
+        crate::worktree_diagnostics::event(if claim.is_ok() {
+            "claim_ok"
+        } else {
+            "claim_error"
+        });
+        let (receipt, replayed) = claim?;
         if replayed {
             return Ok(receipt);
         }
         let engine = self.clone();
         let original = receipt.clone();
         // No await between committing admission and handing ownership to the worker.
-        let worker = tokio::spawn(async move {
+        #[cfg(test)]
+        let diagnostic_case = crate::worktree_diagnostics::current();
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("worker_spawn_begin");
+        let worker_future = async move {
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("worker_enter");
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("claim_probe_enter");
             #[cfg(test)]
             engine.observe_worktree(WorktreeProbePhase::ClaimCommitted, &receipt.operation_id);
             let claimed =
@@ -1086,7 +1162,12 @@ impl Engine {
                         .finish_worktree(&receipt, None, Some((state, cause)))
                 }
             }
-        });
+        };
+        #[cfg(test)]
+        let worker_future = crate::worktree_diagnostics::scope(diagnostic_case, worker_future);
+        let worker = tokio::spawn(worker_future);
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("worker_spawned");
         match worker.await {
             Ok(Ok(receipt)) => Ok(receipt),
             Ok(Err(_)) | Err(_) => self.store.finish_worktree(
@@ -1783,7 +1864,7 @@ impl Engine {
                 }
             }
             task.updated_at = now();
-            if let Err(error) = engine.store.save_task(&task) {
+            if let Err(error) = engine.store.save_running_snapshot(&task) {
                 // A terminal database failure must be visible in the host
                 // logs. Silently treating the in-memory result as durable
                 // makes a restart appear to lose or rerun work.
@@ -1863,12 +1944,14 @@ impl Engine {
         let _permit = tokio::select! { p=self.acquire_network_slot()=>p?, _=cancel.cancelled()=>anyhow::bail!("任务已停止") };
         task.status = "running".into();
         task.updated_at = now();
-        self.store.save_task(task)?;
-        self.reconcile_open_tools(task, cancel, &key).await?;
+        self.store.save_running_snapshot(task)?;
+        self.tool_calls
+            .reconcile_open_tools(task, cancel, &key)
+            .await?;
         if let Some(message) = self.deferred_resume.lock().unwrap().remove(&task.id) {
             task.messages.push(json!({"role":"user","content":message}));
             task.updated_at = now();
-            self.store.save_task(task)?;
+            self.store.save_running_snapshot(task)?;
         }
         for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
@@ -1976,7 +2059,7 @@ impl Engine {
             if calls.is_some() {
                 self.store.save_new_assistant_group(&candidate)?;
             } else {
-                self.store.save_task(&candidate)?;
+                self.store.save_running_snapshot(&candidate)?;
             }
             *task = candidate;
             #[cfg(test)]
@@ -2019,14 +2102,16 @@ impl Engine {
                         .as_str()
                         .context("工具参数缺失")?,
                 )?;
-                ensure!(
-                    tools.iter().any(|t| t["function"]["name"] == name),
-                    "模型请求了未授权的工具"
-                );
+                if !tools.iter().any(|t| t["function"]["name"] == name) {
+                    self.tool_calls
+                        .reject_unadvertised(task, call, name, &key)?;
+                    anyhow::bail!("模型请求了未授权的工具");
+                }
                 let call_id = call["id"].as_str().context("工具调用缺少 id")?;
                 match vote {
                     crate::agent_runtime::ToolVote::ApplyHostPolicy => {
-                        self.execute_or_wait(task, call, name, &args, &key, cancel)
+                        self.tool_calls
+                            .execute_or_wait(task, call, name, &args, &key, cancel)
                             .await?;
                         #[cfg(test)]
                         crash_probe::block(&task.id, "agent_after_applied_result", call_id);
@@ -2034,12 +2119,13 @@ impl Engine {
                     crate::agent_runtime::ToolVote::Deny => {
                         #[cfg(test)]
                         crash_probe::block(&task.id, "agent_before_denied_result", call_id);
-                        self.record_tool_result(
+                        self.tool_calls.record_tool_result(
                             task,
                             call_id,
                             name,
                             r#"{"error":"blocked_by_agent_policy"}"#,
                             &key,
+                            crate::tool_results::Origin::AgentDenied,
                         )?;
                         #[cfg(test)]
                         crash_probe::block(&task.id, "agent_after_denied_result", call_id);
@@ -2064,67 +2150,15 @@ impl Engine {
         decided_by: Option<&str>,
         acknowledge_command_network: bool,
     ) -> Result<approval::ApprovalRecord> {
-        let record = self.store.decide_approval_with_network_ack(
+        self.tool_calls.decide_approval_with_network_ack(
             approval_id,
             approved,
-            decided_by.unwrap_or("user"),
+            decided_by,
             acknowledge_command_network,
-        )?;
-        if let Some(waiter) = self.approval_waiters.lock().unwrap().remove(approval_id) {
-            let _ = waiter.send(record.status);
-        }
-        Ok(record)
+        )
     }
 
-    async fn reconcile_open_tools(
-        &self,
-        task: &mut Task,
-        cancel: &CancellationToken,
-        key: &str,
-    ) -> Result<()> {
-        approval::validate_call_history(&task.messages)?;
-        let calls = unanswered_tool_calls(&task.messages);
-        for call in calls {
-            let name = call["function"]["name"].as_str().context("工具名称缺失")?;
-            let call_id = call["id"].as_str().context("工具调用缺少 id")?;
-            match self.store.approval_by_tool_call(&task.id, call_id)? {
-                None => {
-                    self.record_tool_result(task, call_id, name, "Execution was interrupted. Inspect files before repeating a write or command.", key)?;
-                    continue;
-                }
-                Some(record)
-                    if matches!(
-                        record.status,
-                        ApprovalStatus::Denied | ApprovalStatus::Cancelled
-                    ) || record.execution_state == approval::ExecutionState::Cancelled =>
-                {
-                    let status = if record.execution_state == approval::ExecutionState::Cancelled {
-                        ApprovalStatus::Cancelled
-                    } else {
-                        record.status
-                    };
-                    self.record_tool_result(
-                        task,
-                        call_id,
-                        name,
-                        &approval::tool_error(status),
-                        key,
-                    )?;
-                    continue;
-                }
-                Some(_) => {}
-            }
-            let args: Value = serde_json::from_str(
-                call["function"]["arguments"]
-                    .as_str()
-                    .context("工具参数缺失")?,
-            )?;
-            self.execute_or_wait(task, &call, name, &args, key, cancel)
-                .await?;
-        }
-        Ok(())
-    }
-
+    #[cfg(test)]
     async fn execute_or_wait(
         &self,
         task: &mut Task,
@@ -2134,118 +2168,11 @@ impl Engine {
         key: &str,
         cancel: &CancellationToken,
     ) -> Result<()> {
-        let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
-        if name == "run_wasm" {
-            return Err(ProjectError::OperationUnsupported.into());
-        }
-        self.store.validate_project_task(task, true, false)?;
-        ensure!(
-            self.tool_runtime
-                .definitions(task)?
-                .iter()
-                .any(|t| t["function"]["name"] == name),
-            "模型请求了未授权的工具"
-        );
-        ensure!(
-            self.store.task(&task.id)?.status != "cancelled" && !cancel.is_cancelled(),
-            "任务已停止"
-        );
-        match approval::evaluate(task, name) {
-            PolicyDecision::Allow => {
-                let (lease, _) = self.tool_runtime.acquire(task, name, || {
-                    if matches!(name, "read_file" | "list_files" | "search_files") {
-                        self.store.validate_files_read(task)
-                    } else {
-                        self.store
-                            .validate_project_task(task, true, false)
-                            .map(|_| ())
-                    }
-                })?;
-                self.perform_tool(task, tool_call_id, name, args, key, None, lease)
-                    .await
-            }
-            PolicyDecision::Deny { reason } => {
-                self.record_tool_result(task, tool_call_id, name, reason, key)?;
-                Ok(())
-            }
-            PolicyDecision::RequireApproval => {
-                let (record, _) = self.store.ensure_approval(task, tool_call_id, name, args)?;
-                let status = self.wait_for_approval(&record, cancel).await?;
-                match status {
-                    ApprovalStatus::Approved => {
-                        let (lease, claimed) = self.tool_runtime.acquire(task, name, || {
-                            self.store.claim_approval(task, tool_call_id, name, args)
-                        })?;
-                        #[cfg(test)]
-                        if name == "run_command" {
-                            let probe = self
-                                .shell_claim_probe
-                                .lock()
-                                .unwrap()
-                                .as_ref()
-                                .filter(|(id, _)| id == &task.id)
-                                .map(|(_, f)| f.clone());
-                            if let Some(probe) = probe {
-                                probe();
-                            }
-                        }
-                        self.perform_tool(
-                            task,
-                            tool_call_id,
-                            name,
-                            args,
-                            key,
-                            Some(&claimed.id),
-                            lease,
-                        )
-                        .await
-                    }
-                    ApprovalStatus::Denied | ApprovalStatus::Cancelled => {
-                        self.record_tool_result(
-                            task,
-                            tool_call_id,
-                            name,
-                            &approval::tool_error(status),
-                            key,
-                        )?;
-                        if status == ApprovalStatus::Cancelled || cancel.is_cancelled() {
-                            anyhow::bail!("任务已停止");
-                        }
-                        Ok(())
-                    }
-                    ApprovalStatus::Pending => anyhow::bail!("审批仍在等待"),
-                }
-            }
-        }
+        self.tool_calls
+            .execute_or_wait(task, call, name, args, key, cancel)
+            .await
     }
-
-    async fn wait_for_approval(
-        &self,
-        record: &approval::ApprovalRecord,
-        cancel: &CancellationToken,
-    ) -> Result<ApprovalStatus> {
-        loop {
-            let (sender, mut receiver) = oneshot::channel();
-            self.approval_waiters
-                .lock()
-                .unwrap()
-                .insert(record.id.clone(), sender);
-            let current = self.store.approval(&record.id)?;
-            let waiting = current.status == ApprovalStatus::Pending
-                || (current.status == ApprovalStatus::Approved
-                    && current.command_network_ack == approval::CommandNetworkAck::Required);
-            if !waiting {
-                self.approval_waiters.lock().unwrap().remove(&record.id);
-                return Ok(current.status);
-            }
-            tokio::select! {
-                biased;
-                _=cancel.cancelled()=>{self.approval_waiters.lock().unwrap().remove(&record.id);self.store.cancel_pending_approvals(&record.task_id)?;anyhow::bail!("任务已停止")},
-                _=&mut receiver=>{},
-                _=tokio::time::sleep(std::time::Duration::from_millis(100))=>{},
-            }
-        }
-    }
+    #[cfg(test)]
     #[allow(clippy::too_many_arguments)]
     async fn perform_tool(
         &self,
@@ -2255,188 +2182,11 @@ impl Engine {
         args: &Value,
         key: &str,
         approval_id: Option<&str>,
-        lease: ToolLease,
+        lease: crate::tool_runtime::ToolLease,
     ) -> Result<()> {
-        let _workspace_gate = if name == "write_file" {
-            Some(self.gate.lock().await)
-        } else {
-            None
-        };
-        self.store.validate_project_task(task, false, false)?;
-        let mut prepared = None;
-        if name == "write_file" {
-            let approval_id = approval_id.context("write_file 缺少审批执行权")?;
-            let preflight = (|| -> Result<PreparedChange> {
-                let args_text = args.to_string();
-                ensure!(
-                    secrets::redact_persisted(args) == *args
-                        && secrets::redact_persisted(&Value::String(args_text.clone()))
-                            == Value::String(args_text),
-                    "write_file 参数脱敏后无法安全绑定"
-                );
-                let path = args["path"].as_str().context("缺少 path")?;
-                let (target, path, path_key) = workspace::change_target(
-                    std::path::Path::new(&task.workspace),
-                    path,
-                    &task.spec.write_scopes,
-                )?;
-                let before = workspace::read_safe_file(&target)?;
-                let change = self.store.prepare_workspace_change(
-                    task,
-                    tool_call_id,
-                    &path,
-                    &path_key,
-                    before.as_deref(),
-                )?;
-                #[cfg(test)]
-                let recheck = if crash_probe::take_recheck_failure(&task.id) {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::PermissionDenied,
-                        "test recheck failure",
-                    )
-                    .into())
-                } else {
-                    workspace::read_safe_file(&target)
-                };
-                #[cfg(not(test))]
-                let recheck = workspace::read_safe_file(&target);
-                let rechecked = match recheck {
-                    Ok(value) => value,
-                    Err(error) => {
-                        self.store.mark_workspace_change_failed(&change.id)?;
-                        return Err(error);
-                    }
-                };
-                if rechecked.as_deref().map(workspace_changes::digest)
-                    != before.as_deref().map(workspace_changes::digest)
-                {
-                    self.store.mark_workspace_change_failed(&change.id)?;
-                    return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
-                }
-                Ok(change)
-            })();
-            match preflight {
-                Ok(change) => prepared = Some((approval_id.to_owned(), change)),
-                Err(error) => {
-                    if error.chain().any(|cause| cause.is::<rusqlite::Error>()) {
-                        return Err(error);
-                    }
-                    let message = if error.chain().any(|cause| {
-                        matches!(
-                            cause.downcast_ref::<WorkspaceChangeError>(),
-                            Some(WorkspaceChangeError::Unknown { .. })
-                        )
-                    }) {
-                        "write_file 结果未知；请检查文件后创建新任务"
-                    } else {
-                        "write_file 拒绝执行；文件未修改"
-                    };
-                    let serialized = self.store.finish_approval_with_change(
-                        task,
-                        approval_id,
-                        &json!({"error":message}).to_string(),
-                        name,
-                        tool_call_id,
-                        None,
-                    )?;
-                    task.messages.push(
-                        json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}),
-                    );
-                    task.updated_at = now();
-                    return Ok(());
-                }
-            }
-        }
-        let start_data = if let Some(approval_id) = approval_id {
-            json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"args_digest":approval::args_digest(args)?})
-        } else {
-            json!({"name":name,"arguments":args})
-        };
-        if let Err(error) = self.store.event(&task.id, "tool_start", start_data) {
-            if let Some((_, change)) = &prepared {
-                let _ = self.store.mark_workspace_change_failed(&change.id);
-            }
-            return Err(error);
-        }
-        #[cfg(test)]
-        if name == "write_file" {
-            crash_probe::block(&task.id, "write_pre_fs", &prepared.as_ref().unwrap().1.id);
-        }
-        let (result, succeeded) = match lease.execute(task, args).await {
-            Ok(value) => (value, true),
-            Err(error)
-                if name == "run_command"
-                    && error.chain().any(|cause| {
-                        cause.is::<crate::command_execution::CommandOutcomeUnknown>()
-                    }) =>
-            {
-                let id =
-                    approval_id.context("Command result unknown without an approval binding")?;
-                return Err(approval::ApprovalError::UnknownResult { id: id.to_owned() }.into());
-            }
-            Err(error) => (
-                json!({"error":secrets::scrub(&error.to_string(), key)}),
-                false,
-            ),
-        };
-        let serialized = result.to_string().replace(key, "[redacted]");
-        if let Some(approval_id) = approval_id {
-            let after = if succeeded && name == "write_file" {
-                args["content"].as_str().map(str::as_bytes)
-            } else {
-                None
-            };
-            if !succeeded && let Some((_, change)) = &prepared {
-                self.store.mark_workspace_change_failed(&change.id)?;
-            }
-            let change = prepared
-                .as_ref()
-                .and_then(|(_, change)| after.map(|bytes| (change.id.as_str(), bytes)));
-            let serialized = self
-                .store
-                .finish_approval_with_change(
-                    task,
-                    approval_id,
-                    &serialized,
-                    name,
-                    tool_call_id,
-                    change,
-                )
-                .inspect_err(|_| {
-                    if succeeded && let Some((_, change)) = &prepared {
-                        let _ = self.store.mark_workspace_change_unknown(&change.id);
-                    }
-                })?;
-            task.messages
-                .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
-            task.updated_at = now();
-            Ok(())
-        } else {
-            self.record_tool_result(task, tool_call_id, name, &serialized, key)
-        }
-    }
-
-    fn record_tool_result(
-        &self,
-        task: &mut Task,
-        tool_call_id: &str,
-        name: &str,
-        content: &str,
-        key: &str,
-    ) -> Result<()> {
-        let content = content.replace(key, "[redacted]");
-        let result =
-            serde_json::from_str::<Value>(&content).unwrap_or(Value::String(content.clone()));
-        self.store.event(
-            &task.id,
-            "tool_result",
-            json!({"name":name,"tool_call_id":tool_call_id,"result":result}),
-        )?;
-        task.messages
-            .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":content}));
-        task.updated_at = now();
-        self.store.save_task(task)?;
-        Ok(())
+        self.tool_calls
+            .perform_tool(task, tool_call_id, name, args, key, approval_id, lease)
+            .await
     }
 
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
@@ -2496,7 +2246,7 @@ impl Engine {
                     // Reconcile every result in original call order after launch.
                 }
                 Some(_) => {
-                    let call = unanswered_tool_calls(&task.messages)
+                    let call = crate::tool_call_application::unanswered_tool_calls(&task.messages)
                         .into_iter()
                         .find(|c| c["id"] == id)
                         .context("审批调用缺失")?;
@@ -3109,24 +2859,6 @@ fn validate_new_tool_group(previous: &[Value], calls: &[Value]) -> Result<()> {
         );
     }
     Ok(())
-}
-
-fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
-    let answered: std::collections::HashSet<String> = messages
-        .iter()
-        .filter_map(|message| message["tool_call_id"].as_str().map(str::to_owned))
-        .collect();
-    let mut calls = Vec::new();
-    for message in messages {
-        if let Some(tool_calls) = message["tool_calls"].as_array() {
-            for call in tool_calls {
-                if call["id"].as_str().is_some_and(|id| !answered.contains(id)) {
-                    calls.push(call.clone());
-                }
-            }
-        }
-    }
-    calls
 }
 
 #[cfg(test)]
@@ -5019,6 +4751,512 @@ mod workspace_phase_tests {
         )
     }
 
+    #[derive(Clone)]
+    struct R01Provider {
+        calls: Arc<AtomicUsize>,
+        command: bool,
+        first_is_write: bool,
+        bearer: bool,
+    }
+
+    async fn r01_reply(
+        State(state): State<R01Provider>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        let delta = if state.calls.fetch_add(1, Ordering::SeqCst) == 0 {
+            let secret = if state.bearer {
+                "Bearer mock-approval-secret"
+            } else {
+                "sk-abc"
+            };
+            let (name, args) = if state.command {
+                (
+                    "run_command",
+                    json!({"command":format!("[IO.File]::WriteAllText('shell-marker.txt','{secret}')"),"timeout_seconds":10}),
+                )
+            } else {
+                (
+                    "write_file",
+                    if state.bearer {
+                        json!({"path":"src/marker.txt","content":secret,"env":{"API_KEY":secret}})
+                    } else {
+                        json!({"path":"src/marker.txt","content":secret})
+                    },
+                )
+            };
+            let (first_name, first_args) = if state.first_is_write {
+                (
+                    "write_file",
+                    json!({"path":"src/first.txt","content":"first"}),
+                )
+            } else {
+                ("read_file", json!({"path":"src/input.txt"}))
+            };
+            json!({"tool_calls":[
+                {"index":0,"id":"r01-read","type":"function","function":{"name":first_name,"arguments":first_args.to_string()}},
+                {"index":1,"id":"r01-effect","type":"function","function":{"name":name,"arguments":args.to_string()}}
+            ]})
+        } else {
+            json!({"content":"done"})
+        };
+        let chunk = json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+
+    struct R01Strategy {
+        deny_first: bool,
+    }
+
+    impl crate::agent_runtime::AgentStrategy for R01Strategy {
+        fn decide(
+            &self,
+            input: crate::agent_runtime::StrategyInput<'_>,
+            _messages: &[Value],
+            _round: usize,
+            _max_rounds: usize,
+        ) -> std::result::Result<
+            crate::agent_runtime::StrategyAction,
+            crate::agent_runtime::StrategyError,
+        > {
+            use crate::agent_runtime::{CompletionKind, StrategyAction, StrategyInput, ToolVote};
+            Ok(match input {
+                StrategyInput::BeforeCompletion { tools } => {
+                    StrategyAction::UseTools((0..tools.len()).collect())
+                }
+                StrategyInput::AfterCompletion {
+                    outcome: CompletionKind::NoToolCalls,
+                } => StrategyAction::Finish,
+                StrategyInput::AfterCompletion {
+                    outcome: CompletionKind::ToolGroup(tools),
+                } => StrategyAction::ToolVotes(
+                    tools
+                        .iter()
+                        .enumerate()
+                        .map(|(index, _)| {
+                            if self.deny_first && index == 0 {
+                                ToolVote::Deny
+                            } else {
+                                ToolVote::ApplyHostPolicy
+                            }
+                        })
+                        .collect(),
+                ),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn r01_same_group_safe_snapshot_keeps_sensitive_approval_binding() {
+        for (deny_first, command, cancel, approve, first_is_write, bearer) in [
+            (false, false, false, false, false, false),
+            (false, true, true, false, false, false),
+            (true, false, false, false, false, false),
+            (true, true, true, false, false, false),
+            (false, false, false, true, false, false),
+            (false, false, false, false, true, false),
+            (false, false, false, false, false, true),
+            (false, true, true, false, false, true),
+            (false, false, false, true, false, true),
+        ] {
+            let temp = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(temp.path().join("src")).unwrap();
+            std::fs::write(temp.path().join("src/input.txt"), "before").unwrap();
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let base = format!("http://{}/v1", listener.local_addr().unwrap());
+            let calls = Arc::new(AtomicUsize::new(0));
+            let app = Router::new()
+                .route("/v1/chat/completions", post(r01_reply))
+                .with_state(R01Provider {
+                    calls: calls.clone(),
+                    command,
+                    first_is_write,
+                    bearer,
+                });
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            let store = Arc::new(Store::open(&temp.path().join("r01.db")).unwrap());
+            store
+                .save_settings(&Settings {
+                    workspace: temp.path().to_string_lossy().into(),
+                    max_concurrency: 2,
+                    routes: vec![Route {
+                        id: "route".into(),
+                        name: "route".into(),
+                        base_url: base,
+                        model: "mock".into(),
+                        max_tokens: 128,
+                        parallel_limit: 2,
+                        key_env: None,
+                    }],
+                    newapi: None,
+                })
+                .unwrap();
+            store.put_secret("route", "r01-test-key").unwrap();
+            authorize_fixture(&store);
+            let agent =
+                crate::agent_runtime::AgentRuntime::with_strategy_for_test(Arc::new(R01Strategy {
+                    deny_first,
+                }))
+                .unwrap();
+            let engine = Engine::new_with_agent_runtime_for_test(store.clone(), 2, agent).unwrap();
+            let task = engine
+                .start(RunRequest {
+                    title: "r01".into(),
+                    kind: if bearer {
+                        SessionKind::Chat
+                    } else {
+                        SessionKind::Team
+                    },
+                    tasks: vec![TaskSpec {
+                        name: "worker".into(),
+                        role: "worker".into(),
+                        route_id: "route".into(),
+                        prompt: "inspect".into(),
+                        depends_on: vec![],
+                        write_scopes: vec!["src".into()],
+                        tools: true,
+                        allow_commands: true,
+                        max_rounds: 3,
+                    }],
+                })
+                .await
+                .unwrap()
+                .tasks
+                .remove(0);
+            if first_is_write {
+                let first = n10_pending(&engine, &task.id).await;
+                assert_eq!(first.tool_call_id, "r01-read");
+                engine
+                    .decide_approval(&first.id, false, Some("test"))
+                    .unwrap();
+            }
+            let pending = tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if let Some(record) = store
+                        .pending_approvals_for_task(&task.id)
+                        .unwrap()
+                        .into_iter()
+                        .next()
+                    {
+                        break record;
+                    }
+                    let snapshot = store.task(&task.id).unwrap();
+                    assert!(
+                        !matches!(
+                            snapshot.status.as_str(),
+                            "failed" | "cancelled" | "completed"
+                        ),
+                        "task ended before approval: status={} error={:?}",
+                        snapshot.status,
+                        snapshot.error
+                    );
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("approval not created before timeout");
+            assert_eq!(pending.tool_call_id, "r01-effect");
+            let secret = if bearer {
+                "Bearer mock-approval-secret"
+            } else {
+                "sk-abc"
+            };
+            let raw_args = if command {
+                json!({"command":format!("[IO.File]::WriteAllText('shell-marker.txt','{secret}')"),"timeout_seconds":10})
+            } else if bearer {
+                json!({"path":"src/marker.txt","content":secret,"env":{"API_KEY":secret}})
+            } else {
+                json!({"path":"src/marker.txt","content":secret})
+            };
+            assert_eq!(
+                pending.args_digest,
+                approval::args_digest(&raw_args).unwrap()
+            );
+            let persisted = store.task(&task.id).unwrap();
+            assert!(
+                !serde_json::to_string(&persisted)
+                    .unwrap()
+                    .contains(if bearer {
+                        "mock-approval-secret"
+                    } else {
+                        "sk-abc"
+                    })
+            );
+            if cancel {
+                store.cancel_pending_approvals(&task.id).unwrap();
+            } else {
+                engine
+                    .decide_approval(&pending.id, approve, Some("test"))
+                    .unwrap();
+            }
+            n10_idle(&engine).await;
+            let finished = store.task(&task.id).unwrap();
+            assert_eq!(
+                finished.status,
+                if cancel { "cancelled" } else { "completed" }
+            );
+            let events = store.events(&task.run_id, 0).unwrap();
+            let results: Vec<_> = events
+                .iter()
+                .filter(|event| event.kind == "tool_result")
+                .collect();
+            assert_eq!(results.len(), 2);
+            assert_eq!(
+                results[0].data["origin"],
+                if first_is_write {
+                    "approval_denied"
+                } else if deny_first {
+                    "agent_denied"
+                } else {
+                    "read_completed"
+                }
+            );
+            if approve {
+                assert_eq!(results[1].data["approval_id"], pending.id);
+                assert_eq!(
+                    store.approval(&pending.id).unwrap().execution_state,
+                    approval::ExecutionState::Finished
+                );
+            } else {
+                assert_eq!(
+                    results[1].data["origin"],
+                    if cancel {
+                        "approval_cancelled"
+                    } else {
+                        "approval_denied"
+                    }
+                );
+            }
+            assert!(
+                !serde_json::to_string(&events).unwrap().contains(if bearer {
+                    "mock-approval-secret"
+                } else {
+                    "sk-abc"
+                })
+            );
+            assert!(!temp.path().join("src/marker.txt").exists());
+            assert!(!temp.path().join("shell-marker.txt").exists());
+            assert_eq!(calls.load(Ordering::SeqCst), if cancel { 1 } else { 2 });
+            assert_eq!(
+                store.approvals_for_task(&task.id).unwrap().len(),
+                if first_is_write { 2 } else { 1 }
+            );
+            assert!(!temp.path().join("src/first.txt").exists());
+            if bearer && !approve {
+                if cancel {
+                    store.recover().unwrap();
+                    engine
+                        .resume(&task.id, "continue after cancellation")
+                        .await
+                        .unwrap();
+                    n10_idle(&engine).await;
+                }
+                let mut previous = store.task(&task.id).unwrap();
+                assert_eq!(previous.status, "completed");
+                let expected = approval::tool_error(if cancel {
+                    approval::ApprovalStatus::Cancelled
+                } else {
+                    approval::ApprovalStatus::Denied
+                });
+                assert!(
+                    previous
+                        .messages
+                        .iter()
+                        .any(|message| message["tool_call_id"] == "r01-effect"
+                            && message["content"] == expected)
+                );
+                // Model a safe pre-existing snapshot whose JSON object used noncanonical whitespace.
+                let legacy_args = r#" { "path" : "src/input.txt" } "#;
+                let call = previous
+                    .messages
+                    .iter_mut()
+                    .flat_map(|message| {
+                        message
+                            .get_mut("tool_calls")
+                            .and_then(Value::as_array_mut)
+                            .into_iter()
+                            .flatten()
+                    })
+                    .find(|call| call["id"] == "r01-read")
+                    .unwrap();
+                call["function"]["arguments"] = json!(legacy_args);
+                store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .execute(
+                        "UPDATE tasks SET value=?2 WHERE id=?1",
+                        rusqlite::params![task.id, serde_json::to_string(&previous).unwrap()],
+                    )
+                    .unwrap();
+                let loaded = store.task(&task.id).unwrap();
+                assert_eq!(loaded.messages, previous.messages);
+                let context = store.run_context(&loaded.run_id).unwrap();
+                let receipt = engine
+                    .send_chat_turn(SendChatTurn {
+                        session_id: context.session.id,
+                        agent_id: context.tasks[0].agent_id.clone(),
+                        expected_last_turn_id: context.latest_turn.id,
+                        message: "next turn".into(),
+                        idempotency_key: "r04-next-turn".into(),
+                    })
+                    .await
+                    .unwrap();
+                n10_idle(&engine).await;
+                let next = store.task(&receipt.task.legacy_task_id).unwrap();
+                assert_eq!(next.status, "completed");
+                assert!(next.messages.starts_with(&loaded.messages));
+                assert!(!temp.path().join("src/marker.txt").exists());
+                assert!(!temp.path().join("shell-marker.txt").exists());
+            }
+            server.abort();
+        }
+    }
+
+    #[derive(Clone)]
+    struct R01Hold {
+        entered: Arc<tokio::sync::Notify>,
+        release: Arc<tokio::sync::Notify>,
+    }
+
+    async fn r01_held_reply(
+        State(state): State<R01Hold>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        state.entered.notify_one();
+        state.release.notified().await;
+        let chunk = json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+
+    #[tokio::test]
+    async fn r01_mismatched_live_call_cannot_create_approval_or_execute() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp.path().join("src")).unwrap();
+        let state = R01Hold {
+            entered: Arc::new(tokio::sync::Notify::new()),
+            release: Arc::new(tokio::sync::Notify::new()),
+        };
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let app = Router::new()
+            .route("/v1/chat/completions", post(r01_held_reply))
+            .with_state(state.clone());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = Arc::new(Store::open(&temp.path().join("r01-mismatch.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: temp.path().to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 128,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route", "r01-test-key").unwrap();
+        authorize_fixture(&store);
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let started = engine
+            .start(RunRequest {
+                title: "r01-mismatch".into(),
+                kind: SessionKind::Team,
+                tasks: vec![TaskSpec {
+                    name: "worker".into(),
+                    role: "worker".into(),
+                    route_id: "route".into(),
+                    prompt: "inspect".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["src".into()],
+                    tools: true,
+                    allow_commands: false,
+                    max_rounds: 3,
+                }],
+            })
+            .await
+            .unwrap()
+            .tasks
+            .remove(0);
+        tokio::time::timeout(Duration::from_secs(8), state.entered.notified())
+            .await
+            .unwrap();
+        let args = json!({"path":"src/right.txt","content":"sk-abc"});
+        let call = json!({"id":"r01-target","type":"function","function":{
+            "name":"write_file","arguments":args.to_string()
+        }});
+        let mut current = store.task(&started.id).unwrap();
+        current
+            .messages
+            .push(json!({"role":"assistant","content":null,"tool_calls":[call.clone()]}));
+        store.save_task(&current).unwrap();
+        let mut current = store.task(&started.id).unwrap();
+        let forged_args = json!({"path":"src/wrong.txt","content":"sk-abc"});
+        let forged = json!({"id":"r01-target","type":"function","function":{
+            "name":"write_file","arguments":forged_args.to_string()
+        }});
+        let before_local = current.messages.clone();
+        let before_persisted = store.task(&started.id).unwrap().messages;
+        let mismatched_safe = engine
+            .execute_or_wait(
+                &mut current,
+                &forged,
+                "write_file",
+                &forged_args,
+                "r01-test-key",
+                &CancellationToken::new(),
+            )
+            .await
+            .unwrap_err();
+        assert!(
+            mismatched_safe
+                .to_string()
+                .contains("工具调用安全参数不匹配")
+        );
+        let mismatched_raw = engine
+            .execute_or_wait(
+                &mut current,
+                &call,
+                "write_file",
+                &forged_args,
+                "r01-test-key",
+                &CancellationToken::new(),
+            )
+            .await
+            .unwrap_err();
+        assert!(mismatched_raw.to_string().contains("工具调用参数不匹配"));
+        assert_eq!(current.messages, before_local);
+        assert_eq!(store.task(&started.id).unwrap().messages, before_persisted);
+        assert!(store.approvals_for_task(&started.id).unwrap().is_empty());
+        assert!(
+            store
+                .workspace_changes_for_task(&started.id)
+                .unwrap()
+                .is_empty()
+        );
+        let events = store.events(&started.run_id, 0).unwrap();
+        assert!(
+            !events
+                .iter()
+                .any(|event| matches!(event.kind.as_str(), "tool_start" | "tool_result"))
+        );
+        assert!(!temp.path().join("src/right.txt").exists());
+        assert!(!temp.path().join("src/wrong.txt").exists());
+        state.release.notify_one();
+        n10_idle(&engine).await;
+        server.abort();
+    }
+
     fn n13_raw(root: &Path, args: &[&str]) -> String {
         let out = std::process::Command::new("git")
             .current_dir(root)
@@ -6192,7 +6430,9 @@ mod workspace_phase_tests {
             old_engine.store.recover().unwrap();
             let engine = Engine::new(old_engine.store.clone(), 2).unwrap();
             let task = engine.store.task(&task_id).unwrap();
-            assert!(!unanswered_tool_calls(&task.messages).is_empty());
+            assert!(
+                !crate::tool_call_application::unanswered_tool_calls(&task.messages).is_empty()
+            );
             assert_eq!(
                 engine
                     .store

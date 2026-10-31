@@ -1292,9 +1292,60 @@ mod tests {
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
     async fn n13_dropped_caller_owned_worker_still_registers_once() {
-        let f = Fixture::new();
+        struct RetainedFixture(Option<Fixture>);
+        impl std::ops::Deref for RetainedFixture {
+            type Target = Fixture;
+            fn deref(&self) -> &Fixture {
+                self.0.as_ref().unwrap()
+            }
+        }
+        impl Drop for RetainedFixture {
+            fn drop(&mut self) {
+                use std::io::Write as _;
+                let panicking = std::thread::panicking();
+                if let Some(fixture) = self.0.take() {
+                    let Fixture { _temp, store, .. } = fixture;
+                    let root = _temp.keep();
+                    let raw = root.join("raw-observed");
+                    let created = std::fs::create_dir(&raw).is_ok();
+                    for name in ["host.db", "host.db-wal", "host.db-shm"] {
+                        let source = root.join("host").join(name);
+                        let result = if !created {
+                            "directory_error"
+                        } else {
+                            match std::fs::copy(&source, raw.join(name)) {
+                                Ok(_) => "copied_live_non_snapshot",
+                                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                                    "missing"
+                                }
+                                Err(_) => "copy_error",
+                            }
+                        };
+                        let _ = writeln!(
+                            std::io::stderr().lock(),
+                            "N13 raw observation {name}: {result}"
+                        );
+                    }
+                    let _ = writeln!(
+                        std::io::stderr().lock(),
+                        "N13 retained fixture={} panicking={panicking} (live copies are not a consistent snapshot; task/child termination not established)",
+                        root.display()
+                    );
+                    drop(store);
+                }
+            }
+        }
+        let f = RetainedFixture(Some(Fixture::new()));
+        println!(
+            "N13 fixture={} pid={}",
+            f._temp.path().display(),
+            std::process::id()
+        );
         let engine = Engine::new(f.store.clone(), 2).unwrap();
-        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let diagnostic_case =
+            crate::worktree_diagnostics::Case::new(f._temp.path().to_path_buf(), "n13");
+        engine.set_worktree_diagnostics(diagnostic_case.clone());
+        let (ready_tx, mut ready_rx) = tokio::sync::oneshot::channel();
         let ready = std::sync::Mutex::new(Some(ready_tx));
         let (release_tx, release_rx) = std::sync::mpsc::channel();
         let release = std::sync::Mutex::new(release_rx);
@@ -1311,11 +1362,105 @@ mod tests {
         let request = f.request();
         let e = engine.clone();
         let r = request.clone();
-        let caller = tokio::spawn(async move { e.create_project_worktree(r).await });
-        tokio::time::timeout(std::time::Duration::from_secs(10), ready_rx)
-            .await
-            .unwrap()
-            .unwrap();
+        let mut caller = tokio::spawn(crate::worktree_diagnostics::scope(
+            diagnostic_case.clone(),
+            async move { e.create_project_worktree(r).await },
+        ));
+        let outcome = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            tokio::select! {
+                biased;
+                result = &mut caller => Err(result),
+                ready = &mut ready_rx => { ready.expect("N13 probe sender closed"); Ok(()) },
+            }
+        })
+        .await;
+        match outcome {
+            Ok(Ok(())) if !caller.is_finished() => crate::worktree_diagnostics::case_event(
+                &diagnostic_case,
+                "n13_ready_caller_pending",
+            ),
+            Ok(Ok(())) => {
+                crate::worktree_diagnostics::case_event(
+                    &diagnostic_case,
+                    "n13_ready_caller_finished",
+                );
+                let result = caller.await;
+                let category = match result {
+                    Ok(Ok(_)) => "success",
+                    Ok(Err(_)) => "error",
+                    Err(_) => "join_error",
+                };
+                panic!("N13 caller completed before abort: {category}");
+            }
+            Ok(Err(result)) => {
+                crate::worktree_diagnostics::case_event(
+                    &diagnostic_case,
+                    match ready_rx.try_recv() {
+                        Ok(()) => "n13_caller_done_ready_observed",
+                        Err(tokio::sync::oneshot::error::TryRecvError::Empty) => {
+                            "n13_caller_done_ready_pending"
+                        }
+                        Err(tokio::sync::oneshot::error::TryRecvError::Closed) => {
+                            "n13_caller_done_ready_closed"
+                        }
+                    },
+                );
+                let category = match result {
+                    Ok(Ok(_)) => "success",
+                    Ok(Err(_)) => "error",
+                    Err(_) => "join_error",
+                };
+                crate::worktree_diagnostics::case_event(
+                    &diagnostic_case,
+                    match category {
+                        "success" => "n13_caller_success",
+                        "error" => "n13_caller_error",
+                        _ => "n13_caller_join_error",
+                    },
+                );
+                panic!("N13 caller completed before abort: {category}");
+            }
+            Err(_) => {
+                crate::worktree_diagnostics::case_event(
+                    &diagnostic_case,
+                    match ready_rx.try_recv() {
+                        Ok(()) => "n13_timeout_ready_observed",
+                        Err(tokio::sync::oneshot::error::TryRecvError::Empty) => {
+                            "n13_timeout_ready_pending"
+                        }
+                        Err(tokio::sync::oneshot::error::TryRecvError::Closed) => {
+                            "n13_timeout_ready_closed"
+                        }
+                    },
+                );
+                crate::worktree_diagnostics::case_event(
+                    &diagnostic_case,
+                    if caller.is_finished() {
+                        "n13_timeout_caller_finished"
+                    } else {
+                        "n13_timeout_caller_pending"
+                    },
+                );
+                if caller.is_finished() {
+                    let result = caller.await;
+                    let category = match result {
+                        Ok(Ok(_)) => "success",
+                        Ok(Err(_)) => "error",
+                        Err(_) => "join_error",
+                    };
+                    crate::worktree_diagnostics::case_event(
+                        &diagnostic_case,
+                        match category {
+                            "success" => "n13_timeout_caller_success",
+                            "error" => "n13_timeout_caller_error",
+                            _ => "n13_timeout_caller_join_error",
+                        },
+                    );
+                    panic!("N13 ready timeout; caller completed: {category}");
+                }
+                panic!("N13 ready timeout; caller pending");
+            }
+        }
         caller.abort();
         assert!(caller.await.unwrap_err().is_cancelled());
         assert_eq!(f.count("worktree_project_reservations"), 1);
@@ -1339,6 +1484,7 @@ mod tests {
             engine.create_project_worktree(request).await.unwrap(),
             receipt
         );
+        crate::worktree_diagnostics::case_event(&diagnostic_case, "n13_assertions_complete");
     }
     #[tokio::test]
     async fn n13_origin_saved_admin_relationship_and_online_identity_are_enforced() {
