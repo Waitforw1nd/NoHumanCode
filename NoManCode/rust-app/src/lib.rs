@@ -1,3 +1,4 @@
+pub mod agent_runtime;
 pub mod approval;
 pub mod budget;
 pub mod checkpoint;
