@@ -1,0 +1,157 @@
+{
+  "before": 6635,
+  "after": 8293,
+  "missing": [],
+  "changed": [],
+  "errors_before": [],
+  "errors_after": [],
+  "raw_process_checks": [
+    {
+      "folder": "nhc-t05-FJ29Kq",
+      "pid": 56172,
+      "phase": "before_commit",
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "test.db",
+          "match": true
+        },
+        {
+          "name": "test.db-wal",
+          "match": true
+        },
+        {
+          "name": "test.db-shm",
+          "match": true
+        }
+      ]
+    },
+    {
+      "folder": "nhc-t05-ARhXJT",
+      "pid": 55988,
+      "phase": "after_commit",
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "test.db",
+          "match": true
+        },
+        {
+          "name": "test.db-wal",
+          "match": true
+        },
+        {
+          "name": "test.db-shm",
+          "match": true
+        }
+      ]
+    },
+    {
+      "folder": ".tmpVBthyZ",
+      "pid": 56076,
+      "phase": "agent_after_assistant_save",
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "agent.db",
+          "match": true
+        },
+        {
+          "name": "agent.db-wal",
+          "match": true
+        },
+        {
+          "name": "agent.db-shm",
+          "match": true
+        }
+      ]
+    },
+    {
+      "folder": ".tmpKKktEB",
+      "pid": 56380,
+      "phase": "before_commit",
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "agent.db",
+          "match": true
+        },
+        {
+          "name": "agent.db-wal",
+          "match": true
+        },
+        {
+          "name": "agent.db-shm",
+          "match": true
+        }
+      ]
+    },
+    {
+      "folder": ".tmpMRLyzI",
+      "pid": 58352,
+      "phase": "before_commit",
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "agent.db",
+          "match": true
+        },
+        {
+          "name": "agent.db-wal",
+          "match": true
+        },
+        {
+          "name": "agent.db-shm",
+          "match": true
+        }
+      ]
+    },
+    {
+      "folder": ".tmpSGMRwv",
+      "pid": 58824,
+      "phase": "after_commit",
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "agent.db",
+          "match": true
+        },
+        {
+          "name": "agent.db-wal",
+          "match": true
+        },
+        {
+          "name": "agent.db-shm",
+          "match": true
+        }
+      ]
+    },
+    {
+      "folder": "nhc-result-host-YVUlDV",
+      "pid": 58044,
+      "phase": null,
+      "kill": "ok",
+      "reaped": true,
+      "files": [
+        {
+          "name": "peachsh.sqlite3",
+          "match": true
+        },
+        {
+          "name": "peachsh.sqlite3-wal",
+          "match": true
+        },
+        {
+          "name": "peachsh.sqlite3-shm",
+          "match": true
+        }
+      ]
+    }
+  ]
+}

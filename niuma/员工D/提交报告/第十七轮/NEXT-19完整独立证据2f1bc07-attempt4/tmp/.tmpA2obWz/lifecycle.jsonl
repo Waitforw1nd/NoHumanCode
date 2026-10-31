@@ -1,0 +1,4 @@
+{"at_unix_ms":1793461007775,"event":"wait_begin","notification":"ready","phase":"timeout-before-ready","pid":46580}
+{"at_unix_ms":1793461007776,"event":"early_completion","notification":"ready","phase":"timeout-before-ready","pid":46580,"reason":"request completed before kill"}
+{"at_unix_ms":1793461007777,"event":"drop_kill_result","ok":true,"phase":"timeout-before-ready","pid":46580}
+{"at_unix_ms":1793461007798,"event":"drop_reaped","exit_code":1,"phase":"timeout-before-ready","pid":46580,"success":false}

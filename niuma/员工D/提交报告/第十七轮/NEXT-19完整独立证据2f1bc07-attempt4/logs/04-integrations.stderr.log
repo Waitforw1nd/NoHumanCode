@@ -1,0 +1,17 @@
+   Compiling peachsh v0.2.0 (../nhc-d-tool-result-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 5.85s
+     Running tests\approval_gate.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\approval_gate-1b3df4abe1ca7b56.exe)
+     Running tests\approval_http.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\approval_http-54aca6d647d3719f.exe)
+     Running tests\checkpoint.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\checkpoint-16e55658a534c84e.exe)
+     Running tests\checkpoint_http.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\checkpoint_http-f193e7b4689e0f5b.exe)
+     Running tests\network_authorization.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\network_authorization-16dfd24b72dba180.exe)
+     Running tests\network_http.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\network_http-df4a6d2125e37c80.exe)
+     Running tests\plugin_http.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\plugin_http-450ff9446bdc9751.exe)
+     Running tests\plugin_management.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\plugin_management-14c5c706a7d96757.exe)
+     Running tests\runtime_management_workflow.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\runtime_management_workflow-1960f2ff872a9418.exe)
+     Running tests\tool_result_crash.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\tool_result_crash-6360e6373e4f82c9.exe)
+     Running tests\tool_runtime.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\tool_runtime-ef0f4d6b7eac9afc.exe)
+     Running tests\tool_session_turns.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\tool_session_turns-003073dd8bae49fa.exe)
+     Running tests\workspace_changes.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\workspace_changes-2f1f4b57af9344a9.exe)
+symlink creation succeeded
+     Running tests\workspace_crash.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\workspace_crash-e3f571cd0260c189.exe)

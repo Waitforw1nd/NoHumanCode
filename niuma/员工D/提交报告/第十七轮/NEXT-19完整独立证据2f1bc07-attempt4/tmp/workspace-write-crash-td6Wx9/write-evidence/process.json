@@ -1,0 +1,12 @@
+{
+  "fixture_root": "../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-2f1bc07-independent-attempt4\\tmp\\workspace-write-crash-td6Wx9",
+  "kill": "killed",
+  "phase": "target-boundary",
+  "pid": 1872,
+  "reaped": true,
+  "success": false,
+  "target": "finished-after-commit",
+  "task_id": "709caa42-af6a-49b3-916f-4376e1973bc7",
+  "try_wait": "running",
+  "wait": "ExitStatus(ExitStatus(1))"
+}

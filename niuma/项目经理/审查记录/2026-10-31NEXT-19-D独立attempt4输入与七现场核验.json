@@ -1,0 +1,290 @@
+{
+  "candidate": "2f1bc071ca4494404c8d0370604240aa29a93b55",
+  "source_manifests_identical": 8,
+  "source_inputs_verified": 141,
+  "old_files_unchanged": 6635,
+  "retained_files_hashed": 8293,
+  "scenes": [
+    {
+      "scene": ".tmpKKktEB",
+      "metadata": "proof-process.json",
+      "phase": "before_commit",
+      "pid": 56380,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "cancelled",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "tool_starts": 0,
+        "origins": [],
+        "turn_task_status": [
+          "cancelled"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true
+    },
+    {
+      "scene": ".tmpMRLyzI",
+      "metadata": "proof-process.json",
+      "phase": "before_commit",
+      "pid": 58352,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "running",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "tool_starts": 0,
+        "origins": [],
+        "turn_task_status": [
+          "running"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true
+    },
+    {
+      "scene": ".tmpSGMRwv",
+      "metadata": "host-denied-process.json",
+      "phase": "after_commit",
+      "pid": 58824,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "running",
+        "tool_messages": 1,
+        "tool_results": 1,
+        "tool_starts": 0,
+        "origins": [
+          "host_denied"
+        ],
+        "turn_task_status": [
+          "running"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true
+    },
+    {
+      "scene": ".tmpVBthyZ",
+      "metadata": "legacy-process.json",
+      "phase": "agent_after_assistant_save",
+      "pid": 56076,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "running",
+        "tool_messages": 0,
+        "tool_results": 1,
+        "tool_starts": 0,
+        "origins": [
+          null
+        ],
+        "turn_task_status": [
+          "running"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true
+    },
+    {
+      "scene": "nhc-result-host-YVUlDV",
+      "metadata": "host-process.json",
+      "phase": "public_host_after_first_kill",
+      "pid": 58044,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "interrupted",
+        "tool_messages": 0,
+        "tool_results": 1,
+        "tool_starts": 0,
+        "origins": [
+          null
+        ],
+        "turn_task_status": [],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true,
+      "recovery_facts": {
+        "status": "interrupted",
+        "tool_messages": 0,
+        "tool_results": 1,
+        "tool_starts": 0,
+        "origins": [
+          null
+        ],
+        "turn_task_status": [],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "original_tool_results_equal_after_second_host": true,
+      "second_host_pid_not_independently_recorded": true
+    },
+    {
+      "scene": "nhc-t05-ARhXJT",
+      "metadata": "process.json",
+      "phase": "after_commit",
+      "pid": 55988,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "queued",
+        "tool_messages": 1,
+        "tool_results": 1,
+        "tool_starts": 0,
+        "origins": [
+          "agent_denied"
+        ],
+        "turn_task_status": [
+          "queued"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true
+    },
+    {
+      "scene": "nhc-t05-FJ29Kq",
+      "metadata": "process.json",
+      "phase": "before_commit",
+      "pid": 56172,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "queued",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "tool_starts": 0,
+        "origins": [],
+        "turn_task_status": [
+          "queued"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ]
+      },
+      "raw_query_logical_facts_equal": true
+    }
+  ],
+  "cli_explicit_build": {
+    "sha256": "f242c02077bf07c65b6fe091095a6ee6e5b69228ba65d7101b7296642c03a4b6",
+    "bytes": 29816320,
+    "checked_utc": "2026-10-31T15:36:41.0717719Z"
+  },
+  "cli_after_tests": {
+    "sha256": "8995e9bad0192660df4a3d2037a12e3717c21627f3232e7fdd47ea5a2a8b9bbc",
+    "bytes": 30798336
+  },
+  "cli_artifact_note": "Explicit build metadata and final binary differ. Integration stderr records a test-profile compile; final mtime is within that compile window. No per-suite executable hash was recorded, so explicit-build hash is not claimed as the integration executable hash.",
+  "all_six_commands_exit_zero": true,
+  "integration_results": [
+    [
+      "35",
+      "0",
+      "0"
+    ],
+    [
+      "16",
+      "0",
+      "0"
+    ],
+    [
+      "15",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "16",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "21",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ]
+  ],
+  "integration_total_passed": 153,
+  "library_passed": 362,
+  "cli_final_hash_measured": true,
+  "originals_unchanged_after_copy_queries": true,
+  "published_pairs_verified": 96,
+  "exact_path_transformations_verified": true,
+  "published_manifest_sha256": "c309006bcfa1b35c624ad83a8a10f61bafbb03fd5ccd53826d9dd5683871338d"
+}

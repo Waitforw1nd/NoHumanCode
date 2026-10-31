@@ -1,0 +1,23 @@
+{
+  "files": [
+    {
+      "name": "peachsh.sqlite3",
+      "present": true,
+      "sha256": "8ee56eafd9bd12239165f2043aacd031e35f7b327acf219633a8f2e8b5afffe1"
+    },
+    {
+      "name": "peachsh.sqlite3-wal",
+      "present": true,
+      "sha256": "b2c6e4042ea853e2707bbc2bb3f78cb7e2923046acae2c856a793765e00063b9"
+    },
+    {
+      "name": "peachsh.sqlite3-shm",
+      "present": true,
+      "sha256": "26330ff0d4eb8061e408a47df7567cdb8f7f2beebca8395bd0b08b78388c0de8"
+    }
+  ],
+  "kill": "ok",
+  "pid": 58044,
+  "reaped": true,
+  "wait": "ExitStatus(ExitStatus(1))"
+}
