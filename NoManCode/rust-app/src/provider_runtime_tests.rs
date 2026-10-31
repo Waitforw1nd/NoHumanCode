@@ -548,6 +548,34 @@ async fn p06_cancel_after_send_finishes_unknown_without_resend() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
     use std::process::{Command, Stdio};
+    if let Ok(root) = std::env::var("NHC_P16_RECOVER_ROOT") {
+        let root = std::path::PathBuf::from(root);
+        let call_id = std::env::var("NHC_P16_RECOVER_CALL").unwrap();
+        let output = std::env::var("NHC_P16_RECOVER_OUTPUT").unwrap();
+        let store = Arc::new(Store::open(&root.join("provider-test.db")).unwrap());
+        store.recover().unwrap();
+        let project = store.current_project().unwrap().project_id.unwrap();
+        let engine = Engine::new_with_provider_runtime_for_test(store, 2, make_runtime()).unwrap();
+        let status = engine.budget_status(&project).unwrap();
+        let call = engine.budget_call(&project, &call_id).unwrap();
+        let snapshot = json!({
+            "pid": std::process::id(),
+            "state": {
+                "call_id": call.call_id,
+                "network_state": call.call.state,
+                "network_result": call.call.result,
+                "network_success": call.call.success,
+                "budget_state": call.state,
+                "budget_reason": call.reason,
+                "reserved_tokens": call.reserved_tokens,
+                "held_tokens": status.held_tokens,
+                "unresolved_count": status.unresolved_count,
+                "claimed_count": status.claimed_count
+            }
+        });
+        std::fs::write(root.join(output), serde_json::to_vec(&snapshot).unwrap()).unwrap();
+        return;
+    }
     if let Ok(root) = std::env::var("NHC_P16_CRASH_ROOT") {
         let root = std::path::PathBuf::from(root);
         let phase = match std::env::var("NHC_P16_CRASH_PHASE").unwrap().as_str() {
@@ -594,29 +622,59 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
         };
         child.kill().unwrap();
         assert!(!child.wait().unwrap().success());
-        let reopened = Store::open(&root.join("provider-test.db")).unwrap();
-        reopened.recover().unwrap();
         let call_id = signal.lines().nth(1).unwrap();
-        let call = reopened.network_call(call_id).unwrap();
-        assert_eq!(call.state, CallState::Unknown);
-        let status = reopened.budget_status(&f.project).unwrap();
-        assert_eq!(
-            (
-                status.held_tokens,
-                status.unresolved_count,
-                status.claimed_count
-            ),
-            (100, 1, 0)
-        );
-        let first = reopened.budget_call(&f.project, call_id).unwrap();
-        reopened.recover().unwrap();
-        assert_eq!(reopened.budget_call(&f.project, call_id).unwrap(), first);
-        assert_eq!(f.mock.completions.load(Ordering::SeqCst), expected_hits);
+        let mut states = Vec::new();
+        for run in 1..=2 {
+            let output = format!("recovery-{run}.json");
+            let mut recovery = Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "provider_runtime_tests::p06_real_host_kill_and_recovery_preserve_claim_without_resend",
+                    "--nocapture",
+                ])
+                .env("NHC_P16_RECOVER_ROOT", root)
+                .env("NHC_P16_RECOVER_CALL", call_id)
+                .env("NHC_P16_RECOVER_OUTPUT", &output)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap();
+            let spawned_pid = recovery.id();
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+            loop {
+                if let Some(status) = recovery.try_wait().unwrap() {
+                    assert!(status.success(), "recovery {run} failed: {status}");
+                    assert!(recovery.wait().unwrap().success());
+                    break;
+                }
+                if tokio::time::Instant::now() >= deadline {
+                    let _ = recovery.kill();
+                    let _ = recovery.wait();
+                    panic!("recovery {run} timed out: {phase}");
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            let snapshot: Value =
+                serde_json::from_slice(&std::fs::read(root.join(output)).unwrap()).unwrap();
+            assert_eq!(snapshot["pid"], spawned_pid);
+            assert_ne!(spawned_pid, std::process::id());
+            let state = snapshot["state"].clone();
+            assert_eq!(state["call_id"], call_id);
+            assert_eq!(state["network_state"], "unknown");
+            assert_eq!(state["reserved_tokens"], 100);
+            assert_eq!(state["held_tokens"], 100);
+            assert_eq!(state["unresolved_count"], 1);
+            assert_eq!(state["claimed_count"], 0);
+            assert_eq!(f.mock.completions.load(Ordering::SeqCst), expected_hits);
+            states.push(state);
+        }
+        assert_eq!(states[0], states[1]);
     }
 }
 
 #[tokio::test]
 async fn p05_panic_payload_is_not_written_to_process_output() {
+    const ORDINARY_PANIC: &str = "nhc-ordinary-host-panic-control";
     if let Ok(name) = std::env::var("NHC_P16_PANIC_PHASE") {
         let fault = match name.as_str() {
             "encode" => Fault::EncodePanic,
@@ -624,6 +682,7 @@ async fn p05_panic_payload_is_not_written_to_process_output() {
             "feed" => Fault::FeedPanic,
             "done" => Fault::DonePanic,
             "finish" => Fault::FinishPanic,
+            "ordinary" => Fault::EncodePanic,
             _ => panic!("unknown phase"),
         };
         let f = fixture(fault).await;
@@ -633,9 +692,12 @@ async fn p05_panic_payload_is_not_written_to_process_output() {
             .await
             .unwrap_err();
         assert!(!format!("{err:?}").contains(SENTINEL));
+        if name == "ordinary" {
+            assert!(std::panic::catch_unwind(|| panic!("{ORDINARY_PANIC}")).is_err());
+        }
         return;
     }
-    for phase in ["encode", "decoder", "feed", "done", "finish"] {
+    for phase in ["encode", "decoder", "feed", "done", "finish", "ordinary"] {
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
@@ -658,6 +720,12 @@ async fn p05_panic_payload_is_not_written_to_process_output() {
             !String::from_utf8_lossy(&output.stderr).contains(SENTINEL),
             "stderr leaked {phase}"
         );
+        if phase == "ordinary" {
+            assert!(
+                String::from_utf8_lossy(&output.stderr).contains(ORDINARY_PANIC),
+                "ordinary panic hook was silenced"
+            );
+        }
     }
 }
 
