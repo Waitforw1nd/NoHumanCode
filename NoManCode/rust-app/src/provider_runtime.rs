@@ -59,6 +59,9 @@ fn key() -> InterfaceKey {
         },
     }
 }
+pub(crate) fn composition_manifest() -> CatalogManifestV1 {
+    manifest(PROVIDER, true)
+}
 fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
     CatalogManifestV1 {
         manifest_version: 1,

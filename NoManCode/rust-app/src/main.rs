@@ -122,8 +122,7 @@ async fn main() -> Result<()> {
         );
         return Ok(());
     }
-    let interrupted = store.recover()?;
-    let engine = Engine::new(store, settings.max_concurrency)?;
+    let (engine, interrupted) = Engine::new_recovered(store, settings.max_concurrency)?;
     let origin = format!("http://127.0.0.1:{}", args.port);
     let app = server::router(App {
         engine: engine.clone(),

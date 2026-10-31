@@ -61,6 +61,9 @@ fn key(name: &str) -> InterfaceKey {
         },
     }
 }
+pub(crate) fn composition_manifest(id: &str) -> CatalogManifestV1 {
+    manifest(id, true)
+}
 fn manifest(id: &str, provider: bool) -> CatalogManifestV1 {
     let shell = id == SHELL || id == SHELL_CONSUMER;
     let names: &[&str] = if shell { &SHELL_TOOLS } else { &FILE_TOOLS };
