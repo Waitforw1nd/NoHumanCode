@@ -1,3 +1,7 @@
+## 2026-11-01 NEXT-21设计核收，原B进程隔离先决实施
+
+更新人：项目经理。原B第二十轮外部运行时设计完成并释放；经理审真实typed接线/任务固定/旧DTO兼容，收紧总Agent master guard与持久revoke阶段；已允许最小只读loader例外，LPAC不能代替实际能力证据。正式冻结NEXT-21A隔离先决S01-S08，新建../nhc-b-external-runtime-isolation、codex/b/external-runtime-isolation，基线69ccc53e/产品897cc851/Rust3672895f且clean已核。仅原B静态实现及之后组件验证，首次动态前一次审查；C/D冻结，不改Engine/Store/schema或用户应用层。主线产品仍NEXT-20已验收，A及完整NEXT-21尚未验证。下一第一操作核B回执及固定候选，审实际token/ACL/Job/管道/失败回收和反例；继承41行与历史现场保留，全项目active。
+
 ## 2026-11-01 NEXT-21原B核收，设计权限与生命周期收口
 
 更新人：项目经理，05:50。原B已核d6480e4b、a5d429ec祖先、产品897cc851/Rust3672895f及index/unmerged空，正式接续第二十轮外部运行时设计。经理核PROJECT-BOOK权限约束，向B明确process不能用普通同用户进程/Job代替隔离，任务固定版本、旧Agent禁用准入和Host强杀回收必须进入契约；B初步提出LPAC/ACL/句柄边界及独立WASM worker，尚未实测或批准实现。Microsoft官方文档与Win11 22631只读环境事实已保存至B第二十轮设计中review。仅B设计、C/D冻结，main产品仍已验收NEXT-20；下一第一操作审完整方案并冻结实际隔离先决验证与实现范围。继承41行保留，全项目active、核心优先。
