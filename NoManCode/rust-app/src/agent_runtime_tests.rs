@@ -2475,3 +2475,136 @@ fn n18_agent_store_failure_never_uses_cached_enabled_state() {
     assert!(runtime.acquire_persisted(&store).is_err());
     assert_eq!(runtime.status().unwrap().in_flight, 0);
 }
+struct N18FailAgentStop {
+    calls: Arc<AtomicUsize>,
+    panic_on_stop: bool,
+}
+impl crate::plugin_host::BuiltinPlugin for N18FailAgentStop {
+    fn activate(
+        &mut self,
+        ctx: &mut crate::plugin_host::PluginContext,
+    ) -> Result<(), crate::plugin_host::PluginError> {
+        let strategy: Arc<dyn AgentStrategy> = Arc::new(Strategy {
+            mode: Mode::All,
+            trace: Arc::new(Trace::default()),
+        });
+        ctx.register_effect(&agent_key(), Box::new(strategy))
+            .unwrap();
+        Ok(())
+    }
+    fn deactivate(
+        &mut self,
+        _: &mut crate::plugin_host::PluginContext,
+    ) -> Result<(), crate::plugin_host::PluginError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        assert!(!self.panic_on_stop, "n18 agent stop panic");
+        Err(crate::plugin_host::PluginError::new("n18 agent stop error"))
+    }
+}
+#[test]
+fn n18_durable_agent_stop_failure_returns_receipt_and_replay_does_not_retry() {
+    use crate::{
+        plugin_catalog::ScopeKey,
+        plugin_management::SetPluginEnabled,
+        runtime_management::{RuntimeId, RuntimeManagementError},
+    };
+    for panic_on_stop in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("agent.db");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut host = crate::plugin_host::PluginHost::new(ScopeKey::Host).unwrap();
+        host.catalog_mut()
+            .register(agent_manifest(
+                "builtin.engine-chat-agent",
+                vec![],
+                vec![agent_key()],
+            ))
+            .unwrap();
+        host.with_factory("builtin.engine-chat-agent", || Box::new(Consumer));
+        host.catalog_mut()
+            .register(agent_manifest(
+                "builtin.chat-agent",
+                vec![agent_key()],
+                vec![],
+            ))
+            .unwrap();
+        let counted = calls.clone();
+        host.with_factory("builtin.chat-agent", move || {
+            Box::new(N18FailAgentStop {
+                calls: counted.clone(),
+                panic_on_stop,
+            })
+        });
+        let runtime = AgentRuntime::from_host_for_test(host).unwrap();
+        let engine = Engine::new_with_agent_runtime_for_test(
+            Arc::new(Store::open(&path).unwrap()),
+            2,
+            runtime,
+        )
+        .unwrap();
+        let req = || SetPluginEnabled {
+            enabled: false,
+            expected_revision: 0,
+        };
+        let original = engine
+            .set_runtime_enabled(RuntimeId::ChatAgent, req(), "failing-stop")
+            .unwrap();
+        assert!(!original.replayed);
+        assert_eq!(original.receipt.revision, 1);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        let status = serde_json::to_value(&original.current).unwrap();
+        assert_eq!(status["desired"]["enabled"], false);
+        assert_eq!(status["converged"], false);
+        assert_eq!(status["runtime"]["admission_open"], false);
+        assert_ne!(status["runtime"]["last_failure"], serde_json::Value::Null);
+        let replay = engine
+            .set_runtime_enabled(RuntimeId::ChatAgent, req(), "failing-stop")
+            .unwrap();
+        assert!(replay.replayed);
+        assert_eq!(replay.receipt, original.receipt);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert!(matches!(
+            engine.set_runtime_enabled(
+                RuntimeId::ChatAgent,
+                SetPluginEnabled {
+                    enabled: true,
+                    expected_revision: 1
+                },
+                "enable-after-failure"
+            ),
+            Err(RuntimeManagementError::Unavailable)
+        ));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        let db = rusqlite::Connection::open(&path).unwrap();
+        let persisted: (bool, i64) = db
+            .query_row(
+                "SELECT enabled,revision FROM plugin_desired WHERE plugin_id=?1",
+                [original.receipt.plugin_id.as_str()],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(persisted, (false, 1));
+        let persisted_receipt:(String,bool,i64,i64)=db.query_row("SELECT plugin_id,enabled,expected_revision,result_revision FROM plugin_management_requests WHERE key='failing-stop'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).unwrap();
+        assert_eq!(
+            persisted_receipt,
+            (original.receipt.plugin_id.clone(), false, 0, 1)
+        );
+        let after = serde_json::to_value(
+            engine
+                .runtime_component_status(RuntimeId::ChatAgent)
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(after["converged"], false);
+
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM plugin_management_requests WHERE key='enable-after-failure'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+    }
+}

@@ -208,3 +208,131 @@ fn generation_exhaustion_does_not_leave_persistent_disable_open() {
         assert_eq!(state["converged"], false);
     }
 }
+#[test]
+fn intent_receipt_insert_failure_rolls_back_without_changing_local_runtime() {
+    let _probe_guard = barrier_test_guard();
+    for id in [RuntimeId::ChatAgent, RuntimeId::CompletionProvider] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("runtime.db");
+        let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        let db = rusqlite::Connection::open(&path).unwrap();
+        db.execute_batch("CREATE TRIGGER n18_reject_receipt BEFORE INSERT ON plugin_management_requests WHEN NEW.key='write-failure' BEGIN SELECT RAISE(ABORT,'n18_receipt_injected'); END;").unwrap();
+        let component = match id {
+            RuntimeId::ChatAgent => "builtin.chat-agent",
+            RuntimeId::CompletionProvider => "builtin.provider-xpeach",
+        };
+        let before = status(&engine, id);
+        let probe=db.execute("INSERT INTO plugin_management_requests(key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES('write-failure',?1,0,0,1,1)",[component]).unwrap_err();
+        assert!(probe.to_string().contains("n18_receipt_injected"));
+        let db_key: String = db
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let gate =
+            crate::engine::runtime_barrier::arm(db_key, "runtime_intent_before_receipt_insert");
+        let worker_engine = engine.clone();
+        let worker = std::thread::spawn(move || {
+            worker_engine.set_runtime_enabled(id, write(false, 0), "write-failure")
+        });
+        let arrived = gate.wait_arrived(std::time::Duration::from_secs(5));
+        gate.release();
+        assert!(
+            arrived,
+            "management transaction never reached target receipt insert"
+        );
+        assert!(matches!(
+            worker.join().unwrap(),
+            Err(RuntimeManagementError::Internal)
+        ));
+        assert_eq!(status(&engine, id), before);
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM plugin_management_requests WHERE key='write-failure'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        assert_eq!(
+            db.query_row(
+                "SELECT revision FROM plugin_desired WHERE plugin_id=?1",
+                [component],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        db.execute_batch("DROP TRIGGER n18_reject_receipt").unwrap();
+        let accepted = engine
+            .set_runtime_enabled(id, write(false, 0), "write-failure")
+            .unwrap();
+        assert!(!accepted.replayed);
+        assert_eq!(accepted.receipt.revision, 1);
+        assert_eq!(status(&engine, id)["desired"]["enabled"], false);
+    }
+}
+#[test]
+fn sqlite_intent_commit_failure_rolls_back_before_runtime_changes() {
+    for id in [RuntimeId::ChatAgent, RuntimeId::CompletionProvider] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("runtime.db");
+        let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        let db = rusqlite::Connection::open(&path).unwrap();
+        let db_key: String = db
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let component = match id {
+            RuntimeId::ChatAgent => "builtin.chat-agent",
+            RuntimeId::CompletionProvider => "builtin.provider-xpeach",
+        };
+        let before = status(&engine, id);
+        crate::engine::runtime_barrier::fail_next_intent_commit(db_key.clone());
+        assert!(matches!(
+            engine.set_runtime_enabled(id, write(false, 0), "commit-failure"),
+            Err(RuntimeManagementError::Internal)
+        ));
+        assert!(
+            crate::engine::runtime_barrier::take_intent_commit_failure_observed(&db_key),
+            "expected an actual deferred FK failure from SQLite COMMIT"
+        );
+        assert_eq!(status(&engine, id), before);
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM plugin_management_requests WHERE key='commit-failure'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        assert_eq!(
+            db.query_row(
+                "SELECT revision FROM plugin_desired WHERE plugin_id=?1",
+                [component],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        drop(Store::open(&path).unwrap());
+        let accepted = engine
+            .set_runtime_enabled(id, write(false, 0), "commit-failure")
+            .unwrap();
+        assert!(!accepted.replayed);
+        assert_eq!(accepted.receipt.revision, 1);
+        drop(engine);
+        let restarted = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        let after = status(&restarted, id);
+        assert_eq!(after["desired"]["enabled"], false);
+        assert_eq!(after["desired"]["revision"], 1);
+        assert_eq!(after["runtime"]["admission_open"], false);
+    }
+}
