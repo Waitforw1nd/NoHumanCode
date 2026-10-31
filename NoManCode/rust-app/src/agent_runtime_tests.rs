@@ -967,6 +967,8 @@ async fn a09_orphan_approval_blocks_new_assistant_and_terminal_save_cannot_write
     let store = f.engine.store.clone();
     let before = Arc::new(Mutex::new(None));
     let captured = before.clone();
+    let approval_before = Arc::new(Mutex::new(None));
+    let approval_captured = approval_before.clone();
     f.engine.set_agent_before_save_for_test(
         id.clone(),
         Arc::new(move |task, message| {
@@ -977,6 +979,7 @@ async fn a09_orphan_approval_blocks_new_assistant_and_terminal_save_cannot_write
             store
                 .ensure_approval(&historic, "orphan-a09", "write_file", &args)
                 .unwrap();
+            *approval_captured.lock().unwrap() = Some(orphan_approval_snapshot(&store, &task.id));
             store.save_task(task).unwrap();
         }),
     );
@@ -988,14 +991,50 @@ async fn a09_orphan_approval_blocks_new_assistant_and_terminal_save_cannot_write
         before.lock().unwrap().clone().expect("hook not invoked")
     );
     assert!(
-        f.engine
-            .store
-            .approval_by_tool_call(&id, "orphan-a09")
-            .unwrap()
-            .is_some()
+        task.error
+            .as_deref()
+            .is_some_and(|e| e.contains("new tool call conflicts with existing approval"))
     );
+    let count: u64 = f
+        .engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT COUNT(*) FROM approvals WHERE task_id=?1 AND tool_call_id=?2",
+            rusqlite::params![&id, "orphan-a09"],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 1);
+    assert_eq!(
+        orphan_approval_snapshot(&f.engine.store, &id),
+        approval_before.lock().unwrap().clone().unwrap()
+    );
+    let error = f
+        .engine
+        .store
+        .approval_by_tool_call(&id, "orphan-a09")
+        .unwrap_err();
+    assert!(matches!(
+        error.downcast_ref::<crate::approval::ApprovalError>(),
+        Some(crate::approval::ApprovalError::CorruptState { .. })
+    ));
     assert!(!f.dir.path().join("orphan.txt").exists());
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+}
+fn orphan_approval_snapshot(store: &Store, task_id: &str) -> String {
+    store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT json_array(id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by) FROM approvals WHERE task_id=?1 AND tool_call_id='orphan-a09'",
+            [task_id],
+            |row| row.get(0),
+        )
+        .unwrap()
 }
 #[tokio::test]
 async fn a09_transaction_failure_rolls_back_group_and_terminal_save_uses_old_snapshot() {
