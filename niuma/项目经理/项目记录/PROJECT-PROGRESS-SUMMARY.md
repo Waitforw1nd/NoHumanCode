@@ -6,7 +6,7 @@
 
 [NEXT-16 v1.0](../任务/2026-10-31NEXT-16内核Provider服务与完整CLI链路契约.md)已正式派三名现有Terra员工；均本人实核f2b5b6b0与双tree、status/index/unmerged空并开始静态实施。B负责Provider运行时及两生产Completion，D独立测试，C空库完整开发链。新独立树/唯一文件/提交与整合权均在契约登记；不使用旧任务重复写入。
 
-当前动态：C首组件e810979b编译通过但Checkpoint恢复后resume返回request_failed而非conflict，已停止并按补充02修server::resume，固定74f40f3e待复测。B首轮check0、Provider库17/0/0，integration四项因target临时目录缺失失败，后项未执行；B补环境及真实错误分类固定87f1ce60，在原窗口重跑受影响组件。D加强实际双进程恢复和panic负控制，固定f9211fc6，尚未编译。下一第一操作：核B新组件终态，串行放C复测并合B真实依赖到D；全项目目标未完成。
+当前动态：B87f1ce60限定Provider28项/check/clippy/fmt通过；C74f40f3e完整公开CLI故事1/0/0，经理核5对原/发布证据并组件限定验收。首次失败仍保留。经理D→B合并，B只lib接线后得8d9cc0d54b472fd222a281b5faeee795adc28711（NoManCode ce7dca1f94f37b72fba7febfb4ed08cae93f2ff9 / Rust066a386b803ccebc0025b3a7dc3927a5daddab16），再快进D，交其本人核收与独立反例唯一组件窗口；B/C持续冻结。下一第一操作：核D真实终态/缺陷与P01至P06证据，再交C完整组合五门禁。架构判断及组件进展见[补记](../提交报告/2026-10-31架构评估进展补记.md)；全项目目标未完成。
 
 2026-09-29当前唯一推进员工为D：C0.7已封存、原对话idle，经理review0.7已完成；经理已明确单独恢复D补充06静态修补，B/C保持冻结。D最近暂停回执与实际a510e548/两tree已核；D本人身份正在接续更新，不纳入本次暂存。后续先审D固定候选再放行组件，未有新动态结果。
 
