@@ -5,6 +5,7 @@ pub mod approval;
 pub mod budget;
 pub mod checkpoint;
 mod command_execution;
+mod composition;
 pub mod credential_input;
 pub mod domain;
 pub mod engine;
@@ -13,6 +14,7 @@ pub(crate) mod git_worktree;
 pub mod host_configuration;
 #[cfg(all(test, windows))]
 mod host_configuration_crash_tests;
+mod host_services;
 pub mod network_authorization;
 mod plugin_callback;
 pub mod plugin_catalog;

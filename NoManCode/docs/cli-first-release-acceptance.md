@@ -1,6 +1,12 @@
-# 第一版 CLI：现状与待验收操作清单
+# NoHumanCode CLI：当前使用入口与验收记录
 
 NEXT-15 安全初始化已完成联合验收并整合主线，固定组合五门禁通过。NEXT-16 的 Provider 新内核与同一空数据 CLI 用户故事已通过固定组合五门禁和限定联合验收，并合入主线。NEXT-17 的 Agent 策略服务与只读诊断已按限定范围联合验收并整合主线；NEXT-18 的 Agent 与 Completion Provider 持久运行时管理切片已[联合验收](../../niuma/项目经理/审查记录/2026-10-31NEXT-18联合验收.md)并[整合主线](../../niuma/项目经理/审查记录/2026-10-31NEXT-18整合记录.md)。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
+
+## 当前组合观察
+
+`peachsh --port 3090 --json host composition` 查询当前 Host 的默认能力绑定；去掉 `--json` 可阅读说明。返回的 13 项是已装配能力，不代表已启用或已获用户授权：`plugins` 与 `runtimes` 分别显示期望和进程状态。`host_required` 服务不能热关闭，文件读搜与写入共用 files 开关；`per_component` 不承诺跨域原子快照。权限、审批、网络授权和项目限制仍分别生效。
+
+NEXT-20 固定候选 `5d7e26857b8192912412a1456f3aa0b091dd6288`（Rust tree `3672895f5b4083c3d0a7a09d9d520c4a9ceadada`）的 workspace check、CLI build、完整 workspace test、fmt、all-targets Clippy 和 UI wasm-check 均 exit 0；62 个测试结果块合计 837 passed / 0 failed / 1 ignored（含 helper，唯一 ignored 为付费真实 Provider）。组合 CLI、新旧公开工作流各实际通过；联合验收与主线整合另见经理记录。第三方 runtime、Desktop 和完整产品仍未完成，历史未归因事件不因本次通过关闭。
 
 ## 使用前置与已知缺口
 

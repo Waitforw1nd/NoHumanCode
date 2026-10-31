@@ -495,6 +495,95 @@ async fn start(h: &Host, key: &str) -> Value {
     .await
 }
 
+async fn composition(h: &Host) -> Value {
+    let value = h.ok(&["host", "composition"]).await;
+    assert_eq!(value["version"], 1);
+    assert_eq!(value["consistency"], "per_component");
+    assert_eq!(value["capabilities"].as_array().unwrap().len(), 13);
+    assert_eq!(value["plugins"], h.ok(&["plugin", "list"]).await["plugins"]);
+    assert_eq!(
+        value["runtimes"],
+        h.ok(&["runtime", "component", "list"]).await["components"]
+    );
+    value
+}
+
+fn desired(snapshot: &Value, id: &str) -> (bool, u64, bool) {
+    let items = if id == "builtin.files" || id == "builtin.shell" {
+        &snapshot["plugins"]
+    } else {
+        &snapshot["runtimes"]
+    };
+    let item = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["plugin_id"] == id || item["id"] == id)
+        .unwrap();
+    (
+        item["desired"]["enabled"].as_bool().unwrap(),
+        item["desired"]["revision"].as_u64().unwrap(),
+        item["converged"].as_bool().unwrap(),
+    )
+}
+
+async fn set_domain(h: &Host, id: &str, enabled: bool, revision: u64, key: &str) {
+    let flag = if enabled { "true" } else { "false" };
+    let revision = revision.to_string();
+    if id == "builtin.files" || id == "builtin.shell" {
+        h.ok(&[
+            "plugin",
+            "set-enabled",
+            id,
+            "--enabled",
+            flag,
+            "--expected-revision",
+            &revision,
+            "--key",
+            key,
+        ])
+        .await;
+    } else {
+        h.ok(&[
+            "runtime",
+            "component",
+            "set-enabled",
+            id,
+            "--enabled",
+            flag,
+            "--expected-revision",
+            &revision,
+            "--key",
+            key,
+        ])
+        .await;
+    }
+}
+
+async fn wait_composition(h: &Host, enabled: bool) -> Value {
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            let snapshot = composition(h).await;
+            if [
+                "builtin.files",
+                "builtin.shell",
+                "builtin.chat-agent",
+                "builtin.provider-xpeach",
+            ]
+            .iter()
+            .all(|id| {
+                let (actual, _, converged) = desired(&snapshot, id);
+                actual == enabled && converged
+            }) {
+                return snapshot;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap()
+}
+
 async fn assert_sealed_resume(h: &Host, run: &str, task: &str) {
     let before = h.ok(&["run", "status", run]).await;
     let context = h.context(run).await;
@@ -613,6 +702,23 @@ async fn empty_database_public_cli_development_restore_and_restart() {
     assert_eq!(budget["held_tokens"], 0);
     let calls = h.ok(&["task", "network-calls", task]).await;
     assert_eq!(calls["calls"].as_array().unwrap().len(), 7);
+    let initial_composition = composition(&h).await;
+    let capabilities = initial_composition["capabilities"].clone();
+    let domains = [
+        "builtin.files",
+        "builtin.shell",
+        "builtin.chat-agent",
+        "builtin.provider-xpeach",
+    ];
+    for (index, id) in domains.iter().enumerate() {
+        let (enabled, revision, _) = desired(&initial_composition, id);
+        assert!(enabled);
+        set_domain(&h, id, false, revision, &format!("composition-off-{index}")).await;
+    }
+    let disabled = wait_composition(&h, false).await;
+    assert_eq!(disabled["capabilities"], capabilities);
+    let disabled_revisions: Vec<_> = domains.iter().map(|id| desired(&disabled, id).1).collect();
+    assert_eq!(h.script.requests.lock().unwrap().len(), 7);
     let changes = h.ok(&["task", "changes", task]).await;
     assert_eq!(changes["changes"].as_array().unwrap().len(), 1);
     let diff = h
@@ -670,6 +776,34 @@ async fn empty_database_public_cli_development_restore_and_restart() {
         restored
     );
     assert_sealed_resume(&h, run_id, task).await;
+    // Review and restore above remain available while all managed domains are disabled.
+    h.stop().await;
+    h.restart().await;
+    let restarted_disabled = wait_composition(&h, false).await;
+    assert_eq!(restarted_disabled["capabilities"], capabilities);
+    for (index, id) in domains.iter().enumerate() {
+        assert_eq!(
+            desired(&restarted_disabled, id).1,
+            disabled_revisions[index]
+        );
+    }
+    assert_eq!(h.script.requests.lock().unwrap().len(), 7);
+    assert_eq!(
+        std::fs::read(h.workspace().join("shell-effect.txt")).unwrap(),
+        shell_effect
+    );
+    for (index, id) in domains.iter().enumerate() {
+        set_domain(
+            &h,
+            id,
+            true,
+            desired(&restarted_disabled, id).1,
+            &format!("composition-on-{index}"),
+        )
+        .await;
+    }
+    let enabled = wait_composition(&h, true).await;
+    assert_eq!(enabled["capabilities"], capabilities);
     let previous = context["latest_turn"]["id"].as_str().unwrap();
     let sent = h
         .ok(&[

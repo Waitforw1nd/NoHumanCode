@@ -210,6 +210,24 @@ pub struct AgentRuntimeStatus {
     pub last_failure: Option<AgentError>,
 }
 impl AgentRuntime {
+    pub(crate) fn composition_manifest(&self) -> anyhow::Result<CatalogManifestV1> {
+        let state = self
+            .inner
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("agent catalog unavailable"))?;
+        let host = state
+            .host
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("agent transitioning"))?;
+        host.catalog()
+            .descriptors()
+            .into_iter()
+            .find(|m| m.id == PROVIDER)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("agent binding missing"))
+    }
+
     #[cfg(test)]
     pub(crate) fn builtin() -> anyhow::Result<Self> {
         Self::assemble(Arc::new(Builtin))

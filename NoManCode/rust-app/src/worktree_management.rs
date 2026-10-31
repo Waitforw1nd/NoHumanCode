@@ -882,6 +882,66 @@ mod tests {
         sync::Arc,
     };
 
+    struct N13Child {
+        #[cfg(windows)]
+        contained: crate::process_test_fixture::ContainedChild,
+        #[cfg(not(windows))]
+        child: std::process::Child,
+    }
+    impl N13Child {
+        fn spawn(command: &mut std::process::Command, root: &Path, _phase: &str) -> Self {
+            #[cfg(windows)]
+            let result = Self {
+                contained: crate::process_test_fixture::ContainedChild::spawn(
+                    command, root, _phase,
+                )
+                .unwrap(),
+            };
+            #[cfg(not(windows))]
+            let result = Self {
+                child: command.spawn().unwrap(),
+            };
+            crate::worktree_diagnostics::atomic_write(&root.join("start"), b"start").unwrap();
+            result
+        }
+        fn child(&mut self) -> &mut std::process::Child {
+            #[cfg(windows)]
+            {
+                &mut self.contained.child
+            }
+            #[cfg(not(windows))]
+            {
+                &mut self.child
+            }
+        }
+        fn kill_wait(&mut self) -> std::process::ExitStatus {
+            #[cfg(windows)]
+            {
+                self.contained.terminate_and_wait().unwrap()
+            }
+            #[cfg(not(windows))]
+            {
+                self.child.kill().unwrap();
+                self.child.wait().unwrap()
+            }
+        }
+    }
+    impl Drop for N13Child {
+        fn drop(&mut self) {
+            #[cfg(not(windows))]
+            {
+                let _ = self.child.kill();
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                while std::time::Instant::now() < deadline {
+                    if self.child.try_wait().ok().flatten().is_some() {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+            }
+        }
+    }
+
     fn raw(root: &Path, args: &[&str]) -> String {
         let out = std::process::Command::new("git")
             .current_dir(root)
@@ -910,6 +970,71 @@ mod tests {
         head: String,
     }
     impl Fixture {
+        #[cfg(windows)]
+        fn new_supervised(diagnostics: &Option<Arc<crate::worktree_diagnostics::Case>>) -> Self {
+            struct PreserveSetup(Option<tempfile::TempDir>);
+            impl Drop for PreserveSetup {
+                fn drop(&mut self) {
+                    if std::thread::panicking()
+                        && let Some(temp) = self.0.take()
+                    {
+                        eprintln!("N13 retained setup fixture={}", temp.keep().display());
+                    }
+                }
+            }
+            let mut temp = PreserveSetup(Some(tempfile::tempdir().unwrap()));
+            println!(
+                "N13 setup fixture={}",
+                temp.0.as_ref().unwrap().path().display()
+            );
+            let source = temp.0.as_ref().unwrap().path().join("source");
+            let parent = temp.0.as_ref().unwrap().path().join("targets");
+            let host = temp.0.as_ref().unwrap().path().join("host");
+            for path in [&source, &parent, &host] {
+                std::fs::create_dir(path).unwrap();
+            }
+            let step = |number, args: &[&str]| {
+                crate::worktree_diagnostics::case_record(diagnostics, "fixture_git_begin", number);
+                let result = raw(&source, args);
+                crate::worktree_diagnostics::case_record(diagnostics, "fixture_git_end", number);
+                result
+            };
+            step(1, &["init", "--quiet"]);
+            step(2, &["config", "user.name", "Fixture"]);
+            step(3, &["config", "user.email", "fixture@example.invalid"]);
+            step(4, &["config", "core.autocrlf", "false"]);
+            std::fs::write(source.join("a.txt"), "baseline\n").unwrap();
+            step(5, &["add", "--", "a.txt"]);
+            step(6, &["commit", "--quiet", "-m", "baseline"]);
+            let head = step(7, &["rev-parse", "HEAD"]).trim().to_owned();
+            let db = host.join("host.db");
+            let store = Arc::new(Store::open(&db).unwrap());
+            store
+                .save_settings(&Settings {
+                    workspace: source.to_string_lossy().into(),
+                    max_concurrency: 2,
+                    routes: vec![],
+                    newapi: None,
+                })
+                .unwrap();
+            let project = store
+                .register_project(RegisterProject {
+                    name: "Source".into(),
+                    root_path: source.to_string_lossy().into(),
+                    idempotency_key: id(),
+                })
+                .unwrap();
+            crate::worktree_diagnostics::case_event(diagnostics, "fixture_ready");
+            Self {
+                _temp: temp.0.take().unwrap(),
+                source,
+                parent,
+                db,
+                store,
+                project,
+                head,
+            }
+        }
         fn new() -> Self {
             let temp = tempfile::tempdir().unwrap();
             let source = temp.path().join("source");
@@ -1292,6 +1417,51 @@ mod tests {
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
     async fn n13_dropped_caller_owned_worker_still_registers_once() {
+        #[cfg(windows)]
+        let control_root = if let Ok(root) = std::env::var("NHC_N13_CALLER_CHILD") {
+            let root = PathBuf::from(root);
+            crate::worktree_diagnostics::wait_start(&root.join("start")).unwrap();
+            Some(root)
+        } else {
+            let root = tempfile::tempdir().unwrap().keep();
+            let output = std::fs::File::create(root.join("child.log")).unwrap();
+            let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+            command
+                .args([
+                    "--exact",
+                    "worktree_management::tests::n13_dropped_caller_owned_worker_still_registers_once",
+                    "--nocapture",
+                ])
+                .env("NHC_N13_CALLER_CHILD", &root)
+                .stdout(output.try_clone().unwrap())
+                .stderr(output);
+            let mut child =
+                crate::process_test_fixture::ContainedChild::spawn(&mut command, &root, "caller")
+                    .unwrap();
+            crate::worktree_diagnostics::atomic_write(&root.join("start"), b"start").unwrap();
+            let mut supervisor = crate::worktree_diagnostics::Supervisor::with_fixture(
+                root.join("worktree-diagnostics.jsonl"),
+            );
+            loop {
+                if let Some(status) = child.child.try_wait().unwrap() {
+                    assert!(status.success(), "N13 caller child failed: {status}");
+                    supervisor.poll().unwrap();
+                    assert_eq!(supervisor.stage(), 10);
+                    let events =
+                        std::fs::read_to_string(root.join("worktree-diagnostics.jsonl")).unwrap();
+                    assert!(events.ends_with('\n'));
+                    let last: serde_json::Value =
+                        serde_json::from_str(events.lines().last().unwrap()).unwrap();
+                    assert_eq!(last["phase"], "n13_assertions_complete");
+                    let log = std::fs::read_to_string(root.join("child.log")).unwrap();
+                    assert!(log.contains("test result: ok. 1 passed;"));
+                    child.terminate_and_wait().unwrap();
+                    return;
+                }
+                supervisor.poll().unwrap();
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        };
         struct RetainedFixture(Option<Fixture>);
         impl std::ops::Deref for RetainedFixture {
             type Target = Fixture;
@@ -1335,6 +1505,11 @@ mod tests {
                 }
             }
         }
+        #[cfg(windows)]
+        let diagnostic_case = crate::worktree_diagnostics::Case::new(control_root.unwrap(), "n13");
+        #[cfg(windows)]
+        let f = RetainedFixture(Some(Fixture::new_supervised(&diagnostic_case)));
+        #[cfg(not(windows))]
         let f = RetainedFixture(Some(Fixture::new()));
         println!(
             "N13 fixture={} pid={}",
@@ -1342,6 +1517,7 @@ mod tests {
             std::process::id()
         );
         let engine = Engine::new(f.store.clone(), 2).unwrap();
+        #[cfg(not(windows))]
         let diagnostic_case =
             crate::worktree_diagnostics::Case::new(f._temp.path().to_path_buf(), "n13");
         engine.set_worktree_diagnostics(diagnostic_case.clone());
@@ -1366,14 +1542,19 @@ mod tests {
             diagnostic_case.clone(),
             async move { e.create_project_worktree(r).await },
         ));
-        let outcome = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-            tokio::select! {
-                biased;
-                result = &mut caller => Err(result),
-                ready = &mut ready_rx => { ready.expect("N13 probe sender closed"); Ok(()) },
-            }
-        })
-        .await;
+        #[cfg(windows)]
+        let operation_budget = crate::worktree_diagnostics::TOTAL_SECS;
+        #[cfg(not(windows))]
+        let operation_budget = 10;
+        let outcome =
+            tokio::time::timeout(std::time::Duration::from_secs(operation_budget), async {
+                tokio::select! {
+                    biased;
+                    result = &mut caller => Err(result),
+                    ready = &mut ready_rx => { ready.expect("N13 probe sender closed"); Ok(()) },
+                }
+            })
+            .await;
         match outcome {
             Ok(Ok(())) if !caller.is_finished() => crate::worktree_diagnostics::case_event(
                 &diagnostic_case,
@@ -1465,19 +1646,24 @@ mod tests {
         assert!(caller.await.unwrap_err().is_cancelled());
         assert_eq!(f.count("worktree_project_reservations"), 1);
         release_tx.send(()).unwrap();
-        let receipt = tokio::time::timeout(std::time::Duration::from_secs(15), async {
-            loop {
-                let r = engine
-                    .lookup_project_worktree(&f.project.id, &request.idempotency_key)
-                    .unwrap();
-                if r.state != WorktreeState::Claimed {
-                    break r;
+        #[cfg(windows)]
+        let completion_budget = crate::worktree_diagnostics::TOTAL_SECS;
+        #[cfg(not(windows))]
+        let completion_budget = 15;
+        let receipt =
+            tokio::time::timeout(std::time::Duration::from_secs(completion_budget), async {
+                loop {
+                    let r = engine
+                        .lookup_project_worktree(&f.project.id, &request.idempotency_key)
+                        .unwrap();
+                    if r.state != WorktreeState::Claimed {
+                        break r;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-            }
-        })
-        .await
-        .unwrap();
+            })
+            .await
+            .unwrap();
         assert_eq!(receipt.state, WorktreeState::Succeeded);
         assert_eq!(f.count("project_worktree_origins"), 1);
         assert_eq!(
@@ -1606,14 +1792,33 @@ mod tests {
     }
     #[test]
     fn n13_real_process_three_durable_stops_kill_wait_recover_without_repeat() {
+        struct RetainOnFailure(Option<Fixture>);
+        impl std::ops::Deref for RetainOnFailure {
+            type Target = Fixture;
+            fn deref(&self) -> &Fixture {
+                self.0.as_ref().unwrap()
+            }
+        }
+        impl Drop for RetainOnFailure {
+            fn drop(&mut self) {
+                if std::thread::panicking()
+                    && let Some(fixture) = self.0.take()
+                {
+                    let Fixture { _temp, .. } = fixture;
+                    eprintln!("N13 retained process fixture={}", _temp.keep().display());
+                }
+            }
+        }
         const TEST: &str = "worktree_management::tests::n13_real_process_three_durable_stops_kill_wait_recover_without_repeat";
         if let Ok(root) = std::env::var("NHC_WORKTREE_B_CHILD") {
             let root = PathBuf::from(root);
+            crate::worktree_diagnostics::wait_start(&root.join("start")).unwrap();
             let phase = std::env::var("NHC_WORKTREE_B_PHASE").unwrap();
             let request: CreateWorktree =
                 serde_json::from_slice(&std::fs::read(root.join("request.json")).unwrap()).unwrap();
             let store = Arc::new(Store::open(&root.join("host/host.db")).unwrap());
             let engine = Engine::new(store, 2).unwrap();
+            let diagnostics = crate::worktree_diagnostics::Case::new(root.clone(), "n13-process");
             engine.set_worktree_probe_for_test(Arc::new(move |at, op| {
                 let matches = matches!(
                     (phase.as_str(), at),
@@ -1628,19 +1833,23 @@ mod tests {
                         )
                 );
                 if matches {
-                    std::fs::write(root.join("ready"), op).unwrap();
+                    crate::worktree_diagnostics::atomic_write(&root.join("ready"), op.as_bytes())
+                        .unwrap();
                     std::thread::sleep(std::time::Duration::from_secs(40));
                     panic!("parent did not terminate stopped child");
                 }
             }));
             tokio::runtime::Runtime::new()
                 .unwrap()
-                .block_on(engine.create_project_worktree(request))
+                .block_on(crate::worktree_diagnostics::scope(
+                    diagnostics,
+                    engine.create_project_worktree(request),
+                ))
                 .unwrap();
             panic!("child returned without stopping");
         }
         for phase in ["claim", "created", "registered"] {
-            let f = Fixture::new();
+            let f = RetainOnFailure(Some(Fixture::new()));
             let request = f.request();
             std::fs::write(
                 f._temp.path().join("request.json"),
@@ -1650,28 +1859,45 @@ mod tests {
             let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
             let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
             let output = std::fs::File::create(f._temp.path().join("child.log")).unwrap();
-            let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+            let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+            command
                 .args(["--exact", TEST, "--nocapture"])
                 .env("NHC_WORKTREE_B_CHILD", f._temp.path())
                 .env("NHC_WORKTREE_B_PHASE", phase)
                 .stdout(output.try_clone().unwrap())
-                .stderr(output)
-                .spawn()
-                .unwrap();
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
-            while !f._temp.path().join("ready").exists() && std::time::Instant::now() < deadline {
-                if let Some(status) = child.try_wait().unwrap() {
+                .stderr(output);
+            let mut child = N13Child::spawn(&mut command, f._temp.path(), phase);
+            let mut supervisor = crate::worktree_diagnostics::Supervisor::new(
+                f._temp.path().join("worktree-diagnostics.jsonl"),
+            );
+            loop {
+                if let Some(status) = child.child().try_wait().unwrap() {
                     panic!(
                         "{phase} child exited {status}: {}",
                         std::fs::read_to_string(f._temp.path().join("child.log")).unwrap()
                     );
                 }
+                if let Err(error) = supervisor.poll() {
+                    let status = child.kill_wait();
+                    panic!("{phase} supervision failed: {error:#}; child wait={status:?}");
+                }
+                if let Ok(operation) = std::fs::read_to_string(f._temp.path().join("ready")) {
+                    supervisor.poll().unwrap();
+                    let expected_stage = match phase {
+                        "claim" => 8,
+                        "created" => 9,
+                        "registered" => 10,
+                        _ => unreachable!(),
+                    };
+                    assert_eq!(supervisor.stage(), expected_stage);
+                    assert!(uuid::Uuid::parse_str(&operation).is_ok());
+                    assert!(
+                        child.child().try_wait().unwrap().is_none(),
+                        "{phase} child exited before kill"
+                    );
+                    break;
+                }
                 std::thread::sleep(std::time::Duration::from_millis(20));
-            }
-            if !f._temp.path().join("ready").exists() {
-                child.kill().unwrap();
-                child.wait().unwrap();
-                panic!("{phase} child stop timeout");
             }
             let operation = std::fs::read_to_string(f._temp.path().join("ready")).unwrap();
             let stopped = f.store.worktree_receipt(&f.project.id, &operation).unwrap();
@@ -1683,12 +1909,12 @@ mod tests {
                     WorktreeState::Claimed
                 }
             );
-            child.kill().unwrap();
-            let status = child.wait().unwrap();
+            let pid = child.child().id();
+            let status = child.kill_wait();
             assert!(!status.success());
             eprintln!(
                 "N13 actual kill+wait phase={phase} child={} exit={status} operation={operation}",
-                child.id()
+                pid
             );
             let refs = raw(&f.source, &["show-ref"]);
             let list = raw(&f.source, &["worktree", "list", "--porcelain"]);

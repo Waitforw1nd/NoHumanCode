@@ -460,6 +460,28 @@ pub struct ToolLease {
     spec: Value,
 }
 impl ToolRuntime {
+    pub(crate) fn composition_manifest(&self, id: &str) -> Result<CatalogManifestV1> {
+        let state = match id {
+            FILES => self
+                .host
+                .lock()
+                .map_err(|_| anyhow::anyhow!("files catalog unavailable"))?,
+            SHELL => self
+                .shell_host
+                .lock()
+                .map_err(|_| anyhow::anyhow!("shell catalog unavailable"))?,
+            _ => anyhow::bail!("unknown tool catalog"),
+        };
+        state
+            .host
+            .catalog()
+            .descriptors()
+            .into_iter()
+            .find(|m| m.id == id)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("tool binding missing"))
+    }
+
     pub fn builtin() -> Result<Self> {
         Self::builtin_with_enabled(true)
     }

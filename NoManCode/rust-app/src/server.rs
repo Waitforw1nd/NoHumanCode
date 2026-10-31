@@ -417,6 +417,7 @@ pub fn router(app: App) -> Router {
             put(set_runtime_component),
         )
         .route("/api/settings", get(settings).put(save_settings))
+        .route("/api/host/composition", get(host_composition))
         .route("/api/host/config", get(host_config))
         .route("/api/host/routes/{id}", put(configure_host_route))
         .route("/api/host/config/lookup", post(host_config_lookup))
@@ -527,7 +528,8 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
     if headers.get("sec-fetch-site").and_then(|v| v.to_str().ok()) == Some("cross-site") {
         return denied("拒绝跨站请求");
     }
-    let authenticated_read = host_configuration
+    let authenticated_read = request.uri().path() == "/api/host/composition"
+        || host_configuration
         || request.uri().path() == "/api/runtime/agents/chat"
         || request.uri().path() == "/api/runtime/components"
         || request.uri().path().starts_with("/api/runtime/components/")
@@ -705,6 +707,12 @@ fn plugin_error(error: anyhow::Error) -> Response {
             .downcast_ref::<PluginManagementError>()
             .map_or("plugin_internal", |e| e.code()),
     )
+}
+
+async fn host_composition(
+    State(app): State<App>,
+) -> Result<Json<crate::engine::CompositionSnapshot>> {
+    app.engine.composition().map(Json).map_err(read_error)
 }
 
 async fn plugins(State(app): State<App>) -> Response {
@@ -1189,7 +1197,9 @@ async fn runs(State(app): State<App>, RawQuery(query): RawQuery) -> Result<Json<
                 .collect::<Vec<_>>()
         )));
     }
-    Ok(Json(json!(app.engine.store.runs().map_err(read_error)?)))
+    Ok(Json(json!(
+        app.engine.sessions().runs().map_err(read_error)?
+    )))
 }
 fn project_query(query: Option<String>) -> Result<Option<ProjectId>> {
     let mut project = None;
@@ -1211,7 +1221,7 @@ fn project_query(query: Option<String>) -> Result<Option<ProjectId>> {
     Ok(project)
 }
 async fn projects(State(app): State<App>) -> Result<Json<Vec<Project>>> {
-    Ok(Json(app.engine.store.projects().map_err(read_error)?))
+    Ok(Json(app.engine.projects().list().map_err(read_error)?))
 }
 fn worktree_failure(error: &WorktreeError) -> Response {
     let (status, code) = match error {
@@ -1470,7 +1480,7 @@ async fn project(
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Response> {
     let id = ProjectId(workspace_task_id(id)?);
-    match app.engine.store.project(&id) {
+    match app.engine.projects().get(&id) {
         Ok(project) => Ok(Json(project).into_response()),
         Err(error) if is_missing_row(&error) => {
             Ok(project_failure("project_not_found", "项目不存在"))
@@ -1671,7 +1681,7 @@ async fn task_project(
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Json<Value>> {
     let id = workspace_task_id(id)?;
-    app.engine.store.task(&id).map_err(read_error)?;
+    app.engine.sessions().task(&id).map_err(read_error)?;
     let binding = app.engine.task_project_binding(&id).map_err(read_error)?;
     Ok(Json(
         json!({"status":if binding.is_some() {"bound"} else {"legacy_unbound"},"binding":binding}),
@@ -1683,7 +1693,7 @@ async fn session(
 ) -> Result<Json<Session>> {
     let id = object_id(id)?;
     app.engine
-        .store
+        .sessions()
         .session(&SessionId(id))
         .map(Json)
         .map_err(read_error)
@@ -1694,10 +1704,10 @@ async fn session_turns(
 ) -> Result<Json<Vec<Turn>>> {
     let id = object_id(id)?;
     let id = SessionId(id);
-    app.engine.store.session(&id).map_err(read_error)?;
+    app.engine.sessions().session(&id).map_err(read_error)?;
     Ok(Json(
         app.engine
-            .store
+            .sessions()
             .turns_for_session(&id)
             .map_err(read_error)?,
     ))
@@ -1857,7 +1867,7 @@ async fn turn(
 ) -> Result<Json<Turn>> {
     let id = object_id(id)?;
     app.engine
-        .store
+        .sessions()
         .turn(&TurnId(id))
         .map(Json)
         .map_err(read_error)
@@ -1888,7 +1898,7 @@ async fn run(
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Json<Run>> {
     let id = object_id(id)?;
-    app.engine.store.run(&id).map(Json).map_err(read_error)
+    app.engine.sessions().run(&id).map(Json).map_err(read_error)
 }
 async fn run_context(
     State(app): State<App>,
@@ -1904,7 +1914,7 @@ async fn run_context(
         ));
     }
     app.engine
-        .store
+        .sessions()
         .run_context(&id)
         .map(Json)
         .map_err(context_error)
@@ -2119,11 +2129,11 @@ async fn task_approvals(
     id: std::result::Result<Path<String>, PathRejection>,
 ) -> Result<Json<Value>> {
     let task_id = approval_id(id)?;
-    app.engine.store.task(&task_id).map_err(read_error)?;
+    app.engine.sessions().task(&task_id).map_err(read_error)?;
     let approvals: Vec<ApprovalDto> = app
         .engine
-        .store
-        .approvals_for_task(&task_id)
+        .approvals()
+        .for_task(&task_id)
         .map_err(approval_error)?
         .into_iter()
         .map(Into::into)
@@ -2137,8 +2147,8 @@ async fn approval(
 ) -> Result<Json<ApprovalDto>> {
     let id = approval_id(id)?;
     app.engine
-        .store
-        .approval(&id)
+        .approvals()
+        .get(&id)
         .map(ApprovalDto::from)
         .map(Json)
         .map_err(approval_error)
@@ -2152,7 +2162,7 @@ async fn decide_approval(
     let id = approval_id(id)?;
     let approved = matches!(body.decision, ApprovalDecision::Approve);
     if body.acknowledge_command_network {
-        let approval = app.engine.store.approval(&id).map_err(approval_error)?;
+        let approval = app.engine.approvals().get(&id).map_err(approval_error)?;
         if approval.tool_name != "run_command" || !approved {
             return Err(ApiError::with_code(
                 StatusCode::BAD_REQUEST,
@@ -2641,7 +2651,7 @@ async fn session_events(
     let cursor = event_cursor(request.uri().query().unwrap_or(""), request.headers())?;
     let session = app
         .engine
-        .store
+        .sessions()
         .session(&SessionId(id))
         .map_err(read_error)?;
     open_event_stream(app, session.legacy_run_id, cursor.after)
@@ -2654,7 +2664,7 @@ async fn events(
 ) -> Result<Sse<impl futures_util::Stream<Item = std::result::Result<SseEvent, Infallible>>>> {
     let id = object_id(id)?;
     let cursor = event_cursor(request.uri().query().unwrap_or(""), request.headers())?;
-    app.engine.store.run(&id).map_err(read_error)?;
+    app.engine.sessions().run(&id).map_err(read_error)?;
     open_event_stream(app, id, cursor.after)
 }
 
@@ -2682,7 +2692,7 @@ fn open_event_stream(
             if failed {
                 break;
             }
-            match app.engine.store.events(&id, sent) {
+            match app.engine.sessions().events(&id, sent) {
                 Ok(events) => {
                     for event in events {
                         match sse_frame(&event) {
@@ -3084,7 +3094,41 @@ mod worktree_http_crash_tests {
             );
         }
     }
-    struct ChildGuard(Child, PathBuf, String);
+    enum GuardedProcess {
+        Plain(Child),
+        #[cfg(windows)]
+        Contained(crate::process_test_fixture::ContainedChild),
+    }
+    impl GuardedProcess {
+        fn child(&mut self) -> &mut Child {
+            match self {
+                Self::Plain(child) => child,
+                #[cfg(windows)]
+                Self::Contained(child) => &mut child.child,
+            }
+        }
+        fn id(&self) -> u32 {
+            match self {
+                Self::Plain(child) => child.id(),
+                #[cfg(windows)]
+                Self::Contained(child) => child.child.id(),
+            }
+        }
+        fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+            self.child().try_wait()
+        }
+        fn kill(&mut self) -> std::io::Result<()> {
+            match self {
+                Self::Plain(child) => child.kill(),
+                #[cfg(windows)]
+                Self::Contained(child) => child
+                    .terminate_and_wait()
+                    .map(|_| ())
+                    .map_err(|error| std::io::Error::other(error.to_string())),
+            }
+        }
+    }
+    struct ChildGuard(GuardedProcess, PathBuf, String);
     impl ChildGuard {
         fn record(&self, mut event: Value) {
             event["pid"] = json!(self.0.id());
@@ -3132,7 +3176,9 @@ mod worktree_http_crash_tests {
     fn client() -> reqwest::Client {
         reqwest::Client::builder()
             .no_proxy()
-            .timeout(Duration::from_secs(75))
+            .timeout(Duration::from_secs(
+                crate::worktree_diagnostics::TOTAL_SECS + 20,
+            ))
             .build()
             .unwrap()
     }
@@ -3162,7 +3208,16 @@ mod worktree_http_crash_tests {
     ) -> std::result::Result<String, String> {
         let notification = path.file_name().unwrap().to_string_lossy().into_owned();
         process.record(json!({"event":"wait_begin","notification":notification}));
-        let budget = if request.is_some() { 60 } else { 10 };
+        let budget = if request.is_some() {
+            crate::worktree_diagnostics::TOTAL_SECS
+        } else {
+            10
+        };
+        let mut supervisor = request.map(|_| {
+            crate::worktree_diagnostics::Supervisor::new(
+                process.1.join("worktree-diagnostics.jsonl"),
+            )
+        });
         let result = tokio::time::timeout(Duration::from_secs(budget), async {
             loop {
                 let child_live = process.0.try_wait().map_err(|e| format!("child status query: {e}"))?.is_none();
@@ -3171,15 +3226,32 @@ mod worktree_http_crash_tests {
                     process.record(json!({"event":"early_completion","notification":notification,"reason":reason}));
                     return Err(reason.to_owned());
                 }
+                if let Some(supervisor) = &mut supervisor {
+                    supervisor.poll().map_err(|error| format!("progress supervision: {error:#}"))?;
+                }
                 if let Ok(text) = std::fs::read_to_string(path)
                     && !text.is_empty()
                 {
+                    if let Some(supervisor) = &mut supervisor {
+                        supervisor.poll().map_err(|error| format!("progress supervision: {error:#}"))?;
+                    }
                     // Recheck before accepting readiness, giving observed completion priority.
                     let child_live = process.0.try_wait().map_err(|e| format!("child status query: {e}"))?.is_none();
                     let request_finished = request.is_some_and(|r| r.0.is_finished());
                     if let Some(reason) = pre_ready_problem(child_live, request_finished) {
                         process.record(json!({"event":"ready_race_lost","notification":notification,"reason":reason}));
                         return Err(reason.to_owned());
+                    }
+                    if let Some(supervisor) = &supervisor {
+                        let expected = match process.2.as_str() {
+                            "claim" => 8,
+                            "created" => 9,
+                            "registered" => 10,
+                            _ => return Err("unexpected supervised phase".into()),
+                        };
+                        if supervisor.stage() != expected || uuid::Uuid::parse_str(&text).is_err() {
+                            return Err("notification without matching complete probe".into());
+                        }
                     }
                     process.record(json!({"event":"notification_observed","notification":notification}));
                     break Ok(text);
@@ -3253,7 +3325,11 @@ mod worktree_http_crash_tests {
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .creation_flags(0x08000000);
-            let mut process = ChildGuard(command.spawn().unwrap(), root.clone(), case.to_owned());
+            let mut process = ChildGuard(
+                GuardedProcess::Plain(command.spawn().unwrap()),
+                root.clone(),
+                case.to_owned(),
+            );
             if early_child {
                 let end = Instant::now() + Duration::from_secs(5);
                 while process.0.try_wait().unwrap().is_none() {
@@ -3293,18 +3369,20 @@ mod worktree_http_crash_tests {
         use std::os::windows::process::CommandExt;
         let root = tempfile::tempdir().unwrap().keep();
         let mut process = ChildGuard(
-            Command::new("pwsh.exe")
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    "Start-Sleep -Seconds 20",
-                ])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .creation_flags(0x08000000)
-                .spawn()
-                .unwrap(),
+            GuardedProcess::Plain(
+                Command::new("pwsh.exe")
+                    .args([
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-Command",
+                        "Start-Sleep -Seconds 20",
+                    ])
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .creation_flags(0x08000000)
+                    .spawn()
+                    .unwrap(),
+            ),
             root.clone(),
             "timeout-before-ready".into(),
         );
@@ -3396,6 +3474,7 @@ mod worktree_http_crash_tests {
         }
     }
     async fn child(root: PathBuf, phase: String) {
+        crate::worktree_diagnostics::wait_start(&root.join(format!("start-{phase}"))).unwrap();
         trace(
             &root,
             json!({"event":"child_started","phase":phase,"pid":std::process::id()}),
@@ -3425,7 +3504,8 @@ mod worktree_http_crash_tests {
                 return;
             }
             if actual == probe_phase {
-                std::fs::write(probe_root.join("ready"), op).unwrap();
+                crate::worktree_diagnostics::atomic_write(&probe_root.join("ready"), op.as_bytes())
+                    .unwrap();
                 let end = Instant::now() + Duration::from_secs(20);
                 while Instant::now() < end {
                     std::thread::sleep(Duration::from_millis(10));
@@ -3440,9 +3520,13 @@ mod worktree_http_crash_tests {
             token: "worktree-crash-token".into(),
             origin: origin.clone(),
         });
-        std::fs::write(root.join(format!("listen-{phase}")), origin).unwrap();
+        crate::worktree_diagnostics::atomic_write(
+            &root.join(format!("listen-{phase}")),
+            origin.as_bytes(),
+        )
+        .unwrap();
         tokio::time::timeout(
-            Duration::from_secs(100),
+            Duration::from_secs(crate::worktree_diagnostics::TOTAL_SECS + 20),
             axum::serve(listener, app).into_future(),
         )
         .await
@@ -3451,18 +3535,22 @@ mod worktree_http_crash_tests {
     }
     fn spawn(root: &FsPath, phase: &str) -> ChildGuard {
         let log = std::fs::File::create(root.join(format!("child-{phase}.log"))).unwrap();
-        let process = ChildGuard(
-            Command::new(std::env::current_exe().unwrap())
-                .args(["--exact", TEST, "--nocapture"])
-                .env("NHC_WORKTREE_HTTP_CHILD", root)
-                .env("NHC_WORKTREE_HTTP_PHASE", phase)
-                .stdout(Stdio::from(log.try_clone().unwrap()))
-                .stderr(Stdio::from(log))
-                .spawn()
-                .unwrap(),
-            root.to_owned(),
-            phase.to_owned(),
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args(["--exact", TEST, "--nocapture"])
+            .env("NHC_WORKTREE_HTTP_CHILD", root)
+            .env("NHC_WORKTREE_HTTP_PHASE", phase)
+            .stdout(Stdio::from(log.try_clone().unwrap()))
+            .stderr(Stdio::from(log));
+        #[cfg(windows)]
+        let child = GuardedProcess::Contained(
+            crate::process_test_fixture::ContainedChild::spawn(&mut command, root, phase).unwrap(),
         );
+        #[cfg(not(windows))]
+        let child = GuardedProcess::Plain(command.spawn().unwrap());
+        let process = ChildGuard(child, root.to_owned(), phase.to_owned());
+        crate::worktree_diagnostics::atomic_write(&root.join(format!("start-{phase}")), b"start")
+            .unwrap();
         process.record(json!({"event":"spawned"}));
         process
     }
@@ -3652,7 +3740,15 @@ mod worktree_http_crash_tests {
                 panic!("{error}");
             }
             println!("W08 phase={phase} original child killed and waited");
-            let response = (&mut request.0).await.expect("HTTP observer task panicked");
+            let response = match tokio::time::timeout(Duration::from_secs(10), &mut request.0).await
+            {
+                Ok(result) => result.expect("HTTP observer task panicked"),
+                Err(_) => {
+                    request.0.abort();
+                    let _ = (&mut request.0).await;
+                    panic!("original HTTP observer did not finish after child kill");
+                }
+            };
             let error = response.expect_err("response must be lost at held hook");
             assert!(
                 lost_response(error.is_timeout(), error.is_connect()),
@@ -4681,6 +4777,58 @@ mod runtime_management_http_tests {
             .await
             .unwrap();
         assert_eq!(wrong.status(), StatusCode::NOT_FOUND);
+        server.abort();
+    }
+}
+
+#[cfg(test)]
+mod composition_http_tests {
+    use super::*;
+    #[tokio::test]
+    async fn composition_requires_token_and_same_origin() {
+        let dir = tempfile::tempdir().unwrap();
+        let store =
+            Arc::new(crate::store::Store::open(&dir.path().join("composition-http.db")).unwrap());
+        let engine = Engine::new(store, 1).unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let app = App {
+            engine,
+            token: "composition-token".into(),
+            origin: origin.clone(),
+        };
+        let server = tokio::spawn(async move { axum::serve(listener, router(app)).await.unwrap() });
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        let endpoint = format!("{origin}/api/host/composition");
+        assert_eq!(
+            client.get(&endpoint).send().await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            client
+                .get(&endpoint)
+                .header("x-peachsh-token", "composition-token")
+                .header("origin", "http://evil.invalid")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+        let response = client
+            .get(&endpoint)
+            .header("x-peachsh-token", "composition-token")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let data: Value = response.json().await.unwrap();
+        assert_eq!(data.as_object().unwrap().len(), 5);
+        assert_eq!(data["version"], 1);
+        assert_eq!(data["consistency"], "per_component");
+        assert_eq!(data["capabilities"].as_array().unwrap().len(), 13);
+        assert_eq!(data["plugins"].as_array().unwrap().len(), 2);
+        assert_eq!(data["runtimes"].as_array().unwrap().len(), 2);
         server.abort();
     }
 }

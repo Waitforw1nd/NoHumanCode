@@ -9,7 +9,6 @@ use crate::{
     store::Store,
     tool_results::Origin,
     tool_runtime::{ToolLease, ToolRuntime},
-    workspace,
     workspace_changes::{self, *},
 };
 use anyhow::{Context, Result, ensure};
@@ -18,30 +17,60 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tokio::sync::{Mutex as AsyncMutex, oneshot};
+#[cfg(test)]
+use tokio::sync::Mutex as AsyncMutex;
+use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
 #[cfg(test)]
 pub(crate) type ShellClaimProbe = (String, Arc<dyn Fn() + Send + Sync>);
 pub(crate) struct ToolCallApplication {
     store: Arc<Store>,
+    project: Arc<crate::host_services::ProjectService>,
+    approval: Arc<crate::host_services::ApprovalService>,
     tool_runtime: Arc<ToolRuntime>,
-    gate: Arc<AsyncMutex<()>>,
+    workspace: Arc<crate::host_services::WorkspaceSafety>,
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     #[cfg(test)]
     shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
 }
 impl ToolCallApplication {
+    #[cfg(test)]
     pub(crate) fn new(
         store: Arc<Store>,
         tool_runtime: Arc<ToolRuntime>,
         gate: Arc<AsyncMutex<()>>,
         #[cfg(test)] shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
     ) -> Self {
+        let project = Arc::new(crate::host_services::ProjectService::new(
+            store.clone(),
+            gate.clone(),
+        ));
+        let approval = Arc::new(crate::host_services::ApprovalService::new(store.clone()));
+        let workspace = Arc::new(crate::host_services::WorkspaceSafety::new(gate));
+        Self::new_with_services(
+            store,
+            project,
+            approval,
+            tool_runtime,
+            workspace,
+            shell_claim_probe,
+        )
+    }
+    pub(crate) fn new_with_services(
+        store: Arc<Store>,
+        project: Arc<crate::host_services::ProjectService>,
+        approval: Arc<crate::host_services::ApprovalService>,
+        tool_runtime: Arc<ToolRuntime>,
+        workspace: Arc<crate::host_services::WorkspaceSafety>,
+        #[cfg(test)] shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
+    ) -> Self {
         Self {
             store,
+            project,
+            approval,
             tool_runtime,
-            gate,
+            workspace,
             approval_waiters: Mutex::new(HashMap::new()),
             #[cfg(test)]
             shell_claim_probe,
@@ -54,7 +83,7 @@ impl ToolCallApplication {
         decided_by: Option<&str>,
         acknowledge_command_network: bool,
     ) -> Result<approval::ApprovalRecord> {
-        let record = self.store.decide_approval_with_network_ack(
+        let record = self.approval.decide(
             approval_id,
             approved,
             decided_by.unwrap_or("user"),
@@ -84,7 +113,7 @@ impl ToolCallApplication {
                         *task = recovered;
                         continue;
                     }
-                    if let PolicyDecision::Deny { reason } = approval::evaluate(task, name) {
+                    if let PolicyDecision::Deny { reason } = self.approval.evaluate(task, name) {
                         self.record_tool_result(
                             task,
                             call_id,
@@ -143,7 +172,7 @@ impl ToolCallApplication {
         name: &str,
         key: &str,
     ) -> Result<()> {
-        if let PolicyDecision::Deny { reason } = approval::evaluate(task, name) {
+        if let PolicyDecision::Deny { reason } = self.approval.evaluate(task, name) {
             let call_id = call["id"].as_str().context("工具调用缺少 id")?;
             self.record_tool_result(task, call_id, name, reason, key, Origin::HostDenied)?;
         }
@@ -163,7 +192,7 @@ impl ToolCallApplication {
         if name == "run_wasm" {
             return Err(ProjectError::OperationUnsupported.into());
         }
-        self.store.validate_project_task(task, true, false)?;
+        self.project.validate_task(task, true, false)?;
         ensure!(
             self.tool_runtime
                 .definitions(task)?
@@ -175,15 +204,13 @@ impl ToolCallApplication {
             self.store.task(&task.id)?.status != "cancelled" && !cancel.is_cancelled(),
             "任务已停止"
         );
-        match approval::evaluate(task, name) {
+        match self.approval.evaluate(task, name) {
             PolicyDecision::Allow => {
                 let (lease, _) = self.tool_runtime.acquire(task, name, || {
                     if matches!(name, "read_file" | "list_files" | "search_files") {
-                        self.store.validate_files_read(task)
+                        self.project.validate_files_read(task)
                     } else {
-                        self.store
-                            .validate_project_task(task, true, false)
-                            .map(|_| ())
+                        self.project.validate_task(task, true, false).map(|_| ())
                     }
                 })?;
                 self.perform_tool(task, tool_call_id, name, args, key, None, lease)
@@ -195,21 +222,17 @@ impl ToolCallApplication {
             }
             PolicyDecision::RequireApproval => {
                 let approval_task = transient_approval_task(task, call, name, args)?;
-                let (record, _) =
-                    self.store
-                        .ensure_current_approval(&approval_task, tool_call_id, name, args)?;
+                let (record, _) = self
+                    .approval
+                    .ensure(&approval_task, tool_call_id, name, args)?;
                 drop(approval_task);
                 let status = self.wait_for_approval(&record, cancel).await?;
                 match status {
                     ApprovalStatus::Approved => {
                         let approval_task = transient_approval_task(task, call, name, args)?;
                         let (lease, claimed) = self.tool_runtime.acquire(task, name, || {
-                            self.store.claim_current_approval(
-                                &approval_task,
-                                tool_call_id,
-                                name,
-                                args,
-                            )
+                            self.approval
+                                .claim(&approval_task, tool_call_id, name, args)
                         })?;
                         drop(approval_task);
                         #[cfg(test)]
@@ -301,11 +324,11 @@ impl ToolCallApplication {
         lease: ToolLease,
     ) -> Result<()> {
         let _workspace_gate = if name == "write_file" {
-            Some(self.gate.lock().await)
+            Some(self.workspace.gate.lock().await)
         } else {
             None
         };
-        self.store.validate_project_task(task, false, false)?;
+        self.project.validate_task(task, false, false)?;
         let mut prepared = None;
         if name == "write_file" {
             let approval_id = approval_id.context("write_file 缺少审批执行权")?;
@@ -318,12 +341,12 @@ impl ToolCallApplication {
                     "write_file 参数脱敏后无法安全绑定"
                 );
                 let path = args["path"].as_str().context("缺少 path")?;
-                let (target, path, path_key) = workspace::change_target(
+                let (target, path, path_key) = self.workspace.change_target(
                     std::path::Path::new(&task.workspace),
                     path,
                     &task.spec.write_scopes,
                 )?;
-                let before = workspace::read_safe_file(&target)?;
+                let before = self.workspace.read_safe_file(&target)?;
                 let change = self.store.prepare_workspace_change(
                     task,
                     tool_call_id,
@@ -339,10 +362,10 @@ impl ToolCallApplication {
                     )
                     .into())
                 } else {
-                    workspace::read_safe_file(&target)
+                    self.workspace.read_safe_file(&target)
                 };
                 #[cfg(not(test))]
-                let recheck = workspace::read_safe_file(&target);
+                let recheck = self.workspace.read_safe_file(&target);
                 let rechecked = match recheck {
                     Ok(value) => value,
                     Err(error) => {

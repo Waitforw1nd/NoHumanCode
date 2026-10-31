@@ -2,7 +2,7 @@
 use anyhow::{Context, Result, bail, ensure};
 use std::{
     ffi::c_void,
-    os::windows::io::{AsRawHandle, BorrowedHandle, FromRawHandle, OwnedHandle},
+    os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, OwnedHandle},
     path::PathBuf,
     process::Stdio,
     time::Duration,
@@ -145,6 +145,9 @@ impl Job {
     }
     fn assign(&self, child: &Child) -> Result<()> {
         let raw = child.raw_handle().context("parent handle unavailable")?;
+        self.assign_raw(raw)
+    }
+    fn assign_raw(&self, raw: *mut c_void) -> Result<()> {
         ensure!(
             unsafe { AssignProcessToJobObject(self.0.as_raw_handle(), raw) } != 0,
             "AssignProcessToJobObject: {}",
@@ -195,6 +198,153 @@ impl Drop for Job {
         );
         eprint!("{record}");
         let _ = std::fs::write(self.1.join("job-drop.txt"), record);
+    }
+}
+
+/// A test process and its descendants remain in one job before its gate opens.
+pub(crate) struct ContainedChild {
+    pub child: std::process::Child,
+    parent: Option<OwnedHandle>,
+    job: Job,
+    root: PathBuf,
+    case: String,
+    assigned: bool,
+    cleaned: bool,
+    failed: bool,
+}
+
+impl ContainedChild {
+    pub fn spawn(
+        command: &mut std::process::Command,
+        root: &std::path::Path,
+        case: &str,
+    ) -> Result<Self> {
+        let evidence = root.join(format!("containment-{case}"));
+        std::fs::create_dir(&evidence)?;
+        let job = Job::new(&evidence, case)?;
+        let child = command.spawn()?;
+        let mut guard = Self {
+            child,
+            parent: None,
+            job,
+            root: evidence.clone(),
+            case: case.to_owned(),
+            assigned: false,
+            cleaned: false,
+            failed: false,
+        };
+        guard
+            .job
+            .assign_raw(guard.child.as_raw_handle())
+            .context("fixture process job assignment failed")?;
+        guard.assigned = true;
+        guard.parent = Some(
+            unsafe { BorrowedHandle::borrow_raw(guard.child.as_raw_handle()) }
+                .try_clone_to_owned()?,
+        );
+        let (pid, created) = identity(guard.parent.as_ref().unwrap())?;
+        std::fs::write(
+            evidence.join("containment.txt"),
+            format!("case={case} assign_ok=true pid={pid} created={created}\n"),
+        )?;
+        Ok(guard)
+    }
+
+    pub fn terminate_and_wait(&mut self) -> Result<std::process::ExitStatus> {
+        ensure!(!self.failed, "fixture cleanup previously failed");
+        if self.cleaned {
+            return self
+                .child
+                .try_wait()?
+                .context("cleaned child has no exit status");
+        }
+        let result = self.terminate_once();
+        if let Err(error) = &result {
+            self.failed = true;
+            let _ = std::fs::write(
+                self.root.join("containment-cleanup-error.txt"),
+                format!("case={} cleanup_error={error:#}\n", self.case),
+            );
+        }
+        result
+    }
+
+    fn terminate_once(&mut self) -> Result<std::process::ExitStatus> {
+        let job_result = if self.assigned {
+            self.job.terminate_and_wait()
+        } else {
+            self.child.kill().map_err(anyhow::Error::from)
+        };
+        if job_result.is_err() && self.child.try_wait()?.is_none() {
+            let _ = self.child.kill();
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let status = loop {
+            if let Some(status) = self.child.try_wait()? {
+                break status;
+            }
+            ensure!(
+                std::time::Instant::now() < deadline,
+                "fixture parent wait deadline"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let raw = self.parent.as_ref().map_or_else(
+            || self.child.as_raw_handle(),
+            |handle| handle.as_raw_handle(),
+        );
+        let signal = unsafe { WaitForSingleObject(raw, 0) };
+        std::fs::write(
+            self.root.join("containment-cleanup.txt"),
+            format!(
+                "case={} assigned={} job_ok={} parent_signal={signal} wait={status:?}\n",
+                self.case,
+                self.assigned,
+                job_result.is_ok()
+            ),
+        )?;
+        job_result?;
+        ensure!(signal == 0, "fixture original parent handle did not signal");
+        self.cleaned = true;
+        Ok(status)
+    }
+}
+
+impl Drop for ContainedChild {
+    fn drop(&mut self) {
+        if !self.cleaned
+            && !self.failed
+            && let Err(error) = self.terminate_and_wait()
+        {
+            let _ = std::fs::write(
+                self.root.join("containment-cleanup-error.txt"),
+                format!("case={} cleanup_error={error:#}\n", self.case),
+            );
+        }
+        if !self.cleaned && self.failed {
+            let job = self.job.terminate_and_wait();
+            let kill = self.child.kill();
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            let waited = loop {
+                match self.child.try_wait() {
+                    Ok(Some(status)) => break format!("{status:?}"),
+                    Ok(None) if std::time::Instant::now() < deadline => {
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                    Ok(None) => break "deadline".into(),
+                    Err(error) => break format!("error:{error}"),
+                }
+            };
+            let _ = std::fs::write(
+                self.root.join("containment-drop-fallback.txt"),
+                format!(
+                    "case={} job_ok={} kill_ok={} wait={waited}\n",
+                    self.case,
+                    job.is_ok(),
+                    kill.is_ok()
+                ),
+            );
+        }
     }
 }
 
@@ -284,11 +434,6 @@ async fn prepare_in(
     )?;
     let job = Job::new(&root, case)?;
     let descendant_script = r#"[Console]::Out.Write('sentinel'); [Console]::Out.Flush(); [IO.File]::WriteAllText('descendant-ready','ready'); $end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'release')) { if([DateTime]::UtcNow -gt $end){exit 98}; Start-Sleep -Milliseconds 10 }"#;
-    let descendant_script = if mode == "pipe-eof" {
-        "[Console]::Out.Write('sentinel'); [Console]::Out.Flush(); [IO.File]::WriteAllText('descendant-ready','ready'); exit 0"
-    } else {
-        descendant_script
-    };
     std::fs::write(root.join("descendant.ps1"), descendant_script)?;
     let parent_script = r#"$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'allow')) { if([DateTime]::UtcNow -gt $end){exit 96}; Start-Sleep -Milliseconds 10 }; $p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.RedirectStandardInput=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-NonInteractive'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $c=[Diagnostics.Process]::Start($p); $c.StandardInput.Close(); [IO.File]::WriteAllText('handle-pending',[string]$c.Handle.ToInt64()); Move-Item 'handle-pending' 'handle-ready'; while(!(Test-Path 'ack')) { if([DateTime]::UtcNow -gt $end){exit 97}; Start-Sleep -Milliseconds 10 }; exit 0"#;
     let parent_script = match mode {
@@ -365,6 +510,14 @@ async fn prepare_in(
         }
         ensure!(&sentinel == b"sentinel", "sentinel mismatch");
         std::fs::write(root.join("sentinel.txt"), "sentinel=observed\n")?;
+        if mode == "pipe-eof" {
+            std::fs::write(root.join("release"), "release")?;
+            while unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 258 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            ensure!(unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 0, "descendant exit wait failed");
+            std::fs::write(root.join("controlled-exit.txt"), "phase=before-stdout descendant_signal=0\n")?;
+        }
         let mut byte = [0; 1];
         match tokio::time::timeout(Duration::from_millis(100), stdout.read(&mut byte)).await {
             Err(_) => {},
@@ -373,6 +526,14 @@ async fn prepare_in(
             Ok(Err(error)) => return Err(error.into()),
         }
         child.stdout = Some(stdout);
+        if mode == "pipe-eof-between" {
+            std::fs::write(root.join("release"), "release")?;
+            while unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 258 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            ensure!(unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 0, "descendant exit wait failed");
+            std::fs::write(root.join("controlled-exit.txt"), "phase=after-stdout-pending descendant_signal=0\n")?;
+        }
         let mut stderr = child.stderr.take().context("stderr unavailable")?;
         match tokio::time::timeout(Duration::from_millis(100), stderr.read(&mut byte)).await {
             Err(_) => {},
@@ -408,7 +569,13 @@ async fn prepare_in(
 
 #[tokio::test]
 async fn process_fixture_failure_controls_reap_job() {
-    for mode in ["no-marker", "parent-exit", "pipe-eof", "ack-fail"] {
+    for mode in [
+        "no-marker",
+        "parent-exit",
+        "pipe-eof",
+        "pipe-eof-between",
+        "ack-fail",
+    ] {
         let root = tempfile::tempdir().unwrap().keep();
         let deadline = Instant::now() + Duration::from_secs(15);
         let result = prepare_in(mode, root.clone(), mode, deadline).await;
@@ -439,6 +606,26 @@ async fn process_fixture_failure_controls_reap_job() {
                         .contains("Some(0)")
                 );
                 assert!(root.join("sentinel.txt").exists());
+                assert_eq!(
+                    std::fs::read_to_string(root.join("controlled-exit.txt")).unwrap(),
+                    "phase=before-stdout descendant_signal=0\n"
+                );
+            }
+            "pipe-eof-between" => {
+                assert!(
+                    failure.contains("stderr EOF after parent exit"),
+                    "{failure}"
+                );
+                assert!(
+                    std::fs::read_to_string(root.join("parent-exit.txt"))
+                        .unwrap()
+                        .contains("Some(0)")
+                );
+                assert!(root.join("sentinel.txt").exists());
+                assert_eq!(
+                    std::fs::read_to_string(root.join("controlled-exit.txt")).unwrap(),
+                    "phase=after-stdout-pending descendant_signal=0\n"
+                );
             }
             "ack-fail" => {
                 assert!(failure.contains("injected ack failure"), "{failure}");
@@ -451,4 +638,64 @@ async fn process_fixture_failure_controls_reap_job() {
             std::fs::read_to_string(root.join("job-drop.txt")).expect("job cleanup evidence");
         assert!(cleanup.contains("cleanup_ok=true"), "{mode}: {cleanup}");
     }
+}
+
+#[tokio::test]
+async fn process_fixture_failure_controls_reap_job_and_descendant_on_error() {
+    let mut observed = None;
+    let result: Result<()> = async {
+        let root = tempfile::tempdir()?.keep();
+        std::fs::write(
+            root.join("descendant.ps1"),
+            "$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'release')) { if([DateTime]::UtcNow -gt $end){exit 98}; Start-Sleep -Milliseconds 10 }",
+        )?;
+        let parent_script = r#"$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'allow')) { if([DateTime]::UtcNow -gt $end){exit 96}; Start-Sleep -Milliseconds 10 }; $p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.RedirectStandardInput=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-NonInteractive'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $c=[Diagnostics.Process]::Start($p); $c.StandardInput.Close(); [IO.File]::WriteAllText('handle-pending',[string]$c.Handle.ToInt64()); Move-Item 'handle-pending' 'handle-ready'; while(!(Test-Path 'ack')) { if([DateTime]::UtcNow -gt $end){exit 97}; Start-Sleep -Milliseconds 10 }; while(!(Test-Path 'release')) { if([DateTime]::UtcNow -gt $end){exit 98}; Start-Sleep -Milliseconds 10 }"#;
+        let mut command = std::process::Command::new("pwsh.exe");
+        command
+            .current_dir(&root)
+            .args(["-NoProfile", "-NonInteractive", "-Command", parent_script])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        let fixture = ContainedChild::spawn(&mut command, &root, "supervisor-error-cleanup")?;
+        std::fs::write(root.join("allow"), "allow")?;
+        let value = timeout_at(Instant::now() + Duration::from_secs(15), wait_file(&root.join("handle-ready"))).await??;
+        let source = value.trim().parse::<usize>()? as *mut c_void;
+        let parent = fixture.parent.as_ref().context("parent handle")?;
+        let mut target = std::ptr::null_mut();
+        ensure!(unsafe { DuplicateHandle(parent.as_raw_handle(), source, GetCurrentProcess(), &mut target, 0, 0, 2) } != 0, "duplicate descendant handle");
+        let descendant = unsafe { OwnedHandle::from_raw_handle(target) };
+        let _ = identity(&descendant)?;
+        ensure!(unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 258, "descendant not alive before failure");
+        std::fs::write(root.join("ack"), "ack")?;
+        observed = Some((
+            parent.as_handle().try_clone_to_owned()?,
+            descendant,
+            root,
+        ));
+        bail!("injected supervisor failure")
+    }
+    .await;
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("injected supervisor failure")
+    );
+    let (parent, descendant, root) = observed.unwrap();
+    assert_eq!(unsafe { WaitForSingleObject(parent.as_raw_handle(), 0) }, 0);
+    assert_eq!(
+        unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) },
+        0
+    );
+    let record = std::fs::read_to_string(
+        root.join("containment-supervisor-error-cleanup/containment-cleanup.txt"),
+    )
+    .unwrap();
+    assert!(record.contains("job_ok=true"), "{record}");
+    assert!(record.contains("parent_signal=0"), "{record}");
+    let record =
+        std::fs::read_to_string(root.join("containment-supervisor-error-cleanup/job-drop.txt"))
+            .unwrap();
+    assert!(record.contains("cleanup_ok=true"), "{record}");
 }
