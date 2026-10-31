@@ -620,9 +620,17 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         };
-        child.kill().unwrap();
-        assert!(!child.wait().unwrap().success());
         let call_id = signal.lines().nth(1).unwrap();
+        let killed_pid = child.id();
+        child.kill().unwrap();
+        let killed_status = child.wait().unwrap();
+        assert!(!killed_status.success());
+        eprintln!(
+            "p06-recovery {}",
+            json!({"phase":phase, "event":"killed-and-waited",
+                   "pid":killed_pid, "exit_code":killed_status.code(),
+                   "call_id":call_id, "mock_completions":f.mock.completions.load(Ordering::SeqCst)})
+        );
         let mut states = Vec::new();
         for run in 1..=2 {
             let output = format!("recovery-{run}.json");
@@ -666,6 +674,15 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
             assert_eq!(state["unresolved_count"], 1);
             assert_eq!(state["claimed_count"], 0);
             assert_eq!(f.mock.completions.load(Ordering::SeqCst), expected_hits);
+            eprintln!(
+                "p06-recovery {}",
+                json!({"phase":phase, "event":"recovery-waited", "run":run,
+                       "pid":spawned_pid, "exit_code":0, "call_id":call_id,
+                       "network_state":state["network_state"],
+                       "held_tokens":state["held_tokens"],
+                       "unresolved_count":state["unresolved_count"],
+                       "mock_completions":f.mock.completions.load(Ordering::SeqCst)})
+            );
             states.push(state);
         }
         assert_eq!(states[0], states[1]);
