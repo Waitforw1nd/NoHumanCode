@@ -1,0 +1,1 @@
+case=pipe-eof phase=preparation-failed error=early eof
