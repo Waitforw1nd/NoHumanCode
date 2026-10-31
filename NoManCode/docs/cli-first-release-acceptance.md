@@ -66,11 +66,11 @@ Checkpoint恢复仅覆盖Host记录的文件写入，Shell命令产生的其他�
 | 事件、取消、重启 | `run events` / `session events`保留游标，断线后显式从最后游标继续；`task cancel`后确认终态。重启不能伪造完成、丢草稿或重复副作用。 |
 | Diff与恢复 | `task changes/diff/checkpoint`、`checkpoint get/restore`；阅读回执确认真实恢复范围，冲突/unknown不等于成功，不盲目重复写入。恢复后的合法继续使用新Turn，旧封存Task不可resume。 |
 | linked worktree | `project worktree create/status/inspect`；新Project独立配置与授权，预算不继承。Git objects/refs/config共享，不是OS隔离。unknown仅诊断，不能自动接纳、清理或解除预约。 |
-| 插件生命周期 | 当前主线的 `plugin list/status/set-enabled` 管理 `builtin.files` 与 `builtin.shell`；验证禁用后能力撤销与运行时收敛，不用命令已接受冒充卸载已完成。这些命令不管理 Provider。 |
+| 插件生命周期 | NEXT-15 基线及本候选的 `plugin list/status/set-enabled` 管理 `builtin.files` 与 `builtin.shell`；验证禁用后能力撤销与运行时收敛，不用命令已接受冒充卸载已完成。这些命令不管理 Provider。 |
 
 上述入口沿用既有命令；示例中的ID、key、版本和目录必须来自当前Host实际查询。完整参数以同一构建的 `--help` 为准。
 
-当前主线的 Provider Completion 仍走既有 Host 路径。NEXT-16 的 Provider 服务候选另提供 Rust 进程内生命周期控制和状态，禁用只关闭新准入，已准入的调用仍可按其生命周期完成；该控制不是当前 CLI 插件管理命令，也不持久化，重启默认重新启用。候选尚待 B/D 组合和最终验收，不能把候选能力当作主线现状或默认插件全部完成。
+NEXT-15 基线的 Provider Completion 走既有 Host 路径。NEXT-16 的 Provider 服务候选另提供 Rust 进程内生命周期控制和状态，禁用只关闭新准入，已准入的调用仍可按其生命周期完成；该控制不属于本候选的 CLI 插件管理命令，也不持久化，重启默认重新启用。候选尚待 B/D 组合和最终验收，不能把候选能力当作已验收事实或默认插件全部完成。
 
 ## NEXT-14 预算操作
 
