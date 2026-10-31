@@ -89,18 +89,22 @@ fn persisted_four_domains_remain_disabled_after_reconstruction() {
 }
 
 #[test]
-fn unavailable_runtime_fails_composition_query_closed() {
+fn runtime_state_read_failure_fails_composition_query_closed() {
     let dir = tempfile::tempdir().unwrap();
-    let engine = Engine::new(
-        Arc::new(Store::open(&dir.path().join("host.db")).unwrap()),
-        1,
-    )
-    .unwrap();
+    let db = dir.path().join("host.db");
+    let engine = Engine::new(Arc::new(Store::open(&db).unwrap()), 1).unwrap();
     engine.composition().unwrap();
-    engine.agent_runtime.set_status_unavailable_for_test(true);
+    assert_eq!(
+        rusqlite::Connection::open(&db)
+            .unwrap()
+            .execute(
+                "DELETE FROM plugin_desired WHERE plugin_id='builtin.chat-agent'",
+                []
+            )
+            .unwrap(),
+        1
+    );
     assert!(engine.composition().is_err());
-    engine.agent_runtime.set_status_unavailable_for_test(false);
-    assert_eq!(engine.composition().unwrap().runtimes.len(), 2);
 }
 
 #[test]
