@@ -1754,7 +1754,14 @@ async fn resume(
             if matches!(
                 error.downcast_ref::<crate::store::ResumeError>(),
                 Some(crate::store::ResumeError::Sealed)
-            ) || matches!(
+            ) {
+                ApiError::with_code(
+                    StatusCode::CONFLICT,
+                    ErrorCode::Conflict,
+                    false,
+                    anyhow::anyhow!("任务已有恢复记录，不能继续原任务"),
+                )
+            } else if matches!(
                 error.downcast_ref::<crate::checkpoint::CheckpointError>(),
                 Some(crate::checkpoint::CheckpointError::Conflict)
             ) {
