@@ -1,0 +1,97 @@
+{
+  "at": "2026-11-01T05:15:56.262939+08:00",
+  "candidate": "ffabf3699b02f480bf737ec248a4133e996a7da8",
+  "source_files": 147,
+  "matching_manifests": 3,
+  "check_exit": 0,
+  "build_exit": 0,
+  "workspace_test": "interrupted_no_exit_record",
+  "later_gates": "not_executed",
+  "cause": "undetermined",
+  "files": {
+    "logs/01-check.json": {
+      "bytes": 374,
+      "sha256": "2b2a0e39fe63d377cd4b213df8da4f1f9fab0d6144979aa8a5b67097319bde37"
+    },
+    "logs/01-check.stderr.log": {
+      "bytes": 609,
+      "sha256": "d58fe380b859f4e2ba8a4e2edd671ab5515507756a49d46131f45664066c1808"
+    },
+    "logs/01-check.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/02-build-cli.json": {
+      "bytes": 362,
+      "sha256": "106604f3555759c3b3a223cf6a435cef141f0ee3759a4c96d32422dc1b59d76b"
+    },
+    "logs/02-build-cli.stderr.log": {
+      "bytes": 255,
+      "sha256": "5250c568a9b6b1bd7bf39f3beb1a98b226433c53bd8425a738976e06e83ceb72"
+    },
+    "logs/02-build-cli.stdout.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/03-workspace-test.stderr.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "logs/03-workspace-test.stdout.log": {
+      "bytes": 45056,
+      "sha256": "7bc52f798b42563a30a1d1299ed01bf39e3d136b4b093f0392e4d3fdac705f50"
+    },
+    "logs/cli-binary.json": {
+      "bytes": 291,
+      "sha256": "945607496ecac0bfbc1782ef12e0adafd0eba7822925c7bff4665d45ecd0f5ea"
+    },
+    "logs/environment.json": {
+      "bytes": 666,
+      "sha256": "05c317fff6fed3eb845220de7e26e7fbfe13881e97dab94be58b0f6388ec2a64"
+    },
+    "logs/preflight.json": {
+      "bytes": 325,
+      "sha256": "d7f8e855aabc2d3c8992d914376666c0ad47cafae93403672149817d9fac27ea"
+    },
+    "logs/retained-before-summary.txt": {
+      "bytes": 31,
+      "sha256": "d82222633736fcfdb3fa79ddc660cbe883c26a81074d427e06b0fe1b0aaa0350"
+    },
+    "logs/retained-before.json": {
+      "bytes": 983903,
+      "sha256": "624348819405b6c2754b21ecc50c91d55745def8af78faf79132ace130eda72b"
+    },
+    "logs/runner.log": {
+      "bytes": 194,
+      "sha256": "c834095c85173ab0e4d1fc6587d48fae23a3492194585904f15e4c1ed03ac75c"
+    },
+    "logs/source-after-01-check.json": {
+      "bytes": 25414,
+      "sha256": "cb2fc87da10266ea8271f8a23819a911feb3993f173023367f82a8831fb0020e"
+    },
+    "logs/source-after-02-build-cli.json": {
+      "bytes": 25414,
+      "sha256": "cb2fc87da10266ea8271f8a23819a911feb3993f173023367f82a8831fb0020e"
+    },
+    "logs/source-before.json": {
+      "bytes": 25414,
+      "sha256": "cb2fc87da10266ea8271f8a23819a911feb3993f173023367f82a8831fb0020e"
+    },
+    "logs/source-preflight-git.json": {
+      "bytes": 40003,
+      "sha256": "d253585b72c23a7e44da9f327427848e4d01ad81fe6985865be5c26634c74ee1"
+    },
+    "logs/state-after-01-check.json": {
+      "bytes": 325,
+      "sha256": "71619d9c280979a82f6eeaa5d61d42bf6ed653b134924fbff6ddf06e5ab3d16c"
+    },
+    "logs/state-after-02-build-cli.json": {
+      "bytes": 325,
+      "sha256": "ad1b82e275e868d993e3011cdcf778c5e6f8763406d808716e6cebad1586644e"
+    },
+    "logs/toolchain-setup.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
