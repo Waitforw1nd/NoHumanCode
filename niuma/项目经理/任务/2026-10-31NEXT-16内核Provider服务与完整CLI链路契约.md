@@ -126,3 +126,19 @@ panic防泄露可采用一次安装、委托原hook的全局hook及线程局部�
 | P08 | 固定组合完整五门禁及既有安全/迁移/HTTP/CLI回归；操作说明与实际功能一致 | C，经理最终验收 |
 
 本轮不改变schema/HTTP协议/旧数据，若有必要先报告原owner与经理。项目书完整目标继续有效；P01–P08通过仅构成NEXT-16，不构成整个阶段一或全项目完成。
+
+## 补充01：生产生命周期与首次组件顺序
+
+经理初读B实际代码发现disable/enable/status仅cfg(test)，不满足生产生命周期验收。明确由B提供实际ProviderRuntime控制和公开Engine Rust管理入口及ProviderRuntimeStatus（active/admission/in-flight/effects/generation/recovery），测试wrapper复用同一逻辑。不新增HTTP/CLI/schema，控制为当前进程内状态，重启默认重新启用；不能宣称已有持久Provider插件管理。
+
+acquire拒绝路径必须在释放runtime guard后析构codec的decoder，避免admit错误导致锁内Drop重入；D增加受控反例。同步factory/start/stop的panic输出也需被守卫，可信builtin wrapper内生命周期不能暗中调用任意插件代码且持运行时锁。原准备/准入/账本边界不变。
+
+C已先交静态候选，当前调度改为C独立用户故事组件→B内核组件→经理合真实依赖到D→D独立组件→最终组合C五门禁；只有收到具体窗口者能重型构建。改变测试顺序不改变最终受测范围。
+
+## 补充02：完整用户故事发现的Checkpoint resume错误分类
+
+C首次固定e810979b组件编译成功，业务测试在恢复后resume旧Task时失败：预期conflict、实际request_failed，停止未重跑。经理独立读源码确认ensure_resume_unsealed先检查checkpoints并返回CheckpointError::Conflict，而server::resume只将ResumeError::Sealed映射为409，其余走通用400。没有证据显示旧Task实际被放行；缺陷是明确的封存错误丢失分类。
+
+唯一新增写权给C：`NoManCode/rust-app/src/server.rs`中resume处理器的错误映射，识别CheckpointError::Conflict并返回409/conflict/retryable false，使用覆盖checkpoint/restore的固定安全说明。保持Store/Engine现有错误类型和事务，不扩其它HTTP路由。C在first_user_workflow同时断言创建Checkpoint后和恢复后resume均拒绝，拒绝不改变Task、Provider请求数或文件；不把预期降低成通用错误。
+
+原attempt1证据保留，后续新候选另跑。B窗口期间C只静态修复，固定commit/两tree并重新取得窗口后执行；C最终组合包含此修正。此为P07真实发现并驱动的必要产品修复，不因原任务只有测试而忽略用户路径缺陷。
