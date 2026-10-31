@@ -38,6 +38,8 @@ pub struct HostArgs {
 }
 #[derive(Subcommand)]
 enum HostCommand {
+    /// Read the assembled capabilities and each independent runtime observation.
+    Composition,
     Config(HostConfigArgs),
     Route(HostRouteArgs),
 }
@@ -146,6 +148,7 @@ impl HostRouteSet {
 impl HostCommand {
     fn valid(&self) -> bool {
         match self {
+            Self::Composition => true,
             Self::Config(HostConfigArgs {
                 command: HostConfigCommand::Get,
             }) => true,
@@ -372,6 +375,275 @@ fn host_result(value: &Value, write: Option<&HostRouteSet>) -> Result<(), Failur
     }
     Ok(())
 }
+fn composition_version(value: &Value) -> bool {
+    value.as_str().is_some_and(|version| {
+        let parts: Vec<_> = version.split('.').collect();
+        parts.len() == 3
+            && parts.iter().all(|part| {
+                !part.is_empty()
+                    && (part.len() == 1 || !part.starts_with('0'))
+                    && part.bytes().all(|b| b.is_ascii_digit())
+                    && part.parse::<u32>().is_ok()
+            })
+    })
+}
+
+fn validate_composition(value: &Value) -> Result<(), Failure> {
+    use std::collections::BTreeSet;
+    if !worktree_fields(
+        value,
+        &[
+            "version",
+            "consistency",
+            "capabilities",
+            "plugins",
+            "runtimes",
+        ],
+    ) || value["version"] != 1
+        || value["consistency"] != "per_component"
+    {
+        return Err(invalid_response());
+    }
+    let plugins = value["plugins"].as_array().ok_or_else(invalid_response)?;
+    let runtimes = value["runtimes"].as_array().ok_or_else(invalid_response)?;
+    if plugins.len() != 2 || runtimes.len() != 2 {
+        return Err(invalid_response());
+    }
+    let mut plugin_ids = BTreeSet::new();
+    for item in plugins {
+        let plugin: PluginStatus = decode(item.clone())?;
+        if encoded(&plugin)? != *item || !plugin_ids.insert(plugin.plugin_id.clone()) {
+            return Err(invalid_response());
+        }
+        validate_plugin(&plugin)?;
+    }
+    if plugin_ids != BTreeSet::from(["builtin.files".to_owned(), "builtin.shell".to_owned()]) {
+        return Err(invalid_response());
+    }
+    let mut runtime_ids = BTreeSet::new();
+    for item in runtimes {
+        validate_runtime_component(item)?;
+        if !runtime_ids.insert(item["id"].as_str().ok_or_else(invalid_response)?) {
+            return Err(invalid_response());
+        }
+    }
+    if runtime_ids != BTreeSet::from(["builtin.chat-agent", "builtin.provider-xpeach"]) {
+        return Err(invalid_response());
+    }
+    let caps = value["capabilities"]
+        .as_array()
+        .ok_or_else(invalid_response)?;
+    if caps.len() != 13 {
+        return Err(invalid_response());
+    }
+    let mut ids = BTreeSet::new();
+    for cap in caps {
+        if !worktree_fields(
+            cap,
+            &[
+                "id",
+                "binding_kind",
+                "provider_id",
+                "provider_version",
+                "interfaces",
+                "lifecycle",
+                "dependencies",
+            ],
+        ) {
+            return Err(invalid_response());
+        }
+        let id = cap["id"].as_str().ok_or_else(invalid_response)?;
+        if !ids.insert(id) {
+            return Err(invalid_response());
+        }
+        let (provider, managed, deps, names): (&str, bool, &[&str], &[&str]) = match id {
+            "core" => ("host.core", false, &[], &["host.core"]),
+            "session-log" => ("host.session-log", false, &["core"], &["host.session-log"]),
+            "local-project" => (
+                "host.local-project",
+                false,
+                &["core", "workspace"],
+                &["host.local-project"],
+            ),
+            "workspace" => ("host.workspace", false, &["core"], &["host.workspace"]),
+            "provider-xpeach" => (
+                "builtin.provider-xpeach",
+                true,
+                &["core"],
+                &["provider.completion-codec"],
+            ),
+            "file-read-search" => (
+                "builtin.files",
+                true,
+                &["workspace", "local-project", "approval-policy"],
+                &["tool.read_file", "tool.list_files", "tool.search_files"],
+            ),
+            "approval-policy" => (
+                "host.approval-policy",
+                false,
+                &["core", "local-project"],
+                &["host.approval-policy"],
+            ),
+            "file-write" => (
+                "builtin.files",
+                true,
+                &["workspace", "local-project", "approval-policy"],
+                &["tool.write_file"],
+            ),
+            "shell" => (
+                "builtin.shell",
+                true,
+                &["workspace", "local-project", "approval-policy"],
+                &["tool.run_command"],
+            ),
+            "git-diff" => (
+                "host.review-recovery",
+                false,
+                &["workspace", "local-project"],
+                &["host.git-diff"],
+            ),
+            "checkpoint-restore" => (
+                "host.review-recovery",
+                false,
+                &["workspace", "local-project"],
+                &["host.checkpoint-restore"],
+            ),
+            "recovery" => ("host.recovery", false, &["core"], &["host.recovery"]),
+            "chat-agent" => (
+                "builtin.chat-agent",
+                true,
+                &["core", "approval-policy"],
+                &["agent.strategy"],
+            ),
+            _ => return Err(invalid_response()),
+        };
+        if cap["provider_id"] != provider
+            || cap["binding_kind"]
+                != if managed {
+                    "plugin_runtime"
+                } else {
+                    "host_service"
+                }
+            || cap["lifecycle"] != if managed { "managed" } else { "host_required" }
+            || !composition_version(&cap["provider_version"])
+            || (!managed && cap["provider_version"] != "1.0.0")
+        {
+            return Err(invalid_response());
+        }
+        if let Some(plugin) = plugins.iter().find(|p| p["plugin_id"] == provider) {
+            if cap["provider_version"] != plugin["version"] {
+                return Err(invalid_response());
+            }
+        }
+        let actual_deps = cap["dependencies"]
+            .as_array()
+            .ok_or_else(invalid_response)?;
+        let actual: BTreeSet<_> = actual_deps
+            .iter()
+            .map(|v| v.as_str().ok_or_else(invalid_response))
+            .collect::<Result<_, _>>()?;
+        if actual.len() != actual_deps.len() || actual != deps.iter().copied().collect() {
+            return Err(invalid_response());
+        }
+        let interfaces = cap["interfaces"].as_array().ok_or_else(invalid_response)?;
+        let mut found = BTreeSet::new();
+        for interface in interfaces {
+            if !worktree_fields(interface, &["name", "version"])
+                || interface["version"] != "1.0.0"
+                || !found.insert(interface["name"].as_str().ok_or_else(invalid_response)?)
+            {
+                return Err(invalid_response());
+            }
+        }
+        if found != names.iter().copied().collect() {
+            return Err(invalid_response());
+        }
+    }
+    Ok(())
+}
+
+async fn composition_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+) -> Result<(), Failure> {
+    let unavailable = || Failure::fixed("unavailable", "无法读取本机组合状态", true);
+    let bootstrap: Bootstrap = decode(
+        request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?))
+            .await
+            .map_err(|_| unavailable())?,
+    )
+    .map_err(|_| unavailable())?;
+    if bootstrap.token.is_empty()
+        || bootstrap.token.len() > 4096
+        || reqwest::header::HeaderValue::from_str(&bootstrap.token).is_err()
+    {
+        return Err(unavailable());
+    }
+    let response = client
+        .get(endpoint(origin, &["api", "host", "composition"])?)
+        .header("x-peachsh-token", &bootstrap.token)
+        .send()
+        .await
+        .map_err(|_| unavailable())?;
+    let status = response.status().as_u16();
+    if !response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| {
+            v.split(';')
+                .next()
+                .is_some_and(|v| v.trim().eq_ignore_ascii_case("application/json"))
+        })
+    {
+        return Err(invalid_response());
+    }
+    let bytes = limited_body(response).await?;
+    let HostWireValue(value) = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+    if !safe_strings(&value)
+        || contains_string(&value, &bootstrap.token)
+        || value.to_string().contains(&bootstrap.token)
+    {
+        return Err(invalid_response());
+    }
+    if status != 200 {
+        if status == 403
+            && worktree_fields(&value, &["error"])
+            && worktree_fields(&value["error"], &["code", "message", "retryable"])
+            && value["error"]["code"] == "forbidden"
+            && value["error"]["message"].is_string()
+            && value["error"]["retryable"] == false
+        {
+            return Err(Failure::fixed("forbidden", "本机Host访问被拒绝", false));
+        }
+        if worktree_fields(&value, &["code", "message", "retryable", "error"])
+            && value["message"].is_string()
+            && value["error"] == value["message"]
+            && value["retryable"].is_boolean()
+        {
+            return match (status, value["code"].as_str(), value["retryable"].as_bool()) {
+                (404, Some("not_found"), Some(false)) => {
+                    Err(Failure::fixed("not_found", "组合状态未找到", false))
+                }
+                (500, Some("internal"), Some(retryable)) => {
+                    Err(Failure::fixed("internal", "组合状态读取失败", retryable))
+                }
+                _ => Err(invalid_response()),
+            };
+        }
+        return Err(invalid_response());
+    }
+    validate_composition(&value)?;
+    print_value(value, json_output)?;
+    if !json_output {
+        let mut out = io::stdout().lock();
+        writeln!(out, "能力绑定、期望状态、进程状态与实际授权不同；host_required 不可热关闭，files 多项能力共享开关。per_component 不保证跨域原子快照。")
+            .and_then(|()| out.flush()).map_err(|_| Failure::fixed("output_failed", "无法写入标准输出", false))?;
+    }
+    Ok(())
+}
+
 async fn host_workflow(
     client: &Client,
     origin: &Url,
@@ -443,6 +715,7 @@ async fn host_workflow(
         ));
     }
     let request=match &command {
+        HostCommand::Composition => return Err(invalid_response()),
         HostCommand::Config(HostConfigArgs { command: HostConfigCommand::Get }) => client.get(endpoint(origin,&["api","host","config"])?),
         HostCommand::Config(HostConfigArgs { command: HostConfigCommand::Operation { key } }) => client.post(endpoint(origin,&["api","host","config","lookup"])?).json(&json!({"key":key})),
         HostCommand::Route(HostRouteArgs { command: HostRouteCommand::Set(args) }) => {
@@ -1341,7 +1614,12 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
 
     let command = match command {
         Command::Host(args) => {
-            return host_workflow(&client, &origin, json_output, args.command).await;
+            return match args.command {
+                HostCommand::Composition => {
+                    composition_workflow(&client, &origin, json_output).await
+                }
+                other => host_workflow(&client, &origin, json_output, other).await,
+            };
         }
         Command::Runtime(args) => match args.command {
             RuntimeCommand::Agent(agent) => {
