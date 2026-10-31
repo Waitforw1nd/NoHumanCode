@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::{io::Write, path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 16;
+pub const SCHEMA_VERSION: u32 = 17;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -278,6 +278,12 @@ impl Store {
                 shell_marker == (current >= 13),
                 "schema 13 marker/version mismatch"
             );
+            let runtime_marker =
+                repository::migration_applied(&tx, repository::RUNTIME_MANAGEMENT_MIGRATION_ID)?;
+            anyhow::ensure!(
+                runtime_marker == (current >= 17),
+                "schema 17 marker/version mismatch"
+            );
             if current < 12 {
                 anyhow::ensure!(!marker, "schema 12 early marker");
                 repository::apply_schema_12(&tx)?;
@@ -285,6 +291,8 @@ impl Store {
                 anyhow::ensure!(marker, "schema 12 marker missing");
                 if current == 12 {
                     repository::verify_schema_12(&tx)?;
+                } else if current >= 17 {
+                    repository::verify_schema_17(&tx)?;
                 } else {
                     repository::verify_schema_13(&tx)?;
                 }
@@ -294,7 +302,9 @@ impl Store {
         {
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             let current: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-            if current >= 14 {
+            if current >= 17 {
+                repository::verify_schema_17(&tx)?;
+            } else if current >= 14 {
                 repository::verify_schema_13(&tx)?;
             } else {
                 repository::apply_schema_13(&tx)?;
@@ -315,6 +325,26 @@ impl Store {
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             repository::apply_schema_16(&tx)?;
             tx.commit()?;
+        }
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            #[cfg(test)]
+            let migration_path =
+                if tx.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))? == 16 {
+                    Some(tx.query_row(
+                        "SELECT file FROM pragma_database_list WHERE name='main'",
+                        [],
+                        |r| r.get::<_, String>(0),
+                    )?)
+                } else {
+                    None
+                };
+            repository::apply_schema_17(&tx)?;
+            tx.commit()?;
+            #[cfg(test)]
+            if let Some(path) = migration_path {
+                crate::engine::crash_probe::block(&path, "runtime17_after_commit", "");
+            }
         }
         Ok(Self { db: Mutex::new(db) })
     }

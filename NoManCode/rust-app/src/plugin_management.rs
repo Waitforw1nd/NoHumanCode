@@ -72,11 +72,21 @@ pub(crate) fn validate_plugin_id(id: &str) -> Result<()> {
     }
     Ok(())
 }
+pub(crate) fn validate_ledger_id(id: &str) -> Result<()> {
+    if matches!(
+        id,
+        BUILTIN_FILES_ID | BUILTIN_SHELL_ID | "builtin.chat-agent" | "builtin.provider-xpeach"
+    ) {
+        Ok(())
+    } else {
+        Err(PluginManagementError::NotFound.into())
+    }
+}
 pub(crate) fn desired_tx(db: &Connection) -> Result<PluginDesired> {
     desired_for_tx(db, BUILTIN_FILES_ID)
 }
 pub(crate) fn desired_for_tx(db: &Connection, id: &str) -> Result<PluginDesired> {
-    validate_plugin_id(id)?;
+    validate_ledger_id(id)?;
     let desired = db.query_row(
         "SELECT plugin_id,enabled,revision,updated_at FROM plugin_desired WHERE plugin_id=?1",
         [id],
@@ -128,6 +138,30 @@ impl Store {
             desired_for_tx(&db, BUILTIN_SHELL_ID)?,
         ))
     }
+    pub(crate) fn admit_runtime(&self, id: &str) -> Result<()> {
+        let mut db = self
+            .db
+            .lock()
+            .map_err(|_| PluginManagementError::Internal)?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        ensure_plugin_enabled_tx(&tx, id)?;
+        #[cfg(test)]
+        let probe_path: String = tx.query_row(
+            "SELECT file FROM pragma_database_list WHERE name='main'",
+            [],
+            |r| r.get(0),
+        )?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&probe_path, "runtime_agent_admit_before_commit");
+        #[cfg(test)]
+        crate::engine::crash_probe::block(&probe_path, "runtime_agent_admit_before_commit", id);
+        tx.commit()?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&probe_path, "runtime_agent_admit_after_commit");
+        #[cfg(test)]
+        crate::engine::crash_probe::block(&probe_path, "runtime_agent_admit_after_commit", id);
+        Ok(())
+    }
     // Caller holds the runtime management lock. Never calls runtime from Store.
     pub(crate) fn set_plugin_desired(
         &self,
@@ -135,7 +169,7 @@ impl Store {
         request: &SetPluginEnabled,
         key: &str,
     ) -> Result<(PluginMutationReceipt, bool)> {
-        validate_plugin_id(id)?;
+        validate_ledger_id(id)?;
         if request.expected_revision > i64::MAX as u64
             || secrets::validate_idempotency_key(key).is_err()
         {
@@ -177,6 +211,109 @@ impl Store {
         )?;
         tx.execute("INSERT INTO plugin_management_requests(key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (?1,?2,?3,?4,?5,?6)", params![key, id, receipt.enabled, receipt.previous_revision, receipt.revision, receipt.committed_at])?;
         tx.commit()?;
+        Ok((receipt, false))
+    }
+    // Called with the corresponding runtime lock held; replay precedes local rejection.
+    pub(crate) fn set_runtime_desired(
+        &self,
+        id: &str,
+        request: &SetPluginEnabled,
+        key: &str,
+        reject: Option<crate::runtime_management::RuntimeManagementError>,
+    ) -> std::result::Result<
+        (PluginMutationReceipt, bool),
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::RuntimeManagementError as E;
+        if !matches!(id, "builtin.chat-agent" | "builtin.provider-xpeach")
+            || request.expected_revision > i64::MAX as u64
+            || secrets::validate_idempotency_key(key).is_err()
+        {
+            return Err(E::Invalid);
+        }
+        let mut db = self.db.lock().map_err(|_| E::Internal)?;
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(|_| E::Internal)?;
+        let prior: Option<PluginMutationReceipt> = tx.query_row(
+            "SELECT plugin_id,enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key=?1", [key],
+            |r| Ok(PluginMutationReceipt {plugin_id:r.get(0)?,enabled:r.get(1)?,previous_revision:r.get(2)?,revision:r.get(3)?,committed_at:r.get(4)?})
+        ).optional().map_err(|_| E::Internal)?;
+        if let Some(receipt) = prior {
+            if receipt.plugin_id != id
+                || receipt.enabled != request.enabled
+                || receipt.previous_revision != request.expected_revision
+            {
+                return Err(E::IdempotencyConflict);
+            }
+            tx.commit().map_err(|_| E::Internal)?;
+            return Ok((receipt, true));
+        }
+        if let Some(rejection) = reject {
+            return Err(rejection);
+        }
+        let current = desired_for_tx(&tx, id).map_err(|_| E::Internal)?;
+        if current.revision != request.expected_revision || current.revision == i64::MAX as u64 {
+            return Err(E::RevisionConflict);
+        }
+        let committed_at = i64::try_from(now()).map_err(|_| E::Internal)?;
+        if committed_at <= 0 {
+            return Err(E::Internal);
+        }
+        let receipt = PluginMutationReceipt {
+            plugin_id: id.to_owned(),
+            enabled: request.enabled,
+            previous_revision: current.revision,
+            revision: current.revision + 1,
+            committed_at,
+        };
+        tx.execute(
+            "UPDATE plugin_desired SET enabled=?1,revision=?2,updated_at=?3 WHERE plugin_id=?4",
+            params![receipt.enabled, receipt.revision, receipt.committed_at, id],
+        )
+        .map_err(|_| E::Internal)?;
+        #[cfg(test)]
+        let probe_path: String = tx
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|_| E::Internal)?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&probe_path, "runtime_intent_before_receipt_insert");
+        tx.execute("INSERT INTO plugin_management_requests(key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (?1,?2,?3,?4,?5,?6)", params![key,id,receipt.enabled,receipt.previous_revision,receipt.revision,receipt.committed_at]).map_err(|_| E::Internal)?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&probe_path, "runtime_intent_before_commit");
+        #[cfg(test)]
+        crate::engine::crash_probe::block(&probe_path, "runtime_intent_before_commit", id);
+        #[cfg(test)]
+        let injected = crate::engine::runtime_barrier::take_intent_commit_failure(&probe_path);
+        #[cfg(test)]
+        if injected {
+            tx.execute_batch(
+                "CREATE TEMP TABLE nhc_test_commit_parent(id INTEGER PRIMARY KEY);
+                 CREATE TEMP TABLE nhc_test_commit_child(parent_id INTEGER REFERENCES nhc_test_commit_parent(id) DEFERRABLE INITIALLY DEFERRED);
+                 INSERT INTO nhc_test_commit_child(parent_id) VALUES(1);",
+            )
+            .map_err(|_| E::Internal)?;
+        }
+        let committed = tx.commit();
+        #[cfg(test)]
+        if injected
+            && matches!(
+                &committed,
+                Err(rusqlite::Error::SqliteFailure(code, _))
+                    if code.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY
+            )
+        {
+            crate::engine::runtime_barrier::mark_intent_commit_failure_observed(&probe_path);
+        }
+        committed.map_err(|_| E::Internal)?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&probe_path, "runtime_intent_after_commit");
+        #[cfg(test)]
+        crate::engine::crash_probe::block(&probe_path, "runtime_intent_after_commit", id);
         Ok((receipt, false))
     }
     pub(crate) fn validate_files_read(&self, task: &crate::domain::Task) -> Result<()> {
@@ -307,7 +444,7 @@ mod tests {
                 assert_eq!(
                     db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                         .unwrap(),
-                    16
+                    17
                 );
             }
         }
@@ -409,7 +546,7 @@ mod tests {
             let tx = db
                 .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
                 .unwrap();
-            tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
             crate::repository::apply_schema_12(&tx).unwrap();
             tx.execute_batch("UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical','builtin.files',0,0,1,17); INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
             crate::repository::verify_schema_12(&tx).unwrap();
@@ -444,7 +581,7 @@ mod tests {
         for worker in workers {
             worker.join().unwrap();
         }
-        assert!(results.iter().any(|r| matches!(r, Ok(16))));
+        assert!(results.iter().any(|r| matches!(r, Ok(17))));
         for result in results {
             if let Err(error) = result {
                 let sqlite = error
@@ -458,10 +595,10 @@ mod tests {
         }
         for _ in 0..2 {
             let store = Store::open(&path).unwrap();
-            assert_eq!(store.schema_version().unwrap(), 16);
+            assert_eq!(store.schema_version().unwrap(), 17);
             let mut db = store.db.lock().unwrap();
             let tx = db.transaction().unwrap();
-            crate::repository::verify_schema_13(&tx).unwrap();
+            crate::repository::verify_schema_17(&tx).unwrap();
             crate::repository::verify_schema_14(&tx).unwrap();
             crate::repository::verify_schema_14(&tx).unwrap();
             crate::repository::verify_schema_16(&tx).unwrap();
@@ -536,7 +673,7 @@ mod tests {
                 if name == "plugin_desired" || name == "schema_migrations" {
                     assert_eq!(
                         rows.len(),
-                        old.len() + if name == "schema_migrations" { 4 } else { 1 }
+                        old.len() + if name == "schema_migrations" { 5 } else { 3 }
                     );
                     for row in old {
                         assert!(rows.contains(row));
@@ -736,7 +873,7 @@ mod tests {
             "receipt",
         ] {
             let (dir, store) = store();
-            assert_eq!(store.schema_version().unwrap(), 16);
+            assert_eq!(store.schema_version().unwrap(), 17);
             assert_eq!(
                 Store::open(&dir.path().join("state.sqlite"))
                     .unwrap()

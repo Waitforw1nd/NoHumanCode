@@ -210,25 +210,37 @@ pub struct AgentRuntimeStatus {
     pub last_failure: Option<AgentError>,
 }
 impl AgentRuntime {
+    #[cfg(test)]
     pub(crate) fn builtin() -> anyhow::Result<Self> {
         Self::assemble(Arc::new(Builtin))
     }
+    pub(crate) fn builtin_with_state(enabled: bool) -> anyhow::Result<Self> {
+        Self::assemble_with_state(Arc::new(Builtin), enabled)
+    }
+    #[cfg(test)]
     fn assemble(strategy: Strategy) -> anyhow::Result<Self> {
+        Self::assemble_with_state(strategy, true)
+    }
+    fn assemble_with_state(strategy: Strategy, enabled: bool) -> anyhow::Result<Self> {
         let mut host = PluginHost::new(ScopeKey::Host)?;
         host.catalog_mut().register(manifest(PROVIDER, true))?;
         host.catalog_mut().register(manifest(CONSUMER, false))?;
         host.with_factory(PROVIDER, move || Box::new(StrategyPlugin(strategy.clone())));
         host.with_factory(CONSUMER, || Box::new(Consumer));
-        Self::from_host(host)
+        Self::from_host_with_state(host, enabled)
     }
-    fn from_host(mut host: PluginHost) -> anyhow::Result<Self> {
-        let started =
-            guarded(|| host.start(&[CONSUMER.to_string()])).is_ok_and(|result| result.is_ok());
+    #[cfg(test)]
+    fn from_host(host: PluginHost) -> anyhow::Result<Self> {
+        Self::from_host_with_state(host, true)
+    }
+    fn from_host_with_state(mut host: PluginHost, enabled: bool) -> anyhow::Result<Self> {
+        let started = !enabled
+            || guarded(|| host.start(&[CONSUMER.to_string()])).is_ok_and(|result| result.is_ok());
         if !started {
             let _ = guarded(|| drop(host));
             return Err(anyhow::anyhow!("agent activation failed"));
         }
-        if host.resolve_bound::<Strategy>(CONSUMER, &key()).is_err() {
+        if enabled && host.resolve_bound::<Strategy>(CONSUMER, &key()).is_err() {
             let _ = guarded(|| drop(host));
             return Err(anyhow::anyhow!("agent binding failed"));
         }
@@ -240,8 +252,8 @@ impl AgentRuntime {
                 status_unavailable: std::sync::atomic::AtomicBool::new(false),
                 state: Mutex::new(State {
                     host: Some(host),
-                    active: true,
-                    admission_open: true,
+                    active: enabled,
+                    admission_open: enabled,
                     transitioning: false,
                     in_flight: 0,
                     generation: 1,
@@ -261,6 +273,14 @@ impl AgentRuntime {
     pub(crate) fn from_host_for_test(host: PluginHost) -> anyhow::Result<Self> {
         Self::from_host(host)
     }
+    #[cfg(test)]
+    pub(crate) fn from_host_with_state_for_test(
+        host: PluginHost,
+        enabled: bool,
+    ) -> anyhow::Result<Self> {
+        Self::from_host_with_state(host, enabled)
+    }
+    #[cfg(test)]
     pub(crate) fn acquire(&self) -> Result<AgentLease, AgentError> {
         let mut state = self.inner.state.lock().map_err(|_| AgentError::Internal)?;
         if !state.admission_open || state.transitioning || !state.active {
@@ -273,7 +293,43 @@ impl AgentRuntime {
             .resolve_bound::<Strategy>(CONSUMER, &key())
             .map_err(|_| AgentError::Unavailable)?
             .payload;
-        state.in_flight = state.in_flight.checked_add(1).ok_or(AgentError::Internal)?;
+        let Some(next) = state.in_flight.checked_add(1) else {
+            drop(state);
+            let _ = guarded(|| drop(strategy));
+            return Err(AgentError::Internal);
+        };
+        state.in_flight = next;
+        Ok(AgentLease {
+            strategy: Some(strategy),
+            inner: self.inner.clone(),
+        })
+    }
+    pub(crate) fn acquire_persisted(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<AgentLease, AgentError> {
+        let mut state = self.inner.state.lock().map_err(|_| AgentError::Internal)?;
+        if !state.admission_open || state.transitioning || !state.active {
+            return Err(AgentError::Unavailable);
+        }
+        let strategy = state
+            .host
+            .as_ref()
+            .ok_or(AgentError::Internal)?
+            .resolve_bound::<Strategy>(CONSUMER, &key())
+            .map_err(|_| AgentError::Unavailable)?
+            .payload;
+        if state.in_flight == u64::MAX {
+            drop(state);
+            let _ = guarded(|| drop(strategy));
+            return Err(AgentError::Internal);
+        }
+        if store.admit_runtime(PROVIDER).is_err() {
+            drop(state);
+            let _ = guarded(|| drop(strategy));
+            return Err(AgentError::Unavailable);
+        }
+        state.in_flight += 1;
         Ok(AgentLease {
             strategy: Some(strategy),
             inner: self.inner.clone(),
@@ -289,7 +345,10 @@ impl AgentRuntime {
             return Err(AgentError::Internal);
         }
         let state = self.inner.state.lock().map_err(|_| AgentError::Internal)?;
-        Ok(AgentRuntimeStatus {
+        Ok(Self::snapshot(&state))
+    }
+    fn snapshot(state: &State) -> AgentRuntimeStatus {
+        AgentRuntimeStatus {
             plugin_id: PROVIDER,
             service: SERVICE,
             interface_version: "1.0.0",
@@ -303,7 +362,7 @@ impl AgentRuntime {
             effects: state.effects,
             recovery: state.recovery,
             last_failure: state.last_failure,
-        })
+        }
     }
     #[cfg(test)]
     pub(crate) fn set_status_unavailable_for_test(&self, unavailable: bool) {
@@ -357,9 +416,25 @@ impl AgentRuntime {
             stopped
         }
     }
+    #[cfg(test)]
     pub(crate) fn enable(&self) -> Result<(), AgentError> {
-        let mut host = {
+        self.enable_with_store(None)
+    }
+    pub(crate) fn enable_persisted(&self, store: &crate::store::Store) -> Result<(), AgentError> {
+        self.enable_with_store(Some(store))
+    }
+    fn enable_with_store(&self, store: Option<&crate::store::Store>) -> Result<(), AgentError> {
+        let host = {
             let mut s = self.inner.state.lock().map_err(|_| AgentError::Internal)?;
+            if let Some(store) = store {
+                if !store
+                    .plugin_desired_for(PROVIDER)
+                    .map_err(|_| AgentError::Internal)?
+                    .enabled
+                {
+                    return Err(AgentError::Unavailable);
+                }
+            }
             if s.transitioning {
                 return Err(AgentError::Busy);
             }
@@ -386,9 +461,19 @@ impl AgentRuntime {
             s.generation = next;
             host
         };
+        self.finish_start(host)
+    }
+    fn finish_start(&self, mut host: PluginHost) -> Result<(), AgentError> {
         let ok = guarded(|| host.start(&[CONSUMER.to_string()])).is_ok_and(|r| r.is_ok())
             && host.resolve_bound::<Strategy>(CONSUMER, &key()).is_ok();
-        let mut s = self.inner.state.lock().map_err(|_| AgentError::Internal)?;
+        let mut s = match self.inner.state.lock() {
+            Ok(s) => s,
+            Err(poisoned) => {
+                drop(poisoned);
+                let _ = guarded(|| drop(host));
+                return Err(AgentError::Internal);
+            }
+        };
         s.effects = host.effects().len() as u64;
         s.recovery = host.pending_recovery().len() as u64;
         s.active = ok;
@@ -406,6 +491,81 @@ impl AgentRuntime {
         } else {
             Err(AgentError::Lifecycle)
         }
+    }
+    pub(crate) fn management_status(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<
+        crate::runtime_management::RuntimeComponentStatus,
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::{RuntimeManagementError as E, agent_status};
+        let s = self.inner.state.lock().map_err(|_| E::Internal)?;
+        let desired = store
+            .plugin_desired_for(PROVIDER)
+            .map_err(|_| E::Internal)?;
+        Ok(agent_status(desired, Self::snapshot(&s)))
+    }
+    pub(crate) fn set_management(
+        &self,
+        store: &crate::store::Store,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<
+        crate::runtime_management::RuntimeMutationResult,
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::{RuntimeManagementError as E, RuntimeMutationResult};
+        let (receipt, replayed, start, stop) = {
+            let mut s = self.inner.state.lock().map_err(|_| E::Internal)?;
+            let needs_start = request.enabled && (!s.active || !s.admission_open);
+            let reject =
+                if s.transitioning || (request.enabled && s.in_flight > 0 && !s.admission_open) {
+                    Some(E::Busy)
+                } else if request.enabled
+                    && (s.lifecycle_failed
+                        || (needs_start && (s.generation == u64::MAX || s.host.is_none())))
+                {
+                    Some(E::Unavailable)
+                } else {
+                    None
+                };
+            let (receipt, replayed) = store.set_runtime_desired(PROVIDER, &request, key, reject)?;
+            let mut start = None;
+            let mut stop = None;
+            if !replayed {
+                if request.enabled && needs_start {
+                    s.generation += 1;
+                    s.transitioning = true;
+                    s.active = false;
+                    start = s.host.take();
+                } else if !request.enabled {
+                    if s.admission_open {
+                        s.admission_open = false;
+                        if let Some(next) = s.generation.checked_add(1) {
+                            s.generation = next;
+                        } else {
+                            s.last_failure = Some(AgentError::Internal);
+                            s.lifecycle_failed = true;
+                        }
+                    }
+                    stop = Inner::reserve_stop(&mut s).map_err(|_| E::Internal)?;
+                }
+            }
+            (receipt, replayed, start, stop)
+        };
+        if let Some(host) = start {
+            let _ = self.finish_start(host);
+        }
+        if let Some(host) = stop {
+            let _ = self.inner.finish_stop(host);
+        }
+        let current = self.management_status(store)?;
+        Ok(RuntimeMutationResult {
+            receipt,
+            replayed,
+            current,
+        })
     }
 }
 impl Drop for Inner {
@@ -432,7 +592,14 @@ impl Inner {
     }
     fn finish_stop(&self, mut host: PluginHost) -> Result<(), AgentError> {
         let ok = guarded(|| host.stop_subtree(PROVIDER)).is_ok_and(|r| r.is_ok());
-        let mut s = self.state.lock().map_err(|_| AgentError::Internal)?;
+        let mut s = match self.state.lock() {
+            Ok(s) => s,
+            Err(poisoned) => {
+                drop(poisoned);
+                let _ = guarded(|| drop(host));
+                return Err(AgentError::Internal);
+            }
+        };
         s.effects = host.effects().len() as u64;
         s.recovery = host.pending_recovery().len() as u64;
         s.transitioning = false;
@@ -534,5 +701,27 @@ impl Drop for AgentLease {
         if let Some(host) = host {
             let _ = guarded(|| self.inner.finish_stop(host));
         }
+    }
+}
+
+#[cfg(all(test, windows))]
+mod persistent_constructor_tests {
+    use super::*;
+    #[test]
+    fn disabled_host_is_registered_without_starting() {
+        let mut host = PluginHost::new(ScopeKey::Host).unwrap();
+        host.catalog_mut()
+            .register(manifest(PROVIDER, true))
+            .unwrap();
+        host.catalog_mut()
+            .register(manifest(CONSUMER, false))
+            .unwrap();
+        host.with_factory(PROVIDER, || Box::new(StrategyPlugin(Arc::new(Builtin))));
+        host.with_factory(CONSUMER, || Box::new(Consumer));
+        let runtime = AgentRuntime::from_host_with_state_for_test(host, false).unwrap();
+        let status = runtime.status().unwrap();
+        assert!(!status.active && !status.admission_open);
+        assert_eq!((status.effects, status.generation), (0, 1));
+        runtime.set_generation_for_test(1).unwrap();
     }
 }

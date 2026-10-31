@@ -2888,12 +2888,33 @@ pub(crate) fn apply_schema_12(tx: &Transaction<'_>) -> Result<()> {
     Ok(())
 }
 pub(crate) fn verify_schema_12(tx: &Transaction<'_>) -> Result<()> {
-    verify_plugin_schema(tx, false)
+    verify_plugin_schema(tx, 1)
 }
 pub(crate) fn verify_schema_13(tx: &Transaction<'_>) -> Result<()> {
-    verify_plugin_schema(tx, true)
+    verify_plugin_schema(tx, 2)
 }
-fn verify_plugin_schema(tx: &Transaction<'_>, shell: bool) -> Result<()> {
+pub(crate) fn verify_schema_17(tx: &Transaction<'_>) -> Result<()> {
+    verify_plugin_schema(tx, 4)?;
+    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name IN ('plugin_desired','plugin_management_requests') AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
+    anyhow::ensure!(extras == 0, "unsupported plugin schema objects");
+    let dependencies: i64 = tx.query_row("SELECT count(*) FROM sqlite_master AS m JOIN pragma_foreign_key_list(m.name) AS f WHERE m.type='table' AND f.\"table\" IN ('plugin_desired','plugin_management_requests') AND NOT(m.name='plugin_management_requests' AND f.\"table\"='plugin_desired')", [], |r| r.get(0))?;
+    anyhow::ensure!(
+        dependencies == 0,
+        "unsupported plugin foreign key dependencies"
+    );
+    let bad_runtime_receipts: i64 = tx.query_row("SELECT count(*) FROM plugin_management_requests WHERE plugin_id IN ('builtin.chat-agent','builtin.provider-xpeach') AND committed_at<=0", [], |r| r.get(0))?;
+    anyhow::ensure!(bad_runtime_receipts == 0, "invalid runtime receipt time");
+    let staging: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('nhc_runtime17_desired','nhc_runtime17_requests')", [], |r| r.get(0))?;
+    anyhow::ensure!(staging == 0, "runtime migration staging name collision");
+    Ok(())
+}
+fn verify_plugin_schema(tx: &Transaction<'_>, count: usize) -> Result<()> {
+    let shell = count >= 2;
+    let ids = if count == 4 {
+        "plugin_id IN ('builtin.files','builtin.shell','builtin.chat-agent','builtin.provider-xpeach')"
+    } else {
+        "plugin_id IN ('builtin.files','builtin.shell')"
+    };
     // Compare the whole DDL including PK/FK/CHECK, preserving quoted literals.
     // A schema with equal columns but weaker constraints must fail closed.
     fn normalize(sql: &str) -> String {
@@ -2928,10 +2949,7 @@ fn verify_plugin_schema(tx: &Transaction<'_>, shell: bool) -> Result<()> {
         anyhow::ensure!(
             normalize(&actual)
                 == normalize(&if shell {
-                    sql.replace(
-                        "plugin_id='builtin.files'",
-                        "plugin_id IN ('builtin.files','builtin.shell')",
-                    )
+                    sql.replace("plugin_id='builtin.files'", ids)
                 } else {
                     (*sql).to_owned()
                 }),
@@ -2946,15 +2964,16 @@ fn verify_plugin_schema(tx: &Transaction<'_>, shell: bool) -> Result<()> {
         0
     };
     anyhow::ensure!(
-        valid == 1 && shell_valid == i64::from(shell) && total == 1 + i64::from(shell),
+        valid == 1 && shell_valid == i64::from(shell) && total == count as i64,
         "plugin desired state invalid"
     );
+    if count == 4 {
+        let runtime_valid: i64 = tx.query_row("SELECT count(*) FROM plugin_desired WHERE plugin_id IN ('builtin.chat-agent','builtin.provider-xpeach') AND typeof(plugin_id)='text' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer' AND updated_at>=0", [], |r| r.get(0))?;
+        anyhow::ensure!(runtime_valid == 2, "runtime desired state invalid");
+    }
     let receipt_sql = "SELECT count(*) FROM plugin_management_requests WHERE NOT(typeof(key)='text' AND length(key) BETWEEN 1 AND 200 AND typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807 AND typeof(result_revision)='integer' AND result_revision=expected_revision+1 AND typeof(committed_at)='integer')";
     let receipt_sql = if shell {
-        receipt_sql.replace(
-            "plugin_id='builtin.files'",
-            "plugin_id IN ('builtin.files','builtin.shell')",
-        )
+        receipt_sql.replace("plugin_id='builtin.files'", ids)
     } else {
         receipt_sql.to_owned()
     };
@@ -2964,6 +2983,114 @@ fn verify_plugin_schema(tx: &Transaction<'_>, shell: bool) -> Result<()> {
         .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
         .optional()?;
     anyhow::ensure!(violation.is_none(), "plugin foreign key violation");
+    Ok(())
+}
+
+pub const RUNTIME_MANAGEMENT_MIGRATION_ID: &str = "builtin-runtime-management-v1";
+#[cfg(test)]
+pub(crate) fn runtime17_probe(tx: &Transaction<'_>, phase: &'static str) -> Result<()> {
+    let path: String = tx.query_row(
+        "SELECT file FROM pragma_database_list WHERE name='main'",
+        [],
+        |r| r.get(0),
+    )?;
+    crate::engine::crash_probe::block(&path, phase, "");
+    Ok(())
+}
+pub(crate) fn apply_schema_17(tx: &Transaction<'_>) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let marker = migration_applied(tx, RUNTIME_MANAGEMENT_MIGRATION_ID)?;
+    if version == 17 {
+        anyhow::ensure!(marker, "schema 17 marker missing");
+        return verify_schema_17(tx);
+    }
+    anyhow::ensure!(
+        version == 16 && !marker,
+        "schema 17 marker/version mismatch"
+    );
+    anyhow::ensure!(
+        tx.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))?,
+        "migration requires foreign keys"
+    );
+    verify_schema_13(tx)?;
+    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name IN ('plugin_desired','plugin_management_requests') AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
+    anyhow::ensure!(extras == 0, "unsupported plugin schema objects");
+    let dependencies: i64 = tx.query_row("SELECT count(*) FROM sqlite_master AS m JOIN pragma_foreign_key_list(m.name) AS f WHERE m.type='table' AND f.\"table\" IN ('plugin_desired','plugin_management_requests') AND NOT(m.name='plugin_management_requests' AND f.\"table\"='plugin_desired')", [], |r| r.get(0))?;
+    anyhow::ensure!(
+        dependencies == 0,
+        "unsupported plugin foreign key dependencies"
+    );
+    for name in ["nhc_runtime17_desired", "nhc_runtime17_requests"] {
+        let collision: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name=?1 UNION ALL SELECT 1 FROM sqlite_temp_master WHERE name=?1)", [name], |r| r.get(0))?;
+        anyhow::ensure!(!collision, "runtime migration staging name collision");
+    }
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_before_rebuild")?;
+    tx.execute_batch("CREATE TEMP TABLE nhc_runtime17_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired;
+        CREATE TEMP TABLE nhc_runtime17_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
+        DROP TABLE plugin_management_requests; DROP TABLE plugin_desired;")?;
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_after_drop")?;
+    for (_, sql) in PLUGIN_TABLES {
+        tx.execute_batch(&sql.replace("plugin_id='builtin.files'", "plugin_id IN ('builtin.files','builtin.shell','builtin.chat-agent','builtin.provider-xpeach')"))?;
+    }
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_after_create")?;
+    tx.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM nhc_runtime17_desired;
+        INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM nhc_runtime17_requests;")?;
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_after_restore")?;
+    tx.execute_batch("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.chat-agent',1,0,0),('builtin.provider-xpeach',1,0,0);")?;
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_after_insert")?;
+    verify_schema_17(tx)?;
+    for (saved, current) in [
+        (
+            "nhc_runtime17_desired",
+            "SELECT rowid,* FROM plugin_desired WHERE plugin_id IN ('builtin.files','builtin.shell')",
+        ),
+        (
+            "nhc_runtime17_requests",
+            "SELECT rowid,* FROM plugin_management_requests",
+        ),
+    ] {
+        let mismatch: bool = tx.query_row(&format!("SELECT EXISTS(SELECT * FROM {saved} EXCEPT {current}) OR EXISTS({current} EXCEPT SELECT * FROM {saved})"), [], |r| r.get(0))?;
+        anyhow::ensure!(!mismatch, "runtime migration row preservation failure");
+    }
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_after_verify")?;
+    tx.execute_batch(
+        "DROP TABLE temp.nhc_runtime17_requests; DROP TABLE temp.nhc_runtime17_desired;",
+    )?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
+        params![RUNTIME_MANAGEMENT_MIGRATION_ID, now()],
+    )?;
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_after_marker")?;
+    tx.pragma_update(None, "user_version", 17)?;
+    #[cfg(test)]
+    runtime17_probe(tx, "runtime17_before_commit")?;
+    Ok(())
+}
+
+#[cfg(test)]
+fn restore_legacy_plugin_fixture(db: &Connection) -> Result<()> {
+    let count: i64 = db.query_row("SELECT count(*) FROM plugin_management_requests WHERE plugin_id IN ('builtin.chat-agent','builtin.provider-xpeach')", [], |r| r.get(0))?;
+    anyhow::ensure!(count == 0, "fixture contains runtime receipts");
+    db.execute_batch("CREATE TEMP TABLE fixture13_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired WHERE plugin_id IN ('builtin.files','builtin.shell');
+        CREATE TEMP TABLE fixture13_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
+        DROP TABLE plugin_management_requests; DROP TABLE plugin_desired;")?;
+    for (_, sql) in PLUGIN_TABLES {
+        db.execute_batch(&sql.replace(
+            "plugin_id='builtin.files'",
+            "plugin_id IN ('builtin.files','builtin.shell')",
+        ))?;
+    }
+    db.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM fixture13_desired;
+        INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM fixture13_requests;
+        DROP TABLE temp.fixture13_requests; DROP TABLE temp.fixture13_desired;
+        DELETE FROM schema_migrations WHERE id='builtin-runtime-management-v1';")?;
     Ok(())
 }
 
@@ -3050,7 +3177,7 @@ mod shell_migration_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
-        tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
         apply_schema_12(&tx).unwrap();
         tx.execute(
             "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=2,updated_at=41",
@@ -3307,6 +3434,7 @@ mod worktree_schema_tests {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
+        restore_legacy_plugin_fixture(&tx).unwrap();
         tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
             UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files';
             INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical-files','builtin.files',0,0,1,17);
@@ -3351,16 +3479,47 @@ mod worktree_schema_tests {
                 r[1] == rusqlite::types::Value::Text(WORKTREE_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(RUNTIME_MANAGEMENT_MIGRATION_ID.into())
             })
             .cloned()
             .collect();
-        assert_eq!(new.len(), 3);
+        assert_eq!(new.len(), 4);
         expected.get_mut("schema_migrations").unwrap().extend(new);
+        let runtime_rows: Vec<_> = after["plugin_desired"]
+            .iter()
+            .filter(|r| {
+                r[1] == rusqlite::types::Value::Text("builtin.chat-agent".into())
+                    || r[1] == rusqlite::types::Value::Text("builtin.provider-xpeach".into())
+            })
+            .cloned()
+            .collect();
+        assert_eq!(runtime_rows.len(), 2);
+        for row in &runtime_rows {
+            assert_eq!(
+                &row[2..],
+                &[
+                    rusqlite::types::Value::Integer(1),
+                    rusqlite::types::Value::Integer(0),
+                    rusqlite::types::Value::Integer(0)
+                ]
+            );
+        }
+        expected
+            .get_mut("plugin_desired")
+            .unwrap()
+            .extend(runtime_rows);
+        expected
+            .get_mut("plugin_desired")
+            .unwrap()
+            .sort_by_key(|r| match &r[0] {
+                rusqlite::types::Value::Integer(v) => *v,
+                _ => unreachable!(),
+            });
         assert_eq!(after, expected);
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            16
+            17
         );
     }
     #[test]
@@ -3368,7 +3527,7 @@ mod worktree_schema_tests {
         let (_dir, path, db) = historical13();
         let before = rows(&db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 16);
+        assert_eq!(store.schema_version().unwrap(), 17);
         assert_migrated(&db, before);
         let after = rows(&db);
         drop(store);
@@ -3413,7 +3572,7 @@ mod worktree_schema_tests {
             })
             .collect();
         for handle in handles {
-            assert_eq!(handle.join().unwrap().unwrap(), 16);
+            assert_eq!(handle.join().unwrap().unwrap(), 17);
         }
         assert_migrated(&db, before);
     }
@@ -3481,7 +3640,7 @@ pub(crate) fn apply_schema_16(tx: &Transaction<'_>) -> Result<()> {
         migration_applied(tx, BUDGET_MIGRATION_ID)?,
         "schema 15 marker missing"
     );
-    if version == 16 {
+    if version >= 16 {
         anyhow::ensure!(applied, "schema 16 marker missing");
         return verify_schema_16(tx);
     }
@@ -3668,6 +3827,8 @@ mod budget_schema_tests {
             .unwrap();
         drop(store);
         let db = Connection::open(&path).unwrap();
+        db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
+        restore_legacy_plugin_fixture(&db).unwrap();
         db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE budget_calls; DROP TABLE budget_requests; DROP TABLE project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; PRAGMA user_version=14; INSERT INTO config VALUES('sentinel','old exact bytes'); INSERT INTO secrets VALUES('opaque',X'0001FFFE'); UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,0,1,17);").unwrap();
         (dir, path, db)
     }
@@ -3699,19 +3860,50 @@ mod budget_schema_tests {
             .filter(|r| {
                 r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(RUNTIME_MANAGEMENT_MIGRATION_ID.into())
             })
             .cloned()
             .collect();
-        assert_eq!(marker.len(), 2);
+        assert_eq!(marker.len(), 3);
         expected
             .get_mut("schema_migrations")
             .unwrap()
             .extend(marker);
+        let runtime_rows: Vec<_> = after["plugin_desired"]
+            .iter()
+            .filter(|r| {
+                r[1] == rusqlite::types::Value::Text("builtin.chat-agent".into())
+                    || r[1] == rusqlite::types::Value::Text("builtin.provider-xpeach".into())
+            })
+            .cloned()
+            .collect();
+        assert_eq!(runtime_rows.len(), 2);
+        for row in &runtime_rows {
+            assert_eq!(
+                &row[2..],
+                &[
+                    rusqlite::types::Value::Integer(1),
+                    rusqlite::types::Value::Integer(0),
+                    rusqlite::types::Value::Integer(0)
+                ]
+            );
+        }
+        expected
+            .get_mut("plugin_desired")
+            .unwrap()
+            .extend(runtime_rows);
+        expected
+            .get_mut("plugin_desired")
+            .unwrap()
+            .sort_by_key(|r| match &r[0] {
+                rusqlite::types::Value::Integer(v) => *v,
+                _ => unreachable!(),
+            });
         assert_eq!(after, expected);
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            16
+            17
         );
     }
     #[test]
@@ -3760,7 +3952,7 @@ mod budget_schema_tests {
             .collect();
         gate.wait();
         for h in handles {
-            assert_eq!(h.join().unwrap().unwrap(), 16);
+            assert_eq!(h.join().unwrap().unwrap(), 17);
         }
         assert_migrated(&db, before);
     }

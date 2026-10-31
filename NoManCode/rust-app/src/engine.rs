@@ -82,7 +82,7 @@ impl Engine {
     pub fn enable_builtin_agent(
         &self,
     ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
-        self.agent_runtime.enable()
+        self.agent_runtime.enable_persisted(&self.store)
     }
     pub fn disable_builtin_agent(
         &self,
@@ -94,12 +94,55 @@ impl Engine {
         self.provider_runtime.disable()
     }
     pub fn enable_builtin_provider(&self) -> Result<()> {
-        self.provider_runtime.enable()
+        self.provider_runtime.enable_persisted(&self.store)
     }
     pub fn builtin_provider_status(
         &self,
     ) -> Result<crate::provider_runtime::ProviderRuntimeStatus> {
         self.provider_runtime.status()
+    }
+    pub fn runtime_components(
+        &self,
+    ) -> std::result::Result<
+        Vec<crate::runtime_management::RuntimeComponentStatus>,
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::RuntimeId;
+        Ok(vec![
+            self.runtime_component_status(RuntimeId::ChatAgent)?,
+            self.runtime_component_status(RuntimeId::CompletionProvider)?,
+        ])
+    }
+    pub fn runtime_component_status(
+        &self,
+        id: crate::runtime_management::RuntimeId,
+    ) -> std::result::Result<
+        crate::runtime_management::RuntimeComponentStatus,
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::RuntimeId;
+        match id {
+            RuntimeId::ChatAgent => self.agent_runtime.management_status(&self.store),
+            RuntimeId::CompletionProvider => self.provider_runtime.management_status(&self.store),
+        }
+    }
+    pub fn set_runtime_enabled(
+        &self,
+        id: crate::runtime_management::RuntimeId,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> std::result::Result<
+        crate::runtime_management::RuntimeMutationResult,
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::RuntimeId;
+        match id {
+            RuntimeId::ChatAgent => self.agent_runtime.set_management(&self.store, request, key),
+            RuntimeId::CompletionProvider => {
+                self.provider_runtime
+                    .set_management(&self.store, request, key)
+            }
+        }
     }
     async fn acquire_network_slot(&self) -> std::result::Result<NetworkSlot, NetworkError> {
         loop {
@@ -365,22 +408,30 @@ impl Engine {
         let messages = [json!({"role":"user","content":"Return only the result of 17 * 19."})];
         let prepared = self
             .provider_runtime
-            .prepare(&crate::provider_runtime::CompletionInput {
-                model: &route.model,
-                max_tokens: route.max_tokens,
-                messages: &messages,
-                tools: &[],
-            })
+            .prepare_persisted(
+                &self.store,
+                &crate::provider_runtime::CompletionInput {
+                    model: &route.model,
+                    max_tokens: route.max_tokens,
+                    messages: &messages,
+                    tools: &[],
+                },
+            )
             .map_err(|mut e| {
                 e.calls.splice(0..0, models.calls.clone());
                 e
             })?;
         let next = {
             let _gate = self.gate.lock().await;
-            self.provider_runtime.acquire(prepared, || {
-                self.store
-                    .network_admit(&subject, NetworkPurpose::Completion, None)
-            })
+            self.provider_runtime
+                .acquire_persisted(prepared, |revision| {
+                    self.store.network_admit_with_runtime_revision(
+                        &subject,
+                        NetworkPurpose::Completion,
+                        None,
+                        Some(revision),
+                    )
+                })
         };
         let (lease, (permit, receipt)) = next.map_err(|mut e| {
             e.calls.splice(0..0, models.calls.clone());
@@ -495,6 +546,109 @@ impl Engine {
                 &HashMap::from([("newapi-account".into(), token)]),
             )
             .map_err(safe_error)
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod runtime_barrier {
+    use std::collections::HashSet;
+    use std::sync::{Arc, Condvar, Mutex, OnceLock};
+    use std::time::Duration;
+
+    type Armed = (String, &'static str, Arc<Barrier>);
+    static ARMED: OnceLock<Mutex<Vec<Armed>>> = OnceLock::new();
+    static PERMIT_FAILURE: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    static INTENT_COMMIT_FAILURE: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    static INTENT_COMMIT_OBSERVED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    pub(crate) fn fail_next_intent_commit(path: String) {
+        INTENT_COMMIT_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .insert(path);
+    }
+    pub(crate) fn take_intent_commit_failure(path: &str) -> bool {
+        INTENT_COMMIT_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .remove(path)
+    }
+    pub(crate) fn mark_intent_commit_failure_observed(path: &str) {
+        INTENT_COMMIT_OBSERVED
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .insert(path.to_owned());
+    }
+    pub(crate) fn take_intent_commit_failure_observed(path: &str) -> bool {
+        INTENT_COMMIT_OBSERVED
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .remove(path)
+    }
+    pub(crate) fn fail_next_permit(path: String) {
+        PERMIT_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .insert(path);
+    }
+    pub(crate) fn take_permit_failure(path: &str) -> bool {
+        PERMIT_FAILURE
+            .get_or_init(|| Mutex::new(HashSet::new()))
+            .lock()
+            .unwrap()
+            .remove(path)
+    }
+    pub(crate) struct Barrier {
+        state: Mutex<(bool, bool)>,
+        changed: Condvar,
+    }
+    impl Barrier {
+        pub(crate) fn wait_arrived(&self, timeout: Duration) -> bool {
+            let state = self.state.lock().unwrap();
+            let (state, _) = self
+                .changed
+                .wait_timeout_while(state, timeout, |s| !s.0)
+                .unwrap();
+            state.0
+        }
+        pub(crate) fn release(&self) {
+            let mut state = self.state.lock().unwrap();
+            state.1 = true;
+            self.changed.notify_all();
+        }
+    }
+    pub(crate) fn arm(path: String, phase: &'static str) -> Arc<Barrier> {
+        let barrier = Arc::new(Barrier {
+            state: Mutex::new((false, false)),
+            changed: Condvar::new(),
+        });
+        ARMED
+            .get_or_init(|| Mutex::new(Vec::new()))
+            .lock()
+            .unwrap()
+            .push((path, phase, barrier.clone()));
+        barrier
+    }
+    pub(crate) fn block(path: &str, phase: &'static str) {
+        let barrier = {
+            let mut armed = ARMED.get_or_init(|| Mutex::new(Vec::new())).lock().unwrap();
+            armed
+                .iter()
+                .position(|(p, s, _)| p == path && *s == phase)
+                .map(|index| armed.remove(index).2)
+        };
+        if let Some(barrier) = barrier {
+            let mut state = barrier.state.lock().unwrap();
+            state.0 = true;
+            barrier.changed.notify_all();
+            while !state.1 {
+                state = barrier.changed.wait(state).unwrap();
+            }
+        }
     }
 }
 
@@ -627,12 +781,14 @@ impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
         let (files, shell) = store.builtin_plugin_states()?;
         let tool_runtime = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
+        let agent = store.plugin_desired_for("builtin.chat-agent")?;
+        let provider = store.plugin_desired_for("builtin.provider-xpeach")?;
         Self::assemble(
             store,
             max_concurrency,
             tool_runtime,
-            crate::provider_runtime::ProviderRuntime::builtin()?,
-            crate::agent_runtime::AgentRuntime::builtin()?,
+            crate::provider_runtime::ProviderRuntime::builtin_with_state(provider.enabled)?,
+            crate::agent_runtime::AgentRuntime::builtin_with_state(agent.enabled)?,
         )
     }
     #[cfg(test)]
@@ -1644,7 +1800,7 @@ impl Engine {
         });
     }
     async fn run_task(&self, task: &mut Task, cancel: &CancellationToken) -> Result<()> {
-        let agent = self.agent_runtime.acquire()?;
+        let agent = self.agent_runtime.acquire_persisted(&self.store)?;
         loop {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let dependencies = match self.store.dependency_tasks(&task.id)? {
@@ -1737,21 +1893,27 @@ impl Engine {
             };
             let tools: Vec<_> = indices.into_iter().map(|i| available[i].clone()).collect();
             let mut text = String::new();
-            let prepared =
-                self.provider_runtime
-                    .prepare(&crate::provider_runtime::CompletionInput {
-                        model: &task.route.model,
-                        max_tokens: task.route.max_tokens,
-                        messages: &task.messages,
-                        tools: &tools,
-                    })?;
+            let prepared = self.provider_runtime.prepare_persisted(
+                &self.store,
+                &crate::provider_runtime::CompletionInput {
+                    model: &task.route.model,
+                    max_tokens: task.route.max_tokens,
+                    messages: &task.messages,
+                    tools: &tools,
+                },
+            )?;
             let (lease, (permit, receipt)) = {
                 let _gate = self.gate.lock().await;
                 let subject = self.task_route_subject(task)?;
-                self.provider_runtime.acquire(prepared, || {
-                    self.store
-                        .network_admit(&subject, NetworkPurpose::Completion, Some(task))
-                })?
+                self.provider_runtime
+                    .acquire_persisted(prepared, |revision| {
+                        self.store.network_admit_with_runtime_revision(
+                            &subject,
+                            NetworkPurpose::Completion,
+                            Some(task),
+                            Some(revision),
+                        )
+                    })?
             };
             let mut emit = |delta: &str| {
                 text.push_str(delta);
@@ -3209,7 +3371,7 @@ mod workspace_phase_tests {
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
             // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
-            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
             {
                 let tx = db.unchecked_transaction().unwrap();
                 crate::repository::apply_schema_12(&tx).unwrap();
@@ -3246,7 +3408,7 @@ mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 16);
+            assert_eq!(engine.store.schema_version().unwrap(), 17);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.2.0");
@@ -3296,10 +3458,14 @@ mod workspace_phase_tests {
                             == rusqlite::types::Value::Text(
                                 crate::repository::HOST_CONFIG_MIGRATION_ID.into(),
                             )
+                        || row[1]
+                            == rusqlite::types::Value::Text(
+                                crate::repository::RUNTIME_MANAGEMENT_MIGRATION_ID.into(),
+                            )
                 })
                 .cloned()
                 .collect();
-            assert_eq!(worktree_markers.len(), 3);
+            assert_eq!(worktree_markers.len(), 4);
             let shell_rows: Vec<_> = after["plugin_desired"]
                 .iter()
                 .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
@@ -3319,10 +3485,33 @@ mod workspace_phase_tests {
                 .cloned()
                 .collect();
             assert_eq!(marker_rows.len(), 1);
+            let runtime_rows: Vec<_> = after["plugin_desired"]
+                .iter()
+                .filter(|row| {
+                    row[1] == rusqlite::types::Value::Text("builtin.chat-agent".into())
+                        || row[1] == rusqlite::types::Value::Text("builtin.provider-xpeach".into())
+                })
+                .cloned()
+                .collect();
+            assert_eq!(runtime_rows.len(), 2);
+            for row in &runtime_rows {
+                assert_eq!(
+                    &row[2..],
+                    &[
+                        rusqlite::types::Value::Integer(1),
+                        rusqlite::types::Value::Integer(0),
+                        rusqlite::types::Value::Integer(0)
+                    ]
+                );
+            }
             expected
                 .get_mut("plugin_desired")
                 .unwrap()
                 .extend(shell_rows);
+            expected
+                .get_mut("plugin_desired")
+                .unwrap()
+                .extend(runtime_rows);
             expected
                 .get_mut("schema_migrations")
                 .unwrap()
@@ -3612,7 +3801,7 @@ mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1'); PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3667,7 +3856,7 @@ mod workspace_phase_tests {
         assert_eq!(n10_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 16);
+        assert_eq!(migrated.schema_version().unwrap(), 17);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
         let mut before = before;
