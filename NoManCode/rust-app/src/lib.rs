@@ -18,6 +18,8 @@ pub mod plugin_management;
 pub mod project_config;
 pub mod provider;
 pub mod provider_runtime;
+#[cfg(all(test, windows))]
+mod provider_runtime_tests;
 pub mod provider_transport;
 pub mod provider_usage;
 pub mod repository;
