@@ -1,3 +1,9 @@
+## 2026-10-31 全项目架构评判主线复核
+
+用户要求审视整个项目并判断是否推翻。经理基于既有评估复核main283003af与受测Rust tree，确认NEXT-18已整合，主线仍有工具结果两步提交、Engine职责集中、双模型兼容、正式UI骨架与范围收口问题。结论为保留Host/SQLite/权限/事务/恢复，局部实质重构并完成默认组合和Desktop；不把在途NEXT-19算作已修复。详[本轮报告](../提交报告/2026-10-31全项目评判NEXT-18主线补记.md)。本轮仅管理记录，未跑测试或操作Git暂存/提交；原B继续既有任务、C/D冻结，无新派发。
+
+继续完整项目目标：list_agents确认原B仍running，经理只读五owner路径WIP，新增usage缺失计数兼容、可信拒绝同call变更及审批完整绑定检查。B已回报静态补齐但未固定/编译。B同时纠正经理对resume分隔符的局部推断；经理git show确认基线已同事务写delta，显式撤回误判并更新预读记录，不作为已证明回归。T05仍限定cfg(test)真实事务停点，无生产后门、无新测试窗口。
+
 ## 2026-10-31 NEXT-19正式实施启动
 
 B完成静态预研并冻结，经理核报告固定hash及源码，形成预研裁决和T01–T14正式契约。实际从73a03b6b创建codex/b/tool-call-application、codex/d/tool-result-tests、codex/c/tool-call-workflow三树，核HEAD/双tree/status；仅恢复原B执行新树静态完整实现，B已本人核收三SHA/branch/status/index/unmerged空，C/D冻结。未新建代理/改模型，未运行产品测试。新设计在保留schema17与唯一Host资源前提下统一结果事务、证明非执行来源、受限历史只读回填并让Engine退出实际工具协调，未把静态条件推导当动态缺陷或N18-F01根因。
