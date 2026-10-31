@@ -257,6 +257,27 @@ fn card(h: &Harness, task: &mut Task, call: &str, name: &str, args: Value) -> St
         .id
 }
 
+fn card_group(h: &Harness, task: &mut Task, calls: &[(&str, &str, Value)]) -> Vec<String> {
+    let group: Vec<_> = calls
+        .iter()
+        .map(|(call, name, args)| tool_call(call, name, args.clone()))
+        .collect();
+    task.messages
+        .push(json!({"role":"assistant", "tool_calls":group}));
+    h.engine.store.save_task(task).unwrap();
+    calls
+        .iter()
+        .map(|(call, name, args)| {
+            h.engine
+                .store
+                .ensure_approval(task, call, name, args)
+                .unwrap()
+                .0
+                .id
+        })
+        .collect()
+}
+
 fn event_count(h: &Harness, task: &Task, kind: &str) -> usize {
     h.engine
         .store
@@ -1060,20 +1081,24 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
     let mut a = seed_task(&h.engine.store, h._dir.path(), "task-a");
     let mut b = seed_task(&h.engine.store, h._dir.path(), "task-b");
     let secret = "mock-http-secret";
-    let a1 = card(
+    let [a1, a2]: [String; 2] = card_group(
         &h,
         &mut a,
-        "same-call",
-        "write_file",
-        json!({"path":"src/a.txt","content":secret}),
-    );
-    let a2 = card(
-        &h,
-        &mut a,
-        "command",
-        "run_command",
-        json!({"command":format!("Bearer {secret} {}", "界".repeat(200))}),
-    );
+        &[
+            (
+                "same-call",
+                "write_file",
+                json!({"path":"src/a.txt","content":secret}),
+            ),
+            (
+                "command",
+                "run_command",
+                json!({"command":format!("Bearer {secret} {}", "界".repeat(200))}),
+            ),
+        ],
+    )
+    .try_into()
+    .unwrap();
     let b1 = card(
         &h,
         &mut b,
@@ -1293,13 +1318,16 @@ async fn ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency() {
     let h = live_harness(vec![]).await;
     let started = start_live(&h, true).await;
     let mut task = settled(&h, &started.id).await;
-    let id = card(
+    let [id, race]: [String; 2] = card_group(
         &h,
         &mut task,
-        "write",
-        "write_file",
-        json!({"path":"src/a","content":"x"}),
-    );
+        &[
+            ("write", "write_file", json!({"path":"src/a","content":"x"})),
+            ("race", "write_file", json!({"path":"src/r","content":"r"})),
+        ],
+    )
+    .try_into()
+    .unwrap();
     let url = format!("{}/api/approvals/{id}/decision", h.origin);
     let first = client()
         .post(&url)
@@ -1330,13 +1358,6 @@ async fn ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency() {
     .await;
     assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
 
-    let race = card(
-        &h,
-        &mut task,
-        "race",
-        "write_file",
-        json!({"path":"src/r","content":"r"}),
-    );
     let race_url = format!("{}/api/approvals/{race}/decision", h.origin);
     let mut requests = tokio::task::JoinSet::new();
     let barrier = Arc::new(tokio::sync::Barrier::new(9));
@@ -1554,13 +1575,20 @@ async fn ah11_strict_inputs_guards_paths_and_safe_errors() {
 async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
     let h = harness().await;
     let mut task = seed_task(&h.engine.store, h._dir.path(), "fault-task");
-    let busy_id = card(
+    let [busy_id, corrupt_id]: [String; 2] = card_group(
         &h,
         &mut task,
-        "busy",
-        "write_file",
-        json!({"path":"src/a","content":"x"}),
-    );
+        &[
+            ("busy", "write_file", json!({"path":"src/a","content":"x"})),
+            (
+                "corrupt",
+                "write_file",
+                json!({"path":"src/b","content":"x"}),
+            ),
+        ],
+    )
+    .try_into()
+    .unwrap();
     let lock = Connection::open(&h.db_path).unwrap();
     lock.execute_batch("BEGIN IMMEDIATE").unwrap();
     let response = client()
@@ -1583,13 +1611,6 @@ async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
         ApprovalStatus::Pending
     );
 
-    let corrupt_id = card(
-        &h,
-        &mut task,
-        "corrupt",
-        "write_file",
-        json!({"path":"src/b","content":"x"}),
-    );
     let db = Connection::open(&h.db_path).unwrap();
     db.execute_batch("PRAGMA foreign_keys=OFF").unwrap();
     db.execute(
