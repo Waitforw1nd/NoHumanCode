@@ -291,7 +291,7 @@ fn historical_corruption_and_unsupported_objects_fail_closed() {
         ),
         (
             "DELETE FROM plugin_desired WHERE plugin_id='builtin.shell'",
-            "plugin desired state invalid",
+            "schema 8 外键检查失败",
         ),
         (
             "CREATE INDEX unexpected_plugin_index ON plugin_desired(enabled)",
@@ -322,7 +322,59 @@ fn historical_corruption_and_unsupported_objects_fail_closed() {
         let path = dir.path().join("runtime-schema.db");
         historical16(&path);
         let db = Connection::open(&path).unwrap();
-        db.execute_batch(sql).unwrap();
+        if sql == "DELETE FROM plugin_desired WHERE plugin_id='builtin.shell'" {
+            let original_fk: bool = db
+                .pragma_query_value(None, "foreign_keys", |r| r.get(0))
+                .unwrap();
+            println!("missing-shell fixture injection connection foreign_keys={original_fk}");
+            assert!(original_fk);
+            db.pragma_update(None, "foreign_keys", false).unwrap();
+            assert!(
+                !db.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))
+                    .unwrap()
+            );
+            db.execute_batch(sql).unwrap();
+            db.pragma_update(None, "foreign_keys", true).unwrap();
+            assert!(
+                db.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))
+                    .unwrap()
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM plugin_desired WHERE plugin_id='builtin.shell'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                0
+            );
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM plugin_management_requests WHERE rowid=72 AND key='old-shell' AND plugin_id='builtin.shell'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                1
+            );
+            let orphan: (String, i64, String) = db
+                .query_row(
+                    "PRAGMA foreign_key_check(plugin_management_requests)",
+                    [],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )
+                .unwrap();
+            assert_eq!(
+                orphan,
+                (
+                    "plugin_management_requests".into(),
+                    72,
+                    "plugin_desired".into()
+                )
+            );
+        } else {
+            db.execute_batch(sql).unwrap();
+        }
         let error = Store::open(&path).err().expect("damaged fixture must fail");
         assert!(
             format!("{error:#}").contains(reason),
