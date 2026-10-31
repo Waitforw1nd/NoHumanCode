@@ -1265,6 +1265,7 @@ async fn n18_cross_store_false_true_does_not_revive_old_prepared_completion() {
         .unwrap()
     };
     let before = count();
+    let budget_before = f.engine.budget_status(&f.project).unwrap();
     assert!(
         runtime
             .acquire_persisted(prepared, |revision| f
@@ -1280,17 +1281,385 @@ async fn n18_cross_store_false_true_does_not_revive_old_prepared_completion() {
     );
     assert_eq!(count(), before);
     assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
-    let fresh = runtime
+    let budget_after = f.engine.budget_status(&f.project).unwrap();
+    assert_eq!(budget_after.held_tokens, budget_before.held_tokens);
+    assert_eq!(
+        budget_after.unresolved_count,
+        budget_before.unresolved_count
+    );
+    assert_eq!(budget_after.spent_tokens, budget_before.spent_tokens);
+    let checked = f
+        .engine
+        .project_route_check(&f.project, "route")
+        .await
+        .unwrap();
+    assert_eq!(checked.result["answer"], "codec-marker");
+    assert_eq!(
+        checked.calls.iter().map(|c| c.purpose).collect::<Vec<_>>(),
+        vec![NetworkPurpose::Models, NetworkPurpose::Completion]
+    );
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 1);
+    assert_eq!(count(), before + 2);
+    let settled = f.engine.budget_status(&f.project).unwrap();
+    assert_eq!(settled.held_tokens, budget_before.held_tokens);
+    assert_eq!(settled.unresolved_count, budget_before.unresolved_count);
+    assert_eq!(settled.spent_tokens, budget_before.spent_tokens + 5);
+}
+
+#[tokio::test]
+async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
+    use crate::{
+        engine::runtime_barrier, plugin_management::SetPluginEnabled, runtime_management::RuntimeId,
+    };
+    use std::sync::mpsc;
+    for admission_first in [true, false] {
+        let f = fixture(Fault::None).await;
+        let _probe_guard = crate::runtime_management_tests::barrier_test_guard();
+        let path = f._dir.path().join("provider-test.db");
+        let store = f.engine.store.clone();
+        let other = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        let db = rusqlite::Connection::open(&path).unwrap();
+        let key: String = db
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let runtime = Arc::new(make_runtime());
+        let messages = vec![json!({"role":"user","content":"hi"})];
+        let tools = vec![];
+        let prepared = runtime
+            .prepare_persisted(&store, &input(&messages, &tools))
+            .unwrap();
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: "route".into(),
+            project_id: Some(f.project.clone()),
+        };
+        let before: i64 = db
+            .query_row("SELECT count(*) FROM network_calls", [], |r| r.get(0))
+            .unwrap();
+        let budget_before = f.engine.budget_status(&f.project).unwrap();
+        let phase = if admission_first {
+            "runtime_provider_admit_before_commit"
+        } else {
+            "runtime_intent_before_commit"
+        };
+        let barrier = runtime_barrier::arm(key, phase);
+        let (started_tx, started_rx) = mpsc::channel();
+        if admission_first {
+            let r = runtime.clone();
+            let s = store.clone();
+            let admit = std::thread::spawn(move || {
+                r.acquire_persisted(prepared, |revision| {
+                    s.network_admit_with_runtime_revision(
+                        &subject,
+                        NetworkPurpose::Completion,
+                        None,
+                        Some(revision),
+                    )
+                })
+            });
+            let arrived = barrier.wait_arrived(Duration::from_secs(5));
+            if !arrived {
+                barrier.release();
+                let _ = admit.join();
+                panic!("provider admission barrier not reached");
+            }
+            let disable = std::thread::spawn(move || {
+                started_tx.send(()).unwrap();
+                other.set_runtime_enabled(
+                    RuntimeId::CompletionProvider,
+                    SetPluginEnabled {
+                        enabled: false,
+                        expected_revision: 0,
+                    },
+                    "provider-off",
+                )
+            });
+            let started = started_rx.recv_timeout(Duration::from_secs(5));
+            barrier.release();
+            started.expect("disable worker did not start");
+            let (lease, (_permit, receipt)) = admit.join().unwrap().unwrap();
+            disable.join().unwrap().unwrap();
+            assert_eq!(receipt.state, CallState::Claimed);
+            assert_eq!(runtime.status_for_test().unwrap().in_flight, 1);
+            assert_eq!(
+                db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+                    .get::<_, i64>(0))
+                    .unwrap(),
+                before + 1
+            );
+            drop(lease);
+        } else {
+            let disable = std::thread::spawn(move || {
+                other.set_runtime_enabled(
+                    RuntimeId::CompletionProvider,
+                    SetPluginEnabled {
+                        enabled: false,
+                        expected_revision: 0,
+                    },
+                    "provider-off",
+                )
+            });
+            let arrived = barrier.wait_arrived(Duration::from_secs(5));
+            if !arrived {
+                barrier.release();
+                let _ = disable.join();
+                panic!("provider disable barrier not reached");
+            }
+            let r = runtime.clone();
+            let s = store.clone();
+            let admit = std::thread::spawn(move || {
+                started_tx.send(()).unwrap();
+                r.acquire_persisted(prepared, |revision| {
+                    s.network_admit_with_runtime_revision(
+                        &subject,
+                        NetworkPurpose::Completion,
+                        None,
+                        Some(revision),
+                    )
+                })
+            });
+            let started = started_rx.recv_timeout(Duration::from_secs(5));
+            barrier.release();
+            started.expect("admission worker did not start");
+            disable.join().unwrap().unwrap();
+            assert!(admit.join().unwrap().is_err());
+            assert_eq!(runtime.status_for_test().unwrap().in_flight, 0);
+            assert_eq!(
+                db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+                    .get::<_, i64>(0))
+                    .unwrap(),
+                before
+            );
+        }
+        let budget_after = f.engine.budget_status(&f.project).unwrap();
+        assert_eq!(
+            budget_after.held_tokens,
+            budget_before.held_tokens + if admission_first { 100 } else { 0 }
+        );
+        assert_eq!(
+            budget_after.unresolved_count,
+            budget_before.unresolved_count + if admission_first { 1 } else { 0 }
+        );
+        assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
+    }
+}
+#[tokio::test]
+async fn n18_persisted_rejection_drops_reentrant_decoder_outside_lock() {
+    use crate::{plugin_management::SetPluginEnabled, runtime_management::RuntimeId};
+    let f = fixture(Fault::None).await;
+    let other = Engine::new(
+        Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap()),
+        2,
+    )
+    .unwrap();
+    let slot = Arc::new(std::sync::Mutex::new(None));
+    let dropped = Arc::new(AtomicUsize::new(0));
+    let runtime = Arc::new(
+        ProviderRuntime::with_codec_for_test(Arc::new(DropReentryCodec {
+            runtime: slot.clone(),
+            dropped: dropped.clone(),
+        }))
+        .unwrap(),
+    );
+    *slot.lock().unwrap() = Some(Arc::downgrade(&runtime));
+    let messages = vec![json!({"role":"user","content":"hi"})];
+    let tools = vec![];
+    let prepared = runtime
         .prepare_persisted(&f.engine.store, &input(&messages, &tools))
         .unwrap();
-    let called = AtomicUsize::new(0);
-    let (lease, ()) = runtime
-        .acquire_persisted(fresh, |revision| {
-            assert_eq!(revision, 2);
-            called.fetch_add(1, Ordering::SeqCst);
-            Ok::<_, NetworkError>(())
-        })
+    other
+        .set_runtime_enabled(
+            RuntimeId::CompletionProvider,
+            SetPluginEnabled {
+                enabled: false,
+                expected_revision: 0,
+            },
+            "provider-off",
+        )
         .unwrap();
-    assert_eq!(called.load(Ordering::SeqCst), 1);
-    drop(lease);
+    let store = f.engine.store.clone();
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: "route".into(),
+        project_id: Some(f.project.clone()),
+    };
+    let (tx, rx) = std::sync::mpsc::channel();
+    let worker = std::thread::spawn(move || {
+        let result = runtime.acquire_persisted(prepared, |revision| {
+            store.network_admit_with_runtime_revision(
+                &subject,
+                NetworkPurpose::Completion,
+                None,
+                Some(revision),
+            )
+        });
+        tx.send(result.is_err()).unwrap();
+    });
+    assert!(
+        rx.recv_timeout(Duration::from_secs(5))
+            .expect("persisted rejection dropped decoder while holding runtime lock")
+    );
+    worker.join().unwrap();
+    assert_eq!(dropped.load(Ordering::SeqCst), 1);
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
+    let budget = f.engine.budget_status(&f.project).unwrap();
+    assert_eq!(budget.held_tokens, 0);
+    assert_eq!(budget.unresolved_count, 0);
+}
+#[tokio::test]
+async fn n18_permit_failure_after_claim_compensates_without_completion_send() {
+    let f = fixture(Fault::None).await;
+    let path = f._dir.path().join("provider-test.db");
+    let db = rusqlite::Connection::open(path).unwrap();
+    let key: String = db
+        .query_row(
+            "SELECT file FROM pragma_database_list WHERE name='main'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    crate::engine::runtime_barrier::fail_next_permit(key);
+    assert!(
+        f.engine
+            .project_route_check(&f.project, "route")
+            .await
+            .is_err()
+    );
+    assert_eq!(f.mock.models.load(Ordering::SeqCst), 1);
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
+    let receipts: Vec<CallReceipt> = db
+        .prepare("SELECT receipt FROM network_calls ORDER BY rowid")
+        .unwrap()
+        .query_map([], |r| r.get::<_, String>(0))
+        .unwrap()
+        .map(|r| serde_json::from_str(&r.unwrap()).unwrap())
+        .collect();
+    assert_eq!(receipts.len(), 2);
+    assert_eq!(receipts[0].purpose, NetworkPurpose::Models);
+    assert_eq!(receipts[0].state, CallState::Finished);
+    assert_eq!(receipts[1].purpose, NetworkPurpose::Completion);
+    assert_eq!(receipts[1].state, CallState::NotSent);
+    let budget = f.engine.budget_status(&f.project).unwrap();
+    assert_eq!(budget.held_tokens, 0);
+    assert_eq!(budget.unresolved_count, 0);
+    assert_eq!(budget.spent_tokens, 0);
+}
+struct N18CountedProvider {
+    starts: Arc<AtomicUsize>,
+}
+impl crate::plugin_host::BuiltinPlugin for N18CountedProvider {
+    fn activate(
+        &mut self,
+        ctx: &mut crate::plugin_host::PluginContext,
+    ) -> Result<(), crate::plugin_host::PluginError> {
+        self.starts.fetch_add(1, Ordering::SeqCst);
+        let codec: Arc<dyn CompletionCodec> = Arc::new(TestCodec {
+            fault: Fault::None,
+            encoded: Arc::new(AtomicUsize::new(0)),
+            decoded: Arc::new(AtomicUsize::new(0)),
+        });
+        ctx.register_effect(&p01_key(0), Box::new(codec)).unwrap();
+        Ok(())
+    }
+    fn deactivate(
+        &mut self,
+        _: &mut crate::plugin_host::PluginContext,
+    ) -> Result<(), crate::plugin_host::PluginError> {
+        Ok(())
+    }
+}
+fn n18_counted_provider_host(starts: Arc<AtomicUsize>) -> crate::plugin_host::PluginHost {
+    use crate::plugin_catalog::ScopeKey;
+    let mut host = crate::plugin_host::PluginHost::new(ScopeKey::Host).unwrap();
+    host.catalog_mut()
+        .register(p01_manifest(
+            "builtin.engine-provider",
+            vec![],
+            vec![p01_key(0)],
+        ))
+        .unwrap();
+    host.with_factory("builtin.engine-provider", || Box::new(P01Consumer));
+    host.catalog_mut()
+        .register(p01_manifest(
+            "builtin.provider-xpeach",
+            vec![p01_key(0)],
+            vec![],
+        ))
+        .unwrap();
+    host.with_factory("builtin.provider-xpeach", move || {
+        Box::new(N18CountedProvider {
+            starts: starts.clone(),
+        })
+    });
+    host
+}
+#[test]
+fn n18_provider_false_start_has_no_activation_or_effects() {
+    let starts = Arc::new(AtomicUsize::new(0));
+    let runtime = ProviderRuntime::from_host_with_state_for_test(
+        n18_counted_provider_host(starts.clone()),
+        false,
+    )
+    .unwrap();
+    let state = runtime.status_for_test().unwrap();
+    assert_eq!(starts.load(Ordering::SeqCst), 0);
+    assert!(!state.active && !state.admission_open);
+    assert_eq!(state.effects, 0);
+    assert_eq!(state.generation, 1);
+    drop(runtime);
+    let enabled = ProviderRuntime::from_host_with_state_for_test(
+        n18_counted_provider_host(starts.clone()),
+        true,
+    )
+    .unwrap();
+    assert_eq!(starts.load(Ordering::SeqCst), 1);
+    assert!(enabled.status_for_test().unwrap().active);
+}
+#[tokio::test]
+async fn n18_provider_store_failure_never_creates_claim_or_uses_cached_enabled() {
+    let f = fixture(Fault::None).await;
+    let runtime = make_runtime();
+    let messages = vec![json!({"role":"user","content":"hi"})];
+    let tools = vec![];
+    let prepared = runtime
+        .prepare_persisted(&f.engine.store, &input(&messages, &tools))
+        .unwrap();
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: "route".into(),
+        project_id: Some(f.project.clone()),
+    };
+    let db = rusqlite::Connection::open(f._dir.path().join("provider-test.db")).unwrap();
+    let before: i64 = db
+        .query_row("SELECT count(*) FROM network_calls", [], |r| r.get(0))
+        .unwrap();
+    db.execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE plugin_desired;")
+        .unwrap();
+    assert!(
+        runtime
+            .acquire_persisted(prepared, |revision| f
+                .engine
+                .store
+                .network_admit_with_runtime_revision(
+                    &subject,
+                    NetworkPurpose::Completion,
+                    None,
+                    Some(revision)
+                ))
+            .is_err()
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        before
+    );
+    let budget = f.engine.budget_status(&f.project).unwrap();
+    assert_eq!(budget.held_tokens, 0);
+    assert_eq!(budget.unresolved_count, 0);
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
 }

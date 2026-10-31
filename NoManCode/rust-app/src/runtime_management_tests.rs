@@ -140,3 +140,71 @@ fn local_suppression_requires_a_new_persistent_intent_to_restore_runtime() {
         assert_eq!(status(&engine, id)["runtime"]["admission_open"], true);
     }
 }
+
+// The shared test probe permits only one active barrier at a time.
+pub(super) fn barrier_test_guard() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
+#[test]
+fn exhausted_revision_rejects_new_intent_without_consuming_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("runtime.db");
+    drop(Store::open(&path).unwrap());
+    let db = rusqlite::Connection::open(&path).unwrap();
+    db.execute(
+        "UPDATE plugin_desired SET revision=?1 WHERE plugin_id='builtin.chat-agent'",
+        [i64::MAX],
+    )
+    .unwrap();
+    let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+    assert!(matches!(
+        engine.set_runtime_enabled(
+            RuntimeId::ChatAgent,
+            write(true, i64::MAX as u64),
+            "exhausted"
+        ),
+        Err(RuntimeManagementError::RevisionConflict)
+    ));
+    assert_eq!(
+        db.query_row(
+            "SELECT count(*) FROM plugin_management_requests WHERE key='exhausted'",
+            [],
+            |r| r.get::<_, i64>(0)
+        )
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        status(&engine, RuntimeId::ChatAgent)["desired"]["revision"],
+        i64::MAX as u64
+    );
+}
+#[test]
+fn generation_exhaustion_does_not_leave_persistent_disable_open() {
+    for id in [RuntimeId::ChatAgent, RuntimeId::CompletionProvider] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("runtime.db");
+        let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        match id {
+            RuntimeId::ChatAgent => engine
+                .agent_runtime_for_test()
+                .set_generation_for_test(u64::MAX)
+                .unwrap(),
+            RuntimeId::CompletionProvider => engine
+                .provider_runtime_for_test()
+                .set_generation_for_test(u64::MAX)
+                .unwrap(),
+        }
+        let result = engine
+            .set_runtime_enabled(id, write(false, 0), "exhaust-generation")
+            .unwrap();
+        assert_eq!(result.receipt.revision, 1);
+        let state = status(&engine, id);
+        assert_eq!(state["desired"]["enabled"], false);
+        assert_eq!(state["runtime"]["admission_open"], false);
+        assert_eq!(state["converged"], false);
+    }
+}

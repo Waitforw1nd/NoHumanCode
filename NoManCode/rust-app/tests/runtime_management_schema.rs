@@ -169,7 +169,13 @@ fn migration_failure_at_marker_is_atomic() {
         &db,
         "SELECT rowid,* FROM plugin_management_requests ORDER BY rowid",
     );
-    assert!(Store::open(&path).is_err());
+    let error = Store::open(&path)
+        .err()
+        .expect("marker must reject migration");
+    assert!(
+        format!("{error:#}").contains("injected"),
+        "wrong failure: {error:#}"
+    );
     assert_eq!(
         db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
             .unwrap(),
@@ -194,6 +200,23 @@ fn migration_failure_at_marker_is_atomic() {
         )
         .unwrap(),
         0
+    );
+    db.execute_batch("DROP TRIGGER fail_runtime_marker")
+        .unwrap();
+    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
+    assert_eq!(
+        rows(
+            &db,
+            "SELECT rowid,* FROM plugin_desired WHERE plugin_id IN ('builtin.files','builtin.shell') ORDER BY rowid"
+        ),
+        desired
+    );
+    assert_eq!(
+        rows(
+            &db,
+            "SELECT rowid,* FROM plugin_management_requests ORDER BY rowid"
+        ),
+        receipts
     );
 }
 #[test]
@@ -247,22 +270,63 @@ fn historical_versions_12_through_16_upgrade_to_17() {
 }
 #[test]
 fn historical_corruption_and_unsupported_objects_fail_closed() {
-    for sql in [
-        "INSERT INTO schema_migrations(id,applied_at) VALUES('builtin-runtime-management-v1',1)",
-        "DELETE FROM schema_migrations WHERE id='builtin-shell-management-v1'",
-        "DELETE FROM plugin_desired WHERE plugin_id='builtin.shell'",
-        "CREATE INDEX unexpected_plugin_index ON plugin_desired(enabled)",
-        "CREATE TRIGGER unexpected_plugin_trigger AFTER UPDATE ON plugin_desired BEGIN SELECT 1; END",
-        "CREATE TABLE external_reference(plugin_id TEXT REFERENCES plugin_desired(plugin_id))",
+    let control = tempfile::tempdir().unwrap();
+    let control_path = control.path().join("control.db");
+    historical16(&control_path);
+    assert_eq!(
+        Store::open(&control_path)
+            .unwrap()
+            .schema_version()
+            .unwrap(),
+        17
+    );
+    for (sql, reason) in [
+        (
+            "INSERT INTO schema_migrations(id,applied_at) VALUES('builtin-runtime-management-v1',1)",
+            "schema 17 marker/version mismatch",
+        ),
+        (
+            "DELETE FROM schema_migrations WHERE id='builtin-shell-management-v1'",
+            "schema 13 marker/version mismatch",
+        ),
+        (
+            "DELETE FROM plugin_desired WHERE plugin_id='builtin.shell'",
+            "plugin desired state invalid",
+        ),
+        (
+            "CREATE INDEX unexpected_plugin_index ON plugin_desired(enabled)",
+            "unsupported plugin schema objects",
+        ),
+        (
+            "CREATE TRIGGER unexpected_plugin_trigger AFTER UPDATE ON plugin_desired BEGIN SELECT 1; END",
+            "unsupported plugin schema objects",
+        ),
+        (
+            "CREATE TABLE external_reference(plugin_id TEXT REFERENCES plugin_desired(plugin_id))",
+            "unsupported plugin foreign key dependencies",
+        ),
+        (
+            "CREATE TABLE nhc_runtime17_desired(collision INTEGER)",
+            "staging name collision",
+        ),
+        (
+            "PRAGMA ignore_check_constraints=ON; UPDATE plugin_desired SET enabled=3 WHERE plugin_id='builtin.files'; PRAGMA ignore_check_constraints=OFF",
+            "plugin desired state invalid",
+        ),
+        (
+            "PRAGMA ignore_check_constraints=ON; UPDATE plugin_management_requests SET result_revision=42 WHERE key='old-files'; PRAGMA ignore_check_constraints=OFF",
+            "plugin receipt invalid",
+        ),
     ] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("runtime-schema.db");
         historical16(&path);
         let db = Connection::open(&path).unwrap();
         db.execute_batch(sql).unwrap();
+        let error = Store::open(&path).err().expect("damaged fixture must fail");
         assert!(
-            Store::open(&path).is_err(),
-            "must reject historical corruption: {sql}"
+            format!("{error:#}").contains(reason),
+            "wrong rejection for {sql}: {error:#}"
         );
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
@@ -270,4 +334,27 @@ fn historical_corruption_and_unsupported_objects_fail_closed() {
             16
         );
     }
+}
+
+#[test]
+fn maximum_historical_revision_is_preserved() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("runtime-schema.db");
+    historical16(&path);
+    let db = Connection::open(&path).unwrap();
+    db.execute(
+        "UPDATE plugin_desired SET revision=?1 WHERE plugin_id='builtin.files'",
+        [i64::MAX],
+    )
+    .unwrap();
+    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
+    assert_eq!(
+        db.query_row(
+            "SELECT revision FROM plugin_desired WHERE plugin_id='builtin.files'",
+            [],
+            |r| r.get::<_, i64>(0)
+        )
+        .unwrap(),
+        i64::MAX
+    );
 }
