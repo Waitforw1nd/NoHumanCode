@@ -434,6 +434,28 @@ impl Store {
         tx.commit()?;
         Ok(())
     }
+    pub(crate) fn save_new_assistant_group(&self, task: &Task) -> Result<()> {
+        let calls = task
+            .messages
+            .last()
+            .and_then(|message| message.get("tool_calls"))
+            .and_then(Value::as_array)
+            .context("assistant tool group missing")?;
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        for call in calls {
+            let id = call["id"].as_str().context("tool call id missing")?;
+            let exists: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM approvals WHERE task_id=?1 AND tool_call_id=?2)",
+                params![&task.id, id],
+                |row| row.get(0),
+            )?;
+            anyhow::ensure!(!exists, "new tool call conflicts with existing approval");
+        }
+        save_task_tx(&tx, task, false)?;
+        tx.commit()?;
+        Ok(())
+    }
     pub(crate) fn check_resume_unsealed(&self, task_id: &str) -> Result<()> {
         ensure_resume_unsealed(&self.db.lock().unwrap(), task_id)
     }
