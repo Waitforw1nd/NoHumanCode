@@ -1,9 +1,8 @@
 use crate::{approval, domain::*, repository, secrets, workspace_changes::*};
 use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, OptionalExtension, params};
-use serde::Serialize;
 use serde_json::{Value, json};
-use std::{io::Write, path::Path, sync::Mutex};
+use std::{path::Path, sync::Mutex};
 
 pub const SCHEMA_VERSION: u32 = 17;
 
@@ -615,7 +614,14 @@ impl Store {
         let result = serde_json::from_str::<Value>(content)
             .unwrap_or_else(|_| Value::String(content.to_owned()));
         let result = secrets::redact_persisted(&result);
-        let content = stable_safe_json(&result)?;
+        let content = if matches!(
+            origin,
+            Origin::ApprovalDenied | Origin::ApprovalCancelled | Origin::InterruptedWithoutClaim
+        ) {
+            result.as_str().ok_or(ToolResultError::Conflict)?.to_owned()
+        } else {
+            stable_safe_json(&result)?
+        };
         let (turn_id, session_id) = approval_scope(&tx, &durable.id)?;
         let inherited =
             inherited_message_count(&tx, &durable, turn_id.as_deref(), session_id.as_deref())?;
@@ -780,10 +786,7 @@ impl Store {
                 || matching[0]["result"] != result
                 || matching[0]["origin_version"] != 1
                 || matching[0]["origin"] != origin.as_str()
-                || answers[0]["content"]
-                    .as_str()
-                    .and_then(|s| serde_json::from_str::<Value>(s).ok())
-                    != Some(result)
+                || answers[0]["content"].as_str().map(tool_result_value) != Some(result)
             {
                 return Err(ToolResultError::Conflict.into());
             }
@@ -2398,40 +2401,8 @@ fn restore_receipt(db: &Connection, id: &str) -> Result<RestoreReceipt> {
     })
 }
 
-struct UnicodeStringFormatter;
-
-impl serde_json::ser::Formatter for UnicodeStringFormatter {
-    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> std::io::Result<()>
-    where
-        W: ?Sized + Write,
-    {
-        for unit in fragment.encode_utf16() {
-            write!(writer, "\\u{unit:04x}")?;
-        }
-        Ok(())
-    }
-}
-
-fn stable_safe_json(value: &Value) -> Result<String> {
-    let compact = value.to_string();
-    if secrets::redact_persisted(&Value::String(compact.clone())) == Value::String(compact.clone())
-    {
-        return Ok(compact);
-    }
-    // Encode string fragments only after structural redaction. This keeps a
-    // second task-level text redaction from consuming JSON delimiters while
-    // preserving the same parsed value for the event integrity check.
-    let mut bytes = Vec::new();
-    let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, UnicodeStringFormatter);
-    value.serialize(&mut serializer)?;
-    let encoded = String::from_utf8(bytes)?;
-    anyhow::ensure!(
-        serde_json::from_str::<Value>(&encoded)? == *value
-            && secrets::redact_persisted(&Value::String(encoded.clone()))
-                == Value::String(encoded.clone()),
-        "安全工具结果无法稳定序列化"
-    );
-    Ok(encoded)
+fn tool_result_value(content: &str) -> Value {
+    serde_json::from_str(content).unwrap_or_else(|_| Value::String(content.into()))
 }
 
 fn command_message(task: &Task) -> String {
@@ -2550,8 +2521,7 @@ fn closed_calls(messages: &[Value]) -> Result<Vec<ClosedCall<'_>>> {
             calls.push(ClosedCall {
                 id,
                 name,
-                result: serde_json::from_str(content)
-                    .unwrap_or_else(|_| Value::String(content.into())),
+                result: tool_result_value(content),
             });
             index += 1;
         }
@@ -2815,7 +2785,7 @@ fn validate_current_approval_call(
         id: call_id.to_owned(),
     };
     let durable = legacy_task_row(tx, &task.id)?;
-    let saved = serde_json::to_value(&durable)?;
+    let saved = safe_task_value(&durable)?;
     let caller = safe_task_value(task)?;
     for field in [
         "id",
@@ -2907,19 +2877,10 @@ fn approval_binding(
         .as_str()
         .ok_or_else(conflict)?;
     let raw_value: Value = serde_json::from_str(raw_args).map_err(|_| conflict())?;
-    let safe = secrets::redact_persisted(&Value::String(raw_args.into()));
-    let persisted = &call["function"]["arguments"];
-    let equivalent = safe == *persisted
-        || match (
-            safe.as_str()
-                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
-            persisted
-                .as_str()
-                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
-        ) {
-            (Some(a), Some(b)) => approval::args_digest(&a)? == approval::args_digest(&b)?,
-            _ => false,
-        };
+    let persisted = call["function"]["arguments"]
+        .as_str()
+        .ok_or_else(conflict)?;
+    let equivalent = safe_tool_arguments_equal(raw_args, persisted)?;
     if call["function"]["name"] != name
         || !equivalent
         || approval::args_digest(&raw_value)? != approval::args_digest(args)?
@@ -3164,8 +3125,7 @@ fn validate_owned_result_events(messages: &[Value], events: &[Value]) -> Result<
             .find(|call| call["id"] == id)
             .ok_or(ToolResultError::Corrupt)?;
         let content = answer["content"].as_str().ok_or(ToolResultError::Corrupt)?;
-        let result =
-            serde_json::from_str(content).unwrap_or_else(|_| Value::String(content.into()));
+        let result = tool_result_value(content);
         if event.get("result").is_none()
             || event["name"] != call["function"]["name"]
             || event["result"] != result
@@ -4126,6 +4086,113 @@ mod tests {
     }
 
     #[test]
+    fn r04_task_tool_arguments_are_safe_objects_and_idempotent() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("safe-args.db")).unwrap();
+        let (_, _, _, _, _, mut task) = sample_graph(&store);
+        let args = json!({"content":"Bearer mock-secret-value", "env":{"API_KEY":"nested-secret"},
+            "unicode":"普通🙂", "literal":"null", "text":r#"quote " and slash \"#});
+        task.messages = vec![
+            json!({"role":"user","content":"Bearer other-secret"}),
+            json!({"role":"assistant","content":null,"tool_calls":[
+                {"id":"one","type":"function","function":{"name":"write_file","arguments":args.to_string()}},
+                {"id":"broken","type":"function","function":{"name":"write_file","arguments":"{broken"}},
+                {"id":"array","type":"function","function":{"name":"write_file","arguments":"[1,2]"}}
+            ]}),
+            json!({"role":"assistant","content":"ordinary"}),
+        ];
+        let safe = safe_task_value(&task).unwrap();
+        let serialized = safe.to_string();
+        assert!(!serialized.contains("mock-secret-value"));
+        assert!(!serialized.contains("nested-secret"));
+        assert!(!serialized.contains("other-secret"));
+        let calls = safe["messages"][1]["tool_calls"].as_array().unwrap();
+        let parsed: Value =
+            serde_json::from_str(calls[0]["function"]["arguments"].as_str().unwrap()).unwrap();
+        assert!(parsed.is_object());
+        assert_eq!(parsed["content"], "bearer [redacted]");
+        assert_eq!(parsed["env"]["API_KEY"], "[redacted]");
+        assert_eq!(parsed["unicode"], "普通🙂");
+        assert_eq!(parsed["literal"], "null");
+        assert_eq!(calls[1]["function"]["arguments"], "{broken");
+        assert_eq!(calls[2]["function"]["arguments"], "[1,2]");
+        assert!(safe["messages"][2].get("tool_calls").is_none());
+        let restored: Task = serde_json::from_value(safe.clone()).unwrap();
+        assert_eq!(safe_task_value(&restored).unwrap(), safe);
+        assert!(safe_tool_arguments("{broken").unwrap().is_none());
+        assert!(safe_tool_arguments("[1,2]").unwrap().is_none());
+        let legacy = r#" { "z" : 1, "a" : "普通" } "#;
+        assert_eq!(
+            safe_tool_arguments(legacy).unwrap().as_deref(),
+            Some(legacy)
+        );
+        assert!(safe_tool_arguments_equal(legacy, r#"{"a":"普通","z":1}"#).unwrap());
+    }
+
+    #[test]
+    fn r03_result_comparison_keeps_json_string_types_and_plain_text() {
+        for (text, expected) in [
+            ("null", Value::Null),
+            ("123", json!(123)),
+            (r#""null""#, json!("null")),
+            (r#""123""#, json!("123")),
+            ("plain 文本🙂", json!("plain 文本🙂")),
+        ] {
+            assert_eq!(tool_result_value(text), expected);
+        }
+    }
+
+    #[test]
+    fn r03_interrupted_plain_text_replays_without_a_claim() {
+        use crate::tool_results::{CommitDisposition, Origin};
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("interrupted.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{
+                "id":"interrupted","type":"function",
+                "function":{"name":"write_file","arguments":"{\"path\":\"src/a\",\"content\":\"x\"}"}
+            }]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let text = "Execution was interrupted. Inspect files before repeating a write or command.";
+        let (committed, disposition) = store
+            .commit_tool_result(
+                &task,
+                "interrupted",
+                "write_file",
+                text,
+                Origin::InterruptedWithoutClaim,
+            )
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Inserted);
+        assert_eq!(committed.messages.last().unwrap()["content"], text);
+        let (replayed, disposition) = store
+            .commit_tool_result(
+                &task,
+                "interrupted",
+                "write_file",
+                text,
+                Origin::InterruptedWithoutClaim,
+            )
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Replayed);
+        assert_eq!(replayed.messages, committed.messages);
+        assert!(
+            store
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .any(|event| event.kind == "tool_result" && event.data["result"] == text)
+        );
+    }
+
+    #[test]
     fn running_usage_merge_preserves_legacy_fields_and_rejects_divergence() {
         let old = json!({"prompt_tokens":"invalid","legacy":"keep"});
         let new = json!({"prompt_tokens":3,"completion_tokens":2,"total_tokens":5,"legacy":"keep"});
@@ -4413,7 +4480,27 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.messages.last().unwrap()["tool_call_id"], "write-one");
+        assert_eq!(
+            result.messages.last().unwrap()["content"],
+            approval::tool_error(approval::ApprovalStatus::Denied)
+        );
+        let (replayed, disposition) = store
+            .commit_tool_result(
+                &reloaded,
+                "write-one",
+                "write_file",
+                &approval::tool_error(approval::ApprovalStatus::Denied),
+                Origin::ApprovalDenied,
+            )
+            .unwrap();
+        assert_eq!(
+            disposition,
+            crate::tool_results::CommitDisposition::Replayed
+        );
+        assert_eq!(replayed.messages, result.messages);
         let events = store.events(&task.run_id, 0).unwrap();
+        assert!(events.iter().any(|event| event.kind == "tool_result"
+            && event.data["result"] == approval::tool_error(approval::ApprovalStatus::Denied)));
         let requests: Vec<_> = events
             .iter()
             .filter(|event| event.kind == "approval.requested")
@@ -4447,6 +4534,70 @@ mod tests {
                     json!({"safe_call_digest":null})
                 )
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn r04_reopened_approval_cannot_claim_with_redacted_arguments() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("r04-reopen.db");
+        let store = Store::open(&path).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        let args = json!({"path":"src/a","content":"Bearer mock-approval-secret","env":{"API_KEY":"nested-secret"}});
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[{"id":"r04-call","type":"function",
+                "function":{"name":"write_file","arguments":args.to_string()}}]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let (record, created) = store
+            .ensure_approval(&task, "r04-call", "write_file", &args)
+            .unwrap();
+        assert!(created);
+        store.decide_approval(&record.id, true, "user").unwrap();
+        drop(store);
+        let reopened = Store::open(&path).unwrap();
+        reopened.recover().unwrap();
+        let saved = reopened.task(&task.id).unwrap();
+        assert!(
+            !serde_json::to_string(&saved)
+                .unwrap()
+                .contains("mock-approval-secret")
+        );
+        let safe_args: Value = serde_json::from_str(
+            saved.messages[1]["tool_calls"][0]["function"]["arguments"]
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(safe_args.is_object());
+        let error = reopened
+            .claim_approval(&saved, "r04-call", "write_file", &safe_args)
+            .unwrap_err();
+        assert!(matches!(
+            error.downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::BindingConflict { .. })
+        ));
+        assert_eq!(
+            reopened.approval(&record.id).unwrap().execution_state,
+            approval::ExecutionState::NotStarted
+        );
+        assert!(
+            reopened
+                .workspace_changes_for_task(&task.id)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            !reopened
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .any(|event| event.kind == "tool_start")
         );
     }
 

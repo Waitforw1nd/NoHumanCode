@@ -521,20 +521,7 @@ fn transient_approval_task(task: &Task, call: &Value, name: &str, args: &Value) 
     let saved = current["function"]["arguments"]
         .as_str()
         .context("持久工具参数缺失")?;
-    let safe_raw = secrets::redact_persisted(&Value::String(raw.to_owned()));
-    let safe_saved = secrets::redact_persisted(&Value::String(saved.to_owned()));
-    let equivalent = safe_raw == safe_saved
-        || match (
-            safe_raw
-                .as_str()
-                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
-            safe_saved
-                .as_str()
-                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
-        ) {
-            (Some(a), Some(b)) => approval::args_digest(&a)? == approval::args_digest(&b)?,
-            _ => false,
-        };
+    let equivalent = crate::domain::safe_tool_arguments_equal(raw, saved)?;
     ensure!(equivalent, "工具调用安全参数不匹配");
     let mut transient = task.clone();
     transient.messages[group_index]["tool_calls"][prior.len()]["function"]["arguments"] =

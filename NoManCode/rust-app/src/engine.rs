@@ -4688,6 +4688,7 @@ mod workspace_phase_tests {
         calls: Arc<AtomicUsize>,
         command: bool,
         first_is_write: bool,
+        bearer: bool,
     }
 
     async fn r01_reply(
@@ -4695,15 +4696,24 @@ mod workspace_phase_tests {
         Json(_): Json<Value>,
     ) -> ([(&'static str, &'static str); 1], String) {
         let delta = if state.calls.fetch_add(1, Ordering::SeqCst) == 0 {
+            let secret = if state.bearer {
+                "Bearer mock-approval-secret"
+            } else {
+                "sk-abc"
+            };
             let (name, args) = if state.command {
                 (
                     "run_command",
-                    json!({"command":"[IO.File]::WriteAllText('shell-marker.txt','sk-abc')","timeout_seconds":10}),
+                    json!({"command":format!("[IO.File]::WriteAllText('shell-marker.txt','{secret}')"),"timeout_seconds":10}),
                 )
             } else {
                 (
                     "write_file",
-                    json!({"path":"src/marker.txt","content":"sk-abc"}),
+                    if state.bearer {
+                        json!({"path":"src/marker.txt","content":secret,"env":{"API_KEY":secret}})
+                    } else {
+                        json!({"path":"src/marker.txt","content":secret})
+                    },
                 )
             };
             let (first_name, first_args) = if state.first_is_write {
@@ -4772,13 +4782,16 @@ mod workspace_phase_tests {
 
     #[tokio::test]
     async fn r01_same_group_safe_snapshot_keeps_sensitive_approval_binding() {
-        for (deny_first, command, cancel, approve, first_is_write) in [
-            (false, false, false, false, false),
-            (false, true, true, false, false),
-            (true, false, false, false, false),
-            (true, true, true, false, false),
-            (false, false, false, true, false),
-            (false, false, false, false, true),
+        for (deny_first, command, cancel, approve, first_is_write, bearer) in [
+            (false, false, false, false, false, false),
+            (false, true, true, false, false, false),
+            (true, false, false, false, false, false),
+            (true, true, true, false, false, false),
+            (false, false, false, true, false, false),
+            (false, false, false, false, true, false),
+            (false, false, false, false, false, true),
+            (false, true, true, false, false, true),
+            (false, false, false, true, false, true),
         ] {
             let temp = tempfile::tempdir().unwrap();
             std::fs::create_dir_all(temp.path().join("src")).unwrap();
@@ -4792,6 +4805,7 @@ mod workspace_phase_tests {
                     calls: calls.clone(),
                     command,
                     first_is_write,
+                    bearer,
                 });
             let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
             let store = Arc::new(Store::open(&temp.path().join("r01.db")).unwrap());
@@ -4822,7 +4836,11 @@ mod workspace_phase_tests {
             let task = engine
                 .start(RunRequest {
                     title: "r01".into(),
-                    kind: SessionKind::Team,
+                    kind: if bearer {
+                        SessionKind::Chat
+                    } else {
+                        SessionKind::Team
+                    },
                     tasks: vec![TaskSpec {
                         name: "worker".into(),
                         role: "worker".into(),
@@ -4846,12 +4864,43 @@ mod workspace_phase_tests {
                     .decide_approval(&first.id, false, Some("test"))
                     .unwrap();
             }
-            let pending = n10_pending(&engine, &task.id).await;
+            let pending = tokio::time::timeout(Duration::from_secs(8), async {
+                loop {
+                    if let Some(record) = store
+                        .pending_approvals_for_task(&task.id)
+                        .unwrap()
+                        .into_iter()
+                        .next()
+                    {
+                        break record;
+                    }
+                    let snapshot = store.task(&task.id).unwrap();
+                    assert!(
+                        !matches!(
+                            snapshot.status.as_str(),
+                            "failed" | "cancelled" | "completed"
+                        ),
+                        "task ended before approval: status={} error={:?}",
+                        snapshot.status,
+                        snapshot.error
+                    );
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("approval not created before timeout");
             assert_eq!(pending.tool_call_id, "r01-effect");
-            let raw_args = if command {
-                json!({"command":"[IO.File]::WriteAllText('shell-marker.txt','sk-abc')","timeout_seconds":10})
+            let secret = if bearer {
+                "Bearer mock-approval-secret"
             } else {
-                json!({"path":"src/marker.txt","content":"sk-abc"})
+                "sk-abc"
+            };
+            let raw_args = if command {
+                json!({"command":format!("[IO.File]::WriteAllText('shell-marker.txt','{secret}')"),"timeout_seconds":10})
+            } else if bearer {
+                json!({"path":"src/marker.txt","content":secret,"env":{"API_KEY":secret}})
+            } else {
+                json!({"path":"src/marker.txt","content":secret})
             };
             assert_eq!(
                 pending.args_digest,
@@ -4861,7 +4910,11 @@ mod workspace_phase_tests {
             assert!(
                 !serde_json::to_string(&persisted)
                     .unwrap()
-                    .contains("sk-abc")
+                    .contains(if bearer {
+                        "mock-approval-secret"
+                    } else {
+                        "sk-abc"
+                    })
             );
             if cancel {
                 store.cancel_pending_approvals(&task.id).unwrap();
@@ -4908,7 +4961,13 @@ mod workspace_phase_tests {
                     }
                 );
             }
-            assert!(!serde_json::to_string(&events).unwrap().contains("sk-abc"));
+            assert!(
+                !serde_json::to_string(&events).unwrap().contains(if bearer {
+                    "mock-approval-secret"
+                } else {
+                    "sk-abc"
+                })
+            );
             assert!(!temp.path().join("src/marker.txt").exists());
             assert!(!temp.path().join("shell-marker.txt").exists());
             assert_eq!(calls.load(Ordering::SeqCst), if cancel { 1 } else { 2 });
@@ -4917,6 +4976,73 @@ mod workspace_phase_tests {
                 if first_is_write { 2 } else { 1 }
             );
             assert!(!temp.path().join("src/first.txt").exists());
+            if bearer && !approve {
+                if cancel {
+                    store.recover().unwrap();
+                    engine
+                        .resume(&task.id, "continue after cancellation")
+                        .await
+                        .unwrap();
+                    n10_idle(&engine).await;
+                }
+                let mut previous = store.task(&task.id).unwrap();
+                assert_eq!(previous.status, "completed");
+                let expected = approval::tool_error(if cancel {
+                    approval::ApprovalStatus::Cancelled
+                } else {
+                    approval::ApprovalStatus::Denied
+                });
+                assert!(
+                    previous
+                        .messages
+                        .iter()
+                        .any(|message| message["tool_call_id"] == "r01-effect"
+                            && message["content"] == expected)
+                );
+                // Model a safe pre-existing snapshot whose JSON object used noncanonical whitespace.
+                let legacy_args = r#" { "path" : "src/input.txt" } "#;
+                let call = previous
+                    .messages
+                    .iter_mut()
+                    .flat_map(|message| {
+                        message
+                            .get_mut("tool_calls")
+                            .and_then(Value::as_array_mut)
+                            .into_iter()
+                            .flatten()
+                    })
+                    .find(|call| call["id"] == "r01-read")
+                    .unwrap();
+                call["function"]["arguments"] = json!(legacy_args);
+                store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .execute(
+                        "UPDATE tasks SET value=?2 WHERE id=?1",
+                        rusqlite::params![task.id, serde_json::to_string(&previous).unwrap()],
+                    )
+                    .unwrap();
+                let loaded = store.task(&task.id).unwrap();
+                assert_eq!(loaded.messages, previous.messages);
+                let context = store.run_context(&loaded.run_id).unwrap();
+                let receipt = engine
+                    .send_chat_turn(SendChatTurn {
+                        session_id: context.session.id,
+                        agent_id: context.tasks[0].agent_id.clone(),
+                        expected_last_turn_id: context.latest_turn.id,
+                        message: "next turn".into(),
+                        idempotency_key: "r04-next-turn".into(),
+                    })
+                    .await
+                    .unwrap();
+                n10_idle(&engine).await;
+                let next = store.task(&receipt.task.legacy_task_id).unwrap();
+                assert_eq!(next.status, "completed");
+                assert!(next.messages.starts_with(&loaded.messages));
+                assert!(!temp.path().join("src/marker.txt").exists());
+                assert!(!temp.path().join("shell-marker.txt").exists());
+            }
             server.abort();
         }
     }

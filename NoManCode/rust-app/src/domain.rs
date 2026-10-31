@@ -8,6 +8,7 @@ use serde_json::Value;
 use sha2::Digest;
 use std::{
     collections::HashSet,
+    io::Write,
     path::{Component, Path},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -482,14 +483,97 @@ impl std::fmt::Display for RunContextError {
 
 impl std::error::Error for RunContextError {}
 
+pub(crate) fn safe_tool_arguments(raw: &str) -> Result<Option<String>> {
+    let Ok(value) = serde_json::from_str::<Value>(raw) else {
+        return Ok(None);
+    };
+    if !value.is_object() {
+        return Ok(None);
+    }
+    let safe = crate::secrets::redact_persisted(&value);
+    if safe == value
+        && crate::secrets::redact_persisted(&Value::String(raw.to_owned()))
+            == Value::String(raw.to_owned())
+    {
+        return Ok(Some(raw.to_owned()));
+    }
+    Ok(Some(stable_safe_json(&safe)?))
+}
+
+pub(crate) fn safe_tool_arguments_equal(left: &str, right: &str) -> Result<bool> {
+    let (Some(left), Some(right)) = (safe_tool_arguments(left)?, safe_tool_arguments(right)?)
+    else {
+        return Ok(false);
+    };
+    Ok(serde_json::from_str::<Value>(&left)? == serde_json::from_str::<Value>(&right)?)
+}
+
 /// The only Task JSON that persistence may store.
 ///
 /// `create_run`, idempotent creation, turn commit, task updates, and recovery
 /// must all pass through this so a later Engine path cannot skip redaction.
 pub fn safe_task_value(task: &Task) -> Result<Value> {
-    Ok(crate::secrets::redact_persisted(&serde_json::to_value(
-        task,
-    )?))
+    let mut value = serde_json::to_value(task)?;
+    if let Some(messages) = value["messages"].as_array_mut() {
+        for message in messages {
+            if message["role"] != "assistant" {
+                continue;
+            }
+            if let Some(calls) = message.get_mut("tool_calls").and_then(Value::as_array_mut) {
+                for call in calls {
+                    if call["type"] != "function" {
+                        continue;
+                    }
+                    if let Some(arguments) = call
+                        .get_mut("function")
+                        .and_then(|f| f.get_mut("arguments"))
+                        && let Some(raw) = arguments.as_str()
+                        && let Some(safe) = safe_tool_arguments(raw)?
+                    {
+                        *arguments = Value::String(safe);
+                    }
+                }
+            }
+        }
+    }
+    Ok(crate::secrets::redact_persisted(&value))
+}
+
+struct UnicodeStringFormatter;
+
+impl serde_json::ser::Formatter for UnicodeStringFormatter {
+    fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> std::io::Result<()>
+    where
+        W: ?Sized + Write,
+    {
+        for unit in fragment.encode_utf16() {
+            write!(writer, "\\u{unit:04x}")?;
+        }
+        Ok(())
+    }
+}
+
+pub(crate) fn stable_safe_json(value: &Value) -> Result<String> {
+    let compact = value.to_string();
+    if crate::secrets::redact_persisted(&Value::String(compact.clone()))
+        == Value::String(compact.clone())
+    {
+        return Ok(compact);
+    }
+    // Encode string fragments only after structural redaction. This keeps a
+    // second task-level text redaction from consuming JSON delimiters while
+    // preserving the same parsed value for the event integrity check.
+    let mut bytes = Vec::new();
+    let mut serializer = serde_json::Serializer::with_formatter(&mut bytes, UnicodeStringFormatter);
+    value.serialize(&mut serializer)?;
+    let encoded = String::from_utf8(bytes)?;
+    anyhow::ensure!(
+        serde_json::from_str::<Value>(&encoded)? == *value
+            && crate::secrets::redact_persisted(&Value::String(encoded.clone()))
+                == Value::String(encoded.clone()),
+        "安全工具结果无法稳定序列化"
+    );
+    Ok(encoded)
 }
 
 /// Same key plus the same request digest returns the original turn.
