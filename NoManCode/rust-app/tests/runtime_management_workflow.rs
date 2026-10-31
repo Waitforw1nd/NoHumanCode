@@ -65,7 +65,11 @@ async fn provider(
     let chunk = json!({"choices":[{"delta":delta,"finish_reason":if hold {Value::Null} else {json!("stop")}}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}});
     let stream = async_stream::stream! {
         yield Ok::<_,Infallible>(format!("data: {chunk}\n\n").into_bytes());
-        if hold { script.entered.notify_one(); script.release.notified().await; }
+        if hold {
+            script.entered.notify_one();
+            script.release.notified().await;
+            yield Ok(b"data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n".to_vec());
+        }
         yield Ok(b"data: [DONE]\n\n".to_vec());
     };
     (
@@ -849,82 +853,123 @@ async fn global_plugin_key_cas_and_same_state_revision() {
     h.stop().await;
 }
 
-#[derive(Clone)]
-struct LossProxy {
-    target_port: u16,
-    token: String,
-    writes: Arc<AtomicUsize>,
-    receipt: Arc<Mutex<Option<Value>>>,
+async fn read_wire_request(stream: &mut tokio::net::TcpStream) -> (String, Vec<u8>) {
+    use tokio::io::AsyncReadExt;
+    let mut data = Vec::new();
+    let mut buffer = [0u8; 1024];
+    let header_end = loop {
+        let n = stream.read(&mut buffer).await.unwrap();
+        assert!(n > 0, "connection closed before request headers");
+        data.extend_from_slice(&buffer[..n]);
+        assert!(data.len() <= 16_384);
+        if let Some(pos) = data.windows(4).position(|part| part == b"\r\n\r\n") {
+            break pos + 4;
+        }
+    };
+    let headers = String::from_utf8(data[..header_end].to_vec()).unwrap();
+    let length = headers
+        .lines()
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().unwrap())
+        })
+        .unwrap_or(0);
+    assert!(length <= 4096);
+    while data.len() - header_end < length {
+        let n = stream.read(&mut buffer).await.unwrap();
+        assert!(n > 0, "connection closed before complete request body");
+        data.extend_from_slice(&buffer[..n]);
+    }
+    assert_eq!(data.len() - header_end, length);
+    (headers, data[header_end..].to_vec())
 }
-async fn loss_bootstrap(State(proxy): State<LossProxy>) -> Json<Value> {
-    Json(json!({"token":proxy.token}))
-}
-async fn commit_then_drop(
-    State(proxy): State<LossProxy>,
-    request: axum::extract::Request,
-) -> Response {
-    let key = request
-        .headers()
-        .get("idempotency-key")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
-    assert_eq!(
-        request.headers().get("x-peachsh-token").unwrap(),
-        proxy.token.as_str()
+
+async fn bootstrap_wire(listener: &tokio::net::TcpListener, token: &str) {
+    use tokio::io::AsyncWriteExt;
+    let (mut stream, _) = listener.accept().await.unwrap();
+    let (headers, body) = read_wire_request(&mut stream).await;
+    assert!(headers.starts_with("GET /api/bootstrap "));
+    assert!(body.is_empty());
+    let body = json!({"token":token}).to_string();
+    let response = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
     );
-    let body = axum::body::to_bytes(request.into_body(), 4096)
-        .await
-        .unwrap();
-    let received: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(received, json!({"enabled":false,"expected_revision":0}));
-    proxy.writes.fetch_add(1, Ordering::SeqCst);
-    let response = reqwest::Client::builder()
-        .no_proxy()
-        .build()
-        .unwrap()
-        .put(format!(
-            "http://127.0.0.1:{}/api/runtime/components/builtin.chat-agent/enabled",
-            proxy.target_port
-        ))
-        .header("x-peachsh-token", &proxy.token)
-        .header("idempotency-key", key)
-        .header("content-type", "application/json")
-        .body(body)
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
-    *proxy.receipt.lock().unwrap() = Some(response.json().await.unwrap());
-    (
-        [
-            ("content-type", "application/json"),
-            ("content-length", "100"),
-        ],
-        "{",
-    )
-        .into_response()
+    stream.write_all(response.as_bytes()).await.unwrap();
+    stream.shutdown().await.unwrap();
 }
+
+async fn write_partial_response(stream: &mut tokio::net::TcpStream) {
+    use tokio::io::AsyncWriteExt;
+    let headers = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\nConnection: close\r\n\r\n";
+    let partial = b"{";
+    stream.write_all(headers).await.unwrap();
+    stream.write_all(partial).await.unwrap();
+    stream.flush().await.unwrap();
+    stream.shutdown().await.unwrap();
+    println!(
+        "truncated-response headers={:?} advertised=100 body-written={} shutdown=ok",
+        String::from_utf8_lossy(headers),
+        partial.len()
+    );
+    assert_eq!(partial.len(), 1);
+    assert!(partial.len() < 100);
+}
+
 #[tokio::test]
 async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
     let mut h = host(vec![]).await;
-    let proxy = LossProxy {
-        target_port: h.port,
-        token: h.token.clone(),
-        writes: Arc::new(AtomicUsize::new(0)),
-        receipt: Arc::new(Mutex::new(None)),
-    };
-    let app = Router::new()
-        .route("/api/bootstrap", axum::routing::get(loss_bootstrap))
-        .route(
-            "/api/runtime/components/builtin.chat-agent/enabled",
-            axum::routing::put(commit_then_drop),
-        )
-        .with_state(proxy.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-    let service = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let target_port = h.port;
+    let token = h.token.clone();
+    let service = tokio::spawn(async move {
+        bootstrap_wire(&listener, &token).await;
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let (headers, body) = read_wire_request(&mut stream).await;
+        assert!(headers.starts_with("PUT /api/runtime/components/builtin.chat-agent/enabled "));
+        let lower = headers.to_ascii_lowercase();
+        assert!(lower.contains("idempotency-key: lost-real-receipt\r\n"));
+        assert!(headers.lines().any(|line| {
+            line.split_once(':').is_some_and(|(name, value)| {
+                name.eq_ignore_ascii_case("x-peachsh-token") && value.trim() == token
+            })
+        }));
+        assert_eq!(
+            serde_json::from_slice::<Value>(&body).unwrap(),
+            json!({"enabled":false,"expected_revision":0})
+        );
+        let response = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .put(format!(
+                "http://127.0.0.1:{target_port}/api/runtime/components/builtin.chat-agent/enabled"
+            ))
+            .header("x-peachsh-token", &token)
+            .header("idempotency-key", "lost-real-receipt")
+            .header("content-type", "application/json")
+            .body(body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        let committed: Value = response.json().await.unwrap();
+        assert_eq!(committed["replayed"], false);
+        assert_eq!(committed["receipt"]["plugin_id"], "builtin.chat-agent");
+        assert_eq!(committed["receipt"]["revision"], 1);
+        write_partial_response(&mut stream).await;
+        assert!(
+            tokio::time::timeout(Duration::from_millis(500), listener.accept())
+                .await
+                .is_err(),
+            "unexpected automatic retry"
+        );
+        println!("complete-put-count=1; no additional connection in 500ms");
+        committed
+    });
     let args = [
         "runtime",
         "component",
@@ -939,8 +984,10 @@ async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
     ];
     let output = cli(port, &h.cwd(), &args, None).await;
     assert_eq!(failed(&output)["code"], "operation_result_unknown");
-    assert_eq!(proxy.writes.load(Ordering::SeqCst), 1);
-    let committed = proxy.receipt.lock().unwrap().clone().unwrap();
+    let committed = tokio::time::timeout(Duration::from_secs(5), service)
+        .await
+        .unwrap()
+        .unwrap();
     let status = h
         .ok(&["runtime", "component", "status", "builtin.chat-agent"])
         .await;
@@ -948,8 +995,6 @@ async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
     let replay = h.ok(&args).await;
     assert_eq!(replay["replayed"], true);
     assert_eq!(replay["receipt"], committed["receipt"]);
-    assert_eq!(proxy.writes.load(Ordering::SeqCst), 1);
-    service.abort();
     h.stop().await;
 }
 

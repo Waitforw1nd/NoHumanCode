@@ -30,17 +30,6 @@ async fn bootstrap() -> Json<Value> {
 async fn reply(State(state): State<Reply>, request: Request) -> Response {
     assert_eq!(request.headers().get("x-peachsh-token").unwrap(), TOKEN);
     state.calls.fetch_add(1, Ordering::SeqCst);
-    if state.body == "TRUNCATE" {
-        return (
-            state.status,
-            [
-                ("content-type", "application/json"),
-                ("content-length", "100"),
-            ],
-            "{",
-        )
-            .into_response();
-    }
     (
         state.status,
         [("content-type", "application/json")],
@@ -73,6 +62,72 @@ async fn server(
         tokio::spawn(async move { axum::serve(listener, app).await.unwrap() }),
     )
 }
+
+async fn read_wire_request(stream: &mut tokio::net::TcpStream) -> (String, Vec<u8>) {
+    use tokio::io::AsyncReadExt;
+    let mut data = Vec::new();
+    let mut buffer = [0u8; 1024];
+    let header_end = loop {
+        let n = stream.read(&mut buffer).await.unwrap();
+        assert!(n > 0, "connection closed before request headers");
+        data.extend_from_slice(&buffer[..n]);
+        assert!(data.len() <= 16_384);
+        if let Some(pos) = data.windows(4).position(|part| part == b"\r\n\r\n") {
+            break pos + 4;
+        }
+    };
+    let headers = String::from_utf8(data[..header_end].to_vec()).unwrap();
+    let length = headers
+        .lines()
+        .find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            name.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().unwrap())
+        })
+        .unwrap_or(0);
+    assert!(length <= 4096);
+    while data.len() - header_end < length {
+        let n = stream.read(&mut buffer).await.unwrap();
+        assert!(n > 0, "connection closed before complete request body");
+        data.extend_from_slice(&buffer[..n]);
+    }
+    assert_eq!(data.len() - header_end, length);
+    (headers, data[header_end..].to_vec())
+}
+
+async fn bootstrap_wire(listener: &tokio::net::TcpListener, token: &str) {
+    use tokio::io::AsyncWriteExt;
+    let (mut stream, _) = listener.accept().await.unwrap();
+    let (headers, body) = read_wire_request(&mut stream).await;
+    assert!(headers.starts_with("GET /api/bootstrap "));
+    assert!(body.is_empty());
+    let body = json!({"token":token}).to_string();
+    let response = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    stream.write_all(response.as_bytes()).await.unwrap();
+    stream.shutdown().await.unwrap();
+}
+
+async fn write_partial_response(stream: &mut tokio::net::TcpStream) {
+    use tokio::io::AsyncWriteExt;
+    let headers = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\nConnection: close\r\n\r\n";
+    let partial = b"{";
+    stream.write_all(headers).await.unwrap();
+    stream.write_all(partial).await.unwrap();
+    stream.flush().await.unwrap();
+    stream.shutdown().await.unwrap();
+    println!(
+        "truncated-response headers={:?} advertised=100 body-written={} shutdown=ok",
+        String::from_utf8_lossy(headers),
+        partial.len()
+    );
+    assert_eq!(partial.len(), 1);
+    assert!(partial.len() < 100);
+}
+
 fn current(enabled: bool, revision: u64) -> Value {
     json!({"id":"builtin.chat-agent","capability":"agent.strategy@1.0.0", "desired":{"scope":"host","enabled":enabled,"revision":revision,"updated_at":0}, "runtime":{"kind":"agent","scope":"process","active":enabled,"admission_open":enabled,"in_flight":0,"generation":1,"draining":false,"transitioning":false,"effects":if enabled {1} else {0},"recovery":0,"last_failure":null},"converged":true})
 }
@@ -140,7 +195,31 @@ async fn validates_duplicate_fields_busy_and_replayed_current() {
 
 #[tokio::test]
 async fn truncated_write_is_unknown_and_sent_once() {
-    let (port, calls, task) = server("TRUNCATE".to_owned(), axum::http::StatusCode::OK).await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let task = tokio::spawn(async move {
+        bootstrap_wire(&listener, TOKEN).await;
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let (headers, body) = read_wire_request(&mut stream).await;
+        assert!(headers.starts_with("PUT /api/runtime/components/builtin.chat-agent/enabled "));
+        assert!(
+            headers
+                .to_ascii_lowercase()
+                .contains("idempotency-key: lost\r\n")
+        );
+        assert_eq!(
+            serde_json::from_slice::<Value>(&body).unwrap(),
+            json!({"enabled":false,"expected_revision":0})
+        );
+        write_partial_response(&mut stream).await;
+        assert!(
+            tokio::time::timeout(Duration::from_millis(500), listener.accept())
+                .await
+                .is_err(),
+            "unexpected automatic retry"
+        );
+        println!("complete-put-count=1; no additional connection in 500ms");
+    });
     let out = cli(
         port,
         &[
@@ -162,9 +241,11 @@ async fn truncated_write_is_unknown_and_sent_once() {
         serde_json::from_slice::<Value>(&out.stderr).unwrap()["code"],
         "operation_result_unknown"
     );
-    assert_eq!(calls.load(Ordering::SeqCst), 1);
     assert!(!String::from_utf8_lossy(&out.stderr).contains(TOKEN));
-    task.abort();
+    tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]
