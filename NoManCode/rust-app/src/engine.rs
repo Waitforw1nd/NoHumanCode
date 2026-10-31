@@ -1132,6 +1132,8 @@ impl Engine {
             match outcome {
                 Ok(created) => {
                     #[cfg(test)]
+                    crate::worktree_diagnostics::event("created_probe_enter");
+                    #[cfg(test)]
                     engine.observe_worktree(
                         WorktreeProbePhase::CreatedBeforeRegister,
                         &receipt.operation_id,
@@ -1150,6 +1152,7 @@ impl Engine {
                     };
                     #[cfg(test)]
                     if result.state == WorktreeState::Succeeded {
+                        crate::worktree_diagnostics::event("registered_probe_enter");
                         engine.observe_worktree(
                             WorktreeProbePhase::RegisteredBeforeReply,
                             &result.operation_id,

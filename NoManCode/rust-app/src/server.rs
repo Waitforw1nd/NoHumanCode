@@ -3094,7 +3094,41 @@ mod worktree_http_crash_tests {
             );
         }
     }
-    struct ChildGuard(Child, PathBuf, String);
+    enum GuardedProcess {
+        Plain(Child),
+        #[cfg(windows)]
+        Contained(crate::process_test_fixture::ContainedChild),
+    }
+    impl GuardedProcess {
+        fn child(&mut self) -> &mut Child {
+            match self {
+                Self::Plain(child) => child,
+                #[cfg(windows)]
+                Self::Contained(child) => &mut child.child,
+            }
+        }
+        fn id(&self) -> u32 {
+            match self {
+                Self::Plain(child) => child.id(),
+                #[cfg(windows)]
+                Self::Contained(child) => child.child.id(),
+            }
+        }
+        fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+            self.child().try_wait()
+        }
+        fn kill(&mut self) -> std::io::Result<()> {
+            match self {
+                Self::Plain(child) => child.kill(),
+                #[cfg(windows)]
+                Self::Contained(child) => child
+                    .terminate_and_wait()
+                    .map(|_| ())
+                    .map_err(|error| std::io::Error::other(error.to_string())),
+            }
+        }
+    }
+    struct ChildGuard(GuardedProcess, PathBuf, String);
     impl ChildGuard {
         fn record(&self, mut event: Value) {
             event["pid"] = json!(self.0.id());
@@ -3142,7 +3176,9 @@ mod worktree_http_crash_tests {
     fn client() -> reqwest::Client {
         reqwest::Client::builder()
             .no_proxy()
-            .timeout(Duration::from_secs(75))
+            .timeout(Duration::from_secs(
+                crate::worktree_diagnostics::TOTAL_SECS + 20,
+            ))
             .build()
             .unwrap()
     }
@@ -3172,7 +3208,16 @@ mod worktree_http_crash_tests {
     ) -> std::result::Result<String, String> {
         let notification = path.file_name().unwrap().to_string_lossy().into_owned();
         process.record(json!({"event":"wait_begin","notification":notification}));
-        let budget = if request.is_some() { 60 } else { 10 };
+        let budget = if request.is_some() {
+            crate::worktree_diagnostics::TOTAL_SECS
+        } else {
+            10
+        };
+        let mut supervisor = request.map(|_| {
+            crate::worktree_diagnostics::Supervisor::new(
+                process.1.join("worktree-diagnostics.jsonl"),
+            )
+        });
         let result = tokio::time::timeout(Duration::from_secs(budget), async {
             loop {
                 let child_live = process.0.try_wait().map_err(|e| format!("child status query: {e}"))?.is_none();
@@ -3181,15 +3226,32 @@ mod worktree_http_crash_tests {
                     process.record(json!({"event":"early_completion","notification":notification,"reason":reason}));
                     return Err(reason.to_owned());
                 }
+                if let Some(supervisor) = &mut supervisor {
+                    supervisor.poll().map_err(|error| format!("progress supervision: {error:#}"))?;
+                }
                 if let Ok(text) = std::fs::read_to_string(path)
                     && !text.is_empty()
                 {
+                    if let Some(supervisor) = &mut supervisor {
+                        supervisor.poll().map_err(|error| format!("progress supervision: {error:#}"))?;
+                    }
                     // Recheck before accepting readiness, giving observed completion priority.
                     let child_live = process.0.try_wait().map_err(|e| format!("child status query: {e}"))?.is_none();
                     let request_finished = request.is_some_and(|r| r.0.is_finished());
                     if let Some(reason) = pre_ready_problem(child_live, request_finished) {
                         process.record(json!({"event":"ready_race_lost","notification":notification,"reason":reason}));
                         return Err(reason.to_owned());
+                    }
+                    if let Some(supervisor) = &supervisor {
+                        let expected = match process.2.as_str() {
+                            "claim" => 8,
+                            "created" => 9,
+                            "registered" => 10,
+                            _ => return Err("unexpected supervised phase".into()),
+                        };
+                        if supervisor.stage() != expected || uuid::Uuid::parse_str(&text).is_err() {
+                            return Err("notification without matching complete probe".into());
+                        }
                     }
                     process.record(json!({"event":"notification_observed","notification":notification}));
                     break Ok(text);
@@ -3263,7 +3325,11 @@ mod worktree_http_crash_tests {
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .creation_flags(0x08000000);
-            let mut process = ChildGuard(command.spawn().unwrap(), root.clone(), case.to_owned());
+            let mut process = ChildGuard(
+                GuardedProcess::Plain(command.spawn().unwrap()),
+                root.clone(),
+                case.to_owned(),
+            );
             if early_child {
                 let end = Instant::now() + Duration::from_secs(5);
                 while process.0.try_wait().unwrap().is_none() {
@@ -3303,18 +3369,20 @@ mod worktree_http_crash_tests {
         use std::os::windows::process::CommandExt;
         let root = tempfile::tempdir().unwrap().keep();
         let mut process = ChildGuard(
-            Command::new("pwsh.exe")
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    "Start-Sleep -Seconds 20",
-                ])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .creation_flags(0x08000000)
-                .spawn()
-                .unwrap(),
+            GuardedProcess::Plain(
+                Command::new("pwsh.exe")
+                    .args([
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-Command",
+                        "Start-Sleep -Seconds 20",
+                    ])
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .creation_flags(0x08000000)
+                    .spawn()
+                    .unwrap(),
+            ),
             root.clone(),
             "timeout-before-ready".into(),
         );
@@ -3406,6 +3474,7 @@ mod worktree_http_crash_tests {
         }
     }
     async fn child(root: PathBuf, phase: String) {
+        crate::worktree_diagnostics::wait_start(&root.join(format!("start-{phase}"))).unwrap();
         trace(
             &root,
             json!({"event":"child_started","phase":phase,"pid":std::process::id()}),
@@ -3435,7 +3504,8 @@ mod worktree_http_crash_tests {
                 return;
             }
             if actual == probe_phase {
-                std::fs::write(probe_root.join("ready"), op).unwrap();
+                crate::worktree_diagnostics::atomic_write(&probe_root.join("ready"), op.as_bytes())
+                    .unwrap();
                 let end = Instant::now() + Duration::from_secs(20);
                 while Instant::now() < end {
                     std::thread::sleep(Duration::from_millis(10));
@@ -3450,9 +3520,13 @@ mod worktree_http_crash_tests {
             token: "worktree-crash-token".into(),
             origin: origin.clone(),
         });
-        std::fs::write(root.join(format!("listen-{phase}")), origin).unwrap();
+        crate::worktree_diagnostics::atomic_write(
+            &root.join(format!("listen-{phase}")),
+            origin.as_bytes(),
+        )
+        .unwrap();
         tokio::time::timeout(
-            Duration::from_secs(100),
+            Duration::from_secs(crate::worktree_diagnostics::TOTAL_SECS + 20),
             axum::serve(listener, app).into_future(),
         )
         .await
@@ -3461,18 +3535,22 @@ mod worktree_http_crash_tests {
     }
     fn spawn(root: &FsPath, phase: &str) -> ChildGuard {
         let log = std::fs::File::create(root.join(format!("child-{phase}.log"))).unwrap();
-        let process = ChildGuard(
-            Command::new(std::env::current_exe().unwrap())
-                .args(["--exact", TEST, "--nocapture"])
-                .env("NHC_WORKTREE_HTTP_CHILD", root)
-                .env("NHC_WORKTREE_HTTP_PHASE", phase)
-                .stdout(Stdio::from(log.try_clone().unwrap()))
-                .stderr(Stdio::from(log))
-                .spawn()
-                .unwrap(),
-            root.to_owned(),
-            phase.to_owned(),
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args(["--exact", TEST, "--nocapture"])
+            .env("NHC_WORKTREE_HTTP_CHILD", root)
+            .env("NHC_WORKTREE_HTTP_PHASE", phase)
+            .stdout(Stdio::from(log.try_clone().unwrap()))
+            .stderr(Stdio::from(log));
+        #[cfg(windows)]
+        let child = GuardedProcess::Contained(
+            crate::process_test_fixture::ContainedChild::spawn(&mut command, root, phase).unwrap(),
         );
+        #[cfg(not(windows))]
+        let child = GuardedProcess::Plain(command.spawn().unwrap());
+        let process = ChildGuard(child, root.to_owned(), phase.to_owned());
+        crate::worktree_diagnostics::atomic_write(&root.join(format!("start-{phase}")), b"start")
+            .unwrap();
         process.record(json!({"event":"spawned"}));
         process
     }
@@ -3662,7 +3740,15 @@ mod worktree_http_crash_tests {
                 panic!("{error}");
             }
             println!("W08 phase={phase} original child killed and waited");
-            let response = (&mut request.0).await.expect("HTTP observer task panicked");
+            let response = match tokio::time::timeout(Duration::from_secs(10), &mut request.0).await
+            {
+                Ok(result) => result.expect("HTTP observer task panicked"),
+                Err(_) => {
+                    request.0.abort();
+                    let _ = (&mut request.0).await;
+                    panic!("original HTTP observer did not finish after child kill");
+                }
+            };
             let error = response.expect_err("response must be lost at held hook");
             assert!(
                 lost_response(error.is_timeout(), error.is_connect()),

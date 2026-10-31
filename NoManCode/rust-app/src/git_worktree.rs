@@ -290,7 +290,13 @@ async fn run(
     #[cfg(test)]
     let sequence = crate::worktree_diagnostics::next_command();
     #[cfg(test)]
-    crate::worktree_diagnostics::record("git_spawn_begin", sequence, "", None, None);
+    crate::worktree_diagnostics::record(
+        "git_spawn_begin",
+        sequence,
+        if mutating { "mutating" } else { "read" },
+        None,
+        None,
+    );
     let child_result = command.spawn();
     #[cfg(test)]
     crate::worktree_diagnostics::record(
