@@ -1,3 +1,7 @@
+## 2026-11-01 NEXT-21A首次基础可行性窗口准备
+
+更新人：项目经理。原B持续在同一独立树实施，已出现封装/probe/基础integration与负控Job helper，仍未固定/编译/测试。经理签A补充01：先固定现有基础候选，整体静态审后做A0 check/build/四基础用例/fmt/Clippy，完整S01-S08强杀/网络/故障注入/资源/工件矩阵仍保留；不以部分通过替代完整A或process接入。新增P07阻止profile探针把创建写入成功后删除失败错报为权限拒绝，已交B分离访问与清理事实。C独立设计已核收冻结，D冻结，B唯一产品执行；下一第一操作核B固定候选及P01-P07响应后签实际A0运行。main产品仍NEXT-20双tree，继承41行/历史原件保持，全项目active。
+
 ## 2026-11-01 NEXT-21 C独立设计审查核收，B隔离实现继续
 
 更新人：项目经理。原C第二十二轮只读审查已完成释放，经理核实际创建/append/resume/recover和低层调用，限定批准设计审查交付；采纳原子绑定、Task/worker分离及旧Task显式builtin迁移方向，不笼统拒绝旧兼容入口。cleanup_unknown可信解除与supervisor候选仍待A实测和正式契约，未批准新服务或schema实现。原B唯一A实现中，草稿已补ProcessGuard统一cleanup deadline、实际映像核对和integrity判断，完整候选/实际矩阵尚未固定或验证；新增提示跨进程权限探针不能用联合flags失败证明每项拒绝。C/D冻结，main仍已验收NEXT-20。下一第一操作审B固定候选和真实隔离先决结果；继承41行保留，全项目active、核心优先。
