@@ -530,10 +530,10 @@ fn validate_composition(value: &Value) -> Result<(), Failure> {
         {
             return Err(invalid_response());
         }
-        if let Some(plugin) = plugins.iter().find(|p| p["plugin_id"] == provider) {
-            if cap["provider_version"] != plugin["version"] {
-                return Err(invalid_response());
-            }
+        if let Some(plugin) = plugins.iter().find(|p| p["plugin_id"] == provider)
+            && cap["provider_version"] != plugin["version"]
+        {
+            return Err(invalid_response());
         }
         let actual_deps = cap["dependencies"]
             .as_array()
