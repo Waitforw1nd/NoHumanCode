@@ -1,3 +1,7 @@
+## 2026-11-01 NEXT-21 C独立设计审查核收，B隔离实现继续
+
+更新人：项目经理。原C第二十二轮只读审查已完成释放，经理核实际创建/append/resume/recover和低层调用，限定批准设计审查交付；采纳原子绑定、Task/worker分离及旧Task显式builtin迁移方向，不笼统拒绝旧兼容入口。cleanup_unknown可信解除与supervisor候选仍待A实测和正式契约，未批准新服务或schema实现。原B唯一A实现中，草稿已补ProcessGuard统一cleanup deadline、实际映像核对和integrity判断，完整候选/实际矩阵尚未固定或验证；新增提示跨进程权限探针不能用联合flags失败证明每项拒绝。C/D冻结，main仍已验收NEXT-20。下一第一操作审B固定候选和真实隔离先决结果；继承41行保留，全项目active、核心优先。
+
 ## 2026-11-01 NEXT-21A实施中，原C并行只读审查后续持久接线
 
 更新人：项目经理。原B实时running并已开始A独立树Windows依赖/模块及隔离草稿，尚未固定候选、编译或测试，不能称隔离通过。经理已核主线新建/append/resume/run_task/recover实际事务入口，保存任务绑定与恢复接线预审：Task guard与单次worker分离、resume前拒绝stale、迟到决策撤销边界及unknown解除路径。为推进核心，正式派原C第二十二轮只读独立审查该后续业务契约，C此前冻结仅对本只读审查解除；不开放产品/构建。B唯一产品写入、D冻结。下一第一操作审B固定候选与C独立具体反例，再冻结后续真实调用链；主线产品双tree保持NEXT-20，继承41行/历史现场保留，全项目active。
