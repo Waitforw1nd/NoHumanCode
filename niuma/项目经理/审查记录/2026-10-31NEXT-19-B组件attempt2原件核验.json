@@ -1,0 +1,169 @@
+{
+  "date": "2026-10-31",
+  "candidate": "aac917d4e300bbcdad6b26e9d8db0772dbdce2ae",
+  "product_tree": "ee2dbdc35b1a62cadfdbf0a24ffadec09bb7fc59",
+  "rust_tree": "bf17e8b7308cd7a14193cad14a47beac70fa9448",
+  "original_root": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-aac917d4-attempt2",
+  "source_entries": 136,
+  "before_after_identical": true,
+  "git_blob_exact": 135,
+  "normalized_only": [
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "worktree_sha256": "7702ffa967d44de867548abac3f65d71ec2417b900e5304ba4f32f0a55ee5f24",
+      "git_blob_sha256": "60795fc963d06d07bcffefd6a49fd091c415a45bc2360130f0436e6f2fcf3172",
+      "worktree_bytes": 1144,
+      "git_blob_bytes": 1098,
+      "crlf": 46
+    }
+  ],
+  "commands": [
+    {
+      "command": "cargo check --offline --locked --lib",
+      "exit_code": 0,
+      "started_utc": "2026-10-31T10:24:49.4513038Z",
+      "ended_utc": "2026-10-31T10:24:49.8074627Z"
+    },
+    {
+      "command": "cargo build --offline --locked --bin peachsh",
+      "exit_code": 0,
+      "started_utc": "2026-10-31T10:24:49.9147373Z",
+      "ended_utc": "2026-10-31T10:24:50.2526832Z"
+    },
+    {
+      "command": "cargo test --offline --locked --lib -- --nocapture",
+      "exit_code": 0,
+      "started_utc": "2026-10-31T10:24:50.3946312Z",
+      "ended_utc": "2026-10-31T10:25:39.5547474Z"
+    },
+    {
+      "command": "cargo clippy --offline --locked --lib -- -D warnings",
+      "exit_code": 0,
+      "started_utc": "2026-10-31T10:25:39.6641380Z",
+      "ended_utc": "2026-10-31T10:25:45.4839642Z"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "started_utc": "2026-10-31T10:25:45.5960042Z",
+      "ended_utc": "2026-10-31T10:25:47.0551484Z"
+    }
+  ],
+  "lib_tests": {
+    "passed": 325,
+    "failed": 0,
+    "ignored": 0
+  },
+  "a09_r01_r02_n13": "OK in original full lib log",
+  "cli_sha256": "E3B7FF436995F83DFC58B477570FB12D08AA3477198C59AF334FC6FF49340815",
+  "cli_matches_current_binary": true,
+  "postflight_clean": true,
+  "retained_evidence": {
+    "before": 120,
+    "after": 1627,
+    "added": 1507,
+    "removed": [],
+    "changed": [],
+    "all_current_bytes_match": true,
+    "scope": "Integrity and attribution by before/after; not semantic re-audit of all prior crash suites."
+  },
+  "published_copy_audit": {
+    "files": 20,
+    "substitution_rules_verified": 9,
+    "hash_and_substitution_match": true,
+    "manifest_sha256": "54994c9b99c85ba23bd0084a94131a263c16b8b9d354a90e8aedc07a5c1ff3bb"
+  },
+  "product_tests_run_by_manager": false,
+  "logs": [
+    {
+      "path": "logs/01-check.json",
+      "bytes": 354,
+      "sha256": "6917fdb83adb022a235281741403a14013efe56c439e0893b431c2d554c92356"
+    },
+    {
+      "path": "logs/01-check.log",
+      "bytes": 61,
+      "sha256": "42c8e12b93f9adb3f72a89f5cf69aabf286600795b614494667275ddaf3d7e64"
+    },
+    {
+      "path": "logs/02-build-cli.json",
+      "bytes": 362,
+      "sha256": "cf0b12c21df531bbb0b778a15dff933863e6e67f0cec6b302db183aeed404b0f"
+    },
+    {
+      "path": "logs/02-build-cli.log",
+      "bytes": 61,
+      "sha256": "42c8e12b93f9adb3f72a89f5cf69aabf286600795b614494667275ddaf3d7e64"
+    },
+    {
+      "path": "logs/03-test.json",
+      "bytes": 368,
+      "sha256": "ead71efadd35c360563ce59a464ecb4f65fef1ec5b8bd6de7598ef3e756bcf37"
+    },
+    {
+      "path": "logs/03-test.log",
+      "bytes": 47861,
+      "sha256": "c23f3f7d62d3cda74ad60ec5d4eeb69a18c274b71f2f8abfda42bc1548f1140f"
+    },
+    {
+      "path": "logs/04-clippy.json",
+      "bytes": 370,
+      "sha256": "f1a9f40643c6d997d787329ccce5c3341afbaf8d63129995ef1213a096a6b5de"
+    },
+    {
+      "path": "logs/04-clippy.log",
+      "bytes": 258,
+      "sha256": "cad3139abde781205ca395cd06362517fee34e9445c47986e05721cd9337ef92"
+    },
+    {
+      "path": "logs/05-fmt.json",
+      "bytes": 344,
+      "sha256": "12257d94eb38c866365137145ee2bce025a66373c6fc6e4244ccfd89eee6964e"
+    },
+    {
+      "path": "logs/05-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/cli-binary.json",
+      "bytes": 279,
+      "sha256": "d96081b8fb1bc861785643c1f74b6cb5c81f21a9e72037f8a23406bdbb2e546b"
+    },
+    {
+      "path": "logs/postflight.json",
+      "bytes": 306,
+      "sha256": "856a395760510a75df213827e6a50ff6954acdca03cedae3824c818ebdadaa1b"
+    },
+    {
+      "path": "logs/preflight.json",
+      "bytes": 922,
+      "sha256": "6f36f516337771b936b203e3dcab1bcbe46bac754b3a7e58eaa1c27a2637ded1"
+    },
+    {
+      "path": "logs/retained-evidence-before.json",
+      "bytes": 26557,
+      "sha256": "faa97c6191113e43cd311f87cd5ac3e9f524377395e57e8c9c13e82d105af75d"
+    },
+    {
+      "path": "logs/retained-evidence-delta.json",
+      "bytes": 175882,
+      "sha256": "b8550de3fc2f76867c76fce1b80d114e963969804700599c0e5977b5e1376a38"
+    },
+    {
+      "path": "logs/retained-evidence-inventory.json",
+      "bytes": 387382,
+      "sha256": "da86f4fed0123c7856044305a203e70a1ed22a8ddcaf00a84917b8350263108e"
+    },
+    {
+      "path": "logs/source-after.json",
+      "bytes": 23496,
+      "sha256": "0edd04b57d86b696c3b68134876d74068b3ba0123dc45508c86a7bd80d2cb1a0"
+    },
+    {
+      "path": "logs/source-before.json",
+      "bytes": 23496,
+      "sha256": "0edd04b57d86b696c3b68134876d74068b3ba0123dc45508c86a7bd80d2cb1a0"
+    }
+  ]
+}
