@@ -1,0 +1,22 @@
+{
+  "offline": true,
+  "jobs": 2,
+  "unmerged": [],
+  "branch": "codex/d/runtime-management-tests",
+  "dev_debug": 0,
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "rust_tree": "872776408d4f141d400399bd6605605cc049ed66",
+  "locked": true,
+  "head": "67841d0610374179f056e27e4a0060fc619081ac",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "test_debug": 0,
+  "sdk": "[windows-sdk]\\Lib\\10.0.22621.0",
+  "temp": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-67841d-attempt1\\tmp",
+  "product_tree": "251c949b09ef3a7adb07c32f0834e1e154737d30",
+  "status": [],
+  "staged": [],
+  "incremental": 0,
+  "started_utc": "2026-10-31T06:26:58.1921543Z",
+  "target": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-67841d-attempt1\\target",
+  "msvc": "[msvc]"
+}

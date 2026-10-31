@@ -1,3 +1,7 @@
+## 2026-10-31 NEXT-18独立组件首失败与D修订重验
+
+更新人：项目经理。D67841d首组件check/build0，lib313/1/0；唯一失败为测试将Claimed计为unresolved，生产预算语义已核。经理核6份同hash清单/134源码、16发布对/234原现场文件及13阶段queryable语义，失败原件保留；schema/历史集成/Clippy/fmt未执行。D仅修provider_runtime_tests.rs并增强同receipt预算记录断言，固定896b690938cb31946acb2c4030de76f58eb13d43（NoManCodef687e5f5/Rust5e1282de），经理完整diff已审，D本人核收clean后获唯一attempt2七步重验。B/C冻结，下一核D真实结果与现场后推进C公开组件/最终五门禁；main产品仍NEXT-17，完整项目继续。
+
 ## 2026-10-31 NEXT-18完整接线与D唯一独立组件
 
 更新人：项目经理。B仅lib四行真实模块接线固定67841d0610374179f056e27e4a0060fc619081ac（NoManCode251c949b/Rust87277640），经理已核差异/clean并在双方冻结后ff到D。D获唯一组合独立窗口：all-targets check、重建CLI、全lib、schema及七项历史夹具、all-targets Clippy、fmt，首失败停止；B/C冻结no-build。窗口与完整SHA见D第十六轮《NEXT-18完整组合独立组件窗口》，D本人已核收三SHA/分支/clean及无重型进程，正在准备独立窗口，尚无动态结果。下一第一操作核D回执和原件、按原owner处理失败，再C公开组件及最终五门禁。主线产品仍NEXT-17，完整项目未完成。
