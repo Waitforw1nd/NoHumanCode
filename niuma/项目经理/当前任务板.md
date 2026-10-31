@@ -1,3 +1,9 @@
+## 2026-10-31 NEXT-18 D第二轮失败已核与schema定向重验
+
+更新人：项目经理。896b690的check/build0、lib314/0/0，R07动态闭合；schema6/1/0止于损坏SQL外键错误，后三项未执行。经理核20原发布对、8份134源码清单和234文件/13现场；审查与核验分别见员工D第十六轮《NEXT-18组件attempt2审查与schema夹具返工》及经理同名attempt2原件核验JSON。D18-R08仅schema集成夹具显式构造并断言shell孤儿，真实Store先schema8全库外键拒绝，已纠正该case精确reason；固定283a29858b914c1f26318f3a9603739ebc46be1d（NoManCode88d9baed/Rust12451bb9）且clean。D获唯一check/build/schema/七历史集成/Clippy/fmt窗口，lib旧证据仍归属896b690不重复运行，最终C完整五门禁保持。
+
+开跑前发现缓存CLI hash与attempt2 build时不同，mtime及fingerprint处于该轮schema构建窗口，但未冒充完整归因；已安排固定源码显式build并记录实际hash。D本人核收后正在执行，B/C冻结。下一第一操作核D本轮原始结果，按owner处理失败；通过后经理串行完整组合到C及公开/最终验证。main产品仍NEXT-17，NEXT-18未联合验收，完整项目active；原失败、旧现场及41行继承档案保留。经理本轮未修改产品或执行产品测试。
+
 ## 2026-10-31 NEXT-18独立组件首失败与D修订重验
 
 更新人：项目经理。D67841d首组件check/build0，lib313/1/0；唯一失败为测试将Claimed计为unresolved，生产预算语义已核。经理核6份同hash清单/134源码、16发布对/234原现场文件及13阶段queryable语义，失败原件保留；schema/历史集成/Clippy/fmt未执行。D仅修provider_runtime_tests.rs并增强同receipt预算记录断言，固定896b690938cb31946acb2c4030de76f58eb13d43（NoManCodef687e5f5/Rust5e1282de），经理完整diff已审，D本人核收clean后获唯一attempt2七步重验。B/C冻结，下一核D真实结果与现场后推进C公开组件/最终五门禁；main产品仍NEXT-17，完整项目继续。

@@ -1,0 +1,1442 @@
+{
+  "head": "896b690938cb31946acb2c4030de76f58eb13d43",
+  "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
+  "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
+  "text_files": [
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/run.ps1",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/run.ps1",
+      "raw_sha256": "2DD6E8EEF248D457D57D493F55713F4D03EE62CC1A560060F329B437792CEB25",
+      "published_sha256": "F6F81ED4D67E6E9BD232682CF9925562DFD510ACC6BECA8B3326607C263BC202",
+      "raw_bytes": 5411,
+      "published_bytes": 5311,
+      "path_replacements": {
+        "[msvc]": 1,
+        "[windows-sdk]": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/01-check-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/01-check-after.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/01-check-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/01-check-before.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/01-check.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/01-check.json",
+      "raw_sha256": "E1BCD132273D81FEB44E3D29814E1534FF751192E48F3471D0168D7E981160D6",
+      "published_sha256": "E1BCD132273D81FEB44E3D29814E1534FF751192E48F3471D0168D7E981160D6",
+      "raw_bytes": 362,
+      "published_bytes": 362,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/01-check.log",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/01-check.log",
+      "raw_sha256": "610DFD6FE9DC306AB25647217A4DBAEDD710E4D69FAC657DE83B83F37EFB8E1D",
+      "published_sha256": "A4F03B2D3ADB7A7B42907C35C770236D6AA546BD57BC8540E25D72D41059545D",
+      "raw_bytes": 150,
+      "published_bytes": 145,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/02-build-cli-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/02-build-cli-after.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/02-build-cli-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/02-build-cli-before.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/02-build-cli.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/02-build-cli.json",
+      "raw_sha256": "10C7CCE916D0BD572F83E15FA0BA948D9ACB88166F16DC9C6FD7130C6C2885CD",
+      "published_sha256": "10C7CCE916D0BD572F83E15FA0BA948D9ACB88166F16DC9C6FD7130C6C2885CD",
+      "raw_bytes": 362,
+      "published_bytes": 362,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/02-build-cli.log",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/02-build-cli.log",
+      "raw_sha256": "42C8E12B93F9ADB3F72A89F5CF69AABF286600795B614494667275DDAF3D7E64",
+      "published_sha256": "42C8E12B93F9ADB3F72A89F5CF69AABF286600795B614494667275DDAF3D7E64",
+      "raw_bytes": 61,
+      "published_bytes": 61,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/03-lib-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/03-lib-after.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/03-lib-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/03-lib-before.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/03-lib.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/03-lib.json",
+      "raw_sha256": "4984EFC8719D895790AF584368964B99C85121E0A1B911F034E101FA1E22240B",
+      "published_sha256": "4984EFC8719D895790AF584368964B99C85121E0A1B911F034E101FA1E22240B",
+      "raw_bytes": 368,
+      "published_bytes": 368,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/03-lib.log",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/03-lib.log",
+      "raw_sha256": "8F955B222C81D8C06EB4D4D7C0CD7FD217132568C89B39D56CC94AAF7D1B3EDF",
+      "published_sha256": "9001B71E0E8A04F0CD9384BCBC68A011D2A992F9080C404864C4D0AF3B809F9D",
+      "raw_bytes": 46950,
+      "published_bytes": 46800,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2": 23,
+        "../nhc-d-runtime-management-tests": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/04-schema-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/04-schema-after.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/04-schema-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/04-schema-before.json",
+      "raw_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "published_sha256": "E0E5F2552B8227474D0D1334AFEA9A891C7E8EE45BC2ABDBA22ED222FDE6A834",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/04-schema.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/04-schema.json",
+      "raw_sha256": "4CE2F155884E349B8CF5DC09FD0337AAFB68A663C67E43157FC83927DF602002",
+      "published_sha256": "4CE2F155884E349B8CF5DC09FD0337AAFB68A663C67E43157FC83927DF602002",
+      "raw_bytes": 397,
+      "published_bytes": 397,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/04-schema.log",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/04-schema.log",
+      "raw_sha256": "BF66106BCFD0F222D9EC57852BA4CB88EAD3DEA7CC0C51E89F0CA0E4DF0CF9BF",
+      "published_sha256": "0B43C810BB2C1EC01E28CC67C4A926F03A5A22300649609387A46160A6CD9CE9",
+      "raw_bytes": 1394,
+      "published_bytes": 1389,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/cli-binary.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/cli-binary.json",
+      "raw_sha256": "9FBF578B4DE82D07132356DC870A172EB62A051EFB657D18DF0A9FF17B5DE86E",
+      "published_sha256": "B03CF70DF3FD01ECF9CD4D6F0A6AE6064B003337DF615E14AFEBBABFD3915267",
+      "raw_bytes": 316,
+      "published_bytes": 309,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/postflight.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/postflight.json",
+      "raw_sha256": "939B285AB9A97DFB5ED1EDC7446D91C8146253017E7E3511358C688AC226DD5F",
+      "published_sha256": "939B285AB9A97DFB5ED1EDC7446D91C8146253017E7E3511358C688AC226DD5F",
+      "raw_bytes": 308,
+      "published_bytes": 308,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/logs/preflight.json",
+      "published": "niuma/员工D/提交报告/第十六轮/NEXT-18组件证据896b690-attempt2/preflight.json",
+      "raw_sha256": "F300DB62C619A2C1E3AAF16A798313548AE48D1B373062517E77B70BCDCC454B",
+      "published_sha256": "DEFE2AFB03770BBD60F71688B13E51B4665042CBA9EE93FB3B417F7F5A269524",
+      "raw_bytes": 964,
+      "published_bytes": 835,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2": 1,
+        "../nhc-d-runtime-management-tests": 1,
+        "[msvc]": 1,
+        "[windows-sdk]": 1
+      }
+    }
+  ],
+  "crash_fixtures": [
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/intent.pid",
+          "sha256": "874AE1DB883A0337A9836F0D0F552FF42168E87D75767F327FB3F4802E9E9F5F",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/intent.signal",
+          "sha256": "64561B56BBA924036A5351798F86FBBF1D4035A261BDF2AC999E72A19F51AD05",
+          "bytes": 157
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/intent.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/intent.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/intent.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/killed-metadata.txt",
+          "sha256": "D3FFA1196DDB64CE7EA80E3D8A1E5EB1C92BB19977189478B754C795F4D4DED6",
+          "bytes": 565
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/observed-metadata.txt",
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/queryable-runtime.db",
+          "sha256": "9FA3E34025343D47FE59BBAF82B5FCC94EF60972323E83FC64FDE7F789080452",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/raw-runtime.db",
+          "sha256": "84A7F7E4A8CBCE08322DFBA824100BF9F58CE0B1B95682AFCF0F45E9E31B92B9",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/raw-runtime.db-shm",
+          "sha256": "214A137FF7EB7DEDA00AB305257C319EFE7A716F0C80C41E1945562328714DCD",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/raw-runtime.db-wal",
+          "sha256": "8E23CFF518A9C2316BAE9BDD27746CCDD7AF443ADA3B49B2572BE0BC363685C8",
+          "bytes": 12392
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/recovery-1.pid",
+          "sha256": "5872238BA9244BFD95E26D12C0379591819F6D023EA18EBA14D7CEEAE26D25AF",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/recovery-1.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/recovery-2.pid",
+          "sha256": "F26E2FF4CFB6D9C1CD45209642CA21BAEAD0CC799E0A16F574329E9D0B17BD0C",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/recovery-2.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg/runtime.db",
+          "sha256": "D0FD483772194B34D5FB83B3CC401386DE0DFBA80AD71CF0BE0055343F9B85DC",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/intent.pid",
+          "sha256": "E37248F044661F977F1BCFF03855424129E24D38DC91B6AE8B660C9F8E9BFD50",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/intent.signal",
+          "sha256": "6AE8C8497ECC4643F34D442BF33F4121B2054AF56793140391902F9EA6895DB7",
+          "bytes": 157
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/intent.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/intent.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/intent.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/killed-metadata.txt",
+          "sha256": "F4E3A0D3B31AFDCE50A349426890860A4D2E2F04C47FB400E0AC98144C7DC09E",
+          "bytes": 562
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/observed-metadata.txt",
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/queryable-runtime.db",
+          "sha256": "ED9049D2AB7E2D5AF0DF1D45847DDB60A8AFB6EAB68DDF6956D1E7434D8C0398",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/raw-runtime.db",
+          "sha256": "84A7F7E4A8CBCE08322DFBA824100BF9F58CE0B1B95682AFCF0F45E9E31B92B9",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/recovery-1.pid",
+          "sha256": "CB02948B3EAE0C29D7F906F18509F76D0B657E951DB7B818C66A0363BF469DAC",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/recovery-1.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/recovery-2.pid",
+          "sha256": "36B0207BD8D835AF78DC50D39384E7E0C2953DBDB04CA450D856E47DA364C074",
+          "bytes": 4
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/recovery-2.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG/runtime.db",
+          "sha256": "84A7F7E4A8CBCE08322DFBA824100BF9F58CE0B1B95682AFCF0F45E9E31B92B9",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/intent.pid",
+          "sha256": "24277A1CFCE6C8501AC7FD6AFB3F07DE8A12CE9F8F22497EF02479924A3FFF20",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/intent.signal",
+          "sha256": "73382FAB08078771862434CC149976A4204A66FFDB1FA8E2EDFDE85BABEC95F6",
+          "bytes": 162
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/intent.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/intent.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/intent.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/killed-metadata.txt",
+          "sha256": "695194098FFB18E86DEBAC2BD8681BD29A9900FDD81584C55CBA8DE049DD6238",
+          "bytes": 567
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/observed-metadata.txt",
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/queryable-runtime.db",
+          "sha256": "B0A736199CE899139B93B59E055AA63EE32F8D42437C6319853CE88BA380A002",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/raw-runtime.db",
+          "sha256": "14E8F86201F97466FA1D45D6E8893243D9DA10CC9A0B92915F83C54F796C353A",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/recovery-1.pid",
+          "sha256": "B287BF58DF769E09A54F0BDCF54F232181C6A5F67CE98D9B3ED14943A79B2EDA",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/recovery-1.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/recovery-2.pid",
+          "sha256": "740BD89FD715FD7E2DE22DCA08119EFA903D19BFCA4151CCE06FE49E02AF679A",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/recovery-2.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5/runtime.db",
+          "sha256": "14E8F86201F97466FA1D45D6E8893243D9DA10CC9A0B92915F83C54F796C353A",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/intent.pid",
+          "sha256": "2FBB8BC379086DB693C2491A6FA0EFDFA3081326EA31D487930F99CD93CF80FC",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/intent.signal",
+          "sha256": "E111F8ED29B349E5979477F3105BFF11857BA7C0BADA957A27AAC29E3BB1EC21",
+          "bytes": 162
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/intent.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/intent.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/intent.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/killed-metadata.txt",
+          "sha256": "34EBE46BC9A5117512E871A19E62673838DB1CF3196C6112D70630AFD74D969E",
+          "bytes": 570
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/observed-metadata.txt",
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/queryable-runtime.db",
+          "sha256": "9282F4D1E9287C028ECDF66DD3D7C5DDD01B44EFD8AB3AB658EDCFD6AB505E13",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/raw-runtime.db",
+          "sha256": "14E8F86201F97466FA1D45D6E8893243D9DA10CC9A0B92915F83C54F796C353A",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/raw-runtime.db-shm",
+          "sha256": "F77955716AFD2F5BCE16C97B86CF4B4AC15BB5B9D993C322C159E5879DE91C09",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/raw-runtime.db-wal",
+          "sha256": "DD06154EF4357B3D4ACEB568EAB68464F0CD99E368436989E5DAC94958186A94",
+          "bytes": 12392
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/recovery-1.pid",
+          "sha256": "7928E72DD6D82AB3A616738986650D032F7929E7F7CC133ADE27CE924708B55D",
+          "bytes": 4
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/recovery-1.stdout.log",
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/recovery-2.pid",
+          "sha256": "594F668E17CA4F61D3E764984F47D16193917B232176A8970A5EDA836B76B2CE",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/recovery-2.stdout.log",
+          "sha256": "AA574239FB24192793F6A2C5D94572A2B7165562757FECB864C143876CE69054",
+          "bytes": 200
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS/runtime.db",
+          "sha256": "8B83078A294808F392CE5B74EC298E8F8288F1DF948FA610955DCF3BD7DDC264",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/killed-metadata.txt",
+          "sha256": "5707336DC7CE680435658836E07E0ED3DBD691D7B65C821972FDE87C06AB4A62",
+          "bytes": 533
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/migration.pid",
+          "sha256": "35C0EC9305EEC44947E7B36819D194DC16A28EE8B19ED740247548320CCA05BB",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/phase.signal",
+          "sha256": "AFFC6AAEE2C4C8CAD64C44770331578773A097DD14836F5D5A2977AA61EBB29C",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/queryable-runtime.db",
+          "sha256": "385C1DD1693D9AA015BD1D01A72CCE54728DBA6866B92D47DB365882440B8D65",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/raw-runtime.db",
+          "sha256": "E1062FB953D41D9A78464A6B1CF43C5EE74990A8515207526C9995663FDB3FAB",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/recovery-1.pid",
+          "sha256": "6DFA7963670454934417CA98178496EEF7244D2074D2139EBAA10194CC43F1FF",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/recovery-1.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/recovery-2.pid",
+          "sha256": "D28062D85E4957856A1ECE75A5D1A2D4F2D5D4ED8AE737BBA189968338AFDAF1",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2/runtime.db",
+          "sha256": "CE1E77F6E0083B4B0BEB051B6CD5092F4E15B7A70D97B9D9227EC241BE19673E",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/killed-metadata.txt",
+          "sha256": "A6AFD646CB855B68DF7FAD0E780BDCD229CA793ECF47F246C3E29F25873A7BCC",
+          "bytes": 533
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/migration.pid",
+          "sha256": "7933D85C51E108D668397609D5F5F5E72FE0CAA85BE689E075032ABFB4DE8F09",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/phase.signal",
+          "sha256": "BE6BA1535B656BCE500BACE02EA6C1BCCDBDE231C3BD8006CC2D14252F122013",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/queryable-runtime.db",
+          "sha256": "CB967605F3B3095B074639DB85AA5B03DD9D7BFC2AF731D75BB86F905E8DB342",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/raw-runtime.db",
+          "sha256": "5CBDC7B59FAE7D488F8539C1C4EC7373E8761B669683ECBD3C102A88FA81B2B3",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/recovery-1.pid",
+          "sha256": "ED13249D47138839AC5ECC9310C790530187F06746B779CBB80C1FD42075B64F",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/recovery-1.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/recovery-2.pid",
+          "sha256": "4F803C4F3466D829BC74AD7BF98F1767ADAD548D1C0D9E25B45B5B84B3220471",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ/runtime.db",
+          "sha256": "B0247B33B2FF6209E6F35DE921FF6BF01AB907A01BE44329D3D5EAD02C083992",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/killed-metadata.txt",
+          "sha256": "E840D4445CE075189EA902DD709D2638E2256D9418503F848248FC30BA1F489C",
+          "bytes": 535
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/migration.pid",
+          "sha256": "189D0B43791EA309A1C3003412BCDAAA09D39A615C379CC246F5F479760629A1",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/phase.signal",
+          "sha256": "331141DA97FACD7D20C6B06769042D4EB09EC91C0DD8DE8D5F050F43D9A271E2",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/queryable-runtime.db",
+          "sha256": "0968C1DCE434970DB7974D325E6569C03BBDA15BB7EE17D33CDC44D0E6D2F1B9",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/raw-runtime.db",
+          "sha256": "DE7D92270590577143B50D45B880D377DCA52BC56D6B4AB5CBDE42D1F686D807",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/recovery-1.pid",
+          "sha256": "1BB2B7EF5A0B911AD4A3EC7E5DEFFC8F06355189E4AE0E1175AC0078CD7E0BC7",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/recovery-1.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/recovery-2.pid",
+          "sha256": "DD996502691DE578103FCA2B9071469C78CC9F65D34A0668C67662BDB034EB8D",
+          "bytes": 4
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7/runtime.db",
+          "sha256": "DC9EB0DCB8980E91442AB4D3A5F805E2021CDBE3BC93C81DD7C8DD3CD35D1461",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/killed-metadata.txt",
+          "sha256": "68CDBA7BBC489E12890386CFC486CC8FFF62A3529F13A8AAECD14FE546E0DC6F",
+          "bytes": 534
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/migration.pid",
+          "sha256": "D6D9F38A76B56300519574B14854F8783777D3612424EA9CE02CBAE06F9C23CC",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/phase.signal",
+          "sha256": "9C9454734C67AF729A14DC596B200DA8DD1A0E340F8A384B22348E5E3338D2C0",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/queryable-runtime.db",
+          "sha256": "385C1DD1693D9AA015BD1D01A72CCE54728DBA6866B92D47DB365882440B8D65",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/raw-runtime.db",
+          "sha256": "E1062FB953D41D9A78464A6B1CF43C5EE74990A8515207526C9995663FDB3FAB",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/recovery-1.pid",
+          "sha256": "68242CD3422907F3AA5EE34620F9CBC0B208DA4F59B0989220E4FC10BC52FAD9",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/recovery-1.stdout.log",
+          "sha256": "E40E224F97301BDCF4E5FDD0D272022D00674E19C9FAE6F6B7AD1ADAA41DAF7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/recovery-2.pid",
+          "sha256": "01C15B9C0E36FE343873E6AA6ABE0C3B1ACD9316F812A6C8CDE4AB7A4601D08F",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I/runtime.db",
+          "sha256": "CE1E77F6E0083B4B0BEB051B6CD5092F4E15B7A70D97B9D9227EC241BE19673E",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/killed-metadata.txt",
+          "sha256": "B95CE47B2BA1D38D412F1CB80711E66E4245939D3AE8A105512E5DC4234D7B8A",
+          "bytes": 537
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/migration.pid",
+          "sha256": "55F3B2C4318B3B8924EA91FA30E256DC0D1C7FE5E04C713A883DD0B291939D5B",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/observed-metadata.txt",
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/phase.signal",
+          "sha256": "60D6558AAE2B8816AA5292FDA7216D0634CF554F9B5A4DED6DDF91FE2D465630",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/queryable-runtime.db",
+          "sha256": "4B01C8299E07A2098BB3AA8EB093A06AD10C24AB0046DC513B77D4EDC5789F45",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/raw-runtime.db",
+          "sha256": "E1062FB953D41D9A78464A6B1CF43C5EE74990A8515207526C9995663FDB3FAB",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/raw-runtime.db-shm",
+          "sha256": "6B9F1B101FF604DC060B042EBF4B376046B2CCDA5FDD7A105D718C63AAB614E9",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/raw-runtime.db-wal",
+          "sha256": "5695C7F244DE3932DB809D2487CAA983585CF38FD4B3A868C3F97424418D5135",
+          "bytes": 32992
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/recovery-1.pid",
+          "sha256": "B485CF8F710A657551B05414743B592E57853D60E8BF8999E27CA5F9B539E9D0",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/recovery-1.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/recovery-2.pid",
+          "sha256": "6507B84AE12B965D4E16817C04E6DAE88F243BA7AAF3F17A2DEBDE658F889E99",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V/runtime.db",
+          "sha256": "2F1FEBCC753DB6903D3C8B85CAA3ADEDD63437DED005C84E169A9B0BBDFFA22A",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/killed-metadata.txt",
+          "sha256": "9D90E10759EB447E1692D5BFBAC047DEBDD4C24D8571AB85F9CEDB0F8C7BE72F",
+          "bytes": 533
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/migration.pid",
+          "sha256": "30D32F2A3E1087534B2E19889856FBFA13326A78F30158CE1557181287E4454A",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/phase.signal",
+          "sha256": "EDBBD4F5547DC99E2C562EF0183AF7248D186AB8032538582C41EBA16EAE05BE",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/queryable-runtime.db",
+          "sha256": "7279327983734C517ABCF5997C08373CCDF81FE6B2AA51B249E8AAC29F96335D",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/raw-runtime.db",
+          "sha256": "5F5773D2FC7DB695786DFCAA48B7AD15FB075F5569B75BC1FD1977CAC11302A5",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/recovery-1.pid",
+          "sha256": "2074B74FBF8BEB3E3261B166DBFE9F6B65EAA7260DC70FB718B0DB9BF0AA10DF",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/recovery-1.stdout.log",
+          "sha256": "E40E224F97301BDCF4E5FDD0D272022D00674E19C9FAE6F6B7AD1ADAA41DAF7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/recovery-2.pid",
+          "sha256": "BD7997353A3A3C6F6DA0E683DBBDDD6FB0485481FF2B595CC2008A2E1A98F369",
+          "bytes": 4
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7/runtime.db",
+          "sha256": "179909BC71E61E16053FD2F5BCF487F979DC3C909C81E1E824BC6D411A35920D",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/killed-metadata.txt",
+          "sha256": "A40E01C4E635D65B3452DF53563D15C8F7BBCBF0BCCD1220540EB5FA84973C13",
+          "bytes": 531
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/migration.pid",
+          "sha256": "CBAB279CE57290B9D0FDAD9BCDD4BED8BA8DC8D50CC52195AA6960B0D76033C7",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/phase.signal",
+          "sha256": "8AE5BC97666541A261103E1DC34BE7C5E98C83D7D001C72C4929A3965FB7C1E3",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/queryable-runtime.db",
+          "sha256": "0968C1DCE434970DB7974D325E6569C03BBDA15BB7EE17D33CDC44D0E6D2F1B9",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/raw-runtime.db",
+          "sha256": "DE7D92270590577143B50D45B880D377DCA52BC56D6B4AB5CBDE42D1F686D807",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/recovery-1.pid",
+          "sha256": "88034CE6BC55231AFD0506A46FE8881FC6B423EF99CCBC1B4201413965F64E9E",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/recovery-1.stdout.log",
+          "sha256": "E40E224F97301BDCF4E5FDD0D272022D00674E19C9FAE6F6B7AD1ADAA41DAF7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/recovery-2.pid",
+          "sha256": "1A1EB9C762DFBCC3111F8562E4419F295098EC6295A50ED658F625A75B63EF25",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du/runtime.db",
+          "sha256": "5A271F44EC804DB0907CE3D2EF2F69DD67315C878742B3D02ECD2C3DCD467C65",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/killed-metadata.txt",
+          "sha256": "592E7D4CB3FB9723379F6F8A71C2D6D0FC31B7CAF009A958BEF2E0BF4F5660A0",
+          "bytes": 534
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/migration.pid",
+          "sha256": "ED13249D47138839AC5ECC9310C790530187F06746B779CBB80C1FD42075B64F",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/phase.signal",
+          "sha256": "EE95DE9751F492BE680C390C35DC6CE92A8200D92DD082DFAA213227F1EA240D",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/queryable-runtime.db",
+          "sha256": "CB967605F3B3095B074639DB85AA5B03DD9D7BFC2AF731D75BB86F905E8DB342",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/raw-runtime.db",
+          "sha256": "5CBDC7B59FAE7D488F8539C1C4EC7373E8761B669683ECBD3C102A88FA81B2B3",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/recovery-1.pid",
+          "sha256": "1992A7B5F8D06C703F8038EEAECDCF55A8B22968591F50E01F503F0C40C826D6",
+          "bytes": 4
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/recovery-1.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/recovery-2.pid",
+          "sha256": "9C08B834B9DECBCB915CAE338793E54B9F5EE70F859030BEA4783DB2F570E888",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE/runtime.db",
+          "sha256": "CD3F368FC94474C25FA5EE7E643737E12F122E6C8524DD0F5092086A719E8551",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl",
+      "files": [
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/killed-metadata.txt",
+          "sha256": "701B9D25AE3279A325008F33B54CF3284D3B3FE63870D629E12FCF35DF25B4B3",
+          "bytes": 533
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/migration.pid",
+          "sha256": "62953BAD64F086652977C6281A9ABA7BB93568AB0F0EBC851C36B6BF4845762A",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/migration.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/migration.stdout.log",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/migration.wait",
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC",
+          "bytes": 26
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/observed-metadata.txt",
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB",
+          "bytes": 35
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/phase.signal",
+          "sha256": "BA7D469C3EA5A5800D92D08DA4B283D78B3580B7A561BE2273C366B5E425E585",
+          "bytes": 134
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/queryable-runtime.db",
+          "sha256": "7279327983734C517ABCF5997C08373CCDF81FE6B2AA51B249E8AAC29F96335D",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/raw-runtime.db",
+          "sha256": "5F5773D2FC7DB695786DFCAA48B7AD15FB075F5569B75BC1FD1977CAC11302A5",
+          "bytes": 450560
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/raw-runtime.db-shm",
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB",
+          "bytes": 32768
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/raw-runtime.db-wal",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/recovery-1.pid",
+          "sha256": "CE0DEF455FE638A6C621DE7F42B868E0AF232F71D1664D691F89A63BCDDC543D",
+          "bytes": 4
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/recovery-1.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/recovery-1.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/recovery-2.pid",
+          "sha256": "D1DB330B8A74DF12271BB9781E6792ADD0619443A5DB50C44B9FC61D3FCDCE59",
+          "bytes": 5
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/recovery-2.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/recovery-2.stdout.log",
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B",
+          "bytes": 203
+        },
+        {
+          "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl/runtime.db",
+          "sha256": "034E492F3FE9F2E8D56CC8E1ED5B3A343F6E98392D50D82C21EF0DB558D34C4C",
+          "bytes": 450560
+        }
+      ]
+    }
+  ],
+  "notes": "Raw text and crash fixtures remain unchanged. Published text paths and system toolchain prefixes are relativized. Raw binary DB/WAL/SHM and queryable/recovery artifacts are inventoried only."
+}

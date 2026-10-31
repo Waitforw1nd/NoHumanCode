@@ -1,0 +1,308 @@
+{
+  "candidate": "896b690938cb31946acb2c4030de76f58eb13d43",
+  "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
+  "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
+  "commands": [
+    {
+      "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
+      "exit_code": 0,
+      "command": "cargo check --offline --locked --all-targets",
+      "started_utc": "2026-10-31T06:37:51.7183716Z",
+      "head": "896b690938cb31946acb2c4030de76f58eb13d43",
+      "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
+      "ended_utc": "2026-10-31T06:37:59.8608818Z"
+    },
+    {
+      "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
+      "exit_code": 0,
+      "command": "cargo build --offline --locked --bin peachsh",
+      "started_utc": "2026-10-31T06:38:00.1572821Z",
+      "head": "896b690938cb31946acb2c4030de76f58eb13d43",
+      "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
+      "ended_utc": "2026-10-31T06:38:00.4958668Z"
+    },
+    {
+      "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
+      "exit_code": 0,
+      "command": "cargo test --offline --locked --lib -- --nocapture",
+      "started_utc": "2026-10-31T06:38:00.7746673Z",
+      "head": "896b690938cb31946acb2c4030de76f58eb13d43",
+      "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
+      "ended_utc": "2026-10-31T06:38:49.6205390Z"
+    },
+    {
+      "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
+      "exit_code": 101,
+      "command": "cargo test --offline --locked --test runtime_management_schema -- --nocapture",
+      "started_utc": "2026-10-31T06:38:49.8727046Z",
+      "head": "896b690938cb31946acb2c4030de76f58eb13d43",
+      "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
+      "ended_utc": "2026-10-31T06:39:06.0145650Z"
+    }
+  ],
+  "source_snapshots_equal": true,
+  "source_snapshot_count": 8,
+  "tracked_rust_files": 134,
+  "all_sources_match_candidate_git_blobs": true,
+  "current_changes_only": [
+    "NoManCode/rust-app/tests/runtime_management_schema.rs"
+  ],
+  "lib_result": {
+    "passed": 314,
+    "failed": 0,
+    "ignored": 0
+  },
+  "schema_result": {
+    "passed": 6,
+    "failed": 1,
+    "ignored": 0
+  },
+  "sole_failure": "historical_corruption_and_unsupported_objects_fail_closed:325: injection SQL foreign key constraint before Store::open",
+  "not_run": [
+    "historical integrations",
+    "all-targets Clippy",
+    "fmt"
+  ],
+  "crash_stages_verified": [
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-90elgg",
+      "phase": "runtime_intent_after_commit",
+      "component": "builtin.chat-agent",
+      "killed_pid": "42548",
+      "recovery_pids": [
+        "45000",
+        "15152"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-E3impG",
+      "phase": "runtime_intent_before_commit",
+      "component": "builtin.chat-agent",
+      "killed_pid": "42488",
+      "recovery_pids": [
+        "37264",
+        "5456"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-yJTJL5",
+      "phase": "runtime_intent_before_commit",
+      "component": "builtin.provider-xpeach",
+      "killed_pid": "44728",
+      "recovery_pids": [
+        "35864",
+        "39168"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime-intent-crash-Z7nCfS",
+      "phase": "runtime_intent_after_commit",
+      "component": "builtin.provider-xpeach",
+      "killed_pid": "38060",
+      "recovery_pids": [
+        "5784",
+        "39504"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fn4SC2",
+      "phase": "runtime17_after_marker",
+      "component": null,
+      "killed_pid": "26468",
+      "recovery_pids": [
+        "31868",
+        "34028"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Fw7ENJ",
+      "phase": "runtime17_after_create",
+      "component": null,
+      "killed_pid": "36212",
+      "recovery_pids": [
+        "35312",
+        "18084"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-jRkOs7",
+      "phase": "runtime17_before_rebuild",
+      "component": null,
+      "killed_pid": "40996",
+      "recovery_pids": [
+        "29640",
+        "4528"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-MFBY0I",
+      "phase": "runtime17_before_commit",
+      "component": null,
+      "killed_pid": "40840",
+      "recovery_pids": [
+        "41596",
+        "18568"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-pSjk7V",
+      "phase": "runtime17_after_commit",
+      "component": null,
+      "killed_pid": "17944",
+      "recovery_pids": [
+        "45360",
+        "40984"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-qgQJQ7",
+      "phase": "runtime17_after_verify",
+      "component": null,
+      "killed_pid": "23896",
+      "recovery_pids": [
+        "33960",
+        "8284"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-RRJ4Du",
+      "phase": "runtime17_after_drop",
+      "component": null,
+      "killed_pid": "41276",
+      "recovery_pids": [
+        "18372",
+        "39112"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-V0AlRE",
+      "phase": "runtime17_after_restore",
+      "component": null,
+      "killed_pid": "35312",
+      "recovery_pids": [
+        "7512",
+        "23932"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/next18-d-896b690-attempt2/tmp/nhc-runtime17-crash-Voy8Dl",
+      "phase": "runtime17_after_insert",
+      "component": null,
+      "killed_pid": "34900",
+      "recovery_pids": [
+        "3352",
+        "11268"
+      ],
+      "raw_hashes_matched": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2
+    }
+  ],
+  "raw_log_sha256": "8F955B222C81D8C06EB4D4D7C0CD7FD217132568C89B39D56CC94AAF7D1B3EDF",
+  "raw_scene_files_manifest_verified": 234,
+  "text_pairs_hash_length_verified": 20,
+  "text_pairs_path_only_transform_verified": 20,
+  "manifest_sha256": "89E7414E0A8CB184CCBE78ECE32C8026502DD2E4D5053E9D86CBDC010A8C67B9",
+  "scope": "Manager read-only evidence audit; no product tests run. Library result belongs to 896b690."
+}
