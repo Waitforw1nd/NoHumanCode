@@ -1384,6 +1384,13 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
             let (lease, (_permit, receipt)) = admit.join().unwrap().unwrap();
             disable.join().unwrap().unwrap();
             assert_eq!(receipt.state, CallState::Claimed);
+            let budget_call = f.engine.budget_call(&f.project, &receipt.call_id).unwrap();
+            assert_eq!(
+                budget_call.state,
+                Some(crate::budget::BudgetCallState::Claimed)
+            );
+            assert_eq!(budget_call.reserved_tokens, Some(100));
+            assert_eq!(budget_call.call, receipt);
             assert_eq!(runtime.status_for_test().unwrap().in_flight, 1);
             assert_eq!(
                 db.query_row("SELECT count(*) FROM network_calls", [], |r| r
@@ -1441,8 +1448,12 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
             budget_before.held_tokens + if admission_first { 100 } else { 0 }
         );
         assert_eq!(
+            budget_after.claimed_count,
+            budget_before.claimed_count + if admission_first { 1 } else { 0 }
+        );
+        assert_eq!(
             budget_after.unresolved_count,
-            budget_before.unresolved_count + if admission_first { 1 } else { 0 }
+            budget_before.unresolved_count
         );
         assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
     }
