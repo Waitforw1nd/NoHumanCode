@@ -1,3 +1,9 @@
+## 2026-10-31 NEXT-18 C公开组件首失败与限定夹具返工
+
+更新人：项目经理。C在完整283a298上check/build0、HTTP1/0/0、CLI6/0/0，workflow6/1/0，唯一draining用例因hold替身缺finish_reason而旧Task网络结果未知；窗口已释放。另两截断case实际触发hyper任务panic，不能证明部分HTTP响应已送出。经理已核14原发布对/6路径转换、8清单168项（164逐字节Git/4按gitattributes检出CRLF），未归属DB仅核原副本字节，不冒充失败现场。原日志/报告、C第十九轮attempt1审查与经理核验已落盘。
+
+原C获C18-R04/R05仅两integration文件静态返工；7cf365338c14cfb21a9d329151279723e29cb5b2补合法终帧和真实TCP截断，经理已完整读diff，R04静态可接受；R05需将固定500ms监听改为持续至CLI实际退出的完成信号，并恢复raw请求token断言，已续办同owner，无构建窗口。B/D冻结，C静态修订。下一第一操作核C新固定候选/双tree/clean，增量审后定向integration重验；随后最终五门禁及M矩阵联合验收。main产品仍NEXT-17，完整项目active；经理未改产品或执行产品测试。
+
 ## 2026-10-31 NEXT-18 D独立组件通过与完整组合到C
 
 更新人：项目经理。D283a298定向attempt3六命令exit0，schema7/0/0、七历史集成105/0/0；经理核29原发布对、12清单134项匹配Git及工作树，R08动态闭合，独立组件APPROVED。lib314/0/0仍归属896b690且仅schema集成文件改变，最终C完整五门禁未执行。D报告/review与经理attempt3原件核验已落盘；原失败及CLI产物差异事实保留，未改原件。

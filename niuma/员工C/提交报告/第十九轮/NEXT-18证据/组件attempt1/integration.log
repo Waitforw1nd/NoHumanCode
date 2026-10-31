@@ -1,0 +1,51 @@
+   Compiling peachsh v0.2.0 (<C_WORKTREE>\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 15.99s
+     Running tests\runtime_management_cli.rs (<C_WORKTREE>\.local\target\debug\deps\runtime_management_cli-4072cd8425b519b5.exe)
+
+running 6 tests
+
+thread 'truncated_write_is_unknown_and_sent_once' (45328) panicked at <CARGO_HOME>\registry\src\index.crates.io-1949cf8c6b5b557f\hyper-1.11.1\src\proto\h1\role.rs:725:41:
+payload claims content-length of 1, custom content-length header claims 100
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test truncated_write_is_unknown_and_sent_once ... ok
+test human_output_and_argument_exit_codes ... ok
+test validates_duplicate_fields_busy_and_replayed_current ... ok
+test malformed_nested_duplicate_oversize_and_error_mapping_are_rejected ... ok
+test hostile_status_objects_never_reach_stdout ... ok
+test runtime_state_relations_accept_real_lifecycle_and_reject_impossible_transition ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s
+
+     Running tests\runtime_management_workflow.rs (<C_WORKTREE>\.local\target\debug\deps\runtime_management_workflow-1960f2ff872a9418.exe)
+
+running 7 tests
+
+thread 'committed_put_lost_response_has_one_send_and_explicit_real_replay' (31616) panicked at <CARGO_HOME>\registry\src\index.crates.io-1949cf8c6b5b557f\hyper-1.11.1\src\proto\h1\role.rs:725:41:
+payload claims content-length of 1, custom content-length header claims 100
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+P07 Host kill+wait pid=5080
+test committed_put_lost_response_has_one_send_and_explicit_real_replay ... ok
+P07 Host kill+wait pid=12756
+test balance_remains_available_when_completion_disabled ... ok
+
+thread 'draining_busy_does_not_consume_key_and_old_receipt_replays' (16700) panicked at tests\runtime_management_workflow.rs:169:17:
+{"allow_commands":false,"created_at":1793430085,"error":"网络调用结果未知","id":"02ce15fc-b576-4cb7-989e-eed2bf574054","name":"agent","output":"working","role":"coding agent","route_id":"local","run_id":"668a3cba-9eed-449a-a9f0-f6fa52a7ac46","status":"failed","tools":false,"updated_at":1793430085,"workspace":"\\\\?\\<C_WORKTREE>\\.local\\tmp\\.tmp27CuwH\\workspace","write_scopes":[]}
+test draining_busy_does_not_consume_key_and_old_receipt_replays ... FAILED
+P07 Host kill+wait pid=16748
+test disabled_completion_preserves_completed_models_receipt ... ok
+P07 Host kill+wait pid=17832
+P07 Host kill+wait pid=23184
+test global_plugin_key_cas_and_same_state_revision ... ok
+P07 Host kill+wait pid=22284
+test each_disabled_component_blocks_new_task_without_completion_claim ... ok
+P07 Host kill+wait pid=45404
+test empty_database_disable_restart_enable_and_completion ... ok
+
+failures:
+
+failures:
+    draining_busy_does_not_consume_key_and_old_receipt_replays
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.38s
+
+error: test failed, to rerun pass `--test runtime_management_workflow`

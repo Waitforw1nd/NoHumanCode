@@ -1,0 +1,72 @@
+{
+  "candidate": "283a29858b914c1f26318f3a9603739ebc46be1d",
+  "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+  "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+  "manifest_sha256": "1C368B2BD656BA0F6ACCC6D7BD3B7E7259D8C37254F7E364378A859D58248185",
+  "text_pairs_verified": 14,
+  "path_only_transformed_pairs": 6,
+  "source_snapshots_equal": true,
+  "source_snapshot_count": 8,
+  "tracked_files_matching_candidate_git_checkout": 168,
+  "exact_git_blob_matches": 164,
+  "gitattributes_crlf_checkout_matches": [
+    "NoManCode/dsh-peachsh.cmd",
+    "NoManCode/newapi.cmd",
+    "NoManCode/start-peachsh-legacy.cmd",
+    "NoManCode/start-peachsh.cmd"
+  ],
+  "source_snapshot_sha256": "F445B34C5B96A6EDA8F86E330B7C40357A72FE190712718EE837644D9F21EB51",
+  "steps": [
+    {
+      "action": "check",
+      "command": "cargo check --offline --locked --all-targets",
+      "start_utc": "2026-10-31T06:59:03.8309895Z",
+      "end_utc": "2026-10-31T06:59:49.0610585Z",
+      "exit_code": 0
+    },
+    {
+      "action": "build",
+      "command": "cargo build --offline --locked --bin peachsh",
+      "start_utc": "2026-10-31T06:59:49.8357436Z",
+      "end_utc": "2026-10-31T07:00:32.6210613Z",
+      "exit_code": 0
+    },
+    {
+      "action": "lib",
+      "command": "cargo test --offline --locked --lib runtime_management_http_tests -- --nocapture",
+      "start_utc": "2026-10-31T07:00:33.4197181Z",
+      "end_utc": "2026-10-31T07:01:04.6545018Z",
+      "exit_code": 0
+    },
+    {
+      "action": "integration",
+      "command": "cargo test --offline --locked --test runtime_management_cli --test runtime_management_workflow -- --nocapture",
+      "start_utc": "2026-10-31T07:01:05.3816500Z",
+      "end_utc": "2026-10-31T07:01:26.5084444Z",
+      "exit_code": 101
+    }
+  ],
+  "http_result": [
+    1,
+    0,
+    0
+  ],
+  "cli_result": [
+    6,
+    0,
+    0
+  ],
+  "workflow_result": [
+    6,
+    1,
+    0
+  ],
+  "sole_failure": "draining_busy_does_not_consume_key_and_old_receipt_replays",
+  "fixture_findings": [
+    "hold response has no finish_reason before DONE; Decoder rejects and runtime maps to Unknown",
+    "two fixed body Content-Length mismatch cases cause Hyper task panic; no proof partial HTTP bytes sent"
+  ],
+  "unattributed_db_hash_verified": "6246F61E227944961197790963637A71E8E1CA62E9572FB9A8ABA6F4EB3B6AAD",
+  "unattributed_db_used_for_semantic_claims": false,
+  "scope": "Read-only manager audit of C component failure; final five gates not run. Product test not executed by manager."
+}
