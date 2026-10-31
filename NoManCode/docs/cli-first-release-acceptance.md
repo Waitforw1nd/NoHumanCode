@@ -121,8 +121,8 @@ peachsh --port 3090 --json project budget call --id PROJECT --call-id CALL
 
 写入后断线、超时或不可信响应可能意味着命令已提交，客户端不会自动重发。查询当前状态不能证明特定 key 是否提交；如需取回回执，人工使用原 key、原 ID、原 enabled 和原 expected-revision 显式回放，不换 key 猜测。重启按持久意图恢复，已发生的网络和预算事实不因切换而消失。NEXT-18 的限定切片已完成联合验收并整合主线；历史事件 N18-F01 仍为 OPEN_UNATTRIBUTED，原失败原因未知，不能称为已修复。该验收不代表完整阶段一或整个项目已完成。
 
-## NEXT-19 公开工具调用续接（静态候选）
+## NEXT-19 公开工具调用续接（最终门禁通过，待联合验收）
 
-本候选新增 `tests/tool_call_workflow.rs`，计划以全新数据库、真实 Host/CLI 和本机受控 Provider 验证同一 Session 的两个 Turn：首轮读取后分别拒绝写文件和命令，检查副作用未发生、结果与调用归属；下一轮逐项批准写入和命令，确认 Shell 网络告知、实际内容和唯一副作用。测试还检查有限事件批次及游标续读、真实 Host kill/wait 后的原始停机副本与独立查询副本、同数据重启无自动重发，并通过新 Turn 继续。原 `first_user_workflow` 的 Diff、Checkpoint、恢复冲突与续接覆盖继续保留，不用新增测试代替其完整执行。
+固定候选 `b903963b13fb0fa53f04a7585379061d3380a6d6`、Rust tree `9d6b09f50d0925f0644f59fbc048548ec6f5dcab` 的 workspace check、显式 CLI build、workspace test、fmt、all-targets Clippy 和 UI wasm-check 均 exit 0；workspace test 的 60 个结果块合计 819 passed / 0 failed / 1 ignored，包含 helper 入口，唯一 ignored 为付费真实 Provider 测试。新增 `tool_call_workflow` 和原 `first_user_workflow` 各 1/0/0，实际执行通过。
 
-该测试及 NEXT-19 固定组合目前只形成待审静态候选：尚无本候选编译、实际运行、最终 workspace 门禁、联合验收或主线整合结果。后续仅在经理签发的固定窗口依次执行完整 check、显式 CLI build、workspace test、fmt、all-targets Clippy 和 UI wasm-check；新旧两条公开工作流的实际结果须分别记录。观察测试真实行为前，不能把上述计划写成已验收或据此关闭历史未归因问题。
+新增流程以全新数据库、真实 Host/CLI 和本机受控 Provider 验证首 Turn 读取与分别拒绝写文件/命令，次 Turn 分别批准写入/命令、检查事件游标，再真实 kill/wait、分离停机 raw/query 并重启后继续新 Turn。原流程继续覆盖 Diff、Checkpoint 与恢复冲突。本次通过不追认历史故障根因，不代表付费 Provider 或完整项目通过；NEXT-19 联合验收与主线整合另见经理记录。
