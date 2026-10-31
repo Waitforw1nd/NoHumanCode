@@ -1164,7 +1164,9 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
         let expected = if event.kind == "approval.requested" {
             [
                 "approval_id",
+                "evidence_version",
                 "preview",
+                "safe_call_digest",
                 "session_id",
                 "task_id",
                 "tool_call_id",
@@ -1181,11 +1183,78 @@ async fn ah01_ah09_ah10_safe_dto_order_and_task_isolation() {
                 .collect()
         };
         assert_eq!(fields, expected);
+        if event.kind == "approval.requested" {
+            assert_eq!(event.data["evidence_version"], 1);
+            let digest = event.data["safe_call_digest"].as_str().unwrap();
+            assert_eq!(digest.len(), 64);
+            assert!(
+                digest
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            );
+        }
         let serialized = serde_json::to_string(&event).unwrap();
         for forbidden in [secret, "content", "arguments"] {
             assert!(!serialized.contains(forbidden));
         }
     }
+
+    let (args_digest, binding_digest): (String, String) = Connection::open(&h.db_path)
+        .unwrap()
+        .query_row(
+            "SELECT args_digest,binding_digest FROM approvals WHERE id=?1",
+            [&a1],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    let mut stream = client()
+        .get(format!("{}/api/runs/{}/events", h.origin, a.run_id))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(stream.status(), StatusCode::OK);
+    let mut buffer = String::new();
+    let requested = loop {
+        let frame = next_sse(&mut stream, &mut buffer).await;
+        if frame.event == "approval.requested" && frame.data["data"]["approval_id"] == a1 {
+            break frame;
+        }
+    };
+    let data = &requested.data["data"];
+    let fields: BTreeSet<_> = data.as_object().unwrap().keys().cloned().collect();
+    assert_eq!(
+        fields,
+        [
+            "approval_id",
+            "evidence_version",
+            "preview",
+            "safe_call_digest",
+            "session_id",
+            "task_id",
+            "tool_call_id",
+            "tool_name",
+            "turn_id"
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+    );
+    assert_eq!(data["evidence_version"], 1);
+    assert_eq!(data["safe_call_digest"].as_str().unwrap().len(), 64);
+    let wire = requested.data.to_string();
+    for forbidden in [
+        secret,
+        "arguments",
+        "args_digest",
+        "binding_digest",
+        "write_scopes",
+        "allow_commands",
+        args_digest.as_str(),
+        binding_digest.as_str(),
+    ] {
+        assert!(!wire.contains(forbidden));
+    }
+    drop(stream);
 
     let single: Value = client()
         .get(format!("{}/api/approvals/{a1}", h.origin))
@@ -2027,4 +2096,157 @@ async fn ah15_command_network_ack_is_explicit_and_legacy_approved_waits_without_
     );
     assert!(!write._dir.path().join("src/no-ack.txt").exists());
     assert_eq!(http_decide(&write, &record.id, "deny").await.status(), 200);
+}
+
+#[test]
+fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
+    for cancelled in [false, true] {
+        let temp = tempfile::tempdir().unwrap();
+        let db_path = temp.path().join("proof-restart.db");
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (task, approval, base) = runtime.block_on(async {
+            let (base, _calls, _provider) = provider_server(vec![vec![tool_call(
+                "redacted-call",
+                "write_file",
+                json!({"path":"src/proof.txt","content":"sk-abc"}),
+            )]])
+            .await;
+            let store = Arc::new(Store::open(&db_path).unwrap());
+            configure_live(&store, temp.path(), &base);
+            let engine = Engine::new(store, 2).unwrap();
+            let mut request = run_request(false);
+            request.kind = SessionKind::Chat;
+            let task = engine.start(request).await.unwrap().tasks.remove(0);
+            let approval = pending_engine(&engine, &task.id).await;
+            let persisted = engine.store.task(&task.id).unwrap();
+            assert!(
+                !serde_json::to_string(&persisted)
+                    .unwrap()
+                    .contains("sk-abc")
+            );
+            assert!(!temp.path().join("src/proof.txt").exists());
+            (task, approval, base)
+        });
+        runtime.shutdown_timeout(Duration::from_secs(2));
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(async {
+            let address = base
+                .strip_prefix("http://")
+                .unwrap()
+                .strip_suffix("/v1")
+                .unwrap();
+            let (base, calls, _provider) = provider_server_at(vec![vec![], vec![]], address).await;
+            let store = Arc::new(Store::open(&db_path).unwrap());
+            configure_live(&store, temp.path(), &base);
+            let engine = Engine::new(store, 2).unwrap();
+            engine.store.recover().unwrap();
+            let (origin, token, _http) = serve_http_engine(engine.clone()).await;
+            let response = client()
+                .get(format!("{origin}/api/approvals/{}", approval.id))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let public_approval: Value = response.json().await.unwrap();
+            let exposed = public_approval.to_string();
+            for secret in [
+                "sk-abc",
+                "args_digest",
+                "binding_digest",
+                "write_scopes",
+                "allow_commands",
+            ] {
+                assert!(!exposed.contains(secret));
+            }
+            if cancelled {
+                assert_eq!(
+                    engine
+                        .store
+                        .cancel_pending_approvals(&task.id)
+                        .unwrap()
+                        .len(),
+                    1
+                );
+            } else {
+                let response = client()
+                    .post(format!("{origin}/api/approvals/{}/decision", approval.id))
+                    .header("x-peachsh-token", token)
+                    .json(&json!({"decision":"deny"}))
+                    .send()
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+            }
+            let before = engine.store.events(&task.run_id, 0).unwrap();
+            let proofs: Vec<_> = before
+                .iter()
+                .filter(|e| e.kind == "approval.requested")
+                .collect();
+            assert_eq!(proofs.len(), 1);
+            assert_eq!(proofs[0].data["evidence_version"], 1);
+            assert!(!proofs[0].data.to_string().contains("sk-abc"));
+            engine.resume(&task.id, "continue").await.unwrap();
+            let done = settled_engine(&engine, &task.id).await;
+            assert_eq!(done.status, "completed");
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+            assert!(!temp.path().join("src/proof.txt").exists());
+            let events = engine.store.events(&task.run_id, 0).unwrap();
+            assert!(!events.iter().any(|e| e.kind == "tool_start"));
+            let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+            assert_eq!(results.len(), 1);
+            assert_eq!(
+                results[0].data["origin"],
+                if cancelled {
+                    "approval_cancelled"
+                } else {
+                    "approval_denied"
+                }
+            );
+            assert_eq!(
+                done.messages
+                    .iter()
+                    .filter(|m| m["tool_call_id"] == "redacted-call")
+                    .count(),
+                1
+            );
+            let (session, agent, turn): (String, String, String) = Connection::open(&db_path)
+                .unwrap()
+                .query_row(
+                    "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+                    [&task.id],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )
+                .unwrap();
+            let receipt = engine
+                .send_chat_turn(SendChatTurn {
+                    session_id: SessionId(session),
+                    agent_id: AgentId(agent),
+                    expected_last_turn_id: TurnId(turn),
+                    message: "next".into(),
+                    idempotency_key: "n19-proof-next".into(),
+                })
+                .await
+                .unwrap();
+            assert_eq!(
+                settled_engine(&engine, &receipt.task.legacy_task_id)
+                    .await
+                    .status,
+                "completed"
+            );
+            assert_eq!(calls.load(Ordering::SeqCst), 2);
+        });
+        runtime.shutdown_timeout(Duration::from_secs(2));
+        let reopened = Store::open(&db_path).unwrap();
+        reopened.recover().unwrap();
+        assert_eq!(
+            reopened
+                .events(&task.run_id, 0)
+                .unwrap()
+                .iter()
+                .filter(|e| e.kind == "tool_result")
+                .count(),
+            1
+        );
+        assert!(!temp.path().join("src/proof.txt").exists());
+    }
 }

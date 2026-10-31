@@ -1613,6 +1613,14 @@ async fn a02_provider_cannot_execute_a_tool_removed_by_strategy() {
             .unwrap()
             .is_empty()
     );
+    assert!(
+        !f.engine
+            .store
+            .events(&task.run_id, 0)
+            .unwrap()
+            .iter()
+            .any(|event| event.kind == "tool_result" || event.kind == "tool_start")
+    );
 }
 #[tokio::test]
 async fn a08_cancel_while_waiting_for_approval_releases_agent_lease() {
@@ -2677,4 +2685,1107 @@ fn n18_durable_agent_stop_failure_returns_receipt_and_replay_does_not_retry() {
             0
         );
     }
+}
+
+#[tokio::test]
+async fn n19_agent_denies_write_and_command_then_starts_new_turn() {
+    let f = fixture(
+        Mode::Deny,
+        vec![
+            group(vec![
+                call(
+                    "deny-write",
+                    "write_file",
+                    json!({"path":"denied.txt","content":"no"}),
+                    0,
+                ),
+                call(
+                    "deny-command",
+                    "run_command",
+                    json!({"command":"echo denied > denied-command.txt"}),
+                    1,
+                ),
+            ]),
+            json!({"content":"first complete"}),
+            json!({"content":"second complete"}),
+        ],
+    )
+    .await;
+    let run = f.engine.start(request(3)).await.unwrap();
+    let task = settled(&f.engine, &run.tasks[0].id).await;
+    assert_eq!(task.status, "completed");
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
+    assert!(!f.dir.path().join("denied.txt").exists());
+    assert!(!f.dir.path().join("denied-command.txt").exists());
+    assert!(
+        f.engine
+            .store
+            .approvals_for_task(&task.id)
+            .unwrap()
+            .is_empty()
+    );
+    let events: Vec<_> = f
+        .engine
+        .store
+        .events(&task.run_id, 0)
+        .unwrap()
+        .into_iter()
+        .filter(|e| e.kind == "tool_result")
+        .collect();
+    assert_eq!(events.len(), 2);
+    for (event, id) in events.iter().zip(["deny-write", "deny-command"]) {
+        assert_eq!(event.data["tool_call_id"], id);
+        assert_eq!(event.data["origin_version"], 1);
+        assert_eq!(event.data["origin"], "agent_denied");
+        assert_eq!(
+            event.data["result"],
+            json!({"error":"blocked_by_agent_policy"})
+        );
+        assert_eq!(
+            task.messages
+                .iter()
+                .filter(|m| m["role"] == "tool" && m["tool_call_id"] == id)
+                .count(),
+            1
+        );
+    }
+    let (session, agent, turn): (String, String, String) = f
+        .engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+            [&task.id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    let next = f
+        .engine
+        .send_chat_turn(SendChatTurn {
+            session_id: SessionId(session),
+            agent_id: AgentId(agent),
+            expected_last_turn_id: TurnId(turn),
+            message: "continue".into(),
+            idempotency_key: "n19-agent-next".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        settled(&f.engine, &next.task.legacy_task_id).await.status,
+        "completed"
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+}
+
+#[tokio::test]
+async fn n19_unknown_host_denial_fails_until_explicit_resume_then_new_turn() {
+    let f = fixture(
+        Mode::All,
+        vec![
+            group(vec![call("unknown-call", "not_a_real_tool", json!({}), 0)]),
+            json!({"content":"resumed"}),
+            json!({"content":"continued"}),
+        ],
+    )
+    .await;
+    let run = f.engine.start(request(3)).await.unwrap();
+    let task = settled(&f.engine, &run.tasks[0].id).await;
+    assert_eq!(task.status, "failed");
+    assert!(task.error.as_deref().unwrap_or_default().contains("未授权"));
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+    assert!(
+        f.engine
+            .store
+            .approvals_for_task(&task.id)
+            .unwrap()
+            .is_empty()
+    );
+    let events = f.engine.store.events(&task.run_id, 0).unwrap();
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].data["origin"], "host_denied");
+    assert_eq!(results[0].data["origin_version"], 1);
+    assert_eq!(results[0].data["tool_call_id"], "unknown-call");
+    assert_eq!(
+        task.messages
+            .iter()
+            .filter(|m| m["role"] == "tool" && m["tool_call_id"] == "unknown-call")
+            .count(),
+        1
+    );
+    let (session, agent, turn): (String, String, String) = f
+        .engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+            [&task.id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    let next = || SendChatTurn {
+        session_id: SessionId(session.clone()),
+        agent_id: AgentId(agent.clone()),
+        expected_last_turn_id: TurnId(turn.clone()),
+        message: "continue".into(),
+        idempotency_key: "n19-host-next".into(),
+    };
+    assert!(f.engine.send_chat_turn(next()).await.is_err());
+    f.engine.resume(&task.id, "resume").await.unwrap();
+    assert_eq!(settled(&f.engine, &task.id).await.status, "completed");
+    let receipt = f.engine.send_chat_turn(next()).await.unwrap();
+    assert_eq!(
+        settled(&f.engine, &receipt.task.legacy_task_id)
+            .await
+            .status,
+        "completed"
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+    assert_eq!(
+        f.engine
+            .store
+            .events(&task.run_id, 0)
+            .unwrap()
+            .iter()
+            .filter(|e| e.kind == "tool_result" && e.data["tool_call_id"] == "unknown-call")
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn n19_cross_store_denial_without_notification_preserves_group_order() {
+    let f = fixture(
+        Mode::All,
+        vec![
+            group(vec![
+                call(
+                    "wait-one",
+                    "write_file",
+                    json!({"path":"wait-one.txt","content":"no"}),
+                    0,
+                ),
+                call(
+                    "wait-two",
+                    "write_file",
+                    json!({"path":"wait-two.txt","content":"no"}),
+                    1,
+                ),
+            ]),
+            json!({"content":"done"}),
+        ],
+    )
+    .await;
+    let run = f.engine.start(request(3)).await.unwrap();
+    let id = run.tasks[0].id.clone();
+    let other = Store::open(&f.dir.path().join("agent.db")).unwrap();
+    for expected in ["wait-one", "wait-two"] {
+        let pending = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if let Some(record) = other
+                    .pending_approvals_for_task(&id)
+                    .unwrap()
+                    .into_iter()
+                    .find(|a| a.tool_call_id == expected)
+                {
+                    break record;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        other
+            .decide_approval(&pending.id, false, "cross-store")
+            .unwrap();
+    }
+    let task = settled(&f.engine, &id).await;
+    assert_eq!(task.status, "completed");
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
+    assert!(!f.dir.path().join("wait-one.txt").exists());
+    assert!(!f.dir.path().join("wait-two.txt").exists());
+    let calls: Vec<_> = task
+        .messages
+        .iter()
+        .filter(|m| m["role"] == "tool")
+        .map(|m| m["tool_call_id"].as_str().unwrap())
+        .collect();
+    assert_eq!(calls, ["wait-one", "wait-two"]);
+    let events = other.events(&task.run_id, 0).unwrap();
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0].data["tool_call_id"], "wait-one");
+    assert_eq!(results[1].data["tool_call_id"], "wait-two");
+    assert!(
+        results
+            .iter()
+            .all(|e| e.data["origin"] == "approval_denied")
+    );
+}
+
+#[tokio::test]
+async fn n19_legacy_read_event_is_reconciled_on_real_resume_then_new_turn() {
+    let f = fixture(
+        Mode::All,
+        vec![
+            group(vec![call(
+                "legacy-read",
+                "read_file",
+                json!({"path":"sample.txt"}),
+                0,
+            )]),
+            json!({"content":"resumed"}),
+            json!({"content":"new turn"}),
+        ],
+    )
+    .await;
+    f.mock.hold.store(true, Ordering::SeqCst);
+    let run = f.engine.start(request(3)).await.unwrap();
+    let id = run.tasks[0].id.clone();
+    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        .await
+        .unwrap();
+    let store = f.engine.store.clone();
+    f.engine.set_agent_before_save_for_test(id.clone(), Arc::new(move |task, _| {
+        store.event(&task.id, "tool_result", json!({"name":"read_file","tool_call_id":"legacy-read","result":{"content":"legacy-value"}})).unwrap();
+        store.db.lock().unwrap().execute_batch("CREATE TEMP TRIGGER n19_old_step_failure BEFORE INSERT ON events WHEN NEW.kind='tool_start' BEGIN SELECT RAISE(ABORT,'n19 legacy fixture stop'); END;").unwrap();
+    }));
+    f.mock.hold.store(false, Ordering::SeqCst);
+    f.mock.release.notify_one();
+    let failed = settled(&f.engine, &id).await;
+    assert_eq!(failed.status, "failed");
+    assert!(
+        failed
+            .error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("n19 legacy fixture stop")
+    );
+    assert!(!failed.messages.iter().any(|m| m["role"] == "tool"));
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+    f.engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .execute_batch("DROP TRIGGER n19_old_step_failure;")
+        .unwrap();
+    f.engine
+        .set_agent_before_save_for_test("unused-task".into(), Arc::new(|_, _| {}));
+    let before: Vec<_> = f
+        .engine
+        .store
+        .events(&failed.run_id, 0)
+        .unwrap()
+        .into_iter()
+        .filter(|e| e.kind == "tool_result")
+        .map(|e| (e.seq, e.data))
+        .collect();
+    assert_eq!(before.len(), 1);
+    f.engine.resume(&id, "continue").await.unwrap();
+    let completed = settled(&f.engine, &id).await;
+    assert_eq!(completed.status, "completed");
+    let answer = completed
+        .messages
+        .iter()
+        .find(|m| m["tool_call_id"] == "legacy-read")
+        .unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(answer["content"].as_str().unwrap()).unwrap(),
+        json!({"content":"legacy-value"})
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
+    let after: Vec<_> = f
+        .engine
+        .store
+        .events(&failed.run_id, 0)
+        .unwrap()
+        .into_iter()
+        .filter(|e| e.kind == "tool_result")
+        .map(|e| (e.seq, e.data))
+        .collect();
+    assert_eq!(after, before);
+    assert!(
+        !f.engine
+            .store
+            .events(&failed.run_id, 0)
+            .unwrap()
+            .iter()
+            .any(|e| e.kind == "tool_start")
+    );
+    let (session, agent, turn): (String, String, String) = f
+        .engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+            [&id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    let next = f
+        .engine
+        .send_chat_turn(SendChatTurn {
+            session_id: SessionId(session),
+            agent_id: AgentId(agent),
+            expected_last_turn_id: TurnId(turn),
+            message: "new".into(),
+            idempotency_key: "n19-legacy-next".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        settled(&f.engine, &next.task.legacy_task_id).await.status,
+        "completed"
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn n19_redacted_decision_process_kill_reconciles_once() {
+    use sha2::{Digest, Sha256};
+    use std::process::{Command, Stdio};
+    if let Ok(root) = std::env::var("NHC_N19_PROOF_CHILD") {
+        let root = std::path::PathBuf::from(root);
+        let store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
+        let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
+            mode: Mode::All,
+            trace: Arc::new(Trace::default()),
+        }))
+        .unwrap();
+        let engine = Engine::new_with_agent_runtime_for_test(store.clone(), 2, runtime).unwrap();
+        let task = engine.start(request(3)).await.unwrap().tasks.remove(0);
+        let database: String = store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        crate::tool_results::crash_probe::arm(
+            database,
+            task.id.clone(),
+            "proof-call".into(),
+            "before_commit",
+            root.join("proof-signal"),
+        );
+        std::fs::write(root.join("armed"), task.id).unwrap();
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    }
+    for cancelled in [false, true] {
+        let mut f = fixture(
+            Mode::All,
+            vec![
+                group(vec![call(
+                    "proof-call",
+                    "write_file",
+                    json!({"path":"secret-proof.txt","content":"sk-abc"}),
+                    0,
+                )]),
+                json!({"content":"recovered"}),
+                json!({"content":"next"}),
+            ],
+        )
+        .await;
+        f.dir.disable_cleanup(true);
+        let root = f.dir.path();
+        f.mock.hold.store(true, Ordering::SeqCst);
+        let mut child = OwnedChild(
+            Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "agent_runtime_tests::n19_redacted_decision_process_kill_reconciles_once",
+                    "--nocapture",
+                ])
+                .env("NHC_N19_PROOF_CHILD", root)
+                .stdout(Stdio::from(
+                    std::fs::File::create(root.join("proof-child.stdout.log")).unwrap(),
+                ))
+                .stderr(Stdio::from(
+                    std::fs::File::create(root.join("proof-child.stderr.log")).unwrap(),
+                ))
+                .spawn()
+                .unwrap(),
+        );
+        let pid = child.id();
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+        let id = loop {
+            if let Ok(id) = std::fs::read_to_string(root.join("armed")) {
+                break id;
+            }
+            if let Some(status) = child.try_wait().unwrap() {
+                panic!("proof child {pid} exited: {status}");
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "proof child not armed"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        };
+        tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+            .await
+            .unwrap();
+        f.mock.hold.store(false, Ordering::SeqCst);
+        f.mock.release.notify_one();
+        let approval = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if let Some(a) = f
+                    .engine
+                    .store
+                    .pending_approvals_for_task(&id)
+                    .unwrap()
+                    .into_iter()
+                    .next()
+                {
+                    break a;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        assert!(
+            !serde_json::to_string(&f.engine.store.task(&id).unwrap())
+                .unwrap()
+                .contains("sk-abc")
+        );
+        if cancelled {
+            assert_eq!(
+                f.engine.store.cancel_pending_approvals(&id).unwrap().len(),
+                1
+            );
+        } else {
+            f.engine
+                .store
+                .decide_approval(&approval.id, false, "proof-test")
+                .unwrap();
+        }
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+        while !root.join("proof-signal").is_file() {
+            if let Some(status) = child.try_wait().unwrap() {
+                panic!("proof child {pid} exited before probe: {status}");
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "proof probe timed out"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        assert_eq!(
+            std::fs::read_to_string(root.join("proof-signal")).unwrap(),
+            format!("{id}\nproof-call\nbefore_commit\n")
+        );
+        assert!(child.try_wait().unwrap().is_none());
+        child.kill().unwrap();
+        let status = child.wait().unwrap();
+        assert!(!status.success());
+        for folder in ["proof-raw", "proof-query", "proof-recovery"] {
+            std::fs::create_dir(root.join(folder)).unwrap();
+        }
+        let mut files = vec![];
+        for name in ["agent.db", "agent.db-wal", "agent.db-shm"] {
+            let path = root.join(name);
+            if path.exists() {
+                let bytes = std::fs::read(path).unwrap();
+                for folder in ["proof-raw", "proof-query", "proof-recovery"] {
+                    std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                }
+                assert_eq!(
+                    std::fs::read(root.join("proof-raw").join(name)).unwrap(),
+                    bytes
+                );
+                files.push(json!({"name":name,"present":true,"sha256":format!("{:x}",Sha256::digest(&bytes)),"bytes":bytes.len()}));
+            } else {
+                files.push(json!({"name":name,"present":false}));
+            }
+        }
+        std::fs::write(root.join("proof-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"proof-call","phase":"before_commit","cancelled":cancelled,"kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
+        let query = Store::open(&root.join("proof-query/agent.db")).unwrap();
+        let persisted = query.task(&id).unwrap();
+        assert!(
+            !serde_json::to_string(&persisted)
+                .unwrap()
+                .contains("sk-abc")
+        );
+        assert!(
+            !persisted
+                .messages
+                .iter()
+                .any(|m| m["tool_call_id"] == "proof-call")
+        );
+        let events = query.events(&persisted.run_id, 0).unwrap();
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e.kind == "approval.requested")
+                .count(),
+            1
+        );
+        assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 0);
+        let proof = serde_json::to_value(
+            events
+                .iter()
+                .find(|e| e.kind == "approval.requested")
+                .unwrap(),
+        )
+        .unwrap();
+        let approval_snapshot = query.approval(&approval.id).unwrap();
+        assert_eq!(
+            approval_snapshot.status,
+            if cancelled {
+                crate::approval::ApprovalStatus::Cancelled
+            } else {
+                crate::approval::ApprovalStatus::Denied
+            }
+        );
+        drop(query);
+        let recovery_store = Arc::new(Store::open(&root.join("proof-recovery/agent.db")).unwrap());
+        recovery_store.recover().unwrap();
+        let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
+            mode: Mode::All,
+            trace: Arc::new(Trace::default()),
+        }))
+        .unwrap();
+        let engine =
+            Engine::new_with_agent_runtime_for_test(recovery_store.clone(), 2, runtime).unwrap();
+        engine.resume(&id, "recover").await.unwrap();
+        let done = settled(&engine, &id).await;
+        assert_eq!(done.status, "completed");
+        assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
+        assert!(!root.join("secret-proof.txt").exists());
+        let events = recovery_store.events(&done.run_id, 0).unwrap();
+        assert!(!events.iter().any(|e| e.kind == "tool_start"));
+        let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+        assert_eq!(results.len(), 1);
+        let result_event = serde_json::to_value(results[0]).unwrap();
+        assert_eq!(
+            results[0].data["origin"],
+            if cancelled {
+                "approval_cancelled"
+            } else {
+                "approval_denied"
+            }
+        );
+        assert_eq!(
+            done.messages
+                .iter()
+                .filter(|m| m["tool_call_id"] == "proof-call")
+                .count(),
+            1
+        );
+        let (session, agent, turn): (String, String, String) = recovery_store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+                [&id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        let next = engine
+            .send_chat_turn(SendChatTurn {
+                session_id: SessionId(session),
+                agent_id: AgentId(agent),
+                expected_last_turn_id: TurnId(turn),
+                message: "next".into(),
+                idempotency_key: "n19-proof-crash-next".into(),
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            settled(&engine, &next.task.legacy_task_id).await.status,
+            "completed"
+        );
+        assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+        drop(engine);
+        drop(recovery_store);
+        let reopened = Store::open(&root.join("proof-recovery/agent.db")).unwrap();
+        reopened.recover().unwrap();
+        let reopened_events = reopened.events(&done.run_id, 0).unwrap();
+        let reopened_results: Vec<_> = reopened_events
+            .iter()
+            .filter(|e| e.kind == "tool_result")
+            .collect();
+        assert_eq!(reopened_results.len(), 1);
+        assert_eq!(
+            serde_json::to_value(reopened_results[0]).unwrap(),
+            result_event
+        );
+        let reopened_proofs: Vec<_> = reopened_events
+            .iter()
+            .filter(|e| e.kind == "approval.requested")
+            .collect();
+        assert_eq!(reopened_proofs.len(), 1);
+        assert_eq!(serde_json::to_value(reopened_proofs[0]).unwrap(), proof);
+        assert_eq!(reopened.approval(&approval.id).unwrap(), approval_snapshot);
+        assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
+        for file in &files {
+            if file["present"] == true {
+                let bytes =
+                    std::fs::read(root.join("proof-raw").join(file["name"].as_str().unwrap()))
+                        .unwrap();
+                assert_eq!(
+                    format!("{:x}", Sha256::digest(&bytes)),
+                    file["sha256"].as_str().unwrap()
+                );
+                assert_eq!(bytes.len() as u64, file["bytes"].as_u64().unwrap());
+            } else {
+                assert!(
+                    !root
+                        .join("proof-raw")
+                        .join(file["name"].as_str().unwrap())
+                        .exists()
+                );
+            }
+        }
+        println!(
+            "n19 proof pid={pid} cancelled={cancelled} evidence={}",
+            root.display()
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
+    use sha2::{Digest, Sha256};
+    use std::process::{Command, Stdio};
+    if let Ok(root) = std::env::var("NHC_N19_LEGACY_CHILD") {
+        let root = std::path::PathBuf::from(root);
+        let store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
+        let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
+            mode: Mode::All,
+            trace: Arc::new(Trace::default()),
+        }))
+        .unwrap();
+        let engine = Engine::new_with_agent_runtime_for_test(store.clone(), 2, runtime).unwrap();
+        let task = engine.start(request(3)).await.unwrap().tasks.remove(0);
+        let hook_store = store.clone();
+        engine.set_agent_before_save_for_test(task.id.clone(), Arc::new(move |task, _| {
+            hook_store.event(&task.id, "tool_result", json!({"name":"read_file","tool_call_id":"legacy-kill","result":{"content":"historic"}})).unwrap();
+        }));
+        crate::engine::crash_probe::arm(
+            task.id.clone(),
+            "agent_after_assistant_save",
+            root.join("legacy-signal"),
+        );
+        std::fs::write(root.join("legacy-armed"), task.id).unwrap();
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    }
+    let mut f = fixture(
+        Mode::All,
+        vec![
+            group(vec![call(
+                "legacy-kill",
+                "read_file",
+                json!({"path":"sample.txt"}),
+                0,
+            )]),
+            json!({"content":"recovered"}),
+            json!({"content":"new turn"}),
+        ],
+    )
+    .await;
+    f.dir.disable_cleanup(true);
+    let root = f.dir.path();
+    f.mock.hold.store(true, Ordering::SeqCst);
+    let mut child = OwnedChild(
+        Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "agent_runtime_tests::n19_legacy_read_event_child_kill_then_reconcile_and_new_turn",
+                "--nocapture",
+            ])
+            .env("NHC_N19_LEGACY_CHILD", root)
+            .stdout(Stdio::from(
+                std::fs::File::create(root.join("legacy-child.stdout.log")).unwrap(),
+            ))
+            .stderr(Stdio::from(
+                std::fs::File::create(root.join("legacy-child.stderr.log")).unwrap(),
+            ))
+            .spawn()
+            .unwrap(),
+    );
+    let pid = child.id();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    let id = loop {
+        if let Ok(id) = std::fs::read_to_string(root.join("legacy-armed")) {
+            break id;
+        }
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("legacy child {pid} exited: {status}");
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "legacy child not armed"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    };
+    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        .await
+        .unwrap();
+    f.mock.hold.store(false, Ordering::SeqCst);
+    f.mock.release.notify_one();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    while !root.join("legacy-signal").is_file() {
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("legacy child {pid} exited before signal: {status}");
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "legacy signal timeout"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    let signal = std::fs::read_to_string(root.join("legacy-signal")).unwrap();
+    assert_eq!(signal, format!("{id}\n\n"));
+    assert!(child.try_wait().unwrap().is_none());
+    child.kill().unwrap();
+    let status = child.wait().unwrap();
+    assert!(!status.success());
+    for folder in ["legacy-raw", "legacy-query", "legacy-recovery"] {
+        std::fs::create_dir(root.join(folder)).unwrap();
+    }
+    let mut files = vec![];
+    for name in ["agent.db", "agent.db-wal", "agent.db-shm"] {
+        let path = root.join(name);
+        if path.exists() {
+            let bytes = std::fs::read(path).unwrap();
+            for folder in ["legacy-raw", "legacy-query", "legacy-recovery"] {
+                std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+            }
+            assert_eq!(
+                std::fs::read(root.join("legacy-raw").join(name)).unwrap(),
+                bytes
+            );
+            files.push(json!({"name":name,"present":true,"sha256":format!("{:x}",Sha256::digest(&bytes)),"bytes":bytes.len()}));
+        } else {
+            files.push(json!({"name":name,"present":false}));
+        }
+    }
+    std::fs::write(root.join("legacy-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"legacy-kill","phase":"agent_after_assistant_save","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
+    let query = Store::open(&root.join("legacy-query/agent.db")).unwrap();
+    let task = query.task(&id).unwrap();
+    assert!(
+        !task
+            .messages
+            .iter()
+            .any(|m| m["tool_call_id"] == "legacy-kill")
+    );
+    let events = query.events(&task.run_id, 0).unwrap();
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(
+        results[0].data,
+        json!({"name":"read_file","tool_call_id":"legacy-kill","result":{"content":"historic"}})
+    );
+    let original_event = serde_json::to_value(results[0]).unwrap();
+    drop(query);
+    let recovery = Arc::new(Store::open(&root.join("legacy-recovery/agent.db")).unwrap());
+    recovery.recover().unwrap();
+    let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
+        mode: Mode::All,
+        trace: Arc::new(Trace::default()),
+    }))
+    .unwrap();
+    let engine = Engine::new_with_agent_runtime_for_test(recovery.clone(), 2, runtime).unwrap();
+    engine.resume(&id, "recover historic").await.unwrap();
+    let done = settled(&engine, &id).await;
+    assert_eq!(done.status, "completed");
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
+    let answers: Vec<_> = done
+        .messages
+        .iter()
+        .filter(|m| m["tool_call_id"] == "legacy-kill")
+        .collect();
+    assert_eq!(answers.len(), 1);
+    assert_eq!(
+        serde_json::from_str::<Value>(answers[0]["content"].as_str().unwrap()).unwrap(),
+        json!({"content":"historic"})
+    );
+    let events = recovery.events(&task.run_id, 0).unwrap();
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(serde_json::to_value(results[0]).unwrap(), original_event);
+    let (session, agent, turn): (String, String, String) = recovery
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+            [&id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    let next = engine
+        .send_chat_turn(SendChatTurn {
+            session_id: SessionId(session),
+            agent_id: AgentId(agent),
+            expected_last_turn_id: TurnId(turn),
+            message: "next".into(),
+            idempotency_key: "n19-legacy-crash-next".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        settled(&engine, &next.task.legacy_task_id).await.status,
+        "completed"
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+    drop(engine);
+    drop(recovery);
+    let reopened = Store::open(&root.join("legacy-recovery/agent.db")).unwrap();
+    reopened.recover().unwrap();
+    assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
+    let events = reopened.events(&task.run_id, 0).unwrap();
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(serde_json::to_value(results[0]).unwrap(), original_event);
+    for file in &files {
+        let path = root.join("legacy-raw").join(file["name"].as_str().unwrap());
+        if file["present"] == true {
+            let bytes = std::fs::read(path).unwrap();
+            assert_eq!(
+                format!("{:x}", Sha256::digest(&bytes)),
+                file["sha256"].as_str().unwrap()
+            );
+        } else {
+            assert!(!path.exists());
+        }
+    }
+    println!("n19 legacy pid={pid} evidence={}", root.display());
+}
+
+#[tokio::test]
+async fn n19_admitted_read_finishes_after_real_engine_cancellation() {
+    use crate::{tool_call_application::ToolCallApplication, tool_runtime::ToolRuntime};
+    let f = fixture(Mode::All, vec![json!({"content":"not used"})]).await;
+    f.mock.hold.store(true, Ordering::SeqCst);
+    let run = f.engine.start(request(2)).await.unwrap();
+    let id = run.tasks[0].id.clone();
+    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        .await
+        .unwrap();
+    let mut task = f.engine.store.task(&id).unwrap();
+    let args = json!({"path":"sample.txt"});
+    task.messages.push(json!({"role":"assistant","content":null,"tool_calls":[{"id":"cancel-read","type":"function","function":{"name":"read_file","arguments":args.to_string()}}]}));
+    f.engine.store.save_new_assistant_group(&task).unwrap();
+    let runtime = Arc::new(ToolRuntime::builtin().unwrap());
+    let (lease, ()) = runtime
+        .acquire(&task, "read_file", || {
+            f.engine.store.validate_files_read(&task)
+        })
+        .unwrap();
+    let service = ToolCallApplication::new(
+        f.engine.store.clone(),
+        runtime,
+        Arc::new(tokio::sync::Mutex::new(())),
+        Arc::new(Mutex::new(None)),
+    );
+    f.engine.cancel(&id).unwrap();
+    let cancelled = settled(&f.engine, &id).await;
+    assert_eq!(cancelled.status, "cancelled");
+    assert_eq!(cancelled.messages, task.messages);
+    service
+        .perform_tool(
+            &mut task,
+            "cancel-read",
+            "read_file",
+            &args,
+            "agent-fixture-secret",
+            None,
+            lease,
+        )
+        .await
+        .unwrap();
+    let durable = f.engine.store.task(&id).unwrap();
+    assert_eq!(durable.status, "cancelled");
+    assert_eq!(durable.error, cancelled.error);
+    assert_eq!(
+        durable
+            .messages
+            .iter()
+            .filter(|m| m["tool_call_id"] == "cancel-read")
+            .count(),
+        1
+    );
+    let events = f.engine.store.events(&durable.run_id, 0).unwrap();
+    assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].data["origin"], "read_completed");
+    assert!(
+        results[0].data["result"]
+            .to_string()
+            .contains("fixture-content")
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+    assert!(f.engine.store.approvals_for_task(&id).unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn n19_known_unadvertised_and_wasm_cannot_forge_host_denial() {
+    for (mode, name, args) in [
+        (
+            Mode::ReadOnly,
+            "write_file",
+            json!({"path":"forbidden.txt","content":"x"}),
+        ),
+        (
+            Mode::All,
+            "run_wasm",
+            json!({"plugin":"missing","input":{}}),
+        ),
+    ] {
+        let f = fixture(mode, vec![group(vec![call("known-call", name, args, 0)])]).await;
+        let run = f.engine.start(request(2)).await.unwrap();
+        let task = settled(&f.engine, &run.tasks[0].id).await;
+        assert_eq!(task.status, "failed", "{name}");
+        assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+        assert!(
+            f.engine
+                .store
+                .approvals_for_task(&task.id)
+                .unwrap()
+                .is_empty()
+        );
+        let events = f.engine.store.events(&task.run_id, 0).unwrap();
+        assert!(
+            !events
+                .iter()
+                .any(|e| e.kind == "tool_start" || e.kind == "tool_result"),
+            "{name}"
+        );
+        assert!(
+            !task
+                .messages
+                .iter()
+                .any(|m| m["tool_call_id"] == "known-call")
+        );
+        assert!(!f.dir.path().join("forbidden.txt").exists());
+    }
+}
+
+#[tokio::test]
+async fn n19_unknown_result_commit_failure_resumes_by_rechecking_host_policy() {
+    let f = fixture(
+        Mode::All,
+        vec![
+            group(vec![call(
+                "unknown-recover",
+                "not_a_real_tool",
+                json!({}),
+                0,
+            )]),
+            json!({"content":"resumed"}),
+            json!({"content":"next"}),
+        ],
+    )
+    .await;
+    f.mock.hold.store(true, Ordering::SeqCst);
+    let run = f.engine.start(request(3)).await.unwrap();
+    let id = run.tasks[0].id.clone();
+    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        .await
+        .unwrap();
+    let store = f.engine.store.clone();
+    f.engine.set_agent_before_save_for_test(id.clone(),Arc::new(move |_,_| {
+        store.db.lock().unwrap().execute_batch("CREATE TEMP TRIGGER n19_host_result_failure BEFORE INSERT ON events WHEN NEW.kind='tool_result' BEGIN SELECT RAISE(ABORT,'n19 host result failure'); END;").unwrap();
+    }));
+    f.mock.hold.store(false, Ordering::SeqCst);
+    f.mock.release.notify_one();
+    let failed = settled(&f.engine, &id).await;
+    assert_eq!(failed.status, "failed");
+    assert!(
+        failed
+            .error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("n19 host result failure")
+    );
+    assert!(
+        !failed
+            .messages
+            .iter()
+            .any(|m| m["tool_call_id"] == "unknown-recover")
+    );
+    assert!(
+        !f.engine
+            .store
+            .events(&failed.run_id, 0)
+            .unwrap()
+            .iter()
+            .any(|e| e.kind == "tool_result")
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+    f.engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .execute_batch("DROP TRIGGER n19_host_result_failure;")
+        .unwrap();
+    f.engine
+        .set_agent_before_save_for_test("unused-task".into(), Arc::new(|_, _| {}));
+    f.engine.resume(&id, "recover").await.unwrap();
+    let done = settled(&f.engine, &id).await;
+    assert_eq!(done.status, "completed");
+    let events = f.engine.store.events(&done.run_id, 0).unwrap();
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].data["origin"], "host_denied");
+    assert_eq!(results[0].data["tool_call_id"], "unknown-recover");
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    assert!(f.engine.store.approvals_for_task(&id).unwrap().is_empty());
+    assert_eq!(
+        done.messages
+            .iter()
+            .filter(|m| m["tool_call_id"] == "unknown-recover")
+            .count(),
+        1
+    );
+    let (session, agent, turn): (String, String, String) = f
+        .engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT session_id,agent_id,turn_id FROM turn_tasks WHERE legacy_task_id=?1",
+            [&id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    let next = f
+        .engine
+        .send_chat_turn(SendChatTurn {
+            session_id: SessionId(session),
+            agent_id: AgentId(agent),
+            expected_last_turn_id: TurnId(turn),
+            message: "next".into(),
+            idempotency_key: "n19-host-recovery-next".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        settled(&f.engine, &next.task.legacy_task_id).await.status,
+        "completed"
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
 }
