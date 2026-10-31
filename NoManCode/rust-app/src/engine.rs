@@ -594,6 +594,10 @@ pub(crate) enum WorktreeProbePhase {
 }
 #[cfg(test)]
 type WorktreeProbe = Arc<dyn Fn(WorktreeProbePhase, &str) + Send + Sync>;
+#[cfg(test)]
+type AgentBeforeSaveCallback = Arc<dyn Fn(&Task, &Value) + Send + Sync>;
+#[cfg(test)]
+type AgentBeforeSaveProbe = (String, AgentBeforeSaveCallback);
 pub struct Engine {
     pub store: Arc<Store>,
     pub client: crate::provider_transport::ProviderClient,
@@ -609,7 +613,7 @@ pub struct Engine {
     provider_runtime: crate::provider_runtime::ProviderRuntime,
     agent_runtime: crate::agent_runtime::AgentRuntime,
     #[cfg(test)]
-    agent_before_save: Mutex<Option<(String, Arc<dyn Fn(&Task, &Value) + Send + Sync>)>>,
+    agent_before_save: Mutex<Option<AgentBeforeSaveProbe>>,
     #[cfg(test)]
     worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
@@ -692,7 +696,7 @@ impl Engine {
     pub(crate) fn set_agent_before_save_for_test(
         &self,
         task_id: String,
-        callback: Arc<dyn Fn(&Task, &Value) + Send + Sync>,
+        callback: AgentBeforeSaveCallback,
     ) {
         *self.agent_before_save.lock().unwrap() = Some((task_id, callback));
     }
