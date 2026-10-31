@@ -1,0 +1,16 @@
+   Compiling peachsh v0.2.0 (../nhc-d-runtime-management-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 4.97s
+     Running tests\runtime_management_schema.rs (.local\next18-d-67841d-attempt1\target\debug\deps\runtime_management_schema-fb873f1c920a396c.exe)
+
+running 7 tests
+test maximum_historical_revision_is_preserved ... ok
+test independent_connections_can_migrate_same_historical_database ... ok
+test migration_keeps_old_rows_and_receipts_and_opaque_secret ... ok
+test migration_failure_at_marker_is_atomic ... ok
+test marker_and_schema_shape_mismatches_are_rejected ... ok
+missing-shell fixture injection connection foreign_keys=true
+test historical_versions_12_through_16_upgrade_to_17 ... ok
+test historical_corruption_and_unsupported_objects_fail_closed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+

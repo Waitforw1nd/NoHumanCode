@@ -1,0 +1,128 @@
+{
+  "candidate": "283a29858b914c1f26318f3a9603739ebc46be1d",
+  "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+  "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+  "commands": [
+    {
+      "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+      "exit_code": 0,
+      "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+      "ended_utc": "2026-10-31T06:50:12.4039398Z",
+      "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+      "started_utc": "2026-10-31T06:50:11.9052894Z",
+      "command": "cargo check --offline --locked --all-targets"
+    },
+    {
+      "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+      "exit_code": 0,
+      "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+      "ended_utc": "2026-10-31T06:50:17.9841298Z",
+      "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+      "started_utc": "2026-10-31T06:50:12.7305581Z",
+      "command": "cargo build --offline --locked --bin peachsh"
+    },
+    {
+      "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+      "exit_code": 0,
+      "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+      "ended_utc": "2026-10-31T06:50:23.9321003Z",
+      "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+      "started_utc": "2026-10-31T06:50:18.2954179Z",
+      "command": "cargo test --offline --locked --test runtime_management_schema -- --nocapture"
+    },
+    {
+      "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+      "exit_code": 0,
+      "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+      "ended_utc": "2026-10-31T06:51:08.2644243Z",
+      "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+      "started_utc": "2026-10-31T06:50:24.1711762Z",
+      "command": "cargo test --offline --locked --test approval_gate --test checkpoint --test project_migration --test workspace_changes --test host_configuration --test host_configuration_schema --test project_context -- --nocapture"
+    },
+    {
+      "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+      "exit_code": 0,
+      "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+      "ended_utc": "2026-10-31T06:51:23.7867493Z",
+      "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+      "started_utc": "2026-10-31T06:51:08.5218133Z",
+      "command": "cargo clippy --offline --locked --all-targets -- -D warnings"
+    },
+    {
+      "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+      "exit_code": 0,
+      "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+      "ended_utc": "2026-10-31T06:51:25.2298078Z",
+      "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+      "started_utc": "2026-10-31T06:51:24.0317197Z",
+      "command": "cargo fmt --all -- --check"
+    }
+  ],
+  "source_snapshots_equal": true,
+  "source_snapshot_count": 12,
+  "tracked_files_matching_git_and_worktree": 134,
+  "text_pairs_hash_length_and_path_only_verified": 29,
+  "manifest_sha256": "16254228D46C93565FEB39E6882F0E5C56E82768260898679B92E2F6DA2EE75B",
+  "schema_result": [
+    7,
+    0,
+    0
+  ],
+  "historical_results": [
+    [
+      35,
+      0,
+      0
+    ],
+    [
+      15,
+      0,
+      0
+    ],
+    [
+      18,
+      0,
+      0
+    ],
+    [
+      6,
+      0,
+      0
+    ],
+    [
+      7,
+      0,
+      0
+    ],
+    [
+      3,
+      0,
+      0
+    ],
+    [
+      21,
+      0,
+      0
+    ]
+  ],
+  "historical_total": [
+    105,
+    0,
+    0
+  ],
+  "library_run_in_this_attempt": false,
+  "retained_library_candidate": "896b690938cb31946acb2c4030de76f58eb13d43",
+  "retained_library_result": [
+    314,
+    0,
+    0
+  ],
+  "cli_prerequisite": {
+    "bytes": 29572608,
+    "present": true,
+    "checked_utc": "2026-10-31T06:50:18.1744043Z",
+    "path": "../nhc-d-runtime-management-tests\\NoManCode\\rust-app\\.local\\next18-d-67841d-attempt1\\target\\debug\\peachsh.exe",
+    "sha256": "7B55AB29C1DB4E11BB7357917FB7CF9561E439B1E6EDCF4F8EEA78805D7A5ABE"
+  },
+  "scope": "D component checks only; final complete combination gates not run. No product test executed by manager."
+}

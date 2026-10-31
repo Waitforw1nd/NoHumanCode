@@ -1,0 +1,9 @@
+{
+  "product_tree": "88d9baeda5df6996b3b3b48957aaea60bcd523c7",
+  "exit_code": 0,
+  "rust_tree": "12451bb973c48cf2bbbeade0c89fd5a776c905e6",
+  "ended_utc": "2026-10-31T06:51:08.2644243Z",
+  "head": "283a29858b914c1f26318f3a9603739ebc46be1d",
+  "started_utc": "2026-10-31T06:50:24.1711762Z",
+  "command": "cargo test --offline --locked --test approval_gate --test checkpoint --test project_migration --test workspace_changes --test host_configuration --test host_configuration_schema --test project_context -- --nocapture"
+}
