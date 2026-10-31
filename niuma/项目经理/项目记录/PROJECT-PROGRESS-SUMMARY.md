@@ -1,3 +1,13 @@
+## 2026-10-31 NEXT-15整合与NEXT-16正式派发
+
+架构评估已完成，结论保留Host基础、局部重构并以完整公开CLI故事收口。经理基于C固定候选71e928的五门禁exit0、53块670/0/1、18对证据及154当前文件hash完成[NEXT-15联合验收](../审查记录/2026-10-31NEXT-15联合验收.md)，按范围APPROVED。
+
+主线整合f2b5b6b071167372e9da14112890a3e48d11731d；NoManCode 84f630de7154d12f2051796cd4d18fc50aa44258 / Rust 98d3f344d274cdff219c0d0047c4dae26cb23c5e，与受测候选完全一致。管理契约提交35ea2c62；产品仍同整合tree。经理未重跑正式产品测试。原B/C/D任务限定结项，旧失败与工作树保留，浏览器DOM/付费live未验收。
+
+[NEXT-16 v1.0](../任务/2026-10-31NEXT-16内核Provider服务与完整CLI链路契约.md)已正式派三名现有Terra员工；均本人实核f2b5b6b0与双tree、status/index/unmerged空并开始静态实施。B负责Provider运行时及两生产Completion，D独立测试，C空库完整开发链。新独立树/唯一文件/提交与整合权均在契约登记；不使用旧任务重复写入。
+
+当前动态：C首组件e810979b编译通过但Checkpoint恢复后resume返回request_failed而非conflict，已停止并按补充02修server::resume，固定74f40f3e待复测。B首轮check0、Provider库17/0/0，integration四项因target临时目录缺失失败，后项未执行；B补环境及真实错误分类固定87f1ce60，在原窗口重跑受影响组件。D加强实际双进程恢复和panic负控制，固定f9211fc6，尚未编译。下一第一操作：核B新组件终态，串行放C复测并合B真实依赖到D；全项目目标未完成。
+
 2026-09-29当前唯一推进员工为D：C0.7已封存、原对话idle，经理review0.7已完成；经理已明确单独恢复D补充06静态修补，B/C保持冻结。D最近暂停回执与实际a510e548/两tree已核；D本人身份正在接续更新，不纳入本次暂存。后续先审D固定候选再放行组件，未有新动态结果。
 
 2026-09-29串行阶段更新：D本人已确认在无源码编辑/运行命令的安全停点暂停，经理实核a510e548/两tree和status/index/unmerged空；C0.7已完整落盘并本人重新实核4c9c1d8/两tree/持续clean/no-build、原对话idle。经理review0.7接受失败证据封存，完整任务NEEDS_FOLLOWUP。现在C/B均冻结，下一只单独恢复D补充06，不再并行员工；最终门禁和main整合仍未完成。
