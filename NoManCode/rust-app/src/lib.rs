@@ -1,4 +1,6 @@
 pub mod agent_runtime;
+#[cfg(all(test, windows))]
+mod agent_runtime_tests;
 pub mod approval;
 pub mod budget;
 pub mod checkpoint;
