@@ -335,12 +335,94 @@ async fn composition_contract_security_disabled_and_storage_failure() {
     for forbidden in [TOKEN, STORE_SECRET, "plugin_desired", "SELECT", "sqlite"] {
         assert!(!corrupt_body.contains(forbidden), "{corrupt_body}");
     }
-    connection
-        .execute(
+    let other_desired = |db: &rusqlite::Connection| {
+        let mut statement = db
+            .prepare("SELECT plugin_id, enabled, revision, updated_at FROM plugin_desired WHERE plugin_id != 'builtin.files' ORDER BY plugin_id")
+            .unwrap();
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })
+            .unwrap();
+        rows.collect::<rusqlite::Result<Vec<_>>>().unwrap()
+    };
+    let other_requests = |db: &rusqlite::Connection| {
+        let mut statement = db
+            .prepare("SELECT key, plugin_id, enabled, expected_revision, result_revision, committed_at FROM plugin_management_requests WHERE plugin_id != 'builtin.files' ORDER BY key")
+            .unwrap();
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, i64>(5)?,
+                ))
+            })
+            .unwrap();
+        rows.collect::<rusqlite::Result<Vec<_>>>().unwrap()
+    };
+    let desired_before = other_desired(&connection);
+    let requests_before = other_requests(&connection);
+    let other_ids = BTreeSet::from([
+        "builtin.shell",
+        "builtin.chat-agent",
+        "builtin.provider-xpeach",
+    ]);
+    assert_eq!(
+        desired_before
+            .iter()
+            .map(|row| row.0.as_str())
+            .collect::<BTreeSet<_>>(),
+        other_ids
+    );
+    assert_eq!(
+        requests_before
+            .iter()
+            .map(|row| row.1.as_str())
+            .collect::<BTreeSet<_>>(),
+        other_ids
+    );
+    assert_eq!(requests_before.len(), 3);
+    let tx = connection.unchecked_transaction().unwrap();
+    assert_eq!(
+        tx.execute(
+            "DELETE FROM plugin_management_requests WHERE plugin_id='builtin.files'",
+            [],
+        )
+        .unwrap(),
+        1
+    );
+    assert_eq!(
+        tx.execute(
             "DELETE FROM plugin_desired WHERE plugin_id='builtin.files'",
             [],
         )
-        .unwrap();
+        .unwrap(),
+        1
+    );
+    assert_eq!(other_desired(&tx), desired_before);
+    assert_eq!(other_requests(&tx), requests_before);
+    tx.commit().unwrap();
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT count(*) FROM plugin_desired WHERE plugin_id='builtin.files'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap(),
+        0
+    );
+    assert_eq!(other_desired(&connection), desired_before);
+    assert_eq!(other_requests(&connection), requests_before);
     let failure = client
         .get(&endpoint)
         .header("x-peachsh-token", TOKEN)
