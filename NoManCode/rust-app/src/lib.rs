@@ -10,6 +10,8 @@ pub mod domain;
 pub mod engine;
 pub mod git_diff;
 pub(crate) mod git_worktree;
+#[cfg(test)]
+mod worktree_diagnostics;
 pub mod host_configuration;
 #[cfg(all(test, windows))]
 mod host_configuration_crash_tests;

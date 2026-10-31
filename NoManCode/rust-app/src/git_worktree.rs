@@ -287,25 +287,102 @@ async fn run(
         .get_program()
         .to_string_lossy()
         .ends_with("pwsh.exe");
-    let mut child = command.spawn().map_err(|_| GitWorktreeError::Unavailable)?;
+    #[cfg(test)]
+    let sequence = crate::worktree_diagnostics::next_command();
+    #[cfg(test)]
+    crate::worktree_diagnostics::record("git_spawn_begin", sequence, "", None, None);
+    let child_result = command.spawn();
+    #[cfg(test)]
+    crate::worktree_diagnostics::record(
+        if child_result.is_ok() {
+            "git_spawned"
+        } else {
+            "git_spawn_error"
+        },
+        sequence,
+        "",
+        child_result.as_ref().ok().and_then(|c| c.id()),
+        None,
+    );
+    let mut child = child_result.map_err(|_| GitWorktreeError::Unavailable)?;
+    #[cfg(test)]
+    crate::worktree_diagnostics::record("git_wait_begin", sequence, "", child.id(), None);
     #[cfg(all(test, windows))]
     let observation = (trace && mutating).then(|| tests::ProcessObservation::capture(&child));
     let result = timeout_at(deadline, async {
         let stdout = child.stdout.take().ok_or(GitWorktreeError::Unavailable)?;
         let stderr = child.stderr.take().ok_or(GitWorktreeError::Unavailable)?;
-        let (bytes, _, status) =
-            tokio::try_join!(read_bound(stdout, limit), read_bound(stderr, 8192), async {
-                child
+        let (bytes, _, status) = tokio::try_join!(
+            async {
+                let value = read_bound(stdout, limit).await;
+                #[cfg(test)]
+                if value.is_err() {
+                    crate::worktree_diagnostics::record(
+                        "git_stdout_error",
+                        sequence,
+                        "read_or_limit",
+                        None,
+                        None,
+                    );
+                }
+                value
+            },
+            async {
+                let value = read_bound(stderr, 8192).await;
+                #[cfg(test)]
+                if value.is_err() {
+                    crate::worktree_diagnostics::record(
+                        "git_stderr_error",
+                        sequence,
+                        "read_or_limit",
+                        None,
+                        None,
+                    );
+                }
+                value
+            },
+            async {
+                let value = child
                     .wait()
                     .await
-                    .map_err(|_| GitWorktreeError::Unavailable)
-            })?;
+                    .map_err(|_| GitWorktreeError::Unavailable);
+                #[cfg(test)]
+                crate::worktree_diagnostics::record(
+                    if value.is_ok() {
+                        "git_child_wait_ok"
+                    } else {
+                        "git_child_wait_error"
+                    },
+                    sequence,
+                    "",
+                    None,
+                    value.as_ref().ok().and_then(|s| s.code()),
+                );
+                value
+            }
+        )?;
         Ok(Output {
             code: status.code(),
             bytes,
         })
     })
     .await;
+    #[cfg(test)]
+    crate::worktree_diagnostics::record(
+        "git_wait_end",
+        sequence,
+        match &result {
+            Ok(Ok(_)) => "ok",
+            Ok(Err(_)) => "io_or_limit",
+            Err(_) => "timeout",
+        },
+        child.id(),
+        result
+            .as_ref()
+            .ok()
+            .and_then(|r| r.as_ref().ok())
+            .and_then(|o| o.code),
+    );
     match result {
         Ok(Ok(out)) if !mutating || out.code == Some(0) => Ok(out),
         other => {
@@ -441,9 +518,25 @@ async fn git(
     args: &[&str],
     limit: usize,
 ) -> Result<Output> {
-    let mut cmd = command(ctx, root, policy, &[])?;
+    #[cfg(test)]
+    crate::worktree_diagnostics::event("git_construct_begin");
+    let cmd = command(ctx, root, policy, &[]);
+    #[cfg(test)]
+    crate::worktree_diagnostics::event(if cmd.is_ok() {
+        "git_construct_ok"
+    } else {
+        "git_construct_error"
+    });
+    let mut cmd = cmd?;
     cmd.args(args);
-    run(cmd, limit, Instant::now() + Duration::from_secs(10), false).await
+    let result = run(cmd, limit, Instant::now() + Duration::from_secs(10), false).await;
+    #[cfg(test)]
+    crate::worktree_diagnostics::event(if result.is_ok() {
+        "git_return_ok"
+    } else {
+        "git_return_error"
+    });
+    result
 }
 fn verify_policy(policy: &Policy) -> Result<()> {
     RootIdentity::capture(&policy.hooks).map_err(|_| GitWorktreeError::Conflict)?;

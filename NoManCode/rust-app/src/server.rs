@@ -493,10 +493,23 @@ pub fn router(app: App) -> Router {
         .with_state(app)
 }
 async fn guard(State(app): State<App>, request: Request, next: Next) -> Response {
+    #[cfg(test)]
+    let diagnostic_case = if request.method() == axum::http::Method::POST
+        && request.uri().path().starts_with("/api/projects/")
+        && request.uri().path().ends_with("/worktrees")
+    {
+        app.engine.worktree_diagnostics()
+    } else {
+        None
+    };
+    #[cfg(test)]
+    crate::worktree_diagnostics::case_event(&diagnostic_case, "http_guard_enter");
     let expected_host = app.origin.strip_prefix("http://").unwrap_or(&app.origin);
     let headers = request.headers();
     let host_configuration = request.uri().path().starts_with("/api/host/");
     let denied = |message| {
+        #[cfg(test)]
+        crate::worktree_diagnostics::case_event(&diagnostic_case, "http_guard_denied");
         if host_configuration {
             host_config_failure(HostConfigError::Forbidden)
         } else {
@@ -536,7 +549,11 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
     {
         return denied("写请求令牌缺失或不正确");
     }
+    #[cfg(test)]
+    crate::worktree_diagnostics::case_event(&diagnostic_case, "http_guard_pass");
     let mut response = next.run(request).await;
+    #[cfg(test)]
+    crate::worktree_diagnostics::case_event(&diagnostic_case, "http_guard_response");
     apply_security_headers(&mut response);
     response
 }
@@ -1253,23 +1270,38 @@ async fn create_worktree(
     headers: HeaderMap,
     ContractJson(StrictObject(body)): ContractJson<StrictObject<CreateWorktreeBody>>,
 ) -> Result<Response> {
-    let receipt = app
-        .engine
-        .create_project_worktree(CreateWorktree {
-            source_project_id: ProjectId(workspace_task_id(source)?),
-            name: body.name,
-            parent_path: body.parent_path,
-            expected_config_revision: body.expected_config_revision,
-            expected_head: body.expected_head,
-            idempotency_key: required_idempotency_key(&headers)?,
-        })
-        .await
-        .map_err(worktree_command_error)?;
+    #[cfg(test)]
+    let diagnostic_case = app.engine.worktree_diagnostics();
+    #[cfg(test)]
+    crate::worktree_diagnostics::case_event(&diagnostic_case, "http_handler_enter");
+    let future = app.engine.create_project_worktree(CreateWorktree {
+        source_project_id: ProjectId(workspace_task_id(source)?),
+        name: body.name,
+        parent_path: body.parent_path,
+        expected_config_revision: body.expected_config_revision,
+        expected_head: body.expected_head,
+        idempotency_key: required_idempotency_key(&headers)?,
+    });
+    #[cfg(test)]
+    let future = crate::worktree_diagnostics::scope(diagnostic_case.clone(), future);
+    let result = future.await;
+    #[cfg(test)]
+    crate::worktree_diagnostics::case_event(
+        &diagnostic_case,
+        if result.is_ok() {
+            "http_engine_ok"
+        } else {
+            "http_engine_error"
+        },
+    );
+    let receipt = result.map_err(worktree_command_error)?;
     let status = match receipt.state {
         WorktreeState::Succeeded => StatusCode::OK,
         WorktreeState::Claimed | WorktreeState::Unknown => StatusCode::ACCEPTED,
         WorktreeState::Rejected => StatusCode::CONFLICT,
     };
+    #[cfg(test)]
+    crate::worktree_diagnostics::case_event(&diagnostic_case, "http_handler_ok");
     Ok((status, Json(receipt)).into_response())
 }
 async fn lookup_worktree(
@@ -3156,6 +3188,10 @@ mod worktree_http_crash_tests {
         root: PathBuf,
         phase: String,
     ) -> reqwest::Result<StatusCode> {
+        trace(
+            &root,
+            json!({"event":"original_http_send_begin","phase":phase}),
+        );
         match post.send().await {
             Ok(response) => {
                 let status = response.status();
@@ -3212,6 +3248,15 @@ mod worktree_http_crash_tests {
         let store = Arc::new(Store::open(&root.join("host.sqlite3")).unwrap());
         store.recover().unwrap();
         let engine = Engine::new(store, 2).unwrap();
+        engine.set_worktree_diagnostics(crate::worktree_diagnostics::Case::new(
+            root.clone(),
+            match phase.as_str() {
+                "claim" => "w08-claim",
+                "created" => "w08-created",
+                "registered" => "w08-registered",
+                _ => "w08-restart",
+            },
+        ));
         let probe_root = root.clone();
         let probe_phase = phase.clone();
         engine.set_worktree_probe_for_test(Arc::new(move |stage, op| {

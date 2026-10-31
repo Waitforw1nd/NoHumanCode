@@ -773,6 +773,8 @@ pub struct Engine {
     #[cfg(test)]
     worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
+    worktree_diagnostics: Mutex<Option<Arc<crate::worktree_diagnostics::Case>>>,
+    #[cfg(test)]
     plugin_commit_probe: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
     #[cfg(test)]
     restore_probe: Mutex<Option<restore_probe::Hook>>,
@@ -899,6 +901,8 @@ impl Engine {
             #[cfg(test)]
             worktree_probe: Mutex::new(None),
             #[cfg(test)]
+            worktree_diagnostics: Mutex::new(None),
+            #[cfg(test)]
             plugin_commit_probe: Mutex::new(None),
             #[cfg(test)]
             restore_probe: Mutex::new(None),
@@ -971,16 +975,42 @@ impl Engine {
             probe(phase, operation);
         }
     }
+    #[cfg(test)]
+    pub(crate) fn set_worktree_diagnostics(
+        &self,
+        case: Option<Arc<crate::worktree_diagnostics::Case>>,
+    ) {
+        if let Ok(mut slot) = self.worktree_diagnostics.lock() {
+            *slot = case;
+        }
+    }
+    #[cfg(test)]
+    pub(crate) fn worktree_diagnostics(&self) -> Option<Arc<crate::worktree_diagnostics::Case>> {
+        self.worktree_diagnostics
+            .lock()
+            .ok()
+            .and_then(|slot| slot.clone())
+    }
     pub async fn create_project_worktree(
         self: &Arc<Self>,
         request: crate::worktree_management::CreateWorktree,
     ) -> Result<crate::worktree_management::WorktreeReceipt> {
         use crate::{git_worktree as git, worktree_management::*};
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("engine_entry");
         let request = normalize_request(request)?;
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("replay_begin");
         if let Some(prior) = self.store.worktree_replay(&request)? {
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("replay_hit");
             return Ok(prior);
         }
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("inventory_begin");
         let inventory = self.store.worktree_inventory()?;
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("roots_begin");
         let roots = inventory.roots()?;
         let source = roots
             .iter()
@@ -988,6 +1018,8 @@ impl Engine {
             .ok_or(WorktreeError::NotFound)?
             .1
             .clone();
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("config_begin");
         let config = self.store.project_config(&request.source_project_id)?;
         ensure!(
             config.revision == request.expected_config_revision,
@@ -1000,6 +1032,8 @@ impl Engine {
         ))
         .map_err(|_| WorktreeError::RootChanged)?;
         let operation = uuid::Uuid::new_v4().to_string();
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("prepare_begin");
         let prepared = git::prepare(
             &context,
             &source,
@@ -1007,15 +1041,27 @@ impl Engine {
             &operation,
             &request.expected_head,
         )
-        .await
-        .map_err(map_git)?;
+        .await;
+        #[cfg(test)]
+        crate::worktree_diagnostics::event(if prepared.is_ok() {
+            "prepare_ok"
+        } else {
+            "prepare_error"
+        });
+        let prepared = prepared.map_err(map_git)?;
         let common = prepared.plan().repository.common_key().map_err(map_git)?;
         let mut members = Vec::new();
         for (id, root) in &roots {
-            match git::probe_project_git(&context, root)
-                .await
-                .map_err(map_git)?
-            {
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("project_probe_begin");
+            let observation = git::probe_project_git(&context, root).await;
+            #[cfg(test)]
+            crate::worktree_diagnostics::event(if observation.is_ok() {
+                "project_probe_ok"
+            } else {
+                "project_probe_error"
+            });
+            match observation.map_err(map_git)? {
                 git::ProjectGitObservation::NotGit => {}
                 git::ProjectGitObservation::Repository(repository) => {
                     if repository.common_key().map_err(map_git)? == common {
@@ -1034,16 +1080,33 @@ impl Engine {
                 WorktreeError::Conflict
             );
         }
-        let (receipt, replayed) = self
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("claim_begin");
+        let claim = self
             .store
-            .claim_worktree(&request, &inventory, &members, &plan)?;
+            .claim_worktree(&request, &inventory, &members, &plan);
+        #[cfg(test)]
+        crate::worktree_diagnostics::event(if claim.is_ok() {
+            "claim_ok"
+        } else {
+            "claim_error"
+        });
+        let (receipt, replayed) = claim?;
         if replayed {
             return Ok(receipt);
         }
         let engine = self.clone();
         let original = receipt.clone();
         // No await between committing admission and handing ownership to the worker.
-        let worker = tokio::spawn(async move {
+        #[cfg(test)]
+        let diagnostic_case = crate::worktree_diagnostics::current();
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("worker_spawn_begin");
+        let worker_future = async move {
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("worker_enter");
+            #[cfg(test)]
+            crate::worktree_diagnostics::event("claim_probe_enter");
             #[cfg(test)]
             engine.observe_worktree(WorktreeProbePhase::ClaimCommitted, &receipt.operation_id);
             let claimed =
@@ -1099,7 +1162,12 @@ impl Engine {
                         .finish_worktree(&receipt, None, Some((state, cause)))
                 }
             }
-        });
+        };
+        #[cfg(test)]
+        let worker_future = crate::worktree_diagnostics::scope(diagnostic_case, worker_future);
+        let worker = tokio::spawn(worker_future);
+        #[cfg(test)]
+        crate::worktree_diagnostics::event("worker_spawned");
         match worker.await {
             Ok(Ok(receipt)) => Ok(receipt),
             Ok(Err(_)) | Err(_) => self.store.finish_worktree(
