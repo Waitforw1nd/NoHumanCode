@@ -65,7 +65,7 @@ async fn run(
                 recorded.lock().unwrap().push((method, path, authenticated));
                 if let Some(bytes) = &reply {
                     if bytes == b"__timeout__" {
-                        tokio::time::sleep(Duration::from_secs(5)).await;
+                        std::future::pending::<()>().await;
                     } else {
                         let _ = socket.write_all(bytes).await;
                     }
