@@ -1,6 +1,9 @@
 //! Public Host restart preserves an unanswered legacy result; Engine resume is covered separately.
 #![cfg(windows)]
-use peachsh::{domain::*, store::Store};
+use peachsh::{
+    domain::*,
+    store::{Store, fresh_settings},
+};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{path::Path, process::Stdio, time::Duration};
@@ -60,6 +63,7 @@ async fn host_restart_keeps_legacy_result_without_automatic_tool_execution() {
     std::fs::create_dir(root.join("workspace")).unwrap();
     let db = root.join("data/peachsh.sqlite3");
     let store = Store::open(&db).unwrap();
+    fresh_settings(&store, &root.join("workspace")).unwrap();
     let task = Task {
         id: "task".into(),
         run_id: "run".into(),
