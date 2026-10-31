@@ -71,6 +71,24 @@ impl Drop for NetworkSlot {
     }
 }
 impl Engine {
+    pub fn builtin_agent_status(
+        &self,
+    ) -> std::result::Result<
+        crate::agent_runtime::AgentRuntimeStatus,
+        crate::agent_runtime::AgentError,
+    > {
+        self.agent_runtime.status()
+    }
+    pub fn enable_builtin_agent(
+        &self,
+    ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
+        self.agent_runtime.enable()
+    }
+    pub fn disable_builtin_agent(
+        &self,
+    ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
+        self.agent_runtime.disable()
+    }
     /// In-memory control; the next process starts with the builtin enabled.
     pub fn disable_builtin_provider(&self) -> Result<()> {
         self.provider_runtime.disable()
@@ -576,6 +594,10 @@ pub(crate) enum WorktreeProbePhase {
 }
 #[cfg(test)]
 type WorktreeProbe = Arc<dyn Fn(WorktreeProbePhase, &str) + Send + Sync>;
+#[cfg(test)]
+type AgentBeforeSaveCallback = Arc<dyn Fn(&Task, &Value) + Send + Sync>;
+#[cfg(test)]
+type AgentBeforeSaveProbe = (String, AgentBeforeSaveCallback);
 pub struct Engine {
     pub store: Arc<Store>,
     pub client: crate::provider_transport::ProviderClient,
@@ -589,6 +611,9 @@ pub struct Engine {
     deferred_resume: Mutex<HashMap<String, String>>,
     tool_runtime: ToolRuntime,
     provider_runtime: crate::provider_runtime::ProviderRuntime,
+    agent_runtime: crate::agent_runtime::AgentRuntime,
+    #[cfg(test)]
+    agent_before_save: Mutex<Option<AgentBeforeSaveProbe>>,
     #[cfg(test)]
     worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
@@ -607,6 +632,7 @@ impl Engine {
             max_concurrency,
             tool_runtime,
             crate::provider_runtime::ProviderRuntime::builtin()?,
+            crate::agent_runtime::AgentRuntime::builtin()?,
         )
     }
     #[cfg(test)]
@@ -619,6 +645,7 @@ impl Engine {
             2,
             runtime,
             crate::provider_runtime::ProviderRuntime::builtin()?,
+            crate::agent_runtime::AgentRuntime::builtin()?,
         )
     }
     #[cfg(test)]
@@ -629,7 +656,49 @@ impl Engine {
     ) -> Result<Arc<Self>> {
         let (files, shell) = store.builtin_plugin_states()?;
         let tools = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
-        Self::assemble(store, max_concurrency, tools, runtime)
+        Self::assemble(
+            store,
+            max_concurrency,
+            tools,
+            runtime,
+            crate::agent_runtime::AgentRuntime::builtin()?,
+        )
+    }
+    #[cfg(test)]
+    pub(crate) fn new_with_agent_runtime_for_test(
+        store: Arc<Store>,
+        max_concurrency: usize,
+        runtime: crate::agent_runtime::AgentRuntime,
+    ) -> Result<Arc<Self>> {
+        Self::new_with_runtimes_for_test(
+            store,
+            max_concurrency,
+            runtime,
+            crate::provider_runtime::ProviderRuntime::builtin()?,
+        )
+    }
+    #[cfg(test)]
+    pub(crate) fn new_with_runtimes_for_test(
+        store: Arc<Store>,
+        max_concurrency: usize,
+        agent: crate::agent_runtime::AgentRuntime,
+        provider: crate::provider_runtime::ProviderRuntime,
+    ) -> Result<Arc<Self>> {
+        let (files, shell) = store.builtin_plugin_states()?;
+        let tools = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
+        Self::assemble(store, max_concurrency, tools, provider, agent)
+    }
+    #[cfg(test)]
+    pub(crate) fn agent_runtime_for_test(&self) -> &crate::agent_runtime::AgentRuntime {
+        &self.agent_runtime
+    }
+    #[cfg(test)]
+    pub(crate) fn set_agent_before_save_for_test(
+        &self,
+        task_id: String,
+        callback: AgentBeforeSaveCallback,
+    ) {
+        *self.agent_before_save.lock().unwrap() = Some((task_id, callback));
     }
     #[cfg(test)]
     pub(crate) fn provider_runtime_for_test(&self) -> &crate::provider_runtime::ProviderRuntime {
@@ -640,6 +709,7 @@ impl Engine {
         max_concurrency: usize,
         tool_runtime: ToolRuntime,
         provider_runtime: crate::provider_runtime::ProviderRuntime,
+        agent_runtime: crate::agent_runtime::AgentRuntime,
     ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
             store,
@@ -654,6 +724,9 @@ impl Engine {
             deferred_resume: Mutex::new(HashMap::new()),
             tool_runtime,
             provider_runtime,
+            agent_runtime,
+            #[cfg(test)]
+            agent_before_save: Mutex::new(None),
             #[cfg(test)]
             worktree_probe: Mutex::new(None),
             #[cfg(test)]
@@ -1571,6 +1644,7 @@ impl Engine {
         });
     }
     async fn run_task(&self, task: &mut Task, cancel: &CancellationToken) -> Result<()> {
+        let agent = self.agent_runtime.acquire()?;
         loop {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let dependencies = match self.store.dependency_tasks(&task.id)? {
@@ -1640,13 +1714,28 @@ impl Engine {
             task.updated_at = now();
             self.store.save_task(task)?;
         }
-        for _round in 0..task.spec.max_rounds {
+        for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
-            let tools = self.tool_runtime.definitions(task)?;
+            let available = self.tool_runtime.definitions(task)?;
             ensure!(
                 serde_json::to_vec(&task.messages)?.len() <= 1_500_000,
                 "任务上下文过长，请创建新任务并提供摘要"
             );
+            let classes: Vec<_> = available
+                .iter()
+                .map(|tool| agent_tool_class(tool["function"]["name"].as_str()))
+                .collect();
+            let decision = agent.decide(
+                crate::agent_runtime::StrategyInput::BeforeCompletion { tools: &classes },
+                &task.messages,
+                round,
+                task.spec.max_rounds,
+            )?;
+            ensure!(!cancel.is_cancelled(), "任务已停止");
+            let crate::agent_runtime::StrategyAction::UseTools(indices) = decision else {
+                return Err(crate::agent_runtime::AgentError::InvalidDecision.into());
+            };
+            let tools: Vec<_> = indices.into_iter().map(|i| available[i].clone()).collect();
             let mut text = String::new();
             let prepared =
                 self.provider_runtime
@@ -1695,16 +1784,72 @@ impl Engine {
                 }
                 task.usage = projection;
             }
-            if let Some(calls) = message["tool_calls"].as_array() {
+            let calls = match message.get("tool_calls") {
+                None => None,
+                Some(value) => Some(
+                    value
+                        .as_array()
+                        .ok_or_else(|| anyhow::anyhow!("invalid provider tool calls"))?,
+                ),
+            };
+            if let Some(calls) = calls {
                 validate_new_tool_group(&task.messages, calls)?;
             }
-            task.messages.push(message.clone());
-            task.updated_at = now();
-            self.store.save_task(task)?;
-            let Some(calls) = message["tool_calls"].as_array() else {
+            #[cfg(test)]
+            {
+                let callback = self
+                    .agent_before_save
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .filter(|(id, _)| id == &task.id)
+                    .map(|(_, callback)| callback.clone());
+                if let Some(callback) = callback {
+                    callback(task, &message);
+                }
+            }
+            let mut candidate = task.clone();
+            candidate.messages.push(message.clone());
+            candidate.updated_at = now();
+            if calls.is_some() {
+                self.store.save_new_assistant_group(&candidate)?;
+            } else {
+                self.store.save_task(&candidate)?;
+            }
+            *task = candidate;
+            #[cfg(test)]
+            crash_probe::block(&task.id, "agent_after_assistant_save", "");
+            ensure!(!cancel.is_cancelled(), "任务已停止");
+            let classes: Vec<_> = calls
+                .map(|calls| {
+                    calls
+                        .iter()
+                        .map(|call| agent_tool_class(call["function"]["name"].as_str()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let outcome = match calls {
+                Some(_) => crate::agent_runtime::CompletionKind::ToolGroup(&classes),
+                None => crate::agent_runtime::CompletionKind::NoToolCalls,
+            };
+            let decision = agent.decide(
+                crate::agent_runtime::StrategyInput::AfterCompletion { outcome },
+                &task.messages,
+                round,
+                task.spec.max_rounds,
+            )?;
+            ensure!(!cancel.is_cancelled(), "任务已停止");
+            let Some(calls) = calls else {
+                ensure!(
+                    matches!(decision, crate::agent_runtime::StrategyAction::Finish),
+                    "invalid agent decision"
+                );
                 return Ok(());
             };
-            for call in calls {
+            let crate::agent_runtime::StrategyAction::ToolVotes(votes) = decision else {
+                return Err(crate::agent_runtime::AgentError::InvalidDecision.into());
+            };
+            for (call, vote) in calls.iter().zip(votes) {
                 ensure!(!cancel.is_cancelled(), "任务已停止");
                 let name = call["function"]["name"].as_str().context("工具名称缺失")?;
                 let args: Value = serde_json::from_str(
@@ -1716,8 +1861,28 @@ impl Engine {
                     tools.iter().any(|t| t["function"]["name"] == name),
                     "模型请求了未授权的工具"
                 );
-                self.execute_or_wait(task, call, name, &args, &key, cancel)
-                    .await?;
+                let call_id = call["id"].as_str().context("工具调用缺少 id")?;
+                match vote {
+                    crate::agent_runtime::ToolVote::ApplyHostPolicy => {
+                        self.execute_or_wait(task, call, name, &args, &key, cancel)
+                            .await?;
+                        #[cfg(test)]
+                        crash_probe::block(&task.id, "agent_after_applied_result", call_id);
+                    }
+                    crate::agent_runtime::ToolVote::Deny => {
+                        #[cfg(test)]
+                        crash_probe::block(&task.id, "agent_before_denied_result", call_id);
+                        self.record_tool_result(
+                            task,
+                            call_id,
+                            name,
+                            r#"{"error":"blocked_by_agent_policy"}"#,
+                            &key,
+                        )?;
+                        #[cfg(test)]
+                        crash_probe::block(&task.id, "agent_after_denied_result", call_id);
+                    }
+                }
             }
         }
         anyhow::bail!("达到工具轮数上限；请检查结果后继续此成员")
@@ -2747,6 +2912,18 @@ impl Engine {
                 task.cancel.cancel();
             }
         }
+    }
+}
+
+fn agent_tool_class(name: Option<&str>) -> crate::agent_runtime::ToolClass {
+    use crate::agent_runtime::ToolClass;
+    match name {
+        Some("read_file") => ToolClass::Read,
+        Some("list_files") => ToolClass::List,
+        Some("search_files") => ToolClass::Search,
+        Some("write_file") => ToolClass::Write,
+        Some("run_command") => ToolClass::Command,
+        _ => ToolClass::Other,
     }
 }
 

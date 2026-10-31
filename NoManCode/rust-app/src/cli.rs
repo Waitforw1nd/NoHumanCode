@@ -498,6 +498,8 @@ async fn host_workflow(
 pub enum Command {
     /// Configure this local Host; saving does not authorize or contact a Provider.
     Host(HostArgs),
+    /// Read process-local runtime diagnostics.
+    Runtime(RuntimeArgs),
     Plugin(PluginArgs),
     Project(ProjectArgs),
     Run(RunArgs),
@@ -520,6 +522,7 @@ impl Command {
     pub fn valid_ids(&self) -> bool {
         match self {
             Self::Host(args) => args.command.valid(),
+            Self::Runtime(_) => true,
             Self::Plugin(args) => match &args.command {
                 PluginCommand::List => true,
                 PluginCommand::Status { id } => valid_id(id),
@@ -635,6 +638,24 @@ impl Command {
             },
         }
     }
+}
+#[derive(Args)]
+pub struct RuntimeArgs {
+    #[command(subcommand)]
+    command: RuntimeCommand,
+}
+#[derive(Subcommand)]
+enum RuntimeCommand {
+    Agent(AgentRuntimeArgs),
+}
+#[derive(Args)]
+struct AgentRuntimeArgs {
+    #[command(subcommand)]
+    command: AgentRuntimeCommand,
+}
+#[derive(Subcommand)]
+enum AgentRuntimeCommand {
+    Status,
 }
 #[derive(Args)]
 pub struct PluginArgs {
@@ -1283,6 +1304,9 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         Command::Host(args) => {
             return host_workflow(&client, &origin, json_output, args.command).await;
         }
+        Command::Runtime(args) => {
+            return agent_runtime_workflow(&client, &origin, json_output, args).await;
+        }
         Command::Project(ProjectArgs {
             command: ProjectCommand::Budget(args),
         }) => return budget_workflow(&client, &origin, json_output, args.command).await,
@@ -1610,6 +1634,147 @@ async fn worktree_workflow(
             error
         }
     })
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AgentRuntimeView {
+    plugin_id: String,
+    service: String,
+    interface_version: String,
+    scope: String,
+    active: bool,
+    admission_open: bool,
+    in_flight: u64,
+    generation: u64,
+    draining: bool,
+    transitioning: bool,
+    effects: u64,
+    recovery: u64,
+    last_failure: Option<AgentRuntimeFailure>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AgentRuntimeFailure {
+    Unavailable,
+    InvalidDecision,
+    Failed,
+    Panicked,
+    Stopped,
+    Busy,
+    Lifecycle,
+    Internal,
+}
+
+fn validate_agent_runtime(value: &Value) -> Result<(), Failure> {
+    if !worktree_fields(
+        value,
+        &[
+            "plugin_id",
+            "service",
+            "interface_version",
+            "scope",
+            "active",
+            "admission_open",
+            "in_flight",
+            "generation",
+            "draining",
+            "transitioning",
+            "effects",
+            "recovery",
+            "last_failure",
+        ],
+    ) {
+        return Err(invalid_response());
+    }
+    let view: AgentRuntimeView = decode(value.clone())?;
+    if view.plugin_id != "builtin.chat-agent"
+        || view.service != "agent.strategy"
+        || view.interface_version != "1.0.0"
+        || view.scope != "process"
+        || view.generation == 0
+        || view.draining != (!view.admission_open && view.in_flight > 0)
+        || (view.admission_open && (!view.active || view.transitioning))
+        || (view.draining && (!view.active || view.transitioning))
+        || (view.transitioning && (view.active || view.in_flight != 0))
+        || (view.active && !view.transitioning && view.effects == 0)
+    {
+        return Err(invalid_response());
+    }
+    let _ = (view.recovery, view.last_failure);
+    Ok(())
+}
+
+async fn agent_runtime_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    args: RuntimeArgs,
+) -> Result<(), Failure> {
+    match args.command {
+        RuntimeCommand::Agent(AgentRuntimeArgs {
+            command: AgentRuntimeCommand::Status,
+        }) => {}
+    }
+    let bootstrap: Bootstrap = decode(
+        request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?))
+            .await
+            .map_err(|_| Failure::fixed("agent_runtime_unavailable", "Agent运行态不可用", false))?,
+    )?;
+    if bootstrap.token.is_empty()
+        || bootstrap.token.len() > 4096
+        || reqwest::header::HeaderValue::from_str(&bootstrap.token).is_err()
+    {
+        return Err(invalid_response());
+    }
+    let response = client
+        .get(endpoint(origin, &["api", "runtime", "agents", "chat"])?)
+        .header("x-peachsh-token", &bootstrap.token)
+        .send()
+        .await
+        .map_err(|_| Failure::fixed("agent_runtime_unavailable", "Agent运行态不可用", false))?;
+    let status = response.status().as_u16();
+    if !response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| {
+            v.split(';')
+                .next()
+                .is_some_and(|v| v.trim().eq_ignore_ascii_case("application/json"))
+        })
+    {
+        return Err(invalid_response());
+    }
+    let bytes = limited_body(response)
+        .await
+        .map_err(|_| invalid_response())?;
+    let HostWireValue(value) = serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+    if !safe_strings(&value)
+        || contains_string(&value, &bootstrap.token)
+        || value.to_string().contains(&bootstrap.token)
+    {
+        return Err(invalid_response());
+    }
+    if status != 200 {
+        if status == 503
+            && worktree_fields(&value, &["code", "message", "retryable", "error"])
+            && value["code"] == "agent_runtime_unavailable"
+            && value["message"] == "Agent运行态不可用"
+            && value["error"] == value["message"]
+            && value["retryable"] == false
+        {
+            return Err(Failure::fixed(
+                "agent_runtime_unavailable",
+                "Agent运行态不可用",
+                false,
+            ));
+        }
+        return Err(invalid_response());
+    }
+    validate_agent_runtime(&value)?;
+    print_value(value, json_output)
 }
 
 fn validate_plugin(plugin: &PluginStatus) -> Result<(), Failure> {
@@ -2944,6 +3109,7 @@ async fn workflow_inner(
             TaskCommand::Approvals { .. } | TaskCommand::NetworkCalls { .. } => unreachable!(),
         },
         Command::Host(_)
+        | Command::Runtime(_)
         | Command::Plugin(_)
         | Command::Approval(_)
         | Command::Network(_)

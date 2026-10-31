@@ -409,6 +409,7 @@ pub fn router(app: App) -> Router {
         .route("/api/plugins", get(plugins))
         .route("/api/plugins/{id}", get(plugin_status))
         .route("/api/plugins/{id}/enabled", put(set_plugin_enabled))
+        .route("/api/runtime/agents/chat", get(agent_runtime_status))
         .route("/api/settings", get(settings).put(save_settings))
         .route("/api/host/config", get(host_config))
         .route("/api/host/routes/{id}", put(configure_host_route))
@@ -508,6 +509,7 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
         return denied("拒绝跨站请求");
     }
     let authenticated_read = host_configuration
+        || request.uri().path() == "/api/runtime/agents/chat"
         || request.uri().path().starts_with("/api/network/")
         || request.uri().path() == "/api/plugins"
         || request.uri().path().starts_with("/api/plugins/")
@@ -691,6 +693,34 @@ async fn plugin_status(State(app): State<App>, Path(id): Path<String>) -> Respon
     match app.engine.plugin_status(&id) {
         Ok(plugin) => Json(json!({"plugin":plugin})).into_response(),
         Err(error) => plugin_error(error),
+    }
+}
+
+async fn agent_runtime_status(State(app): State<App>, RawQuery(query): RawQuery) -> Response {
+    if query.is_some() {
+        return ApiError::with_code(
+            StatusCode::BAD_REQUEST,
+            ErrorCode::RequestFailed,
+            false,
+            anyhow::anyhow!("Agent运行态查询不接受参数"),
+        )
+        .into_response();
+    }
+    match app.engine.builtin_agent_status() {
+        Ok(status) => Json(status).into_response(),
+        Err(_) => {
+            let message = "Agent运行态不可用";
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "code": "agent_runtime_unavailable",
+                    "message": message,
+                    "retryable": false,
+                    "error": message
+                })),
+            )
+                .into_response()
+        }
     }
 }
 
@@ -3742,5 +3772,294 @@ mod budget_http_crash_tests {
             provider_task.abort();
             let _ = provider_task.await;
         }
+    }
+}
+
+#[cfg(test)]
+mod agent_runtime_http_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn real_router_reflects_runtime_and_hides_unavailable_details() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(crate::store::Store::open(&dir.path().join("agent.db")).unwrap());
+        let engine = Engine::new(store, 1).unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let token = "synthetic-agent-router-token";
+        let app = App {
+            engine: engine.clone(),
+            token: token.into(),
+            origin: origin.clone(),
+        };
+        let server = tokio::spawn(async move { axum::serve(listener, router(app)).await.unwrap() });
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        let url = format!("{origin}/api/runtime/agents/chat");
+        let get = || client.get(&url).header("x-peachsh-token", token);
+        let first: Value = get().send().await.unwrap().json().await.unwrap();
+        assert_eq!(
+            first,
+            serde_json::to_value(engine.builtin_agent_status().unwrap()).unwrap()
+        );
+        engine.disable_builtin_agent().unwrap();
+        let disabled: Value = get().send().await.unwrap().json().await.unwrap();
+        assert_eq!(
+            disabled,
+            serde_json::to_value(engine.builtin_agent_status().unwrap()).unwrap()
+        );
+        assert_eq!(disabled["admission_open"], false);
+        engine.enable_builtin_agent().unwrap();
+        let enabled: Value = get().send().await.unwrap().json().await.unwrap();
+        assert_eq!(
+            enabled,
+            serde_json::to_value(engine.builtin_agent_status().unwrap()).unwrap()
+        );
+        assert_eq!(enabled["admission_open"], true);
+        engine
+            .agent_runtime_for_test()
+            .set_status_unavailable_for_test(true);
+        let response = get().send().await.unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(
+            body,
+            json!({"code":"agent_runtime_unavailable","message":"Agent运行态不可用","retryable":false,"error":"Agent运行态不可用"})
+        );
+        assert!(!body.to_string().contains(token));
+        engine
+            .agent_runtime_for_test()
+            .set_status_unavailable_for_test(false);
+        assert_eq!(
+            get().send().await.unwrap().json::<Value>().await.unwrap(),
+            serde_json::to_value(engine.builtin_agent_status().unwrap()).unwrap()
+        );
+        server.abort();
+        let _ = server.await;
+    }
+}
+
+#[cfg(all(test, windows))]
+mod agent_runtime_public_execution_tests {
+    use super::*;
+    use crate::{
+        agent_runtime::{
+            AgentRuntime, AgentStrategy, CompletionKind, StrategyAction, StrategyError,
+            StrategyInput, ToolClass,
+        },
+        network_authorization::{
+            ConfirmRequest, NetworkPurpose, NetworkSubject, NetworkSubjectKind,
+        },
+        project_config::{ConfigureProject, ProjectConfig, RegisterProject},
+    };
+    use std::sync::Mutex;
+    use tokio::sync::Notify;
+
+    struct ReadOnlyStrategy;
+    impl AgentStrategy for ReadOnlyStrategy {
+        fn decide(
+            &self,
+            input: StrategyInput<'_>,
+            messages: &[Value],
+            round: usize,
+            _: usize,
+        ) -> std::result::Result<StrategyAction, StrategyError> {
+            assert_eq!(round, 0);
+            assert!(messages.iter().any(|m| m["role"] == "user"));
+            Ok(match input {
+                StrategyInput::BeforeCompletion { tools } => StrategyAction::UseTools(
+                    tools
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, tool)| (*tool == ToolClass::Read).then_some(index))
+                        .collect(),
+                ),
+                StrategyInput::AfterCompletion {
+                    outcome: CompletionKind::NoToolCalls,
+                } => StrategyAction::Finish,
+                _ => return Err(StrategyError::InvalidDecision),
+            })
+        }
+    }
+    #[derive(Clone, Default)]
+    struct Mock {
+        requests: Arc<Mutex<Vec<Value>>>,
+        entered: Arc<Notify>,
+        release: Arc<Notify>,
+    }
+    async fn completion(State(mock): State<Mock>, Json(body): Json<Value>) -> impl IntoResponse {
+        mock.requests.lock().unwrap().push(body);
+        mock.entered.notify_one();
+        mock.release.notified().await;
+        (
+            [("content-type", "text/event-stream")],
+            format!(
+                "data: {}\n\ndata: [DONE]\n\n",
+                json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}})
+            ),
+        )
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn public_run_uses_injected_strategy_and_exposes_real_lease() {
+        let dir = tempfile::tempdir().unwrap();
+        let mock = Mock::default();
+        let provider_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", provider_listener.local_addr().unwrap());
+        let provider_app = Router::new()
+            .route("/chat/completions", post(completion))
+            .with_state(mock.clone());
+        let provider =
+            tokio::spawn(
+                async move { axum::serve(provider_listener, provider_app).await.unwrap() },
+            );
+        let store = Arc::new(crate::store::Store::open(&dir.path().join("agent.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: dir.path().to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 128,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store
+            .put_secret("route::route", "synthetic-agent-fixture")
+            .unwrap();
+        let project = store
+            .register_project(RegisterProject {
+                name: "fixture".into(),
+                root_path: dir.path().to_string_lossy().into(),
+                idempotency_key: "project".into(),
+            })
+            .unwrap();
+        let config = store.project_config(&project.id).unwrap();
+        let configured = store
+            .configure_project(ConfigureProject {
+                project_id: project.id.clone(),
+                expected_revision: config.revision,
+                config: ProjectConfig {
+                    allowed_route_ids: vec!["route".into()],
+                    default_route_id: Some("route".into()),
+                    tools: true,
+                    write_scopes: vec!["*".into()],
+                    allow_commands: true,
+                },
+            })
+            .unwrap();
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: "route".into(),
+            project_id: Some(project.id.clone()),
+        };
+        let preview = store.network_preview(subject.clone()).unwrap();
+        store
+            .network_confirm(
+                subject,
+                ConfirmRequest {
+                    config_revision: preview.config_revision,
+                    credential_revision: preview.credential_revision,
+                    binding_digest: preview.binding_digest,
+                    purposes: vec![NetworkPurpose::Completion],
+                },
+                "grant",
+            )
+            .unwrap();
+        let runtime = AgentRuntime::with_strategy_for_test(Arc::new(ReadOnlyStrategy)).unwrap();
+        let engine = Engine::new_with_agent_runtime_for_test(store, 2, runtime).unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let token = "synthetic-router-token";
+        let app = App {
+            engine: engine.clone(),
+            token: token.into(),
+            origin: origin.clone(),
+        };
+        let server = tokio::spawn(async move { axum::serve(listener, router(app)).await.unwrap() });
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        let body = json!({"expected_config_revision":configured.revision,"request":{"title":"A12","kind":"chat","tasks":[{"name":"agent","role":"test","route_id":"route","prompt":"inspect","depends_on":[],"write_scopes":["*"],"tools":true,"allow_commands":true,"max_rounds":3}]}});
+        let response = client
+            .post(format!("{origin}/api/projects/{}/runs", project.id.0))
+            .header("x-peachsh-token", token)
+            .header("idempotency-key", "public-run")
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let run: Value = response.json().await.unwrap();
+        let run_id = run["id"].as_str().unwrap();
+        tokio::time::timeout(Duration::from_secs(10), mock.entered.notified())
+            .await
+            .unwrap();
+        let requested = mock.requests.lock().unwrap().clone();
+        assert_eq!(requested.len(), 1);
+        let tools = requested[0]["tools"].as_array().unwrap();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0]["function"]["name"], "read_file");
+        let status_url = format!("{origin}/api/runtime/agents/chat");
+        let inflight: Value = client
+            .get(&status_url)
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(inflight["in_flight"], 1);
+        assert_eq!(inflight["active"], true);
+        assert_eq!(inflight["admission_open"], true);
+        mock.release.notify_one();
+        let complete = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let value: Value = client
+                    .get(format!("{origin}/api/runs/{run_id}"))
+                    .header("x-peachsh-token", token)
+                    .send()
+                    .await
+                    .unwrap()
+                    .json()
+                    .await
+                    .unwrap();
+                let task = &value["tasks"][0];
+                if task["status"] == "completed" {
+                    break value;
+                }
+                assert!(
+                    !matches!(
+                        task["status"].as_str(),
+                        Some("failed" | "cancelled" | "interrupted")
+                    ),
+                    "task failed: {task}"
+                );
+                tokio::time::sleep(Duration::from_millis(30)).await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(complete["tasks"][0]["output"], "done");
+        let settled: Value = client
+            .get(&status_url)
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(settled["in_flight"], 0);
+        assert_eq!(mock.requests.lock().unwrap().len(), 1);
+        server.abort();
+        provider.abort();
+        let _ = server.await;
+        let _ = provider.await;
     }
 }
