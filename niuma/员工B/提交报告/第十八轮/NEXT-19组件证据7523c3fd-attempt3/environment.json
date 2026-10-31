@@ -1,0 +1,15 @@
+{
+  "legacy_target_directory": true,
+  "offline": true,
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "dev_debug": 0,
+  "incremental": 0,
+  "msvc": "[msvc]",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "sdk": "[windows-sdk]\\Lib\\10.0.22621.0",
+  "tmp": "../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-7523c3fd-attempt3\\tmp",
+  "test_debug": 0,
+  "target": "../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-7523c3fd-attempt3\\target",
+  "locked": true,
+  "jobs": 2
+}
