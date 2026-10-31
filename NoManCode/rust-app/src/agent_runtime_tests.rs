@@ -980,7 +980,51 @@ async fn a09_orphan_approval_blocks_new_assistant_and_terminal_save_cannot_write
                 .ensure_approval(&historic, "orphan-a09", "write_file", &args)
                 .unwrap();
             *approval_captured.lock().unwrap() = Some(orphan_approval_snapshot(&store, &task.id));
-            store.save_task(task).unwrap();
+            let snapshot = orphan_task_snapshot(&store, &task.id);
+            assert_eq!(snapshot.0, task.run_id);
+            let mut value: serde_json::Value = serde_json::from_str(&snapshot.1).unwrap();
+            assert_eq!(value["id"], task.id);
+            assert_eq!(value["run_id"], task.run_id);
+            assert_eq!(
+                value["messages"],
+                serde_json::to_value(&historic.messages).unwrap()
+            );
+            let error = store.save_task(task).unwrap_err();
+            assert!(format!("{error:#}").contains("旧任务快照不能推进状态"));
+            assert_eq!(orphan_task_snapshot(&store, &task.id), snapshot);
+            assert_eq!(
+                orphan_approval_snapshot(&store, &task.id),
+                approval_captured.lock().unwrap().clone().unwrap()
+            );
+
+            // Deliberately remove only the appended message to model a corrupt orphan.
+            let removed = value["messages"].as_array_mut().unwrap().pop().unwrap();
+            assert_eq!(removed, serde_json::to_value(message).unwrap());
+            assert_eq!(
+                value["messages"],
+                serde_json::to_value(&task.messages).unwrap()
+            );
+            let changed = store
+                .db
+                .lock()
+                .unwrap()
+                .execute(
+                    "UPDATE tasks SET value=?1 WHERE id=?2 AND run_id=?3 AND value=?4",
+                    rusqlite::params![value.to_string(), &task.id, &task.run_id, &snapshot.1],
+                )
+                .unwrap();
+            assert_eq!(changed, 1);
+            let after = orphan_task_snapshot(&store, &task.id);
+            assert_eq!(after.0, snapshot.0);
+            assert_eq!(after.2, snapshot.2);
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&after.1).unwrap(),
+                value
+            );
+            assert_eq!(
+                orphan_approval_snapshot(&store, &task.id),
+                approval_captured.lock().unwrap().clone().unwrap()
+            );
         }),
     );
     f.mock.release.notify_one();
@@ -1023,6 +1067,32 @@ async fn a09_orphan_approval_blocks_new_assistant_and_terminal_save_cannot_write
     ));
     assert!(!f.dir.path().join("orphan.txt").exists());
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+}
+fn orphan_task_snapshot(store: &Store, task_id: &str) -> (String, String, String) {
+    let db = store.db.lock().unwrap();
+    let (run_id, value): (String, String) = db
+        .query_row(
+            "SELECT run_id,value FROM tasks WHERE id=?1",
+            [task_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    let projection: String = db
+        .query_row(
+            "SELECT json_group_array(json_array(id,turn_id,session_id,agent_id,legacy_task_id,status,created_at,updated_at,turn_status,turn_session_id,project_id,request_hash,idempotency_key,turn_created_at,turn_updated_at)) FROM (SELECT tt.id,tt.turn_id,tt.session_id,tt.agent_id,tt.legacy_task_id,tt.status,tt.created_at,tt.updated_at,t.status AS turn_status,t.session_id AS turn_session_id,t.project_id,t.request_hash,t.idempotency_key,t.created_at AS turn_created_at,t.updated_at AS turn_updated_at FROM turn_tasks tt LEFT JOIN turns t ON t.id=tt.turn_id WHERE tt.legacy_task_id=?1 ORDER BY tt.id)",
+            [task_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let inconsistent: i64 = db
+        .query_row(
+            "SELECT COUNT(*) FROM turn_tasks tt LEFT JOIN turns t ON t.id=tt.turn_id LEFT JOIN sessions s ON s.id=tt.session_id JOIN tasks task ON task.id=tt.legacy_task_id WHERE tt.legacy_task_id=?1 AND (t.id IS NULL OR s.id IS NULL OR t.session_id!=tt.session_id OR s.legacy_run_id!=task.run_id OR tt.status!=json_extract(task.value,'$.status'))",
+            [task_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(inconsistent, 0);
+    (run_id, value, projection)
 }
 fn orphan_approval_snapshot(store: &Store, task_id: &str) -> String {
     store
