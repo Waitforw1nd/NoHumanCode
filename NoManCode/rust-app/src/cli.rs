@@ -522,7 +522,24 @@ impl Command {
     pub fn valid_ids(&self) -> bool {
         match self {
             Self::Host(args) => args.command.valid(),
-            Self::Runtime(_) => true,
+            Self::Runtime(args) => match &args.command {
+                RuntimeCommand::Agent(_) => true,
+                RuntimeCommand::Component(args) => match &args.command {
+                    RuntimeComponentCommand::List => true,
+                    RuntimeComponentCommand::Status { id } => valid_id(id),
+                    RuntimeComponentCommand::SetEnabled {
+                        id,
+                        expected_revision,
+                        key,
+                        ..
+                    } => {
+                        valid_id(id)
+                            && *expected_revision <= i64::MAX as u64
+                            && secrets::validate_idempotency_key(key).is_ok()
+                            && !key.contains(',')
+                    }
+                },
+            },
             Self::Plugin(args) => match &args.command {
                 PluginCommand::List => true,
                 PluginCommand::Status { id } => valid_id(id),
@@ -647,6 +664,28 @@ pub struct RuntimeArgs {
 #[derive(Subcommand)]
 enum RuntimeCommand {
     Agent(AgentRuntimeArgs),
+    Component(RuntimeComponentArgs),
+}
+#[derive(Args)]
+struct RuntimeComponentArgs {
+    #[command(subcommand)]
+    command: RuntimeComponentCommand,
+}
+#[derive(Subcommand)]
+enum RuntimeComponentCommand {
+    List,
+    Status {
+        id: String,
+    },
+    SetEnabled {
+        id: String,
+        #[arg(long, required = true, action = clap::ArgAction::Set)]
+        enabled: bool,
+        #[arg(long)]
+        expected_revision: u64,
+        #[arg(long)]
+        key: String,
+    },
 }
 #[derive(Args)]
 struct AgentRuntimeArgs {
@@ -1304,9 +1343,23 @@ pub async fn execute(port: u16, json_output: bool, command: Command) -> Result<(
         Command::Host(args) => {
             return host_workflow(&client, &origin, json_output, args.command).await;
         }
-        Command::Runtime(args) => {
-            return agent_runtime_workflow(&client, &origin, json_output, args).await;
-        }
+        Command::Runtime(args) => match args.command {
+            RuntimeCommand::Agent(agent) => {
+                return agent_runtime_workflow(
+                    &client,
+                    &origin,
+                    json_output,
+                    RuntimeArgs {
+                        command: RuntimeCommand::Agent(agent),
+                    },
+                )
+                .await;
+            }
+            RuntimeCommand::Component(args) => {
+                return runtime_component_workflow(&client, &origin, json_output, args.command)
+                    .await;
+            }
+        },
         Command::Project(ProjectArgs {
             command: ProjectCommand::Budget(args),
         }) => return budget_workflow(&client, &origin, json_output, args.command).await,
@@ -1716,6 +1769,7 @@ async fn agent_runtime_workflow(
         RuntimeCommand::Agent(AgentRuntimeArgs {
             command: AgentRuntimeCommand::Status,
         }) => {}
+        RuntimeCommand::Component(_) => return Err(invalid_response()),
     }
     let bootstrap: Bootstrap = decode(
         request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?))
@@ -1775,6 +1829,337 @@ async fn agent_runtime_workflow(
     }
     validate_agent_runtime(&value)?;
     print_value(value, json_output)
+}
+
+fn runtime_unknown() -> Failure {
+    Failure::fixed(
+        "operation_result_unknown",
+        "Runtime management outcome unknown; use the same key and parameters for an explicit replay.",
+        false,
+    )
+}
+
+fn validate_runtime_component(value: &Value) -> Result<(), Failure> {
+    if !worktree_fields(
+        value,
+        &["id", "capability", "desired", "runtime", "converged"],
+    ) {
+        return Err(invalid_response());
+    }
+    let id = value["id"].as_str().ok_or_else(invalid_response)?;
+    let agent = match (id, value["capability"].as_str()) {
+        ("builtin.chat-agent", Some("agent.strategy@1.0.0")) => true,
+        ("builtin.provider-xpeach", Some("provider.completion-codec@1.0.0")) => false,
+        _ => return Err(invalid_response()),
+    };
+    let d = &value["desired"];
+    if !worktree_fields(d, &["scope", "enabled", "revision", "updated_at"])
+        || d["scope"] != "host"
+        || !d["enabled"].is_boolean()
+        || d["revision"].as_u64().is_none_or(|x| x > i64::MAX as u64)
+        || d["updated_at"].as_i64().is_none_or(|x| x < 0)
+    {
+        return Err(invalid_response());
+    }
+    let r = &value["runtime"];
+    let fields: &[&str] = if agent {
+        &[
+            "kind",
+            "scope",
+            "active",
+            "admission_open",
+            "in_flight",
+            "generation",
+            "draining",
+            "transitioning",
+            "effects",
+            "recovery",
+            "last_failure",
+        ]
+    } else {
+        &[
+            "kind",
+            "scope",
+            "active",
+            "admission_open",
+            "in_flight",
+            "generation",
+            "transitioning",
+            "effects",
+            "recovery",
+            "lifecycle_failed",
+        ]
+    };
+    if !worktree_fields(r, fields)
+        || r["scope"] != "process"
+        || r["kind"]
+            != if agent {
+                "agent"
+            } else {
+                "completion_provider"
+            }
+    {
+        return Err(invalid_response());
+    }
+    let active = r["active"].as_bool().ok_or_else(invalid_response)?;
+    let admission = r["admission_open"].as_bool().ok_or_else(invalid_response)?;
+    let transition = r["transitioning"].as_bool().ok_or_else(invalid_response)?;
+    let flight = r["in_flight"].as_u64().ok_or_else(invalid_response)?;
+    let effects = r["effects"].as_u64().ok_or_else(invalid_response)?;
+    let recovery = r["recovery"].as_u64().ok_or_else(invalid_response)?;
+    if r["generation"].as_u64().is_none_or(|n| n == 0) || (!transition && admission && !active) {
+        return Err(invalid_response());
+    }
+    let (failure, draining) = if agent {
+        let draining = r["draining"].as_bool().ok_or_else(invalid_response)?;
+        if draining != (!admission && flight > 0) {
+            return Err(invalid_response());
+        }
+        let failure = if r["last_failure"].is_null() {
+            false
+        } else {
+            if !matches!(
+                r["last_failure"].as_str(),
+                Some(
+                    "unavailable"
+                        | "invalid_decision"
+                        | "failed"
+                        | "panicked"
+                        | "stopped"
+                        | "busy"
+                        | "lifecycle"
+                        | "internal"
+                )
+            ) {
+                return Err(invalid_response());
+            }
+            true
+        };
+        (failure, draining)
+    } else {
+        (
+            r["lifecycle_failed"]
+                .as_bool()
+                .ok_or_else(invalid_response)?,
+            false,
+        )
+    };
+    let desired = d["enabled"].as_bool().ok_or_else(invalid_response)?;
+    let converged = !transition
+        && !failure
+        && recovery == 0
+        && if desired {
+            active && admission && (!agent || !draining)
+        } else {
+            !active && !admission && effects == 0 && (!agent || (!draining && flight == 0))
+        };
+    if value["converged"].as_bool() != Some(converged) {
+        return Err(invalid_response());
+    }
+    Ok(())
+}
+
+async fn runtime_body(response: reqwest::Response) -> Result<Vec<u8>, Failure> {
+    const LIMIT: usize = 256 * 1024;
+    if response.content_length().is_some_and(|n| n > LIMIT as u64) {
+        return Err(invalid_response());
+    }
+    let mut stream = response.bytes_stream();
+    let mut body = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|_| invalid_response())?;
+        if body.len().saturating_add(chunk.len()) > LIMIT {
+            return Err(invalid_response());
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}
+
+async fn runtime_component_workflow(
+    client: &Client,
+    origin: &Url,
+    json_output: bool,
+    command: RuntimeComponentCommand,
+) -> Result<(), Failure> {
+    let bootstrap: Bootstrap =
+        decode(request_bootstrap(client.get(endpoint(origin, &["api", "bootstrap"])?)).await?)?;
+    if bootstrap.token.is_empty()
+        || bootstrap.token.len() > 4096
+        || reqwest::header::HeaderValue::from_str(&bootstrap.token).is_err()
+    {
+        return Err(invalid_response());
+    }
+    let (segments, mutation) = match &command {
+        RuntimeComponentCommand::List => (vec!["api", "runtime", "components"], None),
+        RuntimeComponentCommand::Status { id } => {
+            (vec!["api", "runtime", "components", id.as_str()], None)
+        }
+        RuntimeComponentCommand::SetEnabled {
+            id,
+            enabled,
+            expected_revision,
+            key,
+        } => (
+            vec!["api", "runtime", "components", id.as_str(), "enabled"],
+            Some((*enabled, *expected_revision, key.as_str())),
+        ),
+    };
+    let url = endpoint(origin, &segments)?;
+    let request = match mutation {
+        Some((enabled, revision, key)) => client
+            .put(url)
+            .header("idempotency-key", key)
+            .json(&json!({"enabled":enabled,"expected_revision":revision})),
+        None => client.get(url),
+    }
+    .header("x-peachsh-token", &bootstrap.token);
+    let writing = mutation.is_some();
+    let response = request.send().await.map_err(|_| {
+        if writing {
+            runtime_unknown()
+        } else {
+            invalid_response()
+        }
+    })?;
+    let status = response.status().as_u16();
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| {
+            v.split(';')
+                .next()
+                .is_some_and(|v| v.trim().eq_ignore_ascii_case("application/json"))
+        });
+    let process = async {
+        if !content_type {
+            return Err(invalid_response());
+        }
+        let bytes = runtime_body(response).await?;
+        let HostWireValue(value) =
+            serde_json::from_slice(&bytes).map_err(|_| invalid_response())?;
+        if !safe_strings(&value)
+            || contains_string(&value, &bootstrap.token)
+            || value.to_string().contains(&bootstrap.token)
+        {
+            return Err(invalid_response());
+        }
+        if status != 200 {
+            if !worktree_fields(&value, &["code", "message", "error", "retryable"])
+                || value["retryable"] != false
+                || value["message"] != value["error"]
+            {
+                return Err(invalid_response());
+            }
+            let (code, expected, message) = match value["code"].as_str() {
+                Some("runtime_invalid") => {
+                    ("runtime_invalid", 400, "Invalid runtime management request")
+                }
+                Some("runtime_not_found") => {
+                    ("runtime_not_found", 404, "Runtime component not found")
+                }
+                Some("runtime_revision_conflict") => (
+                    "runtime_revision_conflict",
+                    409,
+                    "Runtime revision conflict",
+                ),
+                Some("runtime_idempotency_conflict") => (
+                    "runtime_idempotency_conflict",
+                    409,
+                    "Runtime idempotency conflict",
+                ),
+                Some("runtime_busy") => ("runtime_busy", 409, "Runtime transition busy"),
+                Some("runtime_unavailable") => {
+                    ("runtime_unavailable", 503, "Runtime component unavailable")
+                }
+                Some("runtime_internal") => (
+                    "runtime_internal",
+                    500,
+                    "Runtime management outcome unavailable",
+                ),
+                _ => return Err(invalid_response()),
+            };
+            if status != expected || value["message"] != message {
+                return Err(invalid_response());
+            }
+            if writing && code == "runtime_internal" {
+                return Err(runtime_unknown());
+            }
+            return Err(Failure::fixed(code, message, false));
+        }
+        match &command {
+            RuntimeComponentCommand::List => {
+                if !worktree_fields(&value, &["components"]) {
+                    return Err(invalid_response());
+                }
+                let components = value["components"]
+                    .as_array()
+                    .ok_or_else(invalid_response)?;
+                if components.len() != 2
+                    || components[0]["id"] != "builtin.chat-agent"
+                    || components[1]["id"] != "builtin.provider-xpeach"
+                {
+                    return Err(invalid_response());
+                }
+                for item in components {
+                    validate_runtime_component(item)?;
+                }
+            }
+            RuntimeComponentCommand::Status { id } => {
+                validate_runtime_component(&value)?;
+                if value["id"] != *id {
+                    return Err(invalid_response());
+                }
+            }
+            RuntimeComponentCommand::SetEnabled {
+                id,
+                enabled,
+                expected_revision,
+                ..
+            } => {
+                if !worktree_fields(&value, &["receipt", "replayed", "current"])
+                    || !value["replayed"].is_boolean()
+                {
+                    return Err(invalid_response());
+                }
+                let receipt = &value["receipt"];
+                if !worktree_fields(
+                    receipt,
+                    &[
+                        "plugin_id",
+                        "enabled",
+                        "previous_revision",
+                        "revision",
+                        "committed_at",
+                    ],
+                ) || receipt["plugin_id"] != *id
+                    || receipt["enabled"].as_bool() != Some(*enabled)
+                    || receipt["previous_revision"].as_u64() != Some(*expected_revision)
+                    || receipt["revision"].as_u64() != expected_revision.checked_add(1)
+                    || receipt["revision"]
+                        .as_u64()
+                        .is_none_or(|n| n > i64::MAX as u64)
+                    || receipt["committed_at"].as_i64().is_none_or(|n| n <= 0)
+                {
+                    return Err(invalid_response());
+                }
+                validate_runtime_component(&value["current"])?;
+                if value["current"]["id"] != *id {
+                    return Err(invalid_response());
+                }
+            }
+        }
+        print_value(value, json_output)
+    }
+    .await;
+    process.map_err(|error| {
+        if writing && matches!(error.code, "internal" | "output_failed" | "unavailable") {
+            runtime_unknown()
+        } else {
+            error
+        }
+    })
 }
 
 fn validate_plugin(plugin: &PluginStatus) -> Result<(), Failure> {

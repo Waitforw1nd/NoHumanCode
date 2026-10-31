@@ -1,6 +1,6 @@
 # 第一版 CLI：现状与待验收操作清单
 
-NEXT-15 安全初始化已完成联合验收并整合主线，固定组合五门禁通过。NEXT-16 的 Provider 新内核与同一空数据 CLI 用户故事已通过固定组合五门禁和限定联合验收，并合入主线。NEXT-17 的 Agent 策略服务与只读诊断仍以实际受测候选和经理验收为准。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
+NEXT-15 安全初始化已完成联合验收并整合主线，固定组合五门禁通过。NEXT-16 的 Provider 新内核与同一空数据 CLI 用户故事已通过固定组合五门禁和限定联合验收，并合入主线。NEXT-17 的 Agent 策略服务与只读诊断已按限定范围联合验收并整合主线；NEXT-18 持久运行时管理以本次固定候选和经理最终验收为准。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
 
 ## 使用前置与已知缺口
 
@@ -109,3 +109,14 @@ peachsh --port 3090 --json project budget call --id PROJECT --call-id CALL
 | 付费真实Provider | 未运行；mock传输和真实本地Host不代表付费全流程试用。 |
 
 正式交付应补入固定源码版本、操作环境、真实退出码、原始日志/发布副本hash与每项结果。阶段一尚未整体完成；Desktop、完整Team、MCP、高级KeyPool不属于本轮。
+
+
+## NEXT-18 持久运行时管理（候选待验收）
+
+`runtime component list` 和 `runtime component status <id>` 查询 Agent 与 Completion Provider 的持久意图和当前进程状态。ID 分别是 `builtin.chat-agent` 和 `builtin.provider-xpeach`。例如，先查询 revision，再执行：
+
+    peachsh --port 3090 --json runtime component set-enabled builtin.chat-agent --enabled false --expected-revision 0 --key disable-agent-1
+
+启用使用新的 key 和查询到的当前 revision。返回的 receipt 证明意图提交；current 是当前进程的独立观测，`converged=false` 表示尚未收敛。Agent 已准入任务可排空；Provider 开关只控制 Completion，Models/Balance 不受此开关控制。实时状态不保证跨进程广播，Agent 原只读诊断及 files/shell 原插件管理接口保留。
+
+写入后断线、超时或不可信响应可能意味着命令已提交，客户端不会自动重发。查询当前状态不能证明特定 key 是否提交；如需取回回执，人工使用原 key、原 ID、原 enabled 和原 expected-revision 显式回放，不换 key 猜测。重启按持久意图恢复，已发生的网络和预算事实不因切换而消失。本段是待联合验收的候选说明，不代表整个项目已完成。
