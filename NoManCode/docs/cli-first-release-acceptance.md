@@ -1,6 +1,6 @@
 # 第一版 CLI：现状与待验收操作清单
 
-NEXT-15 安全初始化已完成联合验收并整合主线，固定组合五门禁通过。NEXT-16 的同一空数据 CLI 用户故事已在 NEXT-15 加 C 修订的候选上通过限定组件测试；B/D 的 Provider 服务新内核尚未完成最终组合验收，不能把该组件结果当作新组合结果。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
+NEXT-15 安全初始化已完成联合验收并整合主线，固定组合五门禁通过。NEXT-16 的 Provider 新内核与同一空数据 CLI 用户故事已通过固定组合五门禁和限定联合验收，并合入主线。NEXT-17 的 Agent 策略服务与只读诊断仍以实际受测候选和经理验收为准。本文不是阶段一已完成声明；mock Provider、组件测试和付费实机试用分别记录，不能互相替代。程序名仍为 `peachsh`。
 
 ## 使用前置与已知缺口
 
@@ -47,9 +47,9 @@ PUT交给transport后，断线、超时、重定向、超大或截断响应、�
 
 I10只证明安全初始化最小链。它不替代默认插件组合逐项装配/撤销，也不代表开发读搜、写入/Shell审批、事件重连、Diff/Checkpoint/冲突恢复与重启新Turn的完整第一阶段验收。
 
-## NEXT-16 同一新用户验收（C 组件通过，最终组合待验收）
+## NEXT-16 同一新用户验收（固定组合已验收）
 
-`tests/first_user_workflow.rs` 在 C 候选 `74f40f3e` 的限定组件测试中通过：从不存在数据库开始，使用真实Host与公开CLI创建路由、Project、预算及网络授权，随后在同一Project/Session里通过本地mock执行读、列、搜索，分别拒绝和批准写入，批准Shell运行受控检查。事件按游标继续；通过真实Git diff与checkpoint检查修改，验证外部修改冲突、恢复、旧Task封存和新Turn；实际终止并wait Host后同库重启，重新bootstrap并继续新Turn，同时核查账务、回执、事件及副作用。该结果不代表含B/D Provider新内核的组合已通过。
+`tests/first_user_workflow.rs` 在 C 候选 `74f40f3e` 的限定组件测试中通过：从不存在数据库开始，使用真实Host与公开CLI创建路由、Project、预算及网络授权，随后在同一Project/Session里通过本地mock执行读、列、搜索，分别拒绝和批准写入，批准Shell运行受控检查。事件按游标继续；通过真实Git diff与checkpoint检查修改，验证外部修改冲突、恢复、旧Task封存和新Turn；实际终止并wait Host后同库重启，重新bootstrap并继续新Turn，同时核查账务、回执、事件及副作用。该组件结果属于历史；含B/D Provider新内核的最终组合已另行通过五门禁并验收。
 
 Checkpoint恢复仅覆盖Host记录的文件写入，Shell命令产生的其他文件或外部效果不由文件checkpoint自动撤销。执行命令前仍需单次审批与网络告知；Project权限上限不代表单次批准。遇到恢复冲突应先检查文件和回执，由用户决定处理，不能盲目重试或覆盖外部修改。
 
@@ -70,11 +70,13 @@ Checkpoint恢复仅覆盖Host记录的文件写入，Shell命令产生的其他�
 
 上述入口沿用既有命令；示例中的ID、key、版本和目录必须来自当前Host实际查询。完整参数以同一构建的 `--help` 为准。
 
-NEXT-15 基线的 Provider Completion 走既有 Host 路径。NEXT-16 的 Provider 服务候选另提供 Rust 进程内生命周期控制和状态，禁用只关闭新准入，已准入的调用仍可按其生命周期完成；该控制不属于本候选的 CLI 插件管理命令，也不持久化，重启默认重新启用。候选尚待 B/D 组合和最终验收，不能把候选能力当作已验收事实或默认插件全部完成。
+Agent运行态可通过 `peachsh --port 3090 --json runtime agent status` 只读查询；去掉 `--json` 可读human输出。诊断是本进程的实际状态，不是持久配置或写控制：关闭新准入时已准入任务可能仍在排空，`active` 不等同 `admission_open`；`transitioning` 时 effects/recovery 为最后稳定快照。重启按当前进程重新装配，不能从旧代次推断跨重启状态。
+
+NEXT-15 基线的 Provider Completion 走既有 Host 路径。NEXT-16 的 Provider 服务候选另提供 Rust 进程内生命周期控制和状态，禁用只关闭新准入，已准入的调用仍可按其生命周期完成；该控制不属于本候选的 CLI 插件管理命令，也不持久化，重启默认重新启用。NEXT-16 Provider组合已验收并合入主线；这不代表默认插件全部完成。
 
 ## NEXT-14 预算操作
 
-以下为NEXT-14已验收切片对应命令；NEXT-15组合已完成五门禁与联合验收，NEXT-16新内核组合仍待验证：
+以下为NEXT-14已验收切片对应命令；NEXT-15组合已完成五门禁与联合验收，NEXT-16新内核组合已通过固定五门禁及限定验收：
 
 ```text
 peachsh --port 3090 --json project budget config get --id PROJECT
@@ -98,12 +100,12 @@ peachsh --port 3090 --json project budget call --id PROJECT --call-id CALL
 | 事项 | 当前证据边界与待补项 |
 | --- | --- |
 | 从零上手 | I01/I10组件通过；同一初始不存在DB、真实binary及CLI完成路由配置、Project权限/选择、预算、Completion授权、一次本地mock Completion及实际usage核查，再kill+wait和同DB重启。Provider计数配置/授权后为0、Completion及重启后为1；原receipt revision=1、当前配置revision=2均保留。没有Store预注入路由。 |
-| 最新组合主路径 | C 的 NEXT-16 单一空数据用户故事组件已通过；仍需在含B/D新内核的固定组合复验，独立worktree与默认插件组合按各自验收范围核对。 |
+| 最新组合主路径 | NEXT-16 单一空数据用户故事与含B/D新内核固定组合已通过测试并限定验收；独立worktree与默认插件组合仍按各自验收范围核对。 |
 | 预算 U01–U10 | NEXT-14已有冻结范围验收；NEXT-15组合回归及I10实际usage另记新证据，不把旧结果写成本轮重跑。 |
-| 凭据与错误 | I07/I08组件通过，包括严格HTTP、CLI JSON/human输出检查、PUT后断线/不可信响应/stdout失败为unknown且不自动重发。不能以历史C组件结果替代D输入/crash范围或NEXT-16最终组合验收。 |
+| 凭据与错误 | I07/I08组件通过，包括严格HTTP、CLI JSON/human输出检查、PUT后断线/不可信响应/stdout失败为unknown且不自动重发。历史C组件结果不替代D输入/crash范围及其独立证据；NEXT-16最终组合已限定验收。 |
 | 默认插件组合 | 对照项目书逐项映射能力和真实撤销行为；不以插件数目相等代替验收。 |
 | 旧fallback | I11旧网页HTTP兼容组件通过：真实Host加载原HTML/JS/CSS，模拟app.js原形状GET/PUT/read-back，保存Key后只返回可用性布尔值；旧更新推进Host revision，原新接口receipt不变且过期CAS被拒绝，同DB重启后保持，Provider=0。沿用同源旧GET无需写令牌、PUT需令牌及Host/Origin/site边界；新config GET仍需令牌。未启动浏览器或执行DOM，不能称浏览器交互验收或完整I11通过。 |
-| 标准门禁 | NEXT-15固定组合五门禁与联合验收已完成；NEXT-16含B/D新内核的完整候选仍须冻结后串行check/test/fmt/clippy/wasm-check，本说明不构成放行。 |
+| 标准门禁 | NEXT-15固定组合五门禁与联合验收已完成；NEXT-16含B/D新内核的固定候选五门禁已通过并限定验收；后续候选仍须按其正式放行验证。 |
 | 付费真实Provider | 未运行；mock传输和真实本地Host不代表付费全流程试用。 |
 
 正式交付应补入固定源码版本、操作环境、真实退出码、原始日志/发布副本hash与每项结果。阶段一尚未整体完成；Desktop、完整Team、MCP、高级KeyPool不属于本轮。
