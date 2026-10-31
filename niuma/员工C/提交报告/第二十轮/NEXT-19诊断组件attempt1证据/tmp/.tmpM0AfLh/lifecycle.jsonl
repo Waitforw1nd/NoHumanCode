@@ -1,0 +1,11 @@
+{"at_unix_ms":1793451106170,"event":"fixture_retained","parent_pid":50336,"phase":"created"}
+{"at_unix_ms":1793451106764,"event":"spawned","phase":"created","pid":51196}
+{"at_unix_ms":1793451106764,"event":"wait_begin","notification":"listen-created","phase":"created","pid":51196}
+{"at_unix_ms":1793451106774,"event":"child_started","phase":"created","pid":51196}
+{"at_unix_ms":1793451106867,"event":"notification_observed","notification":"listen-created","phase":"created","pid":51196}
+{"at_unix_ms":1793451106867,"event":"wait_begin","notification":"ready","phase":"created","pid":51196}
+{"at_unix_ms":1793451106867,"event":"original_http_send_begin","phase":"created"}
+{"at_unix_ms":1793451116869,"event":"notification_timeout","notification":"ready","original_http_finished":false,"phase":"created","pid":51196}
+{"at_unix_ms":1793451116878,"event":"drop_kill_result","ok":true,"phase":"created","pid":51196}
+{"at_unix_ms":1793451117103,"connect":false,"event":"original_http_transport_error","phase":"created","request":true,"timeout":false}
+{"at_unix_ms":1793451117107,"event":"drop_reaped","exit_code":1,"phase":"created","pid":51196,"success":false}

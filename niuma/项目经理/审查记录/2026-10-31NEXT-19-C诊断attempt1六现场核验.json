@@ -1,0 +1,280 @@
+{
+  "candidate": "a3279c8ce1ae3c9b81ee7eb5f9c699318f98c753",
+  "method": "Copied raw trio and existing query separately; opened only manager copies mode=ro; compared facts and checked original hashes unchanged. No original DB opened.",
+  "cases": [
+    {
+      "case": "t05-before",
+      "scene": "nhc-t05-sj9oCJ",
+      "metadata": "process.json",
+      "phase": "before_commit",
+      "pid": 51316,
+      "raw_metadata_hashes_match": true,
+      "raw_and_query_copies_match": true,
+      "originals_unchanged": true,
+      "source_files": {
+        "raw\\test.db": {
+          "bytes": 450560,
+          "sha256": "5e33b0455655ff17d00367deb42f0b5a3cd7ee320b34ecd5fa9c53fc4a6767ae"
+        },
+        "raw\\test.db-shm": {
+          "bytes": 32768,
+          "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+        },
+        "raw\\test.db-wal": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "query\\test.db": {
+          "bytes": 450560,
+          "sha256": "5e33b0455655ff17d00367deb42f0b5a3cd7ee320b34ecd5fa9c53fc4a6767ae"
+        }
+      },
+      "facts": {
+        "status": "queued",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "turn_task_status": [
+          "queued"
+        ],
+        "tool_result_keys": [],
+        "integrity_check": [
+          "ok"
+        ],
+        "tool_result_origins": []
+      }
+    },
+    {
+      "case": "t05-after",
+      "scene": "nhc-t05-dX5AVR",
+      "metadata": "process.json",
+      "phase": "after_commit",
+      "pid": 51360,
+      "raw_metadata_hashes_match": true,
+      "raw_and_query_copies_match": true,
+      "originals_unchanged": true,
+      "source_files": {
+        "raw\\test.db": {
+          "bytes": 450560,
+          "sha256": "c7871b42199098fe83af72aa40861bc0458874fb095f4f2c678e0acbd6be5a7e"
+        },
+        "raw\\test.db-shm": {
+          "bytes": 32768,
+          "sha256": "213c47196788b7701e862ef590bb885c0542c21b7a0d95902cd9dc3b509718e3"
+        },
+        "raw\\test.db-wal": {
+          "bytes": 20632,
+          "sha256": "f3ba7d4ef259758deca02445db3ece8eee66fcb203910a51b26bffeda0c03519"
+        },
+        "query\\test.db": {
+          "bytes": 450560,
+          "sha256": "68372f5aca03e2b660febc3d3e0598d4b2f66a022a560117de801e670e6ea475"
+        }
+      },
+      "facts": {
+        "status": "queued",
+        "tool_messages": 1,
+        "tool_results": 1,
+        "turn_task_status": [
+          "queued"
+        ],
+        "tool_result_keys": [
+          [
+            "name",
+            "origin",
+            "origin_version",
+            "result",
+            "tool_call_id"
+          ]
+        ],
+        "integrity_check": [
+          "ok"
+        ],
+        "tool_result_origins": [
+          "agent_denied"
+        ]
+      }
+    },
+    {
+      "case": "legacy",
+      "scene": ".tmp0Q2kHo",
+      "metadata": "legacy-process.json",
+      "phase": "agent_after_assistant_save",
+      "pid": 43256,
+      "raw_metadata_hashes_match": true,
+      "raw_and_query_copies_match": true,
+      "originals_unchanged": true,
+      "source_files": {
+        "legacy-raw\\agent.db": {
+          "bytes": 4096,
+          "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+        },
+        "legacy-raw\\agent.db-shm": {
+          "bytes": 32768,
+          "sha256": "417352a5814769e27cb209993f0d95277647f654ff3d7f7424f687cf63ad0e3d"
+        },
+        "legacy-raw\\agent.db-wal": {
+          "bytes": 1120672,
+          "sha256": "0d95871f4e757632dbbfd727ad2e3a8120a5f06961c9c4e10b560982ddd0befa"
+        },
+        "legacy-query\\agent.db": {
+          "bytes": 450560,
+          "sha256": "a32cf28ec81c505cc0c2a70782c480ea65605540cb0d4b7ecd5af830219120ce"
+        }
+      },
+      "facts": {
+        "status": "running",
+        "tool_messages": 0,
+        "tool_results": 1,
+        "turn_task_status": [
+          "running"
+        ],
+        "tool_result_keys": [
+          [
+            "name",
+            "result",
+            "tool_call_id"
+          ]
+        ],
+        "integrity_check": [
+          "ok"
+        ],
+        "tool_result_origins": [
+          null
+        ]
+      }
+    },
+    {
+      "case": "denial",
+      "scene": ".tmpYoSzCB",
+      "metadata": "proof-process.json",
+      "phase": "before_commit",
+      "pid": 43004,
+      "raw_metadata_hashes_match": true,
+      "raw_and_query_copies_match": true,
+      "originals_unchanged": true,
+      "source_files": {
+        "proof-raw\\agent.db": {
+          "bytes": 4096,
+          "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+        },
+        "proof-raw\\agent.db-shm": {
+          "bytes": 32768,
+          "sha256": "b1131023a6f3c038a4acabe80b1051cc292dc505754cca6636e4e82a2b46c7d0"
+        },
+        "proof-raw\\agent.db-wal": {
+          "bytes": 1157752,
+          "sha256": "f0efea3da569a465170b80a262c659b58834d3cd2238112130e9543a6a0ee885"
+        },
+        "proof-query\\agent.db": {
+          "bytes": 450560,
+          "sha256": "06a20db81f89712124ef78d8ad381d6f72e49ca7ad3b47860d358a28d3c43af1"
+        }
+      },
+      "facts": {
+        "status": "running",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "turn_task_status": [
+          "running"
+        ],
+        "tool_result_keys": [],
+        "integrity_check": [
+          "ok"
+        ],
+        "tool_result_origins": []
+      }
+    },
+    {
+      "case": "cancel",
+      "scene": ".tmpzLS20w",
+      "metadata": "proof-process.json",
+      "phase": "before_commit",
+      "pid": 51632,
+      "raw_metadata_hashes_match": true,
+      "raw_and_query_copies_match": true,
+      "originals_unchanged": true,
+      "source_files": {
+        "proof-raw\\agent.db": {
+          "bytes": 4096,
+          "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+        },
+        "proof-raw\\agent.db-shm": {
+          "bytes": 32768,
+          "sha256": "2e83a5e31fa90d856caefadff9946fb68fd04f928592c01dae89237937b1a28f"
+        },
+        "proof-raw\\agent.db-wal": {
+          "bytes": 1170112,
+          "sha256": "27be3640ae31d39f7cecddeea60e7e6f039c569d5a0d5cfb5488007fef569c54"
+        },
+        "proof-query\\agent.db": {
+          "bytes": 450560,
+          "sha256": "54828b7ed7475cfd9923de13f4c51b07c7036af821c2d15783f816dc993a1e29"
+        }
+      },
+      "facts": {
+        "status": "cancelled",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "turn_task_status": [
+          "cancelled"
+        ],
+        "tool_result_keys": [],
+        "integrity_check": [
+          "ok"
+        ],
+        "tool_result_origins": []
+      }
+    },
+    {
+      "case": "host-denied",
+      "scene": ".tmpAFLo3L",
+      "metadata": "host-denied-process.json",
+      "phase": "after_commit",
+      "pid": 32428,
+      "raw_metadata_hashes_match": true,
+      "raw_and_query_copies_match": true,
+      "originals_unchanged": true,
+      "source_files": {
+        "host-denied-raw\\agent.db": {
+          "bytes": 4096,
+          "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+        },
+        "host-denied-raw\\agent.db-shm": {
+          "bytes": 32768,
+          "sha256": "bda9a9537b5f2df327a165b72f0e1f9291de112af7b615c7f4bb23dd1162c754"
+        },
+        "host-denied-raw\\agent.db-wal": {
+          "bytes": 1124792,
+          "sha256": "8d4edca07eee8ebd2f2bbeef21fddaaeac71ba7a986eafd94b9f6c4526db694c"
+        },
+        "host-denied-query\\agent.db": {
+          "bytes": 450560,
+          "sha256": "bedae6ad8fc530178d0cf1c109de42364c940bf131e507b7f1de82ef5b3b4617"
+        }
+      },
+      "facts": {
+        "status": "running",
+        "tool_messages": 1,
+        "tool_results": 1,
+        "turn_task_status": [
+          "running"
+        ],
+        "tool_result_keys": [
+          [
+            "name",
+            "origin",
+            "origin_version",
+            "result",
+            "tool_call_id"
+          ]
+        ],
+        "integrity_check": [
+          "ok"
+        ],
+        "tool_result_origins": [
+          "host_denied"
+        ]
+      }
+    }
+  ]
+}

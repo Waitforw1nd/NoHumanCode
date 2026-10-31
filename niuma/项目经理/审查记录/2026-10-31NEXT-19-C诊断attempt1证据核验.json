@@ -1,0 +1,648 @@
+{
+  "candidate": "a3279c8ce1ae3c9b81ee7eb5f9c699318f98c753",
+  "product_tree": "d7255928f661d45039f2adebb846443434447588",
+  "rust_tree": "07688925b53c8858c1ec1a606c86ebe0355e8612",
+  "raw_root": "../nhc-c-tool-call-workflow/NoManCode/rust-app/.local/next19-c-a3279c8-attempt1",
+  "manifest_sha256": "cd3e54753c48005b055385cb677383ee5b9dcd9c23499383c01321a872366fcc",
+  "publication_pairs": 48,
+  "transformed_files": 7,
+  "source_files_git_exact": 140,
+  "source_manifests_identical": 5,
+  "retained_before": 0,
+  "retained_after": 120,
+  "tmp_files": 1426,
+  "all_inventory_hashes_valid": true,
+  "cli_bytes": 29813760,
+  "cli_sha256": "358090964d12a97fbab3919504b395d83d229d14de816fd690af3caa52cbebb7",
+  "result": "check/build exit0; lib exit101 352 passed 3 failed; approval_gate/clippy/fmt not run",
+  "queries_on_separate_copies": {
+    ".tmpM0AfLh": {
+      "source": "tmp\\.tmpM0AfLh",
+      "original_hashes": {
+        "host.sqlite3": {
+          "bytes": 450560,
+          "sha256": "bbbdb983e01a376dbb52070a613d9436f018b1255d5e1a36f8cb3f429d678143"
+        },
+        "host.sqlite3-wal": {
+          "bytes": 37112,
+          "sha256": "15f8a3a1531f70d4c5c822f0daaa4fa4368e333f55197a585c09d007b77e13bc"
+        },
+        "host.sqlite3-shm": {
+          "bytes": 32768,
+          "sha256": "b0a14d6b45f32d981e38e25f4b8bd0deb4a039b79440cd231e7469f34170fe2b"
+        }
+      },
+      "query_on_copy_only": true,
+      "counts": {
+        "projects": 1,
+        "tasks": 0,
+        "worktree_operations": 1,
+        "worktree_project_reservations": 1,
+        "project_worktree_origins": 0
+      },
+      "receipts": [
+        {
+          "operation_id": "ba435063-205c-4372-b37a-d83f307f4251",
+          "state": "claimed",
+          "project_id": null,
+          "cause": null
+        }
+      ],
+      "phases": [
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 81460,
+          "exit": null,
+          "phase": "http_guard_enter",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 82224,
+          "exit": null,
+          "phase": "http_guard_pass",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 83028,
+          "exit": null,
+          "phase": "http_handler_enter",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 83805,
+          "exit": null,
+          "phase": "engine_entry",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 84452,
+          "exit": null,
+          "phase": "replay_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 85184,
+          "exit": null,
+          "phase": "inventory_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 86022,
+          "exit": null,
+          "phase": "roots_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 88762,
+          "exit": null,
+          "phase": "config_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 91673,
+          "exit": null,
+          "phase": "prepare_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 4066689,
+          "exit": null,
+          "phase": "prepare_ok",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 4066994,
+          "exit": null,
+          "phase": "project_probe_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6986129,
+          "exit": null,
+          "phase": "project_probe_ok",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6986498,
+          "exit": null,
+          "phase": "claim_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6999314,
+          "exit": null,
+          "phase": "claim_ok",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6999534,
+          "exit": null,
+          "phase": "worker_spawn_begin",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6999776,
+          "exit": null,
+          "phase": "worker_spawned",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 6999994,
+          "exit": null,
+          "phase": "worker_enter",
+          "pid": 51196
+        },
+        {
+          "case": "w08-created",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 7000169,
+          "exit": null,
+          "phase": "claim_probe_enter",
+          "pid": 51196
+        }
+      ],
+      "last_event": {
+        "case": "w08-created",
+        "child_pid": 5076,
+        "command": 52,
+        "detail": "",
+        "elapsed_us": 9699496,
+        "exit": null,
+        "phase": "git_wait_begin",
+        "pid": 51196
+      }
+    },
+    ".tmp4PloH5": {
+      "source": "tmp\\.tmp4PloH5",
+      "original_hashes": {
+        "host.db": {
+          "bytes": 450560,
+          "sha256": "4cc846d0d0ce9f2c99ffcfcfd2173fef567f9ebe0adbb4a6d229fd404443ebe6"
+        }
+      },
+      "query_on_copy_only": true,
+      "counts": {
+        "projects": 2,
+        "tasks": 0,
+        "worktree_operations": 1,
+        "worktree_project_reservations": 0,
+        "project_worktree_origins": 1
+      },
+      "receipts": [
+        {
+          "operation_id": "b6fbe377-5e0a-4bcc-b5f6-936001eafca9",
+          "state": "succeeded",
+          "project_id": "1bab713e-fe03-4012-abae-bbd37bb85b2a",
+          "cause": null
+        }
+      ],
+      "phases": [
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 271,
+          "exit": null,
+          "phase": "engine_entry",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 1027,
+          "exit": null,
+          "phase": "replay_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 1926,
+          "exit": null,
+          "phase": "inventory_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 2734,
+          "exit": null,
+          "phase": "roots_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 5535,
+          "exit": null,
+          "phase": "config_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 8109,
+          "exit": null,
+          "phase": "prepare_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 2289425,
+          "exit": null,
+          "phase": "prepare_ok",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 2289679,
+          "exit": null,
+          "phase": "project_probe_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3858099,
+          "exit": null,
+          "phase": "project_probe_ok",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3858610,
+          "exit": null,
+          "phase": "claim_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3872029,
+          "exit": null,
+          "phase": "claim_ok",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3872267,
+          "exit": null,
+          "phase": "worker_spawn_begin",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3872496,
+          "exit": null,
+          "phase": "worker_spawned",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3872686,
+          "exit": null,
+          "phase": "worker_enter",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3872869,
+          "exit": null,
+          "phase": "claim_probe_enter",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 3873133,
+          "exit": null,
+          "phase": "n13_ready_caller_pending",
+          "pid": 50336
+        },
+        {
+          "case": "n13",
+          "child_pid": null,
+          "command": 0,
+          "detail": "",
+          "elapsed_us": 16853175,
+          "exit": null,
+          "phase": "n13_assertions_complete",
+          "pid": 50336
+        }
+      ],
+      "last_event": {
+        "case": "n13",
+        "child_pid": null,
+        "command": 0,
+        "detail": "",
+        "elapsed_us": 16853175,
+        "exit": null,
+        "phase": "n13_assertions_complete",
+        "pid": 50336
+      }
+    }
+  },
+  "postflight_clean": true,
+  "final_heavy_empty": true,
+  "publication_files": [
+    {
+      "path": "logs/01-check.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/01-check.stderr.log",
+      "transform_count": 1
+    },
+    {
+      "path": "logs/01-check.stdout.log",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/02-build-cli.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/02-build-cli.stderr.log",
+      "transform_count": 1
+    },
+    {
+      "path": "logs/02-build-cli.stdout.log",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/03-lib.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/03-lib.stderr.log",
+      "transform_count": 2
+    },
+    {
+      "path": "logs/03-lib.stdout.log",
+      "transform_count": 1
+    },
+    {
+      "path": "logs/cli-binary.json",
+      "transform_count": 1
+    },
+    {
+      "path": "logs/environment.json",
+      "transform_count": 3
+    },
+    {
+      "path": "logs/final.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/postflight.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/preflight.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/retained-after-summary.txt",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/retained-after.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/retained-before-summary.txt",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/retained-before.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/runner.log",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/source-after-01-check.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/source-after-02-build-cli.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/source-after-03-lib.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/source-after.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/source-before-git-compare.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/source-before.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/state-after-01-check.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/state-after-02-build-cli.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/state-after-03-lib.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/tmp-inventory-summary.txt",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/tmp-inventory.json",
+      "transform_count": 0
+    },
+    {
+      "path": "logs/toolchain-setup.log",
+      "transform_count": 0
+    },
+    {
+      "path": "run.ps1",
+      "transform_count": 2
+    },
+    {
+      "path": "inventory.py",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp-inventory.py",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpklSW6U/lifecycle.jsonl",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpklSW6U/worktree-diagnostics.jsonl",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpklSW6U/child-claim.log",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpklSW6U/child-restart.log",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpM0AfLh/lifecycle.jsonl",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpM0AfLh/worktree-diagnostics.jsonl",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpM0AfLh/child-created.log",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmp4PloH5/worktree-diagnostics.jsonl",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/nhc-t05-sj9oCJ/process.json",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/nhc-t05-dX5AVR/process.json",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmp0Q2kHo/legacy-process.json",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpYoSzCB/proof-process.json",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpzLS20w/proof-process.json",
+      "transform_count": 0
+    },
+    {
+      "path": "tmp/.tmpAFLo3L/host-denied-process.json",
+      "transform_count": 0
+    }
+  ]
+}
