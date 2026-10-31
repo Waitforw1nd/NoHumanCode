@@ -1,0 +1,531 @@
+{
+  "candidate": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+  "source_manifests": 8,
+  "source_files": 142,
+  "old_files_unchanged": 1580,
+  "retained_files_hashed": 1700,
+  "all_six_commands_exit_zero": true,
+  "commands": [
+    {
+      "started_utc": "2026-10-31T16:00:04.0696496Z",
+      "exit_code": 0,
+      "head": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+      "product_tree": "14c89bc76165b3b38d277c5aa0ca29a97fab3492",
+      "rust_tree": "9d6b09f50d0925f0644f59fbc048548ec6f5dcab",
+      "command": "cargo check --offline --locked --workspace",
+      "ended_utc": "2026-10-31T16:01:07.2934962Z"
+    },
+    {
+      "started_utc": "2026-10-31T16:01:07.7664320Z",
+      "exit_code": 0,
+      "head": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+      "product_tree": "14c89bc76165b3b38d277c5aa0ca29a97fab3492",
+      "rust_tree": "9d6b09f50d0925f0644f59fbc048548ec6f5dcab",
+      "command": "cargo build --offline --locked --bin peachsh",
+      "ended_utc": "2026-10-31T16:01:24.7513044Z"
+    },
+    {
+      "started_utc": "2026-10-31T16:01:25.2566718Z",
+      "exit_code": 0,
+      "head": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+      "product_tree": "14c89bc76165b3b38d277c5aa0ca29a97fab3492",
+      "rust_tree": "9d6b09f50d0925f0644f59fbc048548ec6f5dcab",
+      "command": "cargo test --offline --locked --workspace -- --nocapture",
+      "ended_utc": "2026-10-31T16:06:57.2205064Z"
+    },
+    {
+      "started_utc": "2026-10-31T16:06:57.7303710Z",
+      "exit_code": 0,
+      "head": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+      "product_tree": "14c89bc76165b3b38d277c5aa0ca29a97fab3492",
+      "rust_tree": "9d6b09f50d0925f0644f59fbc048548ec6f5dcab",
+      "command": "cargo fmt --all -- --check",
+      "ended_utc": "2026-10-31T16:06:59.0636234Z"
+    },
+    {
+      "started_utc": "2026-10-31T16:06:59.5240887Z",
+      "exit_code": 0,
+      "head": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+      "product_tree": "14c89bc76165b3b38d277c5aa0ca29a97fab3492",
+      "rust_tree": "9d6b09f50d0925f0644f59fbc048548ec6f5dcab",
+      "command": "cargo clippy --offline --locked --workspace --all-targets -- -D warnings",
+      "ended_utc": "2026-10-31T16:07:19.6681256Z"
+    },
+    {
+      "started_utc": "2026-10-31T16:07:20.4409933Z",
+      "exit_code": 0,
+      "head": "b903963b13fb0fa53f04a7585379061d3380a6d6",
+      "product_tree": "14c89bc76165b3b38d277c5aa0ca29a97fab3492",
+      "rust_tree": "9d6b09f50d0925f0644f59fbc048548ec6f5dcab",
+      "command": "cargo check --offline --locked -p peachsh-ui --target wasm32-unknown-unknown",
+      "ended_utc": "2026-10-31T16:07:47.3948328Z"
+    }
+  ],
+  "suite_results": [
+    [
+      "362",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "2",
+      "0",
+      "0"
+    ],
+    [
+      "35",
+      "0",
+      "0"
+    ],
+    [
+      "16",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "10",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "15",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "15",
+      "0",
+      "0"
+    ],
+    [
+      "18",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "1"
+    ],
+    [
+      "16",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "17",
+      "0",
+      "0"
+    ],
+    [
+      "10",
+      "0",
+      "0"
+    ],
+    [
+      "24",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "10",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "19",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "17",
+      "0",
+      "0"
+    ],
+    [
+      "21",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "2",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "8",
+      "0",
+      "0"
+    ],
+    [
+      "2",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ]
+  ],
+  "totals": [
+    819,
+    0,
+    1
+  ],
+  "scenes": [
+    {
+      "scene": ".tmp1CGB9R",
+      "metadata": "legacy-process.json",
+      "pid": 58192,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "38d5351d-d735-48e7-a20d-b259132b9827": {
+          "status": "running",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": ".tmp5nupoC",
+      "metadata": "proof-process.json",
+      "pid": 48884,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "4f873beb-02ef-4497-b4e1-650858e45133": {
+          "status": "running",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 0,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": ".tmpowe2Xt",
+      "metadata": "host-denied-process.json",
+      "pid": 58880,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "f7a82c76-f334-486d-b0a1-dde3d11710ba": {
+          "status": "running",
+          "tool_messages": 1
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": ".tmpWjul8e",
+      "metadata": "proof-process.json",
+      "pid": 54536,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "42d292fb-2441-4ea5-8a7b-ef5d763074d5": {
+          "status": "cancelled",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 0,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": "nhc-result-host-EPIGY3",
+      "metadata": "host-process.json",
+      "pid": 49912,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "task": {
+          "status": "interrupted",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": "nhc-t05-HOlBWN",
+      "metadata": "process.json",
+      "pid": 50324,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "task": {
+          "status": "queued",
+          "tool_messages": 1
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": "nhc-t05-pf3Gel",
+      "metadata": "process.json",
+      "pid": 53756,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "task": {
+          "status": "queued",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 0,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    }
+  ],
+  "t13": {
+    "scene": ".tmp1fy5xs",
+    "stops": [
+      {
+        "exit_code": 1,
+        "pid": 58204,
+        "success": false,
+        "waited": true
+      },
+      {
+        "exit_code": 1,
+        "pid": 16124,
+        "success": false,
+        "waited": true
+      }
+    ],
+    "stopped_tasks_completed": 2,
+    "final_tasks_completed": 3,
+    "tool_results_before_and_after": 5,
+    "raw_query_equal": true,
+    "approved_side_effect_once": true,
+    "denied_side_effects_absent": true
+  },
+  "originals_unchanged_after_querying_copies": true,
+  "cli_explicit_build": {
+    "bytes": 29816320,
+    "checked_utc": "2026-10-31T16:01:25.2555080Z",
+    "path": "../nhc-c-tool-call-workflow/NoManCode/rust-app/.local/next19-c-a3279c8-attempt1/target/debug/peachsh.exe",
+    "sha256": "CA5104F088BFB5EDD1A59DD845FC6FD17693388C842A7FF14DB1AF0EF3B00898"
+  },
+  "cli_after_test": {
+    "bytes": 30801920,
+    "checked_utc": "2026-10-31T16:06:57.7291942Z",
+    "path": "../nhc-c-tool-call-workflow/NoManCode/rust-app/.local/next19-c-a3279c8-attempt1/target/debug/peachsh.exe",
+    "sha256": "0D4116349514781728C26EFB1032BBAB0699364D91B4E5F8B97DCA5A807DDD93"
+  },
+  "raw_audit": {
+    "path": ".local/manager-next19-c-final-attempt1/audit.json",
+    "sha256": "9a913dc9c53ec321da1091926e86da19d5ca8ed6c074fca54f25d37b05ee8563",
+    "transformation": "Only cli_explicit_build.path and cli_after_test.path normalized to repository-relative sibling worktree paths; other facts unchanged."
+  },
+  "published_pairs_verified": 64,
+  "exact_path_transformations_verified": true,
+  "published_manifest_sha256": "aba894e41211057d59b7b99640dbc696042906add800a24389727aef6bbe08be",
+  "current_run_tmp_files_hashed": 2153,
+  "current_run_tmp_read_errors": []
+}

@@ -1,0 +1,329 @@
+   Compiling serde_core v1.0.229
+   Compiling futures-channel v0.3.34
+   Compiling futures-io v0.3.34
+   Compiling futures-util v0.3.34
+   Compiling windows-sys v0.61.2
+   Compiling serde v1.0.229
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.3
+   Compiling zerovec v0.11.8
+   Compiling tinystr v0.8.4
+   Compiling icu_locale_core v2.3.0
+   Compiling serde_json v1.0.151
+   Compiling zerotrie v0.2.5
+   Compiling potential_utf v0.1.6
+   Compiling icu_provider v2.3.1
+   Compiling icu_collections v2.3.0
+   Compiling socket2 v0.6.5
+   Compiling icu_properties v2.3.0
+   Compiling icu_normalizer v2.3.0
+   Compiling mio v1.2.3
+   Compiling idna_adapter v1.2.2
+   Compiling tokio v1.53.1
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling peachsh-protocol v0.1.0 (../nhc-c-tool-call-workflow\NoManCode\rust-app\crates\protocol)
+   Compiling anstyle-wincon v3.0.11
+   Compiling anstyle-query v1.1.5
+   Compiling anstream v1.0.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling clap_builder v4.6.7
+   Compiling hyper v1.11.1
+   Compiling tower v0.5.3
+   Compiling tokio-rustls v0.26.5
+   Compiling tower-http v0.6.11
+   Compiling hyper-util v0.1.20
+   Compiling tokio-util v0.7.19
+   Compiling serde_path_to_error v0.1.20
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.12.28
+   Compiling axum v0.8.9
+   Compiling async-stream v0.3.6
+   Compiling clap v4.6.7
+   Compiling tempfile v3.27.0
+   Compiling wasm-bindgen v0.2.128
+   Compiling peachsh v0.2.0 (../nhc-c-tool-call-workflow\NoManCode\rust-app)
+   Compiling js-sys v0.3.105
+   Compiling wasm-bindgen-futures v0.4.78
+   Compiling futures-executor v0.3.34
+   Compiling futures v0.3.34
+   Compiling parking v2.2.1
+   Compiling event-listener v5.4.2
+   Compiling web-sys v0.3.105
+   Compiling throw_error v0.3.1
+   Compiling event-listener-strategy v0.5.4
+   Compiling send_wrapper v0.6.0
+   Compiling async-lock v3.4.2
+   Compiling slotmap v1.1.1
+   Compiling hydration_context v0.3.1
+   Compiling any_spawner v0.3.0
+   Compiling rustc-hash v2.1.3
+   Compiling guardian v1.3.0
+   Compiling winnow v1.0.4
+   Compiling reactive_graph v0.2.14
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling reactive_stores v0.4.3
+   Compiling pin-project v1.1.13
+   Compiling thiserror v1.0.69
+   Compiling either_of v0.1.9
+   Compiling gloo-utils v0.2.0
+   Compiling oco_ref v0.2.1
+   Compiling winapi-util v0.1.11
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling aho-corasick v1.1.5
+   Compiling next_tuple v0.1.0
+   Compiling drain_filter_polyfill v0.1.3
+   Compiling erased v0.1.2
+   Compiling const_str_slice_concat v0.1.0
+   Compiling regex-syntax v0.8.11
+   Compiling tachys v0.2.18
+   Compiling regex-automata v0.4.18
+   Compiling toml v1.1.6+spec-1.1.0
+   Compiling same-file v1.0.6
+   Compiling gloo-net v0.6.0
+   Compiling wasm-streams v0.5.0
+   Compiling convert_case v0.6.0
+   Compiling serde_qs v0.15.0
+   Compiling const-str v1.1.0
+   Compiling pathdiff v0.2.3
+   Compiling config v0.15.26
+   Compiling server_fn v0.8.13
+   Compiling typed-builder v0.23.2
+   Compiling walkdir v2.5.0
+   Compiling regex v1.13.1
+   Compiling codee v0.3.5
+   Compiling async-once-cell v0.5.4
+   Compiling wasm_split_helpers v0.2.3
+   Compiling leptos_server v0.8.7
+   Compiling leptos_config v0.8.10
+   Compiling leptos_dom v0.8.8
+   Compiling leptos_hot_reload v0.8.6
+   Compiling leptos v0.8.15
+   Compiling peachsh-ui v0.1.0 (../nhc-c-tool-call-workflow\NoManCode\rust-app\crates\ui)
+    Finished `test` profile [unoptimized] target(s) in 2m 10s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src\lib.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh-dc94de63d8d31b10.exe)
+a10-fixture {"directory":"../nhc-c-tool-call-workflow\\NoManCode\\rust-app\\.local\\next19-c-b903963-final-attempt1\\tmp\\.tmpLPJ51a","phase":"agent_after_assistant_save"}
+a10-fixture {"directory":"../nhc-c-tool-call-workflow\\NoManCode\\rust-app\\.local\\next19-c-b903963-final-attempt1\\tmp\\.tmpZ9vG4x","phase":"write_pre_fs"}
+a10-kill {"exit_code":1,"phase":"agent_after_assistant_save","pid":46472,"task_id":"90f4cab8-7e45-4d07-a98a-be305a71534a"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\f4b5f8f6-11dd-4389-b7e3-659964d4ec6e","phase":"agent_after_assistant_save-killed","snapshot":"agent-snapshot.db"}
+a10-kill {"exit_code":1,"phase":"write_pre_fs","pid":52344,"task_id":"a85ff71e-c9cf-4092-928b-653e3329b4f4"}
+fixture case=s06-inherited-pipe phase=retained root=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpGf1T73
+s06-process {"case":"execute-two-second","cleanup_unknown":false,"created":134379362181553781,"phase":"capture-original-child","pid":60404,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"identity-controls","created":134379362181895717,"exit_confirmed":false,"phase":"live-original","pid":58332,"query_error":null,"wait_status":258}
+s06-process {"case":"identity-controls","created":134379362181895717,"exit_confirmed":false,"phase":"query-without-synchronize","pid":58332,"query_error":5,"wait_status":4294967295}
+s06-process {"case":"identity-controls","exit_code":1,"phase":"original-child-wait"}
+s06-process {"case":"identity-controls","created":134379362181895717,"exit_confirmed":true,"phase":"waited-original","pid":58332,"query_error":null,"wait_status":0}
+s06-process {"case":"reader-error","cleanup_unknown":false,"created":134379362182046190,"phase":"capture-original-child","pid":58744,"probe_error":null,"reader_error":true,"wait_error":false}
+s06-process {"case":"reader-error","created":134379362182046190,"exit_confirmed":true,"phase":"assert-original-exited","pid":58744,"query_error":null,"wait_status":0}
+s06-process {"case":"cleanup-unknown","cleanup_unknown":true,"created":134379362182147199,"phase":"capture-original-child","pid":12504,"probe_error":null,"reader_error":false,"wait_error":false}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (55720) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+s06-process {"case":"real-timeout","cleanup_unknown":false,"created":134379362182802677,"phase":"capture-original-child","pid":52296,"probe_error":null,"reader_error":false,"wait_error":false}
+a10-evidence {"directory":".local\\next17-a10-evidence\\caf306ec-d311-4239-bdc7-9bea7fd769f1","phase":"write_pre_fs-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\0d0e25ea-1c65-43a9-8b44-2626c4225c24","phase":"agent_after_assistant_save-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":46472,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":56780,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\14b7b2e2-5cea-41c2-bdc1-33362f1aa579","phase":"write_pre_fs-unknown-1","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":52344,"mock_completions":1,"recovery_pid":3216,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\b08416ff-0192-41af-b4f7-1664b1e8d5f6","phase":"agent_after_assistant_save-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":46472,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":46812,"run":2}
+s06-process {"case":"task-scoped-unknown","cleanup_unknown":false,"created":134379362187257064,"phase":"capture-original-child","pid":56528,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"task-scoped-unknown","created":134379362187257064,"exit_confirmed":true,"phase":"assert-original-exited","pid":56528,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\968f5cce-e5af-4011-8949-0788f70a23e1","phase":"write_pre_fs-unknown-2","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":52344,"mock_completions":1,"recovery_pid":34264,"run":2}
+case=s06-inherited-pipe phase=descendant-owned parent_pid=54756 parent_created=134379362181388336 descendant_pid=32980 descendant_created=134379362188233891
+a10-fixture {"directory":"../nhc-c-tool-call-workflow\\NoManCode\\rust-app\\.local\\next19-c-b903963-final-attempt1\\tmp\\.tmpwH8gYx","phase":"agent_before_denied_result"}
+F07 child kill+wait completed: exit code: 1; persisted revision=1, before apply
+a10-kill {"exit_code":1,"phase":"agent_before_denied_result","pid":58372,"task_id":"ca1f40f4-d943-49ad-a541-8ce0d5a13f0f"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\6edd9d78-23c0-4058-9ad0-00733eb8d743","phase":"agent_before_denied_result-killed","snapshot":"agent-snapshot.db"}
+s06-process {"case":"cleanup-unknown","created":134379362182147199,"exit_confirmed":true,"phase":"assert-original-exited","pid":12504,"query_error":null,"wait_status":0}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (55720) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+s06-process {"case":"wait-error","cleanup_unknown":false,"created":134379362192423928,"phase":"capture-original-child","pid":59908,"probe_error":null,"reader_error":false,"wait_error":true}
+S09: actual claim-before-spawn child kill+wait complete: exit code: 1
+s06-process {"case":"real-timeout","created":134379362182802677,"exit_confirmed":true,"phase":"assert-original-exited","pid":52296,"query_error":null,"wait_status":0}
+case=s06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true
+a10-evidence {"directory":".local\\next17-a10-evidence\\a7420383-4afe-45bd-a5ad-c06bcc299b0e","phase":"agent_before_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":58372,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":51112,"run":1}
+s06-process {"case":"wait-error","created":134379362192423928,"exit_confirmed":true,"phase":"assert-original-exited","pid":59908,"query_error":null,"wait_status":0}
+S06: task-scoped test injection after real spawn; typed unknown preserved claim, not a claim of actual OS cleanup failure
+a10-evidence {"directory":".local\\next17-a10-evidence\\4658a4e6-549d-4714-a8d7-525cec49758a","phase":"agent_before_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":58372,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":52344,"run":2}
+a10-fixture {"directory":"../nhc-c-tool-call-workflow\\NoManCode\\rust-app\\.local\\next19-c-b903963-final-attempt1\\tmp\\.tmpbDOVtV","phase":"agent_after_denied_result"}
+a10-kill {"exit_code":1,"phase":"agent_after_denied_result","pid":59208,"task_id":"d3e39f28-8ef9-43b7-bac8-716dbfaae9f2"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\87fdeb1a-9c78-4eec-9362-877059bc2825","phase":"agent_after_denied_result-killed","snapshot":"agent-snapshot.db"}
+fixture case=w06-inherited-pipe phase=retained root=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmp5Q0slJ
+s06-process {"case":"execute-two-second","created":134379362181553781,"exit_confirmed":true,"phase":"assert-original-exited","pid":60404,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\44f5c9df-697b-4c51-8630-3b6f89825f22","phase":"agent_after_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":59208,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":47176,"run":1}
+I09 retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-i09-after_commit-0355207b-ea46-4b71-9080-cbe3c9d52aff
+I09 retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-i09-before_commit-e4a44d7d-0a49-43d4-a03d-47b077d32017
+a10-evidence {"directory":".local\\next17-a10-evidence\\1876fb4b-c37c-4f27-a4c2-d32af01ebc14","phase":"agent_after_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":59208,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":54092,"run":2}
+a10-fixture {"directory":"../nhc-c-tool-call-workflow\\NoManCode\\rust-app\\.local\\next19-c-b903963-final-attempt1\\tmp\\.tmpLcY2dW","phase":"agent_after_applied_result"}
+case=w06-inherited-pipe phase=descendant-owned parent_pid=56416 parent_created=134379362201020197 descendant_pid=52368 descendant_created=134379362206258723
+a10-kill {"exit_code":1,"phase":"agent_after_applied_result","pid":59716,"task_id":"516bd3f1-782a-4b99-851f-1e5ff27f9475"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\2a985543-8674-434b-b7df-f2b0df7904bd","phase":"agent_after_applied_result-killed","snapshot":"agent-snapshot.db"}
+D08 case deadline_ms=3000
+case=w06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true
+a10-evidence {"directory":".local\\next17-a10-evidence\\08162ccc-5ac9-4e30-9bd7-7a7d5911aa93","phase":"agent_after_applied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":59716,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":31020,"run":1}
+fixture case=no-marker phase=retained root=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpltNXZ0
+a10-evidence {"directory":".local\\next17-a10-evidence\\2bcbd563-d87d-482c-ba21-206a9f45fef5","phase":"agent_after_applied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":59716,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":60384,"run":2}
+s06 case=inherited-pipe phase=collector result=timeout elapsed_ms=2001 parent_waited=true readers=0 fixture=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpGf1T73
+case=s06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0
+case=s06-inherited-pipe phase=job-drop cleanup_ok=true error=None
+D08 cleanup pid=16124 created=134379362212013683 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(7))))
+D08 original-handle pid=16124 created=134379362212013683 signal=0
+D08 cleanup pid=46812 created=134379362212237003 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=46812 created=134379362212237003 signal=0
+D08 cleanup pid=20216 created=134379362201999179 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+w06 case=run-two-second outcome_unknown=true elapsed_ms=2022 pid=20216 created=134379362201999179 signal=0
+p06-recovery {"call_id":"df56722e-0490-435b-96c8-9abd52887684","event":"killed-and-waited","exit_code":1,"mock_completions":0,"phase":"budget-after-claim","pid":35004}
+p06-recovery {"call_id":"df56722e-0490-435b-96c8-9abd52887684","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":58856,"run":1,"unresolved_count":1}
+D08 case deadline_ms=1000
+p06-recovery {"call_id":"df56722e-0490-435b-96c8-9abd52887684","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":56436,"run":2,"unresolved_count":1}
+p06-recovery {"call_id":"2de56daa-fa8c-41a9-84a2-45ad07c00e52","event":"killed-and-waited","exit_code":1,"mock_completions":1,"phase":"budget-before-finish","pid":44484}
+p06-recovery {"call_id":"2de56daa-fa8c-41a9-84a2-45ad07c00e52","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":53512,"run":1,"unresolved_count":1}
+p06-recovery {"call_id":"2de56daa-fa8c-41a9-84a2-45ad07c00e52","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":56816,"run":2,"unresolved_count":1}
+w06 case=inherited-pipe phase=collector outcome_unknown=true elapsed_ms=2001 fixture=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmp5Q0slJ
+case=w06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0
+case=w06-inherited-pipe phase=job-drop cleanup_ok=true error=None
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+D08 cleanup pid=48968 created=134379362226920319 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=48968 created=134379362226920319 signal=0
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+
+thread 'tool_runtime::tests::f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery' (58572) panicked at src\tool_runtime.rs:1186:22:
+sensitive panic payload
+
+thread '<unnamed>' (55084) panicked at src\tool_runtime.rs:1413:17:
+poison test
+
+thread 'tool_runtime::tests::s05_worker_channel_loss_is_unknown_and_releases_owned_count' (5140) panicked at src\tool_runtime.rs:2219:30:
+controlled shell worker disappearance
+N13 actual kill+wait phase=claim child=56956 exit=exit code: 1 operation=e3138d14-8a1c-4a8b-b1a3-edc27730025b
+N13 raw observation host.db: copied_live_non_snapshot
+N13 raw observation host.db-wal: copied_live_non_snapshot
+N13 raw observation host.db-shm: copied_live_non_snapshot
+N13 retained fixture=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpfIRP9w panicking=false (live copies are not a consistent snapshot; task/child termination not established)
+case=no-marker phase=preparation-failed error=fixture preparation exceeded 15 seconds: deadline has elapsed
+case=no-marker phase=job-drop cleanup_ok=true error=None
+fixture case=parent-exit phase=retained root=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpQF93IG
+case=parent-exit phase=preparation-failed error=parent exited before handle publication: code=Some(42)
+case=parent-exit phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof phase=retained root=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpe6A7Qj
+case=pipe-eof phase=descendant-owned parent_pid=59044 parent_created=134379362366411298 descendant_pid=41120 descendant_created=134379362369820826
+case=pipe-eof phase=preparation-failed error=stdout EOF after parent exit and sentinel
+case=pipe-eof phase=job-drop cleanup_ok=true error=None
+fixture case=ack-fail phase=retained root=../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\.tmpn5QB3y
+N13 actual kill+wait phase=created child=47004 exit=exit code: 1 operation=b40284d6-6c2d-4187-a6a7-3e8b6c92fc70
+case=ack-fail phase=descendant-owned parent_pid=54544 parent_created=134379362372755081 descendant_pid=56180 descendant_created=134379362376933923
+case=ack-fail phase=preparation-failed error=injected ack failure
+case=ack-fail phase=job-drop cleanup_ok=true error=None
+N13 actual kill+wait phase=registered child=57460 exit=exit code: 1 operation=0543c30c-9b0b-4989-a665-5105b2e37335
+     Running unittests src\main.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh-1d1752439a8bd22a.exe)
+     Running tests\agent_runtime_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\agent_runtime_cli-03bc7a41ca356387.exe)
+     Running tests\approval_gate.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\approval_gate-96bb86c355a07ed3.exe)
+     Running tests\approval_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\approval_http-e02fa56c0f91cdbe.exe)
+     Running tests\assessment_adversarial.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\assessment_adversarial-28e97f889fa46ca2.exe)
+     Running tests\budget.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\budget-62fd45bca79f52e3.exe)
+     Running tests\budget_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\budget_cli-e860463b6113e8f9.exe)
+     Running tests\budget_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\budget_http-46b0eb1d45ca4fe3.exe)
+     Running tests\checkpoint.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\checkpoint-81154909f600c8e9.exe)
+     Running tests\checkpoint_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\checkpoint_http-990802a22ef2f8fd.exe)
+     Running tests\cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\cli-366a345e2dc00137.exe)
+     Running tests\cli_workflow.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\cli_workflow-e8359a2797feb354.exe)
+     Running tests\final_acceptance.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\final_acceptance-1cfaaa4c23baf20f.exe)
+     Running tests\first_user_workflow.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\first_user_workflow-5a3c83aad910ecd6.exe)
+     Running tests\git_diff.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\git_diff-b9f0abc396968a98.exe)
+     Running tests\host_configuration.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration-63b2d6312839739a.exe)
+     Running tests\host_configuration_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_cli-3f91e9ccec73bb5a.exe)
+     Running tests\host_configuration_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_http-433c442c689f38b6.exe)
+     Running tests\host_configuration_schema.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_schema-ae721cb78d1a72dd.exe)
+     Running tests\host_configuration_security.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_security-be1fd5d45255deee.exe)
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-environment-parent-26f62590-c66a-4204-a707-25a795dadd6a
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-invalid-input-8adf8d95-b7c5-4cdc-b25c-212f4e94397b
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-0-true-b5a0a24b-7b95-426e-bb36-451d9c5cf63a
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-inflight-404-f79dbc00-4cea-4ce7-b23c-71f8845d5d03
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-legacy-and-prompt-10e9d470-3cea-45f2-ab09-ed8bf6cd3ab5
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-nonempty-budget-349101b7-acf2-4b2e-b4b4-b3b9e982b3ff
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-0-false-358b8f15-f2ad-44f5-a955-a24e176a76c6
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-1-true-a525a448-9066-4674-94b7-e78ba273258f
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-1-false-daa80626-d002-4ba2-8d1d-729411285848
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-2-true-c8de0da9-7fb5-4f39-87e3-6beab6f062e7
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-2-false-6860ee22-2ede-456e-be20-99f26e6af5dd
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-3-true-645af5a3-3f6c-4936-a2f2-67f867b09186
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-3-false-3202de52-decb-4e87-8d65-4997287485c9
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-4-true-96f8acce-1a88-4e63-803a-adbbf426380f
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-4-false-0354b344-aea9-4a28-b80d-81658421aa22
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-5-true-de9d409c-dd1d-4d50-8dd2-92c6148f99e3
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-5-false-8f70f87f-7ae1-418f-aab0-702d98eebce0
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-6-true-0f2e9b9a-750e-4168-b2c7-646dad40103a
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-6-false-9c5689ad-262f-475c-bb11-9e6e5d562e8b
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-7-true-080a02bd-9ece-44d7-a868-58ad9485d19a
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-7-false-4784ffd0-4614-4ec1-bdb6-f43c4e26e613
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-8-true-416978b7-2860-48ed-904e-827e96909c02
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-8-false-24eef8b5-0270-4d0c-9e51-f55fb896076e
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-9-true-519ab49e-7ab0-461d-8fbc-cb460af7a267
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-9-false-4717e376-70ed-4713-89ae-b804f36aaf48
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-10-true-f9b09f41-8fa4-4cdc-bb87-808c61e6d0f2
+D security retained fixture: ../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-b903963-final-attempt1\tmp\nhc-security-hostile-10-false-f595af5b-00b5-4035-b797-1eb0ebc96b27
+     Running tests\host_initialization_workflow.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\host_initialization_workflow-a7c69416ffbbf71f.exe)
+     Running tests\http_contract.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\http_contract-fe1366011fd3c1c2.exe)
+     Running tests\live.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\live-db566652a1c86345.exe)
+     Running tests\network_authorization.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\network_authorization-59b8f7ec0a27f8ea.exe)
+     Running tests\network_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\network_cli-2891fa65a6dafd05.exe)
+     Running tests\network_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\network_http-584b587a6bda6ffe.exe)
+     Running tests\plugin_catalog.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_catalog-8f0b96b63269fbad.exe)
+     Running tests\plugin_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_cli-75f02029d10720e4.exe)
+     Running tests\plugin_host.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_host-2cfbf46ece62304d.exe)
+
+thread 'h10_recovery_list_records_incomplete_cleanup' (25068) panicked at tests\plugin_host.rs:1368:9:
+deliberate deactivate panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'h05_activation_failure_rolls_back_in_plan_reverse' (57372) panicked at tests\plugin_host.rs:249:9:
+deliberate activate panic
+
+thread 'panicking_subscriber_fails_alone_and_delivery_continues' (4244) panicked at tests\plugin_host.rs:1627:41:
+deliberate subscription panic
+     Running tests\plugin_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_http-418b63849597b7aa.exe)
+     Running tests\plugin_management.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_management-fff8213c415f1303.exe)
+     Running tests\project_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\project_cli-601bf3b19a345153.exe)
+     Running tests\project_context.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\project_context-edcb20853590cb75.exe)
+     Running tests\project_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\project_http-c589a71b352f90d6.exe)
+     Running tests\project_migration.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\project_migration-1c802c05a076b373.exe)
+     Running tests\provider_network.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\provider_network-9778c7326318053e.exe)
+     Running tests\provider_usage.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\provider_usage-cfc03bf1d015d78d.exe)
+     Running tests\review_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\review_cli-93a47a282c670466.exe)
+     Running tests\runtime.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime-dee77ff274e01c8a.exe)
+     Running tests\runtime_management_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime_management_cli-5d2e967190605be1.exe)
+     Running tests\runtime_management_schema.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime_management_schema-2f6fe34f1ee3771a.exe)
+     Running tests\runtime_management_workflow.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime_management_workflow-36274ec859886c83.exe)
+     Running tests\session_turns.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\session_turns-a0f55013e306078b.exe)
+     Running tests\tool_call_workflow.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_call_workflow-a7d3a55528578e53.exe)
+     Running tests\tool_result_crash.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_result_crash-6110c11f89b7b4a8.exe)
+     Running tests\tool_runtime.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_runtime-7de2db0b61b1302d.exe)
+     Running tests\tool_session_turns.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_session_turns-7882548023251ae5.exe)
+     Running tests\turn_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\turn_http-817a873d3b91439f.exe)
+n07 cumulative: fixed=201043 over_pad=1298958 over_len=1500001 boundary_pad=1298957 boundary_len=1500000
+     Running tests\workspace_changes.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_changes-aea784dee7b6e4f7.exe)
+symlink creation succeeded
+     Running tests\workspace_crash.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_crash-ded3fd18dd422d17.exe)
+     Running tests\workspace_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_http-1c419f245afe3c8f.exe)
+     Running tests\workspace_identity.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_identity-942086fcfd459d0b.exe)
+     Running tests\worktree_cli.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\worktree_cli-1fd06a14ba1acda5.exe)
+     Running tests\worktree_http.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\worktree_http-9a168587209109d7.exe)
+     Running unittests src\lib.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh_protocol-2b9873fc9281da35.exe)
+     Running unittests src\lib.rs (.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh_ui-4ed1c77431e40834.exe)
+   Doc-tests peachsh
+   Doc-tests peachsh_protocol
+   Doc-tests peachsh_ui

@@ -1,0 +1,367 @@
+{
+  "method": "Running lines paired in order with stdout test-result blocks; includes helper entries",
+  "runs": [
+    {
+      "suite": "src/lib.rs",
+      "passed": 362,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "src/main.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/agent_runtime_cli.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/approval_gate.rs",
+      "passed": 35,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/approval_http.rs",
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/assessment_adversarial.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/budget.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/budget_cli.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/budget_http.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/checkpoint.rs",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/checkpoint_http.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/cli.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/cli_workflow.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/final_acceptance.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/first_user_workflow.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/git_diff.rs",
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/host_configuration.rs",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/host_configuration_cli.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/host_configuration_http.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/host_configuration_schema.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/host_configuration_security.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/host_initialization_workflow.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/http_contract.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/live.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "suite": "tests/network_authorization.rs",
+      "passed": 16,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/network_cli.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/network_http.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/plugin_catalog.rs",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/plugin_cli.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/plugin_host.rs",
+      "passed": 24,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/plugin_http.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/plugin_management.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/project_cli.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/project_context.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/project_http.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/project_migration.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/provider_network.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/provider_usage.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/review_cli.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/runtime.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/runtime_management_cli.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/runtime_management_schema.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/runtime_management_workflow.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/session_turns.rs",
+      "passed": 19,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/tool_call_workflow.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/tool_result_crash.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/tool_runtime.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/tool_session_turns.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/turn_http.rs",
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/workspace_changes.rs",
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/workspace_crash.rs",
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/workspace_http.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/workspace_identity.rs",
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/worktree_cli.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "tests/worktree_http.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "src/lib.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "src/lib.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "doc-tests peachsh",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "doc-tests peachsh_protocol",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "suite": "doc-tests peachsh_ui",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "run_count": 60,
+  "result_block_count": 60
+}
