@@ -63,6 +63,10 @@ pub(crate) enum CompletionKind<'a> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ToolVote {
     ApplyHostPolicy,
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "constructed by replacement strategies")
+    )]
     Deny,
 }
 #[derive(Debug)]
@@ -70,6 +74,10 @@ pub(crate) enum StrategyAction {
     UseTools(Vec<usize>),
     ToolVotes(Vec<ToolVote>),
     Finish,
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "constructed by replacement strategies")
+    )]
     Stop,
 }
 pub(crate) trait AgentStrategy: Send + Sync {
@@ -214,11 +222,16 @@ impl AgentRuntime {
         Self::from_host(host)
     }
     fn from_host(mut host: PluginHost) -> anyhow::Result<Self> {
-        guarded(|| host.start(&[CONSUMER.to_string()]))
-            .map_err(|_| anyhow::anyhow!("agent activation failed"))?
-            .map_err(|_| anyhow::anyhow!("agent activation failed"))?;
-        host.resolve_bound::<Strategy>(CONSUMER, &key())
-            .map_err(|_| anyhow::anyhow!("agent binding failed"))?;
+        let started =
+            guarded(|| host.start(&[CONSUMER.to_string()])).is_ok_and(|result| result.is_ok());
+        if !started {
+            let _ = guarded(|| drop(host));
+            return Err(anyhow::anyhow!("agent activation failed"));
+        }
+        if host.resolve_bound::<Strategy>(CONSUMER, &key()).is_err() {
+            let _ = guarded(|| drop(host));
+            return Err(anyhow::anyhow!("agent binding failed"));
+        }
         let effects = host.effects().len() as u64;
         let recovery = host.pending_recovery().len() as u64;
         Ok(Self {
@@ -393,6 +406,18 @@ impl AgentRuntime {
         } else {
             Err(AgentError::Lifecycle)
         }
+    }
+}
+impl Drop for Inner {
+    fn drop(&mut self) {
+        let host = {
+            let state = match self.state.get_mut() {
+                Ok(state) => state,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            state.host.take()
+        };
+        let _ = guarded(|| drop(host));
     }
 }
 impl Inner {
