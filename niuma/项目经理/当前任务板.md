@@ -1,3 +1,7 @@
+## 2026-11-01 NEXT-21A A0首次启动失败，原B定位
+
+更新人：项目经理。0fe116ab固定候选06:50至06:51 check/build exit0，S01 exit101，CreateProcess返回OS203，只有profile_created/before_create且无PID；后三用例/fmt/Clippy未执行。经理核五清单185输入/实际字节及Git blob、probe构建hash、37现场文件，新增B第二十轮首次失败review与经理核验JSON。203仅错误类别，具体根因未定，不把未启动算隔离拒绝；原B继续六路径内普通启动修复，新提交/new attempt沿已有授权，不能放宽权限或继承全环境。C/D冻结，main仍NEXT-20；继承41行保持，全项目active。下一第一操作核修正差异与新attempt结果。
+
 ## 2026-11-01 NEXT-21A固定候选审查与A0首次动态
 
 更新人：项目经理。实核原B固定0fe116ab/产品8e7cffd8/Rustcd4d4256、六授权文件、clean与diff check；已整体读封装/probe/integration/负控helper。P01-P07有代码响应但无动态关闭，profile可写性、强杀/注入/资源/完整网络及全过程期限仍缺实证。签员工B第二十轮《2026-11-01NEXT-21A-A0静态候选与首次验证窗口》，原B唯一check/build/四基础用例/fmt/Clippy，首失败保存，普通范围内编译夹具修复新提交/new attempt可继续；完整A及生产接线未批准。C/D冻结，main产品仍NEXT-20，继承41行保留。下一第一操作核实际首失败或结果及源码/二进制来源，全项目active、核心优先。

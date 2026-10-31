@@ -1,0 +1,937 @@
+{
+  "candidate": "0fe116ab95235fbacc62dd818f12a81504ae5807",
+  "attempt": "../nhc-b-external-runtime-isolation/NoManCode/rust-app/.local/next21a-b-0fe116ab-attempt1",
+  "source_manifests_equal": 5,
+  "source_files": 185,
+  "git_blob_matches": [
+    {
+      "path": "NoManCode/AGENTS.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/README.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/apply-overrides.ps1",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/config/README.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/config/peachsh.providers.yaml",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/docs/cli-first-release-acceptance.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/dsh-peachsh.cmd",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/newapi.cmd",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/package.json",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/pnpm-lock.yaml",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/.gitignore",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/ARCHITECTURE-AUDIT-DRAFT.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/ARCHITECTURE-REBUTTAL.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/ASSESSMENT-LIVE-2026-09-20.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.lock",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.toml",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/EVALUATION-2026-09-20.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/FRAMEWORK-DECISION-2026-09-21.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/FRESH-INTEGRATION-AUDIT.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/ITERATION-PLAN.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/PHASE0-NEXT-AUDIT.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/PI-DESKTOP-ADAPTATION-2026-09-21.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/PRODUCT-GAP-AUDIT-2026-09-20.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/PROJECT-REORGANIZATION-2026-09-21.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/PROTOCOL-MIGRATION-TEST-PLAN.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/README.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/VALIDATION.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/adversarial.log",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/baseline.log",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/http-results.json",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/live-evidence.json",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/assessment/2026-09-20-live/recovery.json",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/build.ps1",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/src/lib.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/README.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/src/lib.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/examples/external_process_probe.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/examples/wasm-echo/README.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/rust-toolchain.toml",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/agent_runtime.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/agent_runtime_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/approval.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/budget.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/checkpoint.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/command_execution.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/composition.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/composition_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/credential_input.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/domain.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/external_process_sandbox.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/git_diff.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/git_worktree.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/host_configuration.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/host_configuration_crash_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/host_services.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/main.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/network_authorization.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_callback.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_catalog.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_host.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_management.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/process_test_fixture.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/project_config.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_runtime.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_runtime_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_transport.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_usage.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/repository.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/restore_http_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/runtime_management.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/runtime_management_crash_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/runtime_management_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/secrets.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/server.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/store.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_application_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_call_application.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_result_tests.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_results.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_runtime.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/wasm.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace_changes.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace_identity.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/worktree_diagnostics.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/worktree_management.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/agent_runtime_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_gate.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment-fixture.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment-http.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/assessment_adversarial.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/budget.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/budget_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/budget_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/checkpoint.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/checkpoint_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/cli_workflow.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/composition_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/composition_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/external_process_isolation.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/final_acceptance.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/first_user_workflow.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/git_diff.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_schema.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_security.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_initialization_workflow.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/http_contract.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/live.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_authorization.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/network_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_catalog.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_host.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/plugin_management.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project-web.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_context.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/project_migration.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/provider_network.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/provider_usage.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/review_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/runtime.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/runtime_management_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/runtime_management_schema.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/runtime_management_workflow.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/session_turns.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/external_process_isolation/mod.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/network_fixture.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/project_fixture.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/schema_fixture.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_call_workflow.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_result_crash.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_runtime.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_session_turns.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/turn_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/ui-fixture.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_changes.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_crash.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/workspace_identity.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/worktree_cli.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/worktree_http.rs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/web/app.js",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/web/index.html",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/web/style.css",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/set-peachsh-key.ps1",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/start-peachsh-legacy.cmd",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/start-peachsh.cmd",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/README.md",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/discover-peachsh-models.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/dump-config.txt",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-newapi-balance.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-openai-parallel.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-skill-discovery.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-team-membership-guard.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-team-model-routing.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-team-swarm-routing.mjs",
+      "matches_git_blob": true
+    },
+    {
+      "path": "NoManCode/tests/test-xpeach-live.mjs",
+      "matches_git_blob": true
+    }
+  ],
+  "actual_probe_sha256": "1b75e7446ed7c17a84df6c788570d0c32a32d27e336cee7fff55cdbd1a8b0fe4",
+  "files": [
+    {
+      "path": "logs/01-check.json",
+      "bytes": 374,
+      "sha256": "963bf797b2e8e0cc26772f98588bbdfddffa541966ec8a32ba6ee6a1b9958ef7"
+    },
+    {
+      "path": "logs/01-check.stderr.log",
+      "bytes": 664,
+      "sha256": "6e363a379d427db2f695f6c37cf4097df1c6e13c7054b1c44c0f74fd04743568"
+    },
+    {
+      "path": "logs/01-check.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/02-build-probe.json",
+      "bytes": 381,
+      "sha256": "e91731dbc9832254d9879828b6ebbd6841c7e76efa7a7598396803b6da7bf6c4"
+    },
+    {
+      "path": "logs/02-build-probe.stderr.log",
+      "bytes": 303,
+      "sha256": "afd73d9bdd36720d5a832c6f6e6cd305d911369d15b675611bbc4b95584b395a"
+    },
+    {
+      "path": "logs/02-build-probe.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/03-s01_actual_lpac_process_exchanges_stdio_and_exits.json",
+      "bytes": 473,
+      "sha256": "e1341706ac034776f018be423bac59caf5eb1ae110e12e391c379a4cd1367c8e"
+    },
+    {
+      "path": "logs/03-s01_actual_lpac_process_exchanges_stdio_and_exits.stderr.log",
+      "bytes": 753,
+      "sha256": "420c4033edb58ca04d1419d5210f22c7aff2e3f773d22f0863849be5ba9946ad"
+    },
+    {
+      "path": "logs/03-s01_actual_lpac_process_exchanges_stdio_and_exits.stdout.log",
+      "bytes": 731,
+      "sha256": "8a33afef2ad01ce29eec0c6fec87ced8e64b783fd1ce1dcf116e7dd90c34468a"
+    },
+    {
+      "path": "logs/environment.json",
+      "bytes": 673,
+      "sha256": "971adac60d7604484e5780057f16e706a15e9cc63a8b28648723c948e8f8bb0a"
+    },
+    {
+      "path": "logs/final.json",
+      "bytes": 93,
+      "sha256": "4989b4ad0b225d0e80682cd41bafe7f6350917d426d50d20961c95bd022c060d"
+    },
+    {
+      "path": "logs/postflight.json",
+      "bytes": 332,
+      "sha256": "eb1b80bb0d12ec74d8cdbcc92c1f244bd9bc3bc0f376dca5b7515a049a1cbf2f"
+    },
+    {
+      "path": "logs/preflight.json",
+      "bytes": 332,
+      "sha256": "a52a2d959d43253b3937626e1cb37446e527531307bb1dc2de04957b8578d896"
+    },
+    {
+      "path": "logs/probe-binary.json",
+      "bytes": 318,
+      "sha256": "f3058ca9026cc62f939653d9d7e6c6c8b5d501e3fb23d854bb94d7f489389022"
+    },
+    {
+      "path": "logs/source-after-01-check.json",
+      "bytes": 32264,
+      "sha256": "64bb9620f074581d6450470a50c542c274d94478e082da7c744b870860e3df89"
+    },
+    {
+      "path": "logs/source-after-02-build-probe.json",
+      "bytes": 32264,
+      "sha256": "64bb9620f074581d6450470a50c542c274d94478e082da7c744b870860e3df89"
+    },
+    {
+      "path": "logs/source-after-03-s01_actual_lpac_process_exchanges_stdio_and_exits.json",
+      "bytes": 32264,
+      "sha256": "64bb9620f074581d6450470a50c542c274d94478e082da7c744b870860e3df89"
+    },
+    {
+      "path": "logs/source-after.json",
+      "bytes": 32264,
+      "sha256": "64bb9620f074581d6450470a50c542c274d94478e082da7c744b870860e3df89"
+    },
+    {
+      "path": "logs/source-before.json",
+      "bytes": 32264,
+      "sha256": "64bb9620f074581d6450470a50c542c274d94478e082da7c744b870860e3df89"
+    },
+    {
+      "path": "logs/state-after-01-check.json",
+      "bytes": 332,
+      "sha256": "b730e63db01fc7be10dfe4dd8232d62aee58cc45da30ef3439f5ce43033673a8"
+    },
+    {
+      "path": "logs/state-after-02-build-probe.json",
+      "bytes": 332,
+      "sha256": "38b93b659f6d8ca97bb793cc1533ab3a687ff227a7a22737c924b67b3e8ebe4b"
+    },
+    {
+      "path": "logs/state-after-03-s01_actual_lpac_process_exchanges_stdio_and_exits.json",
+      "bytes": 332,
+      "sha256": "c44d16fddb0d75b414ab2966687bec70e4bdce9c587c62989fb30dcbf204cdb8"
+    },
+    {
+      "path": "logs/toolchain-setup.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "run.ps1",
+      "bytes": 6816,
+      "sha256": "4ab1666274b2315e7080ab79d15207eba74f44f7352d1f049ed0f577d0082566"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/host.db",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/host.db-wal",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/key.dat",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/other-project.txt",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/profile.txt",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/public.txt",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-fixture-7be7a16ae11d4f48a52c506b1855b4b5/workspace.txt",
+      "bytes": 8,
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/nhc-sandbox-fbdcd996df934ee4a256adde5538e34c/probe.exe",
+      "bytes": 684544,
+      "sha256": "1b75e7446ed7c17a84df6c788570d0c32a32d27e336cee7fff55cdbd1a8b0fe4"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/sandbox-error.txt",
+      "bytes": 89,
+      "sha256": "0d3df72efcdfc4eff5881bcbc64e82fb521e66cbb94117a9053ffa2b21d2e874"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/sandbox-events.json",
+      "bytes": 266,
+      "sha256": "827d15bb1577c1d53d3b4ca4dcc37a073ec57c13aae4ae030936c6fbad7c364b"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/sandbox-stderr.bin",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/sandbox-stdout.bin",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tmp/.tmpZKM0MG/sentinels-after-error.json",
+      "bytes": 820,
+      "sha256": "b7e77e07803733d30d9764b53b559bf803f03623c3def8fbc34d9c73be2795e4"
+    }
+  ],
+  "result": "check/build exit0; S01 exit101 create_lpac_process OS203; remaining not run"
+}
