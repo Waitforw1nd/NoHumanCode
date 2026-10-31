@@ -3789,3 +3789,272 @@ async fn n19_unknown_result_commit_failure_resumes_by_rechecking_host_policy() {
     );
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
+    use sha2::{Digest, Sha256};
+    use std::process::{Command, Stdio};
+    if let Ok(root) = std::env::var("NHC_N19_HOST_DENIED_CHILD") {
+        let root = std::path::PathBuf::from(root);
+        let store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let task = engine.start(request(3)).await.unwrap().tasks.remove(0);
+        let database: String = store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        crate::tool_results::crash_probe::arm(
+            database,
+            task.id.clone(),
+            "host-kill".into(),
+            "after_commit",
+            root.join("host-denied-signal"),
+        );
+        std::fs::write(root.join("host-denied-armed"), task.id).unwrap();
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    }
+
+    let mut f = fixture(
+        Mode::All,
+        vec![
+            group(vec![call(
+                "host-kill",
+                "not_a_real_tool",
+                json!({"argument":"no side effect"}),
+                0,
+            )]),
+            json!({"content":"resumed"}),
+            json!({"content":"new turn"}),
+        ],
+    )
+    .await;
+    f.dir.disable_cleanup(true);
+    let root = f.dir.path();
+    f.mock.hold.store(true, Ordering::SeqCst);
+    let mut child = OwnedChild(Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "agent_runtime_tests::n19_builtin_host_denied_after_commit_kill_recover_and_new_turn", "--nocapture"])
+        .env("NHC_N19_HOST_DENIED_CHILD", root)
+        .stdout(Stdio::from(std::fs::File::create(root.join("host-denied-child.stdout.log")).unwrap()))
+        .stderr(Stdio::from(std::fs::File::create(root.join("host-denied-child.stderr.log")).unwrap()))
+        .spawn().unwrap());
+    let pid = child.id();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    let id = loop {
+        if let Ok(id) = std::fs::read_to_string(root.join("host-denied-armed")) {
+            break id;
+        }
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("HostDenied child {pid} exited before arm: {status}");
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "HostDenied child arm timeout"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    };
+    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        .await
+        .unwrap();
+    f.mock.hold.store(false, Ordering::SeqCst);
+    f.mock.release.notify_one();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    while !root.join("host-denied-signal").is_file() {
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("HostDenied child {pid} exited before result commit: {status}");
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "HostDenied after_commit timeout"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(
+        std::fs::read_to_string(root.join("host-denied-signal")).unwrap(),
+        format!("{id}\nhost-kill\nafter_commit\n")
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
+    assert!(child.try_wait().unwrap().is_none());
+    child.kill().unwrap();
+    let status = child.wait().unwrap();
+    assert!(!status.success());
+    for folder in [
+        "host-denied-raw",
+        "host-denied-query",
+        "host-denied-recovery",
+    ] {
+        std::fs::create_dir(root.join(folder)).unwrap();
+    }
+    let mut files = vec![];
+    for name in ["agent.db", "agent.db-wal", "agent.db-shm"] {
+        let path = root.join(name);
+        if path.exists() {
+            let bytes = std::fs::read(path).unwrap();
+            for folder in [
+                "host-denied-raw",
+                "host-denied-query",
+                "host-denied-recovery",
+            ] {
+                std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+            }
+            assert_eq!(
+                std::fs::read(root.join("host-denied-raw").join(name)).unwrap(),
+                bytes
+            );
+            files.push(json!({"name":name,"present":true,"bytes":bytes.len(),"sha256":format!("{:x}",Sha256::digest(&bytes))}));
+        } else {
+            files.push(json!({"name":name,"present":false}));
+        }
+    }
+    std::fs::write(root.join("host-denied-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"host-kill","phase":"after_commit","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
+
+    let query = Store::open(&root.join("host-denied-query/agent.db")).unwrap();
+    let at_kill = query.task(&id).unwrap();
+    assert_eq!(at_kill.status, "running");
+    let (session, agent, turn, projected_status): (String, String, String, String) = query
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT session_id,agent_id,turn_id,status FROM turn_tasks WHERE legacy_task_id=?1",
+            [&id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .unwrap();
+    assert_eq!(projected_status, at_kill.status);
+    let turn_status: String = query
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT status FROM turns WHERE id=?1 AND session_id=?2",
+            rusqlite::params![&turn, &session],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(turn_status, at_kill.status);
+    let answers: Vec<_> = at_kill
+        .messages
+        .iter()
+        .filter(|m| m["role"] == "tool" && m["tool_call_id"] == "host-kill")
+        .collect();
+    assert_eq!(answers.len(), 1);
+    assert_eq!(
+        serde_json::from_str::<Value>(answers[0]["content"].as_str().unwrap()).unwrap(),
+        json!("未分类工具拒绝执行")
+    );
+    assert!(query.approvals_for_task(&id).unwrap().is_empty());
+    let changes: i64 = query
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT COUNT(*) FROM workspace_changes WHERE task_id=?1",
+            [&id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(changes, 0);
+    let events = query.events(&at_kill.run_id, 0).unwrap();
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].task_id, id);
+    assert_eq!(results[0].session_id.as_deref(), Some(session.as_str()));
+    assert_eq!(results[0].turn_id.as_deref(), Some(turn.as_str()));
+    assert_eq!(
+        results[0].data,
+        json!({"name":"not_a_real_tool","tool_call_id":"host-kill","result":"未分类工具拒绝执行","origin_version":1,"origin":"host_denied"})
+    );
+    let original_event = serde_json::to_value(results[0]).unwrap();
+    let original_answer: Value = (*answers[0]).clone();
+    drop(query);
+
+    let recovery = Arc::new(Store::open(&root.join("host-denied-recovery/agent.db")).unwrap());
+    recovery.recover().unwrap();
+    assert_eq!(recovery.task(&id).unwrap().status, "interrupted");
+    let engine = Engine::new(recovery.clone(), 2).unwrap();
+    engine
+        .resume(&id, "resume after committed denial")
+        .await
+        .unwrap();
+    let done = settled(&engine, &id).await;
+    assert_eq!(done.status, "completed");
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
+    let answers: Vec<_> = done
+        .messages
+        .iter()
+        .filter(|m| m["role"] == "tool" && m["tool_call_id"] == "host-kill")
+        .collect();
+    assert_eq!(answers.len(), 1);
+    assert_eq!(answers[0], &original_answer);
+    let events = recovery.events(&at_kill.run_id, 0).unwrap();
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(serde_json::to_value(results[0]).unwrap(), original_event);
+    assert!(recovery.approvals_for_task(&id).unwrap().is_empty());
+    let receipt = engine
+        .send_chat_turn(SendChatTurn {
+            session_id: SessionId(session),
+            agent_id: AgentId(agent),
+            expected_last_turn_id: TurnId(turn),
+            message: "next".into(),
+            idempotency_key: "n19-host-denied-restart-next".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        settled(&engine, &receipt.task.legacy_task_id).await.status,
+        "completed"
+    );
+    assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+    drop(engine);
+    drop(recovery);
+    let reopened = Store::open(&root.join("host-denied-recovery/agent.db")).unwrap();
+    reopened.recover().unwrap();
+    assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
+    let events = reopened.events(&at_kill.run_id, 0).unwrap();
+    let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(serde_json::to_value(results[0]).unwrap(), original_event);
+    assert!(!events.iter().any(|e| e.kind == "tool_start"));
+    assert!(reopened.approvals_for_task(&id).unwrap().is_empty());
+    let changes: i64 = reopened
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT COUNT(*) FROM workspace_changes WHERE task_id=?1",
+            [&id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(changes, 0);
+    for file in &files {
+        let path = root
+            .join("host-denied-raw")
+            .join(file["name"].as_str().unwrap());
+        if file["present"] == true {
+            let bytes = std::fs::read(path).unwrap();
+            assert_eq!(bytes.len() as u64, file["bytes"].as_u64().unwrap());
+            assert_eq!(
+                format!("{:x}", Sha256::digest(&bytes)),
+                file["sha256"].as_str().unwrap()
+            );
+        } else {
+            assert!(!path.exists());
+        }
+    }
+    println!(
+        "n19 builtin HostDenied pid={pid} evidence={}",
+        root.display()
+    );
+}
