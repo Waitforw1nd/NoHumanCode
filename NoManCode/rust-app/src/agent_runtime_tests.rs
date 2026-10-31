@@ -1265,8 +1265,8 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
             assert!(!root.join("forbidden.txt").exists());
             assert_eq!(f.mock.hits.load(Ordering::SeqCst), 2);
             let messages = snapshot["messages"].clone();
-            if let Some(old) = previous {
-                assert_eq!(old, messages);
+            if let Some(ref old) = previous {
+                assert_eq!(old, &messages);
             } else {
                 previous = Some(messages);
             }
