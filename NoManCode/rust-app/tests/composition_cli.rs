@@ -193,9 +193,36 @@ async fn composition_cli_real_transport_success_and_adversarial_responses() {
         "{{\"version\":1,{}",
         valid.to_string().trim_start_matches('{')
     );
-    for response in [wire("200 OK",&duplicate),wire("200 OK","not-json"),wire("200 OK",&"x".repeat(1_048_577)), b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 200\r\nConnection: close\r\n\r\n{".to_vec(),b"HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:1/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec()] {
-        let (output,_) = run(Some(response),true).await; assert!(!output.status.success()); assert!(output.stdout.is_empty());
+    let base = valid.to_string();
+    let padded = format!("{base}{}", " ".repeat(1_048_576 - base.len()));
+    assert!(
+        run(Some(wire("200 OK", &padded)), true)
+            .await
+            .0
+            .status
+            .success()
+    );
+    for response in [
+        wire("200 OK", &duplicate),
+        wire("200 OK", "not-json"),
+        wire("200 OK", &(padded + " ")),
+        b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 200\r\nConnection: close\r\n\r\n{".to_vec(),
+    ] {
+        let (output, _) = run(Some(response), true).await;
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
     }
+    let redirected = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let location = format!("http://{}/followed", redirected.local_addr().unwrap());
+    let response = format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").into_bytes();
+    let (output, _) = run(Some(response), true).await;
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(
+        tokio::time::timeout(Duration::from_millis(200), redirected.accept())
+            .await
+            .is_err()
+    );
     for (status, body, code) in [
         (
             "403 Forbidden",
