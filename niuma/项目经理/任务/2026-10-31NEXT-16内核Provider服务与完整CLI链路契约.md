@@ -142,3 +142,7 @@ C首次固定e810979b组件编译成功，业务测试在恢复后resume旧Task�
 唯一新增写权给C：`NoManCode/rust-app/src/server.rs`中resume处理器的错误映射，识别CheckpointError::Conflict并返回409/conflict/retryable false，使用覆盖checkpoint/restore的固定安全说明。保持Store/Engine现有错误类型和事务，不扩其它HTTP路由。C在first_user_workflow同时断言创建Checkpoint后和恢复后resume均拒绝，拒绝不改变Task、Provider请求数或文件；不把预期降低成通用错误。
 
 原attempt1证据保留，后续新候选另跑。B窗口期间C只静态修复，固定commit/两tree并重新取得窗口后执行；C最终组合包含此修正。此为P07真实发现并驱动的必要产品修复，不因原任务只有测试而忽略用户路径缺陷。
+
+## 补充03：保留既有ResumeError封存文案
+
+最终组合a362d8e9首轮check通过、test失败于既有restore_http_tests固定message/error断言。补充02把两类错误并为一个分支，改变了ResumeError::Sealed已有公开说明。C仍只在server::resume范围修正：该旧错误维持“任务已有恢复记录，不能继续原任务”，新增CheckpointError::Conflict使用检查点固定说明；两者都是409/conflict/nonretryable。不得修改旧测试预期、Store或Engine来消除失败。保留失败原件，固定修订候选后完整五门禁从check重起。详见[C首轮失败review](../../员工C/审查记录/第十七轮/2026-10-31最终门禁首轮失败与恢复文案修订.md)。
