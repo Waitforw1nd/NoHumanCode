@@ -1789,8 +1789,32 @@ impl Store {
         tool_name: &str,
         args: &Value,
     ) -> Result<(approval::ApprovalRecord, bool)> {
+        self.ensure_approval_inner(task, tool_call_id, tool_name, args, false)
+    }
+
+    pub(crate) fn ensure_current_approval(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+    ) -> Result<(approval::ApprovalRecord, bool)> {
+        self.ensure_approval_inner(task, tool_call_id, tool_name, args, true)
+    }
+
+    fn ensure_approval_inner(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+        require_current: bool,
+    ) -> Result<(approval::ApprovalRecord, bool)> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if require_current {
+            validate_current_approval_call(&tx, task, tool_call_id, tool_name)?;
+        }
         let repo = repository::Repository::new(&tx);
         let (turn_id, session_id, binding) =
             approval_binding(&tx, task, tool_call_id, tool_name, args)?;
@@ -2061,8 +2085,32 @@ impl Store {
         tool_name: &str,
         args: &Value,
     ) -> Result<approval::ApprovalRecord> {
+        self.claim_approval_inner(task, tool_call_id, tool_name, args, false)
+    }
+
+    pub(crate) fn claim_current_approval(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+    ) -> Result<approval::ApprovalRecord> {
+        self.claim_approval_inner(task, tool_call_id, tool_name, args, true)
+    }
+
+    fn claim_approval_inner(
+        &self,
+        task: &Task,
+        tool_call_id: &str,
+        tool_name: &str,
+        args: &Value,
+        require_current: bool,
+    ) -> Result<approval::ApprovalRecord> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if require_current {
+            validate_current_approval_call(&tx, task, tool_call_id, tool_name)?;
+        }
         let current = repository::Repository::new(&tx)
             .approval_by_tool_call(&task.id, tool_call_id)?
             .ok_or_else(|| approval::ApprovalError::NotFound {
@@ -2757,6 +2805,61 @@ fn candidate_continues_snapshot(
         && last.get("tool_calls").is_none()
 }
 
+fn validate_current_approval_call(
+    tx: &rusqlite::Transaction<'_>,
+    task: &Task,
+    call_id: &str,
+    name: &str,
+) -> Result<()> {
+    let conflict = || approval::ApprovalError::BindingConflict {
+        id: call_id.to_owned(),
+    };
+    let durable = legacy_task_row(tx, &task.id)?;
+    let saved = serde_json::to_value(&durable)?;
+    let caller = safe_task_value(task)?;
+    for field in [
+        "id",
+        "run_id",
+        "spec",
+        "route",
+        "workspace",
+        "created_at",
+        "messages",
+    ] {
+        if saved[field] != caller[field] {
+            return Err(conflict().into());
+        }
+    }
+    approval::validate_call_history(&durable.messages)?;
+    let (turn, session) = approval_scope(tx, &durable.id)?;
+    let inherited = inherited_message_count(tx, &durable, turn.as_deref(), session.as_deref())?;
+    let index = durable
+        .messages
+        .iter()
+        .rposition(|message| message.get("tool_calls").is_some())
+        .ok_or_else(conflict)?;
+    if index < inherited {
+        return Err(conflict().into());
+    }
+    validate_prior_groups(&durable.messages[inherited..index])?;
+    let group = durable.messages[index]["tool_calls"]
+        .as_array()
+        .ok_or_else(conflict)?;
+    let prior = &durable.messages[index + 1..];
+    let call = group.get(prior.len()).ok_or_else(conflict)?;
+    if durable.messages[index]["role"] != "assistant"
+        || call["id"] != call_id
+        || call["type"] != "function"
+        || call["function"]["name"] != name
+        || prior.iter().zip(group).any(|(answer, previous)| {
+            answer["role"] != "tool" || answer["tool_call_id"] != previous["id"]
+        })
+    {
+        return Err(conflict().into());
+    }
+    Ok(())
+}
+
 fn approval_binding(
     tx: &rusqlite::Transaction<'_>,
     task: &Task,
@@ -2908,24 +3011,6 @@ fn safe_approval_call_digest(
         return Err(ToolResultError::Conflict.into());
     }
     validate_prior_groups(&task.messages[inherited..index])?;
-    let calls = task.messages[index]["tool_calls"]
-        .as_array()
-        .ok_or(ToolResultError::Corrupt)?;
-    let call_index = calls
-        .iter()
-        .position(|item| item["id"] == record.tool_call_id)
-        .ok_or(ToolResultError::Corrupt)?;
-    let preceding = task
-        .messages
-        .get(index + 1..index + 1 + call_index)
-        .ok_or(ToolResultError::Conflict)?;
-    if preceding
-        .iter()
-        .zip(calls)
-        .any(|(message, call)| message["role"] != "tool" || message["tool_call_id"] != call["id"])
-    {
-        return Err(ToolResultError::Conflict.into());
-    }
     let args: Value = serde_json::from_str(
         call["function"]["arguments"]
             .as_str()
@@ -4362,6 +4447,75 @@ mod tests {
                     json!({"safe_call_digest":null})
                 )
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn r02_public_approval_allows_multiple_pending_calls_in_one_group() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("r02-approvals.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        let args = json!({"path":"src/a","content":"ordinary"});
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[
+                {"id":"r02-0","type":"function","function":{"name":"write_file","arguments":args.to_string()}},
+                {"id":"r02-1","type":"function","function":{"name":"write_file","arguments":args.to_string()}}
+            ]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let first = store
+            .ensure_approval(&task, "r02-0", "write_file", &args)
+            .unwrap();
+        let second = store
+            .ensure_approval(&task, "r02-1", "write_file", &args)
+            .unwrap();
+        assert!(first.1 && second.1);
+        let replay = store
+            .ensure_approval(&task, "r02-1", "write_file", &args)
+            .unwrap();
+        assert!(!replay.1);
+        assert_eq!(replay.0.id, second.0.id);
+        assert_eq!(store.approvals_for_task(&task.id).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn r01_current_approval_rechecks_persisted_messages_in_transaction() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = Store::open(&temp.path().join("r01-stale.db")).unwrap();
+        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+        task.spec.tools = true;
+        task.spec.write_scopes = vec!["src".into()];
+        let args = json!({"path":"src/a","content":"sk-abc"});
+        task.messages = vec![
+            json!({"role":"user","content":"hello"}),
+            json!({"role":"assistant","content":null,"tool_calls":[
+                {"id":"r01-stale","type":"function","function":{"name":"write_file","arguments":args.to_string()}}
+            ]}),
+        ];
+        store
+            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .unwrap();
+        let mut newer = task.clone();
+        newer.messages.push(
+            json!({"role":"tool","tool_call_id":"r01-stale","content":"\"already answered\""}),
+        );
+        store.save_task(&newer).unwrap();
+        let error = store
+            .ensure_current_approval(&task, "r01-stale", "write_file", &args)
+            .unwrap_err();
+        assert!(matches!(
+            error.downcast_ref::<approval::ApprovalError>(),
+            Some(approval::ApprovalError::BindingConflict { .. })
+        ));
+        assert!(store.approvals_for_task(&task.id).unwrap().is_empty());
+        assert_eq!(
+            store.task(&task.id).unwrap().messages.last().unwrap()["tool_call_id"],
+            "r01-stale"
         );
     }
 

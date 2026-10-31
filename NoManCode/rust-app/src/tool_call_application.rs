@@ -194,13 +194,24 @@ impl ToolCallApplication {
                 Ok(())
             }
             PolicyDecision::RequireApproval => {
-                let (record, _) = self.store.ensure_approval(task, tool_call_id, name, args)?;
+                let approval_task = transient_approval_task(task, call, name, args)?;
+                let (record, _) =
+                    self.store
+                        .ensure_current_approval(&approval_task, tool_call_id, name, args)?;
+                drop(approval_task);
                 let status = self.wait_for_approval(&record, cancel).await?;
                 match status {
                     ApprovalStatus::Approved => {
+                        let approval_task = transient_approval_task(task, call, name, args)?;
                         let (lease, claimed) = self.tool_runtime.acquire(task, name, || {
-                            self.store.claim_approval(task, tool_call_id, name, args)
+                            self.store.claim_current_approval(
+                                &approval_task,
+                                tool_call_id,
+                                name,
+                                args,
+                            )
                         })?;
+                        drop(approval_task);
                         #[cfg(test)]
                         if name == "run_command" {
                             let probe = self
@@ -226,8 +237,9 @@ impl ToolCallApplication {
                         .await
                     }
                     ApprovalStatus::Denied | ApprovalStatus::Cancelled => {
+                        let mut approval_task = transient_approval_task(task, call, name, args)?;
                         self.record_tool_result(
-                            task,
+                            &mut approval_task,
                             tool_call_id,
                             name,
                             &approval::tool_error(status),
@@ -238,6 +250,7 @@ impl ToolCallApplication {
                                 Origin::ApprovalCancelled
                             },
                         )?;
+                        *task = approval_task;
                         if status == ApprovalStatus::Cancelled || cancel.is_cancelled() {
                             anyhow::bail!("任务已停止");
                         }
@@ -470,6 +483,65 @@ impl ToolCallApplication {
         Ok(())
     }
 }
+
+fn transient_approval_task(task: &Task, call: &Value, name: &str, args: &Value) -> Result<Task> {
+    approval::validate_call_history(&task.messages)?;
+    let id = call["id"].as_str().context("工具调用缺少 id")?;
+    let raw = call["function"]["arguments"]
+        .as_str()
+        .context("工具参数缺失")?;
+    let parsed: Value = serde_json::from_str(raw)?;
+    ensure!(
+        call["type"] == "function"
+            && call["function"]["name"] == name
+            && parsed.is_object()
+            && approval::args_digest(&parsed)? == approval::args_digest(args)?,
+        "工具调用参数不匹配"
+    );
+    let group_index = task
+        .messages
+        .iter()
+        .rposition(|message| message.get("tool_calls").is_some())
+        .context("工具调用组缺失")?;
+    let group = task.messages[group_index]["tool_calls"]
+        .as_array()
+        .context("工具调用组损坏")?;
+    let prior = &task.messages[group_index + 1..];
+    let current = group.get(prior.len()).context("工具调用次序不匹配")?;
+    ensure!(
+        task.messages[group_index]["role"] == "assistant"
+            && current["id"] == id
+            && current["type"] == "function"
+            && current["function"]["name"] == name
+            && prior.iter().zip(group).all(|(answer, previous)| {
+                answer["role"] == "tool" && answer["tool_call_id"] == previous["id"]
+            }),
+        "工具调用身份或次序不匹配"
+    );
+    let saved = current["function"]["arguments"]
+        .as_str()
+        .context("持久工具参数缺失")?;
+    let safe_raw = secrets::redact_persisted(&Value::String(raw.to_owned()));
+    let safe_saved = secrets::redact_persisted(&Value::String(saved.to_owned()));
+    let equivalent = safe_raw == safe_saved
+        || match (
+            safe_raw
+                .as_str()
+                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
+            safe_saved
+                .as_str()
+                .and_then(|s| serde_json::from_str::<Value>(s).ok()),
+        ) {
+            (Some(a), Some(b)) => approval::args_digest(&a)? == approval::args_digest(&b)?,
+            _ => false,
+        };
+    ensure!(equivalent, "工具调用安全参数不匹配");
+    let mut transient = task.clone();
+    transient.messages[group_index]["tool_calls"][prior.len()]["function"]["arguments"] =
+        Value::String(raw.to_owned());
+    Ok(transient)
+}
+
 pub(crate) fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
     let answered: std::collections::HashSet<String> = messages
         .iter()

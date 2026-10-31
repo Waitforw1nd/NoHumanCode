@@ -4683,6 +4683,386 @@ mod workspace_phase_tests {
         )
     }
 
+    #[derive(Clone)]
+    struct R01Provider {
+        calls: Arc<AtomicUsize>,
+        command: bool,
+        first_is_write: bool,
+    }
+
+    async fn r01_reply(
+        State(state): State<R01Provider>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        let delta = if state.calls.fetch_add(1, Ordering::SeqCst) == 0 {
+            let (name, args) = if state.command {
+                (
+                    "run_command",
+                    json!({"command":"[IO.File]::WriteAllText('shell-marker.txt','sk-abc')","timeout_seconds":10}),
+                )
+            } else {
+                (
+                    "write_file",
+                    json!({"path":"src/marker.txt","content":"sk-abc"}),
+                )
+            };
+            let (first_name, first_args) = if state.first_is_write {
+                (
+                    "write_file",
+                    json!({"path":"src/first.txt","content":"first"}),
+                )
+            } else {
+                ("read_file", json!({"path":"src/input.txt"}))
+            };
+            json!({"tool_calls":[
+                {"index":0,"id":"r01-read","type":"function","function":{"name":first_name,"arguments":first_args.to_string()}},
+                {"index":1,"id":"r01-effect","type":"function","function":{"name":name,"arguments":args.to_string()}}
+            ]})
+        } else {
+            json!({"content":"done"})
+        };
+        let chunk = json!({"choices":[{"delta":delta,"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+
+    struct R01Strategy {
+        deny_first: bool,
+    }
+
+    impl crate::agent_runtime::AgentStrategy for R01Strategy {
+        fn decide(
+            &self,
+            input: crate::agent_runtime::StrategyInput<'_>,
+            _messages: &[Value],
+            _round: usize,
+            _max_rounds: usize,
+        ) -> std::result::Result<
+            crate::agent_runtime::StrategyAction,
+            crate::agent_runtime::StrategyError,
+        > {
+            use crate::agent_runtime::{CompletionKind, StrategyAction, StrategyInput, ToolVote};
+            Ok(match input {
+                StrategyInput::BeforeCompletion { tools } => {
+                    StrategyAction::UseTools((0..tools.len()).collect())
+                }
+                StrategyInput::AfterCompletion {
+                    outcome: CompletionKind::NoToolCalls,
+                } => StrategyAction::Finish,
+                StrategyInput::AfterCompletion {
+                    outcome: CompletionKind::ToolGroup(tools),
+                } => StrategyAction::ToolVotes(
+                    tools
+                        .iter()
+                        .enumerate()
+                        .map(|(index, _)| {
+                            if self.deny_first && index == 0 {
+                                ToolVote::Deny
+                            } else {
+                                ToolVote::ApplyHostPolicy
+                            }
+                        })
+                        .collect(),
+                ),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn r01_same_group_safe_snapshot_keeps_sensitive_approval_binding() {
+        for (deny_first, command, cancel, approve, first_is_write) in [
+            (false, false, false, false, false),
+            (false, true, true, false, false),
+            (true, false, false, false, false),
+            (true, true, true, false, false),
+            (false, false, false, true, false),
+            (false, false, false, false, true),
+        ] {
+            let temp = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(temp.path().join("src")).unwrap();
+            std::fs::write(temp.path().join("src/input.txt"), "before").unwrap();
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let base = format!("http://{}/v1", listener.local_addr().unwrap());
+            let calls = Arc::new(AtomicUsize::new(0));
+            let app = Router::new()
+                .route("/v1/chat/completions", post(r01_reply))
+                .with_state(R01Provider {
+                    calls: calls.clone(),
+                    command,
+                    first_is_write,
+                });
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            let store = Arc::new(Store::open(&temp.path().join("r01.db")).unwrap());
+            store
+                .save_settings(&Settings {
+                    workspace: temp.path().to_string_lossy().into(),
+                    max_concurrency: 2,
+                    routes: vec![Route {
+                        id: "route".into(),
+                        name: "route".into(),
+                        base_url: base,
+                        model: "mock".into(),
+                        max_tokens: 128,
+                        parallel_limit: 2,
+                        key_env: None,
+                    }],
+                    newapi: None,
+                })
+                .unwrap();
+            store.put_secret("route", "r01-test-key").unwrap();
+            authorize_fixture(&store);
+            let agent =
+                crate::agent_runtime::AgentRuntime::with_strategy_for_test(Arc::new(R01Strategy {
+                    deny_first,
+                }))
+                .unwrap();
+            let engine = Engine::new_with_agent_runtime_for_test(store.clone(), 2, agent).unwrap();
+            let task = engine
+                .start(RunRequest {
+                    title: "r01".into(),
+                    kind: SessionKind::Team,
+                    tasks: vec![TaskSpec {
+                        name: "worker".into(),
+                        role: "worker".into(),
+                        route_id: "route".into(),
+                        prompt: "inspect".into(),
+                        depends_on: vec![],
+                        write_scopes: vec!["src".into()],
+                        tools: true,
+                        allow_commands: true,
+                        max_rounds: 3,
+                    }],
+                })
+                .await
+                .unwrap()
+                .tasks
+                .remove(0);
+            if first_is_write {
+                let first = n10_pending(&engine, &task.id).await;
+                assert_eq!(first.tool_call_id, "r01-read");
+                engine
+                    .decide_approval(&first.id, false, Some("test"))
+                    .unwrap();
+            }
+            let pending = n10_pending(&engine, &task.id).await;
+            assert_eq!(pending.tool_call_id, "r01-effect");
+            let raw_args = if command {
+                json!({"command":"[IO.File]::WriteAllText('shell-marker.txt','sk-abc')","timeout_seconds":10})
+            } else {
+                json!({"path":"src/marker.txt","content":"sk-abc"})
+            };
+            assert_eq!(
+                pending.args_digest,
+                approval::args_digest(&raw_args).unwrap()
+            );
+            let persisted = store.task(&task.id).unwrap();
+            assert!(
+                !serde_json::to_string(&persisted)
+                    .unwrap()
+                    .contains("sk-abc")
+            );
+            if cancel {
+                store.cancel_pending_approvals(&task.id).unwrap();
+            } else {
+                engine
+                    .decide_approval(&pending.id, approve, Some("test"))
+                    .unwrap();
+            }
+            n10_idle(&engine).await;
+            let finished = store.task(&task.id).unwrap();
+            assert_eq!(
+                finished.status,
+                if cancel { "cancelled" } else { "completed" }
+            );
+            let events = store.events(&task.run_id, 0).unwrap();
+            let results: Vec<_> = events
+                .iter()
+                .filter(|event| event.kind == "tool_result")
+                .collect();
+            assert_eq!(results.len(), 2);
+            assert_eq!(
+                results[0].data["origin"],
+                if first_is_write {
+                    "approval_denied"
+                } else if deny_first {
+                    "agent_denied"
+                } else {
+                    "read_completed"
+                }
+            );
+            if approve {
+                assert_eq!(results[1].data["approval_id"], pending.id);
+                assert_eq!(
+                    store.approval(&pending.id).unwrap().execution_state,
+                    approval::ExecutionState::Finished
+                );
+            } else {
+                assert_eq!(
+                    results[1].data["origin"],
+                    if cancel {
+                        "approval_cancelled"
+                    } else {
+                        "approval_denied"
+                    }
+                );
+            }
+            assert!(!serde_json::to_string(&events).unwrap().contains("sk-abc"));
+            assert!(!temp.path().join("src/marker.txt").exists());
+            assert!(!temp.path().join("shell-marker.txt").exists());
+            assert_eq!(calls.load(Ordering::SeqCst), if cancel { 1 } else { 2 });
+            assert_eq!(
+                store.approvals_for_task(&task.id).unwrap().len(),
+                if first_is_write { 2 } else { 1 }
+            );
+            assert!(!temp.path().join("src/first.txt").exists());
+            server.abort();
+        }
+    }
+
+    #[derive(Clone)]
+    struct R01Hold {
+        entered: Arc<tokio::sync::Notify>,
+        release: Arc<tokio::sync::Notify>,
+    }
+
+    async fn r01_held_reply(
+        State(state): State<R01Hold>,
+        Json(_): Json<Value>,
+    ) -> ([(&'static str, &'static str); 1], String) {
+        state.entered.notify_one();
+        state.release.notified().await;
+        let chunk = json!({"choices":[{"delta":{"content":"done"},"finish_reason":"stop"}]});
+        (
+            [("content-type", "text/event-stream")],
+            format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+        )
+    }
+
+    #[tokio::test]
+    async fn r01_mismatched_live_call_cannot_create_approval_or_execute() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp.path().join("src")).unwrap();
+        let state = R01Hold {
+            entered: Arc::new(tokio::sync::Notify::new()),
+            release: Arc::new(tokio::sync::Notify::new()),
+        };
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/v1", listener.local_addr().unwrap());
+        let app = Router::new()
+            .route("/v1/chat/completions", post(r01_held_reply))
+            .with_state(state.clone());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let store = Arc::new(Store::open(&temp.path().join("r01-mismatch.db")).unwrap());
+        store
+            .save_settings(&Settings {
+                workspace: temp.path().to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base,
+                    model: "mock".into(),
+                    max_tokens: 128,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route", "r01-test-key").unwrap();
+        authorize_fixture(&store);
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let started = engine
+            .start(RunRequest {
+                title: "r01-mismatch".into(),
+                kind: SessionKind::Team,
+                tasks: vec![TaskSpec {
+                    name: "worker".into(),
+                    role: "worker".into(),
+                    route_id: "route".into(),
+                    prompt: "inspect".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["src".into()],
+                    tools: true,
+                    allow_commands: false,
+                    max_rounds: 3,
+                }],
+            })
+            .await
+            .unwrap()
+            .tasks
+            .remove(0);
+        tokio::time::timeout(Duration::from_secs(8), state.entered.notified())
+            .await
+            .unwrap();
+        let args = json!({"path":"src/right.txt","content":"sk-abc"});
+        let call = json!({"id":"r01-target","type":"function","function":{
+            "name":"write_file","arguments":args.to_string()
+        }});
+        let mut current = store.task(&started.id).unwrap();
+        current
+            .messages
+            .push(json!({"role":"assistant","content":null,"tool_calls":[call.clone()]}));
+        store.save_task(&current).unwrap();
+        let mut current = store.task(&started.id).unwrap();
+        let forged_args = json!({"path":"src/wrong.txt","content":"sk-abc"});
+        let forged = json!({"id":"r01-target","type":"function","function":{
+            "name":"write_file","arguments":forged_args.to_string()
+        }});
+        let before_local = current.messages.clone();
+        let before_persisted = store.task(&started.id).unwrap().messages;
+        let mismatched_safe = engine
+            .execute_or_wait(
+                &mut current,
+                &forged,
+                "write_file",
+                &forged_args,
+                "r01-test-key",
+                &CancellationToken::new(),
+            )
+            .await
+            .unwrap_err();
+        assert!(
+            mismatched_safe
+                .to_string()
+                .contains("工具调用安全参数不匹配")
+        );
+        let mismatched_raw = engine
+            .execute_or_wait(
+                &mut current,
+                &call,
+                "write_file",
+                &forged_args,
+                "r01-test-key",
+                &CancellationToken::new(),
+            )
+            .await
+            .unwrap_err();
+        assert!(mismatched_raw.to_string().contains("工具调用参数不匹配"));
+        assert_eq!(current.messages, before_local);
+        assert_eq!(store.task(&started.id).unwrap().messages, before_persisted);
+        assert!(store.approvals_for_task(&started.id).unwrap().is_empty());
+        assert!(
+            store
+                .workspace_changes_for_task(&started.id)
+                .unwrap()
+                .is_empty()
+        );
+        let events = store.events(&started.run_id, 0).unwrap();
+        assert!(
+            !events
+                .iter()
+                .any(|event| matches!(event.kind.as_str(), "tool_start" | "tool_result"))
+        );
+        assert!(!temp.path().join("src/right.txt").exists());
+        assert!(!temp.path().join("src/wrong.txt").exists());
+        state.release.notify_one();
+        n10_idle(&engine).await;
+        server.abort();
+    }
+
     fn n13_raw(root: &Path, args: &[&str]) -> String {
         let out = std::process::Command::new("git")
             .current_dir(root)
