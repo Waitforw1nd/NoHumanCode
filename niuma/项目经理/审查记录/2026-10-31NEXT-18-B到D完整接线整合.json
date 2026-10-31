@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-31",
+  "source": "../nhc-b-persistent-runtime",
+  "destination": "../nhc-d-runtime-management-tests",
+  "source_head": "67841d0610374179f056e27e4a0060fc619081ac",
+  "destination_before": "36b73d8215a0f8ee041a3768dfae3157bb6342e7",
+  "destination_after": "67841d0610374179f056e27e4a0060fc619081ac",
+  "product_tree": "251c949b09ef3a7adb07c32f0834e1e154737d30",
+  "rust_tree": "872776408d4f141d400399bd6605605cc049ed66",
+  "merge_stdout": "Updating 36b73d82..67841d06\nFast-forward\n NoManCode/docs/cli-first-release-acceptance.md     |   13 +-\n NoManCode/rust-app/src/agent_runtime.rs            |  214 ++++-\n NoManCode/rust-app/src/cli.rs                      |  400 +++++++-\n NoManCode/rust-app/src/engine.rs                   |  253 ++++-\n NoManCode/rust-app/src/lib.rs                      |    5 +\n NoManCode/rust-app/src/network_authorization.rs    |   44 +-\n NoManCode/rust-app/src/plugin_management.rs        |  155 ++-\n NoManCode/rust-app/src/provider_runtime.rs         |  304 +++++-\n NoManCode/rust-app/src/repository.rs               |  234 ++++-\n NoManCode/rust-app/src/runtime_management.rs       |  357 +++++++\n NoManCode/rust-app/src/server.rs                   |  392 ++++++++\n NoManCode/rust-app/src/store.rs                    |   34 +-\n NoManCode/rust-app/tests/runtime_management_cli.rs |  345 +++++++\n .../rust-app/tests/runtime_management_workflow.rs  | 1011 ++++++++++++++++++++\n 14 files changed, 3636 insertions(+), 125 deletions(-)\n create mode 100644 NoManCode/rust-app/src/runtime_management.rs\n create mode 100644 NoManCode/rust-app/tests/runtime_management_cli.rs\n create mode 100644 NoManCode/rust-app/tests/runtime_management_workflow.rs\n",
+  "merge_stderr": "",
+  "postflight_clean": true,
+  "manager_review": "Only lib.rs four-line registration after actual D files; both Windows/test gates match existing DPAPI tests. No new dynamic validation."
+}
