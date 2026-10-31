@@ -5,6 +5,7 @@ use crate::{
     domain::*,
     engine::Engine,
     git_diff::{GitDiffError, GitDiffRequest, GitDiffView},
+    host_configuration::{ConfigureHostRoute, HostConfigError},
     network_authorization::{ConfirmRequest, NetworkError, NetworkErrorKind, NetworkSubject},
     plugin_management::{PluginManagementError, SetPluginEnabled},
     project_config::{
@@ -409,6 +410,9 @@ pub fn router(app: App) -> Router {
         .route("/api/plugins/{id}", get(plugin_status))
         .route("/api/plugins/{id}/enabled", put(set_plugin_enabled))
         .route("/api/settings", get(settings).put(save_settings))
+        .route("/api/host/config", get(host_config))
+        .route("/api/host/routes/{id}", put(configure_host_route))
+        .route("/api/host/config/lookup", post(host_config_lookup))
         .route(
             "/api/routes/{id}/models",
             get(network_get_moved).post(models),
@@ -484,18 +488,27 @@ pub fn router(app: App) -> Router {
 async fn guard(State(app): State<App>, request: Request, next: Next) -> Response {
     let expected_host = app.origin.strip_prefix("http://").unwrap_or(&app.origin);
     let headers = request.headers();
+    let host_configuration = request.uri().path().starts_with("/api/host/");
+    let denied = |message| {
+        if host_configuration {
+            host_config_failure(HostConfigError::Forbidden)
+        } else {
+            forbidden(message)
+        }
+    };
     if headers.get(header::HOST).and_then(|v| v.to_str().ok()) != Some(expected_host) {
-        return forbidden("请通过启动地址访问本机服务");
+        return denied("请通过启动地址访问本机服务");
     }
     if let Some(origin) = headers.get(header::ORIGIN)
         && origin.to_str().ok() != Some(&app.origin)
     {
-        return forbidden("Origin 与本机服务地址不一致");
+        return denied("Origin 与本机服务地址不一致");
     }
     if headers.get("sec-fetch-site").and_then(|v| v.to_str().ok()) == Some("cross-site") {
-        return forbidden("拒绝跨站请求");
+        return denied("拒绝跨站请求");
     }
-    let authenticated_read = request.uri().path().starts_with("/api/network/")
+    let authenticated_read = host_configuration
+        || request.uri().path().starts_with("/api/network/")
         || request.uri().path() == "/api/plugins"
         || request.uri().path().starts_with("/api/plugins/")
         || request.uri().path().starts_with("/api/projects")
@@ -511,7 +524,7 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
         ))
         && headers.get("x-peachsh-token").and_then(|v| v.to_str().ok()) != Some(&app.token)
     {
-        return forbidden("写请求令牌缺失或不正确");
+        return denied("写请求令牌缺失或不正确");
     }
     let mut response = next.run(request).await;
     apply_security_headers(&mut response);
@@ -540,6 +553,91 @@ async fn health(State(app): State<App>) -> Result<Json<Value>> {
 }
 async fn bootstrap(State(app): State<App>) -> Json<Value> {
     Json(json!({"token":app.token,"version":env!("CARGO_PKG_VERSION")}))
+}
+
+fn host_config_error_response(status: StatusCode, error: HostConfigError) -> Response {
+    let mut response = (
+        status,
+        Json(json!({"error":{
+            "code":error.code(),"message":error.message(),"retryable":false
+        }})),
+    )
+        .into_response();
+    apply_security_headers(&mut response);
+    response
+}
+fn host_config_failure(error: HostConfigError) -> Response {
+    let status = StatusCode::from_u16(error.status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    host_config_error_response(status, error)
+}
+// Shared public request DTOs retain the business contract. StrictObject checks
+// duplicate members recursively before those DTOs reject unknown fields/types.
+struct HostConfigJson<T>(T);
+impl<S, T> FromRequest<S> for HostConfigJson<T>
+where
+    S: Send + Sync,
+    T: serde::de::DeserializeOwned + Send,
+{
+    type Rejection = Response;
+    async fn from_request(
+        request: Request,
+        state: &S,
+    ) -> std::result::Result<Self, Self::Rejection> {
+        match Json::<StrictObject<T>>::from_request(request, state).await {
+            Ok(Json(StrictObject(body))) => Ok(Self(body)),
+            Err(error) => Err(host_config_error_response(
+                json_rejection(error).status,
+                HostConfigError::Invalid,
+            )),
+        }
+    }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HostConfigLookup {
+    key: String,
+}
+async fn host_config(State(app): State<App>) -> Response {
+    match app.engine.host_config() {
+        Ok(snapshot) => Json(snapshot).into_response(),
+        Err(error) => host_config_failure(error),
+    }
+}
+async fn host_config_lookup(
+    State(app): State<App>,
+    HostConfigJson(body): HostConfigJson<HostConfigLookup>,
+) -> Response {
+    if secrets::validate_idempotency_key(&body.key).is_err() || body.key.contains(',') {
+        return host_config_failure(HostConfigError::Invalid);
+    }
+    match app.engine.host_config_operation(&body.key) {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => host_config_failure(error),
+    }
+}
+async fn configure_host_route(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    headers: HeaderMap,
+    HostConfigJson(body): HostConfigJson<ConfigureHostRoute>,
+) -> Response {
+    let Ok(Path(id)) = id else {
+        return host_config_failure(HostConfigError::Invalid);
+    };
+    let mut keys = headers.get_all("idempotency-key").iter();
+    let key = keys.next().and_then(|value| value.to_str().ok());
+    let Some(key) =
+        key.filter(|key| !key.contains(',') && secrets::validate_idempotency_key(key).is_ok())
+    else {
+        return host_config_failure(HostConfigError::Invalid);
+    };
+    if keys.next().is_some() {
+        return host_config_failure(HostConfigError::Invalid);
+    }
+    match app.engine.configure_host_route(&id, body, key).await {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => host_config_failure(error),
+    }
 }
 
 fn plugin_failure(code: &str) -> Response {
@@ -2749,19 +2847,51 @@ mod worktree_http_crash_tests {
     use super::*;
     use crate::{engine::WorktreeProbePhase, store::Store};
     use std::{
+        io::Write,
         path::{Path as FsPath, PathBuf},
         process::{Child, Command, Stdio},
         time::Instant,
     };
     const TEST: &str = "server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries";
-    struct ChildGuard(Child);
+    fn trace(root: &FsPath, mut event: Value) {
+        event["at_unix_ms"] = json!(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+        );
+        let saved = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(root.join("lifecycle.jsonl"))
+            .and_then(|mut file| file.write_all(format!("{event}\n").as_bytes()));
+        if saved.is_err() {
+            let _ = writeln!(
+                std::io::stderr().lock(),
+                "W08 could not persist lifecycle evidence"
+            );
+        }
+    }
+    struct ChildGuard(Child, PathBuf, String);
     impl ChildGuard {
+        fn record(&self, mut event: Value) {
+            event["pid"] = json!(self.0.id());
+            event["phase"] = json!(self.2);
+            trace(&self.1, event);
+        }
         fn kill_wait(&mut self) {
-            self.0.kill().unwrap();
+            self.record(json!({"event":"kill_requested"}));
+            let killed = self.0.kill();
+            self.record(json!({"event":"kill_result","ok":killed.is_ok()}));
+            killed.unwrap();
             let end = Instant::now() + Duration::from_secs(5);
             loop {
-                if self.0.try_wait().unwrap().is_some() {
+                if let Some(status) = self.0.try_wait().unwrap() {
+                    self.record(json!({"event":"reaped","exit_code":status.code(),"success":status.success()}));
                     return;
+                }
+                if Instant::now() >= end {
+                    self.record(json!({"event":"reap_deadline"}));
                 }
                 assert!(Instant::now() < end, "child wait deadline");
                 std::thread::sleep(Duration::from_millis(10));
@@ -2770,14 +2900,17 @@ mod worktree_http_crash_tests {
     }
     impl Drop for ChildGuard {
         fn drop(&mut self) {
-            let _ = self.0.kill();
+            let killed = self.0.kill();
+            self.record(json!({"event":"drop_kill_result","ok":killed.is_ok()}));
             let end = Instant::now() + Duration::from_secs(5);
             while Instant::now() < end {
-                if self.0.try_wait().ok().flatten().is_some() {
+                if let Some(status) = self.0.try_wait().ok().flatten() {
+                    self.record(json!({"event":"drop_reaped","exit_code":status.code(),"success":status.success()}));
                     return;
                 }
                 std::thread::sleep(Duration::from_millis(10));
             }
+            self.record(json!({"event":"drop_reap_deadline"}));
         }
     }
     fn client() -> reqwest::Client {
@@ -2787,21 +2920,115 @@ mod worktree_http_crash_tests {
             .build()
             .unwrap()
     }
-    async fn wait_file(path: &FsPath) -> String {
-        tokio::time::timeout(Duration::from_secs(10), async {
+    type HttpRequest = tokio::task::JoinHandle<reqwest::Result<StatusCode>>;
+    async fn wait_file(
+        path: &FsPath,
+        process: &mut ChildGuard,
+        request: Option<&HttpRequest>,
+    ) -> String {
+        let notification = path.file_name().unwrap().to_string_lossy().into_owned();
+        process.record(json!({"event":"wait_begin","notification":notification}));
+        let mut reported_exit = false;
+        let mut reported_request = false;
+        let result = tokio::time::timeout(Duration::from_secs(10), async {
             loop {
+                if !reported_exit {
+                    match process.0.try_wait() {
+                        Ok(Some(status)) => {
+                            process.record(json!({"event":"exit_while_waiting","notification":notification,"exit_code":status.code(),"success":status.success()}));
+                            reported_exit = true;
+                        }
+                        Err(_) => {
+                            process.record(json!({"event":"child_status_unavailable","notification":notification}));
+                            reported_exit = true;
+                        }
+                        Ok(None) => {}
+                    }
+                }
+                if !reported_request && request.is_some_and(|r| r.is_finished()) {
+                    process.record(json!({"event":"original_http_finished_while_waiting","notification":notification}));
+                    reported_request = true;
+                }
                 if let Ok(text) = std::fs::read_to_string(path)
                     && !text.is_empty()
                 {
+                    process.record(json!({"event":"notification_observed","notification":notification}));
                     break text;
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
-        .await
-        .expect("deterministic child notification")
+        .await;
+        if result.is_err() {
+            process.record(json!({"event":"notification_timeout","notification":notification,"original_http_finished":request.map(|r|r.is_finished())}));
+        }
+        result.unwrap_or_else(|_| {
+            panic!(
+                "deterministic child notification: phase={} notification={} pid={}",
+                process.2,
+                notification,
+                process.0.id()
+            )
+        })
+    }
+    async fn observe_http(
+        post: reqwest::RequestBuilder,
+        root: PathBuf,
+        phase: String,
+    ) -> reqwest::Result<StatusCode> {
+        match post.send().await {
+            Ok(response) => {
+                let status = response.status();
+                trace(
+                    &root,
+                    json!({"event":"original_http_headers","phase":phase,"status":status.as_u16()}),
+                );
+                // Only bounded bodies with a declared size are inspected. Never
+                // emit raw bodies/messages, headers, tokens or transport URLs.
+                let code = if response.content_length().is_some_and(|n| n <= 4096) {
+                    response.bytes().await.ok().and_then(|bytes| {
+                        let value: Value = serde_json::from_slice(&bytes).ok()?;
+                        let code = value.get("code")?.as_str()?;
+                        matches!(
+                            code,
+                            "worktree_invalid"
+                                | "worktree_not_found"
+                                | "worktree_revision_conflict"
+                                | "worktree_idempotency_conflict"
+                                | "worktree_busy"
+                                | "worktree_root_changed"
+                                | "worktree_conflict"
+                                | "worktree_unsupported"
+                                | "worktree_unavailable"
+                                | "worktree_corrupt"
+                        )
+                        .then(|| code.to_owned())
+                    })
+                } else {
+                    None
+                };
+                trace(
+                    &root,
+                    json!({"event":"original_http_response","phase":phase,"status":status.as_u16(),"code":code}),
+                );
+                // An HTTP response remains Ok even if reading its diagnostic
+                // body fails; do not turn an early response into a lost response.
+                Ok(status)
+            }
+            Err(error) => {
+                trace(
+                    &root,
+                    json!({"event":"original_http_transport_error","phase":phase,"timeout":error.is_timeout(),"connect":error.is_connect(),"request":error.is_request()}),
+                );
+                Err(error)
+            }
+        }
     }
     async fn child(root: PathBuf, phase: String) {
+        trace(
+            &root,
+            json!({"event":"child_started","phase":phase,"pid":std::process::id()}),
+        );
         let store = Arc::new(Store::open(&root.join("host.sqlite3")).unwrap());
         store.recover().unwrap();
         let engine = Engine::new(store, 2).unwrap();
@@ -2844,7 +3071,7 @@ mod worktree_http_crash_tests {
     }
     fn spawn(root: &FsPath, phase: &str) -> ChildGuard {
         let log = std::fs::File::create(root.join(format!("child-{phase}.log"))).unwrap();
-        ChildGuard(
+        let process = ChildGuard(
             Command::new(std::env::current_exe().unwrap())
                 .args(["--exact", TEST, "--nocapture"])
                 .env("NHC_WORKTREE_HTTP_CHILD", root)
@@ -2853,7 +3080,11 @@ mod worktree_http_crash_tests {
                 .stderr(Stdio::from(log))
                 .spawn()
                 .unwrap(),
-        )
+            root.to_owned(),
+            phase.to_owned(),
+        );
+        process.record(json!({"event":"spawned"}));
+        process
     }
     async fn git(root: &FsPath, args: &[&str]) -> String {
         let o = tokio::time::timeout(
@@ -2922,8 +3153,13 @@ mod worktree_http_crash_tests {
             return;
         }
         for phase in ["claim", "created", "registered"] {
-            let dir = tempfile::tempdir().unwrap();
-            let root = dir.path();
+            let retained_dir = tempfile::tempdir().unwrap().keep();
+            let root = retained_dir.as_path();
+            trace(
+                root,
+                json!({"event":"fixture_retained","phase":phase,"parent_pid":std::process::id()}),
+            );
+            println!("W08 retained fixture phase={phase} path={}", root.display());
             let source = root.join("source");
             std::fs::create_dir(&source).unwrap();
             git(&source, &["init", "--initial-branch=main"]).await;
@@ -2995,14 +3231,14 @@ mod worktree_http_crash_tests {
             let body = json!({"name":"isolated","parent_path":root,"expected_config_revision":2,"expected_head":head});
             let path = format!("/api/projects/{}/worktrees", project.id.0);
             let mut process = spawn(root, phase);
-            let origin = wait_file(&root.join(format!("listen-{phase}"))).await;
+            let origin = wait_file(&root.join(format!("listen-{phase}")), &mut process, None).await;
             let post = client()
                 .post(format!("{origin}{path}"))
                 .header("x-peachsh-token", "worktree-crash-token")
                 .header("Idempotency-Key", "crash-create")
                 .json(&body);
-            let request = tokio::spawn(async move { post.send().await });
-            let op = wait_file(&root.join("ready")).await;
+            let request = tokio::spawn(observe_http(post, root.to_owned(), phase.to_owned()));
+            let op = wait_file(&root.join("ready"), &mut process, Some(&request)).await;
             println!(
                 "W08 phase={phase} operation={op} child_pid={} reached durable hook",
                 process.0.id()
@@ -3027,7 +3263,7 @@ mod worktree_http_crash_tests {
             )
             .await;
             let mut restart = spawn(root, "restart");
-            let origin = wait_file(&root.join("listen-restart")).await;
+            let origin = wait_file(&root.join("listen-restart"), &mut restart, None).await;
             let get = || {
                 client()
                     .get(format!("{origin}{path}/{op}"))
