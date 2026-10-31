@@ -1,0 +1,870 @@
+[
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/24ab7071-395e-464a-9802-b834a3636cce/attributes",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/24ab7071-395e-464a-9802-b834a3636cce/attributes",
+    "bytes": 0,
+    "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/child-registered.log",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/child-registered.log",
+    "bytes": 16,
+    "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/child-restart.log",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/child-restart.log",
+    "bytes": 16,
+    "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/host.sqlite3",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/host.sqlite3",
+    "bytes": 450560,
+    "sha256": "0CBC59CCC304428367F854888C2518BF7B7BD65B8C506C256C75F46C87843049"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/lifecycle.jsonl",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/lifecycle.jsonl",
+    "bytes": 2255,
+    "sha256": "5A48E6A1F900A667062FDB14AC6A2A634EC39D3046561CB25EECDE64DC00BB09"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/listen-registered",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/listen-registered",
+    "bytes": 22,
+    "sha256": "758489EFE706B54A564D8986440F095F0FD2CFF75DBD0863315ED98B389E9334"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/listen-restart",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/listen-restart",
+    "bytes": 22,
+    "sha256": "8603B70927676BEBAFCBFC0D21FAAD2FE7F66A5A72ADECD7F3951826D347F593"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/nhc-24ab7071-395e-464a-9802-b834a3636cce/.git",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/nhc-24ab7071-395e-464a-9802-b834a3636cce/.git",
+    "bytes": 127,
+    "sha256": "609A71980BE3AC91B8709D9AE829EF950B7B2C7C112065D8EEA57DE8436D9AD7"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/nhc-24ab7071-395e-464a-9802-b834a3636cce/tracked",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/nhc-24ab7071-395e-464a-9802-b834a3636cce/tracked",
+    "bytes": 8,
+    "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/ready",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/ready",
+    "bytes": 36,
+    "sha256": "1B0696A615A759F2F2CE922CA8A9791129932A9AB5ED6CD37A86791D411EA70E"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/COMMIT_EDITMSG",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/COMMIT_EDITMSG",
+    "bytes": 8,
+    "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/config",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/config",
+    "bytes": 130,
+    "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/description",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/description",
+    "bytes": 73,
+    "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/HEAD",
+    "bytes": 21,
+    "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/applypatch-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/applypatch-msg.sample",
+    "bytes": 478,
+    "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/commit-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/commit-msg.sample",
+    "bytes": 896,
+    "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/fsmonitor-watchman.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/fsmonitor-watchman.sample",
+    "bytes": 4726,
+    "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/post-update.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/post-update.sample",
+    "bytes": 189,
+    "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/pre-applypatch.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/pre-applypatch.sample",
+    "bytes": 424,
+    "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/pre-commit.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/pre-commit.sample",
+    "bytes": 1649,
+    "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/pre-merge-commit.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/pre-merge-commit.sample",
+    "bytes": 416,
+    "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/pre-push.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/pre-push.sample",
+    "bytes": 1374,
+    "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/pre-rebase.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/pre-rebase.sample",
+    "bytes": 4898,
+    "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/pre-receive.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/pre-receive.sample",
+    "bytes": 544,
+    "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/prepare-commit-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/prepare-commit-msg.sample",
+    "bytes": 1492,
+    "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/push-to-checkout.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/push-to-checkout.sample",
+    "bytes": 2783,
+    "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/sendemail-validate.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/sendemail-validate.sample",
+    "bytes": 2308,
+    "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/hooks/update.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/hooks/update.sample",
+    "bytes": 3650,
+    "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/index",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/index",
+    "bytes": 137,
+    "sha256": "3C8A7E23856308655794BEFE6B0EAD1728DF4A7F27CED3570C8881065972252B"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/info/exclude",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/info/exclude",
+    "bytes": 240,
+    "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/logs/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/logs/HEAD",
+    "bytes": 151,
+    "sha256": "50455A63A56804027EFEDDE49D6EEB70EB9C039E12F1AA2FC3B58244F17B4FC2"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/logs/refs/heads/codex/workspace/24ab7071-395e-464a-9802-b834a3636cce",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/logs/refs/heads/codex/workspace/24ab7071-395e-464a-9802-b834a3636cce",
+    "bytes": 198,
+    "sha256": "E457B8C9BC2D15CDE05C13F9EBA3EC9CA8E6849C057AEFE95AADB50B828885FF"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/logs/refs/heads/main",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/logs/refs/heads/main",
+    "bytes": 151,
+    "sha256": "50455A63A56804027EFEDDE49D6EEB70EB9C039E12F1AA2FC3B58244F17B4FC2"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+    "bytes": 52,
+    "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+    "bytes": 23,
+    "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/objects/fb/509637994c05dd0a5b773c6710404c175f57f9",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/objects/fb/509637994c05dd0a5b773c6710404c175f57f9",
+    "bytes": 117,
+    "sha256": "3F9563AD6C73C38A7C2D287490429C74E69E4C153ADF75B66961192B68808A0C"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/refs/heads/codex/workspace/24ab7071-395e-464a-9802-b834a3636cce",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/refs/heads/codex/workspace/24ab7071-395e-464a-9802-b834a3636cce",
+    "bytes": 41,
+    "sha256": "EE01C74644F12443A8BBFF3D31275E0E60EA2A5A5B439C779EC87AFD37F86E01"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/refs/heads/main",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/refs/heads/main",
+    "bytes": 41,
+    "sha256": "EE01C74644F12443A8BBFF3D31275E0E60EA2A5A5B439C779EC87AFD37F86E01"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/commondir",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/commondir",
+    "bytes": 6,
+    "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/gitdir",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/gitdir",
+    "bytes": 102,
+    "sha256": "983E866B56F8CD281B28676196BBF9AD4219E5662A0277BB8A420558A7A801E1"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/HEAD",
+    "bytes": 69,
+    "sha256": "C462F19F1CA6068F1F6D1EB74515F0260B4293DCCB8E40B1E9C1CFB69A853E0A"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/index",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/index",
+    "bytes": 137,
+    "sha256": "EBB4AC7286C6F4586BCF6F64BA72EB19EB97F3F75A6CE7475BF24B05CF820B54"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/logs/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/logs/HEAD",
+    "bytes": 294,
+    "sha256": "B987751F0B6C9CEA73B7F8775A2309E29B41FFDFD6C38B7A24EA441EB46D1404"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/ORIG_HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/.git/worktrees/nhc-24ab7071-395e-464a-9802-b834a3636cce/ORIG_HEAD",
+    "bytes": 41,
+    "sha256": "EE01C74644F12443A8BBFF3D31275E0E60EA2A5A5B439C779EC87AFD37F86E01"
+  },
+  {
+    "phase": "registered",
+    "source": ".local/tmp/.tmphNp5Fj/source/tracked",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/registered/source/tracked",
+    "bytes": 8,
+    "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/child-claim.log",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/child-claim.log",
+    "bytes": 16,
+    "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/child-restart.log",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/child-restart.log",
+    "bytes": 16,
+    "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/host.sqlite3",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/host.sqlite3",
+    "bytes": 450560,
+    "sha256": "3D2B0B47D6E394576BAF5AA46AD812A9655D923CAF63CF446963DBBD4B1A1BE4"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/lifecycle.jsonl",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/lifecycle.jsonl",
+    "bytes": 2180,
+    "sha256": "C75B62326A48F767B8BA9BF7D92E797087E7F3CF6212D376C8BCE3A39140DA1F"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/listen-claim",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/listen-claim",
+    "bytes": 22,
+    "sha256": "F2455A2A325AE14E03CC2733E50FF5DBA6C50D5F421C48F31C564FB32966C251"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/listen-restart",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/listen-restart",
+    "bytes": 22,
+    "sha256": "4015F0D29BB489CDE33A821916C0D6EAD3A79B41AFF10DD7B9DDC2AE62A8B10F"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/ready",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/ready",
+    "bytes": 36,
+    "sha256": "8C0F3672BD20F8424C33CC859D745B2867452643089A900271FFAC50F0DF15DA"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/COMMIT_EDITMSG",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/COMMIT_EDITMSG",
+    "bytes": 8,
+    "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/config",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/config",
+    "bytes": 130,
+    "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/description",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/description",
+    "bytes": 73,
+    "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/HEAD",
+    "bytes": 21,
+    "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/applypatch-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/applypatch-msg.sample",
+    "bytes": 478,
+    "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/commit-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/commit-msg.sample",
+    "bytes": 896,
+    "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/fsmonitor-watchman.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/fsmonitor-watchman.sample",
+    "bytes": 4726,
+    "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/post-update.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/post-update.sample",
+    "bytes": 189,
+    "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/pre-applypatch.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/pre-applypatch.sample",
+    "bytes": 424,
+    "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/pre-commit.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/pre-commit.sample",
+    "bytes": 1649,
+    "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/pre-merge-commit.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/pre-merge-commit.sample",
+    "bytes": 416,
+    "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/pre-push.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/pre-push.sample",
+    "bytes": 1374,
+    "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/pre-rebase.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/pre-rebase.sample",
+    "bytes": 4898,
+    "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/pre-receive.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/pre-receive.sample",
+    "bytes": 544,
+    "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/prepare-commit-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/prepare-commit-msg.sample",
+    "bytes": 1492,
+    "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/push-to-checkout.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/push-to-checkout.sample",
+    "bytes": 2783,
+    "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/sendemail-validate.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/sendemail-validate.sample",
+    "bytes": 2308,
+    "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/hooks/update.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/hooks/update.sample",
+    "bytes": 3650,
+    "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/index",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/index",
+    "bytes": 137,
+    "sha256": "791B13634AFBC1558A6BEADF460FC9506DBFABF894D51C83490177DBD9F45AD9"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/info/exclude",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/info/exclude",
+    "bytes": 240,
+    "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/logs/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/logs/HEAD",
+    "bytes": 151,
+    "sha256": "015767FC0207F0B47CA7CA5AB1000177BE1CC97C78F1F48A8C379C4EB28A7D7B"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/logs/refs/heads/main",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/logs/refs/heads/main",
+    "bytes": 151,
+    "sha256": "015767FC0207F0B47CA7CA5AB1000177BE1CC97C78F1F48A8C379C4EB28A7D7B"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/objects/53/1b549409a4a737ae071fc3ee322fccc1c71084",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/objects/53/1b549409a4a737ae071fc3ee322fccc1c71084",
+    "bytes": 117,
+    "sha256": "B9AA46BF8AEB911C6642152AD4457FA3A02898656F6F6399E59CEC2FA0214B19"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+    "bytes": 52,
+    "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+    "bytes": 23,
+    "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/.git/refs/heads/main",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/.git/refs/heads/main",
+    "bytes": 41,
+    "sha256": "7F21199AC3785A2A54ED9F11C1E00D3BA1A7499CEE5560AC621D8E44EA80C439"
+  },
+  {
+    "phase": "claim",
+    "source": ".local/tmp/.tmprQBS6P/source/tracked",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/claim/source/tracked",
+    "bytes": 8,
+    "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/attributes",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/attributes",
+    "bytes": 0,
+    "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/child-created.log",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/child-created.log",
+    "bytes": 16,
+    "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/child-restart.log",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/child-restart.log",
+    "bytes": 16,
+    "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/host.sqlite3",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/host.sqlite3",
+    "bytes": 450560,
+    "sha256": "45BD0ABA778108903D3D60A3855AEFD3F4C8C80B67A9C605E9747D5F5DD8F754"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/lifecycle.jsonl",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/lifecycle.jsonl",
+    "bytes": 2210,
+    "sha256": "21427EF456DA0AFC92719B184810E18CB7DC64DA986F898D79D40A09D9447C16"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/listen-created",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/listen-created",
+    "bytes": 22,
+    "sha256": "13D2702F175B4B8D345B08CBA22ADEF430A785E425447481BC3BBF7E6CA61DF2"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/listen-restart",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/listen-restart",
+    "bytes": 22,
+    "sha256": "93B0BA1C3868B5072E6B8BFBF878A17E252ACFBC30EB2DED044B989E59BF8643"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/.git",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/.git",
+    "bytes": 127,
+    "sha256": "DC418538526054B5E2BB88AC9B5F67688C3F58BD6FDF8E2644CCBB1821E41E17"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/tracked",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/tracked",
+    "bytes": 8,
+    "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/ready",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/ready",
+    "bytes": 36,
+    "sha256": "E09059348C7FAF802187DB9E987A59EBDF5A82C7C3E6E2E3923A3E2CDA7CBFAF"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/COMMIT_EDITMSG",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/COMMIT_EDITMSG",
+    "bytes": 8,
+    "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/config",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/config",
+    "bytes": 130,
+    "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/description",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/description",
+    "bytes": 73,
+    "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/HEAD",
+    "bytes": 21,
+    "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/applypatch-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/applypatch-msg.sample",
+    "bytes": 478,
+    "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/commit-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/commit-msg.sample",
+    "bytes": 896,
+    "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/fsmonitor-watchman.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/fsmonitor-watchman.sample",
+    "bytes": 4726,
+    "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/post-update.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/post-update.sample",
+    "bytes": 189,
+    "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/pre-applypatch.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/pre-applypatch.sample",
+    "bytes": 424,
+    "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/pre-commit.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/pre-commit.sample",
+    "bytes": 1649,
+    "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/pre-merge-commit.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/pre-merge-commit.sample",
+    "bytes": 416,
+    "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/pre-push.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/pre-push.sample",
+    "bytes": 1374,
+    "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/pre-rebase.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/pre-rebase.sample",
+    "bytes": 4898,
+    "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/pre-receive.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/pre-receive.sample",
+    "bytes": 544,
+    "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/prepare-commit-msg.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/prepare-commit-msg.sample",
+    "bytes": 1492,
+    "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/push-to-checkout.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/push-to-checkout.sample",
+    "bytes": 2783,
+    "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/sendemail-validate.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/sendemail-validate.sample",
+    "bytes": 2308,
+    "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/hooks/update.sample",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/hooks/update.sample",
+    "bytes": 3650,
+    "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/index",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/index",
+    "bytes": 137,
+    "sha256": "64BB49A1F41E9D69A84707D4F5C563131BBC728FD83F0BB5E827DA138904F84A"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/info/exclude",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/info/exclude",
+    "bytes": 240,
+    "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/logs/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/logs/HEAD",
+    "bytes": 151,
+    "sha256": "64E747243B1A542668AC9E070AB24F619156A254226A7A5D4C4216129ECF24CD"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/logs/refs/heads/codex/workspace/2b77ea54-27b1-4a0c-a01c-1d0bed450aa4",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/logs/refs/heads/codex/workspace/2b77ea54-27b1-4a0c-a01c-1d0bed450aa4",
+    "bytes": 198,
+    "sha256": "D198670A120B66E7E79B646A1C1EF809ADD59262D249600057CFD4824D3E4C68"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/logs/refs/heads/main",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/logs/refs/heads/main",
+    "bytes": 151,
+    "sha256": "64E747243B1A542668AC9E070AB24F619156A254226A7A5D4C4216129ECF24CD"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+    "bytes": 52,
+    "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+    "bytes": 23,
+    "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/objects/b0/4cf6dea4f2a3424a2243273fde3f2c70ab0f48",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/objects/b0/4cf6dea4f2a3424a2243273fde3f2c70ab0f48",
+    "bytes": 117,
+    "sha256": "2315D00833535B59804E54146369627D30FD6D1DD30975D3C6383AB01F3F8E18"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/refs/heads/codex/workspace/2b77ea54-27b1-4a0c-a01c-1d0bed450aa4",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/refs/heads/codex/workspace/2b77ea54-27b1-4a0c-a01c-1d0bed450aa4",
+    "bytes": 41,
+    "sha256": "89C5B8DB01E2A3EAE680C53D44A207A45432E3529DA8DF16A68F56F1B4A4DDDB"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/refs/heads/main",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/refs/heads/main",
+    "bytes": 41,
+    "sha256": "89C5B8DB01E2A3EAE680C53D44A207A45432E3529DA8DF16A68F56F1B4A4DDDB"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/commondir",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/commondir",
+    "bytes": 6,
+    "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/gitdir",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/gitdir",
+    "bytes": 102,
+    "sha256": "852AD6E6B2229449C30E6B26C57235AA061481CA41FE6EECA991206B79ADACC4"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/HEAD",
+    "bytes": 69,
+    "sha256": "B2C667B4E277E51C84754E2AA038B9D516CD5FB7E8F53C22629A1749D6B960F3"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/index",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/index",
+    "bytes": 137,
+    "sha256": "1EBABD459A39F42812D9A2EF980E02B5304AFBD0531BA6B82A768C8CABF51435"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/logs/HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/logs/HEAD",
+    "bytes": 294,
+    "sha256": "1E70D11F19E8001AB21E824264A1333C698745CCFA0BF14D8249497B6FFBED74"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/ORIG_HEAD",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/.git/worktrees/nhc-2b77ea54-27b1-4a0c-a01c-1d0bed450aa4/ORIG_HEAD",
+    "bytes": 41,
+    "sha256": "89C5B8DB01E2A3EAE680C53D44A207A45432E3529DA8DF16A68F56F1B4A4DDDB"
+  },
+  {
+    "phase": "created",
+    "source": ".local/tmp/.tmpwdjalK/source/tracked",
+    "snapshot": ".local/logs/next16-final-attempt1/w08-fixtures/created/source/tracked",
+    "bytes": 8,
+    "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+  }
+]

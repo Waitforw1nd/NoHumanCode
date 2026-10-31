@@ -1,8 +1,18 @@
+## 2026-10-31 NEXT-16最终通过与主线整合
+
+79fe0756第二候选完整check/test/fmt/clippy/wasm-check均0，经理独立重算54结果块687/0/1并核28对原发布、158当前源码与124份W08原/快照。原失败保留，按NEXT-16范围联合APPROVED，普通合main5d5aa557a1f8462d0fec446c446c5b60feda05f8；双源码tree与受测完全相同。B-R15/C-R17/D-R14限定结项，旧树和证据保留，完整项目继续active。下一经理先落实13项默认能力与应用边界的剩余矩阵，再登记新的有限实现任务；没有把组件或NEXT-16完成当整个项目完成。
+
+## 2026-10-31 NEXT-16最终首轮兼容失败
+
+a362d8e9 check0/test101，lib254/1/0，后续suite和三门禁未执行。旧restore_http_tests固定文案断言失败；经理独立核server::resume合并错误分支改变ResumeError::Sealed原message，授权原owner C按补充03保留旧错误文案、另处理新增CheckpointError::Conflict。没有证据证明旧Task被放行。原失败保留，不改旧测试断言，修订固定后五门禁从check重新执行；当前未验收、未合main。
+
 ## 2026-10-31 NEXT-16组件收口与D依赖接入
 
 B87f1ce60组件Provider28项/check/clippy/fmt通过；C74f40f3e完整CLI故事1/0/0，真实Host重启后继续也已执行。经理逐一核C五对证据hash/字节、原始日志与元数据，形成B/C限定组件review；原失败保留。全项目架构评估补记明确这些进展改变先前缺口状态，但不整体推倒的判断不变，仍缺完整新组合及正式Desktop。
 
 双方本人持续冻结及实际Git核实后，经理D f9211fc6→B普通合并得4bc6ca3d；B仅lib两行接入独立Windows测试，提交8d9cc0d5并再次冻结；经理快进D到相同HEAD与双tree，正式交D唯一重型窗口。待D本人核收、真实测试终态及原owner修复，B/C no-build保持。未将组件通过作为NEXT-16或阶段一完成。
+
+后续D首轮13项通过，按经理review补真实在途禁用后完成及生命周期异常/重入，caa4cf84完整16项通过；最后b6392738只补P06安全日志，单测1项与fmt/clippy通过。经理核9对证据并限定验收。C在本人docs范围修订历史状态，b596b67a保持原受测Rust tree；双方冻结后经理普通D→C合a362d8e9，并核9个文件与原owner blob一致。C本人核收并按正式放行开始唯一五门禁，check0、test进行中。B/D产品冻结，尚无NEXT-16联合验收或main整合。
 
 ## 2026-10-31 NEXT-16首次动态与必要修订
 

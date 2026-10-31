@@ -1,0 +1,176 @@
+{
+  "files": [
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/check-after-source-hashes.json",
+      "published": "check-after-source-hashes.json",
+      "original_bytes": 27456,
+      "published_bytes": 27456,
+      "original_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "published_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/check-before-source-hashes.json",
+      "published": "check-before-source-hashes.json",
+      "original_bytes": 27456,
+      "published_bytes": 27456,
+      "original_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "published_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/check.log",
+      "published": "check.log",
+      "original_bytes": 9540,
+      "published_bytes": 9525,
+      "original_sha256": "79010B8D0E1BC500DBA2CDAA0997BB0192DC54A41BF164A5865B0647B5DFDA44",
+      "published_sha256": "D639F72B06F457DD5B40C0A6AECA2E34B846E182B7F0A1D361A1F2698826E7F9",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/freeze.json",
+      "published": "freeze.json",
+      "original_bytes": 300,
+      "published_bytes": 300,
+      "original_sha256": "CB705FE15EE78283CDAC134BE8CEB2A4567A4099260797C0882F28F9DBE2C1D3",
+      "published_sha256": "CB705FE15EE78283CDAC134BE8CEB2A4567A4099260797C0882F28F9DBE2C1D3",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/meta.json",
+      "published": "meta.json",
+      "original_bytes": 5145,
+      "published_bytes": 4839,
+      "original_sha256": "2D1F23F6578B1B7891B7E11A4E89D1070C09E0C3390EE0EA29C3829055F0A5F0",
+      "published_sha256": "9E6CB436E212772BC0F4420B0D52F1D0D26D5A56D70B69E5D3BAC2D8170673F5",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/test-after-source-hashes.json",
+      "published": "test-after-source-hashes.json",
+      "original_bytes": 27456,
+      "published_bytes": 27456,
+      "original_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "published_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/test-before-source-hashes.json",
+      "published": "test-before-source-hashes.json",
+      "original_bytes": 27456,
+      "published_bytes": 27456,
+      "original_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "published_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/test.log",
+      "published": "test.log",
+      "original_bytes": 29587,
+      "published_bytes": 29567,
+      "original_sha256": "7545AB3E65CE2A2232FDBBC9CC70AAA1522A67CC1B9C6ED49C38FBF5EA78C048",
+      "published_sha256": "837C3B4204C05FDD0618049CA673AAF809558D0C788C46B34B0A2E1B02388DB1",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/next16-final-gates.ps1",
+      "published": "driver.ps1",
+      "original_bytes": 6600,
+      "published_bytes": 6600,
+      "original_sha256": "D1F885C6B00928AB86BCAD1FEBC48370817C9AFA8E056820525146250477D3BA",
+      "published_sha256": "D1F885C6B00928AB86BCAD1FEBC48370817C9AFA8E056820525146250477D3BA",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/index.json",
+      "published": "w08/index.json",
+      "original_bytes": 40625,
+      "published_bytes": 40625,
+      "original_sha256": "0700BF5CA51EE30EA17D2F984AAD825FC7B53029FBD0FD5D1E51A060CDB252D5",
+      "published_sha256": "0700BF5CA51EE30EA17D2F984AAD825FC7B53029FBD0FD5D1E51A060CDB252D5",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/claim/lifecycle.jsonl",
+      "published": "w08/claim/lifecycle.jsonl",
+      "original_bytes": 2180,
+      "published_bytes": 2180,
+      "original_sha256": "C75B62326A48F767B8BA9BF7D92E797087E7F3CF6212D376C8BCE3A39140DA1F",
+      "published_sha256": "C75B62326A48F767B8BA9BF7D92E797087E7F3CF6212D376C8BCE3A39140DA1F",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/claim/child-claim.log",
+      "published": "w08/claim/child-claim.log",
+      "original_bytes": 16,
+      "published_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/claim/child-restart.log",
+      "published": "w08/claim/child-restart.log",
+      "original_bytes": 16,
+      "published_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/created/lifecycle.jsonl",
+      "published": "w08/created/lifecycle.jsonl",
+      "original_bytes": 2210,
+      "published_bytes": 2210,
+      "original_sha256": "21427EF456DA0AFC92719B184810E18CB7DC64DA986F898D79D40A09D9447C16",
+      "published_sha256": "21427EF456DA0AFC92719B184810E18CB7DC64DA986F898D79D40A09D9447C16",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/created/child-created.log",
+      "published": "w08/created/child-created.log",
+      "original_bytes": 16,
+      "published_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/created/child-restart.log",
+      "published": "w08/created/child-restart.log",
+      "original_bytes": 16,
+      "published_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/registered/lifecycle.jsonl",
+      "published": "w08/registered/lifecycle.jsonl",
+      "original_bytes": 2255,
+      "published_bytes": 2255,
+      "original_sha256": "5A48E6A1F900A667062FDB14AC6A2A634EC39D3046561CB25EECDE64DC00BB09",
+      "published_sha256": "5A48E6A1F900A667062FDB14AC6A2A634EC39D3046561CB25EECDE64DC00BB09",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/registered/child-registered.log",
+      "published": "w08/registered/child-registered.log",
+      "original_bytes": 16,
+      "published_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/logs/next16-final-attempt1/w08-fixtures/registered/child-restart.log",
+      "published": "w08/registered/child-restart.log",
+      "original_bytes": 16,
+      "published_bytes": 16,
+      "original_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "published_sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+      "path_transformed": false
+    }
+  ],
+  "note": "仅相对化工作树和工具链路径；原件及完整W08现场留在本人树。"
+}

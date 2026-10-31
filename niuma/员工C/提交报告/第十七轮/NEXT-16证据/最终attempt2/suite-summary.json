@@ -1,0 +1,488 @@
+[
+  {
+    "suite": "Running unittests src\\lib.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\peachsh-dc94de63d8d31b10.exe)",
+    "result": "ok",
+    "passed": 255,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running unittests src\\main.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\peachsh-1d1752439a8bd22a.exe)",
+    "result": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\approval_gate.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\approval_gate-96bb86c355a07ed3.exe)",
+    "result": "ok",
+    "passed": 35,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\approval_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\approval_http-e02fa56c0f91cdbe.exe)",
+    "result": "ok",
+    "passed": 15,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\assessment_adversarial.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\assessment_adversarial-28e97f889fa46ca2.exe)",
+    "result": "ok",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\budget.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\budget-62fd45bca79f52e3.exe)",
+    "result": "ok",
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\budget_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\budget_cli-e860463b6113e8f9.exe)",
+    "result": "ok",
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\budget_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\budget_http-46b0eb1d45ca4fe3.exe)",
+    "result": "ok",
+    "passed": 5,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\checkpoint.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\checkpoint-81154909f600c8e9.exe)",
+    "result": "ok",
+    "passed": 15,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\checkpoint_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\checkpoint_http-990802a22ef2f8fd.exe)",
+    "result": "ok",
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\cli-366a345e2dc00137.exe)",
+    "result": "ok",
+    "passed": 11,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\cli_workflow.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\cli_workflow-e8359a2797feb354.exe)",
+    "result": "ok",
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\final_acceptance.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\final_acceptance-1cfaaa4c23baf20f.exe)",
+    "result": "ok",
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\first_user_workflow.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\first_user_workflow-5a3c83aad910ecd6.exe)",
+    "result": "ok",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\git_diff.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\git_diff-b9f0abc396968a98.exe)",
+    "result": "ok",
+    "passed": 15,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\host_configuration.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\host_configuration-63b2d6312839739a.exe)",
+    "result": "ok",
+    "passed": 18,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\host_configuration_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\host_configuration_cli-3f91e9ccec73bb5a.exe)",
+    "result": "ok",
+    "passed": 6,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\host_configuration_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\host_configuration_http-433c442c689f38b6.exe)",
+    "result": "ok",
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\host_configuration_schema.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\host_configuration_schema-ae721cb78d1a72dd.exe)",
+    "result": "ok",
+    "passed": 6,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\host_configuration_security.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\host_configuration_security-be1fd5d45255deee.exe)",
+    "result": "ok",
+    "passed": 7,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\host_initialization_workflow.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\host_initialization_workflow-a7c69416ffbbf71f.exe)",
+    "result": "ok",
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\http_contract.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\http_contract-fe1366011fd3c1c2.exe)",
+    "result": "ok",
+    "passed": 11,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\live.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\live-db566652a1c86345.exe)",
+    "result": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 1,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\network_authorization.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\network_authorization-59b8f7ec0a27f8ea.exe)",
+    "result": "ok",
+    "passed": 16,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\network_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\network_cli-2891fa65a6dafd05.exe)",
+    "result": "ok",
+    "passed": 7,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\network_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\network_http-584b587a6bda6ffe.exe)",
+    "result": "ok",
+    "passed": 5,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\plugin_catalog.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\plugin_catalog-8f0b96b63269fbad.exe)",
+    "result": "ok",
+    "passed": 17,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\plugin_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\plugin_cli-75f02029d10720e4.exe)",
+    "result": "ok",
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\plugin_host.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\plugin_host-2cfbf46ece62304d.exe)",
+    "result": "ok",
+    "passed": 24,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\plugin_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\plugin_http-418b63849597b7aa.exe)",
+    "result": "ok",
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\plugin_management.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\plugin_management-fff8213c415f1303.exe)",
+    "result": "ok",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\project_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\project_cli-601bf3b19a345153.exe)",
+    "result": "ok",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\project_context.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\project_context-edcb20853590cb75.exe)",
+    "result": "ok",
+    "passed": 7,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\project_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\project_http-c589a71b352f90d6.exe)",
+    "result": "ok",
+    "passed": 6,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\project_migration.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\project_migration-1c802c05a076b373.exe)",
+    "result": "ok",
+    "passed": 3,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\provider_network.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\provider_network-9778c7326318053e.exe)",
+    "result": "ok",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\provider_usage.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\provider_usage-cfc03bf1d015d78d.exe)",
+    "result": "ok",
+    "passed": 7,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\review_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\review_cli-93a47a282c670466.exe)",
+    "result": "ok",
+    "passed": 6,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\runtime.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\runtime-dee77ff274e01c8a.exe)",
+    "result": "ok",
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\session_turns.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\session_turns-a0f55013e306078b.exe)",
+    "result": "ok",
+    "passed": 19,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\tool_runtime.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\tool_runtime-7de2db0b61b1302d.exe)",
+    "result": "ok",
+    "passed": 4,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\tool_session_turns.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\tool_session_turns-7882548023251ae5.exe)",
+    "result": "ok",
+    "passed": 11,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\turn_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\turn_http-817a873d3b91439f.exe)",
+    "result": "ok",
+    "passed": 17,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\workspace_changes.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\workspace_changes-aea784dee7b6e4f7.exe)",
+    "result": "ok",
+    "passed": 21,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\workspace_crash.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\workspace_crash-ded3fd18dd422d17.exe)",
+    "result": "ok",
+    "passed": 6,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\workspace_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\workspace_http-1c419f245afe3c8f.exe)",
+    "result": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\workspace_identity.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\workspace_identity-942086fcfd459d0b.exe)",
+    "result": "ok",
+    "passed": 9,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\worktree_cli.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\worktree_cli-1fd06a14ba1acda5.exe)",
+    "result": "ok",
+    "passed": 8,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running tests\\worktree_http.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\worktree_http-9a168587209109d7.exe)",
+    "result": "ok",
+    "passed": 2,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running unittests src\\lib.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)",
+    "result": "ok",
+    "passed": 5,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Running unittests src\\lib.rs (../nhc-c-first-user-workflow\\.local\\target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)",
+    "result": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Doc-tests peachsh",
+    "result": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Doc-tests peachsh_protocol",
+    "result": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  },
+  {
+    "suite": "Doc-tests peachsh_ui",
+    "result": "ok",
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered": 0
+  }
+]

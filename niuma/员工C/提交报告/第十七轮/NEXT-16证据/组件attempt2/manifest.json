@@ -1,0 +1,50 @@
+{
+  "files": [
+    {
+      "source": "../nhc-c-first-user-workflow/.local/first-user-component-attempt2/after-source.json",
+      "published": "after-source.json",
+      "original_bytes": 26933,
+      "published_bytes": 26933,
+      "original_sha256": "9070EBBAE411ED8F27B1E7260EC7E5F9D391B9BC45C2F8A44BDE1CB010BAF285",
+      "published_sha256": "9070EBBAE411ED8F27B1E7260EC7E5F9D391B9BC45C2F8A44BDE1CB010BAF285",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/first-user-component-attempt2/before-source.json",
+      "published": "before-source.json",
+      "original_bytes": 26933,
+      "published_bytes": 26933,
+      "original_sha256": "9070EBBAE411ED8F27B1E7260EC7E5F9D391B9BC45C2F8A44BDE1CB010BAF285",
+      "published_sha256": "9070EBBAE411ED8F27B1E7260EC7E5F9D391B9BC45C2F8A44BDE1CB010BAF285",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/first-user-component-attempt2/freeze.json",
+      "published": "freeze.json",
+      "original_bytes": 300,
+      "published_bytes": 300,
+      "original_sha256": "67729DAF82EFA96C1BDC35329F0646A07F7BA8016F173FE349A89B81D1AF8132",
+      "published_sha256": "67729DAF82EFA96C1BDC35329F0646A07F7BA8016F173FE349A89B81D1AF8132",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/first-user-component-attempt2/meta.json",
+      "published": "meta.json",
+      "original_bytes": 2094,
+      "published_bytes": 1871,
+      "original_sha256": "45893EA8CF25D11AEE4569882475E37CB0B9D1F423A519774941E8E523D58641",
+      "published_sha256": "D16705EFC64A58039EFA5D7CF45A877F74C7939BFF235FE91A5E5F4053EC3CBA",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-first-user-workflow/.local/first-user-component-attempt2/test.log",
+      "published": "test.log",
+      "original_bytes": 540,
+      "published_bytes": 530,
+      "original_sha256": "93FE90101C28657EE2A4BDC3505F6D1D8609445EF09E50E58B1B9F5B7E616AB8",
+      "published_sha256": "240A27E80179209D974D16430E9D4E5CBC1A6A8EE391030224E3A3F111C35854",
+      "path_transformed": true
+    }
+  ],
+  "note": "仅相对化源码树及工具链路径，原件保留；变化文件以UTF-8发布。"
+}

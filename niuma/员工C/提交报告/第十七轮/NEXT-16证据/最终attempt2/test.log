@@ -1,0 +1,1022 @@
+   Compiling peachsh v0.2.0 (../nhc-c-first-user-workflow\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 1m 18s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src\lib.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\peachsh-dc94de63d8d31b10.exe)
+
+running 255 tests
+test approval::tests::classification_defaults_unknown_tools_to_approval_deny ... ok
+test credential_input::tests::partial_reads_and_read_failures_never_return_partial_secret ... ok
+test credential_input::tests::redirected_preserves_single_line_and_only_removes_one_ending ... ok
+test approval::tests::digest_is_stable_and_preview_omits_secret_and_body ... ok
+test command_execution::tests::s06_inherited_pipe_child ... ok
+test credential_input::tests::error_output_is_fixed_and_has_no_underlying_payload ... ok
+test credential_input::tests::byte_limit_is_exact_with_each_line_ending ... ok
+test credential_input::tests::redirected_process_child ... ok
+test credential_input::windows_console::tests::isolated_console_child ... ok
+test credential_input::tests::unending_stream_is_read_only_to_the_fixed_bound ... ok
+test domain::tests::paths_and_names ... ok
+test credential_input::tests::whitespace_controls_and_bad_encoding_fail_without_trimming ... ok
+test domain::tests::session_kind_is_explicit_and_name_independent ... ok
+test domain::tests::project_session_turn_ids_do_not_follow_display_names ... ok
+s06-process {"case":"reader-error","cleanup_unknown":false,"created":134378892521302951,"phase":"capture-original-child","pid":22488,"probe_error":null,"reader_error":true,"wait_error":false}
+test command_execution::tests::s06_original_handle_rejects_live_and_query_failure_accepts_exit ... ok
+s06-process {"case":"real-timeout","cleanup_unknown":false,"created":134378892521400311,"phase":"capture-original-child","pid":42408,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"inherited-pipe","cleanup_unknown":false,"created":134378892521519860,"phase":"capture-original-child","pid":6804,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"cleanup-unknown","cleanup_unknown":true,"created":134378892522248885,"phase":"capture-original-child","pid":18252,"probe_error":null,"reader_error":false,"wait_error":false}
+test budget::tests::configuration_forward_coverage_cas_and_historical_unknown ... ok
+s06-process {"case":"task-scoped-unknown","cleanup_unknown":false,"created":134378892525127807,"phase":"capture-original-child","pid":45656,"probe_error":null,"reader_error":false,"wait_error":false}
+test budget::tests::aggregate_overflow_blocks_reads_open_recover_but_retains_inflight_actuals ... ok
+test budget::tests::exact_settlement_replay_conflict_and_overrun_preserve_first_fact ... ok
+test budget::tests::not_sent_refunds_but_other_inflight_calls_can_settle_after_block ... ok
+test budget::tests::network_and_budget_failures_roll_back_together ... ok
+test engine::network_gate_tests::queued_management_rechecks_revocation_before_creating_a_call ... ok
+test engine::network_gate_tests::slot_acquisition_is_gate_serialized_and_wait_registration_cannot_lose_release ... ok
+test budget::tests::competing_stores_atomically_reserve_last_allowance ... ok
+test budget::tests::two_legal_project_scopes_isolate_budget_and_reject_global_key_crossing ... ok
+test budget::tests::configuration_cas_race_and_reductions_preserve_claim_snapshot ... ok
+test engine::workspace_phase_tests::checkpoint_after_claim_real_process_stop ... ok
+test credential_input::tests::public_stdin_uses_real_bounded_pipes_and_prompt_never_falls_back ... ok
+test engine::workspace_phase_tests::checkpoint_before_claim_real_process_stop ... ok
+test engine::workspace_phase_tests::checkpoint_after_effect_real_process_stop ... ok
+test engine::workspace_phase_tests::n10_commit_before_apply_child_kill_wait_restart_keeps_unknown_and_grants ... ok
+test engine::workspace_phase_tests::n10_claim_first_real_write_finishes_with_durable_receipt_and_drains ... ok
+test engine::workspace_phase_tests::n10_disable_first_preserves_decision_and_refuses_claim_without_side_effects ... ok
+test engine::workspace_phase_tests::checkpoint_partial_failure_keeps_single_receipt_and_blocks_new_turn ... ok
+test engine::workspace_phase_tests::checkpoint_creation_and_both_restore_routes_share_real_gate ... ok
+test engine::workspace_phase_tests::n07_send_and_restore_wait_on_same_production_gate ... ok
+test engine::workspace_phase_tests::n12_claim_before_spawn_child_kill_wait_recovers_unknown_without_retry ... ok
+test budget::tests::missing_covered_row_and_single_sided_terminal_fail_closed_on_recovery ... ok
+test command_execution::tests::s06_real_timeout_reaps_child_and_readers_without_false_unknown ... ok
+test engine::workspace_phase_tests::n11_three_reads_recheck_durable_desired_and_project_permissions ... ok
+s06-process {"case":"wait-error","cleanup_unknown":false,"created":134378892531622823,"phase":"capture-original-child","pid":34880,"probe_error":null,"reader_error":false,"wait_error":true}
+test command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn ... ok
+test budget::tests::request_digest_and_coverage_high_water_corruption_are_rejected ... ok
+test credential_input::windows_console::tests::private_console_prompt_has_no_echo_and_restores_on_all_normal_exits ... ok
+test engine::workspace_phase_tests::n12_spawned_typed_unknown_keeps_claim_and_stops_provider ... ok
+test engine::workspace_phase_tests::restore_claim_before_fs_real_process_stop ... ok
+test engine::workspace_phase_tests::n10_schema11_migration_preserves_nonempty_all_business_rows_and_ciphertext ... ok
+test engine::workspace_phase_tests::recheck_io_failure_after_prepare_is_failed_without_file_effect ... ok
+test budget::tests::request_sql_scope_and_policy_history_are_verified ... ok
+test engine::network_gate_tests::real_process_kill_before_and_after_network_claim_recovers_without_resend ... ok
+test engine::workspace_phase_tests::n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease ... ok
+test engine::workspace_phase_tests::n12_pending_disable_then_approval_ack_keeps_decision_without_claim ... ok
+test git_worktree::tests::w04_structural_plan_validation_and_windows_path_aliases ... ok
+test command_execution::tests::s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown ... ok
+test engine::workspace_phase_tests::write_prepare_before_fs_real_process_stop ... ok
+test git_worktree::tests::w05_isolated_environment_helper ... ok
+test budget::tests::missing_invalid_and_transport_failures_hold_reservation ... ok
+test engine::workspace_phase_tests::failed_prepare_does_not_pollute_later_or_earlier_success ... ok
+test engine::workspace_phase_tests::n11_real_discovery_leases_finish_after_persistent_disable_and_record_results ... ok
+test engine::workspace_phase_tests::restore_gate_serializes_competitors_and_seals_resumed_writes ... ok
+test engine::workspace_phase_tests::start_and_resume_wait_for_production_workspace_gate ... ok
+test git_worktree::tests::w06_original_handle_rejects_live_process_and_accepts_waited_exit ... ok
+test engine::workspace_phase_tests::n12_shell_tools_commands_project_and_ack_are_required ... ok
+test engine::workspace_phase_tests::no_restore_resume_executes_and_checkpoint_keeps_original_error ... ok
+test engine::workspace_phase_tests::sealed_pending_resume_and_failed_commit_leave_no_deferred_input ... ok
+test budget::tests::real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends ... ok
+test host_configuration::tests::transaction_child ... ok
+test engine::workspace_phase_tests::n12_true_schema12_migrates_preserving_all_old_rows_and_schema13_reopens ... ok
+test host_configuration_crash_tests::host_process_child ... ok
+test plugin_catalog::tests::display_name_rules ... ok
+test plugin_catalog::tests::exact_version_orders_as_numeric_triple ... ok
+test plugin_catalog::tests::name_charset_rules ... ok
+test plugin_catalog::tests::register_failure_keeps_catalog_unchanged ... ok
+test plugin_catalog::tests::scope_identity_uses_persisted_id_rules ... ok
+test plugin_catalog::tests::strict_json_rejects_duplicate_members_everywhere ... ok
+test plugin_host::tests::display_name_is_not_identity ... ok
+test plugin_host::tests::effect_ids_increase_deterministically ... ok
+test plugin_host::tests::invalid_scope_rejected ... ok
+test plugin_host::tests::scope_kind_is_enforced_by_catalog ... ok
+test plugin_host::tests::stop_without_dependents_succeeds_and_revokes ... ok
+test plugin_host::tests::unknown_ids_are_typed ... ok
+test engine::workspace_phase_tests::restore_probe_is_scoped_and_committed_callback_holds_no_store_lock ... ok
+test engine::workspace_phase_tests::restore_probe_distinguishes_real_file_action_and_sqlite_outcome_errors ... ok
+test plugin_management::tests::b02_concurrent_open_migrates_true12_once_without_losing_rows ... ok
+test plugin_management::tests::b02_shell_cas_and_cross_plugin_global_key_race ... ok
+test plugin_management::tests::independent_stores_cas_one_winner ... ok
+test plugin_management::tests::shell_global_key_and_independent_revisions ... ok
+test plugin_management::tests::b02_corrupt_shell_rows_fail_without_repair ... ok
+test provider::network_tests::account_uses_only_bound_header_and_target ... ok
+test provider::network_tests::all_redirect_statuses_do_not_reach_second_origin_or_replay_post ... ok
+test command_execution::tests::s06_deadline_covers_inherited_pipe_after_direct_parent_exit ... ok
+test plugin_management::tests::store_cas_replay_conflicts_and_atomic_failure ... ok
+test provider::network_tests::mismatched_target_model_user_or_purpose_is_invalid_and_zero_connections ... ok
+test provider::network_tests::proxy_environment_child ... ok
+test provider::network_tests::response_errors_distinguish_complete_invalid_and_truncated ... ok
+test provider::network_tests::json_limit_is_enforced_before_eof_and_exact_limit_succeeds ... ok
+test provider::network_tests::sse_requires_finish_and_complete_done_and_never_ignores_read_failure ... ok
+test provider::network_tests::usage_real_transport_accepts_zero_normal_and_identical_snapshots_once ... ok
+test provider::network_tests::usage_real_transport_done_does_not_wait_for_connection_close ... ok
+test engine::workspace_phase_tests::partial_and_unknown_restore_histories_seal_resumed_writes ... ok
+test provider::network_tests::usage_real_transport_missing_and_invalid_keep_network_success_and_safe_values ... ok
+test provider::tests::balance_validation ... ok
+test provider::tests::done_does_not_wait_for_connection_close ... ok
+test provider::tests::truncated_stream_fails ... ok
+test provider::tests::utf8_sse_and_fragmented_tools ... ok
+test provider_runtime_tests::p01_plugin_host_binding_fails_closed_for_missing_version_type_and_activation ... ok
+test provider::network_tests::sse_exact_limit_finishes_and_over_limit_fails_before_eof ... ok
+test provider_runtime_tests::p02_original_decoder_fragmented_tool_usage_and_limit_controls ... ok
+test provider::network_tests::usage_real_transport_never_salvages_usage_from_failed_completion_or_retries ... ok
+test provider_runtime_tests::p04_admission_first_keeps_lease_through_disable ... ok
+test provider_runtime_tests::p04_deactivate_callback_can_reenter_status_without_deadlock ... ok
+test provider_runtime_tests::p04_disabled_first_and_old_generation_never_admit ... ok
+test provider_runtime_tests::p02_builtin_engine_preserves_wire_decode_and_usage ... ok
+test provider_runtime_tests::p04_disabling_during_real_completion_allows_existing_lease_to_finish ... ok
+test provider_runtime_tests::p04_rejected_admit_drops_decoder_outside_runtime_lock ... ok
+test provider_runtime_tests::p03_both_engine_paths_consume_replacement_codec ... ok
+test engine::workspace_phase_tests::n12_claimed_shell_finishes_after_disable_and_normal_cancel ... ok
+test plugin_management::tests::schema_13_reopen_marker_constraint_and_data_corruption_rejected ... ok
+test provider_runtime_tests::p04_engine_management_disables_new_completion_and_reenables ... ok
+test provider::network_tests::proxy_environment_isolated_process_has_zero_proxy_connections_with_positive_control ... ok
+test provider_runtime_tests::p06_cancel_after_send_finishes_unknown_without_resend ... ok
+test provider_transport::tests::permit_rejects_header_injection_and_wrong_identity_shape ... ok
+test provider_transport::tests::targets_have_one_canonical_origin_and_preserve_base_path ... ok
+test provider_transport::tests::targets_reject_ambiguity_before_url_parser_normalizes_it ... ok
+test provider_transport::tests::transport_errors_never_retain_upstream_sources ... ok
+test git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child ... ok
+test repository::budget_schema_tests::n14_concurrent_open_serializes_migration ... ok
+test repository::budget_schema_tests::n14_marker_failure_rolls_back_all_new_objects ... ok
+test provider_runtime_tests::p05_lifecycle_panics_are_safe_and_fail_closed ... ok
+test repository::schema_tests::current_marker_does_not_hide_missing_tables_or_bad_event_columns ... ok
+test repository::schema_tests::failed_marker_write_rolls_back_all_schema_changes ... ok
+test repository::schema_tests::forged_named_indexes_are_rejected_even_with_valid_marker ... ok
+test repository::schema_tests::malformed_schema_never_advances_version_or_marker ... ok
+test repository::schema_tests::marked_schema_6_repairs_only_the_missing_legacy_unique_index ... ok
+test repository::schema_tests::missing_index_repair_refuses_duplicate_and_crossed_task_ids ... ok
+test repository::schema_tests::partial_schema_with_missing_indexes_retries_atomically ... ok
+test repository::schema_tests::session_unique_constraint_cannot_be_replaced_by_a_partial_index ... ok
+test repository::budget_schema_tests::n14_nonempty_migration_preserves_exact_old_rows_and_reopen ... ok
+test provider_runtime_tests::p06_decoder_failures_after_send_are_unknown_and_hold_reservation ... ok
+test repository::budget_schema_tests::n14_bad_ddl_marker_and_orphan_never_self_repair ... ok
+test repository::task_identity_tests::event_resolution_rejects_preexisting_cross_table_identity_collision ... ok
+test repository::task_identity_tests::events_normalize_task_ids_and_preserve_session_and_project_scope ... ok
+test repository::task_identity_tests::legacy_replay_checks_relational_identity_and_redacts_historical_tasks ... ok
+test repository::task_identity_tests::new_task_id_cannot_claim_an_unrelated_legacy_task ... ok
+test repository::task_identity_tests::repository_uses_path_and_http_idempotency_limits ... ok
+test repository::shell_migration_tests::shell_schema13_preserves_old_rows_and_reopens ... ok
+test repository::worktree_schema_tests::n13_schema_concurrent_open_serializes_migration ... ok
+test repository::worktree_schema_tests::n13_schema_marker_failure_rolls_back_every_new_object ... ok
+test repository::worktree_schema_tests::n13_schema_nonempty_true13_rows_preserved_and_reopen_is_read_only ... ok
+test repository::worktree_schema_tests::n13_schema_orphan_origin_foreign_key_is_rejected_without_repair ... ok
+test secrets::tests::authorization_assignments_redact_scheme_and_credential ... ok
+test secrets::tests::credential_fields_redact_independently_without_token_shaped_values ... ok
+test secrets::tests::credential_text_is_checked_throughout_metadata ... ok
+test secrets::tests::dpapi_roundtrip ... ok
+test secrets::tests::identifier_key_and_path_limits_match_their_contracts ... ok
+test secrets::tests::ordinary_metadata_and_code_are_preserved ... ok
+test secrets::tests::persisted_values_redact_nested_and_non_sk_tokens ... ok
+test secrets::tests::redaction ... ok
+test repository::shell_migration_tests::shell_schema13_failures_rollback_with_foreign_keys_on ... ok
+test server::review_transport_tests::review_json_requires_exact_objects ... ok
+test server::review_transport_tests::review_typed_errors_are_static_and_nonretryable ... ok
+test server::tests::approval_error_keeps_corruption_500_and_busy_retryable ... ok
+test server::tests::approval_error_maps_typed_variants_through_context_and_source ... ok
+test server::tests::changing_newapi_origin_requires_new_token ... ok
+test server::tests::required_idempotency_key_accepts_exactly_one_clean_value ... ok
+test server::tests::run_context_error_preserves_typed_status_without_context_leaks ... ok
+test server::tests::turn_command_error_keeps_typed_classification_inside_a_chain ... ok
+test server::tests::turn_command_error_maps_every_stable_variant ... ok
+test server::tests::turn_command_error_never_turns_unknown_failures_into_4xx ... ok
+test repository::worktree_schema_tests::n13_schema_corrupt14_is_rejected_without_self_repair ... ok
+test provider_runtime_tests::p05_preclaim_failures_preserve_models_receipt_and_never_send_completion ... ok
+test store::tests::dependencies_are_same_turn_and_acyclic ... ok
+test store::tests::event_task_must_belong_to_turn_or_session ... ok
+test provider_runtime_tests::p06_real_host_kill_and_recovery_preserve_claim_without_resend ... ok
+test store::tests::legacy_create_run_redacts_prompt_messages_and_errors ... ok
+test store::tests::interrupted_schema_6_retries_without_advancing_early ... ok
+test store::tests::partial_schema_6_table_stops_before_user_version ... ok
+test store::tests::legacy_idempotency_replay_is_explicit ... ok
+test store::tests::safe_tool_result_json_is_stable_and_roundtrips_unicode ... ok
+test store::tests::recover_marks_running_turn_interrupted ... ok
+test store::tests::review_fixes_redact_replay_and_real_legacy_run ... ok
+test tool_runtime::tests::builtin_executes_existing_file_implementation_and_preserves_path_checks ... ok
+test tool_runtime::tests::f02_f10_snapshot_is_read_only_and_repeated_control_has_exact_registry ... ok
+test tool_runtime::tests::f04_cancelling_in_progress_future_releases_count_without_reopening_admission ... ok
+test store::tests::schema_5_migrates_once_and_keeps_legacy_rows ... ok
+test store::tests::turn_identity_idempotency_and_rollback ... ok
+test tool_runtime::tests::f07_f10_disabled_constructor_never_activates_and_lifecycle_order_is_exact ... ok
+test tool_runtime::tests::f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery ... ok
+test tool_runtime::tests::f07_failed_persistence_callback_does_not_apply_and_poison_is_fail_closed ... ok
+test tool_runtime::tests::f07_new_disabled_intent_finishes_old_failed_cleanup_without_retrying_hooks ... ok
+test restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry ... ok
+test tool_runtime::tests::f07_stop_failure_closes_admission_cleans_both_members_and_keeps_history ... ok
+test tool_runtime::tests::l01_l02_four_registry_services_and_revocation_have_no_discovery_fallback ... ok
+test tool_runtime::tests::l03_each_pending_discovery_abort_releases_lease ... ok
+test tool_runtime::tests::l03_mixed_file_leases_drop_error_and_binding_rejection_release_exactly_once ... ok
+test tool_runtime::tests::l03_each_discovery_admission_wins_bounded_stop_then_real_result_finishes ... ok
+test tool_runtime::tests::lease_cannot_be_retargeted_to_another_task_or_permission_snapshot ... ok
+test tool_runtime::tests::l04_missing_fourth_registration_fails_closed_and_explicit_rebuild_recovers ... ok
+test tool_runtime::tests::n08_definition_and_execution_use_actual_registry_payload ... ok
+test tool_runtime::tests::n09_admit_first_can_finish_after_stop_without_retaining_registry_effects ... ok
+test tool_runtime::tests::n09_claim_failure_returns_no_lease_and_releases_lock_for_stop ... ok
+test tool_runtime::tests::n09_stop_first_rejects_admission_and_unload_leaves_no_effects ... ok
+test tool_runtime::tests::s01_all_desired_combinations_and_shell_unpolled_binding_counts ... ok
+test tool_runtime::tests::l01_real_discovery_results_permissions_and_path_policy_are_preserved ... ok
+test engine::workspace_phase_tests::n13_reverse_actual_running_task_wins_then_cancel_allows_claim ... ok
+test provider_runtime_tests::p05_panic_payload_is_not_written_to_process_output ... ok
+test tool_runtime::tests::s05_worker_channel_loss_is_unknown_and_releases_owned_count ... ok
+test tool_runtime::tests::s08_durable_acceptance_survives_real_shell_apply_failure_and_replay ... ok
+test wasm::tests::echo_and_limits ... ok
+test wasm::tests::manifest_rejects_imports ... ok
+test workspace::tests::file_boundaries ... ok
+test workspace::tests::search_reports_project_matches ... ok
+test engine::workspace_phase_tests::n13_reverse_command_ack_replay_and_blocked_ack_are_atomic ... ok
+test tool_runtime::tests::f04_real_write_lease_finishes_after_disable_and_all_release_paths_count ... ok
+test engine::workspace_phase_tests::n13_reverse_approval_creation_approval_claim_and_deny_preserve_old_priority ... ok
+test engine::workspace_phase_tests::n13_reverse_checkpoint_replay_and_restore_seal_precede_reservation ... ok
+test tool_runtime::tests::s05_shell_binding_rejection_errors_and_admitted_after_disable ... ok
+test engine::workspace_phase_tests::n13_reverse_existing_restore_replay_and_sealed_resume_precede_reservation ... ok
+test engine::workspace_phase_tests::n13_reverse_new_turn_resume_restore_checkpoint_and_registration_are_atomic ... ok
+test tool_runtime::tests::s05_caller_abort_keeps_real_worker_lease_through_disable_and_completion ... ok
+test host_configuration_crash_tests::before_commit_kill_wait_restores_all_old_state_twice ... ok
+test git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn ... ok
+test host_configuration_crash_tests::after_commit_before_response_kill_wait_restores_one_receipt_twice ... ok
+test git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown ... ok
+test tool_runtime::tests::s02_missing_registration_and_lifecycle_failure_do_not_cross_groups ... ok
+test server::budget_http_crash_tests::u07_real_router_budget_three_boundaries_kill_wait ... ok
+test tool_runtime::tests::s01_s02_real_registry_and_independent_disable_unload ... ok
+test git_worktree::tests::w10_missing_target_with_admin_residue_is_not_absent ... ok
+test worktree_management::tests::n13_cancelled_task_unresolved_restore_or_write_blocks_claim ... ok
+test git_worktree::tests::w04_real_config_over_limit_is_rejected_without_effects ... ok
+test worktree_management::tests::n13_stale_configuration_and_head_fail_before_claim ... ok
+test git_worktree::tests::w04_nested_root_reparse_and_existing_branch_are_rejected ... ok
+test git_worktree::tests::w05_filters_include_and_alternates_leave_external_marker_absent ... ok
+test worktree_management::tests::n13_same_database_two_store_claim_race_has_one_winner ... ok
+test worktree_management::tests::n13_same_key_two_store_race_replays_one_operation ... ok
+test worktree_management::tests::n13_diagnose_offline_source_and_other_project_are_observations_not_errors ... ok
+test git_worktree::tests::w04_special_repository_states_and_parent_replacement ... ok
+test git_worktree::tests::w10_unrelated_missing_or_replaced_root_is_unavailable ... ok
+test worktree_management::tests::n13_all_terminal_replays_and_recovery_keep_unknown_reserved ... ok
+test worktree_management::tests::n13_registration_inventory_and_claim_race_has_no_unreserved_new_member ... ok
+test git_worktree::tests::w05_project_git_executable_and_inherited_environment_are_excluded ... ok
+test git_worktree::tests::w05_real_hooks_and_fsmonitor_markers_are_not_executed ... ok
+test git_worktree::tests::w01_sibling_parent_and_w10_real_deleted_target_admin_residue ... ok
+test git_worktree::tests::w04_unsupported_configs_and_tree_modes_fail_before_worktree_effects ... ok
+test git_worktree::tests::w04_dirty_expected_head_and_existing_target_are_rejected ... ok
+test worktree_management::tests::n13_dropped_caller_owned_worker_still_registers_once ... ok
+test worktree_management::tests::n13_origin_saved_admin_relationship_and_online_identity_are_enforced ... ok
+test git_worktree::tests::w04_common_key_stable_across_windows_case_and_detached_head ... ok
+test git_worktree::tests::w01_real_worktree_and_registered_result_diagnosis_are_read_only ... ok
+test worktree_management::tests::n13_removed_sibling_reservation_is_detected_and_source_scopes_do_not_leak ... ok
+test worktree_management::tests::n13_success_defaults_replay_and_diagnosis_are_read_only ... ok
+test worktree_management::tests::n13_persisted_request_plan_members_and_receipt_corruption_rejected_without_repair ... ok
+test git_worktree::tests::w10_present_result_with_unrelated_offline_root_is_unavailable ... ok
+test worktree_management::tests::n13_two_real_worktrees_cannot_substitute_each_others_saved_admin ... ok
+test server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries ... ok
+test worktree_management::tests::n13_real_process_three_durable_stops_kill_wait_recover_without_repeat ... ok
+test git_worktree::tests::w01_dirty_result_diagnosis_preserves_content_and_index ... ok
+
+test result: ok. 255 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.70s
+
+     Running unittests src\main.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\peachsh-1d1752439a8bd22a.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\approval_gate.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\approval_gate-96bb86c355a07ed3.exe)
+
+running 35 tests
+test ap03_ap09_denied_and_decision_conflicts ... ok
+test ap04_read_tools_pass_through ... ok
+test ap01_ap02_pending_then_approved_executes_once ... ok
+test command_legacy_approved_ack_is_sidecar_only_and_unknown_cannot_be_acknowledged ... ok
+test ap08_cancel_pending_is_durable ... ok
+test ap16_public_finish_failure_preserves_all_transaction_inputs ... ok
+test ap20_public_query_order_and_corruption_distinct_from_missing ... ok
+test ap19_schema6_preservation_atomic_migration_and_forged_constraints ... ok
+test ap14_binding_changes_rejected_without_new_events ... ok
+test ap10_ap11_safe_previews_independent_calls ... ok
+test ap13_empty_id_and_ambiguous_history_fail_closed ... ok
+test ap18_cancel_before_new_waiter_resume_has_safe_cancel_result ... ok
+test ap14_redacted_arguments_cannot_resume_as_substitute ... ok
+test ap13_cross_task_same_call_isolated ... ok
+test ap15_claimed_before_execute_runtime_stops_then_unknown ... ok
+test ap19_constraints_enforced_and_partial_ddl_retry ... ok
+test ap16_finish_transaction_fault_rolls_back ... ok
+test ap16_finished_restart_never_reexecutes_and_missing_result_is_corrupt ... ok
+test ap06_reconcile_preserves_order_with_pending_and_unapproved_calls ... ok
+test ap17_claim_cancel_order_and_stale_completed ... ok
+test ap13_duplicate_groups_have_no_effect ... ok
+test ap15_approved_before_claim_stopped_runtime_executes_once ... ok
+test pending_command_keeps_original_cwd_after_default_project_switch ... ok
+test ap17_cancel_after_real_claim_preserves_real_result_and_stops_next_call ... ok
+test ap15_real_command_effect_then_runtime_stop_unknown ... ok
+test ap18_decision_and_cancel_from_other_store_are_observed ... ok
+test ap06_ap07_ap18_runtime_restart_and_decide_before_waiter ... ok
+test ap08_restart_public_cancel_is_idempotent_without_active_runtime ... ok
+test ap05_command_waits_and_runs_once ... ok
+test schema10_unbound_pending_approval_can_deny_or_cancel_but_not_approve ... ok
+test ap14_persisted_workspace_and_permission_changes_conflict ... ok
+test redacted_command_result_stays_finished_across_restart ... ok
+test project_ceiling_revocation_and_approval_claim_are_linearized_across_stores ... ok
+test ap17_multistore_cancel_claim_barrier ... ok
+test ap17_multistore_decision_cancel_race ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.36s
+
+     Running tests\approval_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\approval_http-e02fa56c0f91cdbe.exe)
+
+running 15 tests
+test ah01_ah09_ah10_safe_dto_order_and_task_isolation ... ok
+test ah11_strict_inputs_guards_paths_and_safe_errors ... ok
+test ah14_http_decision_does_not_claim_binding_validation ... ok
+test ah06_denied_http_decision_survives_real_runtime_restart_without_execution ... ok
+test ah14_unknown_is_visible_and_decision_remains_conflict ... ok
+test ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency ... ok
+test ah13_run_and_session_sse_resume_from_last_consumed_cursor ... ok
+test ah10_real_workers_with_same_call_id_do_not_borrow_decisions ... ok
+test ah05_shutdown_reopen_http_decision_without_worker_then_resume_once ... ok
+test ah07_barrier_cancel_and_http_decision_have_one_durable_resolution ... ok
+test ah06_real_command_side_effect_then_shutdown_recovers_unknown ... ok
+test ah07_cancel_before_claim_and_after_real_command_claim ... ok
+test ah02_ah03_ah04_real_tools_follow_http_decisions ... ok
+test ah15_command_network_ack_is_explicit_and_legacy_approved_waits_without_claim ... ok
+test ah11_real_busy_decision_is_retryable_and_corruption_is_not ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.14s
+
+     Running tests\assessment_adversarial.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\assessment_adversarial-28e97f889fa46ca2.exe)
+
+running 4 tests
+test wasm_rejects_unbounded_large_table ... ok
+test inference_route_cannot_read_account_secret ... ok
+test idempotency_storage_failure_leaves_no_orphan_run ... ok
+test idempotency_rejects_different_payload ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests\budget.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\budget-62fd45bca79f52e3.exe)
+
+running 3 tests
+test route_check_without_task_is_managed_and_models_never_spend ... ok
+test agent_tool_rounds_resume_and_new_turn_each_create_distinct_budget_calls ... ok
+test successful_missing_and_invalid_usage_allow_legal_tool_but_block_next_completion ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running tests\budget_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\budget_cli-e860463b6113e8f9.exe)
+
+running 10 tests
+test budget_cli_route_check_accepts_budget_rejection_with_finished_models_receipt ... ok
+test budget_cli_status_blocked_is_success_and_diagnosis_is_read_only ... ok
+test budget_cli_closed_stdout_is_write_unknown_without_repeat ... ok
+test budget_cli_received_put_then_real_transport_truncation_is_unknown_once ... ok
+test budget_cli_human_explains_limits_and_invalid_arguments_send_nothing ... ok
+test budget_cli_raw_duplicate_and_broken_wire_are_not_accepted_or_retried ... ok
+test budget_cli_config_exact_put_and_replayed_original_snapshot ... ok
+test budget_cli_accepts_every_legal_call_state_and_unmanaged_history ... ok
+test budget_cli_rejects_inconsistent_status_and_call_shapes ... ok
+test budget_cli_budget_errors_are_typed_and_writes_are_single_attempt ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s
+
+     Running tests\budget_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\budget_http-46b0eb1d45ca4fe3.exe)
+
+running 5 tests
+test budget_http_auth_strict_body_and_safe_extractor_errors ... ok
+test budget_http_route_check_preserves_models_receipt_and_blocks_completion_before_claim ... ok
+test budget_http_valid_usage_settles_and_call_is_bound_to_project ... ok
+test budget_http_config_cas_replay_forward_history_and_no_query_side_effects ... ok
+test budget_http_missing_invalid_and_overrun_survive_config_increase ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests\checkpoint.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\checkpoint-81154909f600c8e9.exe)
+
+running 15 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test schema10_unbound_checkpoint_is_history_only_and_cannot_restore ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test completed_restore_replays_after_legacy_migration_and_original_root_is_offline ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test cross_project_restore_keeps_original_root_and_waits_for_host_command ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.36s
+
+     Running tests\checkpoint_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\checkpoint_http-990802a22ef2f8fd.exe)
+
+running 3 tests
+test t02_checkpoint_http_strict_security_zero_effects ... ok
+test k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500 ... ok
+test k06_checkpoint_http_kill_after_effect_before_outcome ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
+
+     Running tests\cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\cli-366a345e2dc00137.exe)
+
+running 11 tests
+test cl03_remote_cli_does_not_initialize_local_state_or_execute_without_waiter ... ok
+test cl07_redirects_proxy_and_token_echo_do_not_leak_or_retry ... ok
+test cl09_unknown_state_is_truthful_and_help_has_no_secrets ... ok
+test cl02_real_cli_approve_executes_and_deny_does_not ... ok
+test cl01_command_shape_is_fixed_for_list_get_approve_and_deny ... ok
+test cl09_escaped_token_is_rejected_in_success_and_error_fields ... ok
+test cl01_list_get_human_json_and_empty ... ok
+test cl04_http_errors_are_json_on_stderr_with_exit_one ... ok
+test cl05_parse_errors_exit_two_without_files ... ok
+test cl08_check_and_server_startup_remain_compatible ... ok
+test cl06_invalid_bootstrap_json_and_connection_are_safe_without_post_retry ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.38s
+
+     Running tests\cli_workflow.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\cli_workflow-e8359a2797feb354.exe)
+
+running 9 tests
+test n13_write_reply_transport_oversize_and_escaped_token_never_retry ... ok
+test n13_workflow_parse_gates_and_unknown_post_are_safe_and_single_attempt ... ok
+test n11_sse_split_utf8_crlf_comments_multiline_limit_and_failure_cursor ... ok
+test n01_context_routes_classify_absent_legacy_and_corrupt_without_identity_invention ... ok
+test n12_host_kill_wait_recovery_and_observer_disconnect_do_not_reexecute ... ok
+test n10_cli_unknown_receipt_survives_real_host_restart_without_repeating_effects ... ok
+test n10_cli_real_partial_receipt_preserves_both_path_facts ... ok
+test n01_n02_n04_real_cli_host_tool_restore_new_turn_and_restart ... ok
+test n11_sse_keepalive_exceeds_regular_timeout_and_ignores_proxy ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.12s
+
+     Running tests\final_acceptance.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\final_acceptance-1cfaaa4c23baf20f.exe)
+
+running 9 tests
+test invalid_dependency_or_missing_projection_rolls_back_everything ... ok
+test legacy_only_replay_returns_complete_tasks ... ok
+test same_idempotency_key_replays_original_turn_without_new_objects ... ok
+test inconsistent_initial_state_and_forged_status_event_are_rejected ... ok
+test bundle_commits_project_session_agent_turn_and_legacy_projection ... ok
+test state_updates_sync_new_projection_and_reject_backwards_transition ... ok
+test sqlite_trigger_failure_is_atomic ... ok
+test recovery_and_resume_events_roll_back_with_their_states ... ok
+test resume_keeps_task_identity_and_requeues_turn ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests\first_user_workflow.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\first_user_workflow-5a3c83aad910ecd6.exe)
+
+running 1 test
+test empty_database_public_cli_development_restore_and_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.54s
+
+     Running tests\git_diff.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\git_diff-b9f0abc396968a98.exe)
+
+running 15 tests
+test malicious_environment_child ... ok
+test strict_request_and_safe_error_contract ... ok
+test bounded_runner_terminates_overflow_and_timeout ... ok
+test secrets_are_redacted_before_diff_prefixes_and_digests_are_raw ... ok
+test external_diff_textconv_filters_and_hooks_are_never_invoked ... ok
+test absent_promisor_object_is_unavailable_without_network_or_writes ... ok
+test root_boundaries_and_linked_worktree ... ok
+test inherited_git_redirection_and_config_are_cleared_in_child_process ... ok
+test unmerged_gitlink_and_git_symlink_are_unsupported ... ok
+test three_views_read_real_objects_and_preserve_crlf_and_eof ... ok
+test deterministic_head_index_and_work_changes_return_conflict ... ok
+test path_validation_literal_names_and_link_sentinel ... ok
+test deletion_and_rename_are_separate_paths ... ok
+test binary_large_patch_and_serialized_response_are_bounded ... ok
+test unborn_untracked_ignored_missing_and_empty_existence ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.90s
+
+     Running tests\host_configuration.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\host_configuration-63b2d6312839739a.exe)
+
+running 18 tests
+test strict_request_and_target_validation_is_shared_by_store ... ok
+test compatibility_writes_invalidate_cas_without_receipts_and_noop_keeps_revision ... ok
+test environment_change_does_not_bump_host_revision_but_noop_rechecks_binding ... ok
+test keep_requires_existing_available_credential_and_same_api_base ... ok
+test legacy_engine_configuration_and_account_binding_each_advance_once ... ok
+test legacy_credential_keep_preserves_source_namespace_and_ciphertext ... ok
+test missing_receipt_field_and_wrong_length_sealed_digest_are_corrupt ... ok
+test missing_settings_with_project_history_is_not_a_fresh_host ... ok
+test idempotency_conflicts_cover_secret_route_expected_and_mode_without_writes ... ok
+test fresh_initialization_is_empty_revision_zero_and_cannot_overwrite_history ... ok
+test replacement_clears_env_and_keeps_legacy_ciphertext ... ok
+test stored_request_contains_only_sealed_digest_and_public_receipt ... ok
+test unavailable_secret_and_damaged_receipt_fail_closed ... ok
+test receipt_insert_failure_and_revision_overflow_roll_back_every_row ... ok
+test same_key_different_secret_race_has_one_winner_and_two_noops_can_coexist ... ok
+test durable_replay_lookup_and_noop_preserve_original_receipt ... ok
+test two_stores_same_key_converge_and_different_keys_cas_atomically ... ok
+test real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests\host_configuration_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\host_configuration_cli-3f91e9ccec73bb5a.exe)
+
+running 6 tests
+test i08_lookup_is_read_only_original_receipt_and_404_preserves_inflight_uncertainty ... ok
+test i08_noop_replay_unavailable_and_human_failure_keep_distinct_meanings ... ok
+test i08_replace_stdin_and_keep_send_controlled_bodies_and_safe_output ... ok
+test i08_invalid_secret_or_arguments_never_send_put_and_never_echo_inputs ... ok
+test i08_trusted_errors_remain_errors_and_untrusted_errors_are_unknown ... ok
+test i08_complete_put_then_disconnect_truncate_redirect_oversize_and_malicious_success_are_unknown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s
+
+     Running tests\host_configuration_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\host_configuration_http-433c442c689f38b6.exe)
+
+running 3 tests
+test i07_original_receipt_replay_current_snapshot_and_fixed_errors ... ok
+test i07_all_endpoints_require_host_origin_site_and_token ... ok
+test i07_nested_json_types_keys_limits_and_unsafe_targets_are_atomic_rejections ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests\host_configuration_schema.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\host_configuration_schema-ae721cb78d1a72dd.exe)
+
+running 6 tests
+test actual_database_constraints_reject_invalid_values ... ok
+test migration_failure_rolls_back_ddl_marker_and_version ... ok
+test migration_keeps_all_legacy_rows_rowids_and_opaque_blobs_on_repeated_open ... ok
+test concurrent_migration_opens_converge_on_one_marker_and_singleton ... ok
+test wrong_marker_version_singleton_and_constraint_shapes_are_rejected ... ok
+test receipt_column_identity_and_revisions_are_validated_after_open ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+
+     Running tests\host_configuration_security.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\host_configuration_security-be1fd5d45255deee.exe)
+
+running 7 tests
+test environment_host_child ... ok
+test configuration_preserves_nonempty_unknown_budget_old_task_and_grants ... ok
+test i08_lookup_404_during_received_put_does_not_resolve_unknown ... ok
+test i04_legacy_keep_and_detached_prompt_preserve_namespace ... ok
+test i04_environment_namespace_dpapi_and_http_in_isolated_process ... ok
+test i04_rejected_pipe_inputs_make_no_put_or_db_change ... ok
+test i08_real_commits_then_hostile_responses_are_unknown_without_retries ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.83s
+
+     Running tests\host_initialization_workflow.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\host_initialization_workflow-a7c69416ffbbf71f.exe)
+
+running 3 tests
+test i11_real_host_legacy_web_settings_roundtrip_authentication_and_new_receipts ... ok
+test i10_same_empty_database_cli_configuration_permissions_budget_completion_and_restart ... ok
+test i01_safe_empty_start_explicit_legacy_and_existing_database_are_distinct ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.40s
+
+     Running tests\http_contract.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\http_contract-fe1366011fd3c1c2.exe)
+
+running 11 tests
+test h3_guard_rejections_are_structured_and_do_not_execute ... ok
+test h4_json_input_failures_do_not_enter_engine ... ok
+test h6_sse_frame_matches_persisted_event ... ok
+test h8_sessions_do_not_cross_and_seq_may_gap ... ok
+test h1_read_shapes_and_security_headers_stay ... ok
+test h2_missing_is_404_and_corruption_is_500 ... ok
+test h11_existing_run_idempotency_and_bad_key_stay ... ok
+test h7_disconnect_does_not_cancel_running_task ... ok
+test h10_stream_failure_keeps_last_sent_cursor_and_writes_nothing ... ok
+test h5_cursor_inputs_reject_ambiguity ... ok
+test h9_idle_and_future_cursor_do_not_replay ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+     Running tests\live.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\live-db566652a1c86345.exe)
+
+running 1 test
+test xpeach_native_stream_and_coding_tool ... ignored, requires PEACHSH_TEST_KEY; makes small paid model calls
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\network_authorization.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\network_authorization-59b8f7ec0a27f8ea.exe)
+
+running 16 tests
+test fake_unique_index_literal_is_rejected_and_active_uniqueness_is_real ... ok
+test schema10_rejects_nullable_column_disguised_as_fused_type_keyword ... ok
+test admitted_call_finishes_after_revoke_while_config_is_rejected_and_next_admission_stops ... ok
+test account_save_is_local_and_requires_new_token_when_identity_changes ... ok
+test confirm_failure_rolls_back_authorization_confirmation_and_event ... ok
+test account_quota_change_is_local_and_preserves_identity_grant ... ok
+test idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corruption ... ok
+test receipt_contradictions_are_corrupt_and_result_commit_failure_keeps_same_unknown_id ... ok
+test binding_insert_failure_rolls_back_new_task_turn_and_idempotency ... ok
+test revoke_after_task_permit_allows_only_inflight_round_and_stops_next_model_round ... ok
+test raw_secret_and_settings_changes_cannot_bypass_bound_snapshot ... ok
+test old_task_keeps_revoked_grant_while_new_task_binds_replacement_and_replay_is_local ... ok
+test append_binding_failure_preserves_every_old_business_column_then_explicit_new_turn_succeeds ... ok
+test no_grant_purpose_or_revocation_has_zero_tcp_with_real_positive_control ... ok
+test environment_credential_reference_and_value_are_rechecked_across_real_processes ... ok
+test command_requires_ack_then_really_contacts_listener_without_outbound_sandbox ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+     Running tests\network_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\network_cli-2891fa65a6dafd05.exe)
+
+running 7 tests
+test network_cli_authorize_uses_only_supplied_snapshot_and_deduplicates_purposes ... ok
+test network_cli_closed_stdout_keeps_known_call_receipt_on_stderr_once ... ok
+test network_cli_authenticated_get_guard_failure_stays_read_only_and_rejects_token_echo ... ok
+test network_cli_preserves_partial_finished_and_unknown_receipts_without_retry ... ok
+test network_cli_models_success_and_task_call_binding_are_validated ... ok
+test network_cli_default_ports_ipv6_and_case_follow_host_target_contract ... ok
+test network_cli_rejects_inconsistent_host_receipts_and_accepts_every_legal_state ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running tests\network_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\network_http-584b587a6bda6ffe.exe)
+
+running 5 tests
+test network_http_account_save_is_local_and_revision_change_requires_new_preview ... ok
+test network_http_local_save_preview_grant_replay_and_explicit_post ... ok
+test network_http_strict_json_auth_reads_and_invalid_requests_never_dispatch ... ok
+test network_http_real_host_kill_after_send_retains_same_unknown_call_without_replay ... ok
+test network_http_real_host_full_response_finish_db_failure_then_kill_recovers_same_call ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.19s
+
+     Running tests\plugin_catalog.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\plugin_catalog-8f0b96b63269fbad.exe)
+
+running 17 tests
+test d12_existing_abi_and_modules_unaffected ... ok
+test d03_missing_version_and_kind_are_distinct ... ok
+test d04_ambiguous_provider_lists_sorted_ids ... ok
+test d08_duplicate_id_rules ... ok
+test d01_full_chain_parse_register_resolve ... ok
+test d06_reachability_and_root_rules ... ok
+test d07_open_config_schema_and_boundaries ... ok
+test d02_graph_orders_deterministically_and_dedups ... ok
+test d07_scope_identity_is_validated ... ok
+test d09_scope_kinds_and_instance_isolation ... ok
+test d07_register_revalidates_direct_constructs_atomically ... ok
+test d05_cycles_report_real_closed_paths_only ... ok
+test d10_remove_and_replace_provider ... ok
+test d11_declarations_do_not_execute_and_errors_do_not_echo ... ok
+test d07_duplicate_json_members_rejected_everywhere ... ok
+test d07_id_and_name_rules_with_boundaries ... ok
+test d07_structure_type_and_duplicate_declarations ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\plugin_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\plugin_cli-75f02029d10720e4.exe)
+
+running 10 tests
+test f09_unconverged_accepted_json_is_complete_and_exit_one ... ok
+test f09_hostile_output_is_not_echoed_or_retried ... ok
+test f09_lost_response_requires_manual_same_key_and_parameters ... ok
+test s10_shell_unconverged_success_and_unknown_manual_replay_are_preserved ... ok
+test f09_actual_cli_uses_authenticated_get_put_and_preserves_response ... ok
+test s10_current_catalog_shell_status_mutation_and_human_boundary ... ok
+test f09_cli_rejects_invalid_input_and_safe_errors_remain_structured ... ok
+test l07_known_versions_preserve_json_and_human_reports_validated_tool_scope ... ok
+test l07_unknown_mixed_or_arbitrary_tool_maps_are_rejected_without_retry ... ok
+test s10_reject_invalid_catalogs_and_cross_plugin_responses ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+
+     Running tests\plugin_host.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\plugin_host-2cfbf46ece62304d.exe)
+
+running 24 tests
+test h12_existing_surfaces_unaffected ... ok
+test h01_full_chain_register_start_bound_call ... ok
+test emit_inside_activate_is_allowed_and_never_backfills ... ok
+test h11_purity_determinism_and_display_name_not_identity ... ok
+test rollback_records_deactivate_failures_without_replacing_the_start_error ... ok
+test remove_descriptor_does_not_unload_running_instances ... ok
+test restart_after_stop_builds_a_fresh_object ... ok
+test ctx_rule_boundaries_reject_with_typed_errors ... ok
+test h04_dependents_active_protects_provider ... ok
+test h07_runtime_gates ... ok
+test emit_rejects_non_event_undeclared_and_unknown_emitter ... ok
+test h03_revocation_leaves_no_residue ... ok
+test h06_declaration_violations_are_typed_and_rolled_back ... ok
+test subscribers_receive_only_their_bound_providers_events ... ok
+test h08_state_rules_and_scope_isolation ... ok
+test failed_instances_reject_being_plan_members ... ok
+test start_reuses_active_non_root_members ... ok
+test n08_host_typed_resolver_obeys_live_activation_binding_and_payload_type ... ok
+test h10_recovery_list_records_incomplete_cleanup ... ok
+test h05_activation_failure_rolls_back_in_plan_reverse ... ok
+test stop_subtree_records_every_deactivate_failure_in_teardown_order ... ok
+test h09_events_deliver_in_subscriber_id_order ... ok
+test panicking_subscriber_fails_alone_and_delivery_continues ... ok
+test h02_topology_order_and_reverse_teardown ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\plugin_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\plugin_http-418b63849597b7aa.exe)
+
+running 9 tests
+test f02_status_is_read_only_and_reports_actual_runtime ... ok
+test f07_database_rejection_does_not_change_runtime_or_consume_key ... ok
+test f06_cas_replay_and_concurrent_conflicts ... ok
+test s10_shell_http_metadata_isolated_global_key_and_strict_contract ... ok
+test f09_real_committed_response_loss_manual_cli_replay_keeps_receipt ... ok
+test f09_strict_inputs_and_auth_have_no_mutations ... ok
+test f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_read ... ok
+test s09_shell_real_host_restart_disabled_then_approval_ack_command_and_files_positive ... ok
+test l06_real_host_restart_list_and_search_remain_disabled_then_enable ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.04s
+
+     Running tests\plugin_management.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\plugin_management-fff8213c415f1303.exe)
+
+running 4 tests
+test strict_request_and_safe_typed_errors ... ok
+test management_status_replay_and_explicit_reconciliation ... ok
+test shell_state_is_independent_and_both_disabled_restart_without_activation ... ok
+test disabled_restart_and_runtime_failure_before_commit ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests\project_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\project_cli-601bf3b19a345153.exe)
+
+running 4 tests
+test project_cli_network_project_rejection_preserves_finished_call_receipt ... ok
+test project_cli_config_arrays_missing_fields_duplicates_rejected_locally ... ok
+test project_cli_conflicts_and_forged_bindings_do_not_retry ... ok
+test project_cli_management_uses_token_put_cas_and_nested_config ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests\project_context.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\project_context-edcb20853590cb75.exe)
+
+running 7 tests
+test ordinary_root_search_rejects_case_sensitive_descendant ... ok
+test unavailable_legacy_root_does_not_block_registration_or_change_old_row ... ok
+test safe_defaults_cas_restart_and_overlap_are_explicit ... ok
+test safe_default_admission_and_task_binding_failure_leave_no_execution_facts ... ok
+test register_replay_precedes_root_access_and_failure_rolls_back_all_tables ... ok
+test separate_grants_selection_and_old_session_follow_original_project ... ok
+test project_config_change_and_explicit_start_are_atomic_across_stores ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running tests\project_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\project_http-c589a71b352f90d6.exe)
+
+running 6 tests
+test p09_wasm_http_list_and_run_are_explicitly_unsupported ... ok
+test p09_nested_json_rejected_before_any_project_write_or_network ... ok
+test p01_project_management_cas_strict_json_and_zero_network ... ok
+test p08_legacy_task_history_is_readable_but_live_operations_are_rejected ... ok
+test p02_project_route_isolation_old_replay_and_session_turn ... ok
+test p09_real_cli_against_project_host ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests\project_migration.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\project_migration-1c802c05a076b373.exe)
+
+running 3 tests
+test failed_schema11_transaction_keeps_schema10_version_and_marker ... ok
+test schema11_preserves_v1_network_ciphertext_digest_grant_and_historical_confirm_replay ... ok
+test schema11_rejects_forged_nullable_type_literal_fk_and_primary_key ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests\provider_network.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\provider_network-9778c7326318053e.exe)
+
+running 4 tests
+test management_requires_whole_check_scope_and_persists_real_calls ... ok
+test account_binding_is_local_and_identity_changes_need_separate_confirmation ... ok
+test target_path_model_and_raw_credential_changes_never_reuse_old_authorization ... ok
+test redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reopen ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+
+     Running tests\provider_usage.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\provider_usage-cfc03bf1d015d78d.exe)
+
+running 7 tests
+test classifier_rejects_incomplete_non_integer_and_inconsistent_usage ... ok
+test decoder_missing_usage_preserves_successful_message ... ok
+test decoder_latches_conflicts_even_when_total_is_unchanged ... ok
+test classifier_accepts_zero_and_sqlite_integer_boundary ... ok
+test invalid_marker_cannot_become_valid_usage_or_leak_arbitrary_reason ... ok
+test decoder_never_repairs_invalid_or_combines_partial_snapshots ... ok
+test fragmented_decoder_normalizes_details_and_deduplicates_snapshots ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\review_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\review_cli-93a47a282c670466.exe)
+
+running 6 tests
+test t02_review_bad_cli_arguments_exit_two ... ok
+test t02_diff_status_projection_and_response_path_binding ... ok
+test t02_new_cli_malformed_oversize_token_redirect_single_post ... ok
+test t02_checkpoint_unknown_receipt_restart_no_retry ... ok
+test t02_checkpoint_real_partial_receipt ... ok
+test t01_real_diff_checkpoint_restore_restart_new_turn ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.29s
+
+     Running tests\runtime.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\runtime-dee77ff274e01c8a.exe)
+
+running 10 tests
+test schema_v1_migrates_to_current_version ... ok
+test restart_and_http_security ... ok
+test wasm_plugin_runs_through_agent_tool_boundary ... ok
+test conflicts_cancel_and_configuration_lock ... ok
+test http_run_exposes_domain_and_session_events_with_conflict_replay ... ok
+test explicit_session_kind_survives_arbitrary_member_names ... ok
+test multiple_keys_limits_identity_and_resume ... ok
+test tool_execution_and_path_rejection ... ok
+test dependency_order_summary_and_cycle_rejection ... ok
+test replace_existing_file_preserves_hardlink_and_command_permission ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests\session_turns.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\session_turns-a0f55013e306078b.exe)
+
+running 19 tests
+test t7_unsupported_and_invalid_inputs_add_nothing ... ok
+test run_context_distinguishes_missing_unmapped_and_corrupt ... ok
+test run_context_uses_persisted_mapping_and_commit_order ... ok
+test t5_two_store_connections_allow_only_one_successor ... ok
+test t11_route_removal_uses_a_valid_short_prefix ... ok
+test t12_session_events_stay_ordered_across_turns ... ok
+test t4_workspace_guard_is_independent_of_agent_count ... ok
+test t6_same_second_uuid_order_does_not_decide_latest ... ok
+test t8_event_insert_failure_rolls_back_append ... ok
+test t10_running_resume_blocks_append ... ok
+test t4_changed_key_inputs_and_legacy_key_conflict ... ok
+test t1_t2_three_turns_keep_identity_and_independent_results ... ok
+test session_and_turn_decode_failures_are_corrupt_not_missing ... ok
+test t10_historical_resume_loses_to_a_newer_turn ... ok
+test t3_same_key_replay_does_not_relaunch_or_grow ... ok
+test t7_busy_non_chat_corrupt_order_and_unpaired_tools_are_refused ... ok
+test t7_each_prefix_fault_is_the_only_reason ... ok
+test t9_cancel_restart_and_resume_boundaries ... ok
+test t11_route_workspace_and_context_limits_fail_closed ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running tests\tool_runtime.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\tool_runtime-7de2db0b61b1302d.exe)
+
+running 4 tests
+test shell_cannot_reenter_via_compat_and_both_disabled_only_expose_wasm ... ok
+test definitions_and_admission_obey_task_permission_ceiling ... ok
+test disabled_files_constructor_keeps_independent_shell_and_never_admits_files ... ok
+test revoked_file_tools_never_reappear_through_compatibility_dispatch ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\tool_session_turns.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\tool_session_turns-7882548023251ae5.exe)
+
+running 11 tests
+test n03_denied_write_history_can_continue_without_inheriting_approval ... ok
+test n06_malformed_and_changed_origin_history_cannot_append ... ok
+test n05_legacy_untracked_effect_is_not_cleared_by_interrupted_placeholder ... ok
+test n06_store_rechecks_every_inherited_permission_and_original_approval_owner ... ok
+test n09_stop_before_approval_claim_has_no_write_or_claim ... ok
+test n07_tool_chat_same_key_race_and_active_scope_conflict ... ok
+test n04_restore_then_new_task_uses_restored_bytes_and_host_fact ... ok
+test n05_all_historical_unresolved_states_block_but_replay_survives ... ok
+test n03_closed_history_inherits_permissions_and_creates_fresh_approval ... ok
+test n11_disabled_files_keep_command_approval_network_ack_and_wasm_denial ... ok
+test n09_new_provider_definitions_and_calls_revoke_after_disable_and_unload ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests\turn_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\turn_http-817a873d3b91439f.exe)
+
+running 17 tests
+test n05_body_and_id_validation ... ok
+test n17_regression_surface ... ok
+test n08_write_guard ... ok
+test n04_key_binding_conflict ... ok
+test n01_append_and_chain ... ok
+test n14_config_faults_500_and_replay_first ... ok
+test n12_different_key_race ... ok
+test n03_replay_variants ... ok
+test n06_idempotency_header ... ok
+test n16_real_restart_partial_replay_resume ... ok
+test n11_same_key_concurrency ... ok
+test n09_session_shape_and_404 ... ok
+test n02_session_sse_stream ... ok
+test n10_predecessor_states ... ok
+test n15_disconnect_mid_run ... ok
+test n13_storage_faults_safe_500 ... ok
+test n07_message_bounds_and_body_limit ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.17s
+
+     Running tests\workspace_changes.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\workspace_changes-aea784dee7b6e4f7.exe)
+
+running 21 tests
+test failed_atomic_replace_cleans_plaintext_temp ... ok
+test workspace_path_aliases_and_forbidden_spellings_are_rejected_or_coalesced ... ok
+test empty_restore_is_noop_without_operation ... ok
+test redacted_write_arguments_do_not_leave_an_unrestorable_success ... ok
+test schema7_migrates_and_forged_schema8_is_rejected ... ok
+test finished_change_without_after_digest_is_corrupt_not_empty_restore ... ok
+test restore_rejects_tampered_call_path_content_and_binding ... ok
+test parent_commit_failure_returns_unknown_receipt_and_seals_change ... ok
+test external_edit_conflicts_without_overwrite ... ok
+test dpapi_before_secret_roundtrips_without_plaintext_in_database ... ok
+test approved_write_has_typed_metadata_and_restores_exact_bytes ... ok
+test http_unknown_receipt_is_safe_after_outcome_persist_failure ... ok
+test schema7_to8_preserves_existing_task_approval_and_event_rows ... ok
+test missing_non_utf8_and_link_are_distinct_current_states ... ok
+test later_path_conflict_prevents_all_restore_writes ... ok
+test another_task_write_blocks_old_restore_and_hardlink_bytes_stay_unchanged ... ok
+test changed_host_workspace_or_task_scopes_reject_restore_before_claim ... ok
+test created_file_restore_deletes_only_unchanged_task_output ... ok
+test another_task_edit_blocks_resumed_write_without_absorbing_external_bytes ... ok
+test repeated_path_restores_earliest_before_and_legacy_mix_is_rejected ... ok
+test unsupported_new_content_and_before_bytes_have_no_file_effect ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
+
+     Running tests\workspace_crash.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\workspace_crash-ded3fd18dd422d17.exe)
+
+running 6 tests
+test crash_child_write ... ok
+test crash_child_restore_http ... ok
+test write_crash_after_finish_commit_stays_finished ... ok
+test write_crash_after_file_before_finish_commit_is_unknown ... ok
+test restore_http_crash_after_complete_commit_keeps_stable_receipt ... ok
+test restore_http_crash_after_file_before_outcome_commit_is_unknown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests\workspace_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\workspace_http-1c419f245afe3c8f.exe)
+
+running 2 tests
+test internal_error_and_unknown_receipt_hide_database_details ... ok
+test normal_dto_auth_and_empty_task_are_distinct_and_safe ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests\workspace_identity.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\workspace_identity-942086fcfd459d0b.exe)
+
+running 9 tests
+test malformed_snapshot_version_platform_and_path_are_rejected ... ok
+test windows_deleted_then_recreated_root_does_not_inherit_authority ... ok
+test invalid_input_and_two_missing_roots_do_not_compare_equal ... ok
+test replacement_and_missing_roots_fail_closed ... ok
+test windows_case_alias_same_root_and_device_paths_rejected ... ok
+test windows_root_and_ancestor_junctions_are_rejected ... ok
+test windows_case_sensitive_root_and_descendant_policy_are_rejected ... ok
+test windows_replacement_with_junction_cannot_reuse_identity ... ok
+test identity_roundtrip_non_ascii_and_overlap ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\worktree_cli.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\worktree_cli-1fd06a14ba1acda5.exe)
+
+running 8 tests
+test w09_cli_broken_stdout_after_create_reports_unknown_without_retry ... ok
+test w09_cli_windows_path_spellings_are_lexical_without_filesystem_access ... ok
+test w09_cli_invalid_selector_and_input_never_dispatch ... ok
+test n13_c01_existing_cli_writes_preserve_definite_reservation_rejection ... ok
+test w09_cli_inspection_cannot_change_receipt_or_forge_matching_identity ... ok
+test w09_cli_create_states_and_authenticated_read_only_posts ... ok
+test w09_cli_error_status_codes_are_strict_and_safe ... ok
+test w09_cli_bad_receipts_become_unknown_only_after_create ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s
+
+     Running tests\worktree_http.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\worktree_http-9a168587209109d7.exe)
+
+running 2 tests
+test w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects ... ok
+test w01_w02_worktree_project_has_independent_authorization_and_original_session_root ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.43s
+
+     Running unittests src\lib.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\peachsh_protocol-2b9873fc9281da35.exe)
+
+running 5 tests
+test tests::error_wire_shape_is_stable ... ok
+test tests::ids_are_opaque_strings ... ok
+test tests::envelope_keeps_legacy_at_and_fills_cursor ... ok
+test tests::lifecycle_status_round_trips_without_display_names ... ok
+test tests::kind_is_stable_wire_data ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (../nhc-c-first-user-workflow\.local\target\debug\deps\peachsh_ui-4ed1c77431e40834.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peachsh
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peachsh_protocol
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests peachsh_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

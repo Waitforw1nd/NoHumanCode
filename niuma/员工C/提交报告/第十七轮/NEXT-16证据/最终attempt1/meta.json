@@ -1,0 +1,119 @@
+{
+  "attempt": "attempt1",
+  "execution_id": "C-R17-01-20261031-E01",
+  "scope": "Manager authorized final gates; source/index frozen",
+  "start_utc": "2026-10-31T02:50:18.7773764Z",
+  "status": "failed_test",
+  "head": "a362d8e9d4c99b24554afec6cfd13a08c07320bb",
+  "no_man_code_tree": "156ad9d8c17fd23c52fd18c960690d3d444152e1",
+  "rust_tree": "a0593dc95f6ed37283d8cb4c1f449a08c9c2d290",
+  "cwd": "../nhc-c-first-user-workflow\\NoManCode\\rust-app",
+  "environment": {
+    "RUSTUP_AUTO_INSTALL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "TMP": "../nhc-c-first-user-workflow\\.local\\tmp",
+    "TEMP": "../nhc-c-first-user-workflow\\.local\\tmp",
+    "CARGO_TARGET_DIR": "../nhc-c-first-user-workflow\\.local\\target",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "2",
+    "VCToolsInstallDir": "<MSVC>",
+    "WindowsSdkDir": "<WindowsSDK>\\"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustfmt": "rustfmt 1.9.0-stable (48a229ceae 2026-09-01)",
+  "installed_targets": [
+    "wasm32-unknown-unknown",
+    "x86_64-pc-windows-msvc"
+  ],
+  "msvc": "<MSVC>",
+  "sdk_version": "10.0.22621.0",
+  "compiler": "<MSVC>\\bin\\Hostx86\\x64\\cl.exe",
+  "build_ps1_sha256": "48CBBF0BBA93E23DE117647E54E0E74BA9777AA0AFD081AE15A834E9E01F7ECD",
+  "driver_sha256": "D1F885C6B00928AB86BCAD1FEBC48370817C9AFA8E056820525146250477D3BA",
+  "steps": [
+    {
+      "action": "check",
+      "command": "pwsh -NoProfile -File ./build.ps1 -Action check",
+      "cargo_command": "cargo check --workspace --locked",
+      "start_utc": "2026-10-31T02:50:19.6359252Z",
+      "end_utc": "2026-10-31T02:51:25.1279322Z",
+      "exit_code": 0,
+      "log": "check.log",
+      "before": {
+        "utc": "2026-10-31T02:50:19.3129691Z",
+        "head": "a362d8e9d4c99b24554afec6cfd13a08c07320bb",
+        "no_man_code_tree": "156ad9d8c17fd23c52fd18c960690d3d444152e1",
+        "rust_tree": "a0593dc95f6ed37283d8cb4c1f449a08c9c2d290",
+        "branch": "codex/c/first-user-workflow",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 158,
+        "source_hash_file": "check-before-source-hashes.json",
+        "source_hash_manifest_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+        "invariant_ok": true
+      },
+      "after": {
+        "utc": "2026-10-31T02:51:25.2300128Z",
+        "head": "a362d8e9d4c99b24554afec6cfd13a08c07320bb",
+        "no_man_code_tree": "156ad9d8c17fd23c52fd18c960690d3d444152e1",
+        "rust_tree": "a0593dc95f6ed37283d8cb4c1f449a08c9c2d290",
+        "branch": "codex/c/first-user-workflow",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 158,
+        "source_hash_file": "check-after-source-hashes.json",
+        "source_hash_manifest_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+        "invariant_ok": true
+      },
+      "source_hashes_unchanged": true
+    },
+    {
+      "action": "test",
+      "command": "pwsh -NoProfile -File ./build.ps1 -Action test",
+      "cargo_command": "cargo test --workspace --locked",
+      "start_utc": "2026-10-31T02:51:25.9152032Z",
+      "end_utc": "2026-10-31T02:53:57.4957292Z",
+      "exit_code": 101,
+      "log": "test.log",
+      "before": {
+        "utc": "2026-10-31T02:51:25.6190257Z",
+        "head": "a362d8e9d4c99b24554afec6cfd13a08c07320bb",
+        "no_man_code_tree": "156ad9d8c17fd23c52fd18c960690d3d444152e1",
+        "rust_tree": "a0593dc95f6ed37283d8cb4c1f449a08c9c2d290",
+        "branch": "codex/c/first-user-workflow",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 158,
+        "source_hash_file": "test-before-source-hashes.json",
+        "source_hash_manifest_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+        "invariant_ok": true
+      },
+      "after": {
+        "utc": "2026-10-31T02:53:57.5774869Z",
+        "head": "a362d8e9d4c99b24554afec6cfd13a08c07320bb",
+        "no_man_code_tree": "156ad9d8c17fd23c52fd18c960690d3d444152e1",
+        "rust_tree": "a0593dc95f6ed37283d8cb4c1f449a08c9c2d290",
+        "branch": "codex/c/first-user-workflow",
+        "status": [],
+        "index": [],
+        "unmerged": [],
+        "source_file_count": 158,
+        "source_hash_file": "test-after-source-hashes.json",
+        "source_hash_manifest_sha256": "87F37C260A84721F16988FBC61F0951ABAE5DFA17FEB8B7F8D79403B616BBC08",
+        "invariant_ok": true
+      },
+      "source_hashes_unchanged": true
+    }
+  ],
+  "not_executed": [
+    "fmt",
+    "clippy",
+    "wasm-check"
+  ]
+}
