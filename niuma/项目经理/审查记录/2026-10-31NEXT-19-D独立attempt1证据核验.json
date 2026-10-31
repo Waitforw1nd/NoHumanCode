@@ -1,0 +1,30 @@
+{
+  "candidate": "3a1ea4f82b21413b98e5f8f0236e04e2b72067ef",
+  "published_manifest_sha256": "b5e63d9ba4521d2e48ab54b999b5c5c66d76724837136a3a49cffd567ce461cc",
+  "verified_file_pairs": 55,
+  "path_transformed_files": 9,
+  "retained_after_files_verified": 1595,
+  "source_files_verified": 139,
+  "raw_scenes_verified": 6,
+  "source_before_after_and_git_identical": true,
+  "commands": {
+    "check": 0,
+    "build_cli": 0,
+    "lib": 0,
+    "integrations": 101,
+    "clippy": "not_run",
+    "fmt": "not_run"
+  },
+  "lib": {
+    "passed": 351,
+    "failed": 0,
+    "ignored": 0
+  },
+  "approval_gate": {
+    "passed": 30,
+    "failed": 5,
+    "ignored": 0
+  },
+  "other_integrations": "not_run",
+  "note": "Read-only audit; query copies only, no recovery of raw. Runner console originals unavailable as disclosed."
+}
