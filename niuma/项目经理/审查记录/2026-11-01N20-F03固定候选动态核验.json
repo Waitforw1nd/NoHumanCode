@@ -1,0 +1,55 @@
+{
+  "reviewer": "manager",
+  "at": "2026-11-01T04:43:21.284368+08:00",
+  "candidate": "e0c2f27bd1a94a0cb3cb3d70b10c6e2f307b8786",
+  "source_files": 180,
+  "source_manifests": [
+    "source-after-01-check.json",
+    "source-after-02-build-cli.json",
+    "source-after-03-negative.json",
+    "source-after-04-lib.json",
+    "source-after-05-integrations.json",
+    "source-before.json",
+    "source-final.json"
+  ],
+  "retained_before": 16448,
+  "retained_after": 18142,
+  "retained_unchanged": 16448,
+  "actual_retained_hashes_checked": 18142,
+  "steps": {
+    "01-check": 0,
+    "02-build-cli": 0,
+    "03-negative": 0,
+    "04-lib": 0,
+    "05-integrations": 101
+  },
+  "library": {
+    "passed": 378,
+    "failed": 0
+  },
+  "integration": {
+    "approval_http": [
+      16,
+      0
+    ],
+    "checkpoint": [
+      15,
+      0
+    ],
+    "composition_http": [
+      0,
+      1
+    ]
+  },
+  "failure": "composition_http.rs:343 DELETE plugin_desired rejected by FK 787 before HTTP 404 request",
+  "unexecuted": [
+    "project_http",
+    "workspace_changes",
+    "turn_http",
+    "plugin_http",
+    "runtime_management_workflow",
+    "fmt",
+    "Clippy"
+  ],
+  "scope": "fixed candidate evidence only; full independent validation has not passed"
+}

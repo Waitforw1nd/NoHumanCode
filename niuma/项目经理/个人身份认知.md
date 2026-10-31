@@ -1,3 +1,7 @@
+## 2026-11-01 F03身份修正通过，F04组合HTTP夹具接续
+
+更新人：项目经理，04:43。e0c2f27b单文件通知修正已完整静态核，check/build/两负控/lib378/0通过；integration审批16/0、checkpoint15/0，组合HTTP0/1因故障注入DELETE父行触发FK787，未到404。后五suite/fmt/Clippy未执行。核七清单180输入、16448旧件不变及18142实际hash，原D释放后签F04仅composition_http事务按外键顺序构造缺行，保持原安全/业务断言；固定后直接完整七步新attempt，经理同时审查。B/C冻结，main仍NEXT-19；下一第一操作审F04小差异和实际结果，继承41行/旧现场保持，全项目active。
+
 ## 2026-11-01 N20-F02动态376/1，原D接续F03身份通知修正
 
 更新人：项目经理，04:35。固定b5300c25 check/build/两负控通过，lib376/1，N13/W08本次ok；唯一A10父日志空task_id导致恢复任务不存在，原armed最终完整且DB有同ID。经理核六清单180输入、14760旧件不变及16406实际hash，完整独立未通过，八integration/fmt/Clippy未执行。D正式报告释放后签N20-F03单文件agent_runtime_tests任务，统一四生产点/五消费点完整发布和UUID验证、保留期限/原断言；允许固定新候选直接完整七步new attempt，经理同时只读审查，B/C冻结。main仍NEXT-19，继承41行及历史失败保留。下一第一操作审D固定小差异及新attempt实际结果，再决定C；全项目active。
