@@ -76,6 +76,47 @@ impl Drop for OwnedChild {
         }
     }
 }
+fn read_task_identity(path: &std::path::Path) -> anyhow::Result<Option<String>> {
+    let id = match std::fs::read_to_string(path) {
+        Ok(id) => id,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
+    let parsed = uuid::Uuid::parse_str(&id)?;
+    anyhow::ensure!(parsed.to_string() == id, "noncanonical task identity");
+    Ok(Some(id))
+}
+
+fn ready_task_identity(child: &mut OwnedChild, path: &std::path::Path) -> Option<String> {
+    if let Some(status) = child.try_wait().expect("check child before task identity") {
+        panic!("child exited before task identity: {status}");
+    }
+    let result = read_task_identity(path).expect("invalid or unreadable task identity");
+    if let Some(status) = child.try_wait().expect("check child after task identity") {
+        panic!("child exited before accepting task identity: {status}");
+    }
+    result
+}
+
+#[test]
+fn task_identity_publication_rejects_partial_and_invalid() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("armed");
+    let pending = path.with_extension("pending");
+    assert!(read_task_identity(&path).unwrap().is_none());
+    std::fs::write(&pending, b"4a418ee2").unwrap();
+    assert!(read_task_identity(&path).unwrap().is_none());
+    std::fs::remove_file(&pending).unwrap();
+    for invalid in ["", "4a418ee2", "not-a-uuid"] {
+        std::fs::write(&path, invalid).unwrap();
+        assert!(read_task_identity(&path).is_err());
+        std::fs::remove_file(&path).unwrap();
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    crate::worktree_diagnostics::atomic_write(&path, id.as_bytes()).unwrap();
+    assert_eq!(read_task_identity(&path).unwrap(), Some(id));
+}
+
 #[derive(Clone, Copy, Debug)]
 enum Mode {
     All,
@@ -1208,7 +1249,8 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
         let run = engine.start(request(3)).await.unwrap();
         let task_id = run.tasks[0].id.clone();
         crate::engine::crash_probe::arm(task_id.clone(), phase, root.join("crash-signal"));
-        std::fs::write(root.join("armed"), &task_id).unwrap();
+        crate::worktree_diagnostics::atomic_write(&root.join("armed"), task_id.as_bytes())
+            .unwrap();
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -1304,7 +1346,7 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
             .unwrap());
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         let task_id = loop {
-            if let Ok(id) = std::fs::read_to_string(root.join("armed")) {
+            if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
                 break id;
             }
             if let Some(s) = child.try_wait().unwrap() {
@@ -1980,7 +2022,7 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     );
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let task_id = loop {
-        if let Ok(id) = std::fs::read_to_string(root.join("armed")) {
+        if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
             break id;
         }
         if let Some(s) = child.try_wait().unwrap() {
@@ -3079,7 +3121,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             "before_commit",
             root.join("proof-signal"),
         );
-        std::fs::write(root.join("armed"), task.id).unwrap();
+        crate::worktree_diagnostics::atomic_write(&root.join("armed"), task.id.as_bytes()).unwrap();
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -3122,7 +3164,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         let pid = child.id();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         let id = loop {
-            if let Ok(id) = std::fs::read_to_string(root.join("armed")) {
+            if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
                 break id;
             }
             if let Some(status) = child.try_wait().unwrap() {
@@ -3381,7 +3423,8 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
             "agent_after_assistant_save",
             root.join("legacy-signal"),
         );
-        std::fs::write(root.join("legacy-armed"), task.id).unwrap();
+        crate::worktree_diagnostics::atomic_write(&root.join("legacy-armed"), task.id.as_bytes())
+            .unwrap();
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -3423,7 +3466,7 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     let pid = child.id();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let id = loop {
-        if let Ok(id) = std::fs::read_to_string(root.join("legacy-armed")) {
+        if let Some(id) = ready_task_identity(&mut child, &root.join("legacy-armed")) {
             break id;
         }
         if let Some(status) = child.try_wait().unwrap() {
@@ -3816,7 +3859,11 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
             "after_commit",
             root.join("host-denied-signal"),
         );
-        std::fs::write(root.join("host-denied-armed"), task.id).unwrap();
+        crate::worktree_diagnostics::atomic_write(
+            &root.join("host-denied-armed"),
+            task.id.as_bytes(),
+        )
+        .unwrap();
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -3848,7 +3895,7 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     let pid = child.id();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let id = loop {
-        if let Ok(id) = std::fs::read_to_string(root.join("host-denied-armed")) {
+        if let Some(id) = ready_task_identity(&mut child, &root.join("host-denied-armed")) {
             break id;
         }
         if let Some(status) = child.try_wait().unwrap() {
