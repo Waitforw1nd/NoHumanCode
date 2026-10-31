@@ -1,0 +1,9 @@
+{
+  "ended_utc": "2026-10-31T15:21:53.7930274Z",
+  "head": "81b9b2bc50d71376a88fbf269ebed5b87467d74b",
+  "exit_code": 101,
+  "product_tree": "1379ee64e8a5c96285f948664fbea7ae02d8e4ab",
+  "rust_tree": "ba5859e7e1ea2c7f55ec123a36150c7872467837",
+  "command": "cargo test --offline --locked --test approval_gate --test approval_http --test tool_session_turns --test tool_result_crash --test workspace_changes --test workspace_crash --test checkpoint --test checkpoint_http --test network_authorization --test network_http --test plugin_management --test plugin_http --test runtime_management_workflow --test tool_runtime -- --nocapture",
+  "started_utc": "2026-10-31T15:20:46.0734846Z"
+}

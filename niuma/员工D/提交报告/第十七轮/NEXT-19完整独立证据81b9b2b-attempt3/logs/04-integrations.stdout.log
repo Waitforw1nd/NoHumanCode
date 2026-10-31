@@ -1,0 +1,180 @@
+
+running 35 tests
+test ap03_ap09_denied_and_decision_conflicts ... ok
+test ap04_read_tools_pass_through ... ok
+test ap01_ap02_pending_then_approved_executes_once ... ok
+test ap20_public_query_order_and_corruption_distinct_from_missing ... ok
+test ap16_public_finish_failure_preserves_all_transaction_inputs ... ok
+test ap13_empty_id_and_ambiguous_history_fail_closed ... ok
+test ap19_schema6_preservation_atomic_migration_and_forged_constraints ... ok
+test ap14_binding_changes_rejected_without_new_events ... ok
+test command_legacy_approved_ack_is_sidecar_only_and_unknown_cannot_be_acknowledged ... ok
+test ap08_cancel_pending_is_durable ... ok
+test ap10_ap11_safe_previews_independent_calls ... ok
+test ap18_cancel_before_new_waiter_resume_has_safe_cancel_result ... ok
+test ap14_redacted_arguments_cannot_resume_as_substitute ... ok
+test ap15_claimed_before_execute_runtime_stops_then_unknown ... ok
+test ap16_finish_transaction_fault_rolls_back ... ok
+test ap16_finished_restart_never_reexecutes_and_missing_result_is_corrupt ... ok
+test ap19_constraints_enforced_and_partial_ddl_retry ... ok
+test ap13_cross_task_same_call_isolated ... ok
+test ap17_cancel_after_real_claim_preserves_real_result_and_stops_next_call ... ok
+test ap17_claim_cancel_order_and_stale_completed ... ok
+test ap15_approved_before_claim_stopped_runtime_executes_once ... ok
+test pending_command_keeps_original_cwd_after_default_project_switch ... ok
+test ap13_duplicate_groups_have_no_effect ... ok
+test ap06_reconcile_preserves_order_with_pending_and_unapproved_calls ... ok
+test ap18_decision_and_cancel_from_other_store_are_observed ... ok
+test ap15_real_command_effect_then_runtime_stop_unknown ... ok
+test schema10_unbound_pending_approval_can_deny_or_cancel_but_not_approve ... ok
+test ap14_persisted_workspace_and_permission_changes_conflict ... ok
+test ap05_command_waits_and_runs_once ... ok
+test ap08_restart_public_cancel_is_idempotent_without_active_runtime ... ok
+test ap06_ap07_ap18_runtime_restart_and_decide_before_waiter ... ok
+test redacted_command_result_stays_finished_across_restart ... ok
+test project_ceiling_revocation_and_approval_claim_are_linearized_across_stores ... ok
+test ap17_multistore_cancel_claim_barrier ... ok
+test ap17_multistore_decision_cancel_race ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.59s
+
+
+running 16 tests
+test ah01_ah09_ah10_safe_dto_order_and_task_isolation ... ok
+test ah11_strict_inputs_guards_paths_and_safe_errors ... ok
+test ah14_unknown_is_visible_and_decision_remains_conflict ... ok
+test ah14_http_decision_does_not_claim_binding_validation ... ok
+test ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency ... ok
+test ah06_denied_http_decision_survives_real_runtime_restart_without_execution ... ok
+test ah13_run_and_session_sse_resume_from_last_consumed_cursor ... ok
+test ah10_real_workers_with_same_call_id_do_not_borrow_decisions ... ok
+test ah05_shutdown_reopen_http_decision_without_worker_then_resume_once ... ok
+test ah07_barrier_cancel_and_http_decision_have_one_durable_resolution ... ok
+test ah06_real_command_side_effect_then_shutdown_recovers_unknown ... ok
+test ah07_cancel_before_claim_and_after_real_command_claim ... ok
+test ah15_command_network_ack_is_explicit_and_legacy_approved_waits_without_claim ... ok
+test ah02_ah03_ah04_real_tools_follow_http_decisions ... ok
+test n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart ... ok
+test ah11_real_busy_decision_is_retryable_and_corruption_is_not ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.12s
+
+
+running 15 tests
+test k05_version9_without_marker_is_not_silently_repaired ... ok
+test k05_fake_literal_and_missing_constraint_are_rejected ... ok
+test k02_concurrent_creation_transaction_failure_and_no_secret_disclosure ... ok
+test k04_multiple_paths_preflight_fails_before_any_write ... ok
+test schema10_unbound_checkpoint_is_history_only_and_cannot_restore ... ok
+test k05_real_schema8_migration_preserves_every_business_value_and_ciphertext ... ok
+test completed_restore_replays_after_legacy_migration_and_original_root_is_offline ... ok
+test schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows ... ok
+test k02_distinct_tasks_can_reuse_creation_key ... ok
+test k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints ... ok
+test k01_exact_task_before_survives_reopen_and_restore_converges ... ok
+test cross_project_restore_keeps_original_root_and_waits_for_host_command ... ok
+test k03_external_edits_corrupt_sources_and_manifest_fail_closed ... ok
+test engine_git_diff_uses_real_index_without_tool_changes_and_checks_task_binding ... ok
+test k03_path_and_before_total_limits_leave_zero_new_facts ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.42s
+
+
+running 3 tests
+test t02_checkpoint_http_strict_security_zero_effects ... ok
+test k05_t02_checkpoint_safe_dto_event_sse_and_corrupt_500 ... ok
+test k06_checkpoint_http_kill_after_effect_before_outcome ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.03s
+
+
+running 16 tests
+test schema10_rejects_nullable_column_disguised_as_fused_type_keyword ... ok
+test fake_unique_index_literal_is_rejected_and_active_uniqueness_is_real ... ok
+test account_save_is_local_and_requires_new_token_when_identity_changes ... ok
+test admitted_call_finishes_after_revoke_while_config_is_rejected_and_next_admission_stops ... ok
+test account_quota_change_is_local_and_preserves_identity_grant ... ok
+test receipt_contradictions_are_corrupt_and_result_commit_failure_keeps_same_unknown_id ... ok
+test idempotency_preserves_revoked_fact_and_rejects_cross_subject_fk_corruption ... ok
+test confirm_failure_rolls_back_authorization_confirmation_and_event ... ok
+test raw_secret_and_settings_changes_cannot_bypass_bound_snapshot ... ok
+test binding_insert_failure_rolls_back_new_task_turn_and_idempotency ... ok
+test revoke_after_task_permit_allows_only_inflight_round_and_stops_next_model_round ... ok
+test old_task_keeps_revoked_grant_while_new_task_binds_replacement_and_replay_is_local ... ok
+test append_binding_failure_preserves_every_old_business_column_then_explicit_new_turn_succeeds ... ok
+test no_grant_purpose_or_revocation_has_zero_tcp_with_real_positive_control ... ok
+test environment_credential_reference_and_value_are_rechecked_across_real_processes ... ok
+test command_requires_ack_then_really_contacts_listener_without_outbound_sandbox ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+
+running 5 tests
+test network_http_account_save_is_local_and_revision_change_requires_new_preview ... ok
+test network_http_local_save_preview_grant_replay_and_explicit_post ... ok
+test network_http_strict_json_auth_reads_and_invalid_requests_never_dispatch ... ok
+test network_http_real_host_kill_after_send_retains_same_unknown_call_without_replay ... ok
+test network_http_real_host_full_response_finish_db_failure_then_kill_recovers_same_call ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.18s
+
+
+running 9 tests
+test f02_status_is_read_only_and_reports_actual_runtime ... ok
+test f07_database_rejection_does_not_change_runtime_or_consume_key ... ok
+test f06_cas_replay_and_concurrent_conflicts ... ok
+test s10_shell_http_metadata_isolated_global_key_and_strict_contract ... ok
+test f09_real_committed_response_loss_manual_cli_replay_keeps_receipt ... ok
+test f09_strict_inputs_and_auth_have_no_mutations ... ok
+F05 killed Host pid=56196; wait=exit code: 1
+F05 killed Host pid=53620; wait=exit code: 1
+S09 shell Host kill pid=54572; wait=exit code: 1
+test f05_real_host_kill_wait_restart_disabled_then_explicit_enable_admits_read ... ok
+F05 killed Host pid=47012; wait=exit code: 1
+test s09_shell_real_host_restart_disabled_then_approval_ack_command_and_files_positive ... ok
+test l06_real_host_restart_list_and_search_remain_disabled_then_enable ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.01s
+
+
+running 4 tests
+test strict_request_and_safe_typed_errors ... ok
+test management_status_replay_and_explicit_reconciliation ... ok
+test shell_state_is_independent_and_both_disabled_restart_without_activation ... ok
+test disabled_restart_and_runtime_failure_before_commit ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+
+running 7 tests
+truncated-response headers="HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\nConnection: close\r\n\r\n" advertised=100 body-written=1 shutdown=ok
+complete-put-count=1; no additional connection before CLI exit
+P07 Host kill+wait pid=60168
+test committed_put_lost_response_has_one_send_and_explicit_real_replay ... ok
+P07 Host kill+wait pid=53920
+test balance_remains_available_when_completion_disabled ... ok
+P07 Host kill+wait pid=58376
+test disabled_completion_preserves_completed_models_receipt ... ok
+P07 Host kill+wait pid=60368
+P07 Host kill+wait pid=24760
+test draining_busy_does_not_consume_key_and_old_receipt_replays ... ok
+P07 Host kill+wait pid=54800
+test global_plugin_key_cas_and_same_state_revision ... ok
+P07 Host kill+wait pid=41300
+test each_disabled_component_blocks_new_task_without_completion_claim ... ok
+P07 Host kill+wait pid=57688
+test empty_database_disable_restart_enable_and_completion ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.46s
+
+
+running 1 test
+test host_restart_keeps_legacy_result_without_automatic_tool_execution ... FAILED
+
+failures:
+
+failures:
+    host_restart_keeps_legacy_result_without_automatic_tool_execution
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+

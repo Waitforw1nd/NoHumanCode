@@ -1,0 +1,125 @@
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running unittests src\lib.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\peachsh-c82d43bb87a9486d.exe)
+a10-fixture {"directory":"../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-81b9b2b-independent-attempt3\\tmp\\.tmpfArD4W","phase":"agent_after_assistant_save"}
+a10-kill {"exit_code":1,"phase":"agent_after_assistant_save","pid":54312,"task_id":"176dad12-ee24-4915-9758-867cb76d63a0"}
+a10-fixture {"directory":"../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-81b9b2b-independent-attempt3\\tmp\\.tmph9TLkR","phase":"write_pre_fs"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\124a5e5c-59ff-4a23-87ca-684af6901dcd","phase":"agent_after_assistant_save-killed","snapshot":"agent-snapshot.db"}
+fixture case=s06-inherited-pipe phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpUm9HPt
+s06-process {"case":"execute-two-second","cleanup_unknown":false,"created":134379336082164450,"phase":"capture-original-child","pid":40364,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"identity-controls","created":134379336082243132,"exit_confirmed":false,"phase":"live-original","pid":40472,"query_error":null,"wait_status":258}
+s06-process {"case":"identity-controls","created":134379336082243132,"exit_confirmed":false,"phase":"query-without-synchronize","pid":40472,"query_error":5,"wait_status":4294967295}
+s06-process {"case":"identity-controls","exit_code":1,"phase":"original-child-wait"}
+s06-process {"case":"identity-controls","created":134379336082243132,"exit_confirmed":true,"phase":"waited-original","pid":40472,"query_error":null,"wait_status":0}
+s06-process {"case":"reader-error","cleanup_unknown":false,"created":134379336082330521,"phase":"capture-original-child","pid":47056,"probe_error":null,"reader_error":true,"wait_error":false}
+s06-process {"case":"reader-error","created":134379336082330521,"exit_confirmed":true,"phase":"assert-original-exited","pid":47056,"query_error":null,"wait_status":0}
+s06-process {"case":"cleanup-unknown","cleanup_unknown":true,"created":134379336082405081,"phase":"capture-original-child","pid":54052,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"real-timeout","cleanup_unknown":false,"created":134379336082546115,"phase":"capture-original-child","pid":49436,"probe_error":null,"reader_error":false,"wait_error":false}
+a10-kill {"exit_code":1,"phase":"write_pre_fs","pid":56540,"task_id":"cf1d7415-4b93-4ea3-aae8-af1ef01f0b0c"}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (34920) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+a10-evidence {"directory":".local\\next17-a10-evidence\\066fccb3-f394-4d95-b288-1a3220809c58","phase":"write_pre_fs-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\3fe3d880-4380-47ea-8059-0bb249bc60e8","phase":"agent_after_assistant_save-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":54312,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":50416,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\91973e38-4c5f-4eec-a379-0f184cff6d68","phase":"write_pre_fs-unknown-1","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":56540,"mock_completions":1,"recovery_pid":57440,"run":1}
+s06-process {"case":"task-scoped-unknown","cleanup_unknown":false,"created":134379336087980616,"phase":"capture-original-child","pid":57996,"probe_error":null,"reader_error":false,"wait_error":false}
+a10-evidence {"directory":".local\\next17-a10-evidence\\60e33e18-96c5-4bea-b638-a0795bd96a50","phase":"agent_after_assistant_save-recovery-2","snapshot":"agent-snapshot.db"}
+s06-process {"case":"task-scoped-unknown","created":134379336087980616,"exit_confirmed":true,"phase":"assert-original-exited","pid":57996,"query_error":null,"wait_status":0}
+a10-recovery {"exit_code":0,"killed_pid":54312,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":57524,"run":2}
+case=s06-inherited-pipe phase=descendant-owned parent_pid=44892 parent_created=134379336081886058 descendant_pid=58076 descendant_created=134379336088290632
+a10-evidence {"directory":".local\\next17-a10-evidence\\8e7a364b-482a-4b0b-b991-759520988d73","phase":"write_pre_fs-unknown-2","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":56540,"mock_completions":1,"recovery_pid":57868,"run":2}
+F07 child kill+wait completed: exit code: 1; persisted revision=1, before apply
+a10-fixture {"directory":"../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-81b9b2b-independent-attempt3\\tmp\\.tmpbdh9fr","phase":"agent_before_denied_result"}
+s06-process {"case":"cleanup-unknown","created":134379336082405081,"exit_confirmed":true,"phase":"assert-original-exited","pid":54052,"query_error":null,"wait_status":0}
+s06-process {"case":"real-timeout","created":134379336082546115,"exit_confirmed":true,"phase":"assert-original-exited","pid":49436,"query_error":null,"wait_status":0}
+s06-process {"case":"wait-error","cleanup_unknown":false,"created":134379336092743052,"phase":"capture-original-child","pid":56560,"probe_error":null,"reader_error":false,"wait_error":true}
+a10-kill {"exit_code":1,"phase":"agent_before_denied_result","pid":57800,"task_id":"7249833d-1622-41ab-99fb-cfa176c69c60"}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (34920) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+S09: actual claim-before-spawn child kill+wait complete: exit code: 1
+case=s06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true
+a10-evidence {"directory":".local\\next17-a10-evidence\\22a7251a-639f-4054-a768-8cf3beee96c8","phase":"agent_before_denied_result-killed","snapshot":"agent-snapshot.db"}
+s06-process {"case":"wait-error","created":134379336092743052,"exit_confirmed":true,"phase":"assert-original-exited","pid":56560,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\bd1de2b0-a36b-4ce3-954c-e91ac546754c","phase":"agent_before_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":57800,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":58216,"run":1}
+S06: task-scoped test injection after real spawn; typed unknown preserved claim, not a claim of actual OS cleanup failure
+a10-evidence {"directory":".local\\next17-a10-evidence\\00110d3a-0f85-45ac-bf1d-63967e0c7309","phase":"agent_before_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":57800,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":58084,"run":2}
+a10-fixture {"directory":"../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-81b9b2b-independent-attempt3\\tmp\\.tmpFmR59u","phase":"agent_after_denied_result"}
+s06-process {"case":"execute-two-second","created":134379336082164450,"exit_confirmed":true,"phase":"assert-original-exited","pid":40364,"query_error":null,"wait_status":0}
+a10-kill {"exit_code":1,"phase":"agent_after_denied_result","pid":616,"task_id":"b57f0f15-fc85-41da-bfe3-1904eacacd8b"}
+fixture case=w06-inherited-pipe phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpYV6uvo
+a10-evidence {"directory":".local\\next17-a10-evidence\\d71fc95a-ba06-430e-80ff-620a71a83d45","phase":"agent_after_denied_result-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\1d3c1931-d5b4-40d5-b4da-1af82afb01e4","phase":"agent_after_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":616,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":52904,"run":1}
+I09 retained fixture: ../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\nhc-i09-after_commit-d88414af-97fe-4c16-b99b-5c9c20b3b1ab
+a10-evidence {"directory":".local\\next17-a10-evidence\\16466ee1-fe7c-49f9-8470-db5c2c4ec86e","phase":"agent_after_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":616,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":54792,"run":2}
+I09 retained fixture: ../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\nhc-i09-before_commit-fdfd86fd-ff51-4915-8747-d1a0e6c6b72d
+a10-fixture {"directory":"../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-81b9b2b-independent-attempt3\\tmp\\.tmpudFheE","phase":"agent_after_applied_result"}
+case=w06-inherited-pipe phase=descendant-owned parent_pid=46472 parent_created=134379336103582539 descendant_pid=4020 descendant_created=134379336108935729
+a10-kill {"exit_code":1,"phase":"agent_after_applied_result","pid":56456,"task_id":"885e3752-cb5f-4da8-a0fb-b17e4e70b725"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\3d6366d4-58d2-410d-90fc-b69f3a00d1d9","phase":"agent_after_applied_result-killed","snapshot":"agent-snapshot.db"}
+D08 case deadline_ms=3000
+a10-evidence {"directory":".local\\next17-a10-evidence\\328f74c2-d112-4db3-bc8f-3cfffd57fe3f","phase":"agent_after_applied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":56456,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":53580,"run":1}
+fixture case=no-marker phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmp4pHqOy
+case=w06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true
+s06 case=inherited-pipe phase=collector result=timeout elapsed_ms=2001 parent_waited=true readers=0 fixture=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpUm9HPt
+D08 cleanup pid=48328 created=134379336111558956 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(7))))
+D08 original-handle pid=48328 created=134379336111558956 signal=0
+D08 cleanup pid=53480 created=134379336111625422 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=53480 created=134379336111625422 signal=0
+case=s06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0
+case=s06-inherited-pipe phase=job-drop cleanup_ok=true error=None
+a10-evidence {"directory":".local\\next17-a10-evidence\\f979757b-7c36-4aba-b71d-048dcffc567b","phase":"agent_after_applied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":56456,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":58232,"run":2}
+D08 case deadline_ms=1000
+D08 cleanup pid=57680 created=134379336104902965 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+w06 case=run-two-second outcome_unknown=true elapsed_ms=2021 pid=57680 created=134379336104902965 signal=0
+p06-recovery {"call_id":"cef715a9-0d36-4638-8ec9-95c50e9976f2","event":"killed-and-waited","exit_code":1,"mock_completions":0,"phase":"budget-after-claim","pid":57764}
+p06-recovery {"call_id":"cef715a9-0d36-4638-8ec9-95c50e9976f2","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":57656,"run":1,"unresolved_count":1}
+p06-recovery {"call_id":"cef715a9-0d36-4638-8ec9-95c50e9976f2","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":57400,"run":2,"unresolved_count":1}
+p06-recovery {"call_id":"565f6998-e05e-4956-aace-d3e16f4c2ed8","event":"killed-and-waited","exit_code":1,"mock_completions":1,"phase":"budget-before-finish","pid":57628}
+p06-recovery {"call_id":"565f6998-e05e-4956-aace-d3e16f4c2ed8","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":55240,"run":1,"unresolved_count":1}
+p06-recovery {"call_id":"565f6998-e05e-4956-aace-d3e16f4c2ed8","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":58052,"run":2,"unresolved_count":1}
+D08 cleanup pid=50116 created=134379336122705984 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=50116 created=134379336122705984 signal=0
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+w06 case=inherited-pipe phase=collector outcome_unknown=true elapsed_ms=2001 fixture=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpYV6uvo
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+case=w06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0
+case=w06-inherited-pipe phase=job-drop cleanup_ok=true error=None
+
+thread 'tool_runtime::tests::f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery' (57936) panicked at src\tool_runtime.rs:1186:22:
+sensitive panic payload
+
+thread '<unnamed>' (58016) panicked at src\tool_runtime.rs:1413:17:
+poison test
+
+thread 'tool_runtime::tests::s05_worker_channel_loss_is_unknown_and_releases_owned_count' (41804) panicked at src\tool_runtime.rs:2219:30:
+controlled shell worker disappearance
+N13 actual kill+wait phase=claim child=51044 exit=exit code: 1 operation=f471b421-ece0-4285-981a-1f421e303963
+N13 raw observation host.db: copied_live_non_snapshot
+N13 raw observation host.db-wal: copied_live_non_snapshot
+N13 raw observation host.db-shm: copied_live_non_snapshot
+N13 retained fixture=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpENjeZf panicking=false (live copies are not a consistent snapshot; task/child termination not established)
+case=no-marker phase=preparation-failed error=fixture preparation exceeded 15 seconds: deadline has elapsed
+case=no-marker phase=job-drop cleanup_ok=true error=None
+fixture case=parent-exit phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmp2TxBG8
+case=parent-exit phase=preparation-failed error=parent exited before handle publication: code=Some(42)
+case=parent-exit phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpB6TsQf
+case=pipe-eof phase=descendant-owned parent_pid=58320 parent_created=134379336268437491 descendant_pid=58716 descendant_created=134379336272360881
+case=pipe-eof phase=preparation-failed error=stdout EOF after parent exit and sentinel
+case=pipe-eof phase=job-drop cleanup_ok=true error=None
+fixture case=ack-fail phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-81b9b2b-independent-attempt3\tmp\.tmpwPk1VR
+case=ack-fail phase=descendant-owned parent_pid=31620 parent_created=134379336275207909 descendant_pid=60192 descendant_created=134379336279145107
+case=ack-fail phase=preparation-failed error=injected ack failure
+case=ack-fail phase=job-drop cleanup_ok=true error=None
+N13 actual kill+wait phase=created child=49284 exit=exit code: 1 operation=141320fa-a0ac-4a69-8f5b-12d499245c32
+N13 actual kill+wait phase=registered child=58100 exit=exit code: 1 operation=610cf866-3e33-4b4c-aa10-56c285be1b52

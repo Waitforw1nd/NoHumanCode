@@ -1,0 +1,1 @@
+case=w06-inherited-pipe outcome_unknown=true elapsed_ms=2001 parent_exit=0 parent_waited=true

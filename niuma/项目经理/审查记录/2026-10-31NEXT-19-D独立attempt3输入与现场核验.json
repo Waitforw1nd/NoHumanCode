@@ -1,0 +1,167 @@
+{
+  "candidate": "81b9b2bc50d71376a88fbf269ebed5b87467d74b",
+  "source_manifests_identical": 6,
+  "source_inputs_verified": 141,
+  "old_files_unchanged": 5000,
+  "retained_files_hashed": 6594,
+  "scenes": [
+    {
+      "scene": ".tmppgSiHA",
+      "metadata": "proof-process.json",
+      "phase": "before_commit",
+      "pid": 17440,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "running",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "turn_task_status": [
+          "running"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ],
+        "tool_result_origins": []
+      }
+    },
+    {
+      "scene": ".tmpuT6v9p",
+      "metadata": "host-denied-process.json",
+      "phase": "after_commit",
+      "pid": 11860,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "running",
+        "tool_messages": 1,
+        "tool_results": 1,
+        "turn_task_status": [
+          "running"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ],
+        "tool_result_origins": [
+          "host_denied"
+        ]
+      }
+    },
+    {
+      "scene": ".tmpwU8X1d",
+      "metadata": "legacy-process.json",
+      "phase": "agent_after_assistant_save",
+      "pid": 47572,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "running",
+        "tool_messages": 0,
+        "tool_results": 1,
+        "turn_task_status": [
+          "running"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ],
+        "tool_result_origins": [
+          null
+        ]
+      }
+    },
+    {
+      "scene": ".tmpXAxdya",
+      "metadata": "proof-process.json",
+      "phase": "before_commit",
+      "pid": 39488,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "cancelled",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "turn_task_status": [
+          "cancelled"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ],
+        "tool_result_origins": []
+      }
+    },
+    {
+      "scene": "nhc-t05-oEhS4N",
+      "metadata": "process.json",
+      "phase": "after_commit",
+      "pid": 53312,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "queued",
+        "tool_messages": 1,
+        "tool_results": 1,
+        "turn_task_status": [
+          "queued"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ],
+        "tool_result_origins": [
+          "agent_denied"
+        ]
+      }
+    },
+    {
+      "scene": "nhc-t05-pfv50x",
+      "metadata": "process.json",
+      "phase": "before_commit",
+      "pid": 58036,
+      "kill": "ok",
+      "reaped": true,
+      "facts": {
+        "status": "queued",
+        "tool_messages": 0,
+        "tool_results": 0,
+        "turn_task_status": [
+          "queued"
+        ],
+        "integrity_check": [
+          [
+            "ok"
+          ]
+        ],
+        "tool_result_origins": []
+      }
+    }
+  ],
+  "failed_host": {
+    "first_stderr": "Error: fresh Host configuration requires empty history\n",
+    "second_host_present": false,
+    "counts": {
+      "tasks": 1,
+      "runs": 1,
+      "events": 1,
+      "config": 0
+    },
+    "integrity": [
+      [
+        "ok"
+      ]
+    ]
+  },
+  "originals_unchanged_after_copy_queries": true,
+  "audit_note": "Audit setup corrected two assumptions: scene folders have prefixes, and query copies are checkpointed so their WAL/SHM need not exist. Raw metadata hashes and actual query files were verified separately in a new destination. Only manager copies opened, never original databases.",
+  "published_pairs_verified": 122,
+  "exact_path_transformations_verified": true,
+  "published_manifest_sha256": "fffedd2c1b5c29597a91f86cec7df405e7063ab40151f2603346e81c3d636e03"
+}

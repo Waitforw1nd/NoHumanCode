@@ -1,0 +1,9 @@
+{
+  "ended_utc": "2026-10-31T15:19:48.9502891Z",
+  "head": "81b9b2bc50d71376a88fbf269ebed5b87467d74b",
+  "exit_code": 0,
+  "product_tree": "1379ee64e8a5c96285f948664fbea7ae02d8e4ab",
+  "rust_tree": "ba5859e7e1ea2c7f55ec123a36150c7872467837",
+  "command": "cargo check --offline --locked --all-targets",
+  "started_utc": "2026-10-31T15:19:46.9119410Z"
+}
