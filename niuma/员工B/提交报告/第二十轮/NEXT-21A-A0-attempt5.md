@@ -1,0 +1,5 @@
+# NEXT-21A A0 attempt5 与后续验证建议
+
+2026-11-01，员工 B。候选 `ce1d721728a8eafbc7d762654dd748ff98e4eea5`，产品树 `4d13be8b420cdb0dd15984ae1a7684aa99acfb03`，Rust 树 `1f6804bb17a224848c6642f12ab2b6069d92dff4`。workspace all-targets check 与显式 probe build 均 exit 0；probe SHA-256 `212737e39db33008939ed2e65e7fb68bdc02e99c5477725a4331b7fb72d1c627`。S01 exit 101：PID 48560 挂起创建，token class29 取值成功；class46 以4字节缓冲查询返回0、长度4、Win32 87，无值。inspection_cleanup=false 表示封装确认进程句柄已信号且 Job 活跃数为零，不是外部持句柄证明。后续 S02/S03/S04/S07、S05、S08、fmt、Clippy 未执行；原始现场位于独立树 `NoManCode/rust-app/.local/next21a-b-ce1d7217-attempt5/`，无重型进程。实际 LPAC token 未验证，S01 未通过；class46 失败不能证明 LPAC 为真或为假。
+
+供经理审查的候选思路：对实际挂起子进程 token 复制 impersonation token，按 AccessCheck 所需 owner/group 和对象访问掩码建立三种专用安全描述符：仅精确 app-container SID 授权的正控、仅 ALL APPLICATION PACKAGES 授权的区分哨兵，以及不授权的拒绝控；API 成功和 AccessStatus 分别记录。另用可控普通 AppContainer token 作为敏感性负控，期望其在相同 ALL APPLICATION PACKAGES 条件下获准、LPAC 被拒；各项构造和期望需经经理评审并实测，不能仅以创建属性或修改模拟 DACL 声称已证明实际 token。任何克隆或 API 错误、控制组不符合预期时拒绝启动；不扩大访问许可、不继承真实环境。该思路尚未实现、尚未经审定，也不能代替完整文件/注册表/网络反例矩阵。

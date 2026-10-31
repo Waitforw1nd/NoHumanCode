@@ -1,3 +1,7 @@
+## 2026-11-01 NEXT-21A实际token鉴别实施，WASM预审核收
+
+更新人：项目经理。B的attempt3/4/5均check/build通过、S01失败；已定位实际挂起token的class46两种查询均87，无resumed。经理核旧74原件不变及各五清单185输入、变化对应Git/每轮37现场；批准补充02实际token AccessCheck三描述符+真实普通AppContainer敏感性负控，原LPAC/权限不变，原Bce1d7217树静态实施，固定后再审首次新方法动态。C第二十三轮WASM报告已核收冻结：模块校验实际执行start必须进worker、受限catalog真实effect/异步双decide；不采纳外部Job持有者，也不让WASM等待不相关原生权限子项。D冻结，main仍NEXT-20，继承41行保持。下一第一操作审B新候选及完整正负控，再放行有限A0；完整核心/项目active。
+
 ## 2026-11-01 NEXT-21A启动诊断前进，C并行WASM只读预审
 
 更新人：项目经理。原B固定42303ebf修正错误码即时采集，attempt2 check/build通过、S01仍203，无PID；核旧37文件不变及新五清单185输入仅sandbox变化。经理同意显式LOCALAPPDATA仅指本次只读work的单变量试验，7230bbf6 attempt3 check/build通过，S01前进到token_size87，记录created_suspended PID60832，无resumed；后三用例/fmt/Clippy未执行。B继续具体token class/ABI诊断与回收取证，不跳过必需核验。正式派原C第二十三轮WASM执行与真实绑定只读预审，无产品/构建/Git权限；B仍唯一产品动态，D冻结。main仍NEXT-20，继承41行保持。下一第一操作核B下一修正/实际结果及C具体调用链，完整核心与项目active。
