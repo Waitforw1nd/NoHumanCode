@@ -144,6 +144,19 @@ pub(crate) fn expected_body(input: &CompletionInput<'_>) -> Value {
     }
     body
 }
+fn validate_body(input: &CompletionInput<'_>, body: &Value) -> Result<(), CodecError> {
+    if *body != expected_body(input) {
+        return Err(CodecError::Invalid);
+    }
+    Ok(())
+}
+fn account_response_bytes(size: &mut usize, additional: usize) -> Result<(), CodecError> {
+    if additional > RESPONSE_LIMIT.saturating_sub(*size) {
+        return Err(CodecError::Limit);
+    }
+    *size += additional;
+    Ok(())
+}
 impl ProviderRuntime {
     pub(crate) fn builtin() -> Result<Self> {
         Self::assemble(Arc::new(crate::provider::BuiltinCompletionCodec))
@@ -194,9 +207,7 @@ impl ProviderRuntime {
         let body = guarded(|| codec.encode(input))
             .map_err(|_| unavailable())?
             .map_err(|_| unavailable())?;
-        if body != expected_body(input) {
-            return Err(unavailable());
-        }
+        validate_body(input, &body).map_err(|_| unavailable())?;
         let decoder = guarded(|| codec.decoder())
             .map_err(|_| unavailable())?
             .map_err(|_| unavailable())?;
@@ -372,10 +383,7 @@ impl CompletionLease {
         let mut size = 0usize;
         while let Some(chunk) = bytes.next().await {
             let chunk = chunk.map_err(|_| TransportError::Unknown)?;
-            if chunk.len() > RESPONSE_LIMIT.saturating_sub(size) {
-                return Err(TransportError::Unknown);
-            }
-            size += chunk.len();
+            account_response_bytes(&mut size, chunk.len()).map_err(|_| TransportError::Unknown)?;
             guarded(|| self.decoder.feed(&chunk, emit))
                 .map_err(|_| TransportError::Unknown)?
                 .map_err(|_| TransportError::Unknown)?;
