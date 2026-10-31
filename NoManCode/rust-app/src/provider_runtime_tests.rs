@@ -1018,3 +1018,188 @@ fn p02_original_decoder_fragmented_tool_usage_and_limit_controls() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn p04_disabling_during_real_completion_allows_existing_lease_to_finish() {
+    let f = fixture(Fault::None).await;
+    f.mock.hold.store(true, Ordering::SeqCst);
+    let run = f.engine.start(request()).await.unwrap();
+    let task_id = &run.tasks[0].id;
+    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        .await
+        .unwrap();
+    assert_eq!(f.engine.builtin_provider_status().unwrap().in_flight, 1);
+    f.engine.disable_builtin_provider().unwrap();
+    let disabled = f.engine.builtin_provider_status().unwrap();
+    assert!(!disabled.admission_open && !disabled.active);
+    assert_eq!(disabled.in_flight, 1);
+    let err = f
+        .engine
+        .project_route_check(&f.project, "route")
+        .await
+        .unwrap_err();
+    assert_eq!(err.dispatch_state, DispatchState::NotSent);
+    assert_eq!(err.calls.len(), 1);
+    assert_eq!(err.calls[0].purpose, NetworkPurpose::Models);
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 1);
+    f.mock.release.notify_one();
+    let task = settled(&f.engine, task_id).await;
+    assert_eq!(task.status, "completed");
+    assert!(task.messages.iter().any(|m| m["content"] == "codec-marker"));
+    let calls = f.engine.network_calls_for_task(task_id).unwrap();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].state, CallState::Finished);
+    assert_eq!(calls[0].success, Some(true));
+    let budget = f.engine.budget_status(&f.project).unwrap();
+    assert_eq!(
+        (
+            budget.spent_tokens,
+            budget.held_tokens,
+            budget.unresolved_count
+        ),
+        (5, 0, 0)
+    );
+    assert_eq!(f.engine.builtin_provider_status().unwrap().in_flight, 0);
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 1);
+}
+
+struct LifecycleProbe {
+    mode: &'static str,
+    runtime: Arc<std::sync::Mutex<Option<std::sync::Weak<ProviderRuntime>>>>,
+}
+impl crate::plugin_host::BuiltinPlugin for LifecycleProbe {
+    fn activate(
+        &mut self,
+        ctx: &mut crate::plugin_host::PluginContext,
+    ) -> Result<(), crate::plugin_host::PluginError> {
+        if self.mode == "activate" {
+            panic!("{SENTINEL}");
+        }
+        let codec: Arc<dyn CompletionCodec> = Arc::new(TestCodec {
+            fault: Fault::None,
+            encoded: Arc::new(AtomicUsize::new(0)),
+            decoded: Arc::new(AtomicUsize::new(0)),
+        });
+        ctx.register_effect(&p01_key(0), Box::new(codec)).unwrap();
+        Ok(())
+    }
+    fn deactivate(
+        &mut self,
+        _: &mut crate::plugin_host::PluginContext,
+    ) -> Result<(), crate::plugin_host::PluginError> {
+        if self.mode == "deactivate" {
+            panic!("{SENTINEL}");
+        }
+        if let Some(runtime) = self
+            .runtime
+            .lock()
+            .unwrap()
+            .as_ref()
+            .and_then(|weak| weak.upgrade())
+        {
+            let state = runtime.status_for_test().unwrap();
+            assert!(state.transitioning && !state.admission_open);
+        }
+        Ok(())
+    }
+}
+fn lifecycle_host(
+    mode: &'static str,
+    slot: Arc<std::sync::Mutex<Option<std::sync::Weak<ProviderRuntime>>>>,
+) -> crate::plugin_host::PluginHost {
+    use crate::plugin_catalog::ScopeKey;
+    let mut host = crate::plugin_host::PluginHost::new(ScopeKey::Host).unwrap();
+    host.catalog_mut()
+        .register(p01_manifest(
+            "builtin.engine-provider",
+            vec![],
+            vec![p01_key(0)],
+        ))
+        .unwrap();
+    host.with_factory("builtin.engine-provider", || Box::new(P01Consumer));
+    host.catalog_mut()
+        .register(p01_manifest(
+            "builtin.provider-xpeach",
+            vec![p01_key(0)],
+            vec![],
+        ))
+        .unwrap();
+    host.with_factory("builtin.provider-xpeach", move || {
+        if mode == "factory" {
+            panic!("{SENTINEL}");
+        }
+        Box::new(LifecycleProbe {
+            mode,
+            runtime: slot.clone(),
+        })
+    });
+    host
+}
+
+#[test]
+fn p05_lifecycle_panics_are_safe_and_fail_closed() {
+    if let Ok(name) = std::env::var("NHC_P16_LIFECYCLE_PHASE") {
+        let mode = match name.as_str() {
+            "factory" => "factory",
+            "activate" => "activate",
+            "deactivate" => "deactivate",
+            _ => panic!("invalid lifecycle phase"),
+        };
+        let slot = Arc::new(std::sync::Mutex::new(None));
+        let result = ProviderRuntime::from_host_for_test(lifecycle_host(mode, slot));
+        if mode == "deactivate" {
+            let runtime = result.unwrap();
+            assert!(runtime.disable_for_test().is_err());
+            let state = runtime.status_for_test().unwrap();
+            assert!(!state.admission_open && state.lifecycle_failed);
+        } else {
+            assert!(result.is_err());
+        }
+        return;
+    }
+    for phase in ["factory", "activate", "deactivate"] {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "provider_runtime_tests::p05_lifecycle_panics_are_safe_and_fail_closed",
+                "--nocapture",
+            ])
+            .env("NHC_P16_LIFECYCLE_PHASE", phase)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "phase={phase} status={}",
+            output.status
+        );
+        assert!(
+            !String::from_utf8_lossy(&output.stdout).contains(SENTINEL),
+            "stdout leaked {phase}"
+        );
+        assert!(
+            !String::from_utf8_lossy(&output.stderr).contains(SENTINEL),
+            "stderr leaked {phase}"
+        );
+    }
+}
+
+#[test]
+fn p04_deactivate_callback_can_reenter_status_without_deadlock() {
+    let slot = Arc::new(std::sync::Mutex::new(None));
+    let runtime = Arc::new(
+        ProviderRuntime::from_host_for_test(lifecycle_host("reenter", slot.clone())).unwrap(),
+    );
+    *slot.lock().unwrap() = Some(Arc::downgrade(&runtime));
+    let (tx, rx) = std::sync::mpsc::channel();
+    let other = runtime.clone();
+    let worker = std::thread::spawn(move || {
+        tx.send(other.disable_for_test().is_ok()).unwrap();
+    });
+    assert!(
+        rx.recv_timeout(Duration::from_secs(5))
+            .expect("deactivate reentered a held runtime lock")
+    );
+    worker.join().unwrap();
+    let state = runtime.status_for_test().unwrap();
+    assert!(!state.admission_open && !state.active && !state.transitioning);
+}
