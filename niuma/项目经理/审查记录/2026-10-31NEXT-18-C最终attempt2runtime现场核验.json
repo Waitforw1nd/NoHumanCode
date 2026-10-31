@@ -1,0 +1,1453 @@
+{
+  "candidate": "7dc734b0832dcd888a4e67fda1d666deb990cd15",
+  "log": "../nhc-c-runtime-management-interface/.local/logs/next18-final-attempt2/test.log",
+  "scope": "Completed library crash cases only; full final gates still require separate verification.",
+  "method": "Read original evidence bytes; SQLite mode=ro&immutable=1 only on queryable snapshots. No product tests executed.",
+  "scene_count": 13,
+  "original_files_hashed": 234,
+  "scenes": [
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj",
+      "phase": "runtime_intent_before_commit",
+      "component": "builtin.chat-agent",
+      "killed_pid": "40892",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "16580",
+        "44532"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/intent.pid",
+          "bytes": 5,
+          "sha256": "45664682E6428F78D70CCBA1F97033452F17C2C244C5C114388F0AC030120B18"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/intent.signal",
+          "bytes": 138,
+          "sha256": "92E8DA73DE1C694A7392CC2DFE4A047E4B4014DA41AE12EA1C990D5B2685DFD7"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/killed-metadata.txt",
+          "bytes": 543,
+          "sha256": "A9F0D134B6B2EA36BCE0490B01273F0D71584490F63E7F7BB429EA395DE5D4BB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "302BB62D955687269D970BD45674AF4D0F0C3BAD408FD501DFF688E183C6E8F1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "1BFCB4E431FF6ACFCD25C555F88AC0D55EACAECD8867DC92273CB5880EAABB55"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "B033E09321D08E49391D3B07E230AD9DE0449253914F6276E5FF2F33B15DF927"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj/runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7",
+      "phase": "runtime17_before_rebuild",
+      "component": null,
+      "killed_pid": "33992",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "19076",
+        "12504"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/killed-metadata.txt",
+          "bytes": 516,
+          "sha256": "53BDCC6B354F7EFE65703BB049D7A7653287D874C4622D02007121F14D120C5E"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/migration.pid",
+          "bytes": 5,
+          "sha256": "8F6F489580753C911712B8221EE9D962C547C52CF77C5F59EC8B477E236EBF3F"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/phase.signal",
+          "bytes": 115,
+          "sha256": "877A6FB2F5A9FC7E2FFF74B27CD838F90D43A27CF5B2413840C76DEA2303F11C"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA9B1187256E0E9E4FCCE760A717A9B16D4E4EBD7A6DFCB16BECC9691DE71011"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "BED635AFE79C126E3080A68B2B63AD744C4BB621C5AD2470D349190EDE5C7874"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "F37DECBADBCF8E61424D3540809EC54CE0753BC441C32627E45FA227018E30CF"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "58129455D17A904E2A5ACE4AA245C2BF53118B76B57B68B8CACF076E9BC81B29"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7/runtime.db",
+          "bytes": 450560,
+          "sha256": "977DACDFB18131DE3BA353B1AAB5CB62BF7E92AC303BF380BC3A204FD8896815"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn",
+      "phase": "runtime_intent_after_commit",
+      "component": "builtin.chat-agent",
+      "killed_pid": "31676",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "16936",
+        "23188"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/intent.pid",
+          "bytes": 5,
+          "sha256": "418DB3C82FAAE7FD1BF571150140FC788C192539125D69A8A87125828373CCE4"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/intent.signal",
+          "bytes": 138,
+          "sha256": "C9043DE6100E389A67848E939845AE5700D16668BB1FDE02C322ADF3601622EF"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/killed-metadata.txt",
+          "bytes": 546,
+          "sha256": "CE27A47D4001AA35DBAED5596AE9D459358987D255210E7E747F4C2E09003D6C"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B1CF17C4C77C7379A932D98E8B3D57F120F5C0CFFA78DDA3E02ABDEADE17834A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "22D5709ACCA973845AB09C59D3ACE14109BE5C037EED0F95E6CB8E5D09EACFA1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/raw-runtime.db-wal",
+          "bytes": 12392,
+          "sha256": "B49A3629C28B892409F29D832B1F5B7138D061683D501AF36E6EA329D9533137"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "09E76BFC75D9140187A60B8712D0B1CBC769C32053B4B8163FFEB809A242610E"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "A5F8DDF293935B064363E0CA99FE7AEFA436583A3FEC60B657C8B6A850AF2C61"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn/runtime.db",
+          "bytes": 450560,
+          "sha256": "5E81AF796589A4A2B7D10080C34FC9CC270F6DDCDFFC184D42D01DF6F567AC55"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b",
+      "phase": "runtime17_after_drop",
+      "component": null,
+      "killed_pid": "36272",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "45568",
+        "18716"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/killed-metadata.txt",
+          "bytes": 512,
+          "sha256": "23F61762AC80DD94C626BE8B102551387A488194D4D89D580F4031FC13CDF2EA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/migration.pid",
+          "bytes": 5,
+          "sha256": "88F43880C84E0A2C4F22950652A86D2A7CB5E260153F59DF860DB5CBEDE5A16B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/phase.signal",
+          "bytes": 115,
+          "sha256": "9E04D7ECC94CB51CE7D2A6FF064D4FFD05CC9BAB68F3B5923E7BC8B7EAC0691E"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA9B1187256E0E9E4FCCE760A717A9B16D4E4EBD7A6DFCB16BECC9691DE71011"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "BED635AFE79C126E3080A68B2B63AD744C4BB621C5AD2470D349190EDE5C7874"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "11878A1E21F6E1E7F37CAA3AD3BC5E22283BAEAA0E8B37F674D538FE412F4CBD"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "C829BEAC22C6CEBF5CA875629C8A1C1F1263AD7C4B0467D58F1305B9142C93FE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b/runtime.db",
+          "bytes": 450560,
+          "sha256": "977DACDFB18131DE3BA353B1AAB5CB62BF7E92AC303BF380BC3A204FD8896815"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD",
+      "phase": "runtime_intent_before_commit",
+      "component": "builtin.provider-xpeach",
+      "killed_pid": "34768",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "41920",
+        "17384"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/intent.pid",
+          "bytes": 5,
+          "sha256": "16BE7B813386C65CFD95EB1CF17B2AC79B3A1DFB4AF375DE6138BCC57E45C14E"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/intent.signal",
+          "bytes": 143,
+          "sha256": "64488D186D663405EC9768FCA628F621F1AF72E942F41031052C5F6F1BBBF8D3"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/killed-metadata.txt",
+          "bytes": 548,
+          "sha256": "F98989D5CC4539478BA07B404C4E5F8A975C7D84CF7D90371A7405E75C132F85"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "302BB62D955687269D970BD45674AF4D0F0C3BAD408FD501DFF688E183C6E8F1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "5F45B0CD80D4D03E65B197B7A62C6FF361FAB3A5D705EED5691CD9948B177FD8"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "AA574239FB24192793F6A2C5D94572A2B7165562757FECB864C143876CE69054"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "2ECE38FB001C7705E6907A48CAFE8572DE12EF09237B134A7E1F30C7F6279D6F"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD/runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA",
+      "phase": "runtime17_after_create",
+      "component": null,
+      "killed_pid": "28556",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "44656",
+        "42116"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "9B15A2D39F9D7CFD01492677DC66A4912C85610CDD909C45FF0104F10F4B5755"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/migration.pid",
+          "bytes": 5,
+          "sha256": "5689B71E68A806E6C66C531B1550F844FD97D618AF5AF6FD0ED2589463D6CA07"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/phase.signal",
+          "bytes": 115,
+          "sha256": "866C05554AAB0F2159E8047CD7541A04A2CB1795BD1DDD204B941FAD390FA0BE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "08BFDDAC1EA24C5D75FC8CF6E9335591277B099A9177699E2CB9F8D8BDA4B33A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA555CD39974DE0F70E0A3E32BB5DDBCB28680D7CAA03F94C6D1C5CE00BBBCDC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "F51B9A7FD3A2F14D8A7FAE73D88916D6BCE89D2E761E4A15E755D1A0A72960FF"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "E41E0FB3F9B8489CF531280993A78EBC4314D4E4D6331473EA156FC8B1657E87"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "E40E224F97301BDCF4E5FDD0D272022D00674E19C9FAE6F6B7AD1ADAA41DAF7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA/runtime.db",
+          "bytes": 450560,
+          "sha256": "3D64519B0C60AE84BCBC42F91E53B55F618C7455FFE82133F1BCCA5BB71305AA"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI",
+      "phase": "runtime_intent_after_commit",
+      "component": "builtin.provider-xpeach",
+      "killed_pid": "18552",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "20340",
+        "41420"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/intent.pid",
+          "bytes": 5,
+          "sha256": "FF5CC910650017D1B800EE5DD2E2DAAFFB2556D2CE15802ADF29D20349E67FFA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/intent.signal",
+          "bytes": 143,
+          "sha256": "1C3EFDF9F066952E57A37900B64FB61436A6E173FD14FDCA791930E57CEC6FBF"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/killed-metadata.txt",
+          "bytes": 551,
+          "sha256": "4C9698FB7A100C101A643769E73E16A555662FC6F4916726274A4076C3269F9E"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "E2186A452BA308256B88B96CDBACB9C2A7F1CC89DBBD8F547DBC0CCFC1B4BC58"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "CC58C5DCA48269835ACE1EED6B6256CD3E98AED2EA1CD280EC8069AF96AD1D18"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "15D092E5977FDF4262ED20AF22E55F6CCF5578E5CFB8C2469281D7314543F0A5"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/raw-runtime.db-wal",
+          "bytes": 12392,
+          "sha256": "D7A3ABF5296CD568D11BCFE648713FDE18A29F8E4598EBEAA5123FF082130AF7"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "B609E0E0304CC37503E601B90EA4675B31D0CF5E1C1489490F130CF18C226823"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "02BAFE81C5CBD71611DD1B2178A2410E2D003F727015035C3E9003468863944A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI/runtime.db",
+          "bytes": 450560,
+          "sha256": "6459B94AB587E6909F00B3A881EA2E031AC8CE4CA7578204A5CD20C2710F6502"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara",
+      "phase": "runtime17_after_restore",
+      "component": null,
+      "killed_pid": "9364",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "41164",
+        "26300"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "8DCE500B86A1A872FFC9280D987B9E3501F26AE904284E752BE3A22419C2A4DD"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/migration.pid",
+          "bytes": 4,
+          "sha256": "A685D286753F90101745A209A8AAFA02CAF61859913B6D087DD1FC662485C859"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/phase.signal",
+          "bytes": 115,
+          "sha256": "D84C07EFBC8C5875E6682BF8FD3896BE99A97F945417C6FE74687C0B43E7BCDC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "08BFDDAC1EA24C5D75FC8CF6E9335591277B099A9177699E2CB9F8D8BDA4B33A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA555CD39974DE0F70E0A3E32BB5DDBCB28680D7CAA03F94C6D1C5CE00BBBCDC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "2956E9C51DC5B47A558A54B83846F9FD11443BAAA5D33ECF2B2AD55503AE9FA5"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "91C79BDA80610D1357540AB1FE29FA24C0B90ADCB1BA73D66A68A42BF24CF891"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "310F8F32C8ECB41800D4B607385E0263A154E135FAFEF76E98A7644E01E39952"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara/runtime.db",
+          "bytes": 450560,
+          "sha256": "3D64519B0C60AE84BCBC42F91E53B55F618C7455FFE82133F1BCCA5BB71305AA"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB",
+      "phase": "runtime17_after_insert",
+      "component": null,
+      "killed_pid": "12748",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "44320",
+        "36464"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "1A0081A361F57702EF54093630A24B17CA0E935D0DBCD3088A19FED993F919F1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/migration.pid",
+          "bytes": 5,
+          "sha256": "29E9D2413B4C4D7362D6711018889C17F79B11664258E197AAC5AF943BAA760A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/phase.signal",
+          "bytes": 115,
+          "sha256": "BC888735D44B75C3D393DD594B078CB332D2BA97AF0DBA317403921EEF4CD352"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B0D142F2E0B0AA0150075F6D86FB05D2ABBEB2558935CFAFB8C223A99401E446"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "B23E7E8C0156DB2FF46F74C0C1DA7198FA5B47B13DA8C0E6CD181075135B68B1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "4F2DF561D0F3B6E6D40E30F8D3C768F4BE8A7621C87A5440CD2E32BDB41B5EDB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "5DC459C71F4739C3DBD5872B4D442295864CF5715F704B19E02E1A581453561A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB/runtime.db",
+          "bytes": 450560,
+          "sha256": "C249BB5F3EA25F2D98E0F130530E9FC7103279EC42E4D2F1D57654EB8B47CEEE"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49",
+      "phase": "runtime17_after_verify",
+      "component": null,
+      "killed_pid": "36712",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "41408",
+        "34468"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "64E656E26A52E7DD20A00D11F0DBBD6D11CA83202387878FD4ECECD6C0955F74"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/migration.pid",
+          "bytes": 5,
+          "sha256": "3EEA4A2BACD7546E15678E44FACB75732B6CD990C0570CC92AED77ED86035C38"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/phase.signal",
+          "bytes": 115,
+          "sha256": "CE6D36DC1DE4E8F0A65D1F8BF3667F0A0D764AECC0D35DD15068A84F5CDA9487"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B0D142F2E0B0AA0150075F6D86FB05D2ABBEB2558935CFAFB8C223A99401E446"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "B23E7E8C0156DB2FF46F74C0C1DA7198FA5B47B13DA8C0E6CD181075135B68B1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "AC5B0B247D95CA1BECB85A2720AD5FEF99A4E01B2A09D68C54476B22E088147C"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "772A5A6902D6428534AEA65F686D566910513BD84F2AD8E3DE60F0CB4C5A6E97"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49/runtime.db",
+          "bytes": 450560,
+          "sha256": "C249BB5F3EA25F2D98E0F130530E9FC7103279EC42E4D2F1D57654EB8B47CEEE"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9",
+      "phase": "runtime17_after_marker",
+      "component": null,
+      "killed_pid": "18716",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "43160",
+        "25628"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "352B78D92163372C74F0A804BA32A52C30535386F9ADB7958B7E1131EA31C331"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/migration.pid",
+          "bytes": 5,
+          "sha256": "C829BEAC22C6CEBF5CA875629C8A1C1F1263AD7C4B0467D58F1305B9142C93FE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/phase.signal",
+          "bytes": 115,
+          "sha256": "D320655660946DD5F54790AD1556ED5D0511319D99E8F8924F42C59AF26D6226"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B0D142F2E0B0AA0150075F6D86FB05D2ABBEB2558935CFAFB8C223A99401E446"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "B23E7E8C0156DB2FF46F74C0C1DA7198FA5B47B13DA8C0E6CD181075135B68B1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "D94C606C17DA792F41C48157B76DD9F191BC0EAC25BFEEC07E67B8A3CFEA8CC7"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "E93F8CD778351B4A9E7A4D8371106E4E3A4E87712010F1271BADA74312237CB1"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9/runtime.db",
+          "bytes": 450560,
+          "sha256": "9634EA68698D3AE2F37C2992C4102A86EFC9CAAF8C91F08244F177B24542414A"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM",
+      "phase": "runtime17_before_commit",
+      "component": null,
+      "killed_pid": "36396",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "10472",
+        "24752"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 16,
+      "snapshot_marker": 0,
+      "snapshot_desired_rows": 2,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/killed-metadata.txt",
+          "bytes": 515,
+          "sha256": "20DF60CA96E69AD909F790B436CF8B62DC4C40D9DC35069798522251C7EF6A93"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/migration.pid",
+          "bytes": 5,
+          "sha256": "A17C7A1B7ABE9D3436BA901CAB4F7812B637F11F08B05673A0C3121A644F04AA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/phase.signal",
+          "bytes": 115,
+          "sha256": "9BCD8759279091CBA918248DA1784147F1F598D76D1DCCD315606AD514773BFB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "253EBC2C241879A25D4326969829A951B1CAC3F1362A9BADA52418F124643548"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "10C833E9B9B3113E656A8B1F4B6D5E77532479B1F70CAD7FAA81D1EF22678FE9"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "6341FE4ED7674AAA9FFB79B740F8444A87504D79337EDF9554AB8FAD1CADC0EE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "947378C735205794A8B7C570607090A831A93996C63A68E81B84DE36146944AE"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM/runtime.db",
+          "bytes": 450560,
+          "sha256": "87BB1D9BADBB1828D733D3524C7E9E3F9476E06A93893120D89E00C7FE750495"
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1",
+      "phase": "runtime17_after_commit",
+      "component": null,
+      "killed_pid": "42468",
+      "wait": "ExitStatus(ExitStatus(1))",
+      "recovery_pids": [
+        "12988",
+        "17752"
+      ],
+      "raw_files_verified": [
+        "raw-runtime.db",
+        "raw-runtime.db-wal",
+        "raw-runtime.db-shm"
+      ],
+      "snapshot_version": 17,
+      "snapshot_marker": 1,
+      "snapshot_desired_rows": 4,
+      "files": [
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/killed-metadata.txt",
+          "bytes": 518,
+          "sha256": "2D952A6907A731B4B671769CCDF5FEACBA4FFEA96002E5950F19E8319C973FCB"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/migration.pid",
+          "bytes": 5,
+          "sha256": "7002C713D237F8F467EB5D5BD72561A07D002430F4A54A16263B2B5D82F3F652"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/phase.signal",
+          "bytes": 115,
+          "sha256": "49663AFA76E7188246C33913E940F239EE2A2565CE07352F5E03BFCA48B20B36"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "63C901A7428524B5392319D1DEE011D3190661F05226DFEA20F460C61D9B9F21"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "10C833E9B9B3113E656A8B1F4B6D5E77532479B1F70CAD7FAA81D1EF22678FE9"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "67A2C9F3BE65F710972DA1C487F7D58BDDBC5FFA0FEDA445BCA647176B89665B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/raw-runtime.db-wal",
+          "bytes": 32992,
+          "sha256": "DD9B53B6FABD6A934159B50CF1BCD2167CC4544F4BB79DBE6CEA567925248D9A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/recovery-1.pid",
+          "bytes": 5,
+          "sha256": "59316E7B66AF533DF0B14D1D194126C336C6FDB7868CCF3F60B550B9EB57702A"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/recovery-2.pid",
+          "bytes": 5,
+          "sha256": "AD6FC94E2A663A8989F7238CC0E2427EB8B8FF0A464FFF43D68EE9E1AC82AAC4"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "../nhc-c-runtime-management-interface/.local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1/runtime.db",
+          "bytes": 450560,
+          "sha256": "87BB1D9BADBB1828D733D3524C7E9E3F9476E06A93893120D89E00C7FE750495"
+        }
+      ]
+    }
+  ]
+}

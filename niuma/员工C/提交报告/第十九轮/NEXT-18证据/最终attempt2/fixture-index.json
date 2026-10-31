@@ -1,0 +1,3377 @@
+{
+  "entries": [
+    {
+      "kind": "w08",
+      "phase": "claim",
+      "original": ".local/tmp-next18-final-attempt2/.tmpU0gMcN",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/w08/.tmpU0gMcN",
+      "file_count": 34,
+      "files": [
+        {
+          "path": "child-claim.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "child-restart.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "host.sqlite3",
+          "bytes": 450560,
+          "sha256": "350510ED1A4452B264436C92AFFC8FA13B3F539EADC1CD8B19188FEA11CC20C2"
+        },
+        {
+          "path": "lifecycle.jsonl",
+          "bytes": 2169,
+          "sha256": "FD4A888BF105A6D1A34095400B9275D5CBA036D05F7FED1D15FB434CF3498036"
+        },
+        {
+          "path": "listen-claim",
+          "bytes": 22,
+          "sha256": "D744CA89DECAA8A28E0C4A9C7003963D10F674A0D3CC9F5134E88B094604B16B"
+        },
+        {
+          "path": "listen-restart",
+          "bytes": 22,
+          "sha256": "F58736ED84C597DFB1DD31EB5ACF1A908AB2F6F41E98BE6E650BB61423FFC977"
+        },
+        {
+          "path": "ready",
+          "bytes": 36,
+          "sha256": "71F53940E3DF01F1C17DF8CD6546A126E9206F3C6D85E0DC511CA56C24C75687"
+        },
+        {
+          "path": "source/.git/COMMIT_EDITMSG",
+          "bytes": 8,
+          "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+        },
+        {
+          "path": "source/.git/config",
+          "bytes": 130,
+          "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+        },
+        {
+          "path": "source/.git/description",
+          "bytes": 73,
+          "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+        },
+        {
+          "path": "source/.git/HEAD",
+          "bytes": 21,
+          "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+        },
+        {
+          "path": "source/.git/hooks/applypatch-msg.sample",
+          "bytes": 478,
+          "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+        },
+        {
+          "path": "source/.git/hooks/commit-msg.sample",
+          "bytes": 896,
+          "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+        },
+        {
+          "path": "source/.git/hooks/fsmonitor-watchman.sample",
+          "bytes": 4726,
+          "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+        },
+        {
+          "path": "source/.git/hooks/post-update.sample",
+          "bytes": 189,
+          "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+        },
+        {
+          "path": "source/.git/hooks/pre-applypatch.sample",
+          "bytes": 424,
+          "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+        },
+        {
+          "path": "source/.git/hooks/pre-commit.sample",
+          "bytes": 1649,
+          "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+        },
+        {
+          "path": "source/.git/hooks/pre-merge-commit.sample",
+          "bytes": 416,
+          "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+        },
+        {
+          "path": "source/.git/hooks/pre-push.sample",
+          "bytes": 1374,
+          "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+        },
+        {
+          "path": "source/.git/hooks/pre-rebase.sample",
+          "bytes": 4898,
+          "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+        },
+        {
+          "path": "source/.git/hooks/pre-receive.sample",
+          "bytes": 544,
+          "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+        },
+        {
+          "path": "source/.git/hooks/prepare-commit-msg.sample",
+          "bytes": 1492,
+          "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+        },
+        {
+          "path": "source/.git/hooks/push-to-checkout.sample",
+          "bytes": 2783,
+          "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+        },
+        {
+          "path": "source/.git/hooks/sendemail-validate.sample",
+          "bytes": 2308,
+          "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+        },
+        {
+          "path": "source/.git/hooks/update.sample",
+          "bytes": 3650,
+          "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+        },
+        {
+          "path": "source/.git/index",
+          "bytes": 137,
+          "sha256": "25BA230E505129BB95AE97EE6B6BE68F43B2AE2E6B5F93532134770E32DD251E"
+        },
+        {
+          "path": "source/.git/info/exclude",
+          "bytes": 240,
+          "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+        },
+        {
+          "path": "source/.git/logs/HEAD",
+          "bytes": 151,
+          "sha256": "6CA87015E3A3342B314C90614647185E33B854EC72DCF0E69612CBFFB7FC6775"
+        },
+        {
+          "path": "source/.git/logs/refs/heads/main",
+          "bytes": 151,
+          "sha256": "6CA87015E3A3342B314C90614647185E33B854EC72DCF0E69612CBFFB7FC6775"
+        },
+        {
+          "path": "source/.git/objects/18/1aa1e9be95e6d7e24cbb9b70684d70bfc339fb",
+          "bytes": 119,
+          "sha256": "536AA01E0CBA212152282D9B41047E6F8CFF1BF123DC9CB7DE9C98BCE6342D92"
+        },
+        {
+          "path": "source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+          "bytes": 52,
+          "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+        },
+        {
+          "path": "source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+          "bytes": 23,
+          "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+        },
+        {
+          "path": "source/.git/refs/heads/main",
+          "bytes": 41,
+          "sha256": "9DF13D9E3810555B02070B00D988EB1148668FF9D4973C1A4E5B10BCE5B4049F"
+        },
+        {
+          "path": "source/tracked",
+          "bytes": 8,
+          "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+        }
+      ]
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.chat-agent runtime_intent_before_commit",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-fPhknj",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime-intent-crash-fPhknj",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "intent.pid",
+          "bytes": 5,
+          "sha256": "45664682E6428F78D70CCBA1F97033452F17C2C244C5C114388F0AC030120B18"
+        },
+        {
+          "path": "intent.signal",
+          "bytes": 138,
+          "sha256": "92E8DA73DE1C694A7392CC2DFE4A047E4B4014DA41AE12EA1C990D5B2685DFD7"
+        },
+        {
+          "path": "intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 543,
+          "sha256": "A9F0D134B6B2EA36BCE0490B01273F0D71584490F63E7F7BB429EA395DE5D4BB"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "302BB62D955687269D970BD45674AF4D0F0C3BAD408FD501DFF688E183C6E8F1"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "1BFCB4E431FF6ACFCD25C555F88AC0D55EACAECD8867DC92273CB5880EAABB55"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "B033E09321D08E49391D3B07E230AD9DE0449253914F6276E5FF2F33B15DF927"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 40892,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          16580,
+          44532
+        ],
+        "observed_metadata": [
+          "user_version=17",
+          "runtime17_marker=1"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_before_rebuild",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-ZQUHm7",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-ZQUHm7",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 516,
+          "sha256": "53BDCC6B354F7EFE65703BB049D7A7653287D874C4622D02007121F14D120C5E"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "8F6F489580753C911712B8221EE9D962C547C52CF77C5F59EC8B477E236EBF3F"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "877A6FB2F5A9FC7E2FFF74B27CD838F90D43A27CF5B2413840C76DEA2303F11C"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA9B1187256E0E9E4FCCE760A717A9B16D4E4EBD7A6DFCB16BECC9691DE71011"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "BED635AFE79C126E3080A68B2B63AD744C4BB621C5AD2470D349190EDE5C7874"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "F37DECBADBCF8E61424D3540809EC54CE0753BC441C32627E45FA227018E30CF"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "58129455D17A904E2A5ACE4AA245C2BF53118B76B57B68B8CACF076E9BC81B29"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "977DACDFB18131DE3BA353B1AAB5CB62BF7E92AC303BF380BC3A204FD8896815"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 33992,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          19076,
+          12504
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.chat-agent runtime_intent_after_commit",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-PmwbUn",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime-intent-crash-PmwbUn",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "intent.pid",
+          "bytes": 5,
+          "sha256": "418DB3C82FAAE7FD1BF571150140FC788C192539125D69A8A87125828373CCE4"
+        },
+        {
+          "path": "intent.signal",
+          "bytes": 138,
+          "sha256": "C9043DE6100E389A67848E939845AE5700D16668BB1FDE02C322ADF3601622EF"
+        },
+        {
+          "path": "intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 546,
+          "sha256": "CE27A47D4001AA35DBAED5596AE9D459358987D255210E7E747F4C2E09003D6C"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B1CF17C4C77C7379A932D98E8B3D57F120F5C0CFFA78DDA3E02ABDEADE17834A"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "22D5709ACCA973845AB09C59D3ACE14109BE5C037EED0F95E6CB8E5D09EACFA1"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 12392,
+          "sha256": "B49A3629C28B892409F29D832B1F5B7138D061683D501AF36E6EA329D9533137"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "09E76BFC75D9140187A60B8712D0B1CBC769C32053B4B8163FFEB809A242610E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "A5F8DDF293935B064363E0CA99FE7AEFA436583A3FEC60B657C8B6A850AF2C61"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "5E81AF796589A4A2B7D10080C34FC9CC270F6DDCDFFC184D42D01DF6F567AC55"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 31676,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          16936,
+          23188
+        ],
+        "observed_metadata": [
+          "user_version=17",
+          "runtime17_marker=1"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_drop",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-aTMt6b",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-aTMt6b",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 512,
+          "sha256": "23F61762AC80DD94C626BE8B102551387A488194D4D89D580F4031FC13CDF2EA"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "88F43880C84E0A2C4F22950652A86D2A7CB5E260153F59DF860DB5CBEDE5A16B"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "9E04D7ECC94CB51CE7D2A6FF064D4FFD05CC9BAB68F3B5923E7BC8B7EAC0691E"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA9B1187256E0E9E4FCCE760A717A9B16D4E4EBD7A6DFCB16BECC9691DE71011"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "BED635AFE79C126E3080A68B2B63AD744C4BB621C5AD2470D349190EDE5C7874"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "11878A1E21F6E1E7F37CAA3AD3BC5E22283BAEAA0E8B37F674D538FE412F4CBD"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "C829BEAC22C6CEBF5CA875629C8A1C1F1263AD7C4B0467D58F1305B9142C93FE"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "977DACDFB18131DE3BA353B1AAB5CB62BF7E92AC303BF380BC3A204FD8896815"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 36272,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          45568,
+          18716
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.provider-xpeach runtime_intent_before_commit",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-aEYPDD",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime-intent-crash-aEYPDD",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "intent.pid",
+          "bytes": 5,
+          "sha256": "16BE7B813386C65CFD95EB1CF17B2AC79B3A1DFB4AF375DE6138BCC57E45C14E"
+        },
+        {
+          "path": "intent.signal",
+          "bytes": 143,
+          "sha256": "64488D186D663405EC9768FCA628F621F1AF72E942F41031052C5F6F1BBBF8D3"
+        },
+        {
+          "path": "intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 548,
+          "sha256": "F98989D5CC4539478BA07B404C4E5F8A975C7D84CF7D90371A7405E75C132F85"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "302BB62D955687269D970BD45674AF4D0F0C3BAD408FD501DFF688E183C6E8F1"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "5F45B0CD80D4D03E65B197B7A62C6FF361FAB3A5D705EED5691CD9948B177FD8"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "AA574239FB24192793F6A2C5D94572A2B7165562757FECB864C143876CE69054"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "2ECE38FB001C7705E6907A48CAFE8572DE12EF09237B134A7E1F30C7F6279D6F"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "2073ADD075EABD81B3BF9ACF78E0A36111E0B01D3837D6AB7FBC5AEDBCC42CCE"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 34768,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          41920,
+          17384
+        ],
+        "observed_metadata": [
+          "user_version=17",
+          "runtime17_marker=1"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_create",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-YiqJTA",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-YiqJTA",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "9B15A2D39F9D7CFD01492677DC66A4912C85610CDD909C45FF0104F10F4B5755"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "5689B71E68A806E6C66C531B1550F844FD97D618AF5AF6FD0ED2589463D6CA07"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "866C05554AAB0F2159E8047CD7541A04A2CB1795BD1DDD204B941FAD390FA0BE"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "08BFDDAC1EA24C5D75FC8CF6E9335591277B099A9177699E2CB9F8D8BDA4B33A"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA555CD39974DE0F70E0A3E32BB5DDBCB28680D7CAA03F94C6D1C5CE00BBBCDC"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "F51B9A7FD3A2F14D8A7FAE73D88916D6BCE89D2E761E4A15E755D1A0A72960FF"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "E41E0FB3F9B8489CF531280993A78EBC4314D4E4D6331473EA156FC8B1657E87"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "E40E224F97301BDCF4E5FDD0D272022D00674E19C9FAE6F6B7AD1ADAA41DAF7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "3D64519B0C60AE84BCBC42F91E53B55F618C7455FFE82133F1BCCA5BB71305AA"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 28556,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          44656,
+          42116
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "builtin.provider-xpeach runtime_intent_after_commit",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime-intent-crash-dpPltI",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime-intent-crash-dpPltI",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "intent.pid",
+          "bytes": 5,
+          "sha256": "FF5CC910650017D1B800EE5DD2E2DAAFFB2556D2CE15802ADF29D20349E67FFA"
+        },
+        {
+          "path": "intent.signal",
+          "bytes": 143,
+          "sha256": "1C3EFDF9F066952E57A37900B64FB61436A6E173FD14FDCA791930E57CEC6FBF"
+        },
+        {
+          "path": "intent.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "intent.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "intent.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 551,
+          "sha256": "4C9698FB7A100C101A643769E73E16A555662FC6F4916726274A4076C3269F9E"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "E2186A452BA308256B88B96CDBACB9C2A7F1CC89DBBD8F547DBC0CCFC1B4BC58"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "CC58C5DCA48269835ACE1EED6B6256CD3E98AED2EA1CD280EC8069AF96AD1D18"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "15D092E5977FDF4262ED20AF22E55F6CCF5578E5CFB8C2469281D7314543F0A5"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 12392,
+          "sha256": "D7A3ABF5296CD568D11BCFE648713FDE18A29F8E4598EBEAA5123FF082130AF7"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "B609E0E0304CC37503E601B90EA4675B31D0CF5E1C1489490F130CF18C226823"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "02BAFE81C5CBD71611DD1B2178A2410E2D003F727015035C3E9003468863944A"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 200,
+          "sha256": "D59D45E9A208CD3E52B1D40965047AC5F4E8443B01567A54BD85FCB818AC3968"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "6459B94AB587E6909F00B3A881EA2E031AC8CE4CA7578204A5CD20C2710F6502"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 18552,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          20340,
+          41420
+        ],
+        "observed_metadata": [
+          "user_version=17",
+          "runtime17_marker=1"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_restore",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-DG2Ara",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-DG2Ara",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "8DCE500B86A1A872FFC9280D987B9E3501F26AE904284E752BE3A22419C2A4DD"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 4,
+          "sha256": "A685D286753F90101745A209A8AAFA02CAF61859913B6D087DD1FC662485C859"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "D84C07EFBC8C5875E6682BF8FD3896BE99A97F945417C6FE74687C0B43E7BCDC"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "08BFDDAC1EA24C5D75FC8CF6E9335591277B099A9177699E2CB9F8D8BDA4B33A"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "EA555CD39974DE0F70E0A3E32BB5DDBCB28680D7CAA03F94C6D1C5CE00BBBCDC"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "2956E9C51DC5B47A558A54B83846F9FD11443BAAA5D33ECF2B2AD55503AE9FA5"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "91C79BDA80610D1357540AB1FE29FA24C0B90ADCB1BA73D66A68A42BF24CF891"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "310F8F32C8ECB41800D4B607385E0263A154E135FAFEF76E98A7644E01E39952"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "3D64519B0C60AE84BCBC42F91E53B55F618C7455FFE82133F1BCCA5BB71305AA"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 9364,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          41164,
+          26300
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_insert",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-c47UbB",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-c47UbB",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "1A0081A361F57702EF54093630A24B17CA0E935D0DBCD3088A19FED993F919F1"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "29E9D2413B4C4D7362D6711018889C17F79B11664258E197AAC5AF943BAA760A"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "BC888735D44B75C3D393DD594B078CB332D2BA97AF0DBA317403921EEF4CD352"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B0D142F2E0B0AA0150075F6D86FB05D2ABBEB2558935CFAFB8C223A99401E446"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "B23E7E8C0156DB2FF46F74C0C1DA7198FA5B47B13DA8C0E6CD181075135B68B1"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "4F2DF561D0F3B6E6D40E30F8D3C768F4BE8A7621C87A5440CD2E32BDB41B5EDB"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "5DC459C71F4739C3DBD5872B4D442295864CF5715F704B19E02E1A581453561A"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "C249BB5F3EA25F2D98E0F130530E9FC7103279EC42E4D2F1D57654EB8B47CEEE"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 12748,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          44320,
+          36464
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_verify",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-SKMg49",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-SKMg49",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "64E656E26A52E7DD20A00D11F0DBBD6D11CA83202387878FD4ECECD6C0955F74"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "3EEA4A2BACD7546E15678E44FACB75732B6CD990C0570CC92AED77ED86035C38"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "CE6D36DC1DE4E8F0A65D1F8BF3667F0A0D764AECC0D35DD15068A84F5CDA9487"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B0D142F2E0B0AA0150075F6D86FB05D2ABBEB2558935CFAFB8C223A99401E446"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "B23E7E8C0156DB2FF46F74C0C1DA7198FA5B47B13DA8C0E6CD181075135B68B1"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "AC5B0B247D95CA1BECB85A2720AD5FEF99A4E01B2A09D68C54476B22E088147C"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "772A5A6902D6428534AEA65F686D566910513BD84F2AD8E3DE60F0CB4C5A6E97"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "C249BB5F3EA25F2D98E0F130530E9FC7103279EC42E4D2F1D57654EB8B47CEEE"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 36712,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          41408,
+          34468
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_marker",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-fjkYN9",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-fjkYN9",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 514,
+          "sha256": "352B78D92163372C74F0A804BA32A52C30535386F9ADB7958B7E1131EA31C331"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "C829BEAC22C6CEBF5CA875629C8A1C1F1263AD7C4B0467D58F1305B9142C93FE"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "D320655660946DD5F54790AD1556ED5D0511319D99E8F8924F42C59AF26D6226"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "B0D142F2E0B0AA0150075F6D86FB05D2ABBEB2558935CFAFB8C223A99401E446"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "B23E7E8C0156DB2FF46F74C0C1DA7198FA5B47B13DA8C0E6CD181075135B68B1"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "D94C606C17DA792F41C48157B76DD9F191BC0EAC25BFEEC07E67B8A3CFEA8CC7"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "E93F8CD778351B4A9E7A4D8371106E4E3A4E87712010F1271BADA74312237CB1"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "9634EA68698D3AE2F37C2992C4102A86EFC9CAAF8C91F08244F177B24542414A"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 18716,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          43160,
+          25628
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_before_commit",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-Nf9FaM",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-Nf9FaM",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 515,
+          "sha256": "20DF60CA96E69AD909F790B436CF8B62DC4C40D9DC35069798522251C7EF6A93"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "A17C7A1B7ABE9D3436BA901CAB4F7812B637F11F08B05673A0C3121A644F04AA"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "C5B241D3ACC049D40B51E6C94B3B1367041520A5C074963602387264A82D07EB"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "9BCD8759279091CBA918248DA1784147F1F598D76D1DCCD315606AD514773BFB"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "253EBC2C241879A25D4326969829A951B1CAC3F1362A9BADA52418F124643548"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "10C833E9B9B3113E656A8B1F4B6D5E77532479B1F70CAD7FAA81D1EF22678FE9"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "FD4C9FDA9CD3F9AE7C962B0DDF37232294D55580E1AA165AA06129B8549389EB"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "6341FE4ED7674AAA9FFB79B740F8444A87504D79337EDF9554AB8FAD1CADC0EE"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "947378C735205794A8B7C570607090A831A93996C63A68E81B84DE36146944AE"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "87BB1D9BADBB1828D733D3524C7E9E3F9476E06A93893120D89E00C7FE750495"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 36396,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          10472,
+          24752
+        ],
+        "observed_metadata": [
+          "user_version=16",
+          "runtime17_marker=0"
+        ]
+      }
+    },
+    {
+      "kind": "runtime",
+      "phase": "runtime17_after_commit",
+      "original": ".local/tmp-next18-final-attempt2/nhc-runtime17-crash-Zhe5i1",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/runtime/nhc-runtime17-crash-Zhe5i1",
+      "file_count": 18,
+      "files": [
+        {
+          "path": "killed-metadata.txt",
+          "bytes": 518,
+          "sha256": "2D952A6907A731B4B671769CCDF5FEACBA4FFEA96002E5950F19E8319C973FCB"
+        },
+        {
+          "path": "migration.pid",
+          "bytes": 5,
+          "sha256": "7002C713D237F8F467EB5D5BD72561A07D002430F4A54A16263B2B5D82F3F652"
+        },
+        {
+          "path": "migration.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "migration.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "migration.wait",
+          "bytes": 26,
+          "sha256": "4D2944E2B515DC0881B686AFAED33E2AD56474A2AFC1DDCDFC8D004E45AE2EBC"
+        },
+        {
+          "path": "observed-metadata.txt",
+          "bytes": 35,
+          "sha256": "604E2EC5EB821C0DFF944C40246B42C2E3ADB8F3723FB2A86256B78D9A14AA42"
+        },
+        {
+          "path": "phase.signal",
+          "bytes": 115,
+          "sha256": "49663AFA76E7188246C33913E940F239EE2A2565CE07352F5E03BFCA48B20B36"
+        },
+        {
+          "path": "queryable-runtime.db",
+          "bytes": 450560,
+          "sha256": "63C901A7428524B5392319D1DEE011D3190661F05226DFEA20F460C61D9B9F21"
+        },
+        {
+          "path": "raw-runtime.db",
+          "bytes": 450560,
+          "sha256": "10C833E9B9B3113E656A8B1F4B6D5E77532479B1F70CAD7FAA81D1EF22678FE9"
+        },
+        {
+          "path": "raw-runtime.db-shm",
+          "bytes": 32768,
+          "sha256": "67A2C9F3BE65F710972DA1C487F7D58BDDBC5FFA0FEDA445BCA647176B89665B"
+        },
+        {
+          "path": "raw-runtime.db-wal",
+          "bytes": 32992,
+          "sha256": "DD9B53B6FABD6A934159B50CF1BCD2167CC4544F4BB79DBE6CEA567925248D9A"
+        },
+        {
+          "path": "recovery-1.pid",
+          "bytes": 5,
+          "sha256": "59316E7B66AF533DF0B14D1D194126C336C6FDB7868CCF3F60B550B9EB57702A"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "recovery-2.pid",
+          "bytes": 5,
+          "sha256": "AD6FC94E2A663A8989F7238CC0E2427EB8B8FF0A464FFF43D68EE9E1AC82AAC4"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 203,
+          "sha256": "CEA51E643F3705F5BD17DABCAA839F8C919B800F66DA8C9B846EB34711185A7B"
+        },
+        {
+          "path": "runtime.db",
+          "bytes": 450560,
+          "sha256": "87BB1D9BADBB1828D733D3524C7E9E3F9476E06A93893120D89E00C7FE750495"
+        }
+      ],
+      "process_evidence": {
+        "killed_pid": 42468,
+        "wait": "ExitStatus(ExitStatus(1))",
+        "recovery_pids": [
+          12988,
+          17752
+        ],
+        "observed_metadata": [
+          "user_version=17",
+          "runtime17_marker=1"
+        ]
+      }
+    },
+    {
+      "kind": "w08",
+      "phase": "created",
+      "original": ".local/tmp-next18-final-attempt2/.tmpq2SlO2",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/w08/.tmpq2SlO2",
+      "file_count": 45,
+      "files": [
+        {
+          "path": "01519e33-4dda-4cec-bc58-5eef4b564b68/attributes",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "child-created.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "child-restart.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "host.sqlite3",
+          "bytes": 450560,
+          "sha256": "23E5D9FE61DA03349526605ECC17F72C45649525686F370A1017E64810564FA8"
+        },
+        {
+          "path": "lifecycle.jsonl",
+          "bytes": 2210,
+          "sha256": "DC9D8E02B7E817893C22E1B9DC4AD731E1CF86AFEF4C07494530CCAB615DE54A"
+        },
+        {
+          "path": "listen-created",
+          "bytes": 22,
+          "sha256": "3E6E0722A4F6D6418DCAE02A4980B3FD1EC85D6D758625E0CF5A9DAF4F4AD34A"
+        },
+        {
+          "path": "listen-restart",
+          "bytes": 22,
+          "sha256": "E9B72E1E6B8339F73C8232F0FC79C85A424503838041CD0ECC8D343AD7135D63"
+        },
+        {
+          "path": "nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/.git",
+          "bytes": 158,
+          "sha256": "C5B7D5786995084F9C2859EC2EFE98EB297265A965A591D70FE54629853EC133"
+        },
+        {
+          "path": "nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/tracked",
+          "bytes": 8,
+          "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+        },
+        {
+          "path": "ready",
+          "bytes": 36,
+          "sha256": "B1251059A451CC5E3DE92ABF90FA302DE8CC6AEEFECE9730B388772EE74A07A5"
+        },
+        {
+          "path": "source/.git/COMMIT_EDITMSG",
+          "bytes": 8,
+          "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+        },
+        {
+          "path": "source/.git/config",
+          "bytes": 130,
+          "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+        },
+        {
+          "path": "source/.git/description",
+          "bytes": 73,
+          "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+        },
+        {
+          "path": "source/.git/HEAD",
+          "bytes": 21,
+          "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+        },
+        {
+          "path": "source/.git/hooks/applypatch-msg.sample",
+          "bytes": 478,
+          "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+        },
+        {
+          "path": "source/.git/hooks/commit-msg.sample",
+          "bytes": 896,
+          "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+        },
+        {
+          "path": "source/.git/hooks/fsmonitor-watchman.sample",
+          "bytes": 4726,
+          "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+        },
+        {
+          "path": "source/.git/hooks/post-update.sample",
+          "bytes": 189,
+          "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+        },
+        {
+          "path": "source/.git/hooks/pre-applypatch.sample",
+          "bytes": 424,
+          "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+        },
+        {
+          "path": "source/.git/hooks/pre-commit.sample",
+          "bytes": 1649,
+          "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+        },
+        {
+          "path": "source/.git/hooks/pre-merge-commit.sample",
+          "bytes": 416,
+          "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+        },
+        {
+          "path": "source/.git/hooks/pre-push.sample",
+          "bytes": 1374,
+          "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+        },
+        {
+          "path": "source/.git/hooks/pre-rebase.sample",
+          "bytes": 4898,
+          "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+        },
+        {
+          "path": "source/.git/hooks/pre-receive.sample",
+          "bytes": 544,
+          "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+        },
+        {
+          "path": "source/.git/hooks/prepare-commit-msg.sample",
+          "bytes": 1492,
+          "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+        },
+        {
+          "path": "source/.git/hooks/push-to-checkout.sample",
+          "bytes": 2783,
+          "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+        },
+        {
+          "path": "source/.git/hooks/sendemail-validate.sample",
+          "bytes": 2308,
+          "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+        },
+        {
+          "path": "source/.git/hooks/update.sample",
+          "bytes": 3650,
+          "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+        },
+        {
+          "path": "source/.git/index",
+          "bytes": 137,
+          "sha256": "9491FDB9F327B911057E401764F18334145E7A2D3154057AEB29A632CD515934"
+        },
+        {
+          "path": "source/.git/info/exclude",
+          "bytes": 240,
+          "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+        },
+        {
+          "path": "source/.git/logs/HEAD",
+          "bytes": 151,
+          "sha256": "EEA033F6EFC01B3DC282D15A052112E4413B1E60B543690E0FC90A1273752E1A"
+        },
+        {
+          "path": "source/.git/logs/refs/heads/codex/workspace/01519e33-4dda-4cec-bc58-5eef4b564b68",
+          "bytes": 198,
+          "sha256": "E6262B00D4EBDC44F0BC5FC51E65FCA1CE8BFDCE8A3CC404C150551A7FC64259"
+        },
+        {
+          "path": "source/.git/logs/refs/heads/main",
+          "bytes": 151,
+          "sha256": "EEA033F6EFC01B3DC282D15A052112E4413B1E60B543690E0FC90A1273752E1A"
+        },
+        {
+          "path": "source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+          "bytes": 52,
+          "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+        },
+        {
+          "path": "source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+          "bytes": 23,
+          "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+        },
+        {
+          "path": "source/.git/objects/f0/7191bbd2fe15d09ad5bccd50cc53e30290550a",
+          "bytes": 117,
+          "sha256": "9A544D02F06D58D7677B29C93597184FB7CD4EB6EC825AF9CB9A320F73BEA5EF"
+        },
+        {
+          "path": "source/.git/refs/heads/codex/workspace/01519e33-4dda-4cec-bc58-5eef4b564b68",
+          "bytes": 41,
+          "sha256": "F8B912278B44729E4557954C46B0D35F73550AB5252C485E7A368448D5D9B50F"
+        },
+        {
+          "path": "source/.git/refs/heads/main",
+          "bytes": 41,
+          "sha256": "F8B912278B44729E4557954C46B0D35F73550AB5252C485E7A368448D5D9B50F"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/commondir",
+          "bytes": 6,
+          "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/gitdir",
+          "bytes": 133,
+          "sha256": "53E700CA11FD6C731EA93A8B8F8CB9C569F6AE760EFFF5CB778D9F586B885496"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/HEAD",
+          "bytes": 69,
+          "sha256": "EA6649EFB8C407B795FFF68770BB94A815638564C16533C39FEC2F501E7FC150"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/index",
+          "bytes": 137,
+          "sha256": "638D8CCAA9220F6FAD763B1626CB24BE6E8BED07BAEB8B5AE563A9E943E8D336"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/logs/HEAD",
+          "bytes": 294,
+          "sha256": "1BBDDC6537B6365D0AF790DAB755A26EF55FA02FCC3C28A4E90FB555970290D8"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-01519e33-4dda-4cec-bc58-5eef4b564b68/ORIG_HEAD",
+          "bytes": 41,
+          "sha256": "F8B912278B44729E4557954C46B0D35F73550AB5252C485E7A368448D5D9B50F"
+        },
+        {
+          "path": "source/tracked",
+          "bytes": 8,
+          "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+        }
+      ]
+    },
+    {
+      "kind": "w08",
+      "phase": "registered",
+      "original": ".local/tmp-next18-final-attempt2/.tmpUPODah",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/w08/.tmpUPODah",
+      "file_count": 45,
+      "files": [
+        {
+          "path": "0d903814-49cd-42c1-a2c2-c3829f1c3564/attributes",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "child-registered.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "child-restart.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "host.sqlite3",
+          "bytes": 450560,
+          "sha256": "519CCDF800E69E6CD907D00151CDEE4AA7DC833409587A49E0202A1C4934EA5F"
+        },
+        {
+          "path": "lifecycle.jsonl",
+          "bytes": 2255,
+          "sha256": "76A88C540AD12B96CFCCCECE54C7B9C31587D464F963937173920BEEB5A2842F"
+        },
+        {
+          "path": "listen-registered",
+          "bytes": 22,
+          "sha256": "1DD883E5301B1AE8203F9DEC416099F885B04A8BDA9403B67F8AD809D5EF7F16"
+        },
+        {
+          "path": "listen-restart",
+          "bytes": 22,
+          "sha256": "CC3CDD9D8EC0DF55A756552A925D7CCFEA83A340B7413A3CDA68559C037BD926"
+        },
+        {
+          "path": "nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/.git",
+          "bytes": 158,
+          "sha256": "D30E2FB482EA3EDE529C1634C66CF9EE51711A7D575CBEB1ECA78058185CA039"
+        },
+        {
+          "path": "nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/tracked",
+          "bytes": 8,
+          "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+        },
+        {
+          "path": "ready",
+          "bytes": 36,
+          "sha256": "6E172DFA3D18981F0E239FA58CD057590F7D5BF6127331FFE2FC055CCF802FE2"
+        },
+        {
+          "path": "source/.git/COMMIT_EDITMSG",
+          "bytes": 8,
+          "sha256": "E80B71CD14D3CBD65F4173ABCBFCF01A545DBCA32A72D575108B553A648CC96F"
+        },
+        {
+          "path": "source/.git/config",
+          "bytes": 130,
+          "sha256": "05BECDB83BB897F6103C8D91439E2E9092144EDF5B3955A746FCE4975C12BFDC"
+        },
+        {
+          "path": "source/.git/description",
+          "bytes": 73,
+          "sha256": "85AB6C163D43A17EA9CF7788308BCA1466F1B0A8D1CC92E26E9BF63DA4062AEE"
+        },
+        {
+          "path": "source/.git/HEAD",
+          "bytes": 21,
+          "sha256": "28D25BF82AF4C0E2B72F50959B2BEB859E3E60B9630A5E8C603DAD4DDB2B6E80"
+        },
+        {
+          "path": "source/.git/hooks/applypatch-msg.sample",
+          "bytes": 478,
+          "sha256": "0223497A0B8B033AA58A3A521B8629869386CF7AB0E2F101963D328AA62193F7"
+        },
+        {
+          "path": "source/.git/hooks/commit-msg.sample",
+          "bytes": 896,
+          "sha256": "1F74D5E9292979B573EBD59741D46CB93FF391ACDD083D340B94370753D92437"
+        },
+        {
+          "path": "source/.git/hooks/fsmonitor-watchman.sample",
+          "bytes": 4726,
+          "sha256": "E0549964E93897B519BD8E333C037E51FFF0F88BA13E086A331592BF801FA1D0"
+        },
+        {
+          "path": "source/.git/hooks/post-update.sample",
+          "bytes": 189,
+          "sha256": "81765AF2DAEF323061DCBC5E61FC16481CB74B3BAC9AD8A174B186523586F6C5"
+        },
+        {
+          "path": "source/.git/hooks/pre-applypatch.sample",
+          "bytes": 424,
+          "sha256": "E15C5B469EA3E0A695BEA6F2C82BCF8E62821074939DDD85B77E0007FF165475"
+        },
+        {
+          "path": "source/.git/hooks/pre-commit.sample",
+          "bytes": 1649,
+          "sha256": "57185B7B9F05239D7AB52DB045F5B89EB31348D7B2177EAB214F5EB872E1971B"
+        },
+        {
+          "path": "source/.git/hooks/pre-merge-commit.sample",
+          "bytes": 416,
+          "sha256": "D3825A70337940EBBD0A5C072984E13245920CDF8898BD225C8D27A6DFC9CB53"
+        },
+        {
+          "path": "source/.git/hooks/pre-push.sample",
+          "bytes": 1374,
+          "sha256": "ECCE9C7E04D3F5DD9D8ADA81753DD1D549A9634B26770042B58DDA00217D086A"
+        },
+        {
+          "path": "source/.git/hooks/pre-rebase.sample",
+          "bytes": 4898,
+          "sha256": "4FEBCE867790052338076F4E66CC47EFB14879D18097D1D61C8261859EAAA7B3"
+        },
+        {
+          "path": "source/.git/hooks/pre-receive.sample",
+          "bytes": 544,
+          "sha256": "A4C3D2B9C7BB3FD8D1441C31BD4EE71A595D66B44FCF49DDB310252320169989"
+        },
+        {
+          "path": "source/.git/hooks/prepare-commit-msg.sample",
+          "bytes": 1492,
+          "sha256": "E9DDCAA4189FDDD25ED97FC8C789ECA7B6CA16390B2392AE3276F0C8E1AA4619"
+        },
+        {
+          "path": "source/.git/hooks/push-to-checkout.sample",
+          "bytes": 2783,
+          "sha256": "A53D0741798B287C6DD7AFA64AEE473F305E65D3F49463BB9D7408EC3B12BF5F"
+        },
+        {
+          "path": "source/.git/hooks/sendemail-validate.sample",
+          "bytes": 2308,
+          "sha256": "44EBFC923DC5466BC009602F0ECF067B9C65459ABFE8868DDC49B78E6CED7A92"
+        },
+        {
+          "path": "source/.git/hooks/update.sample",
+          "bytes": 3650,
+          "sha256": "8D5F2FA83E103CF08B57EAA67521DF9194F45CBDBCB37DA52AD586097A14D106"
+        },
+        {
+          "path": "source/.git/index",
+          "bytes": 137,
+          "sha256": "E41B22F96AC95A57C6CECC3CFAE625E8CF829B69934B5E0B8FE2ECA6FA359385"
+        },
+        {
+          "path": "source/.git/info/exclude",
+          "bytes": 240,
+          "sha256": "6671FE83B7A07C8932EE89164D1F2793B2318058EB8B98DC5C06EE0A5A3B0EC1"
+        },
+        {
+          "path": "source/.git/logs/HEAD",
+          "bytes": 151,
+          "sha256": "21CC34EE4E7533E06431BCB6D02FAE933C4F14AE0956EFCBF2F453001990C12A"
+        },
+        {
+          "path": "source/.git/logs/refs/heads/codex/workspace/0d903814-49cd-42c1-a2c2-c3829f1c3564",
+          "bytes": 198,
+          "sha256": "459EE45242151EE4FAD87638EEB30381A372AE9C9A8E4121AA0149E1A24ABCD8"
+        },
+        {
+          "path": "source/.git/logs/refs/heads/main",
+          "bytes": 151,
+          "sha256": "21CC34EE4E7533E06431BCB6D02FAE933C4F14AE0956EFCBF2F453001990C12A"
+        },
+        {
+          "path": "source/.git/objects/80/f3fd6102e7d7ca113975266a1add530b58aab0",
+          "bytes": 52,
+          "sha256": "8EDC5D5DE1B3801CBA7D74642B2841B1D002A601ABA15874ED1453AB18D966C8"
+        },
+        {
+          "path": "source/.git/objects/90/3ccd668e99cfebe6c9785610585d73672624fd",
+          "bytes": 118,
+          "sha256": "53D5829E566D1F2B312904547256E0803C0A53ADE6E1B1C969D958F59112E31A"
+        },
+        {
+          "path": "source/.git/objects/94/f3610c08588440112ed977376f26a8fba169b0",
+          "bytes": 23,
+          "sha256": "763480D5BF34ADC02F6090C5D042715E9D0F647284D32DEC5AF38D0B6D693E64"
+        },
+        {
+          "path": "source/.git/refs/heads/codex/workspace/0d903814-49cd-42c1-a2c2-c3829f1c3564",
+          "bytes": 41,
+          "sha256": "2CC36FB751B29FF48D3D5F7027251255EEA333E5AE6BE3DE57540BD8EAD0F343"
+        },
+        {
+          "path": "source/.git/refs/heads/main",
+          "bytes": 41,
+          "sha256": "2CC36FB751B29FF48D3D5F7027251255EEA333E5AE6BE3DE57540BD8EAD0F343"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/commondir",
+          "bytes": 6,
+          "sha256": "340DDCB67A6204F742CD1E28E5B462622DDE7DAAA8EE36001897196AACDC6D47"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/gitdir",
+          "bytes": 133,
+          "sha256": "9E8B7BFFBD327EA76C902495238FE2FC636357E072FB566F73E29F1733BAEE7B"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/HEAD",
+          "bytes": 69,
+          "sha256": "9E0F7E7DFEEA082226D4339CA4D511D2FE9DE05A3130A8601355DC072CD0AD5B"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/index",
+          "bytes": 137,
+          "sha256": "D8829057FB8A324216B6C6ABF2E1FAD85B38B3BDF930CF6D75BE6799DC8AA207"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/logs/HEAD",
+          "bytes": 294,
+          "sha256": "9A1E688304FA77ACA1E2CF257220A675AC398242E22F70333EB1202E2C677A0C"
+        },
+        {
+          "path": "source/.git/worktrees/nhc-0d903814-49cd-42c1-a2c2-c3829f1c3564/ORIG_HEAD",
+          "bytes": 41,
+          "sha256": "2CC36FB751B29FF48D3D5F7027251255EEA333E5AE6BE3DE57540BD8EAD0F343"
+        },
+        {
+          "path": "source/tracked",
+          "bytes": 8,
+          "sha256": "0682C5F2076F099C34CFDD15A9E063849ED437A49677E6FCC5B4198C76575BE5"
+        }
+      ]
+    },
+    {
+      "kind": "a10-root",
+      "phase": "write_pre_fs",
+      "original": ".local/tmp-next18-final-attempt2/.tmpkkzM3A",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-root/.tmpkkzM3A",
+      "file_count": 12,
+      "files": [
+        {
+          "path": "agent.db",
+          "bytes": 450560,
+          "sha256": "DD9C5507374806E1E117E4EF3891A64CF4CE418B780F2D639EE76C332E69CAB9"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "7497A41C7E42739AEA7654DB8EFF1647A453525304D11D05677E51C6533B1B14"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 74,
+          "sha256": "E56631C1D53F2A24A287D98102D82372BDCE1D4DCC86C83B4A5891AA70762F96"
+        },
+        {
+          "path": "recovery-unknown-1.json",
+          "bytes": 136,
+          "sha256": "C5045A13D64760D85023AFFB3D44E7CEC2855A5A0BDB5D9AA4D8E7936D714EE4"
+        },
+        {
+          "path": "recovery-unknown-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-unknown-1.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        },
+        {
+          "path": "recovery-unknown-2.json",
+          "bytes": 136,
+          "sha256": "49DA20DB4746C0840BB4947535993A8EB78FA0A0F8474F62CFEE9DB4EC76D5CF"
+        },
+        {
+          "path": "recovery-unknown-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-unknown-2.stdout.log",
+          "bytes": 207,
+          "sha256": "68F6E6199D63FE20A55B4FEB70199E595D351B6CE561D204BBC5C93F7EB93B3D"
+        },
+        {
+          "path": "sample.txt",
+          "bytes": 15,
+          "sha256": "2B0651992AB2137DAFBFBF37F6D5358419C0917B9833465A89BBA63B49E2FE51"
+        }
+      ]
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_after_assistant_save",
+      "original": ".local/tmp-next18-final-attempt2/.tmpVtR1de",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-root/.tmpVtR1de",
+      "file_count": 12,
+      "files": [
+        {
+          "path": "agent.db",
+          "bytes": 450560,
+          "sha256": "94E2267BDC5B2CDC07AA19BF697CB14934F68635B7EAB1EDBCC7521B99308B51"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "EE1E35BBAB8FC49E71530BE8D7F36B65A5CED7F9261A7108E0FEA0C38AE82206"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 38,
+          "sha256": "B05FE76E1A50F3CF29B972704BB65FD7845CD311B510679F8FAF202796EC6352"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 236,
+          "sha256": "4648B4888519AF49A4B3F4369C18D531C58A8B3D38A853703E1679C71AA05476"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "C3377732E4C0F429701B171A6EB464FC7420E4B7F68BC7A656595B0BAC372C3E"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 235,
+          "sha256": "698677A24A7B22B28D55AEA421418B23E064725146F4ADF37625F967FC3E65A9"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        },
+        {
+          "path": "sample.txt",
+          "bytes": 15,
+          "sha256": "2B0651992AB2137DAFBFBF37F6D5358419C0917B9833465A89BBA63B49E2FE51"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_assistant_save-killed",
+      "original": ".local/next17-a10-evidence/5e0c83d5-81e4-4179-ab2a-dd312edb4093",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/5e0c83d5-81e4-4179-ab2a-dd312edb4093",
+      "file_count": 5,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "50BD7BDD1C5D11BFD33C3491B5D8E591446853C132C04BF8BF27C3BDFB0F1E51"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "EE1E35BBAB8FC49E71530BE8D7F36B65A5CED7F9261A7108E0FEA0C38AE82206"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 38,
+          "sha256": "B05FE76E1A50F3CF29B972704BB65FD7845CD311B510679F8FAF202796EC6352"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "write_pre_fs-killed",
+      "original": ".local/next17-a10-evidence/0dbee7dc-6b5f-4d98-b171-76fbbf9517c2",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/0dbee7dc-6b5f-4d98-b171-76fbbf9517c2",
+      "file_count": 5,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "F414739B7838E2F06C4FC942D79AE2D2BBB802E9A29A8518C18F2F1B34139C5F"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "7497A41C7E42739AEA7654DB8EFF1647A453525304D11D05677E51C6533B1B14"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 74,
+          "sha256": "E56631C1D53F2A24A287D98102D82372BDCE1D4DCC86C83B4A5891AA70762F96"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_assistant_save-recovery-1",
+      "original": ".local/next17-a10-evidence/6f1a2ef7-8a64-4233-ae3f-d5d54e47d4a5",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/6f1a2ef7-8a64-4233-ae3f-d5d54e47d4a5",
+      "file_count": 8,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "71D6ACA961359D111007D00AC5C6D0E41F7F08CAF4441A2FD35E20E3E4E5260F"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "EE1E35BBAB8FC49E71530BE8D7F36B65A5CED7F9261A7108E0FEA0C38AE82206"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 38,
+          "sha256": "B05FE76E1A50F3CF29B972704BB65FD7845CD311B510679F8FAF202796EC6352"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 236,
+          "sha256": "4648B4888519AF49A4B3F4369C18D531C58A8B3D38A853703E1679C71AA05476"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "C3377732E4C0F429701B171A6EB464FC7420E4B7F68BC7A656595B0BAC372C3E"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "write_pre_fs-unknown-1",
+      "original": ".local/next17-a10-evidence/77492fac-bd06-4d27-a2c8-6d3b934a9f86",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/77492fac-bd06-4d27-a2c8-6d3b934a9f86",
+      "file_count": 8,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "2639209CE8D2B90581B1FAF8227AB09BB645F86A8B73299023387C067D391550"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "7497A41C7E42739AEA7654DB8EFF1647A453525304D11D05677E51C6533B1B14"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 74,
+          "sha256": "E56631C1D53F2A24A287D98102D82372BDCE1D4DCC86C83B4A5891AA70762F96"
+        },
+        {
+          "path": "recovery-unknown-1.json",
+          "bytes": 136,
+          "sha256": "C5045A13D64760D85023AFFB3D44E7CEC2855A5A0BDB5D9AA4D8E7936D714EE4"
+        },
+        {
+          "path": "recovery-unknown-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-unknown-1.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_assistant_save-recovery-2",
+      "original": ".local/next17-a10-evidence/92945f03-1ce7-44b5-8802-7da66b9fa342",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/92945f03-1ce7-44b5-8802-7da66b9fa342",
+      "file_count": 11,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "71D6ACA961359D111007D00AC5C6D0E41F7F08CAF4441A2FD35E20E3E4E5260F"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "EE1E35BBAB8FC49E71530BE8D7F36B65A5CED7F9261A7108E0FEA0C38AE82206"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 38,
+          "sha256": "B05FE76E1A50F3CF29B972704BB65FD7845CD311B510679F8FAF202796EC6352"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 236,
+          "sha256": "4648B4888519AF49A4B3F4369C18D531C58A8B3D38A853703E1679C71AA05476"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "C3377732E4C0F429701B171A6EB464FC7420E4B7F68BC7A656595B0BAC372C3E"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 235,
+          "sha256": "698677A24A7B22B28D55AEA421418B23E064725146F4ADF37625F967FC3E65A9"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "write_pre_fs-unknown-2",
+      "original": ".local/next17-a10-evidence/4f1a2d4b-8354-4242-865a-5ee431437904",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/4f1a2d4b-8354-4242-865a-5ee431437904",
+      "file_count": 11,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "2639209CE8D2B90581B1FAF8227AB09BB645F86A8B73299023387C067D391550"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "7497A41C7E42739AEA7654DB8EFF1647A453525304D11D05677E51C6533B1B14"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 74,
+          "sha256": "E56631C1D53F2A24A287D98102D82372BDCE1D4DCC86C83B4A5891AA70762F96"
+        },
+        {
+          "path": "recovery-unknown-1.json",
+          "bytes": 136,
+          "sha256": "C5045A13D64760D85023AFFB3D44E7CEC2855A5A0BDB5D9AA4D8E7936D714EE4"
+        },
+        {
+          "path": "recovery-unknown-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-unknown-1.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        },
+        {
+          "path": "recovery-unknown-2.json",
+          "bytes": 136,
+          "sha256": "49DA20DB4746C0840BB4947535993A8EB78FA0A0F8474F62CFEE9DB4EC76D5CF"
+        },
+        {
+          "path": "recovery-unknown-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-unknown-2.stdout.log",
+          "bytes": 207,
+          "sha256": "68F6E6199D63FE20A55B4FEB70199E595D351B6CE561D204BBC5C93F7EB93B3D"
+        }
+      ]
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_before_denied_result",
+      "original": ".local/tmp-next18-final-attempt2/.tmpcmYVpA",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-root/.tmpcmYVpA",
+      "file_count": 12,
+      "files": [
+        {
+          "path": "agent.db",
+          "bytes": 450560,
+          "sha256": "B890FE1369ABC716A1B8F6B7FB25A3CD92A1CEA8BAE4AE09C9A93C882ECDA51E"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "BE748B02516C1A2514864CC6743492FF7EC94FFA7B7AE2EB1827BF97C1AFEC10"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "632FD5844531FBE77048F23D3B4D00E2BBC69FDEB6CC949DC9502873ABF8159D"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 236,
+          "sha256": "60BDBD3EACA21D597A1FCEF67D96C4CA33A113BF7C0A0DB37ECB4F13267040C5"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "699117930B40AC0A3B1BA9A6CAA2CB9985A71631D427C1003CB0C6B41B261978"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 236,
+          "sha256": "EFCEF71020C9FDBD48125E9EDB73419A741918575F046072B2D53E54D53D95B3"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "68F6E6199D63FE20A55B4FEB70199E595D351B6CE561D204BBC5C93F7EB93B3D"
+        },
+        {
+          "path": "sample.txt",
+          "bytes": 15,
+          "sha256": "2B0651992AB2137DAFBFBF37F6D5358419C0917B9833465A89BBA63B49E2FE51"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_before_denied_result-killed",
+      "original": ".local/next17-a10-evidence/2aa8ac80-f4df-46ee-99dc-35b0752fd90d",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/2aa8ac80-f4df-46ee-99dc-35b0752fd90d",
+      "file_count": 5,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "33182902A0D8C6606816C35FB60342F7DCCFB46376FBA927D8B4765143FAB61D"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "BE748B02516C1A2514864CC6743492FF7EC94FFA7B7AE2EB1827BF97C1AFEC10"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "632FD5844531FBE77048F23D3B4D00E2BBC69FDEB6CC949DC9502873ABF8159D"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_before_denied_result-recovery-1",
+      "original": ".local/next17-a10-evidence/e8983e6e-797f-4b1d-8886-99b604bd7d9a",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/e8983e6e-797f-4b1d-8886-99b604bd7d9a",
+      "file_count": 8,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "C104DB239F62BB2C98CFA3D66345ED7219E53A6747F3BE8C14CEF5B903D5CC4E"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "BE748B02516C1A2514864CC6743492FF7EC94FFA7B7AE2EB1827BF97C1AFEC10"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "632FD5844531FBE77048F23D3B4D00E2BBC69FDEB6CC949DC9502873ABF8159D"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 236,
+          "sha256": "60BDBD3EACA21D597A1FCEF67D96C4CA33A113BF7C0A0DB37ECB4F13267040C5"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "699117930B40AC0A3B1BA9A6CAA2CB9985A71631D427C1003CB0C6B41B261978"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_before_denied_result-recovery-2",
+      "original": ".local/next17-a10-evidence/5aa0df22-3bd7-44d5-813a-3f528439ee27",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/5aa0df22-3bd7-44d5-813a-3f528439ee27",
+      "file_count": 11,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "C104DB239F62BB2C98CFA3D66345ED7219E53A6747F3BE8C14CEF5B903D5CC4E"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "BE748B02516C1A2514864CC6743492FF7EC94FFA7B7AE2EB1827BF97C1AFEC10"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "632FD5844531FBE77048F23D3B4D00E2BBC69FDEB6CC949DC9502873ABF8159D"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 236,
+          "sha256": "60BDBD3EACA21D597A1FCEF67D96C4CA33A113BF7C0A0DB37ECB4F13267040C5"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "699117930B40AC0A3B1BA9A6CAA2CB9985A71631D427C1003CB0C6B41B261978"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 236,
+          "sha256": "EFCEF71020C9FDBD48125E9EDB73419A741918575F046072B2D53E54D53D95B3"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "68F6E6199D63FE20A55B4FEB70199E595D351B6CE561D204BBC5C93F7EB93B3D"
+        }
+      ]
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_after_denied_result",
+      "original": ".local/tmp-next18-final-attempt2/.tmptBO9Bs",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-root/.tmptBO9Bs",
+      "file_count": 12,
+      "files": [
+        {
+          "path": "agent.db",
+          "bytes": 450560,
+          "sha256": "F93FD419C636CDF4D06442E2C138C95ABD08AE8E2ECCA9B10E3F5A28C6BCB40B"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "331E600F5838B2B470F4B6B5049F16157819F124B993A93E9A83085241D741C8"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "0C13A6373CC153F0658FC3C0F1C18E406EEC32DDED56FC7640F63B667477A7CC"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 198,
+          "sha256": "98EA4E2DE4EE885D941342421F86FEB447D1B9354581C1F9FAFC0B09CCF9992E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "5D236F8ACC0046866E1892EF1BDA713B02FDEC7F666F525A381E6ECEADF009F0"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 198,
+          "sha256": "EB48823F560AB2F5A838C229910387C5FDD4CB2DAA565525E0D991240B16FA3E"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "68F6E6199D63FE20A55B4FEB70199E595D351B6CE561D204BBC5C93F7EB93B3D"
+        },
+        {
+          "path": "sample.txt",
+          "bytes": 15,
+          "sha256": "2B0651992AB2137DAFBFBF37F6D5358419C0917B9833465A89BBA63B49E2FE51"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_denied_result-killed",
+      "original": ".local/next17-a10-evidence/06889d09-a1ba-4052-8c90-94f586ed1387",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/06889d09-a1ba-4052-8c90-94f586ed1387",
+      "file_count": 5,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "D5A1BD583DC00B5F5EDF42255FAA1D52E5C83CE08C73FD1378F0966AF3CD1712"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "331E600F5838B2B470F4B6B5049F16157819F124B993A93E9A83085241D741C8"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "0C13A6373CC153F0658FC3C0F1C18E406EEC32DDED56FC7640F63B667477A7CC"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_denied_result-recovery-1",
+      "original": ".local/next17-a10-evidence/7cae6cbd-11ad-42ac-983a-2b3666fdbc96",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/7cae6cbd-11ad-42ac-983a-2b3666fdbc96",
+      "file_count": 8,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "7830F7C7585DD34E346AFCA2B30B1A9566723B651BC9A60563FA35829A319C44"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "331E600F5838B2B470F4B6B5049F16157819F124B993A93E9A83085241D741C8"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "0C13A6373CC153F0658FC3C0F1C18E406EEC32DDED56FC7640F63B667477A7CC"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 198,
+          "sha256": "98EA4E2DE4EE885D941342421F86FEB447D1B9354581C1F9FAFC0B09CCF9992E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "5D236F8ACC0046866E1892EF1BDA713B02FDEC7F666F525A381E6ECEADF009F0"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_denied_result-recovery-2",
+      "original": ".local/next17-a10-evidence/f28e7d33-1adb-49ca-b3a1-08b9a4eadc14",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/f28e7d33-1adb-49ca-b3a1-08b9a4eadc14",
+      "file_count": 11,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "7830F7C7585DD34E346AFCA2B30B1A9566723B651BC9A60563FA35829A319C44"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "331E600F5838B2B470F4B6B5049F16157819F124B993A93E9A83085241D741C8"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "0C13A6373CC153F0658FC3C0F1C18E406EEC32DDED56FC7640F63B667477A7CC"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 198,
+          "sha256": "98EA4E2DE4EE885D941342421F86FEB447D1B9354581C1F9FAFC0B09CCF9992E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "5D236F8ACC0046866E1892EF1BDA713B02FDEC7F666F525A381E6ECEADF009F0"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 198,
+          "sha256": "EB48823F560AB2F5A838C229910387C5FDD4CB2DAA565525E0D991240B16FA3E"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "68F6E6199D63FE20A55B4FEB70199E595D351B6CE561D204BBC5C93F7EB93B3D"
+        }
+      ]
+    },
+    {
+      "kind": "a10-root",
+      "phase": "agent_after_applied_result",
+      "original": ".local/tmp-next18-final-attempt2/.tmpAdMEqE",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-root/.tmpAdMEqE",
+      "file_count": 12,
+      "files": [
+        {
+          "path": "agent.db",
+          "bytes": 458752,
+          "sha256": "2742E1A01939256F8651CF090B76E9A68923BD409EF030B3EA91446933957D4B"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "D56D151616C97C82A49CD6B5FDDB112D22170ADAF8ECC8E4A106D8D90D69943F"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "3E0DB444CBEF05B34CDDA4832B9941270B679A6F3FCE01D0FA3A2EC30F33F3F2"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 304,
+          "sha256": "D08C423CA3C25A8ED0B6F104F9AD153D9FA524F5E1C4482159FADE2062E24A4E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "C3377732E4C0F429701B171A6EB464FC7420E4B7F68BC7A656595B0BAC372C3E"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 304,
+          "sha256": "40A1BFD8510B3B4985B1CFA098E9C50693D7B64A3090BB35EDF7138E4336636B"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        },
+        {
+          "path": "sample.txt",
+          "bytes": 15,
+          "sha256": "2B0651992AB2137DAFBFBF37F6D5358419C0917B9833465A89BBA63B49E2FE51"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_applied_result-killed",
+      "original": ".local/next17-a10-evidence/c2a5a4a1-5145-45ea-915b-ae93938a9395",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/c2a5a4a1-5145-45ea-915b-ae93938a9395",
+      "file_count": 5,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 450560,
+          "sha256": "248B1515CA8DFEADE9E6EB064F873B04C41B7E7674685690FD00D27FC0DD9EB7"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "D56D151616C97C82A49CD6B5FDDB112D22170ADAF8ECC8E4A106D8D90D69943F"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "3E0DB444CBEF05B34CDDA4832B9941270B679A6F3FCE01D0FA3A2EC30F33F3F2"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_applied_result-recovery-1",
+      "original": ".local/next17-a10-evidence/dbd7ebd5-ec57-4dbd-8ea3-c36beab09903",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/dbd7ebd5-ec57-4dbd-8ea3-c36beab09903",
+      "file_count": 8,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 458752,
+          "sha256": "B01770DF6434DB1C440F21CB5489A26AC09DCD7418588F62F1B164C5166FAB1B"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "D56D151616C97C82A49CD6B5FDDB112D22170ADAF8ECC8E4A106D8D90D69943F"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "3E0DB444CBEF05B34CDDA4832B9941270B679A6F3FCE01D0FA3A2EC30F33F3F2"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 304,
+          "sha256": "D08C423CA3C25A8ED0B6F104F9AD153D9FA524F5E1C4482159FADE2062E24A4E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "C3377732E4C0F429701B171A6EB464FC7420E4B7F68BC7A656595B0BAC372C3E"
+        }
+      ]
+    },
+    {
+      "kind": "a10-snapshot",
+      "phase": "agent_after_applied_result-recovery-2",
+      "original": ".local/next17-a10-evidence/871dd44a-7ae2-4a52-b5fb-44ff2031a29b",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/a10-snapshot/871dd44a-7ae2-4a52-b5fb-44ff2031a29b",
+      "file_count": 11,
+      "files": [
+        {
+          "path": "agent-snapshot.db",
+          "bytes": 458752,
+          "sha256": "B01770DF6434DB1C440F21CB5489A26AC09DCD7418588F62F1B164C5166FAB1B"
+        },
+        {
+          "path": "armed",
+          "bytes": 36,
+          "sha256": "D56D151616C97C82A49CD6B5FDDB112D22170ADAF8ECC8E4A106D8D90D69943F"
+        },
+        {
+          "path": "crash-child.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "crash-child.stdout.log",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "crash-signal",
+          "bytes": 40,
+          "sha256": "3E0DB444CBEF05B34CDDA4832B9941270B679A6F3FCE01D0FA3A2EC30F33F3F2"
+        },
+        {
+          "path": "recovery-1.json",
+          "bytes": 304,
+          "sha256": "D08C423CA3C25A8ED0B6F104F9AD153D9FA524F5E1C4482159FADE2062E24A4E"
+        },
+        {
+          "path": "recovery-1.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-1.stdout.log",
+          "bytes": 207,
+          "sha256": "C3377732E4C0F429701B171A6EB464FC7420E4B7F68BC7A656595B0BAC372C3E"
+        },
+        {
+          "path": "recovery-2.json",
+          "bytes": 304,
+          "sha256": "40A1BFD8510B3B4985B1CFA098E9C50693D7B64A3090BB35EDF7138E4336636B"
+        },
+        {
+          "path": "recovery-2.stderr.log",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "recovery-2.stdout.log",
+          "bytes": 207,
+          "sha256": "7F69E13476F33E38A51A4F22202F8DA1F0EF49CF39FB5C057E8EE2C2F254EDD5"
+        }
+      ]
+    },
+    {
+      "kind": "workspace-write",
+      "phase": "file-before-finish",
+      "original": ".local/tmp-next18-final-attempt2/workspace-write-crash-a1ERWK",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/workspace-write/workspace-write-crash-a1ERWK",
+      "file_count": 16,
+      "files": [
+        {
+          "path": "child-task-id",
+          "bytes": 36,
+          "sha256": "64F5CC1C7873948338F83F57463D26C117913F20BD47C31A4EC30068C1F6EABA"
+        },
+        {
+          "path": "src/a.txt",
+          "bytes": 11,
+          "sha256": "122FB3CF5C2B59D8B05C2B141C0FCE7207E6C4CFF2DF3E580521C3A9C95F4CE8"
+        },
+        {
+          "path": "workspace.db",
+          "bytes": 450560,
+          "sha256": "2B063750BD638112335956969D7CE58980D33BE0CA02896F56646CAE79EA32A7"
+        },
+        {
+          "path": "workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "69EE8BD205B46826F6F66560398D6ACA3C87640724A4FD2E4F534DFC20B97295"
+        },
+        {
+          "path": "workspace.db-wal",
+          "bytes": 370832,
+          "sha256": "7A5B0CB2BAD6C824D61F39DE0E525087C4B8DFAD839B40FFF18B11110903D368"
+        },
+        {
+          "path": "write-child.stderr",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "write-child.stdout",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "write-evidence/observed.json",
+          "bytes": 4346,
+          "sha256": "0EA3C21DE83AC66AF524EA427CF5140041BE15051C1D3DB7C913CDEEF4A6D7DA"
+        },
+        {
+          "path": "write-evidence/process.json",
+          "bytes": 388,
+          "sha256": "DCB9CB4251DED6114A7C4D930C4030603916FC53046511DA2EC28959F484EA69"
+        },
+        {
+          "path": "write-evidence/query-source/workspace.db",
+          "bytes": 450560,
+          "sha256": "9E028A2899996F6B6096E24C0ECD877E4510CB92B6965CEF1587BE39AE653036"
+        },
+        {
+          "path": "write-evidence/queryable.db",
+          "bytes": 450560,
+          "sha256": "135B216869526E5CA485D2D3108778F055ACF64AEE94D50D7F6038A84E9A681E"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db",
+          "bytes": 450560,
+          "sha256": "2B063750BD638112335956969D7CE58980D33BE0CA02896F56646CAE79EA32A7"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "69EE8BD205B46826F6F66560398D6ACA3C87640724A4FD2E4F534DFC20B97295"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-wal",
+          "bytes": 370832,
+          "sha256": "7A5B0CB2BAD6C824D61F39DE0E525087C4B8DFAD839B40FFF18B11110903D368"
+        },
+        {
+          "path": "write-evidence/raw-manifest.json",
+          "bytes": 489,
+          "sha256": "008619E4245D5677F5851CB210D46F592E6B36D416C58216BBFC3704DE4D382A"
+        },
+        {
+          "path": "write-evidence/recovery/workspace.db",
+          "bytes": 450560,
+          "sha256": "BE47AA2637D83B509E5F83E0B2930A3195AC99AFF1687DF698BC681022EB71FF"
+        }
+      ],
+      "process_evidence": {
+        "kill": "killed",
+        "phase": "target-boundary",
+        "pid": 35788,
+        "reaped": true,
+        "success": false,
+        "target": "file-before-finish",
+        "task_id": "f6d2853b-37f7-42a4-b29b-2068ed762122",
+        "try_wait": "running",
+        "wait": "ExitStatus(ExitStatus(1))"
+      },
+      "raw_equals_original_db_wal_shm": true
+    },
+    {
+      "kind": "workspace-write",
+      "phase": "finished-after-commit",
+      "original": ".local/tmp-next18-final-attempt2/workspace-write-crash-9TphQQ",
+      "snapshot": ".local/logs/next18-final-attempt2/preserved-fixtures/workspace-write/workspace-write-crash-9TphQQ",
+      "file_count": 16,
+      "files": [
+        {
+          "path": "child-task-id",
+          "bytes": 36,
+          "sha256": "D935CEB81FD5E499BCB0C243D7E7230DC7B53A62F19F7AE72689142BCB8B5CB8"
+        },
+        {
+          "path": "src/a.txt",
+          "bytes": 11,
+          "sha256": "122FB3CF5C2B59D8B05C2B141C0FCE7207E6C4CFF2DF3E580521C3A9C95F4CE8"
+        },
+        {
+          "path": "workspace.db",
+          "bytes": 450560,
+          "sha256": "C1EAD3524B7B1157D2F786C74EE67A329A8D45B4EDB89A187FB7C2A50B54EB2E"
+        },
+        {
+          "path": "workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "06FFFE09BF476BD1844C23C170029CAC30E6B35853C16B43DECC4D1D9B3E6ED0"
+        },
+        {
+          "path": "workspace.db-wal",
+          "bytes": 416152,
+          "sha256": "0B6672B1E328F1EAB9522ABBCF3FDC80CE79DED9DA4B3284113DFD8966D64604"
+        },
+        {
+          "path": "write-child.stderr",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "write-child.stdout",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "write-evidence/observed.json",
+          "bytes": 5578,
+          "sha256": "E553AFD8F7EA1307CEF9CCEA534539233A707FA6152B9933875AD47CAFDE3241"
+        },
+        {
+          "path": "write-evidence/process.json",
+          "bytes": 391,
+          "sha256": "6ABF07E395F3EB960EEA6E37C8B03A00901B395DAFDC9407EE4B128ABC8A1C28"
+        },
+        {
+          "path": "write-evidence/query-source/workspace.db",
+          "bytes": 450560,
+          "sha256": "C86D628CEC5309266026B3C0791207DA850B5A2E3533535BD0A76C5A677CE42F"
+        },
+        {
+          "path": "write-evidence/queryable.db",
+          "bytes": 450560,
+          "sha256": "DB18E53613773E71063AC19D8D8CFBE9888141896F4ACE06B7D63E98889A469B"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db",
+          "bytes": 450560,
+          "sha256": "C1EAD3524B7B1157D2F786C74EE67A329A8D45B4EDB89A187FB7C2A50B54EB2E"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "06FFFE09BF476BD1844C23C170029CAC30E6B35853C16B43DECC4D1D9B3E6ED0"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-wal",
+          "bytes": 416152,
+          "sha256": "0B6672B1E328F1EAB9522ABBCF3FDC80CE79DED9DA4B3284113DFD8966D64604"
+        },
+        {
+          "path": "write-evidence/raw-manifest.json",
+          "bytes": 489,
+          "sha256": "2B884E96297EA7356C46FF205D194A62AC1B6AA1211C511F60842171F67F2F99"
+        },
+        {
+          "path": "write-evidence/recovery/workspace.db",
+          "bytes": 450560,
+          "sha256": "B3BA7A81DC15601CD187485BAEBC1C745885D9315750E57E847BB46F6B200A36"
+        }
+      ],
+      "process_evidence": {
+        "kill": "killed",
+        "phase": "target-boundary",
+        "pid": 44156,
+        "reaped": true,
+        "success": false,
+        "target": "finished-after-commit",
+        "task_id": "3666b02c-3f81-4e74-9b9a-6c3045abd744",
+        "try_wait": "running",
+        "wait": "ExitStatus(ExitStatus(1))"
+      },
+      "raw_equals_original_db_wal_shm": true
+    }
+  ],
+  "notes": "Phase mapping comes from test.log; all source files copied and hashed; raw databases not opened."
+}
