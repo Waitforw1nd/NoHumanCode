@@ -1,0 +1,124 @@
+{
+  "candidate": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+  "commands": [
+    {
+      "head": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+      "exit_code": 0,
+      "rust_tree": "831168a516069c2949bb627c662d86986ef868bf",
+      "command": "cargo build --offline --locked --bin peachsh",
+      "ended_utc": "2026-10-31T06:09:29.0701184Z",
+      "started_utc": "2026-10-31T06:09:08.2294098Z",
+      "product_tree": "7e429546b4abe26c3fc6d8543fc53f0093931790"
+    },
+    {
+      "head": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+      "exit_code": 0,
+      "rust_tree": "831168a516069c2949bb627c662d86986ef868bf",
+      "command": "cargo test --offline --locked --lib -- --nocapture",
+      "ended_utc": "2026-10-31T06:09:56.4440253Z",
+      "started_utc": "2026-10-31T06:09:29.2237107Z",
+      "product_tree": "7e429546b4abe26c3fc6d8543fc53f0093931790"
+    },
+    {
+      "head": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+      "exit_code": 101,
+      "rust_tree": "831168a516069c2949bb627c662d86986ef868bf",
+      "command": "cargo clippy --offline --locked --lib -- -D warnings",
+      "ended_utc": "2026-10-31T06:10:02.2944857Z",
+      "started_utc": "2026-10-31T06:09:56.5494036Z",
+      "product_tree": "7e429546b4abe26c3fc6d8543fc53f0093931790"
+    }
+  ],
+  "postflight": {
+    "status": [],
+    "unmerged": [],
+    "staged": [],
+    "head": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+    "rust_tree": "831168a516069c2949bb627c662d86986ef868bf",
+    "finished_utc": "2026-10-31T06:10:02.4872962Z",
+    "exit_code": 101,
+    "product_tree": "7e429546b4abe26c3fc6d8543fc53f0093931790"
+  },
+  "source_manifest_before_after_equal": true,
+  "source_count": 128,
+  "same_manifest_as_attempt1": true,
+  "test_summary": {
+    "passed": 290,
+    "failed": 0,
+    "ignored": 0
+  },
+  "not_run": [
+    "fmt"
+  ],
+  "raw_file_hashes": [
+    {
+      "file": "01-build-cli.json",
+      "bytes": 362,
+      "sha256": "ead25dbb04dd030abc41ab6e5e527f664a001fe6616285c3896506eba9b54f48"
+    },
+    {
+      "file": "01-build-cli.log",
+      "bytes": 263,
+      "sha256": "35f3caf620eca6ef1b3f0826605cf3a6e21e5c36f80093cddd0c54327ca62df9"
+    },
+    {
+      "file": "02-test.json",
+      "bytes": 368,
+      "sha256": "e94211a49a86a4ad90c2cc9789ea21a9477b702fd7c1b9793cf195ca326bdaff"
+    },
+    {
+      "file": "02-test.log",
+      "bytes": 42068,
+      "sha256": "8e0371951f7ffb3cf049b82826ce7c0facbf39ed41fc420addc4fdaeb7ff94fb"
+    },
+    {
+      "file": "03-clippy.json",
+      "bytes": 372,
+      "sha256": "ae1984966a0abdf2264d82b11c087290af65814943e1cbf8d21a2ebd48fd0233"
+    },
+    {
+      "file": "03-clippy.log",
+      "bytes": 1919,
+      "sha256": "6eff79284c1888952faa41b530829ad450b3d129f06773422b6c6ef0215c8653"
+    },
+    {
+      "file": "cli-binary.json",
+      "bytes": 310,
+      "sha256": "6aecfef6b5175c220ac16d90439b519b49a3bb1d612b6dab0ef766b0b028bee7"
+    },
+    {
+      "file": "postflight.json",
+      "bytes": 308,
+      "sha256": "03bf8f982de93fa16ee6156ad6c740656d39ee83993a1708727d2a6aefc1bd32"
+    },
+    {
+      "file": "preflight.json",
+      "bytes": 945,
+      "sha256": "ade7e476c0a1f22bf4b3d4b80f1c9ed5d353f0feb9e00ce1663319dfd30658ad"
+    },
+    {
+      "file": "source-after.json",
+      "bytes": 22050,
+      "sha256": "169218507443f7d35e97e804ea3ed696df0a5db30f5553da9a65f0691d774108"
+    },
+    {
+      "file": "source-before.json",
+      "bytes": 22050,
+      "sha256": "169218507443f7d35e97e804ea3ed696df0a5db30f5553da9a65f0691d774108"
+    }
+  ],
+  "published_pairs_hash_length_path_transform_verified": [
+    "run.ps1",
+    "01-build-cli.json",
+    "01-build-cli.log",
+    "02-test.json",
+    "02-test.log",
+    "03-clippy.json",
+    "03-clippy.log",
+    "cli-binary.json",
+    "postflight.json",
+    "preflight.json",
+    "source-after.json",
+    "source-before.json"
+  ]
+}

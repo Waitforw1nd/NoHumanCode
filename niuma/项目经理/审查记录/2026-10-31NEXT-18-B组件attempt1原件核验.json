@@ -1,0 +1,64 @@
+{
+  "candidate": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+  "files": [
+    {
+      "file": "run.ps1",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "01-check.json",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "01-check.log",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "02-test.json",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "02-test.log",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "postflight.json",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "preflight.json",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "source-after.json",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    },
+    {
+      "file": "source-before.json",
+      "hashes_lengths_verified": true,
+      "path_only_transform_verified": true
+    }
+  ],
+  "source_files_current_verified": 128,
+  "source_before_after_equal": true,
+  "check_exit": 0,
+  "test_exit": 101,
+  "test_summary": {
+    "passed": 289,
+    "failed": 1,
+    "ignored": 0
+  },
+  "not_run": [
+    "clippy",
+    "fmt"
+  ],
+  "transform_note": "Checked both raw and JSON-escaped prefixes; initial verification used overly specific MSVC/SDK roots, corrected to published prefix boundary."
+}

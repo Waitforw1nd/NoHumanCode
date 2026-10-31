@@ -1,3 +1,7 @@
+## 2026-10-31 NEXT-18组件前置闭合与限定lint返工
+
+更新人：项目经理。B attempt1 check0/test101（289/1/0）因经理测试序列漏CLI预构建；同ffeeac候选attempt2补build后全lib290/0/0，W08前置闭合。lib Clippy两个collapsible_if失败，fmt未执行，窗口已释放；原B获两处等价静态修正，固定后再审再验。经理已核21对原/发布文件、路径转换与128源码清单；两轮原件和review保留。C273895d/D36b73d冻结no-build，未跨树合入或认定组件完成。下一第一操作核B最小修订的固定SHA、两tree与clean后放组件，之后串行组合；完整项目继续，架构仍保留基础并重构Engine/兼容和正式Desktop。
+
 ## 2026-10-31 NEXT-18核心固定与B唯一组件窗口
 
 经理实核Bffeeac76/NoManCode7e429546/Rust831168a5及clean，九文件固定实现已review，放唯一B限定组件窗口；C273895d/D36b73d各自固定且增量静态review完成，保持no-build。B窗口包含check、全lib test、lib Clippy、fmt，首失败停止；未将静态结果认作M矩阵通过。下一核动态原件再串行整合真实C/D依赖和测试模块。主线产品仍NEXT-17，全项目继续。

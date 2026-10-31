@@ -1,0 +1,160 @@
+{
+  "candidate": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
+  "attempt": 2,
+  "files": [
+    {
+      "file": "run.ps1",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/run.ps1",
+      "source_sha256": "2a32836ea0396c76904dd2cc7060109a046deaf7a3a263fa952185bff73e90d9",
+      "source_bytes": 4953,
+      "published_sha256": "a4c7f80e482c15a6b2abbc459d78c742dc24f112ce5e78570450c047b4b7115b",
+      "published_bytes": 4897,
+      "path_substitutions": [
+        {
+          "source_prefix": "[windows-sdk]",
+          "occurrences": 1
+        },
+        {
+          "source_prefix": "[msvc]",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "01-build-cli.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/01-build-cli.json",
+      "source_sha256": "ead25dbb04dd030abc41ab6e5e527f664a001fe6616285c3896506eba9b54f48",
+      "source_bytes": 362,
+      "published_sha256": "ead25dbb04dd030abc41ab6e5e527f664a001fe6616285c3896506eba9b54f48",
+      "published_bytes": 362,
+      "path_substitutions": []
+    },
+    {
+      "file": "01-build-cli.log",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/01-build-cli.log",
+      "source_sha256": "35f3caf620eca6ef1b3f0826605cf3a6e21e5c36f80093cddd0c54327ca62df9",
+      "source_bytes": 263,
+      "published_sha256": "8fa9d67baee168d9124ec0579e77b85826bad5b964b1581effc6d902cbccd818",
+      "published_bytes": 258,
+      "path_substitutions": [
+        {
+          "source_prefix": "../nhc-b-persistent-runtime",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "02-test.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/02-test.json",
+      "source_sha256": "e94211a49a86a4ad90c2cc9789ea21a9477b702fd7c1b9793cf195ca326bdaff",
+      "source_bytes": 368,
+      "published_sha256": "e94211a49a86a4ad90c2cc9789ea21a9477b702fd7c1b9793cf195ca326bdaff",
+      "published_bytes": 368,
+      "path_substitutions": []
+    },
+    {
+      "file": "02-test.log",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/02-test.log",
+      "source_sha256": "8e0371951f7ffb3cf049b82826ce7c0facbf39ed41fc420addc4fdaeb7ff94fb",
+      "source_bytes": 42068,
+      "published_sha256": "bc304fa421b9503c8f715103d43c50e4f92b1c7e54c1f3f7474b64c63846af97",
+      "published_bytes": 42008,
+      "path_substitutions": [
+        {
+          "source_prefix": "../nhc-b-persistent-runtime",
+          "occurrences": 5
+        },
+        {
+          "source_prefix": "../nhc-b-persistent-runtime",
+          "occurrences": 5
+        }
+      ]
+    },
+    {
+      "file": "03-clippy.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/03-clippy.json",
+      "source_sha256": "ae1984966a0abdf2264d82b11c087290af65814943e1cbf8d21a2ebd48fd0233",
+      "source_bytes": 372,
+      "published_sha256": "ae1984966a0abdf2264d82b11c087290af65814943e1cbf8d21a2ebd48fd0233",
+      "published_bytes": 372,
+      "path_substitutions": []
+    },
+    {
+      "file": "03-clippy.log",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/03-clippy.log",
+      "source_sha256": "6eff79284c1888952faa41b530829ad450b3d129f06773422b6c6ef0215c8653",
+      "source_bytes": 1919,
+      "published_sha256": "75c27c45b12ba453bd709355a602b115cd2520eb392ef542dfd6c42337a68a81",
+      "published_bytes": 1909,
+      "path_substitutions": [
+        {
+          "source_prefix": "../nhc-b-persistent-runtime",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "file": "cli-binary.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/cli-binary.json",
+      "source_sha256": "6aecfef6b5175c220ac16d90439b519b49a3bb1d612b6dab0ef766b0b028bee7",
+      "source_bytes": 310,
+      "published_sha256": "e3ba3c7ba3179d670dbd207f3d4d25f6e9cafdfaffaf5a14d8b11c43164b10b1",
+      "published_bytes": 303,
+      "path_substitutions": [
+        {
+          "source_prefix": "../nhc-b-persistent-runtime",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "postflight.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/postflight.json",
+      "source_sha256": "03bf8f982de93fa16ee6156ad6c740656d39ee83993a1708727d2a6aefc1bd32",
+      "source_bytes": 308,
+      "published_sha256": "03bf8f982de93fa16ee6156ad6c740656d39ee83993a1708727d2a6aefc1bd32",
+      "published_bytes": 308,
+      "path_substitutions": []
+    },
+    {
+      "file": "preflight.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/preflight.json",
+      "source_sha256": "ade7e476c0a1f22bf4b3d4b80f1c9ed5d353f0feb9e00ce1663319dfd30658ad",
+      "source_bytes": 945,
+      "published_sha256": "4844eaad38ca60fcc3049c3d30cbcc0a3cbb01cc67aadb6a3199bb998876db4f",
+      "published_bytes": 871,
+      "path_substitutions": [
+        {
+          "source_prefix": "../nhc-b-persistent-runtime",
+          "occurrences": 2
+        },
+        {
+          "source_prefix": "[windows-sdk]",
+          "occurrences": 1
+        },
+        {
+          "source_prefix": "[msvc]",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "source-after.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/source-after.json",
+      "source_sha256": "169218507443f7d35e97e804ea3ed696df0a5db30f5553da9a65f0691d774108",
+      "source_bytes": 22050,
+      "published_sha256": "169218507443f7d35e97e804ea3ed696df0a5db30f5553da9a65f0691d774108",
+      "published_bytes": 22050,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-before.json",
+      "source": "../nhc-b-persistent-runtime/NoManCode/rust-app/.local/next18-b-ffeeac-attempt2/logs/source-before.json",
+      "source_sha256": "169218507443f7d35e97e804ea3ed696df0a5db30f5553da9a65f0691d774108",
+      "source_bytes": 22050,
+      "published_sha256": "169218507443f7d35e97e804ea3ed696df0a5db30f5553da9a65f0691d774108",
+      "published_bytes": 22050,
+      "path_substitutions": []
+    }
+  ]
+}
