@@ -4539,35 +4539,213 @@ mod tests {
 
     #[test]
     fn r04_reopened_approval_cannot_claim_with_redacted_arguments() {
+        use crate::network_authorization::{ConfirmRequest, NetworkSubject, NetworkSubjectKind};
+        use crate::project_config::{ConfigureProject, ProjectConfig, RegisterProject};
+        use crate::provider_transport::NetworkPurpose;
+
         let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("project");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        let target = root.join("src/a");
+        std::fs::write(&target, b"original sentinel").unwrap();
         let path = temp.path().join("r04-reopen.db");
         let store = Store::open(&path).unwrap();
-        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
-        task.spec.tools = true;
-        task.spec.write_scopes = vec!["src".into()];
-        let args = json!({"path":"src/a","content":"Bearer mock-approval-secret","env":{"API_KEY":"nested-secret"}});
-        task.messages = vec![
-            json!({"role":"user","content":"hello"}),
-            json!({"role":"assistant","content":null,"tool_calls":[{"id":"r04-call","type":"function",
-                "function":{"name":"write_file","arguments":args.to_string()}}]}),
-        ];
+        let route = Route {
+            id: "route".into(),
+            name: "route".into(),
+            base_url: "http://127.0.0.1:32001/v1".into(),
+            model: "mock".into(),
+            max_tokens: 128,
+            parallel_limit: 1,
+            key_env: None,
+        };
         store
-            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+            .save_settings(&Settings {
+                workspace: root.to_string_lossy().into(),
+                max_concurrency: 1,
+                routes: vec![route.clone()],
+                newapi: None,
+            })
             .unwrap();
+        store
+            .put_secret("route::route", "fixture-credential")
+            .unwrap();
+        let project = store
+            .register_project(RegisterProject {
+                name: "r04 project".into(),
+                root_path: root.to_string_lossy().into(),
+                idempotency_key: "r04-project".into(),
+            })
+            .unwrap();
+        let initial = store.project_config(&project.id).unwrap();
+        let config = store
+            .configure_project(ConfigureProject {
+                project_id: project.id.clone(),
+                expected_revision: initial.revision,
+                config: ProjectConfig {
+                    allowed_route_ids: vec!["route".into()],
+                    default_route_id: Some("route".into()),
+                    tools: true,
+                    write_scopes: vec!["src".into()],
+                    allow_commands: false,
+                },
+            })
+            .unwrap();
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: "route".into(),
+            project_id: Some(project.id.clone()),
+        };
+        let preview = store.network_preview(subject.clone()).unwrap();
+        store
+            .network_confirm(
+                subject,
+                ConfirmRequest {
+                    config_revision: preview.config_revision,
+                    credential_revision: preview.credential_revision,
+                    binding_digest: preview.binding_digest,
+                    purposes: vec![NetworkPurpose::Completion],
+                },
+                "r04-grant",
+            )
+            .unwrap();
+        let session = Session {
+            id: SessionId::from("r04-session"),
+            project_id: project.id.clone(),
+            kind: SessionKind::Chat,
+            title: "r04 session".into(),
+            legacy_run_id: "r04-session".into(),
+            created_at: 10,
+            updated_at: 10,
+        };
+        let agent = Agent {
+            id: AgentId::from("r04-agent"),
+            session_id: session.id.clone(),
+            display_name: "agent".into(),
+            role: "worker".into(),
+            created_at: 10,
+        };
+        let turn = Turn {
+            id: TurnId::from("r04-turn"),
+            session_id: session.id.clone(),
+            project_id: project.id.clone(),
+            status: LifecycleStatus::Queued,
+            request_hash: "digest-a".into(),
+            idempotency_key: Some("idem-a".into()),
+            created_at: 10,
+            updated_at: 10,
+        };
+        let projected = TurnTask {
+            id: TaskId::from("r04-projected"),
+            turn_id: turn.id.clone(),
+            session_id: session.id.clone(),
+            agent_id: agent.id.clone(),
+            legacy_task_id: "r04-task".into(),
+            depends_on: vec![],
+            status: LifecycleStatus::Queued,
+            created_at: 10,
+            updated_at: 10,
+        };
+        let args = json!({"path":"src/a","content":"Bearer mock-approval-secret","env":{"API_KEY":"nested-secret"}});
+        let mut task = Task {
+            id: projected.legacy_task_id.clone(),
+            run_id: session.legacy_run_id.clone(),
+            spec: TaskSpec {
+                name: "worker".into(),
+                role: "worker".into(),
+                route_id: "route".into(),
+                prompt: "hello".into(),
+                depends_on: vec![],
+                write_scopes: vec!["src".into()],
+                tools: true,
+                allow_commands: false,
+                max_rounds: 1,
+            },
+            route,
+            workspace: project.root_path.clone(),
+            status: "queued".into(),
+            output: String::new(),
+            error: None,
+            messages: vec![
+                json!({"role":"user","content":"hello"}),
+                json!({"role":"assistant","content":null,"tool_calls":[{"id":"r04-call","type":"function",
+                    "function":{"name":"write_file","arguments":args.to_string()}}]}),
+            ],
+            usage: Value::Null,
+            created_at: 10,
+            updated_at: 10,
+        };
+        store
+            .commit_turn_bundle_in_project(
+                TurnBundle {
+                    project: &project,
+                    session: &session,
+                    agents: std::slice::from_ref(&agent),
+                    turn: &turn,
+                    tasks: std::slice::from_ref(&projected),
+                    legacy_tasks: std::slice::from_ref(&task),
+                },
+                Some("idem-a"),
+                config.revision,
+            )
+            .unwrap();
+        let binding = store.task_project_binding(&task.id).unwrap().unwrap();
+        assert_eq!(binding.project_id, project.id);
+        assert_eq!(binding.config_revision, config.revision);
+        assert_eq!(
+            store
+                .validate_project_task(&task, true, true)
+                .unwrap()
+                .permission_digest,
+            binding.permission_digest
+        );
+        task.status = "running".into();
+        store.save_task(&task).unwrap();
         let (record, created) = store
             .ensure_approval(&task, "r04-call", "write_file", &args)
             .unwrap();
         assert!(created);
-        store.decide_approval(&record.id, true, "user").unwrap();
+        let digest = approval::args_digest(&args).unwrap();
+        assert_eq!(record.args_digest, digest);
+        let approved = store.decide_approval(&record.id, true, "user").unwrap();
+        assert_eq!(approved.status, approval::ApprovalStatus::Approved);
+        assert_eq!(
+            approved.execution_state,
+            approval::ExecutionState::NotStarted
+        );
+        assert_eq!(approved.args_digest, digest);
+        assert_eq!(approved.binding_digest, record.binding_digest);
         drop(store);
         let reopened = Store::open(&path).unwrap();
         reopened.recover().unwrap();
-        let saved = reopened.task(&task.id).unwrap();
-        assert!(
-            !serde_json::to_string(&saved)
+        let mut saved = reopened.task(&task.id).unwrap();
+        assert_eq!(saved.status, "interrupted");
+        assert_eq!(
+            reopened
+                .task_project_binding(&task.id)
                 .unwrap()
-                .contains("mock-approval-secret")
+                .unwrap()
+                .project_id,
+            project.id
         );
+        assert_eq!(
+            reopened
+                .validate_project_task(&saved, true, true)
+                .unwrap()
+                .permission_digest,
+            binding.permission_digest
+        );
+        let recovered = reopened.approval(&record.id).unwrap();
+        assert_eq!(recovered.status, approval::ApprovalStatus::Approved);
+        assert_eq!(
+            recovered.execution_state,
+            approval::ExecutionState::NotStarted
+        );
+        assert_eq!(recovered.args_digest, digest);
+        assert_eq!(recovered.binding_digest, record.binding_digest);
+        let serialized = serde_json::to_string(&saved).unwrap();
+        assert!(!serialized.contains("mock-approval-secret"));
+        assert!(!serialized.contains("nested-secret"));
         let safe_args: Value = serde_json::from_str(
             saved.messages[1]["tool_calls"][0]["function"]["arguments"]
                 .as_str()
@@ -4575,6 +4753,14 @@ mod tests {
         )
         .unwrap();
         assert!(safe_args.is_object());
+        assert_ne!(approval::args_digest(&safe_args).unwrap(), digest);
+        saved.status = "queued".into();
+        saved.error = None;
+        reopened.resume_task(&saved, "continue").unwrap();
+        saved.status = "running".into();
+        reopened.save_task(&saved).unwrap();
+        assert_eq!(reopened.task(&task.id).unwrap().status, "running");
+        reopened.validate_project_task(&saved, true, true).unwrap();
         let error = reopened
             .claim_approval(&saved, "r04-call", "write_file", &safe_args)
             .unwrap_err();
@@ -4582,10 +4768,11 @@ mod tests {
             error.downcast_ref::<approval::ApprovalError>(),
             Some(approval::ApprovalError::BindingConflict { .. })
         ));
-        assert_eq!(
-            reopened.approval(&record.id).unwrap().execution_state,
-            approval::ExecutionState::NotStarted
-        );
+        let after = reopened.approval(&record.id).unwrap();
+        assert_eq!(after.status, approval::ApprovalStatus::Approved);
+        assert_eq!(after.execution_state, approval::ExecutionState::NotStarted);
+        assert_eq!(after.args_digest, digest);
+        assert_eq!(after.binding_digest, record.binding_digest);
         assert!(
             reopened
                 .workspace_changes_for_task(&task.id)
@@ -4599,6 +4786,7 @@ mod tests {
                 .iter()
                 .any(|event| event.kind == "tool_start")
         );
+        assert_eq!(std::fs::read(&target).unwrap(), b"original sentinel");
     }
 
     #[test]
