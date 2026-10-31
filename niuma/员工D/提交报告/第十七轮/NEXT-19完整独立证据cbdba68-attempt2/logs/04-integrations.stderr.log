@@ -1,0 +1,15 @@
+   Compiling peachsh v0.2.0 (../nhc-d-tool-result-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 26.37s
+     Running tests\approval_gate.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\approval_gate-1b3df4abe1ca7b56.exe)
+     Running tests\approval_http.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\approval_http-54aca6d647d3719f.exe)
+
+thread 'ah01_ah09_ah10_safe_dto_order_and_task_isolation' (55964) panicked at tests\approval_http.rs:255:10:
+called `Result::unwrap()` on an `Err` value: tool result conflicts with persisted state
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'ah02_ah08_ah12_decision_snapshot_conflict_and_concurrency' (56740) panicked at tests\approval_http.rs:255:10:
+called `Result::unwrap()` on an `Err` value: tool result conflicts with persisted state
+
+thread 'ah11_real_busy_decision_is_retryable_and_corruption_is_not' (48432) panicked at tests\approval_http.rs:255:10:
+called `Result::unwrap()` on an `Err` value: tool result conflicts with persisted state
+error: test failed, to rerun pass `--test approval_http`

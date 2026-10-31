@@ -1,0 +1,1 @@
+case=s06-inherited-pipe phase=descendant-owned parent_pid=49000 parent_created=134379321630097337 descendant_pid=44180 descendant_created=134379321636798905

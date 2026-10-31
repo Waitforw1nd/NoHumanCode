@@ -1,0 +1,29 @@
+{
+  "call": "legacy-kill",
+  "files": [
+    {
+      "bytes": 4096,
+      "name": "agent.db",
+      "present": true,
+      "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+    },
+    {
+      "bytes": 1124792,
+      "name": "agent.db-wal",
+      "present": true,
+      "sha256": "09c08512b9e9a4c4cabae600f140906fec17adbeeef378ebf3f7c671efc2eba0"
+    },
+    {
+      "bytes": 32768,
+      "name": "agent.db-shm",
+      "present": true,
+      "sha256": "21e8b2a1c8b362497c5a34ed5fa5d5a82fda6cbea0e1261b1ead5f0232ed5785"
+    }
+  ],
+  "kill": "ok",
+  "phase": "agent_after_assistant_save",
+  "pid": 56796,
+  "reaped": true,
+  "task": "ac8ef4a7-7974-44db-8964-b46f4935a3ee",
+  "wait": "ExitStatus(ExitStatus(1))"
+}

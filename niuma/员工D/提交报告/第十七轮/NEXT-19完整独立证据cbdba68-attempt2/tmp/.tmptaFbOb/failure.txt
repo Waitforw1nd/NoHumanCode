@@ -1,0 +1,1 @@
+case=pipe-eof phase=preparation-failed error=stdout EOF after parent exit and sentinel

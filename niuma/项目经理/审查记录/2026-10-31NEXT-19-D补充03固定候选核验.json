@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-31",
+  "reviewer": "项目经理",
+  "base": "82865baa23469887fce8584ef0587aaf3ede83a5",
+  "candidate": "cbdba68205ba40c6c9e23777520c054eb8653ffd",
+  "NoManCode_tree": "a7f36b202e8f71da94df72ca2a9be436c22db191",
+  "Rust_tree": "55aea660485681924a5148c1a962ab87aa5c9965",
+  "worktree": "../nhc-d-tool-result-tests",
+  "branch": "codex/d/tool-result-tests",
+  "clean": true,
+  "diff_check": "passed",
+  "changed_paths": [
+    {
+      "path": "NoManCode/rust-app/src/tool_result_tests.rs",
+      "length": 40538,
+      "sha256": "018f66a39bbff4283af70a6b192c35f480b6b98cb375918749cf90029e28b097",
+      "git_blob": "ee94618cec801eb11fc6cede26a8f4baaf3cc3bf",
+      "raw_equals_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_http.rs",
+      "length": 83663,
+      "sha256": "0400c9796705915eacb64350d9c97bdb59ac5a0f914374fd2c8f11c45b6f410e",
+      "git_blob": "3f98f3ff1a307f841ed57e98e8bb142084ac6603",
+      "raw_equals_blob": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/tool_result_crash.rs",
+      "length": 7827,
+      "sha256": "7f6551e32dbd95a1c5fa3fd496a8a18dfd9f59d951770366ba028ca6c3fb37dd",
+      "git_blob": "62235cefa39d141af68fd13f49f44dbc2586cd57",
+      "raw_equals_blob": true
+    }
+  ],
+  "product_build_or_tests_run_by_manager": false
+}
