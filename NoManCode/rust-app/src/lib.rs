@@ -36,7 +36,11 @@ mod runtime_management_tests;
 pub mod secrets;
 pub mod server;
 pub mod store;
+#[cfg(all(test, windows))]
+mod tool_application_tests;
 mod tool_call_application;
+#[cfg(all(test, windows))]
+mod tool_result_tests;
 mod tool_results;
 pub mod tool_runtime;
 pub mod wasm;
