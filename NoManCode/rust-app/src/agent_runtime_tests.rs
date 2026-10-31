@@ -1249,8 +1249,7 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
         let run = engine.start(request(3)).await.unwrap();
         let task_id = run.tasks[0].id.clone();
         crate::engine::crash_probe::arm(task_id.clone(), phase, root.join("crash-signal"));
-        crate::worktree_diagnostics::atomic_write(&root.join("armed"), task_id.as_bytes())
-            .unwrap();
+        crate::worktree_diagnostics::atomic_write(&root.join("armed"), task_id.as_bytes()).unwrap();
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
