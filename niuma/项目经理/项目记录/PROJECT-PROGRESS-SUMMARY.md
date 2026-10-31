@@ -2,6 +2,8 @@
 
 更新人：项目经理。原B实时running并已开始A独立树Windows依赖/模块及隔离草稿，尚未固定候选、编译或测试，不能称隔离通过。经理已核主线新建/append/resume/run_task/recover实际事务入口，保存任务绑定与恢复接线预审：Task guard与单次worker分离、resume前拒绝stale、迟到决策撤销边界及unknown解除路径。为推进核心，正式派原C第二十二轮只读独立审查该后续业务契约，C此前冻结仅对本只读审查解除；不开放产品/构建。B唯一产品写入、D冻结。下一第一操作审B固定候选与C独立具体反例，再冻结后续真实调用链；主线产品双tree保持NEXT-20，继承41行/历史现场保留，全项目active。
 
+原C本人已核94a9e4ef/双产品tree/祖先及空index、unmerged，现只读审查中。经理另保存原B06:09隔离草稿快照，向其反馈统一错误回收、实际进程映像身份、integrity判定和profile资源四项预审；仍未固定或动态验证，详员工B第二十轮实施中预审。
+
 ## 2026-11-01 NEXT-21设计核收，原B进程隔离先决实施
 
 更新人：项目经理。原B第二十轮外部运行时设计完成并释放；经理审真实typed接线/任务固定/旧DTO兼容，收紧总Agent master guard与持久revoke阶段；已允许最小只读loader例外，LPAC不能代替实际能力证据。正式冻结NEXT-21A隔离先决S01-S08，新建../nhc-b-external-runtime-isolation、codex/b/external-runtime-isolation，基线69ccc53e/产品897cc851/Rust3672895f且clean已核。仅原B静态实现及之后组件验证，首次动态前一次审查；C/D冻结，不改Engine/Store/schema或用户应用层。主线产品仍NEXT-20已验收，A及完整NEXT-21尚未验证。下一第一操作核B回执及固定候选，审实际token/ACL/Job/管道/失败回收和反例；继承41行与历史现场保留，全项目active。
