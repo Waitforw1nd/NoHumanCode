@@ -311,8 +311,31 @@ async fn composition_contract_security_disabled_and_storage_failure() {
     }
     assert!(!value.to_string().contains(TOKEN));
     assert!(!value.to_string().contains(STORE_SECRET));
-    rusqlite::Connection::open(&db)
-        .unwrap()
+    let connection = rusqlite::Connection::open(&db).unwrap();
+    connection
+        .execute_batch("PRAGMA ignore_check_constraints=ON")
+        .unwrap();
+    assert_eq!(
+        connection
+            .execute(
+                "UPDATE plugin_desired SET revision=?1 WHERE plugin_id='builtin.files'",
+                [STORE_SECRET]
+            )
+            .unwrap(),
+        1
+    );
+    let corrupt = client
+        .get(&endpoint)
+        .header("x-peachsh-token", TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(corrupt.status(), 500);
+    let corrupt_body = corrupt.text().await.unwrap();
+    for forbidden in [TOKEN, STORE_SECRET, "plugin_desired", "SELECT", "sqlite"] {
+        assert!(!corrupt_body.contains(forbidden), "{corrupt_body}");
+    }
+    connection
         .execute(
             "DELETE FROM plugin_desired WHERE plugin_id='builtin.files'",
             [],
