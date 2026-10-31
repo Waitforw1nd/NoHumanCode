@@ -290,7 +290,7 @@ async fn prepare_in(
         descendant_script
     };
     std::fs::write(root.join("descendant.ps1"), descendant_script)?;
-    let parent_script = r#"$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'allow')) { if([DateTime]::UtcNow -gt $end){exit 96}; Start-Sleep -Milliseconds 10 }; $p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-NonInteractive'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $c=[Diagnostics.Process]::Start($p); [IO.File]::WriteAllText('handle-pending',[string]$c.Handle.ToInt64()); Move-Item 'handle-pending' 'handle-ready'; while(!(Test-Path 'ack')) { if([DateTime]::UtcNow -gt $end){exit 97}; Start-Sleep -Milliseconds 10 }; exit 0"#;
+    let parent_script = r#"$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'allow')) { if([DateTime]::UtcNow -gt $end){exit 96}; Start-Sleep -Milliseconds 10 }; $p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.RedirectStandardInput=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-NonInteractive'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $c=[Diagnostics.Process]::Start($p); $c.StandardInput.Close(); [IO.File]::WriteAllText('handle-pending',[string]$c.Handle.ToInt64()); Move-Item 'handle-pending' 'handle-ready'; while(!(Test-Path 'ack')) { if([DateTime]::UtcNow -gt $end){exit 97}; Start-Sleep -Milliseconds 10 }; exit 0"#;
     let parent_script = match mode {
         "parent-exit" => "$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'allow')) { if([DateTime]::UtcNow -gt $end){exit 96}; Start-Sleep -Milliseconds 10 }; exit 42".to_owned(),
         "no-marker" => parent_script.replace("Move-Item 'handle-pending' 'handle-ready';", ""),
@@ -341,7 +341,28 @@ async fn prepare_in(
         ensure!(status.code() == Some(0), "original parent exit code {:?}", status.code());
         let mut stdout = child.stdout.take().context("stdout unavailable")?;
         let mut sentinel = [0; 8];
-        stdout.read_exact(&mut sentinel).await?;
+        let mut count = 0;
+        loop {
+            let bytes = sentinel[..count].iter().map(|b| format!("{b:02x}")).collect::<String>();
+            std::fs::write(root.join("sentinel-read.txt"), format!("phase=waiting count={count} bytes_hex={bytes}\n"))?;
+            match stdout.read(&mut sentinel[count..]).await {
+                Ok(0) => {
+                    std::fs::write(root.join("sentinel-read.txt"), format!("phase=early-eof count={count} bytes_hex={bytes}\n"))?;
+                    bail!("sentinel early EOF after {count} bytes");
+                }
+                Ok(n) => {
+                    count += n;
+                    let bytes = sentinel[..count].iter().map(|b| format!("{b:02x}")).collect::<String>();
+                    let phase = if count == sentinel.len() { "complete" } else { "partial" };
+                    std::fs::write(root.join("sentinel-read.txt"), format!("phase={phase} count={count} bytes_hex={bytes}\n"))?;
+                    if count == sentinel.len() { break; }
+                }
+                Err(error) => {
+                    std::fs::write(root.join("sentinel-read.txt"), format!("phase=read-error count={count} bytes_hex={bytes} kind={:?}\n", error.kind()))?;
+                    return Err(error.into());
+                }
+            }
+        }
         ensure!(&sentinel == b"sentinel", "sentinel mismatch");
         std::fs::write(root.join("sentinel.txt"), "sentinel=observed\n")?;
         let mut byte = [0; 1];
