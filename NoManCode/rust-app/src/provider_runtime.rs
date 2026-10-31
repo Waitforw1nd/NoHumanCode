@@ -376,10 +376,10 @@ impl ProviderRuntime {
                 .state
                 .lock()
                 .map_err(|_| anyhow::anyhow!("provider runtime lock"))?;
-            if let Some(store) = store {
-                if !store.plugin_desired_for(PROVIDER)?.enabled {
-                    anyhow::bail!("provider runtime unavailable");
-                }
+            if let Some(store) = store
+                && !store.plugin_desired_for(PROVIDER)?.enabled
+            {
+                anyhow::bail!("provider runtime unavailable");
             }
             if state.host.is_none() {
                 anyhow::bail!("provider transition in progress");

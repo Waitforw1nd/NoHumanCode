@@ -426,14 +426,13 @@ impl AgentRuntime {
     fn enable_with_store(&self, store: Option<&crate::store::Store>) -> Result<(), AgentError> {
         let host = {
             let mut s = self.inner.state.lock().map_err(|_| AgentError::Internal)?;
-            if let Some(store) = store {
-                if !store
+            if let Some(store) = store
+                && !store
                     .plugin_desired_for(PROVIDER)
                     .map_err(|_| AgentError::Internal)?
                     .enabled
-                {
-                    return Err(AgentError::Unavailable);
-                }
+            {
+                return Err(AgentError::Unavailable);
             }
             if s.transitioning {
                 return Err(AgentError::Busy);
