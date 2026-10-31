@@ -855,3 +855,97 @@ fn t07_no_id_duplicate_result_cannot_be_attributed_to_the_next_call() {
         .collect();
     assert_eq!(after, original);
 }
+
+#[test]
+fn t04_read_conflict_and_authoritative_replay_after_other_store_append() {
+    use crate::tool_results::ToolResultError;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("read-race.db");
+    let calls = ["read-a", "read-b"].into_iter().map(|id| json!({"id":id,"type":"function","function":{"name":"read_file","arguments":"{\"path\":\"a\"}"}})).collect();
+    let (store, original) = fixture_calls(&path, calls);
+    let other = Store::open(&path).unwrap();
+    let (first, inserted) = store
+        .commit_tool_result(
+            &original,
+            "read-a",
+            "read_file",
+            r#"{"text":"A"}"#,
+            Origin::ReadCompleted,
+        )
+        .unwrap();
+    assert_eq!(inserted, CommitDisposition::Inserted);
+    let after_a = snapshot(&store);
+    let events_a = serde_json::to_value(store.events(&original.run_id, 0).unwrap()).unwrap();
+    let error = other
+        .commit_tool_result(
+            &original,
+            "read-a",
+            "read_file",
+            r#"{"text":"B"}"#,
+            Origin::ReadCompleted,
+        )
+        .unwrap_err();
+    assert!(matches!(
+        error.downcast_ref::<ToolResultError>(),
+        Some(ToolResultError::Conflict | ToolResultError::Corrupt)
+    ));
+    assert_eq!(snapshot(&store), after_a);
+    assert_eq!(
+        serde_json::to_value(store.events(&original.run_id, 0).unwrap()).unwrap(),
+        events_a
+    );
+
+    let error = other
+        .commit_tool_result(
+            &original,
+            "read-b",
+            "read_file",
+            r#"{"text":"second"}"#,
+            Origin::ReadCompleted,
+        )
+        .unwrap_err();
+    assert!(matches!(
+        error.downcast_ref::<ToolResultError>(),
+        Some(ToolResultError::Conflict | ToolResultError::Corrupt)
+    ));
+    assert_eq!(snapshot(&store), after_a);
+    assert_eq!(
+        serde_json::to_value(store.events(&original.run_id, 0).unwrap()).unwrap(),
+        events_a
+    );
+
+    let (current, inserted) = other
+        .commit_tool_result(
+            &first,
+            "read-b",
+            "read_file",
+            r#"{"text":"second"}"#,
+            Origin::ReadCompleted,
+        )
+        .unwrap();
+    assert_eq!(inserted, CommitDisposition::Inserted);
+    let after_b = snapshot(&store);
+    let events_b = serde_json::to_value(store.events(&original.run_id, 0).unwrap()).unwrap();
+    assert_eq!(after_b.3, 2);
+    let (replayed, disposition) = store
+        .commit_tool_result(
+            &original,
+            "read-a",
+            "read_file",
+            r#"{"text":"A"}"#,
+            Origin::ReadCompleted,
+        )
+        .unwrap();
+    assert_eq!(disposition, CommitDisposition::Replayed);
+    assert_eq!(
+        serde_json::to_value(&replayed).unwrap(),
+        serde_json::to_value(&current).unwrap()
+    );
+    assert_eq!(replayed.messages.len(), original.messages.len() + 2);
+    assert_eq!(replayed.messages.last().unwrap()["tool_call_id"], "read-b");
+    assert_eq!(snapshot(&store), after_b);
+    assert_eq!(
+        serde_json::to_value(store.events(&original.run_id, 0).unwrap()).unwrap(),
+        events_b
+    );
+}
