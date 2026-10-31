@@ -71,6 +71,18 @@ impl Drop for NetworkSlot {
     }
 }
 impl Engine {
+    /// In-memory control; the next process starts with the builtin enabled.
+    pub fn disable_builtin_provider(&self) -> Result<()> {
+        self.provider_runtime.disable()
+    }
+    pub fn enable_builtin_provider(&self) -> Result<()> {
+        self.provider_runtime.enable()
+    }
+    pub fn builtin_provider_status(
+        &self,
+    ) -> Result<crate::provider_runtime::ProviderRuntimeStatus> {
+        self.provider_runtime.status()
+    }
     async fn acquire_network_slot(&self) -> std::result::Result<NetworkSlot, NetworkError> {
         loop {
             let notified = self.slot_notify.notified();
@@ -331,29 +343,38 @@ impl Engine {
                 calls: models.calls,
             });
         }
+        route.max_tokens = 128;
+        let messages = [json!({"role":"user","content":"Return only the result of 17 * 19."})];
+        let prepared = self
+            .provider_runtime
+            .prepare(&crate::provider_runtime::CompletionInput {
+                model: &route.model,
+                max_tokens: route.max_tokens,
+                messages: &messages,
+                tools: &[],
+            })
+            .map_err(|mut e| {
+                e.calls.splice(0..0, models.calls.clone());
+                e
+            })?;
         let next = {
             let _gate = self.gate.lock().await;
-            self.store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
+            self.provider_runtime.acquire(prepared, || {
+                self.store
+                    .network_admit(&subject, NetworkPurpose::Completion, None)
+            })
         };
-        let (permit, receipt) = next.map_err(|mut e| {
+        let (lease, (permit, receipt)) = next.map_err(|mut e| {
             e.calls.splice(0..0, models.calls.clone());
             e
         })?;
-        route.max_tokens = 128;
         let completion = self
             .store
             .finish_completion(
                 receipt,
-                provider::complete(
-                    &self.client,
-                    permit,
-                    &route,
-                    &[json!({"role":"user","content":"Return only the result of 17 * 19."})],
-                    &[],
-                    |_| Ok(()),
-                )
-                .await,
+                lease
+                    .execute(&self.client, permit, &route, &mut |_| Ok(()))
+                    .await,
             )
             .map_err(|mut e| {
                 e.calls.splice(0..0, models.calls.clone());
@@ -567,6 +588,7 @@ pub struct Engine {
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
     deferred_resume: Mutex<HashMap<String, String>>,
     tool_runtime: ToolRuntime,
+    provider_runtime: crate::provider_runtime::ProviderRuntime,
     #[cfg(test)]
     worktree_probe: Mutex<Option<WorktreeProbe>>,
     #[cfg(test)]
@@ -580,19 +602,44 @@ impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
         let (files, shell) = store.builtin_plugin_states()?;
         let tool_runtime = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
-        Self::assemble(store, max_concurrency, tool_runtime)
+        Self::assemble(
+            store,
+            max_concurrency,
+            tool_runtime,
+            crate::provider_runtime::ProviderRuntime::builtin()?,
+        )
     }
     #[cfg(test)]
     pub(crate) fn new_with_runtime_for_test(
         store: Arc<Store>,
         runtime: ToolRuntime,
     ) -> Result<Arc<Self>> {
-        Self::assemble(store, 2, runtime)
+        Self::assemble(
+            store,
+            2,
+            runtime,
+            crate::provider_runtime::ProviderRuntime::builtin()?,
+        )
+    }
+    #[cfg(test)]
+    pub(crate) fn new_with_provider_runtime_for_test(
+        store: Arc<Store>,
+        max_concurrency: usize,
+        runtime: crate::provider_runtime::ProviderRuntime,
+    ) -> Result<Arc<Self>> {
+        let (files, shell) = store.builtin_plugin_states()?;
+        let tools = ToolRuntime::builtin_with_plugin_states(files.enabled, shell.enabled)?;
+        Self::assemble(store, max_concurrency, tools, runtime)
+    }
+    #[cfg(test)]
+    pub(crate) fn provider_runtime_for_test(&self) -> &crate::provider_runtime::ProviderRuntime {
+        &self.provider_runtime
     }
     fn assemble(
         store: Arc<Store>,
         max_concurrency: usize,
         tool_runtime: ToolRuntime,
+        provider_runtime: crate::provider_runtime::ProviderRuntime,
     ) -> Result<Arc<Self>> {
         Ok(Arc::new(Self {
             store,
@@ -606,6 +653,7 @@ impl Engine {
             approval_waiters: Mutex::new(HashMap::new()),
             deferred_resume: Mutex::new(HashMap::new()),
             tool_runtime,
+            provider_runtime,
             #[cfg(test)]
             worktree_probe: Mutex::new(None),
             #[cfg(test)]
@@ -1600,25 +1648,27 @@ impl Engine {
                 "任务上下文过长，请创建新任务并提供摘要"
             );
             let mut text = String::new();
-            let (permit, receipt) = {
+            let prepared =
+                self.provider_runtime
+                    .prepare(&crate::provider_runtime::CompletionInput {
+                        model: &task.route.model,
+                        max_tokens: task.route.max_tokens,
+                        messages: &task.messages,
+                        tools: &tools,
+                    })?;
+            let (lease, (permit, receipt)) = {
                 let _gate = self.gate.lock().await;
-                self.store.network_admit(
-                    &self.task_route_subject(task)?,
-                    NetworkPurpose::Completion,
-                    Some(task),
-                )?
+                let subject = self.task_route_subject(task)?;
+                self.provider_runtime.acquire(prepared, || {
+                    self.store
+                        .network_admit(&subject, NetworkPurpose::Completion, Some(task))
+                })?
             };
-            let call = provider::complete(
-                &self.client,
-                permit,
-                &task.route,
-                &task.messages,
-                &tools,
-                |delta| {
-                    text.push_str(delta);
-                    self.store.event(&task.id, "delta", json!({"text":delta}))
-                },
-            );
+            let mut emit = |delta: &str| {
+                text.push_str(delta);
+                self.store.event(&task.id, "delta", json!({"text":delta}))
+            };
+            let call = lease.execute(&self.client, permit, &task.route, &mut emit);
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
             let result = self.store.finish_completion(receipt, result);
             task.output.push_str(&text);

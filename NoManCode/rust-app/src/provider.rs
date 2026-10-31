@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 pub fn client() -> Result<ProviderClient> {
     Ok(ProviderClient::new()?)
 }
-async fn json_response(
+pub(crate) async fn json_response(
     response: reqwest::Response,
 ) -> std::result::Result<(Value, u16), TransportError> {
     let status = response.status();
@@ -185,6 +185,54 @@ impl Decoder {
             ensure!(!self.text.trim().is_empty(), "模型没有返回内容");
         }
         Ok(message)
+    }
+}
+
+pub(crate) struct BuiltinCompletionCodec;
+
+impl crate::provider_runtime::CompletionCodec for BuiltinCompletionCodec {
+    fn encode(
+        &self,
+        input: &crate::provider_runtime::CompletionInput<'_>,
+    ) -> std::result::Result<Value, crate::provider_runtime::CodecError> {
+        Ok(crate::provider_runtime::expected_body(input))
+    }
+
+    fn decoder(
+        &self,
+    ) -> std::result::Result<
+        Box<dyn crate::provider_runtime::CompletionDecoder>,
+        crate::provider_runtime::CodecError,
+    > {
+        Ok(Box::new(Decoder::default()))
+    }
+}
+
+impl crate::provider_runtime::CompletionDecoder for Decoder {
+    fn feed(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
+        Decoder::feed(self, bytes, &mut |text| emit(text))
+            .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+
+    fn is_done(&self) -> bool {
+        self.done
+    }
+
+    fn finish(
+        self: Box<Self>,
+        emit: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<
+        crate::provider_runtime::CompletionOutput,
+        crate::provider_runtime::CodecError,
+    > {
+        let usage = self.usage.clone();
+        Decoder::finish(*self, &mut |text| emit(text))
+            .map(|message| (message, usage))
+            .map_err(|_| crate::provider_runtime::CodecError::Failed)
     }
 }
 pub async fn complete(
