@@ -900,9 +900,24 @@ impl Store {
         purpose: NetworkPurpose,
         task: Option<&crate::domain::Task>,
     ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
+        self.network_admit_with_runtime_revision(subject, purpose, task, None)
+    }
+    pub(crate) fn network_admit_with_runtime_revision(
+        &self,
+        subject: &NetworkSubject,
+        purpose: NetworkPurpose,
+        task: Option<&crate::domain::Task>,
+        revision: Option<u64>,
+    ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
         (|| -> AnyResult<_> {
-            let mut db = self.db.lock().unwrap();
+            let mut db = self.db.lock().map_err(|_| failure(NetworkErrorKind::Internal))?;
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            if let Some(expected) = revision {
+                let desired = crate::plugin_management::desired_for_tx(&tx, "builtin.provider-xpeach")?;
+                if !desired.enabled || desired.revision != expected {
+                    return Err(failure(NetworkErrorKind::Internal));
+                }
+            }
             let (grant, current) = checked_authorization(&tx, subject, &[purpose], task)?;
             crate::budget::admit_check_tx(&tx,subject,purpose)?;
             let target = validate_target(&current.snapshot.base_url, purpose)
@@ -959,18 +974,41 @@ impl Store {
                     json!({"call_id":id,"state":"claimed"}),
                 )?;
             }
+            #[cfg(test)]
+            let runtime_probe_path: Option<String> = if revision.is_some() {
+                Some(tx.query_row("SELECT file FROM pragma_database_list WHERE name='main'", [], |r| r.get(0))?)
+            } else {
+                None
+            };
+            #[cfg(test)]
+            if let Some(path) = &runtime_probe_path {
+                crate::engine::runtime_barrier::block(path, "runtime_provider_admit_before_commit");
+                crate::engine::crash_probe::block(path, "runtime_provider_admit_before_commit", "builtin.provider-xpeach");
+            }
             tx.commit()?;
+            #[cfg(test)]
+            if let Some(path) = &runtime_probe_path {
+                crate::engine::runtime_barrier::block(path, "runtime_provider_admit_after_commit");
+                crate::engine::crash_probe::block(path, "runtime_provider_admit_after_commit", "builtin.provider-xpeach");
+            }
             #[cfg(test)]
             crate::engine::crash_probe::block(&subject.key()?, "network-after-claim", &id);
             #[cfg(test)]
             if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-after-claim",&id);}
-            let permit = crate::provider_transport::ProviderPermit::new(
+            #[cfg(test)]
+            let injected_permit_failure = runtime_probe_path.as_ref()
+                .is_some_and(|path| crate::engine::runtime_barrier::take_permit_failure(path));
+            #[cfg(not(test))]
+            let injected_permit_failure = false;
+            let permit = if injected_permit_failure {
+                Err(crate::provider_transport::TransportError::Invalid)
+            } else { crate::provider_transport::ProviderPermit::new(
                 target,
                 current.credential,
                 id,
                 model,
                 user,
-            );
+            ) };
             drop(db);
             match permit {
                 Ok(permit) => Ok((permit, value)),

@@ -28,6 +28,11 @@ pub mod provider_usage;
 pub mod repository;
 #[cfg(all(test, windows))]
 mod restore_http_tests;
+pub mod runtime_management;
+#[cfg(all(test, windows))]
+mod runtime_management_crash_tests;
+#[cfg(all(test, windows))]
+mod runtime_management_tests;
 pub mod secrets;
 pub mod server;
 pub mod store;

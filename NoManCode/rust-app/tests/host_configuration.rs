@@ -1,4 +1,6 @@
 #![cfg(windows)]
+#[path = "support/schema_fixture.rs"]
+mod schema_fixture;
 use peachsh::{budget::*, network_authorization::*, project_config::*};
 use peachsh::{
     domain::*,
@@ -325,6 +327,7 @@ async fn real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved
     drop(engine);
     drop(store);
     // A controlled, nonempty schema15 fixture, not a claim about an old binary.
+    schema_fixture::restore_two_plugin_schema(&db);
     db.execute_batch("DROP TABLE host_config_requests; DROP TABLE host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; PRAGMA user_version=15").unwrap();
     let legacy = rows(&db);
     for _ in 0..2 {
@@ -334,10 +337,14 @@ async fn real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved
         let mut migrated = rows(&db);
         migrated.remove("host_config_state");
         migrated.remove("host_config_requests");
-        migrated
-            .get_mut("schema_migrations")
-            .unwrap()
-            .retain(|r| r[1] != Value::Text("host-route-configuration-v1".into()));
+        migrated.get_mut("schema_migrations").unwrap().retain(|r| {
+            r[1] != Value::Text("host-route-configuration-v1".into())
+                && r[1] != Value::Text("builtin-runtime-management-v1".into())
+        });
+        migrated.get_mut("plugin_desired").unwrap().retain(|r| {
+            r[1] == Value::Text("builtin.files".into())
+                || r[1] == Value::Text("builtin.shell".into())
+        });
         assert_eq!(migrated, legacy);
     }
 }
