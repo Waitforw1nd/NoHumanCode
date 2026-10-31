@@ -1,0 +1,13 @@
+{
+  "source": "../nhc-b-tool-call-application",
+  "destination": "../nhc-c-tool-call-workflow",
+  "old_head": "73a03b6b646e0c1cace4d0091807d03d30af3830",
+  "head": "a7fe2626b36c130937820685f4f2d38612094f5d",
+  "product_tree": "8daca32509d9d4ece839ec15ef6d3efb22427932",
+  "rust_tree": "e686054a56772c4bea611efb3e37754a0b0c94ca",
+  "mode": "fast-forward only",
+  "before_both_clean": true,
+  "after_c_clean": true,
+  "purpose": "Unaccepted fixed candidate for supplemental test-only diagnostics; no main integration",
+  "candidate_original_actual_lib_crlf_exception": "B attempt4 actual lib.rs1253 bytes differs from Git1203 bytes only by CRLF; C checkout will be independently manifested before any future test."
+}
