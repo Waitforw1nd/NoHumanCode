@@ -923,6 +923,7 @@ async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
     let mut h = host(vec![]).await;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
+    let (client_finished, finished_rx) = tokio::sync::oneshot::channel();
     let target_port = h.port;
     let token = h.token.clone();
     let service = tokio::spawn(async move {
@@ -961,13 +962,12 @@ async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
         assert_eq!(committed["receipt"]["plugin_id"], "builtin.chat-agent");
         assert_eq!(committed["receipt"]["revision"], 1);
         write_partial_response(&mut stream).await;
-        assert!(
-            tokio::time::timeout(Duration::from_millis(500), listener.accept())
-                .await
-                .is_err(),
-            "unexpected automatic retry"
-        );
-        println!("complete-put-count=1; no additional connection in 500ms");
+        tokio::select! {
+            biased;
+            accepted = listener.accept() => panic!("unexpected automatic retry: {:?}", accepted),
+            finished = finished_rx => assert!(finished.is_ok(), "client completion signal lost"),
+        }
+        println!("complete-put-count=1; no additional connection before CLI exit");
         committed
     });
     let args = [
@@ -983,6 +983,9 @@ async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
         "lost-real-receipt",
     ];
     let output = cli(port, &h.cwd(), &args, None).await;
+    client_finished
+        .send(())
+        .expect("listener ended before CLI exit");
     assert_eq!(failed(&output)["code"], "operation_result_unknown");
     let committed = tokio::time::timeout(Duration::from_secs(5), service)
         .await

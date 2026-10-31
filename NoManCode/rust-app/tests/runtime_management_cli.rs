@@ -197,6 +197,7 @@ async fn validates_duplicate_fields_busy_and_replayed_current() {
 async fn truncated_write_is_unknown_and_sent_once() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
+    let (client_finished, finished_rx) = tokio::sync::oneshot::channel();
     let task = tokio::spawn(async move {
         bootstrap_wire(&listener, TOKEN).await;
         let (mut stream, _) = listener.accept().await.unwrap();
@@ -207,18 +208,22 @@ async fn truncated_write_is_unknown_and_sent_once() {
                 .to_ascii_lowercase()
                 .contains("idempotency-key: lost\r\n")
         );
+        assert!(headers.lines().any(|line| {
+            line.split_once(':').is_some_and(|(name, value)| {
+                name.eq_ignore_ascii_case("x-peachsh-token") && value.trim() == TOKEN
+            })
+        }));
         assert_eq!(
             serde_json::from_slice::<Value>(&body).unwrap(),
             json!({"enabled":false,"expected_revision":0})
         );
         write_partial_response(&mut stream).await;
-        assert!(
-            tokio::time::timeout(Duration::from_millis(500), listener.accept())
-                .await
-                .is_err(),
-            "unexpected automatic retry"
-        );
-        println!("complete-put-count=1; no additional connection in 500ms");
+        tokio::select! {
+            biased;
+            accepted = listener.accept() => panic!("unexpected automatic retry: {:?}", accepted),
+            finished = finished_rx => assert!(finished.is_ok(), "client completion signal lost"),
+        }
+        println!("complete-put-count=1; no additional connection before CLI exit");
     });
     let out = cli(
         port,
@@ -236,6 +241,9 @@ async fn truncated_write_is_unknown_and_sent_once() {
         ],
     )
     .await;
+    client_finished
+        .send(())
+        .expect("listener ended before CLI exit");
     assert_eq!(out.status.code(), Some(1));
     assert_eq!(
         serde_json::from_slice::<Value>(&out.stderr).unwrap()["code"],
