@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-31",
+  "candidate": "2964062c615ba04ba097c45d48887161251937a3",
+  "manifest_sha256": "CF71EE2FCBF826B5715BC3C20A641C8888A4F1FB0F2A6BC371E44E38F017FCA2",
+  "pairs": 377,
+  "path_transformed": 247,
+  "source_snapshots": 6,
+  "source_files": 127,
+  "steps": [
+    {
+      "name": "check",
+      "exit": 0,
+      "head": "2964062c615ba04ba097c45d48887161251937a3",
+      "files": 127,
+      "before_clean": true,
+      "after_clean": true
+    },
+    {
+      "name": "test",
+      "exit": 0,
+      "head": "2964062c615ba04ba097c45d48887161251937a3",
+      "files": 127,
+      "before_clean": true,
+      "after_clean": true
+    },
+    {
+      "name": "clippy",
+      "exit": 101,
+      "head": "2964062c615ba04ba097c45d48887161251937a3",
+      "files": 127,
+      "before_clean": true,
+      "after_clean": true
+    }
+  ],
+  "errors": [],
+  "limits": "D component check/test passed, Clippy failed and fmt not run; final a95e candidate gates delegated to C. No manager product tests."
+}

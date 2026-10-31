@@ -1,0 +1,140 @@
+{
+  "files": [
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/check-after-source.json",
+      "published": "check-after-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/check-before-source.json",
+      "published": "check-before-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/check.log",
+      "published": "check.log",
+      "original_bytes": 5577,
+      "published_bytes": 5567,
+      "original_sha256": "E775A0EF06D76D5A15CD5FD4378AAB3ABAE89136F231A1EAD39F00BAEED70096",
+      "published_sha256": "58E2BAA5A022E44F43983EA08CE7B70E776847699130BFA4E9C779C9DA432352",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/cli-after-source.json",
+      "published": "cli-after-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/cli-before-source.json",
+      "published": "cli-before-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/cli.log",
+      "published": "cli.log",
+      "original_bytes": 624,
+      "published_bytes": 614,
+      "original_sha256": "536407B83D58E450530D361FE38971438DC5C57F3408FEB6E63763E77B943080",
+      "published_sha256": "8839A2F2AF3813AE5039B456AF5F4BE1C6CDC3308E0F1E2F42B45E71A29A6FBE",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/fmt-after-source.json",
+      "published": "fmt-after-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/fmt-before-source.json",
+      "published": "fmt-before-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/fmt.log",
+      "published": "fmt.log",
+      "original_bytes": 0,
+      "published_bytes": 0,
+      "original_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/freeze.json",
+      "published": "freeze.json",
+      "original_bytes": 300,
+      "published_bytes": 300,
+      "original_sha256": "709378FB5AF3B4C920E6DE844FCE236B73D9E4D789658E1195D1EF73062A03CE",
+      "published_sha256": "709378FB5AF3B4C920E6DE844FCE236B73D9E4D789658E1195D1EF73062A03CE",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/lib-after-source.json",
+      "published": "lib-after-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/lib-before-source.json",
+      "published": "lib-before-source.json",
+      "original_bytes": 27802,
+      "published_bytes": 27802,
+      "original_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "published_sha256": "47922A43557EBDF6168EFF15F35B9433681C175E92DA848A7125462AF3D76D4E",
+      "path_transformed": false
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/lib.log",
+      "published": "lib.log",
+      "original_bytes": 7045,
+      "published_bytes": 7030,
+      "original_sha256": "923BB854A94344009ACD0A25A12EF39F8B9C7650CBC580677736228DAF0F35CF",
+      "published_sha256": "95435C115C6DDE76DE18322C87016FA99A7F4759F161A7D1D2AC8751F0EAD365",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1/meta.json",
+      "published": "meta.json",
+      "original_bytes": 6570,
+      "published_bytes": 6347,
+      "original_sha256": "9367A55F5274C67E2FD09E816CBB66BDD76CA065797124429DD8F68DAC374932",
+      "published_sha256": "0B37B0CDBBF5658C2420C580BAE34FDD799B26F9068135F089D6BCC919A0F30A",
+      "path_transformed": true
+    },
+    {
+      "source": "../nhc-c-agent-runtime-interface/.local/next17-c-components-attempt1.ps1",
+      "published": "next17-c-components-attempt1.ps1",
+      "original_bytes": 5300,
+      "published_bytes": 5295,
+      "original_sha256": "37FABCA9CC1C517A7BB3806B3E23BD798BB6A56322E8F68F78510A000A3A32A1",
+      "published_sha256": "5BE458AAE7F1A903DB2B33ED09F65CC716147448500152DEB91292C8B13E61DB",
+      "path_transformed": true
+    }
+  ],
+  "note": "仅相对化工作树和工具链路径；原件保留。"
+}

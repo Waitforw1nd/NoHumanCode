@@ -1,0 +1,211 @@
+{
+  "candidate": "2964062c615ba04ba097c45d48887161251937a3",
+  "method": "Read-only SQLite inspection of 15 attempt3 snapshots; no tests rerun",
+  "snapshots": [
+    {
+      "phase": "agent_after_assistant_save-killed",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "running",
+          "tool_calls": []
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_assistant_save-recovery-1",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "write_pre_fs-killed",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "running",
+          "tool_calls": []
+        }
+      ],
+      "approvals": [
+        [
+          "u1",
+          "approved",
+          "claimed"
+        ]
+      ]
+    },
+    {
+      "phase": "agent_after_assistant_save-recovery-2",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "write_pre_fs-unknown-1",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "interrupted",
+          "tool_calls": []
+        }
+      ],
+      "approvals": [
+        [
+          "u1",
+          "approved",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "phase": "write_pre_fs-unknown-2",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "interrupted",
+          "tool_calls": []
+        }
+      ],
+      "approvals": [
+        [
+          "u1",
+          "approved",
+          "unknown"
+        ]
+      ]
+    },
+    {
+      "phase": "agent_before_denied_result-killed",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "running",
+          "tool_calls": []
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_before_denied_result-recovery-1",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_before_denied_result-recovery-2",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_denied_result-killed",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "running",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_denied_result-recovery-1",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_denied_result-recovery-2",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "w1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_applied_result-killed",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "running",
+          "tool_calls": [
+            "r1"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_applied_result-recovery-1",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "r1",
+            "w2"
+          ]
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "phase": "agent_after_applied_result-recovery-2",
+      "integrity": "ok",
+      "tasks": [
+        {
+          "status": "completed",
+          "tool_calls": [
+            "r1",
+            "w2"
+          ]
+        }
+      ],
+      "approvals": []
+    }
+  ]
+}

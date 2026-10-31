@@ -1,0 +1,802 @@
+[
+  {
+    "path": "NoManCode/AGENTS.md",
+    "bytes": 640,
+    "sha256": "50290C76EC3FDBEE4343B2A61D12BEB0D79B69C0275C16EB8E09AE8578626B1B"
+  },
+  {
+    "path": "NoManCode/README.md",
+    "bytes": 2500,
+    "sha256": "1CE67793C9F448C87FE1E11A72A379DE55B1E1A4DDC4286E8EA23FDF456855D8"
+  },
+  {
+    "path": "NoManCode/apply-overrides.ps1",
+    "bytes": 2585,
+    "sha256": "804BCFF65D2A14D9FD2239F4A06CDC722FD8F81D65965AF253301A613D5CE159"
+  },
+  {
+    "path": "NoManCode/config/README.md",
+    "bytes": 1294,
+    "sha256": "C90864ADDA6B984EA43199AFE82D67CB1418E42B7CD5F8724ADA986121BEC48F"
+  },
+  {
+    "path": "NoManCode/config/peachsh.providers.yaml",
+    "bytes": 1080,
+    "sha256": "3CDAA8A63CA1A38261BEE673246DB238D6D4BC0702F23FF066921BC9227CD36A"
+  },
+  {
+    "path": "NoManCode/docs/cli-first-release-acceptance.md",
+    "bytes": 15183,
+    "sha256": "D41B8E00C2C612EB89E531AD9BBF58598A9A2BFBD45D6E7631ECFE4FD45F59A2"
+  },
+  {
+    "path": "NoManCode/dsh-peachsh.cmd",
+    "bytes": 1506,
+    "sha256": "BB23E12A0B4038F55514F65E5C5DCB5FF589BE19A54047A27A8F78C742FA8383"
+  },
+  {
+    "path": "NoManCode/newapi.cmd",
+    "bytes": 1347,
+    "sha256": "BC7C3E6146C4566003DACC99CAD47F10E9ED27863A8C3744D1A53F26CAA0C4D9"
+  },
+  {
+    "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+    "bytes": 75526,
+    "sha256": "440BDD9F5DDA5DD3C2C0D8BCCC263FF413624C49E99F4953C2B7FFACBC2DEB65"
+  },
+  {
+    "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+    "bytes": 56210,
+    "sha256": "13252EB94AB75176994C693A73440CD6599F39E356A8EF956945AF3C3099C9E1"
+  },
+  {
+    "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+    "bytes": 10354,
+    "sha256": "32D346CDE51710B21C57A7A76001EF9C1CFF4BAB406832B1AA743E0D1D9A9332"
+  },
+  {
+    "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+    "bytes": 7954,
+    "sha256": "FCA87AC480AC4DB4E2BBBC79855FAC23494DCB19A985BA87DD1F47F16DF208BB"
+  },
+  {
+    "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js",
+    "bytes": 174292,
+    "sha256": "736EAF3F0C035EBA3138854009CA4360FC82938E47606808031125F5BAF09D26"
+  },
+  {
+    "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+    "bytes": 34308,
+    "sha256": "546B2A8CB0B94D63A70A6246D196C430E44C825E4EC9CEF1644E9F41B02CD74E"
+  },
+  {
+    "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/index.js",
+    "bytes": 75526,
+    "sha256": "440BDD9F5DDA5DD3C2C0D8BCCC263FF413624C49E99F4953C2B7FFACBC2DEB65"
+  },
+  {
+    "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.host.js",
+    "bytes": 56210,
+    "sha256": "13252EB94AB75176994C693A73440CD6599F39E356A8EF956945AF3C3099C9E1"
+  },
+  {
+    "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/typert.remote-client.js",
+    "bytes": 10354,
+    "sha256": "32D346CDE51710B21C57A7A76001EF9C1CFF4BAB406832B1AA743E0D1D9A9332"
+  },
+  {
+    "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-agent-team/lib/types/types.d.ts",
+    "bytes": 7954,
+    "sha256": "FCA87AC480AC4DB4E2BBBC79855FAC23494DCB19A985BA87DD1F47F16DF208BB"
+  },
+  {
+    "path": "NoManCode/overrides/web/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js",
+    "bytes": 34308,
+    "sha256": "546B2A8CB0B94D63A70A6246D196C430E44C825E4EC9CEF1644E9F41B02CD74E"
+  },
+  {
+    "path": "NoManCode/package.json",
+    "bytes": 850,
+    "sha256": "B5598A5C9541F7C78562F82BDB0551EFF6F066239001403E80A04AA68CEC23D0"
+  },
+  {
+    "path": "NoManCode/pnpm-lock.yaml",
+    "bytes": 114,
+    "sha256": "17C814B167307942D3609C7B9D916CEDDB85839573AB39BAA114E30EDB132A1A"
+  },
+  {
+    "path": "NoManCode/rust-app/.gitignore",
+    "bytes": 23,
+    "sha256": "3A471A3D48F2626877780A22158A5FF15FBB1E018F902D837269934BBD51F6AA"
+  },
+  {
+    "path": "NoManCode/rust-app/ARCHITECTURE-AUDIT-DRAFT.md",
+    "bytes": 15059,
+    "sha256": "7A06DD046815F0455D956A71AF8B76C2BE7BA261578668F6E58140A59D74D9CF"
+  },
+  {
+    "path": "NoManCode/rust-app/ARCHITECTURE-REBUTTAL.md",
+    "bytes": 3901,
+    "sha256": "CF2EA59BAD06C2D0F7EC6287E67291B5E9B3448C43EB7748013877B7EE5C2FD0"
+  },
+  {
+    "path": "NoManCode/rust-app/ASSESSMENT-LIVE-2026-09-20.md",
+    "bytes": 12591,
+    "sha256": "4D75FF59C5E170FA227CBDC7C9984A524D6594CCC41177BB06CB69573A23A4FB"
+  },
+  {
+    "path": "NoManCode/rust-app/Cargo.lock",
+    "bytes": 77750,
+    "sha256": "D8C5CECFD62A03EDB49EF29F18B2BE6063A2B27D7AD292BCB63B11F8D7AB8519"
+  },
+  {
+    "path": "NoManCode/rust-app/Cargo.toml",
+    "bytes": 1156,
+    "sha256": "622D465A7C3B542B71D8CD31F092E1240E13A9DCC452D1B92125722D964DBB68"
+  },
+  {
+    "path": "NoManCode/rust-app/EVALUATION-2026-09-20.md",
+    "bytes": 3972,
+    "sha256": "D59D6E4BF27BF0C128F45C940772384B42891BFA36D4D9819B22CF64CF9CE9AD"
+  },
+  {
+    "path": "NoManCode/rust-app/FRAMEWORK-DECISION-2026-09-21.md",
+    "bytes": 5901,
+    "sha256": "44F7121158F466649BE8C95D9FD61C6A4B49564DE691694F2DC7EA81D81EF50F"
+  },
+  {
+    "path": "NoManCode/rust-app/FRESH-INTEGRATION-AUDIT.md",
+    "bytes": 10502,
+    "sha256": "0876FAC87A647C1DF65FA780F124E8EA6F0DC6FDDB44EF7E086DA16CA1AA15B1"
+  },
+  {
+    "path": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md",
+    "bytes": 18432,
+    "sha256": "CDFBE02F79182454AE80F4AD4B4F7402E130670762B985C6A3FB4738FDB58374"
+  },
+  {
+    "path": "NoManCode/rust-app/ITERATION-PLAN.md",
+    "bytes": 2544,
+    "sha256": "4026D85F1A8B4ECAAC2842694CBDBE4981B06C7C28313661B5A8D7B2C163A2D5"
+  },
+  {
+    "path": "NoManCode/rust-app/MASTER-ARCHITECTURE-BASELINE-2026-09-22.md",
+    "bytes": 13136,
+    "sha256": "6EDF6E803AF243707365463246813FDFFC7DBF925EC81896C1B0639AB199A8A9"
+  },
+  {
+    "path": "NoManCode/rust-app/PHASE0-NEXT-AUDIT.md",
+    "bytes": 3749,
+    "sha256": "018835E6AD89E66C48F4ECDD4D7E07F815AFDFFD3E7C4EC88A0D3A8F8A343A58"
+  },
+  {
+    "path": "NoManCode/rust-app/PI-DESKTOP-ADAPTATION-2026-09-21.md",
+    "bytes": 5230,
+    "sha256": "6B4A47F9080DCC8723258F173DEFCEA463049AF27E315755FD8B2C85FB140EF1"
+  },
+  {
+    "path": "NoManCode/rust-app/PRODUCT-GAP-AUDIT-2026-09-20.md",
+    "bytes": 25781,
+    "sha256": "CB66C33CAD36AE801F84953048E5338C7713433FCAEAC85AE0E25972EB38F58A"
+  },
+  {
+    "path": "NoManCode/rust-app/PROJECT-REORGANIZATION-2026-09-21.md",
+    "bytes": 15599,
+    "sha256": "2E02EB1264953BD233F0A893E6853DCBEA6468C4BCE7E2BE7078EFFEF069AAA7"
+  },
+  {
+    "path": "NoManCode/rust-app/PROTOCOL-MIGRATION-TEST-PLAN.md",
+    "bytes": 2482,
+    "sha256": "962B7DA95B2D9F3C019032351E143AD9FCA2E8A7BEE9CA48CE273EA31CC535BC"
+  },
+  {
+    "path": "NoManCode/rust-app/README.md",
+    "bytes": 9057,
+    "sha256": "B71F356B1EF57D87062063B142E4C039B094E77FDB85B75D77FAEA187AC01C87"
+  },
+  {
+    "path": "NoManCode/rust-app/VALIDATION.md",
+    "bytes": 2474,
+    "sha256": "14D3165E320A6A525B07E816F4ADD1DA434CF18207928AFB652C01AFF60F090F"
+  },
+  {
+    "path": "NoManCode/rust-app/assessment/2026-09-20-live/adversarial.log",
+    "bytes": 1338,
+    "sha256": "7F023A7F9B27FFF44EEE130C3F4C7A8C836FA50606D39F55680CA7701CBFC664"
+  },
+  {
+    "path": "NoManCode/rust-app/assessment/2026-09-20-live/baseline.log",
+    "bytes": 2878,
+    "sha256": "AB4C1A4D28A5BAF7E540E5136C74228F88DC3EE4630F6282C3C43B8BD2EF2EF1"
+  },
+  {
+    "path": "NoManCode/rust-app/assessment/2026-09-20-live/http-results.json",
+    "bytes": 1316,
+    "sha256": "6A900AF74579834A78459C831D5B0F13E7D109BEDCE2A95F9FB92E9F0E89BDEC"
+  },
+  {
+    "path": "NoManCode/rust-app/assessment/2026-09-20-live/live-evidence.json",
+    "bytes": 498,
+    "sha256": "EE3B033B1B82AC170FABA3C665FA31A6389DD0117C89439BF8913EEB798B1546"
+  },
+  {
+    "path": "NoManCode/rust-app/assessment/2026-09-20-live/recovery.json",
+    "bytes": 141,
+    "sha256": "D40213E64322CF60644D1E5B0822E099E657C2C6EE5E6F8369E5B18AB9980648"
+  },
+  {
+    "path": "NoManCode/rust-app/build.ps1",
+    "bytes": 5990,
+    "sha256": "48CBBF0BBA93E23DE117647E54E0E74BA9777AA0AFD081AE15A834E9E01F7ECD"
+  },
+  {
+    "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+    "bytes": 230,
+    "sha256": "C08CAAF927C6AAC2617FDA42782247C789CBBEED17C3E0266D2F3D5E658EB9C0"
+  },
+  {
+    "path": "NoManCode/rust-app/crates/protocol/src/lib.rs",
+    "bytes": 12352,
+    "sha256": "7E94BA099F0AB9E87E122CD273C6A9A81B3ADACE874FA3BA1ED2305FDEC3F52B"
+  },
+  {
+    "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+    "bytes": 342,
+    "sha256": "A711032CB89732C3642F968415953BBEE07B81FCEB7AE5E57CE324E0BEB67EE0"
+  },
+  {
+    "path": "NoManCode/rust-app/crates/ui/README.md",
+    "bytes": 536,
+    "sha256": "828F48AAB6D2CE8266631A0AE1C84AE24CD2AA07E68D24E44D349AE0F2061CDB"
+  },
+  {
+    "path": "NoManCode/rust-app/crates/ui/src/lib.rs",
+    "bytes": 755,
+    "sha256": "9E6A41743AB03FF7B0B61DD8B29F735461BE371E1A68DAFEAD6AD5758A5F82E9"
+  },
+  {
+    "path": "NoManCode/rust-app/examples/wasm-echo/README.md",
+    "bytes": 966,
+    "sha256": "44339D7A19C6C750DBB5F2AAF6F5EC8BFE04DCFA04676C1A659ED6349F71F50C"
+  },
+  {
+    "path": "NoManCode/rust-app/rust-toolchain.toml",
+    "bytes": 88,
+    "sha256": "E8E5900C9696B384BF21A5582D895B5FED111261187E15A4D3A56F61A6CFD34E"
+  },
+  {
+    "path": "NoManCode/rust-app/src/agent_runtime.rs",
+    "bytes": 17870,
+    "sha256": "3A1CA4082B2F754AF03BF8B81C5BF45C8CCDE9F8536C99C18A3299FDF00023A5"
+  },
+  {
+    "path": "NoManCode/rust-app/src/approval.rs",
+    "bytes": 14007,
+    "sha256": "046FC5E50E2C37F70CE6CF974EB706FFAB0721DF000315AD85D73C0A43FDF11D"
+  },
+  {
+    "path": "NoManCode/rust-app/src/budget.rs",
+    "bytes": 65798,
+    "sha256": "293FD0A0FFA8EA054C9895C117D00460C0265E6466029A33433C9454C7317433"
+  },
+  {
+    "path": "NoManCode/rust-app/src/checkpoint.rs",
+    "bytes": 2538,
+    "sha256": "C8C3B288A7200A78D578EA8D2A793A53FECE929B8826D98DFF5E97FCB18374D2"
+  },
+  {
+    "path": "NoManCode/rust-app/src/cli.rs",
+    "bytes": 155585,
+    "sha256": "E7D56E3C03EA452FB12D8ACE515702B74B5889C487B1D07C239F6D68BB60D25F"
+  },
+  {
+    "path": "NoManCode/rust-app/src/command_execution.rs",
+    "bytes": 32796,
+    "sha256": "FF1D0D1DD85BFFB6D804B2F248A2185B341548540EDAF7EA583B65A7B9AD5DAB"
+  },
+  {
+    "path": "NoManCode/rust-app/src/credential_input.rs",
+    "bytes": 30562,
+    "sha256": "7F414E74E16ABB40C81981F3900F483944B673D2C43A5C2D674A2D5DC7445101"
+  },
+  {
+    "path": "NoManCode/rust-app/src/domain.rs",
+    "bytes": 25941,
+    "sha256": "18C7CFCA8D9E7E462F5BBD192B3FB16548F95A4117C240DB9722240CD7E422CF"
+  },
+  {
+    "path": "NoManCode/rust-app/src/engine.rs",
+    "bytes": 273348,
+    "sha256": "CD3C84C035655E2DC5250AF27583FACB8667D94804960E42654805C8FCE49FA7"
+  },
+  {
+    "path": "NoManCode/rust-app/src/git_diff.rs",
+    "bytes": 20066,
+    "sha256": "DB5BD32F9B6A391E203587B55BBD4AE80245A29F8AC7DDBEEA1944208A109651"
+  },
+  {
+    "path": "NoManCode/rust-app/src/git_worktree.rs",
+    "bytes": 85849,
+    "sha256": "0F1966231C5DA968E69ACB97E9531FFA29B9D5B05BA45D787E52E4C45EF5B48E"
+  },
+  {
+    "path": "NoManCode/rust-app/src/host_configuration.rs",
+    "bytes": 32038,
+    "sha256": "0409A92F98C08B013899D70A4C16A746268868515E7D0C814E4346EC155619D6"
+  },
+  {
+    "path": "NoManCode/rust-app/src/host_configuration_crash_tests.rs",
+    "bytes": 28633,
+    "sha256": "EAD2CE7AE36002C67E8AD8A6854C5635C9ABC0E51E02A8BC9431F50848C25601"
+  },
+  {
+    "path": "NoManCode/rust-app/src/lib.rs",
+    "bytes": 853,
+    "sha256": "83B0EF9955783BF1BFF19A377948F06D746FD0EEA5CD783D81ECD827F710EF9D"
+  },
+  {
+    "path": "NoManCode/rust-app/src/main.rs",
+    "bytes": 5202,
+    "sha256": "9A5EE18AED33A8C3FE7A842D8AF02BA12F4A42B780274B9AB418D6744491E5B0"
+  },
+  {
+    "path": "NoManCode/rust-app/src/network_authorization.rs",
+    "bytes": 49541,
+    "sha256": "7FFF46F6C7295624B6C59E19067EA7EF4880FC8EB620D4009D2ED39A879DB7E2"
+  },
+  {
+    "path": "NoManCode/rust-app/src/plugin_callback.rs",
+    "bytes": 1006,
+    "sha256": "1E95E404012AA36948596B4AA8DC20D828B7DA3C01876C1B5C8BF23B27E25751"
+  },
+  {
+    "path": "NoManCode/rust-app/src/plugin_catalog.rs",
+    "bytes": 49077,
+    "sha256": "1676D308AC41228642EE4C0DDA550B468FE78E050B68CF72E6209CD79FBB1482"
+  },
+  {
+    "path": "NoManCode/rust-app/src/plugin_host.rs",
+    "bytes": 57824,
+    "sha256": "1051EDDCA4FAE92C314C3DA86E27C1344B9B0B2518DFAC4B3F31BE657DAB7883"
+  },
+  {
+    "path": "NoManCode/rust-app/src/plugin_management.rs",
+    "bytes": 36142,
+    "sha256": "E624E5E1749BFA970FA924C6CF3B939F5DD3E7DD15262672224ECEBD63D7B599"
+  },
+  {
+    "path": "NoManCode/rust-app/src/project_config.rs",
+    "bytes": 21227,
+    "sha256": "4E372F5157A399F6C673FC093E158E0130D17CD6C89226972BDEE2AEF4522A02"
+  },
+  {
+    "path": "NoManCode/rust-app/src/provider.rs",
+    "bytes": 42607,
+    "sha256": "3B093F7445D519EE3150870C57D485488263A71C70DE436C2622FAFA69B43765"
+  },
+  {
+    "path": "NoManCode/rust-app/src/provider_runtime.rs",
+    "bytes": 14485,
+    "sha256": "A2A8B8032E1F101D56EC9EDA9A6A510F2DE176C479F93A05B33E53A766BB6102"
+  },
+  {
+    "path": "NoManCode/rust-app/src/provider_runtime_tests.rs",
+    "bytes": 43485,
+    "sha256": "8B3AD4687F4FF74E152B4238ECC2EB401A2689ABEE9F5CDFDC526B0790ABA7F7"
+  },
+  {
+    "path": "NoManCode/rust-app/src/provider_transport.rs",
+    "bytes": 12666,
+    "sha256": "3F6041C5D11F84ED90436D3A7440055A0513ED9E900DC98AF439869E15971F27"
+  },
+  {
+    "path": "NoManCode/rust-app/src/provider_usage.rs",
+    "bytes": 4652,
+    "sha256": "64D6EE74EE5D533D907DCE6E43DCAD188E6580AE028166D8FB91F8C5A1FCA02E"
+  },
+  {
+    "path": "NoManCode/rust-app/src/repository.rs",
+    "bytes": 150918,
+    "sha256": "2878B177FC278BE402AD35233174AFF1E07DA97A92615E4B4F4210279A7D1200"
+  },
+  {
+    "path": "NoManCode/rust-app/src/restore_http_tests.rs",
+    "bytes": 19608,
+    "sha256": "6393352F193A71739E3443DA0EA589B2067AD98BADD64AE6C91ADEB71A21F823"
+  },
+  {
+    "path": "NoManCode/rust-app/src/secrets.rs",
+    "bytes": 21336,
+    "sha256": "218A18756159849D76DB2F8A6CD0A5A98B9EEC718506D558AD810BB96AF514F4"
+  },
+  {
+    "path": "NoManCode/rust-app/src/server.rs",
+    "bytes": 153866,
+    "sha256": "219E6D82A48EB047B5392F310ECBF928F3010391AC2AD643055964BA923B5B9A"
+  },
+  {
+    "path": "NoManCode/rust-app/src/store.rs",
+    "bytes": 151300,
+    "sha256": "8DD571CBFD0CBA9B8185F5785AC4AC7DAD2B9F8A7571F8CE1AFAC4560945CEF6"
+  },
+  {
+    "path": "NoManCode/rust-app/src/tool_runtime.rs",
+    "bytes": 92667,
+    "sha256": "49EB2477434B792439D2FE94427BFA0C958630EF793BE596DA1C99C7AB29B9D4"
+  },
+  {
+    "path": "NoManCode/rust-app/src/wasm.rs",
+    "bytes": 9902,
+    "sha256": "580C183567A74FB526B3789C587D2340997C9D89F3723B6C5AA5A82B9FD7814C"
+  },
+  {
+    "path": "NoManCode/rust-app/src/workspace.rs",
+    "bytes": 16308,
+    "sha256": "EDA646C9E2EE126EAC08E99328C0D182762B629E102772F350BA09BA227650FD"
+  },
+  {
+    "path": "NoManCode/rust-app/src/workspace_changes.rs",
+    "bytes": 3409,
+    "sha256": "B4DF86AEABF7562556A6B030880114B8754BDA7B4474902480D79C8576E5CD1F"
+  },
+  {
+    "path": "NoManCode/rust-app/src/workspace_identity.rs",
+    "bytes": 9632,
+    "sha256": "C4EC520EB00EE668E0FD8F77AE595F307F5679A863B24A56C48FDA2FEE21E6E6"
+  },
+  {
+    "path": "NoManCode/rust-app/src/worktree_management.rs",
+    "bytes": 76082,
+    "sha256": "81029C06E5DB5F6A59D34BB2A8FB7B4913E2B55420A1D45B990984A594372038"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/agent_runtime_cli.rs",
+    "bytes": 12164,
+    "sha256": "132436E2ACCDC0C9F26655EEC1FBA64E339A692B86D8E85A6EA0152DE96A01D2"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/approval_gate.rs",
+    "bytes": 73637,
+    "sha256": "D0169C7D5432A7DB630B3B676398F49EC665932D7D1E78EBAC5D6875501CAD1E"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/approval_http.rs",
+    "bytes": 66840,
+    "sha256": "E67911EE3B38C9072D306F1846C28B594B49B877DFAEE6AD9B742FA2944A9056"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/assessment-fixture.mjs",
+    "bytes": 4146,
+    "sha256": "B4B84C47EC71B89D37F1D947B3BAFA161241D827C09B8B657AACB70360EEE1EF"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/assessment-http.mjs",
+    "bytes": 6050,
+    "sha256": "46DD5A0BB47665E0F90B649FCD9B692AF765F465657FF235FC12AC5921679126"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/assessment_adversarial.rs",
+    "bytes": 3829,
+    "sha256": "BB94C1062ADC3D5BD2C674C506797706C65039E67DCFF358081F7E58B1ACE785"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/budget.rs",
+    "bytes": 8601,
+    "sha256": "1DC817D0DD6EAF5F743E4811004A0AC08248C80ACAC9AEA6D973D32D3A20467A"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/budget_cli.rs",
+    "bytes": 21213,
+    "sha256": "B4676E068A2310390DB4A31DA50079387B0A4BC2C4F1C8DEB796619BF7BB5224"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/budget_http.rs",
+    "bytes": 16250,
+    "sha256": "5E075ED75DF19CFA273B39BF9ED4B3D096924D1E75773B7F3046F7BC11D445B4"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/checkpoint.rs",
+    "bytes": 49354,
+    "sha256": "0F41925E6B8CBD01B454B9042A72A45E36808943FAF00138258DA0C66694C50B"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/checkpoint_http.rs",
+    "bytes": 27223,
+    "sha256": "0E577556B03E393C41F043E5D7B58313341F714A1DFE8B072DEC59264ED41EAA"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/cli.rs",
+    "bytes": 37882,
+    "sha256": "D8076CEAD9AA6373A2784B61BBD9A4FE6C49F2C2E742425A84AC5759BAB915BC"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/cli_workflow.rs",
+    "bytes": 38377,
+    "sha256": "EAF2BDAA859C2A3771244A21C1CA869896DAB2A101B9BAA67EDB429831624E9D"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/final_acceptance.rs",
+    "bytes": 12875,
+    "sha256": "BAA509F57DAC469E974EC763D39D87849D085AB06A82DC00BA60A6B56482C834"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/first_user_workflow.rs",
+    "bytes": 25488,
+    "sha256": "964A81F21D30D3E15AC059BF249E83C92E6EF024B79C9C449E5B004E6C7AA78E"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/git_diff.rs",
+    "bytes": 22707,
+    "sha256": "FAB79980B0CACE34E481B7E9891260C0EF6B13C1FE449CDDC7DAA4CCC9D4C6DE"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/host_configuration.rs",
+    "bytes": 36194,
+    "sha256": "D181CAFE36E8672A33570FB4C6A019AB2E0CD4B65A5D72F3F3205607FD466AFC"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/host_configuration_cli.rs",
+    "bytes": 19262,
+    "sha256": "33B02CD533D51DBE440AAF5533A39F080F0CA422DCA164F56CFAC543B9490158"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/host_configuration_http.rs",
+    "bytes": 14774,
+    "sha256": "654654D423D95E015242AADFD8E60F32459AAD7A855977BFA37D910E25856752"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/host_configuration_schema.rs",
+    "bytes": 7595,
+    "sha256": "8E8526FD10446734AB2E07D19DB4AE31ADB42AA23D4BB42B7ADDB1644084D2D0"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/host_configuration_security.rs",
+    "bytes": 48234,
+    "sha256": "0DDC41225FB25F260E59267501EDC63F1479FD3FF8103A2DA3C690A432E2EA35"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/host_initialization_workflow.rs",
+    "bytes": 30621,
+    "sha256": "6CCB7665B5CE6B7727C4DE517AE38A0A299EF2273CE217FCC721E62B8B6E852C"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/http_contract.rs",
+    "bytes": 46885,
+    "sha256": "06E8915AB4F8F16DD9A475F52F8A4FA1F2096E045BB65DF2E89DC71BD88983B8"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/live.rs",
+    "bytes": 4177,
+    "sha256": "46FF3142B66838BF0E6B177B9EB47EEB447D66C6E5EBE2032EE580CFE62264B3"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/network_authorization.rs",
+    "bytes": 34323,
+    "sha256": "10E753295EC3B2486248DA20E4AFF9195BB201535DA1D3ECFD679D05203BD57F"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/network_cli.rs",
+    "bytes": 15019,
+    "sha256": "7862362CD37498F91ABFED2B7B0FACD5B12D1576BE3B9492F43A13033904CE9C"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/network_http.rs",
+    "bytes": 24528,
+    "sha256": "8877507FDBA8674828FA6E67D1A7658C04B933CDB3B63EBEAB6F2D0306C8F5D1"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/plugin_catalog.rs",
+    "bytes": 50795,
+    "sha256": "2367FFECEC26C35036B971D7AC4A1DC89E33764C4EC4ECB44A4998F125F4D250"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/plugin_cli.rs",
+    "bytes": 20601,
+    "sha256": "39D2C71DC46F020DEDF0063F45A843B5D8E06A2D1332A502B1C7B3E323CCC30D"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/plugin_host.rs",
+    "bytes": 76889,
+    "sha256": "14B859876E05B33DDBE6C54BEC1650ED46369BFBEFDD89F054A0CDFC5D47DFC1"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/plugin_http.rs",
+    "bytes": 48638,
+    "sha256": "47EFA995DA5B97051B65D0737C54E9A12FBD2CAEA332C2C1E738B0D7D3795E35"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/plugin_management.rs",
+    "bytes": 8402,
+    "sha256": "51934656726AFFC9AA6845C6E1CA2710082B6BB25CFE74C86FEE51A07232CA4F"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/project-web.mjs",
+    "bytes": 7408,
+    "sha256": "E3AA69468FA7EDBE14FDC1922308A7A675AA2E0CD085FC77D2A13B7F4BDA8D7B"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/project_cli.rs",
+    "bytes": 8792,
+    "sha256": "DABA16ECC313E5BB94D282785FBB352713BB9522C91308B2F45628AE31FC8A6F"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/project_context.rs",
+    "bytes": 22562,
+    "sha256": "267249DBB6BE07B06D88B3D94D330E0BCCEE849B9D4E0D9388AEA1F4DE38F391"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/project_http.rs",
+    "bytes": 23083,
+    "sha256": "0C83D5235830E185D1F0B3C5DCCB67E0263B9B98E1085A874851D30C96ADDD6F"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/project_migration.rs",
+    "bytes": 9713,
+    "sha256": "B2E6A79D96EF797227C96B34E046FECAD80FCC9624FCB9C1842B0B165FCD23FA"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/provider_network.rs",
+    "bytes": 14313,
+    "sha256": "90724944D608AF5A653B2B3F75A9BABE2073A5741B3A18618CD05D9E91CF2831"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/provider_usage.rs",
+    "bytes": 6651,
+    "sha256": "79D39F94468C2E0D0D6746EEE9C5E56567E96201E2905DB14D1ED93CFE9E7B89"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/review_cli.rs",
+    "bytes": 28387,
+    "sha256": "DB6FB4F7CC5747E55D329592BFF5A4EA9C35B0E5566990F641628C3C43CC0CBB"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/runtime.rs",
+    "bytes": 32150,
+    "sha256": "12EDEFD341A67ACE55472FA3F3B0C29C0006B0EDF2F77B500EF7DE51C5A767F8"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/session_turns.rs",
+    "bytes": 66133,
+    "sha256": "00A1A9DAC54026681787478D9F2056AE2F8E7B41FF45C4DF503A7A18DC465687"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/support/network_fixture.rs",
+    "bytes": 1711,
+    "sha256": "8C43C56D565C6DF0BA2EC79598CDC8A38BA2C1E9F17855050E7A6633C33B2268"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/support/project_fixture.rs",
+    "bytes": 2337,
+    "sha256": "359E492FF49953D4F078281F24A2B1C1D13B0597075B448CF15B91CB0D372593"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/tool_runtime.rs",
+    "bytes": 4896,
+    "sha256": "E97F4588859E99013B8A25A1FF141674F54EDBF26CDB5C0655B63BB3360E2FA2"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/tool_session_turns.rs",
+    "bytes": 29445,
+    "sha256": "568AC52BB8783C1AF83A89BDEE5262069F14E6720F5AA4BB2A16E4E62671CA77"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/turn_http.rs",
+    "bytes": 97318,
+    "sha256": "18B9CF6579475B3BB2622E729659DA7FDC88DCD6849C1CC32A9CBF8D3BFD3CCD"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/ui-fixture.mjs",
+    "bytes": 1493,
+    "sha256": "D7D15B9A616F01CDA6A90B2B8B46A56C3A8D1FB27C7F7958C0D7772088A40ACF"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/workspace_changes.rs",
+    "bytes": 50046,
+    "sha256": "82A1D4F3CF8FEB949D7ED2DED71AF566308BA2A320E14BF24B0663A73B987977"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/workspace_crash.rs",
+    "bytes": 22445,
+    "sha256": "F77FFF4A6FCE9AA80C74BCFB2CB7BD180C505D6F78BA93E3AB8248C7280E0469"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/workspace_http.rs",
+    "bytes": 15105,
+    "sha256": "C739F84F35E6839980238BE22A0C7E1494F1450711DCB40B12E80C9D9871FA8F"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/workspace_identity.rs",
+    "bytes": 9380,
+    "sha256": "827BB7D4D62AE305D34174CB3A9410A66F1D752739DE10D15DF7A9A4F8C80875"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/worktree_cli.rs",
+    "bytes": 16150,
+    "sha256": "CAD08A55BF0869ED70B19E9E4F461A3FF442F3210B0A3DF9E81EDB04A9479F2A"
+  },
+  {
+    "path": "NoManCode/rust-app/tests/worktree_http.rs",
+    "bytes": 25028,
+    "sha256": "EDC5F6B20DC22A3564A6B4A990DB4761BAD1F1C9BD4727E7512345235C01439F"
+  },
+  {
+    "path": "NoManCode/rust-app/web/app.js",
+    "bytes": 33843,
+    "sha256": "6C26F05BDB6FF1EE90B8B6A620F402F83A6F932A1CAE94689436F83288439A1F"
+  },
+  {
+    "path": "NoManCode/rust-app/web/index.html",
+    "bytes": 7870,
+    "sha256": "F472C95B381315A75AEB903FC4CFE3B01719D4AEE32533C8FDBFABE58B82A14E"
+  },
+  {
+    "path": "NoManCode/rust-app/web/style.css",
+    "bytes": 9462,
+    "sha256": "EEFFCF62A860E6F6972C566B8047CF8582F85CC423567B989D23E8068010E466"
+  },
+  {
+    "path": "NoManCode/set-peachsh-key.ps1",
+    "bytes": 2188,
+    "sha256": "9B91F2385A66AB2A53E46F0B17E3F247615EDBA34FA5CE7E878103EA013BD911"
+  },
+  {
+    "path": "NoManCode/start-peachsh-legacy.cmd",
+    "bytes": 1562,
+    "sha256": "BA6F0D5CF675CFDA25BB8599E72C9FCC04F8955DC2E817FC14D2C51AF4D24EAB"
+  },
+  {
+    "path": "NoManCode/start-peachsh.cmd",
+    "bytes": 401,
+    "sha256": "030D320E403E5C792F9EC31FC2F541E98975D968EB079B6AD6B860E197787AFE"
+  },
+  {
+    "path": "NoManCode/tests/README.md",
+    "bytes": 455,
+    "sha256": "61E9DC56B93ACC81FD103265238B6B1EAA38D45D43AE2D2912F2E60C22EF828F"
+  },
+  {
+    "path": "NoManCode/tests/discover-peachsh-models.mjs",
+    "bytes": 923,
+    "sha256": "5E2A0245E3B0B2AC2A63A315E8CF69445A1C48810E168DB9EA19ABC6089439F0"
+  },
+  {
+    "path": "NoManCode/tests/dump-config.txt",
+    "bytes": 18740,
+    "sha256": "59E1E658F3291D9FFCAC4E9AA8847D216531E0D74A0C8875AAD15BE4C030E262"
+  },
+  {
+    "path": "NoManCode/tests/test-newapi-balance.mjs",
+    "bytes": 1560,
+    "sha256": "14BC6B1910613C73407EBF90059528612F89FFC84D925088E3467C2F0F28040E"
+  },
+  {
+    "path": "NoManCode/tests/test-openai-parallel.mjs",
+    "bytes": 1253,
+    "sha256": "67EC7B4AAF494B47D8B9094383C15382237635FF6AC03B9EAA108848D6DC405D"
+  },
+  {
+    "path": "NoManCode/tests/test-skill-discovery.mjs",
+    "bytes": 1170,
+    "sha256": "E79D89AE58E4BB810E32A6390C989E920454212FEC173CD6BC0BD176EF035BF2"
+  },
+  {
+    "path": "NoManCode/tests/test-team-membership-guard.mjs",
+    "bytes": 1077,
+    "sha256": "E804F22AF4AB0030463038FB63B7BA841FB40F09061671B3F50DDC032BE9D3B2"
+  },
+  {
+    "path": "NoManCode/tests/test-team-model-routing.mjs",
+    "bytes": 2650,
+    "sha256": "A754C307D6E20DD698282AEE0C37EE48B3F6BC0A5F64DB3FE66581D84675F505"
+  },
+  {
+    "path": "NoManCode/tests/test-team-swarm-routing.mjs",
+    "bytes": 3641,
+    "sha256": "A04D6043463CB96963941A61DF03916EB6AD7CCC7A75D10B1D0B5D0C4A5C6450"
+  },
+  {
+    "path": "NoManCode/tests/test-xpeach-live.mjs",
+    "bytes": 3338,
+    "sha256": "9B8C0C9BBAB55000B44909485994666EE82C955C448015BDFE0B9FA2411437E0"
+  }
+]

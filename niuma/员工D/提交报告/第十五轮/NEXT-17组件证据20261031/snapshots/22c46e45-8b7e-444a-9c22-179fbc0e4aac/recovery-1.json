@@ -1,0 +1,1 @@
+{"approval_states":[],"approvals":0,"held":0,"messages":[{"content":"Execution was interrupted. Inspect files before repeating a write or command.","tool_call_id":"w1"}],"network_calls":2,"pid":21408,"status":"completed","unresolved":0}

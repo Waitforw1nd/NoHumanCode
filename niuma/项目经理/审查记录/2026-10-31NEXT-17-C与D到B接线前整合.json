@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-31T12:19:22.7825090+08:00",
+  "operation": "NEXT17 C and D to B before owner lib wiring",
+  "b_before": "6a7d1f27a9e4543f8813e4c1a3f81ae194bd102d",
+  "c_source": "9b1fa771ec2595ef6a6829caf808d91f2ad6211c",
+  "d_source": "4f37d5a4a2f1eaa538552a423a6ec4e44f78b2de",
+  "b_after": "fe3cc58a1268e2d3aa1c512192d0738fdbd53f73",
+  "product_tree": "bfc4f65297741a4317443a804156ab1c9c48af43",
+  "rust_tree": "91a0604c08ecfdcff059b309de9466800b847ce8",
+  "status": [],
+  "note": "All three owners explicitly frozen/no-build; D test file now present, no test mod yet"
+}

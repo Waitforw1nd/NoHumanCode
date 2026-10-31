@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-31T12:19:00.0590345+08:00",
+  "head": "9b1fa771ec2595ef6a6829caf808d91f2ad6211c",
+  "pairs": 15,
+  "transformed": 5,
+  "source_files": 160,
+  "source_snapshots": 8,
+  "passed": "4 component steps exit0; 2 Router tests and 2 CLI tests; exact source set and hashes matched",
+  "limits": "D tests not merged; all-targets clippy and final gates not run"
+}
