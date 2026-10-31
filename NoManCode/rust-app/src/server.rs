@@ -410,6 +410,12 @@ pub fn router(app: App) -> Router {
         .route("/api/plugins/{id}", get(plugin_status))
         .route("/api/plugins/{id}/enabled", put(set_plugin_enabled))
         .route("/api/runtime/agents/chat", get(agent_runtime_status))
+        .route("/api/runtime/components", get(runtime_components))
+        .route("/api/runtime/components/{id}", get(runtime_component))
+        .route(
+            "/api/runtime/components/{id}/enabled",
+            put(set_runtime_component),
+        )
         .route("/api/settings", get(settings).put(save_settings))
         .route("/api/host/config", get(host_config))
         .route("/api/host/routes/{id}", put(configure_host_route))
@@ -510,6 +516,8 @@ async fn guard(State(app): State<App>, request: Request, next: Next) -> Response
     }
     let authenticated_read = host_configuration
         || request.uri().path() == "/api/runtime/agents/chat"
+        || request.uri().path() == "/api/runtime/components"
+        || request.uri().path().starts_with("/api/runtime/components/")
         || request.uri().path().starts_with("/api/network/")
         || request.uri().path() == "/api/plugins"
         || request.uri().path().starts_with("/api/plugins/")
@@ -693,6 +701,138 @@ async fn plugin_status(State(app): State<App>, Path(id): Path<String>) -> Respon
     match app.engine.plugin_status(&id) {
         Ok(plugin) => Json(json!({"plugin":plugin})).into_response(),
         Err(error) => plugin_error(error),
+    }
+}
+
+fn runtime_failure(error: crate::runtime_management::RuntimeManagementError) -> Response {
+    use crate::runtime_management::RuntimeManagementError as E;
+    let (status, code, message) = match error {
+        E::Invalid => (
+            StatusCode::BAD_REQUEST,
+            "runtime_invalid",
+            "Invalid runtime management request",
+        ),
+        E::NotFound => (
+            StatusCode::NOT_FOUND,
+            "runtime_not_found",
+            "Runtime component not found",
+        ),
+        E::RevisionConflict => (
+            StatusCode::CONFLICT,
+            "runtime_revision_conflict",
+            "Runtime revision conflict",
+        ),
+        E::IdempotencyConflict => (
+            StatusCode::CONFLICT,
+            "runtime_idempotency_conflict",
+            "Runtime idempotency conflict",
+        ),
+        E::Busy => (
+            StatusCode::CONFLICT,
+            "runtime_busy",
+            "Runtime transition busy",
+        ),
+        E::Unavailable => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "runtime_unavailable",
+            "Runtime component unavailable",
+        ),
+        E::Internal => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "runtime_internal",
+            "Runtime management outcome unavailable",
+        ),
+    };
+    (
+        status,
+        Json(json!({"code":code,"message":message,"error":message,"retryable":false})),
+    )
+        .into_response()
+}
+
+async fn runtime_empty_request(request: Request) -> bool {
+    request.uri().query().is_none()
+        && matches!(axum::body::to_bytes(request.into_body(), 0).await, Ok(body) if body.is_empty())
+}
+
+async fn runtime_components(State(app): State<App>, request: Request) -> Response {
+    use crate::runtime_management::RuntimeManagementError as E;
+    if !runtime_empty_request(request).await {
+        return runtime_failure(E::Invalid);
+    }
+    match app.engine.runtime_components() {
+        Ok(components) => Json(json!({"components":components})).into_response(),
+        Err(error) => runtime_failure(error),
+    }
+}
+
+async fn runtime_component(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    request: Request,
+) -> Response {
+    use crate::runtime_management::{RuntimeId, RuntimeManagementError as E};
+    if !runtime_empty_request(request).await {
+        return runtime_failure(E::Invalid);
+    }
+    let Ok(Path(id)) = id else {
+        return runtime_failure(E::Invalid);
+    };
+    let id = match RuntimeId::parse(&id) {
+        Ok(id) => id,
+        Err(error) => return runtime_failure(error),
+    };
+    match app.engine.runtime_component_status(id) {
+        Ok(component) => Json(component).into_response(),
+        Err(error) => runtime_failure(error),
+    }
+}
+
+async fn set_runtime_component(
+    State(app): State<App>,
+    id: std::result::Result<Path<String>, PathRejection>,
+    request: Request,
+) -> Response {
+    use crate::runtime_management::{RuntimeId, RuntimeManagementError as E};
+    if request.uri().query().is_some() {
+        return runtime_failure(E::Invalid);
+    }
+    let Ok(Path(id)) = id else {
+        return runtime_failure(E::Invalid);
+    };
+    let id = match RuntimeId::parse(&id) {
+        Ok(id) => id,
+        Err(error) => return runtime_failure(error),
+    };
+    let key = match required_idempotency_key(request.headers()) {
+        Ok(key) => key,
+        Err(_) => return runtime_failure(E::Invalid),
+    };
+    let is_json = request
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| {
+            v.split(';')
+                .next()
+                .is_some_and(|v| v.trim().eq_ignore_ascii_case("application/json"))
+        });
+    if !is_json {
+        return runtime_failure(E::Invalid);
+    }
+    let Ok(body) = axum::body::to_bytes(request.into_body(), 4096).await else {
+        return runtime_failure(E::Invalid);
+    };
+    let Ok(StrictObject(body)) = serde_json::from_slice::<StrictObject<SetPluginEnabled>>(&body)
+    else {
+        return runtime_failure(E::Invalid);
+    };
+    if body.expected_revision > i64::MAX as u64 {
+        return runtime_failure(E::Invalid);
+    }
+    match app.engine.set_runtime_enabled(id, body, &key) {
+        Ok(result) => Json(result).into_response(),
+        Err(error) => runtime_failure(error),
     }
 }
 
@@ -4061,5 +4201,257 @@ mod agent_runtime_public_execution_tests {
         provider.abort();
         let _ = server.await;
         let _ = provider.await;
+    }
+}
+
+#[cfg(test)]
+mod runtime_management_http_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn authenticated_strict_management_and_legacy_isolation() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(crate::store::Store::open(&dir.path().join("runtime.db")).unwrap());
+        let engine = Engine::new(store, 1).unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let token = "synthetic-runtime-http-token";
+        let app = App {
+            engine,
+            token: token.into(),
+            origin: origin.clone(),
+        };
+        let server = tokio::spawn(async move { axum::serve(listener, router(app)).await.unwrap() });
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        let base = format!("{origin}/api/runtime/components");
+        assert_eq!(
+            client.get(&base).send().await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+        for suffix in ["?", "?x=1"] {
+            let response = client
+                .get(format!("{base}{suffix}"))
+                .header("x-peachsh-token", token)
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+        let bad_origin = client
+            .get(&base)
+            .header("x-peachsh-token", token)
+            .header("origin", "http://evil.invalid")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(bad_origin.status(), StatusCode::FORBIDDEN);
+        let bad_site = client
+            .get(&base)
+            .header("x-peachsh-token", token)
+            .header("sec-fetch-site", "cross-site")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(bad_site.status(), StatusCode::FORBIDDEN);
+        let list = client
+            .get(&base)
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(list.status(), StatusCode::OK);
+        assert_eq!(list.headers()["cache-control"], "no-store");
+        let list: Value = list.json().await.unwrap();
+        assert_eq!(list["components"][0]["id"], "builtin.chat-agent");
+        assert_eq!(list["components"][1]["id"], "builtin.provider-xpeach");
+        let head = client
+            .head(&base)
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(head.status(), StatusCode::OK);
+        assert!(head.bytes().await.unwrap().is_empty());
+        assert_eq!(
+            client
+                .post(&base)
+                .header("x-peachsh-token", token)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::METHOD_NOT_ALLOWED
+        );
+        assert_eq!(
+            client
+                .get(&base)
+                .header("x-peachsh-token", token)
+                .header("host", "wrong.invalid")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            client
+                .get(&base)
+                .header("x-peachsh-token", token)
+                .body("x")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        let url = format!("{base}/builtin.chat-agent/enabled");
+        let valid_body = r#"{"enabled":false,"expected_revision":0}"#;
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("content-type", "application/json")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "a")
+                .header("idempotency-key", "b")
+                .header("content-type", "application/json")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "a,b")
+                .header("content-type", "application/json")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "a")
+                .header("content-type", "text/plain")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        for body in [
+            r#"{"enabled":false,"enabled":false,"expected_revision":0}"#,
+            r#"{"enabled":false,"expected_revision":0,"extra":1}"#,
+            r#"{"enabled":"false","expected_revision":0}"#,
+            r#"[]"#,
+            r#"{"enabled":false}"#,
+            r#"{"enabled":false,"expected_revision":-1}"#,
+            r#"{"enabled":false,"expected_revision":9223372036854775808}"#,
+        ] {
+            let response = client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "invalid")
+                .header("content-type", "application/json")
+                .body(body)
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+            assert_eq!(
+                response.json::<Value>().await.unwrap()["code"],
+                "runtime_invalid"
+            );
+        }
+        let response = client
+            .put(&url)
+            .header("x-peachsh-token", token)
+            .header("idempotency-key", "invalid")
+            .header("content-type", "application/json")
+            .body(" ".repeat(4097))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let write = |key: &'static str, body: &'static str| {
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", key)
+                .header("content-type", "application/json")
+                .body(body)
+        };
+        let first: Value = write(
+            "disable-agent",
+            r#"{"enabled":false,"expected_revision":0}"#,
+        )
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+        assert_eq!(first["receipt"]["revision"], 1);
+        let enabled = write("enable-agent", r#"{"enabled":true,"expected_revision":1}"#)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(enabled.status(), StatusCode::OK);
+        let replay: Value = write(
+            "disable-agent",
+            r#"{"enabled":false,"expected_revision":0}"#,
+        )
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+        assert_eq!(replay["receipt"], first["receipt"]);
+        assert_eq!(replay["replayed"], true);
+        assert_eq!(replay["current"]["desired"]["enabled"], true);
+        let conflict = write("disable-agent", r#"{"enabled":true,"expected_revision":0}"#)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(conflict.status(), StatusCode::CONFLICT);
+        assert_eq!(
+            conflict.json::<Value>().await.unwrap()["code"],
+            "runtime_idempotency_conflict"
+        );
+        let old = client
+            .get(format!("{origin}/api/plugins/builtin.chat-agent"))
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(old.status(), StatusCode::NOT_FOUND);
+        let wrong = client
+            .get(format!("{base}/builtin.files"))
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(wrong.status(), StatusCode::NOT_FOUND);
+        server.abort();
     }
 }
