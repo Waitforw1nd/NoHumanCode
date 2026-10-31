@@ -1,3 +1,7 @@
+## 2026-11-01 NEXT-21A启动诊断前进，C并行WASM只读预审
+
+更新人：项目经理。原B固定42303ebf修正错误码即时采集，attempt2 check/build通过、S01仍203，无PID；核旧37文件不变及新五清单185输入仅sandbox变化。经理同意显式LOCALAPPDATA仅指本次只读work的单变量试验，7230bbf6 attempt3 check/build通过，S01前进到token_size87，记录created_suspended PID60832，无resumed；后三用例/fmt/Clippy未执行。B继续具体token class/ABI诊断与回收取证，不跳过必需核验。正式派原C第二十三轮WASM执行与真实绑定只读预审，无产品/构建/Git权限；B仍唯一产品动态，D冻结。main仍NEXT-20，继承41行保持。下一第一操作核B下一修正/实际结果及C具体调用链，完整核心与项目active。
+
 ## 2026-11-01 NEXT-21A A0首次启动失败，原B定位
 
 更新人：项目经理。0fe116ab固定候选06:50至06:51 check/build exit0，S01 exit101，CreateProcess返回OS203，只有profile_created/before_create且无PID；后三用例/fmt/Clippy未执行。经理核五清单185输入/实际字节及Git blob、probe构建hash、37现场文件，新增B第二十轮首次失败review与经理核验JSON。203仅错误类别，具体根因未定，不把未启动算隔离拒绝；原B继续六路径内普通启动修复，新提交/new attempt沿已有授权，不能放宽权限或继承全环境。C/D冻结，main仍NEXT-20；继承41行保持，全项目active。下一第一操作核修正差异与新attempt结果。

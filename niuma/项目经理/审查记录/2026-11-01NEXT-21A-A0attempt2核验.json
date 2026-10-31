@@ -1,0 +1,189 @@
+{
+  "candidate": "42303ebf021a7a21cfd76ef56ea0b2d1288f56f7",
+  "old_attempt_files_unchanged": 37,
+  "source_manifests_identical": 5,
+  "source_files": 185,
+  "changed_input_from_attempt1": [
+    "NoManCode/rust-app/src/external_process_sandbox.rs"
+  ],
+  "changed_input_matches_candidate_blob": true,
+  "steps": [
+    {
+      "rust_tree": "8a940a0b81eb20446ced0741f550caede83611c9",
+      "ended_utc": "2026-10-31T23:04:06.3750477Z",
+      "head": "42303ebf021a7a21cfd76ef56ea0b2d1288f56f7",
+      "product_tree": "4f84ef4823bba0df5b9eac2a310afd409021404a",
+      "command": "cargo check --offline --locked --workspace --all-targets",
+      "started_utc": "2026-10-31T23:03:51.6814724Z",
+      "exit_code": 0
+    },
+    {
+      "rust_tree": "8a940a0b81eb20446ced0741f550caede83611c9",
+      "ended_utc": "2026-10-31T23:04:18.1262706Z",
+      "head": "42303ebf021a7a21cfd76ef56ea0b2d1288f56f7",
+      "product_tree": "4f84ef4823bba0df5b9eac2a310afd409021404a",
+      "command": "cargo build --offline --locked --example external_process_probe",
+      "started_utc": "2026-10-31T23:04:06.8936362Z",
+      "exit_code": 0
+    },
+    {
+      "rust_tree": "8a940a0b81eb20446ced0741f550caede83611c9",
+      "ended_utc": "2026-10-31T23:04:23.8807392Z",
+      "head": "42303ebf021a7a21cfd76ef56ea0b2d1288f56f7",
+      "product_tree": "4f84ef4823bba0df5b9eac2a310afd409021404a",
+      "command": "cargo test --offline --locked --test external_process_isolation s01_actual_lpac_process_exchanges_stdio_and_exits -- --exact --test-threads=1 --nocapture",
+      "started_utc": "2026-10-31T23:04:18.6265202Z",
+      "exit_code": 101
+    }
+  ],
+  "files": [
+    {
+      "path": "logs/01-check.json",
+      "sha256": "decf8e07564f5cdb0f40f4c536e9f72b89c071230ce73f3782af666142df219d"
+    },
+    {
+      "path": "logs/01-check.stderr.log",
+      "sha256": "ca548e2b5f2d161fb80653bc7da4b50f97f1bd5f91447a7e3427c02f35b18be5"
+    },
+    {
+      "path": "logs/01-check.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/02-build-probe.json",
+      "sha256": "400e8c30e8123d5f5071f1816fadc24d1db9dd3bdc9fd1a577f675c5f1ad4fb5"
+    },
+    {
+      "path": "logs/02-build-probe.stderr.log",
+      "sha256": "71fd43000ddf267031d9839c6cb43ba50125183451538150f8405642dc5dc868"
+    },
+    {
+      "path": "logs/02-build-probe.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/03-s01_actual_lpac_process_exchanges_stdio_and_exits.json",
+      "sha256": "77824958be35a82b339e2f7a8a29a049c6eb9ecf4ebb23fdf76111311dfe4e15"
+    },
+    {
+      "path": "logs/03-s01_actual_lpac_process_exchanges_stdio_and_exits.stderr.log",
+      "sha256": "3b74d9b73cae6ee26dbca24b321732cfb46ff6a322800e5eb1269ed7a91a3cc4"
+    },
+    {
+      "path": "logs/03-s01_actual_lpac_process_exchanges_stdio_and_exits.stdout.log",
+      "sha256": "e1485c73ebe51b40a0144dcdc8b4efc387913a9cdf10cb273913fa2fe3363dab"
+    },
+    {
+      "path": "logs/environment.json",
+      "sha256": "60b11b8857b373735be596f191c76c83c04eba704fc60ebaf3ba52f894efca4d"
+    },
+    {
+      "path": "logs/final.json",
+      "sha256": "b1d01ff187a55aad71304d66665cbbe0b5c01b721913c2b98f44da3470e4ff52"
+    },
+    {
+      "path": "logs/postflight.json",
+      "sha256": "31ad252ac8e42dc29bd960f3b03ea6f791f4307337305b21b51fccc6e08aa287"
+    },
+    {
+      "path": "logs/preflight.json",
+      "sha256": "48e8e4ec8f94f04d9fa7c4670b876bd94f5def5406d6e2f39795260bfbece55c"
+    },
+    {
+      "path": "logs/probe-binary.json",
+      "sha256": "d8d070d27ad4ffea9edbba88d54e869c7db72e7f4abb0eb9e8c1d313bd8e43b7"
+    },
+    {
+      "path": "logs/source-after-01-check.json",
+      "sha256": "278b6db286bb0cad6226a62b9bec5732e18e02cb2fe24cfad02dead89fa5d1a8"
+    },
+    {
+      "path": "logs/source-after-02-build-probe.json",
+      "sha256": "278b6db286bb0cad6226a62b9bec5732e18e02cb2fe24cfad02dead89fa5d1a8"
+    },
+    {
+      "path": "logs/source-after-03-s01_actual_lpac_process_exchanges_stdio_and_exits.json",
+      "sha256": "278b6db286bb0cad6226a62b9bec5732e18e02cb2fe24cfad02dead89fa5d1a8"
+    },
+    {
+      "path": "logs/source-after.json",
+      "sha256": "278b6db286bb0cad6226a62b9bec5732e18e02cb2fe24cfad02dead89fa5d1a8"
+    },
+    {
+      "path": "logs/source-before.json",
+      "sha256": "278b6db286bb0cad6226a62b9bec5732e18e02cb2fe24cfad02dead89fa5d1a8"
+    },
+    {
+      "path": "logs/state-after-01-check.json",
+      "sha256": "65b127207d7c3b1989bb6f15d8d2a377c2a1a559523433b6e72b3717b36740ce"
+    },
+    {
+      "path": "logs/state-after-02-build-probe.json",
+      "sha256": "5691186a72fbbf9807e89f61ae70469e421b037351368cbcbea799afc6d1957f"
+    },
+    {
+      "path": "logs/state-after-03-s01_actual_lpac_process_exchanges_stdio_and_exits.json",
+      "sha256": "0b3e5d75fe529d4157492a34914397e52f3451afe4b0e198cf769761388948e9"
+    },
+    {
+      "path": "logs/toolchain-setup.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "run.ps1",
+      "sha256": "f47498c7d30a014821e76fd7ea7dd03c4963c22a816eb0c2aea8e6e4335539c0"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/host.db",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/host.db-wal",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/key.dat",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/other-project.txt",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/profile.txt",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/public.txt",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-fixture-f1aed63a6a8045a5ba759ca4b4e643c7/workspace.txt",
+      "sha256": "2b7847b7b705781d7cf21a05e9c1bb37cbf078aea103bc3edcc6aca52ab65453"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/nhc-sandbox-5130d4dba6d74561a6d856ec5803b633/probe.exe",
+      "sha256": "85c63305d44ade75df1e1123f360182d8dbe6963937bf98a46214614f8b67e8a"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/sandbox-error.txt",
+      "sha256": "0d3df72efcdfc4eff5881bcbc64e82fb521e66cbb94117a9053ffa2b21d2e874"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/sandbox-events.json",
+      "sha256": "b005fbc73a15409a5f1ca1ca801c31609195f14d75e7ef32d1b49a063e049a1c"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/sandbox-stderr.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/sandbox-stdout.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tmp/.tmp5Q3FOt/sentinels-after-error.json",
+      "sha256": "b7e77e07803733d30d9764b53b559bf803f03623c3def8fbc34d9c73be2795e4"
+    }
+  ]
+}
