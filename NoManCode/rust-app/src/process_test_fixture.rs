@@ -284,11 +284,6 @@ async fn prepare_in(
     )?;
     let job = Job::new(&root, case)?;
     let descendant_script = r#"[Console]::Out.Write('sentinel'); [Console]::Out.Flush(); [IO.File]::WriteAllText('descendant-ready','ready'); $end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'release')) { if([DateTime]::UtcNow -gt $end){exit 98}; Start-Sleep -Milliseconds 10 }"#;
-    let descendant_script = if mode == "pipe-eof" {
-        "[Console]::Out.Write('sentinel'); [Console]::Out.Flush(); [IO.File]::WriteAllText('descendant-ready','ready'); exit 0"
-    } else {
-        descendant_script
-    };
     std::fs::write(root.join("descendant.ps1"), descendant_script)?;
     let parent_script = r#"$end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'allow')) { if([DateTime]::UtcNow -gt $end){exit 96}; Start-Sleep -Milliseconds 10 }; $p=[Diagnostics.ProcessStartInfo]::new('pwsh.exe'); $p.UseShellExecute=$false; $p.CreateNoWindow=$true; $p.RedirectStandardInput=$true; $p.ArgumentList.Add('-NoProfile'); $p.ArgumentList.Add('-NonInteractive'); $p.ArgumentList.Add('-File'); $p.ArgumentList.Add((Join-Path $PWD 'descendant.ps1')); $c=[Diagnostics.Process]::Start($p); $c.StandardInput.Close(); [IO.File]::WriteAllText('handle-pending',[string]$c.Handle.ToInt64()); Move-Item 'handle-pending' 'handle-ready'; while(!(Test-Path 'ack')) { if([DateTime]::UtcNow -gt $end){exit 97}; Start-Sleep -Milliseconds 10 }; exit 0"#;
     let parent_script = match mode {
@@ -365,6 +360,14 @@ async fn prepare_in(
         }
         ensure!(&sentinel == b"sentinel", "sentinel mismatch");
         std::fs::write(root.join("sentinel.txt"), "sentinel=observed\n")?;
+        if mode == "pipe-eof" {
+            std::fs::write(root.join("release"), "release")?;
+            while unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 258 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            ensure!(unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 0, "descendant exit wait failed");
+            std::fs::write(root.join("controlled-exit.txt"), "phase=before-stdout descendant_signal=0\n")?;
+        }
         let mut byte = [0; 1];
         match tokio::time::timeout(Duration::from_millis(100), stdout.read(&mut byte)).await {
             Err(_) => {},
@@ -373,6 +376,14 @@ async fn prepare_in(
             Ok(Err(error)) => return Err(error.into()),
         }
         child.stdout = Some(stdout);
+        if mode == "pipe-eof-between" {
+            std::fs::write(root.join("release"), "release")?;
+            while unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 258 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            ensure!(unsafe { WaitForSingleObject(descendant.as_raw_handle(), 0) } == 0, "descendant exit wait failed");
+            std::fs::write(root.join("controlled-exit.txt"), "phase=after-stdout-pending descendant_signal=0\n")?;
+        }
         let mut stderr = child.stderr.take().context("stderr unavailable")?;
         match tokio::time::timeout(Duration::from_millis(100), stderr.read(&mut byte)).await {
             Err(_) => {},
@@ -408,7 +419,13 @@ async fn prepare_in(
 
 #[tokio::test]
 async fn process_fixture_failure_controls_reap_job() {
-    for mode in ["no-marker", "parent-exit", "pipe-eof", "ack-fail"] {
+    for mode in [
+        "no-marker",
+        "parent-exit",
+        "pipe-eof",
+        "pipe-eof-between",
+        "ack-fail",
+    ] {
         let root = tempfile::tempdir().unwrap().keep();
         let deadline = Instant::now() + Duration::from_secs(15);
         let result = prepare_in(mode, root.clone(), mode, deadline).await;
@@ -439,6 +456,26 @@ async fn process_fixture_failure_controls_reap_job() {
                         .contains("Some(0)")
                 );
                 assert!(root.join("sentinel.txt").exists());
+                assert_eq!(
+                    std::fs::read_to_string(root.join("controlled-exit.txt")).unwrap(),
+                    "phase=before-stdout descendant_signal=0\n"
+                );
+            }
+            "pipe-eof-between" => {
+                assert!(
+                    failure.contains("stderr EOF after parent exit"),
+                    "{failure}"
+                );
+                assert!(
+                    std::fs::read_to_string(root.join("parent-exit.txt"))
+                        .unwrap()
+                        .contains("Some(0)")
+                );
+                assert!(root.join("sentinel.txt").exists());
+                assert_eq!(
+                    std::fs::read_to_string(root.join("controlled-exit.txt")).unwrap(),
+                    "phase=after-stdout-pending descendant_signal=0\n"
+                );
             }
             "ack-fail" => {
                 assert!(failure.contains("injected ack failure"), "{failure}");
