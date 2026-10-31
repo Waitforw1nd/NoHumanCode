@@ -1,0 +1,13 @@
+{
+  "source": "../nhc-d-runtime-management-tests",
+  "destination": "../nhc-c-runtime-management-interface",
+  "before": "7fce5b2e187a1147f4fcc784b5d07580eb6afe2c",
+  "after": "7dc734b0832dcd888a4e67fda1d666deb990cd15",
+  "product_tree": "9057a7999fc1c8a34322b6254a31fb946ec82bb3",
+  "rust_tree": "535566761693515f6087a1a306385487c580518d",
+  "mode": "manager fast-forward after D report/release and C frozen",
+  "changed_paths": [
+    "NoManCode/rust-app/tests/workspace_crash.rs"
+  ],
+  "scope": "Diagnostic test only; production unchanged; original N18-F01 remains unexplained; full C validation required"
+}

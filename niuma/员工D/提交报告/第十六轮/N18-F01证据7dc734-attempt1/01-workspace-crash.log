@@ -1,0 +1,22 @@
+   Compiling peachsh v0.2.0 (../nhc-d-runtime-management-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 3.63s
+     Running tests\workspace_crash.rs (.local\next18-d-67841d-attempt1\target\debug\deps\workspace_crash-e3f571cd0260c189.exe)
+
+running 6 tests
+workspace-write-fixture root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-PLyEI1 block_finish=true
+test crash_child_restore_http ... ok
+test crash_child_write ... ok
+workspace-write-fixture root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-xVwnrf block_finish=false
+workspace-write-child root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-xVwnrf pid=25084
+workspace-write-child root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-PLyEI1 pid=23480
+workspace-write-task root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-xVwnrf task_id=8a4b0895-3810-437c-b08e-713227ef0676
+workspace-write-task root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-PLyEI1 task_id=ea5cc53e-53c2-4e20-bafc-f3698057ce50
+workspace-write-evidence phase=target-boundary pid=25084 root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-xVwnrf task=8a4b0895-3810-437c-b08e-713227ef0676
+workspace-write-evidence phase=target-boundary pid=23480 root=../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1\tmp\workspace-write-crash-PLyEI1 task=ea5cc53e-53c2-4e20-bafc-f3698057ce50
+test write_crash_after_finish_commit_stays_finished ... ok
+test write_crash_after_file_before_finish_commit_is_unknown ... ok
+test restore_http_crash_after_complete_commit_keeps_stable_receipt ... ok
+test restore_http_crash_after_file_before_outcome_commit_is_unknown ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+

@@ -1,0 +1,362 @@
+{
+  "head": "7dc734b0832dcd888a4e67fda1d666deb990cd15",
+  "product_tree": "9057a7999fc1c8a34322b6254a31fb946ec82bb3",
+  "rust_tree": "535566761693515f6087a1a306385487c580518d",
+  "text_files": [
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/run.ps1",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/run.ps1",
+      "raw_sha256": "39D62129CAB8D251CF44685185D060821E6442B7309E978139A1BFA8A5A0B70A",
+      "published_sha256": "EFF48FFEDA6214B10A4F772A1E78C5CB2A7EB4AB318EA125F6AB01477992FE85",
+      "raw_bytes": 4889,
+      "published_bytes": 4789,
+      "path_replacements": {
+        "[msvc]": 1,
+        "[windows-sdk]": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/01-workspace-crash-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/01-workspace-crash-after.json",
+      "raw_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "published_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/01-workspace-crash-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/01-workspace-crash-before.json",
+      "raw_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "published_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/01-workspace-crash.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/01-workspace-crash.json",
+      "raw_sha256": "0B33B85019532A18CCF9204E50893BEF53CB05C8FF3A972A4CFC63348046AB3A",
+      "published_sha256": "0B33B85019532A18CCF9204E50893BEF53CB05C8FF3A972A4CFC63348046AB3A",
+      "raw_bytes": 385,
+      "published_bytes": 385,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/01-workspace-crash.log",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/01-workspace-crash.log",
+      "raw_sha256": "7FF97E5B1D599683520ADA8ADBD6F35A1558E28C9B5709CA7F7E209F2D58AA40",
+      "published_sha256": "4D1ED06D867E2EA0CE771B50BF0F944C03B82F089CB14D6344CF24BB72080760",
+      "raw_bytes": 2248,
+      "published_bytes": 2203,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1": 8,
+        "../nhc-d-runtime-management-tests": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/02-clippy-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/02-clippy-after.json",
+      "raw_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "published_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/02-clippy-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/02-clippy-before.json",
+      "raw_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "published_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/02-clippy.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/02-clippy.json",
+      "raw_sha256": "5395B05CE9250F0B7AD86A4B98B25CA5E1A675DF4C9EBC2E604A801111B11723",
+      "published_sha256": "5395B05CE9250F0B7AD86A4B98B25CA5E1A675DF4C9EBC2E604A801111B11723",
+      "raw_bytes": 387,
+      "published_bytes": 387,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/02-clippy.log",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/02-clippy.log",
+      "raw_sha256": "87736D3A1DC028A6CC760FFED949E497A3F960C1BF0C6F273FF7CF63116F1096",
+      "published_sha256": "8B4B33246931EF616A2DF0172A8D5C629EF0004F2EBEAA0B3688151CE43679A0",
+      "raw_bytes": 150,
+      "published_bytes": 145,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests": 1
+      }
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/03-fmt-after.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/03-fmt-after.json",
+      "raw_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "published_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/03-fmt-before.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/03-fmt-before.json",
+      "raw_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "published_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+      "raw_bytes": 23150,
+      "published_bytes": 23150,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/03-fmt.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/03-fmt.json",
+      "raw_sha256": "CC26C16F14E5021A5553D255F1D3F82868919F7AA53E1EBCB453B9F2C1F89A73",
+      "published_sha256": "CC26C16F14E5021A5553D255F1D3F82868919F7AA53E1EBCB453B9F2C1F89A73",
+      "raw_bytes": 344,
+      "published_bytes": 344,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/03-fmt.log",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/03-fmt.log",
+      "raw_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "raw_bytes": 0,
+      "published_bytes": 0,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/postflight.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/postflight.json",
+      "raw_sha256": "EC41BA35F315783F6FD044B9415DAA60A487744B373D340078F9AEEBD935041A",
+      "published_sha256": "EC41BA35F315783F6FD044B9415DAA60A487744B373D340078F9AEEBD935041A",
+      "raw_bytes": 306,
+      "published_bytes": 306,
+      "path_replacements": {}
+    },
+    {
+      "raw": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/logs/preflight.json",
+      "published": "niuma/员工D/提交报告/第十六轮/N18-F01证据7dc734-attempt1/preflight.json",
+      "raw_sha256": "4C6925504555A5825EA46B32F77A37DF859D4FEE309B5E3653AB615D375973FB",
+      "published_sha256": "F3A6CD0C5DA28228A9F4DAFE72DC789FBAF0D4E46032882BC43AF80A11E5FACF",
+      "raw_bytes": 962,
+      "published_bytes": 833,
+      "path_replacements": {
+        "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1": 1,
+        "../nhc-d-runtime-management-tests": 1,
+        "[msvc]": 1,
+        "[windows-sdk]": 1
+      }
+    }
+  ],
+  "fixture_copies": [
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1",
+      "copy_directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1",
+      "files": [
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/child-task-id",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/child-task-id",
+          "sha256": "ACB16C59091377F36FF48598F56F22C4A623B3632FDEB116DA4E1EA7008DDCB8",
+          "bytes": 36
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/src/a.txt",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/src/a.txt",
+          "sha256": "122FB3CF5C2B59D8B05C2B141C0FCE7207E6C4CFF2DF3E580521C3A9C95F4CE8",
+          "bytes": 11
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/workspace.db",
+          "sha256": "405299F21AE78406025725A45B26543B05711D5E8B2A53EEA78E8CE23BB6F1B4",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/workspace.db-shm",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/workspace.db-shm",
+          "sha256": "171899408DDBA2871221FC3FD79A3FDC4FCF9063F0E68AD518E189AAD82C8CF6",
+          "bytes": 32768
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/workspace.db-wal",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/workspace.db-wal",
+          "sha256": "2452B0BF73EDA6570F07BDEC2DA43823B4BD524D81A68FE213F92E85592D8FEB",
+          "bytes": 370832
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-child.stderr",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-child.stderr",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-child.stdout",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-child.stdout",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/observed.json",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/observed.json",
+          "sha256": "C98ACE6CF78B90589FBB70C20A15E13D96DEA09C4C65A12F0DB9EF6E1DB758ED",
+          "bytes": 4398
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/process.json",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/process.json",
+          "sha256": "A5E7B875E30DC6E27A267AFE27744D682BB0DBF74D272290C949F68B8CCB4592",
+          "bytes": 408
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/query-source/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/query-source/workspace.db",
+          "sha256": "E433BC138230189AD1EFFF9AD3BF9B5C7A093D66BC0C3C6786E446DEFCF438B3",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/queryable.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/queryable.db",
+          "sha256": "864247D99974E2CD7AA7BF7C8683E49FFDB089ED1D2D2F03D8AE11F9DB6B596B",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/raw/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/raw/workspace.db",
+          "sha256": "405299F21AE78406025725A45B26543B05711D5E8B2A53EEA78E8CE23BB6F1B4",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/raw/workspace.db-shm",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/raw/workspace.db-shm",
+          "sha256": "171899408DDBA2871221FC3FD79A3FDC4FCF9063F0E68AD518E189AAD82C8CF6",
+          "bytes": 32768
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/raw/workspace.db-wal",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/raw/workspace.db-wal",
+          "sha256": "2452B0BF73EDA6570F07BDEC2DA43823B4BD524D81A68FE213F92E85592D8FEB",
+          "bytes": 370832
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/raw-manifest.json",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/raw-manifest.json",
+          "sha256": "1EE7BF8AEA323FF32CAE813ACBDFE7219F581B0EC689E5E93FD01C9E6459DEAA",
+          "bytes": 489
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1/write-evidence/recovery/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-PLyEI1/write-evidence/recovery/workspace.db",
+          "sha256": "D5019A9FF65477051FB0AE69B4132E05C1E060C9C7F65B24D540A15E0AE335AD",
+          "bytes": 450560
+        }
+      ]
+    },
+    {
+      "directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf",
+      "copy_directory": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf",
+      "files": [
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/child-task-id",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/child-task-id",
+          "sha256": "8AA2357EDCC2927C8563265AA6572CFECB2D6168CFD4B83747D9A6F98F37230B",
+          "bytes": 36
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/src/a.txt",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/src/a.txt",
+          "sha256": "122FB3CF5C2B59D8B05C2B141C0FCE7207E6C4CFF2DF3E580521C3A9C95F4CE8",
+          "bytes": 11
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/workspace.db",
+          "sha256": "75E1880317953E44D732E769BAE044CE600142C0515D1AE8F779E8293AA6600B",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/workspace.db-shm",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/workspace.db-shm",
+          "sha256": "6FCE8C95C9316BBA850E4C16688FF6D06D6BD167BE2DF5CABF81EB2EC773E1E6",
+          "bytes": 32768
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/workspace.db-wal",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/workspace.db-wal",
+          "sha256": "81628B2394EBCE0AFE6F6E03343B9FEFB585B48F99E45B45D50B484A752D210B",
+          "bytes": 395552
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-child.stderr",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-child.stderr",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-child.stdout",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-child.stdout",
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA",
+          "bytes": 16
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/observed.json",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/observed.json",
+          "sha256": "D4E2573206EEFDDA47B7A0D13DF7DD7C9ED855FFC491BA94561D569A809CC829",
+          "bytes": 4853
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/process.json",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/process.json",
+          "sha256": "FCC202B7BE5198074590E8C3BADF331B8191BCA9A2BC3E3D285DE98E334A8B48",
+          "bytes": 411
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/query-source/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/query-source/workspace.db",
+          "sha256": "CEFB103298FF5236864F3B5A6059EEF8A254E482731E5D224881FBD97E67C1F3",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/queryable.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/queryable.db",
+          "sha256": "31A73A7B0AD181022D19A4613A872F2F1ABF6220C0D2E796533129C5EB4F8C95",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/raw/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/raw/workspace.db",
+          "sha256": "75E1880317953E44D732E769BAE044CE600142C0515D1AE8F779E8293AA6600B",
+          "bytes": 450560
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/raw/workspace.db-shm",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/raw/workspace.db-shm",
+          "sha256": "6FCE8C95C9316BBA850E4C16688FF6D06D6BD167BE2DF5CABF81EB2EC773E1E6",
+          "bytes": 32768
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/raw/workspace.db-wal",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/raw/workspace.db-wal",
+          "sha256": "81628B2394EBCE0AFE6F6E03343B9FEFB585B48F99E45B45D50B484A752D210B",
+          "bytes": 395552
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/raw-manifest.json",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/raw-manifest.json",
+          "sha256": "81B116B35D46D483080C7F7FF6747FCC9782DE2725120F74CCAA93F7A2C3571A",
+          "bytes": 489
+        },
+        {
+          "original": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf/write-evidence/recovery/workspace.db",
+          "copy": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/preserved-fixtures/workspace-write-crash-xVwnrf/write-evidence/recovery/workspace.db",
+          "sha256": "DEE80E09D49CD467C3A5701F1AEC01EBA6AD0B283D485FFA93063AABDB945E53",
+          "bytes": 450560
+        }
+      ]
+    }
+  ],
+  "notes": "Fixture originals and complete copies are byte-identical at inventory. Raw database files were not opened for diagnostics; published logs are path-relativized."
+}

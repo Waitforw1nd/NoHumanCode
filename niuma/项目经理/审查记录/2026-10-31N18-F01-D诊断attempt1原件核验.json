@@ -1,0 +1,267 @@
+{
+  "candidate": "7dc734b0832dcd888a4e67fda1d666deb990cd15",
+  "source_count": 134,
+  "source_manifest_count": 6,
+  "source_manifest_sha256": "3330D1285F31D3F4F471264CBC6FAEFCB8391B068F6C736AEF69AE082215A493",
+  "commands": [
+    {
+      "started_utc": "2026-10-31T07:49:34.7266701Z",
+      "exit_code": 0,
+      "ended_utc": "2026-10-31T07:49:39.4557882Z",
+      "command": "cargo test --offline --locked --test workspace_crash -- --nocapture",
+      "rust_tree": "535566761693515f6087a1a306385487c580518d",
+      "product_tree": "9057a7999fc1c8a34322b6254a31fb946ec82bb3",
+      "head": "7dc734b0832dcd888a4e67fda1d666deb990cd15"
+    },
+    {
+      "started_utc": "2026-10-31T07:49:39.7439373Z",
+      "exit_code": 0,
+      "ended_utc": "2026-10-31T07:49:40.5877492Z",
+      "command": "cargo clippy --offline --locked --test workspace_crash -- -D warnings",
+      "rust_tree": "535566761693515f6087a1a306385487c580518d",
+      "product_tree": "9057a7999fc1c8a34322b6254a31fb946ec82bb3",
+      "head": "7dc734b0832dcd888a4e67fda1d666deb990cd15"
+    },
+    {
+      "started_utc": "2026-10-31T07:49:40.8267614Z",
+      "exit_code": 0,
+      "ended_utc": "2026-10-31T07:49:42.0279899Z",
+      "command": "cargo fmt --all -- --check",
+      "rust_tree": "535566761693515f6087a1a306385487c580518d",
+      "product_tree": "9057a7999fc1c8a34322b6254a31fb946ec82bb3",
+      "head": "7dc734b0832dcd888a4e67fda1d666deb990cd15"
+    }
+  ],
+  "results": [
+    6,
+    0,
+    0
+  ],
+  "scenes": [
+    {
+      "process": {
+        "fixture_root": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-PLyEI1",
+        "kill": "killed",
+        "phase": "target-boundary",
+        "pid": 23480,
+        "reaped": true,
+        "success": false,
+        "target": "file-before-finish",
+        "task_id": "ea5cc53e-53c2-4e20-bafc-f3698057ce50",
+        "try_wait": "running",
+        "wait": "ExitStatus(ExitStatus(1))"
+      },
+      "snapshots": [
+        {
+          "snapshot": "before_recovery",
+          "workspace_change": "prepared",
+          "approval_execution": "claimed",
+          "tool_results": 0
+        },
+        {
+          "snapshot": "after_recovery",
+          "workspace_change": "unknown",
+          "approval_execution": "unknown",
+          "tool_results": 0
+        }
+      ],
+      "files": [
+        {
+          "path": "child-task-id",
+          "bytes": 36,
+          "sha256": "ACB16C59091377F36FF48598F56F22C4A623B3632FDEB116DA4E1EA7008DDCB8"
+        },
+        {
+          "path": "src/a.txt",
+          "bytes": 11,
+          "sha256": "122FB3CF5C2B59D8B05C2B141C0FCE7207E6C4CFF2DF3E580521C3A9C95F4CE8"
+        },
+        {
+          "path": "workspace.db",
+          "bytes": 450560,
+          "sha256": "405299F21AE78406025725A45B26543B05711D5E8B2A53EEA78E8CE23BB6F1B4"
+        },
+        {
+          "path": "workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "171899408DDBA2871221FC3FD79A3FDC4FCF9063F0E68AD518E189AAD82C8CF6"
+        },
+        {
+          "path": "workspace.db-wal",
+          "bytes": 370832,
+          "sha256": "2452B0BF73EDA6570F07BDEC2DA43823B4BD524D81A68FE213F92E85592D8FEB"
+        },
+        {
+          "path": "write-child.stderr",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "write-child.stdout",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "write-evidence/observed.json",
+          "bytes": 4398,
+          "sha256": "C98ACE6CF78B90589FBB70C20A15E13D96DEA09C4C65A12F0DB9EF6E1DB758ED"
+        },
+        {
+          "path": "write-evidence/process.json",
+          "bytes": 408,
+          "sha256": "A5E7B875E30DC6E27A267AFE27744D682BB0DBF74D272290C949F68B8CCB4592"
+        },
+        {
+          "path": "write-evidence/query-source/workspace.db",
+          "bytes": 450560,
+          "sha256": "E433BC138230189AD1EFFF9AD3BF9B5C7A093D66BC0C3C6786E446DEFCF438B3"
+        },
+        {
+          "path": "write-evidence/queryable.db",
+          "bytes": 450560,
+          "sha256": "864247D99974E2CD7AA7BF7C8683E49FFDB089ED1D2D2F03D8AE11F9DB6B596B"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db",
+          "bytes": 450560,
+          "sha256": "405299F21AE78406025725A45B26543B05711D5E8B2A53EEA78E8CE23BB6F1B4"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "171899408DDBA2871221FC3FD79A3FDC4FCF9063F0E68AD518E189AAD82C8CF6"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-wal",
+          "bytes": 370832,
+          "sha256": "2452B0BF73EDA6570F07BDEC2DA43823B4BD524D81A68FE213F92E85592D8FEB"
+        },
+        {
+          "path": "write-evidence/raw-manifest.json",
+          "bytes": 489,
+          "sha256": "1EE7BF8AEA323FF32CAE813ACBDFE7219F581B0EC689E5E93FD01C9E6459DEAA"
+        },
+        {
+          "path": "write-evidence/recovery/workspace.db",
+          "bytes": 450560,
+          "sha256": "D5019A9FF65477051FB0AE69B4132E05C1E060C9C7F65B24D540A15E0AE335AD"
+        }
+      ]
+    },
+    {
+      "process": {
+        "fixture_root": "../nhc-d-runtime-management-tests/NoManCode/rust-app/.local/n18-f01-7dc734-attempt1/tmp/workspace-write-crash-xVwnrf",
+        "kill": "killed",
+        "phase": "target-boundary",
+        "pid": 25084,
+        "reaped": true,
+        "success": false,
+        "target": "finished-after-commit",
+        "task_id": "8a4b0895-3810-437c-b08e-713227ef0676",
+        "try_wait": "running",
+        "wait": "ExitStatus(ExitStatus(1))"
+      },
+      "snapshots": [
+        {
+          "snapshot": "before_recovery",
+          "workspace_change": "finished",
+          "approval_execution": "finished",
+          "tool_results": 1
+        },
+        {
+          "snapshot": "after_recovery",
+          "workspace_change": "finished",
+          "approval_execution": "finished",
+          "tool_results": 1
+        }
+      ],
+      "files": [
+        {
+          "path": "child-task-id",
+          "bytes": 36,
+          "sha256": "8AA2357EDCC2927C8563265AA6572CFECB2D6168CFD4B83747D9A6F98F37230B"
+        },
+        {
+          "path": "src/a.txt",
+          "bytes": 11,
+          "sha256": "122FB3CF5C2B59D8B05C2B141C0FCE7207E6C4CFF2DF3E580521C3A9C95F4CE8"
+        },
+        {
+          "path": "workspace.db",
+          "bytes": 450560,
+          "sha256": "75E1880317953E44D732E769BAE044CE600142C0515D1AE8F779E8293AA6600B"
+        },
+        {
+          "path": "workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "6FCE8C95C9316BBA850E4C16688FF6D06D6BD167BE2DF5CABF81EB2EC773E1E6"
+        },
+        {
+          "path": "workspace.db-wal",
+          "bytes": 395552,
+          "sha256": "81628B2394EBCE0AFE6F6E03343B9FEFB585B48F99E45B45D50B484A752D210B"
+        },
+        {
+          "path": "write-child.stderr",
+          "bytes": 0,
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+        },
+        {
+          "path": "write-child.stdout",
+          "bytes": 16,
+          "sha256": "DAF071121A9FFE32BBCE44190E37A068C96D08BFF63FD7B660DD95B77D786DCA"
+        },
+        {
+          "path": "write-evidence/observed.json",
+          "bytes": 4853,
+          "sha256": "D4E2573206EEFDDA47B7A0D13DF7DD7C9ED855FFC491BA94561D569A809CC829"
+        },
+        {
+          "path": "write-evidence/process.json",
+          "bytes": 411,
+          "sha256": "FCC202B7BE5198074590E8C3BADF331B8191BCA9A2BC3E3D285DE98E334A8B48"
+        },
+        {
+          "path": "write-evidence/query-source/workspace.db",
+          "bytes": 450560,
+          "sha256": "CEFB103298FF5236864F3B5A6059EEF8A254E482731E5D224881FBD97E67C1F3"
+        },
+        {
+          "path": "write-evidence/queryable.db",
+          "bytes": 450560,
+          "sha256": "31A73A7B0AD181022D19A4613A872F2F1ABF6220C0D2E796533129C5EB4F8C95"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db",
+          "bytes": 450560,
+          "sha256": "75E1880317953E44D732E769BAE044CE600142C0515D1AE8F779E8293AA6600B"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-shm",
+          "bytes": 32768,
+          "sha256": "6FCE8C95C9316BBA850E4C16688FF6D06D6BD167BE2DF5CABF81EB2EC773E1E6"
+        },
+        {
+          "path": "write-evidence/raw/workspace.db-wal",
+          "bytes": 395552,
+          "sha256": "81628B2394EBCE0AFE6F6E03343B9FEFB585B48F99E45B45D50B484A752D210B"
+        },
+        {
+          "path": "write-evidence/raw-manifest.json",
+          "bytes": 489,
+          "sha256": "81B116B35D46D483080C7F7FF6747FCC9782DE2725120F74CCAA93F7A2C3571A"
+        },
+        {
+          "path": "write-evidence/recovery/workspace.db",
+          "bytes": 450560,
+          "sha256": "DEE80E09D49CD467C3A5701F1AEC01EBA6AD0B283D485FFA93063AABDB945E53"
+        }
+      ]
+    }
+  ],
+  "text_pairs_verified": 15,
+  "fixture_file_pairs_verified": 32,
+  "manifest_sha256": "929F4FB45F1D7AAF531DBAD623774E14C477539465C2314600FADB9BB25C7969",
+  "conclusion": "Diagnostic candidate passed targeted validation; original failure not reproduced or explained.",
+  "method": "Manager read evidence only. SQLite immutable read-only on queryable and closed recovery databases with no WAL; raw files never opened."
+}
