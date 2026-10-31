@@ -1,0 +1,10 @@
+
+running 5 tests
+test git_worktree::tests::w06_original_handle_rejects_live_process_and_accepts_waited_exit ... ok
+test git_worktree::tests::w06_output_overflow_terminates_and_reaps_real_child ... ok
+test git_worktree::tests::w06_nonzero_and_timeout_are_unknown_after_spawn ... ok
+test git_worktree::tests::w06_run_two_second_deadline_starts_before_spawn ... ok
+test git_worktree::tests::w06_inherited_pipe_deadline_keeps_partial_outcome_unknown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 355 filtered out; finished in 2.81s
+

@@ -1,0 +1,30 @@
+{
+  "call": "proof-call",
+  "cancelled": true,
+  "files": [
+    {
+      "bytes": 4096,
+      "name": "agent.db",
+      "present": true,
+      "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+    },
+    {
+      "bytes": 1170112,
+      "name": "agent.db-wal",
+      "present": true,
+      "sha256": "417b4fd2a36c356daa062f0f48664d1fa2184c0bfcf1e65d41e1895e09dc9d34"
+    },
+    {
+      "bytes": 32768,
+      "name": "agent.db-shm",
+      "present": true,
+      "sha256": "33925794cce5ea9ad856d55b856218dc1bb8a766141c3658c6562e2c7290525b"
+    }
+  ],
+  "kill": "ok",
+  "phase": "before_commit",
+  "pid": 52096,
+  "reaped": true,
+  "task": "9298162b-3a83-4cb0-b4ca-b6da2ae0cf19",
+  "wait": "ExitStatus(ExitStatus(1))"
+}

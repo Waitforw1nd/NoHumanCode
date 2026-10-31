@@ -1,0 +1,3 @@
+   Compiling peachsh v0.2.0 (../nhc-d-tool-result-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 18.86s
+     Running tests\approval_gate.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\approval_gate-1b3df4abe1ca7b56.exe)

@@ -1,0 +1,1 @@
+[Console]::Out.Write('sentinel'); [Console]::Out.Flush(); [IO.File]::WriteAllText('descendant-ready','ready'); $end=[DateTime]::UtcNow.AddSeconds(60); while(!(Test-Path 'release')) { if([DateTime]::UtcNow -gt $end){exit 98}; Start-Sleep -Milliseconds 10 }

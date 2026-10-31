@@ -1,0 +1,17 @@
+   Compiling peachsh v0.2.0 (../nhc-d-tool-result-tests\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 25.27s
+     Running unittests src\lib.rs (.local\next19-d-3a1ea4f-attempt1\target\debug\deps\peachsh-c82d43bb87a9486d.exe)
+fixture case=no-marker phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmpaaJA0Q
+case=no-marker phase=preparation-failed error=fixture preparation exceeded 15 seconds: deadline has elapsed
+case=no-marker phase=job-drop cleanup_ok=true error=None
+fixture case=parent-exit phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmpk5oF4f
+case=parent-exit phase=preparation-failed error=parent exited before handle publication: code=Some(42)
+case=parent-exit phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmpJiYep0
+case=pipe-eof phase=descendant-owned parent_pid=43948 parent_created=134379301281853117 descendant_pid=49040 descendant_created=134379301284853746
+case=pipe-eof phase=preparation-failed error=stdout EOF after parent exit and sentinel
+case=pipe-eof phase=job-drop cleanup_ok=true error=None
+fixture case=ack-fail phase=retained root=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmpqwX5G6
+case=ack-fail phase=descendant-owned parent_pid=55264 parent_created=134379301286944302 descendant_pid=54072 descendant_created=134379301289721578
+case=ack-fail phase=preparation-failed error=injected ack failure
+case=ack-fail phase=job-drop cleanup_ok=true error=None

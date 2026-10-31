@@ -1,0 +1,21 @@
+
+running 4 tests
+test server::worktree_http_crash_tests::w08_supervisor_rejects_early_completion_and_timeout ... ok
+W08 retained fixture phase=claim path=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmphJs8DJ
+test server::worktree_http_crash_tests::w08_supervisor_actual_ready_and_completion_controls ... ok
+test server::worktree_http_crash_tests::w08_supervisor_actual_timeout_before_ready ... ok
+W08 phase=claim operation=c3d7552d-f11b-41aa-8c48-8b49acc724e8 child_pid=52836 reached durable hook
+W08 phase=claim original child killed and waited
+W08 phase=claim restart verified state="unknown" and killed/waited; no extra worker or Provider dispatch
+W08 retained fixture phase=created path=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmpEONkvk
+W08 phase=created operation=4e8d38fb-682c-453c-bcc2-6d18252c62e4 child_pid=38752 reached durable hook
+W08 phase=created original child killed and waited
+W08 phase=created restart verified state="unknown" and killed/waited; no extra worker or Provider dispatch
+W08 retained fixture phase=registered path=../nhc-d-tool-result-tests\NoManCode\rust-app\.local\next19-d-82865ba-s06-attempt3\tmp\.tmp2UWjvo
+W08 phase=registered operation=88b015ee-ac5d-4e7e-8722-41b49d3c2574 child_pid=54064 reached durable hook
+W08 phase=registered original child killed and waited
+W08 phase=registered restart verified state="succeeded" and killed/waited; no extra worker or Provider dispatch
+test server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 356 filtered out; finished in 15.27s
+
