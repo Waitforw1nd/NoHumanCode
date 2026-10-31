@@ -1,0 +1,38 @@
+{
+  "command": "cargo test --locked --offline --lib command_execution::tests::s06_ -- --nocapture",
+  "cwd": "NoManCode/rust-app",
+  "start_utc": "2026-10-31T01:43:00.0763534Z",
+  "end_utc": "2026-10-31T01:43:21.700143Z",
+  "exit_code": 0,
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "msvc": "<MSVC-installation>/VC/Tools/MSVC/14.40.33807",
+  "sdk": "<Windows-SDK>/Lib/10.0.22621.0",
+  "target": ".local/next15-security-03/target",
+  "tmp": ".local/s06-20261031/tmp",
+  "offline": true,
+  "incremental": 0,
+  "dev_debug": 0,
+  "test_debug": 0,
+  "build_jobs": 2,
+  "before": {
+    "head": "71e928eaccc919818b94d7a795accb7871ab28fd",
+    "source_tree": "84f630de7154d12f2051796cd4d18fc50aa44258",
+    "rust_tree": "98d3f344d274cdff219c0d0047c4dae26cb23c5e",
+    "branch": "codex/d/credential-input",
+    "status": [],
+    "index": [],
+    "unmerged": [],
+    "source_sha256": "FF1D0D1DD85BFFB6D804B2F248A2185B341548540EDAF7EA583B65A7B9AD5DAB"
+  },
+  "after": {
+    "head": "71e928eaccc919818b94d7a795accb7871ab28fd",
+    "source_tree": "84f630de7154d12f2051796cd4d18fc50aa44258",
+    "rust_tree": "98d3f344d274cdff219c0d0047c4dae26cb23c5e",
+    "status": [],
+    "index": [],
+    "unmerged": [],
+    "source_sha256": "FF1D0D1DD85BFFB6D804B2F248A2185B341548540EDAF7EA583B65A7B9AD5DAB"
+  },
+  "log_sha256": "BC1116D14F879F5E12660357CC4796FBAEF2BD73CF826D4F8DEA50E9E588B3A8"
+}

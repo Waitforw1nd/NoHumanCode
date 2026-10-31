@@ -1,0 +1,167 @@
+{
+  "files": [
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/check-after-source-hashes.json",
+      "published": "check-after-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/check-before-source-hashes.json",
+      "published": "check-before-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/check.log",
+      "published": "check.log",
+      "source_bytes": 397,
+      "published_bytes": 392,
+      "source_sha256": "85CA5758C61CF2500295876577D5EC8610795B3FEDD8F19E28FDF89A59522722",
+      "published_sha256": "1F3A19CCDAD7160A04E448045DAEEEA4D16E956628B6DA7500DF1601EFBE09DE",
+      "transformed": true
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/clippy-after-source-hashes.json",
+      "published": "clippy-after-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/clippy-before-source-hashes.json",
+      "published": "clippy-before-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/clippy.log",
+      "published": "clippy.log",
+      "source_bytes": 773,
+      "published_bytes": 758,
+      "source_sha256": "AA95773E3E0A4D8A596E5741D5BC830ED37016F7FAC3A4AF5C93B85EEE2E6D22",
+      "published_sha256": "D546D7D6338DA068F31E043DF750FD18CD7AF2AE99A1099106E1BD650A78EA4C",
+      "transformed": true
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/fmt-after-source-hashes.json",
+      "published": "fmt-after-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/fmt-before-source-hashes.json",
+      "published": "fmt-before-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/fmt.log",
+      "published": "fmt.log",
+      "source_bytes": 0,
+      "published_bytes": 0,
+      "source_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "published_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/freeze.json",
+      "published": "freeze.json",
+      "source_bytes": 300,
+      "published_bytes": 300,
+      "source_sha256": "CED4157CD33758C031D00538A08AC3735E05B9655803CD90A4D8136E319497AB",
+      "published_sha256": "CED4157CD33758C031D00538A08AC3735E05B9655803CD90A4D8136E319497AB",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/meta.json",
+      "published": "meta.json",
+      "source_bytes": 10033,
+      "published_bytes": 9727,
+      "source_sha256": "94E93C149D2BB42749305CB4B9288572BA12F2AF170F7174E87FDB45F0667036",
+      "published_sha256": "BD6F0888D6E037D2F00839C52D1D8A3F0992F27701BF12F0268273695F6118AC",
+      "transformed": true
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/test-after-source-hashes.json",
+      "published": "test-after-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/test-before-source-hashes.json",
+      "published": "test-before-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/test.log",
+      "published": "test.log",
+      "source_bytes": 66275,
+      "published_bytes": 66020,
+      "source_sha256": "2076185BE4B2FC61C75C35129709871F7EA506FE3F0D35439B25906B6E269757",
+      "published_sha256": "13304BE91C3A5288627229E5F002B5559BB92CBF30E890BB1FFDB8B8BC0410FF",
+      "transformed": true
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/wasm-check-after-source-hashes.json",
+      "published": "wasm-check-after-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/wasm-check-before-source-hashes.json",
+      "published": "wasm-check-before-source-hashes.json",
+      "source_bytes": 26755,
+      "published_bytes": 26755,
+      "source_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "published_sha256": "69011D5C0CC0B7968FE742EA2B12C84A5EB772876B5F54D894A018F73434ACAC",
+      "transformed": false
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/logs/next15-final-20261031/wasm-check.log",
+      "published": "wasm-check.log",
+      "source_bytes": 4548,
+      "published_bytes": 4538,
+      "source_sha256": "81C540E7BA6CE8A4003523E7D87B30E3249FD7D3E919F20942EBA6C2D6C49F2E",
+      "published_sha256": "4F371163CE122D97427B5714E71A01F57C8548E3F1C84680547BAAA0240A1F5B",
+      "transformed": true
+    },
+    {
+      "source": "../nhc-c-host-setup-cli/.local/next15-final-20261031.ps1",
+      "published": "next15-final-20261031.ps1",
+      "source_bytes": 6600,
+      "published_bytes": 6600,
+      "source_sha256": "B464ADEFF55BD57516101BAA740A9B763C53B13B5595BD70C268B22168EA50CB",
+      "published_sha256": "B464ADEFF55BD57516101BAA740A9B763C53B13B5595BD70C268B22168EA50CB",
+      "transformed": false
+    }
+  ],
+  "note": "发布副本只相对化原树及工具链路径；原件保留。变化文件为 UTF-8；未变化保留原字节。"
+}

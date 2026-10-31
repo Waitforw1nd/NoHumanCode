@@ -1,0 +1,42 @@
+   Compiling peachsh v0.2.0 (../nhc-d-credential-input\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 18.94s
+     Running unittests src\lib.rs (../nhc-d-credential-input\.local\next15-security-03\target\debug\deps\peachsh-c82d43bb87a9486d.exe)
+
+running 6 tests
+test command_execution::tests::s06_inherited_pipe_child ... ok
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (34528) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+s06-process {"case":"identity-controls","created":134378845996758862,"exit_confirmed":false,"phase":"live-original","pid":4380,"query_error":null,"wait_status":258}
+s06-process {"case":"identity-controls","created":134378845996758862,"exit_confirmed":false,"phase":"query-without-synchronize","pid":4380,"query_error":5,"wait_status":4294967295}
+s06-process {"case":"identity-controls","exit_code":1,"phase":"original-child-wait"}
+s06-process {"case":"identity-controls","created":134378845996758862,"exit_confirmed":true,"phase":"waited-original","pid":4380,"query_error":null,"wait_status":0}
+test command_execution::tests::s06_original_handle_rejects_live_and_query_failure_accepts_exit ... ok
+s06-process {"case":"reader-error","cleanup_unknown":false,"created":134378845996799777,"phase":"capture-original-child","pid":41472,"probe_error":null,"reader_error":true,"wait_error":false}
+s06-process {"case":"reader-error","created":134378845996799777,"exit_confirmed":true,"phase":"assert-original-exited","pid":41472,"query_error":null,"wait_status":0}
+s06-process {"case":"inherited-pipe","cleanup_unknown":false,"created":134378845996834377,"phase":"capture-original-child","pid":36444,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"real-timeout","cleanup_unknown":false,"created":134378845996871473,"phase":"capture-original-child","pid":34836,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"cleanup-unknown","cleanup_unknown":true,"created":134378845996937344,"phase":"capture-original-child","pid":26176,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"task-scoped-unknown","cleanup_unknown":false,"created":134378845999096010,"phase":"capture-original-child","pid":22060,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"task-scoped-unknown","created":134378845999096010,"exit_confirmed":true,"phase":"assert-original-exited","pid":22060,"query_error":null,"wait_status":0}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (34528) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+test command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn ... ok
+s06-process {"case":"real-timeout","created":134378845996871473,"exit_confirmed":true,"phase":"assert-original-exited","pid":34836,"query_error":null,"wait_status":0}
+s06-process {"case":"cleanup-unknown","created":134378845996937344,"exit_confirmed":true,"phase":"assert-original-exited","pid":26176,"query_error":null,"wait_status":0}
+test command_execution::tests::s06_real_timeout_reaps_child_and_readers_without_false_unknown ... ok
+s06-process {"case":"wait-error","cleanup_unknown":false,"created":134378846007020749,"phase":"capture-original-child","pid":34880,"probe_error":null,"reader_error":false,"wait_error":true}
+s06-process {"case":"wait-error","created":134378846007020749,"exit_confirmed":true,"phase":"assert-original-exited","pid":34880,"query_error":null,"wait_status":0}
+test command_execution::tests::s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown ... ok
+s06-process {"case":"inherited-pipe","created":134378845996834377,"exit_confirmed":true,"phase":"assert-original-exited","pid":36444,"query_error":null,"wait_status":0}
+s06-process {"case":"inherited-pipe","created":134378845998904797,"phase":"receive-original-descendant","pid":28568,"probe_error":null}
+s06-process {"case":"inherited-pipe","created":134378845998904797,"exit_confirmed":false,"phase":"before-fixture-cleanup","pid":28568,"query_error":null,"wait_status":258}
+s06-process {"case":"inherited-pipe","created":134378845998904797,"phase":"terminate-original-fixture","pid":28568,"terminate_error":null,"terminate_result":1}
+s06-process {"case":"inherited-pipe","created":134378845998904797,"phase":"fixture-cleanup-wait","pid":28568,"query_error":null,"wait_status":0}
+s06-process {"case":"inherited-pipe","created":134378845998904797,"exit_confirmed":true,"phase":"assert-descendant-exited","pid":28568,"query_error":null,"wait_status":0}
+test command_execution::tests::s06_deadline_covers_inherited_pipe_after_direct_parent_exit ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 233 filtered out; finished in 2.02s
+
