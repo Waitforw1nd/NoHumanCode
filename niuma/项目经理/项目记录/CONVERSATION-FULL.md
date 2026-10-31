@@ -4,6 +4,10 @@
 
 继续完整项目目标：list_agents确认原B仍running，经理只读五owner路径WIP，新增usage缺失计数兼容、可信拒绝同call变更及审批完整绑定检查。B已回报静态补齐但未固定/编译。B同时纠正经理对resume分隔符的局部推断；经理git show确认基线已同事务写delta，显式撤回误判并更新预读记录，不作为已证明回归。T05仍限定cfg(test)真实事务停点，无生产后门、无新测试窗口。
 
+经理以ee413b2b提交五份管理记录，核产品双tree不变与index清空，四档案继承10/10/11/10新增行保留。继续预读确认另一独立反例：纯合成输出sk-追加abc后脱敏结果不保前缀；B独立核实并补同scope持久delta的受限证明，三个生产保存入口及单测草稿已读，未运行。审批拒绝/取消在原args已脱敏后的重启/新Turn绑定证明仍待B方案及经理裁决，不通过放松校验或持久化秘密解决。全项目目标active，无新员工派发或构建窗口。
+
+B提交最小证明方案后，经理核ensure_approval同事务和approval_http封闭事件字段断言，签发[补充01](../任务/2026-10-31NEXT-19补充01脱敏审批拒绝证明.md)：新增evidence_version/safe_call_digest，实际持久安全参数与身份绑定，不公开原参数摘要；抽取原v2 helper验证审批记录内部绑定，限制仅拒绝/取消路径，旧无证明且原参数不可核则安全拒绝。扩B approval.rs和D approval_http.rs唯一所有权，保持schema17及原独立基线。原B已全文读取并本人回执接收，C/D不唤醒，仍无构建窗口或动态结果。
+
 ## 2026-10-31 NEXT-19正式实施启动
 
 B完成静态预研并冻结，经理核报告固定hash及源码，形成预研裁决和T01–T14正式契约。实际从73a03b6b创建codex/b/tool-call-application、codex/d/tool-result-tests、codex/c/tool-call-workflow三树，核HEAD/双tree/status；仅恢复原B执行新树静态完整实现，B已本人核收三SHA/branch/status/index/unmerged空，C/D冻结。未新建代理/改模型，未运行产品测试。新设计在保留schema17与唯一Host资源前提下统一结果事务、证明非执行来源、受限历史只读回填并让Engine退出实际工具协调，未把静态条件推导当动态缺陷或N18-F01根因。
