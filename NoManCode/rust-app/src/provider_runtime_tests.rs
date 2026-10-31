@@ -1220,3 +1220,77 @@ fn p04_deactivate_callback_can_reenter_status_without_deadlock() {
     let state = runtime.status_for_test().unwrap();
     assert!(!state.admission_open && !state.active && !state.transitioning);
 }
+#[tokio::test]
+async fn n18_cross_store_false_true_does_not_revive_old_prepared_completion() {
+    use crate::{plugin_management::SetPluginEnabled, runtime_management::RuntimeId};
+    let f = fixture(Fault::None).await;
+    let other_store = Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap());
+    let other = Engine::new(other_store, 2).unwrap();
+    let runtime = make_runtime();
+    let messages = vec![json!({"role":"user","content":"hi"})];
+    let tools = vec![];
+    let prepared = runtime
+        .prepare_persisted(&f.engine.store, &input(&messages, &tools))
+        .unwrap();
+    other
+        .set_runtime_enabled(
+            RuntimeId::CompletionProvider,
+            SetPluginEnabled {
+                enabled: false,
+                expected_revision: 0,
+            },
+            "p-off",
+        )
+        .unwrap();
+    other
+        .set_runtime_enabled(
+            RuntimeId::CompletionProvider,
+            SetPluginEnabled {
+                enabled: true,
+                expected_revision: 1,
+            },
+            "p-on",
+        )
+        .unwrap();
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: "route".into(),
+        project_id: Some(f.project.clone()),
+    };
+    let db = rusqlite::Connection::open(f._dir.path().join("provider-test.db")).unwrap();
+    let count = || {
+        db.query_row("SELECT count(*) FROM network_calls", [], |r| {
+            r.get::<_, u64>(0)
+        })
+        .unwrap()
+    };
+    let before = count();
+    assert!(
+        runtime
+            .acquire_persisted(prepared, |revision| f
+                .engine
+                .store
+                .network_admit_with_runtime_revision(
+                    &subject,
+                    NetworkPurpose::Completion,
+                    None,
+                    Some(revision)
+                ))
+            .is_err()
+    );
+    assert_eq!(count(), before);
+    assert_eq!(f.mock.completions.load(Ordering::SeqCst), 0);
+    let fresh = runtime
+        .prepare_persisted(&f.engine.store, &input(&messages, &tools))
+        .unwrap();
+    let called = AtomicUsize::new(0);
+    let (lease, ()) = runtime
+        .acquire_persisted(fresh, |revision| {
+            assert_eq!(revision, 2);
+            called.fetch_add(1, Ordering::SeqCst);
+            Ok::<_, NetworkError>(())
+        })
+        .unwrap();
+    assert_eq!(called.load(Ordering::SeqCst), 1);
+    drop(lease);
+}

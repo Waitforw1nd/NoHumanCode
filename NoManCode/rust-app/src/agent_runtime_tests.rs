@@ -2210,3 +2210,29 @@ async fn a01_builtin_first_and_next_turn_preserve_messages_and_usage() {
             .any(|m| m["role"] == "user" && m["content"] == "next-user")
     );
 }
+#[test]
+fn n18_cross_store_disable_blocks_new_agent_lease_preserves_old_lease() {
+    use crate::{plugin_management::SetPluginEnabled, runtime_management::RuntimeId};
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("agent-runtime.db");
+    let first_store = Arc::new(Store::open(&path).unwrap());
+    let second = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+    let runtime = AgentRuntime::builtin().unwrap();
+    let old = runtime.acquire_persisted(&first_store).unwrap();
+    assert_eq!(runtime.status().unwrap().in_flight, 1);
+    second
+        .set_runtime_enabled(
+            RuntimeId::ChatAgent,
+            SetPluginEnabled {
+                enabled: false,
+                expected_revision: 0,
+            },
+            "agent-off",
+        )
+        .unwrap();
+    assert!(runtime.acquire_persisted(&first_store).is_err());
+    assert_eq!(runtime.status().unwrap().in_flight, 1);
+    drop(old);
+    assert_eq!(runtime.status().unwrap().in_flight, 0);
+    assert!(runtime.acquire_persisted(&first_store).is_err());
+}

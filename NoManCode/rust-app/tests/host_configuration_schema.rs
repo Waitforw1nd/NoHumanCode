@@ -1,4 +1,6 @@
 #![cfg(windows)]
+#[path = "support/schema_fixture.rs"]
+mod schema_fixture;
 use peachsh::{
     host_configuration::*,
     store::{Store, fresh_settings},
@@ -10,7 +12,7 @@ use std::{
 };
 fn rows(db: &Connection) -> BTreeMap<String, Vec<Vec<Value>>> {
     let names:Vec<String>=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('host_config_state','host_config_requests') ORDER BY name").unwrap().query_map([],|r|r.get(0)).unwrap().collect::<rusqlite::Result<_>>().unwrap();
-    names.into_iter().map(|name|{let query=if name=="schema_migrations" {"SELECT rowid,* FROM schema_migrations WHERE id<>'host-route-configuration-v1' ORDER BY rowid".into()}else{format!("SELECT rowid,* FROM {name} ORDER BY rowid")};let values=db.prepare(&query).unwrap().query_map([],|r|(0..r.as_ref().column_count()).map(|i|r.get(i)).collect()).unwrap().collect::<rusqlite::Result<_>>().unwrap();(name,values)}).collect()
+    names.into_iter().map(|name|{let query=if name=="schema_migrations" {"SELECT rowid,* FROM schema_migrations WHERE id NOT IN ('host-route-configuration-v1','builtin-runtime-management-v1') ORDER BY rowid".into()}else if name=="plugin_desired" {"SELECT rowid,* FROM plugin_desired WHERE plugin_id IN ('builtin.files','builtin.shell') ORDER BY rowid".into()}else{format!("SELECT rowid,* FROM {name} ORDER BY rowid")};let values=db.prepare(&query).unwrap().query_map([],|r|(0..r.as_ref().column_count()).map(|i|r.get(i)).collect()).unwrap().collect::<rusqlite::Result<_>>().unwrap();(name,values)}).collect()
 }
 fn historical15() -> (tempfile::TempDir, Connection) {
     let dir = tempfile::tempdir().unwrap();
@@ -18,6 +20,7 @@ fn historical15() -> (tempfile::TempDir, Connection) {
     fresh_settings(&store, dir.path()).unwrap();
     drop(store);
     let db = Connection::open(dir.path().join("host.db")).unwrap();
+    schema_fixture::restore_two_plugin_schema(&db);
     db.execute_batch("DROP TABLE host_config_requests; DROP TABLE host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; PRAGMA user_version=15; INSERT INTO config(rowid,id,value) VALUES(88,'sentinel','exact old json bytes'); INSERT INTO secrets(rowid,id,value) VALUES(97,'opaque-legacy',X'0001FFFE'); UPDATE plugin_desired SET rowid=31,revision=7,updated_at=12 WHERE plugin_id='builtin.files';").unwrap();
     (dir, db)
 }
@@ -27,7 +30,7 @@ fn migration_keeps_all_legacy_rows_rowids_and_opaque_blobs_on_repeated_open() {
     let before = rows(&db);
     for _ in 0..2 {
         let store = Store::open(&dir.path().join("host.db")).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 16);
+        assert_eq!(store.schema_version().unwrap(), 17);
         assert_eq!(store.host_config().unwrap().revision, 0);
         assert_eq!(rows(&db), before);
     }
@@ -55,7 +58,7 @@ fn concurrent_migration_opens_converge_on_one_marker_and_singleton() {
         .collect();
     barrier.wait();
     for h in handles {
-        assert_eq!(h.join().unwrap().unwrap().schema_version().unwrap(), 16);
+        assert_eq!(h.join().unwrap().unwrap().schema_version().unwrap(), 17);
     }
     assert_eq!(rows(&db), before);
     assert_eq!(
