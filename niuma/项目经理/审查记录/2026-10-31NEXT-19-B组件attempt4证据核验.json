@@ -1,0 +1,109 @@
+{
+  "candidate": "a7fe2626b36c130937820685f4f2d38612094f5d",
+  "manifest_sha256": "d12f8a740efd3519c0ba350f0d011d7b72f877795100ce2a851ac631ce43a737",
+  "verified_file_pairs": 41,
+  "path_transformed_files": 7,
+  "source_files_verified": 139,
+  "source_byte_identical_to_git": 138,
+  "source_crlf_only_exception": "src/lib.rs; 1253 working bytes vs 1203 Git bytes; eol:lf, not checkout-filter matching",
+  "source_five_manifests_equal": true,
+  "retained_before_unchanged": 4609,
+  "retained_after_verified": 6103,
+  "retained_errors": 0,
+  "commands": {
+    "check": 0,
+    "build_cli": 0,
+    "lib": 101,
+    "approval_gate": "not_run",
+    "clippy": "not_run",
+    "fmt": "not_run"
+  },
+  "lib": {
+    "passed": 353,
+    "failed": 2,
+    "ignored": 0
+  },
+  "r05": "passed in this lib run; component failed",
+  "failures": [
+    "N19-F01 W08 claim phase ready notification timeout before proven durable claim",
+    "N19-F02 N13 ready_rx timeout before caller abort; no attributable original fixture"
+  ],
+  "scenes": [
+    {
+      "path": "NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmp2BxDOJ/legacy-process.json",
+      "phase": "agent_after_assistant_save",
+      "pid": 22020,
+      "status": "running",
+      "messages": 0,
+      "result_events": [
+        {
+          "name": "read_file",
+          "result": {
+            "content": "historic"
+          },
+          "tool_call_id": "legacy-kill"
+        }
+      ]
+    },
+    {
+      "path": "NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmp5DJp7v/proof-process.json",
+      "phase": "before_commit",
+      "pid": 43976,
+      "status": "cancelled",
+      "messages": 0,
+      "result_events": []
+    },
+    {
+      "path": "NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmpLx4g7R/host-denied-process.json",
+      "phase": "after_commit",
+      "pid": 43280,
+      "status": "running",
+      "messages": 1,
+      "result_events": [
+        {
+          "name": "not_a_real_tool",
+          "origin": "host_denied",
+          "origin_version": 1,
+          "result": "未分类工具拒绝执行",
+          "tool_call_id": "host-kill"
+        }
+      ]
+    },
+    {
+      "path": "NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmpNu1soA/proof-process.json",
+      "phase": "before_commit",
+      "pid": 36180,
+      "status": "running",
+      "messages": 0,
+      "result_events": []
+    },
+    {
+      "path": "NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/nhc-t05-B4F0nN/process.json",
+      "phase": "before_commit",
+      "pid": 42844,
+      "status": "queued",
+      "messages": 0,
+      "result_events": []
+    },
+    {
+      "path": "NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/nhc-t05-tnTJJU/process.json",
+      "phase": "after_commit",
+      "pid": 43876,
+      "status": "queued",
+      "messages": 1,
+      "result_events": [
+        {
+          "name": "write_file",
+          "origin": "agent_denied",
+          "origin_version": 1,
+          "result": {
+            "error": "blocked_by_agent_policy"
+          },
+          "tool_call_id": "call"
+        }
+      ]
+    }
+  ],
+  "w08_diagnostic": "2026-10-31NEXT-19-attempt4-W08只读诊断.json",
+  "note": "Raw hashes only; existing query copies opened read-only. No raw recovery, no rerun, no root-cause attribution."
+}
