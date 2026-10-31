@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-01T05:41:10.300506+08:00",
+  "merge": "a5d429ec8ba5dec55305f25a8ab6f33bec0fa97b",
+  "delivery_candidate": "ee33ef1a9acf51a20841eb587034cbe4a6a1297e",
+  "tested_candidate": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+  "product_tree": "897cc8510c0c56118df04c2c1dbcea9c999e539f",
+  "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+  "main_files_checked": 147,
+  "main_exact_raw_match": 146,
+  "main_all_git_blobs_match_tested_manifest": true,
+  "documentation_eol_difference": [
+    {
+      "path": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md",
+      "actual_bytes": 18434,
+      "tested_bytes": 18432,
+      "actual_sha256": "5e8581f12bb30038af4e1015c174359f81c9bb889d2923a58536ac43a35eb246",
+      "normalized_matches": true,
+      "build_input": false,
+      "action": "preserved existing checkout bytes"
+    }
+  ],
+  "staged_empty": true,
+  "unmerged_empty": true,
+  "product_worktree_diff_empty": true
+}
