@@ -1,0 +1,115 @@
+   Compiling wasm-encoder v0.259.0
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling wast v259.0.0
+   Compiling wat v1.259.0
+   Compiling wasmi v2.0.0
+   Compiling peachsh v0.2.0 (../nhc-b-tool-call-application\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 31.96s
+     Running unittests src\lib.rs (.local\next19-b-a7fe2626-attempt4\target\debug\deps\peachsh-c82d43bb87a9486d.exe)
+a10-fixture {"directory":"../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\tmp\\.tmpcevrut","phase":"agent_after_assistant_save"}
+a10-fixture {"directory":"../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\tmp\\.tmp6MOpb2","phase":"write_pre_fs"}
+a10-kill {"exit_code":1,"phase":"agent_after_assistant_save","pid":41712,"task_id":"f0285e21-39a0-4876-a804-128c6e4bcc78"}
+s06-process {"case":"inherited-pipe","cleanup_unknown":false,"created":134379221134498769,"phase":"capture-original-child","pid":39244,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"identity-controls","created":134379221134581191,"exit_confirmed":false,"phase":"live-original","pid":16040,"query_error":null,"wait_status":258}
+s06-process {"case":"identity-controls","created":134379221134581191,"exit_confirmed":false,"phase":"query-without-synchronize","pid":16040,"query_error":5,"wait_status":4294967295}
+s06-process {"case":"reader-error","cleanup_unknown":false,"created":134379221134703780,"phase":"capture-original-child","pid":7772,"probe_error":null,"reader_error":true,"wait_error":false}
+s06-process {"case":"reader-error","created":134379221134703780,"exit_confirmed":true,"phase":"assert-original-exited","pid":7772,"query_error":null,"wait_status":0}
+s06-process {"case":"identity-controls","exit_code":1,"phase":"original-child-wait"}
+s06-process {"case":"identity-controls","created":134379221134581191,"exit_confirmed":true,"phase":"waited-original","pid":16040,"query_error":null,"wait_status":0}
+a10-kill {"exit_code":1,"phase":"write_pre_fs","pid":31060,"task_id":"fedd2457-d606-4afb-8c68-635c8b9d7f98"}
+s06-process {"case":"cleanup-unknown","cleanup_unknown":true,"created":134379221134954373,"phase":"capture-original-child","pid":4244,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"real-timeout","cleanup_unknown":false,"created":134379221135018649,"phase":"capture-original-child","pid":42560,"probe_error":null,"reader_error":false,"wait_error":false}
+a10-evidence {"directory":".local\\next17-a10-evidence\\1fa14a97-ea82-4220-80bd-c39bc048aa66","phase":"agent_after_assistant_save-killed","snapshot":"agent-snapshot.db"}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (38060) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+a10-evidence {"directory":".local\\next17-a10-evidence\\38178e98-8145-409e-834d-3f850a59fef1","phase":"write_pre_fs-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\829ccd08-5ec0-4547-ae95-8a5bf9972532","phase":"write_pre_fs-unknown-1","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":31060,"mock_completions":1,"recovery_pid":14452,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\c4f36195-ce21-4727-9762-581ce0b7d5cc","phase":"agent_after_assistant_save-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":41712,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":16448,"run":1}
+s06-process {"case":"task-scoped-unknown","cleanup_unknown":false,"created":134379221139939312,"phase":"capture-original-child","pid":36500,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"task-scoped-unknown","created":134379221139939312,"exit_confirmed":true,"phase":"assert-original-exited","pid":36500,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\b4a952e8-39ec-498f-b670-7bf5a138bb7a","phase":"write_pre_fs-unknown-2","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":31060,"mock_completions":1,"recovery_pid":6248,"run":2}
+a10-evidence {"directory":".local\\next17-a10-evidence\\6058945e-aedc-4aed-9249-4b54127d465c","phase":"agent_after_assistant_save-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":41712,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":12432,"run":2}
+F07 child kill+wait completed: exit code: 1; persisted revision=1, before apply
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (38060) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+s06-process {"case":"cleanup-unknown","created":134379221134954373,"exit_confirmed":true,"phase":"assert-original-exited","pid":4244,"query_error":null,"wait_status":0}
+s06-process {"case":"real-timeout","created":134379221135018649,"exit_confirmed":true,"phase":"assert-original-exited","pid":42560,"query_error":null,"wait_status":0}
+s06-process {"case":"wait-error","cleanup_unknown":false,"created":134379221145145598,"phase":"capture-original-child","pid":31052,"probe_error":null,"reader_error":false,"wait_error":true}
+a10-fixture {"directory":"../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\tmp\\.tmp11j2MD","phase":"agent_before_denied_result"}
+S09: actual claim-before-spawn child kill+wait complete: exit code: 1
+a10-kill {"exit_code":1,"phase":"agent_before_denied_result","pid":42084,"task_id":"c5b0e58a-9267-4057-87da-fcd4199400f5"}
+s06-process {"case":"wait-error","created":134379221145145598,"exit_confirmed":true,"phase":"assert-original-exited","pid":31052,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\3d55088c-0ac5-49c0-b3a3-fafecd39dfea","phase":"agent_before_denied_result-killed","snapshot":"agent-snapshot.db"}
+S06: task-scoped test injection after real spawn; typed unknown preserved claim, not a claim of actual OS cleanup failure
+a10-evidence {"directory":".local\\next17-a10-evidence\\4c745e1a-f376-4261-a0b1-0d477abacbfa","phase":"agent_before_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":42084,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":44616,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\254f016b-3550-46cb-8386-f9a166772dc2","phase":"agent_before_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":42084,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":34228,"run":2}
+a10-fixture {"directory":"../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\tmp\\.tmpuX8cvc","phase":"agent_after_denied_result"}
+s06-process {"case":"inherited-pipe","created":134379221134498769,"exit_confirmed":true,"phase":"assert-original-exited","pid":39244,"query_error":null,"wait_status":0}
+s06-process {"case":"inherited-pipe","created":134379221138058198,"phase":"receive-original-descendant","pid":43484,"probe_error":null}
+s06-process {"case":"inherited-pipe","created":134379221138058198,"exit_confirmed":false,"phase":"before-fixture-cleanup","pid":43484,"query_error":null,"wait_status":258}
+s06-process {"case":"inherited-pipe","created":134379221138058198,"phase":"terminate-original-fixture","pid":43484,"terminate_error":null,"terminate_result":1}
+s06-process {"case":"inherited-pipe","created":134379221138058198,"phase":"fixture-cleanup-wait","pid":43484,"query_error":null,"wait_status":0}
+s06-process {"case":"inherited-pipe","created":134379221138058198,"exit_confirmed":true,"phase":"assert-descendant-exited","pid":43484,"query_error":null,"wait_status":0}
+a10-kill {"exit_code":1,"phase":"agent_after_denied_result","pid":3128,"task_id":"9824ebf4-13fd-44e3-8100-66ef00d8e54f"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\7a88eb7e-4fd8-4a78-a489-86dd278ddcaf","phase":"agent_after_denied_result-killed","snapshot":"agent-snapshot.db"}
+I09 retained fixture: ../nhc-b-tool-call-application\NoManCode\rust-app\.local\next19-b-a7fe2626-attempt4\tmp\nhc-i09-after_commit-f19cf644-17aa-4968-9361-f4e8927bcee1
+I09 retained fixture: ../nhc-b-tool-call-application\NoManCode\rust-app\.local\next19-b-a7fe2626-attempt4\tmp\nhc-i09-before_commit-9005e2b6-7676-4838-bfde-325ce9846912
+a10-evidence {"directory":".local\\next17-a10-evidence\\f498e465-6cab-42da-98f0-9fc96d696641","phase":"agent_after_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":3128,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":36420,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\0214acab-c833-4a81-ace9-17c80c108a49","phase":"agent_after_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":3128,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":44600,"run":2}
+a10-fixture {"directory":"../nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\tmp\\.tmpG3ejp9","phase":"agent_after_applied_result"}
+a10-kill {"exit_code":1,"phase":"agent_after_applied_result","pid":30908,"task_id":"15081598-a644-451d-8090-4d02763e5a1d"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\d0bf05e4-db92-4f3a-b021-ab18e3b0e906","phase":"agent_after_applied_result-killed","snapshot":"agent-snapshot.db"}
+p06-recovery {"call_id":"d4d66a63-69e9-434c-8496-3c3c1aeaa653","event":"killed-and-waited","exit_code":1,"mock_completions":0,"phase":"budget-after-claim","pid":35288}
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+p06-recovery {"call_id":"d4d66a63-69e9-434c-8496-3c3c1aeaa653","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":20848,"run":1,"unresolved_count":1}
+D08 case deadline_ms=3000
+a10-evidence {"directory":".local\\next17-a10-evidence\\8c177397-b35c-43f5-b5fe-404ae5cffa64","phase":"agent_after_applied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":30908,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":596,"run":1}
+p06-recovery {"call_id":"d4d66a63-69e9-434c-8496-3c3c1aeaa653","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":46356,"run":2,"unresolved_count":1}
+D08 cleanup pid=46476 created=134379221183139800 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 cleanup pid=46508 created=134379221183192864 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(7))))
+D08 original-handle pid=46476 created=134379221183139800 signal=0
+D08 original-handle pid=46508 created=134379221183192864 signal=0
+a10-evidence {"directory":".local\\next17-a10-evidence\\b44a634c-8c9c-4ca0-9548-8be6c35c1add","phase":"agent_after_applied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":30908,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":39168,"run":2}
+p06-recovery {"call_id":"2375070b-ff2e-400a-aee5-ea5d2d68c4bc","event":"killed-and-waited","exit_code":1,"mock_completions":1,"phase":"budget-before-finish","pid":16748}
+p06-recovery {"call_id":"2375070b-ff2e-400a-aee5-ea5d2d68c4bc","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":46380,"run":1,"unresolved_count":1}
+p06-recovery {"call_id":"2375070b-ff2e-400a-aee5-ea5d2d68c4bc","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":46168,"run":2,"unresolved_count":1}
+
+thread 'tool_runtime::tests::f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery' (46904) panicked at src\tool_runtime.rs:1186:22:
+sensitive panic payload
+
+thread '<unnamed>' (4868) panicked at src\tool_runtime.rs:1413:17:
+poison test
+D08 cleanup pid=46232 created=134379221184044864 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(0))))
+
+thread 'tool_runtime::tests::s05_worker_channel_loss_is_unknown_and_releases_owned_count' (15760) panicked at src\tool_runtime.rs:2219:30:
+controlled shell worker disappearance
+D08 original-handle pid=46232 created=134379221184044864 signal=0
+D08 original-handle pid=44356 created=134379221188176268 signal=0
+D08 case deadline_ms=1000
+D08 cleanup pid=46616 created=134379221216550316 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=46616 created=134379221216550316 signal=0
+
+thread 'server::worktree_http_crash_tests::w08_real_router_process_kill_wait_at_three_durable_boundaries' (45536) panicked at src\server.rs:3146:13:
+deterministic child notification: phase=claim notification=ready pid=46736
+
+thread 'worktree_management::tests::n13_dropped_caller_owned_worker_still_registers_once' (46228) panicked at src\worktree_management.rs:1317:14:
+called `Result::unwrap()` on an `Err` value: Elapsed(())
+N13 actual kill+wait phase=claim child=46108 exit=exit code: 1 operation=9c8b3cc5-72a2-4e7d-a97e-2a7e6800211e
+N13 actual kill+wait phase=created child=16748 exit=exit code: 1 operation=56eef777-e0f6-4335-9d65-ae7d44377997
+N13 actual kill+wait phase=registered child=41944 exit=exit code: 1 operation=f049dfe0-1478-4e79-9526-e989b35f00d4
+error: test failed, to rerun pass `--lib`

@@ -1,0 +1,10 @@
+{
+  "path": "NoManCode/rust-app/src/lib.rs",
+  "working_bytes": 1253,
+  "blob_bytes": 1203,
+  "working_sha256": "0068203551ea9612496e827e0e208ebdc73ed3ebf51a350b5879e0c8ae9c6248",
+  "blob_sha256": "9d2ed2fcf918ed4d75038d8cc73e8989b9415c49db8b38c202cdc76598e286e2",
+  "crlf_count": 50,
+  "byte_equal": false,
+  "equal_after_crlf_to_lf": true
+}

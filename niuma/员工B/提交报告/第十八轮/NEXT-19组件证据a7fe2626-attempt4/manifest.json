@@ -1,0 +1,438 @@
+{
+  "candidate": "a7fe2626b36c130937820685f4f2d38612094f5d",
+  "attempt": 4,
+  "note": "Published copies substitute local paths; originals and retained databases remain unchanged. Toolchain aliases are logical labels.",
+  "files": [
+    {
+      "file": "run.ps1",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/run.ps1",
+      "source_sha256": "fbfd760f2438921312ef44197c7f6462442cae2f3a07d97e51e980a8cdce99c6",
+      "source_bytes": 6072,
+      "published_sha256": "9651cc75341e6b958bb54020089869ddd93bdbdc5c2762820fb6cd7787bf7587",
+      "published_bytes": 5972,
+      "path_substitutions": [
+        {
+          "replacement": "[msvc]",
+          "form": "ordinary",
+          "occurrences": 1
+        },
+        {
+          "replacement": "[windows-sdk]",
+          "form": "ordinary",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "inventory.py",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/inventory.py",
+      "source_sha256": "e1758db8e7b7ead17b2a64120fb7a795180a9dd3696138cb0d023a823700d476",
+      "source_bytes": 1541,
+      "published_sha256": "e1758db8e7b7ead17b2a64120fb7a795180a9dd3696138cb0d023a823700d476",
+      "published_bytes": 1541,
+      "path_substitutions": []
+    },
+    {
+      "file": "01-check.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/01-check.json",
+      "source_sha256": "e12beee360b4b253d181c7a145f5a56e337dd13f9cd36fd93ceaa2318348060b",
+      "source_bytes": 362,
+      "published_sha256": "e12beee360b4b253d181c7a145f5a56e337dd13f9cd36fd93ceaa2318348060b",
+      "published_bytes": 362,
+      "path_substitutions": []
+    },
+    {
+      "file": "01-check.stderr.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/01-check.stderr.log",
+      "source_sha256": "e2fd7ec0d24a98ae718786a5b705a166466b3267f742eed414c6949d90dd1cd5",
+      "source_bytes": 5634,
+      "published_sha256": "e8b54e7e86842a70be9874be23e507b8c653e323c6b8c1fe1cdad01cb2f15457",
+      "published_bytes": 5624,
+      "path_substitutions": [
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "ordinary",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "file": "01-check.stdout.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/01-check.stdout.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published_bytes": 0,
+      "path_substitutions": []
+    },
+    {
+      "file": "02-build-cli.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/02-build-cli.json",
+      "source_sha256": "0bd3e90dfaad437484b945c79d0b1e09900f6669b25cb65b14b5842b6cf662cb",
+      "source_bytes": 362,
+      "published_sha256": "0bd3e90dfaad437484b945c79d0b1e09900f6669b25cb65b14b5842b6cf662cb",
+      "published_bytes": 362,
+      "path_substitutions": []
+    },
+    {
+      "file": "02-build-cli.stderr.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/02-build-cli.stderr.log",
+      "source_sha256": "9a0310fd58380b29b5c40d1d092b5f492cc2c7e571035313a405851a22acf89f",
+      "source_bytes": 4859,
+      "published_sha256": "7c39dbb377d135433716ca55bbbb6445ac11dc813710b964888b1aa1bc9982eb",
+      "published_bytes": 4849,
+      "path_substitutions": [
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "ordinary",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "file": "02-build-cli.stdout.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/02-build-cli.stdout.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published_bytes": 0,
+      "path_substitutions": []
+    },
+    {
+      "file": "03-lib.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/03-lib.json",
+      "source_sha256": "a010755e800e0394b659de8249a9babea71b38bcfa0220cf3f416618c70b7cf3",
+      "source_bytes": 370,
+      "published_sha256": "a010755e800e0394b659de8249a9babea71b38bcfa0220cf3f416618c70b7cf3",
+      "published_bytes": 370,
+      "path_substitutions": []
+    },
+    {
+      "file": "03-lib.stderr.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/03-lib.stderr.log",
+      "source_sha256": "08cfaaddd4e402e4b7fb36acf602b65bd4f47cb8b14d629d9dc92c738daed66d",
+      "source_bytes": 14171,
+      "published_sha256": "082bc9f46525d721f5311c359e32da34cb08bd89eacf53e0a3666f014168aa4a",
+      "published_bytes": 14121,
+      "path_substitutions": [
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "JSON escaped",
+          "occurrences": 5
+        },
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "ordinary",
+          "occurrences": 3
+        }
+      ]
+    },
+    {
+      "file": "03-lib.stdout.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/03-lib.stdout.log",
+      "source_sha256": "e6575a8309a7add66e5bfd51e907769494084486f914fae193f37d3f2495e1b9",
+      "source_bytes": 37005,
+      "published_sha256": "b4dd305b47295115df8882cc63c1d64eb0779f75e3f3bc45ed7537115fc51c25",
+      "published_bytes": 36905,
+      "path_substitutions": [
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "ordinary",
+          "occurrences": 20
+        }
+      ]
+    },
+    {
+      "file": "cli-binary.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/cli-binary.json",
+      "source_sha256": "a2855794df86aac7f0aec76d8951796846fce2ab6d2c597c23f8c57e879966d6",
+      "source_bytes": 295,
+      "published_sha256": "d77547883cf79f12dbb1f2e75d577552b1f4ef2118240773163b5dbbda803bb9",
+      "published_bytes": 288,
+      "path_substitutions": [
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "JSON escaped",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "environment.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/environment.json",
+      "source_sha256": "6b2e232b449be26e5fe8d4b042b3530e6e041b248289d22b18b88b586f5c2fc4",
+      "source_bytes": 666,
+      "published_sha256": "9011bd48e0feace35bce3d71f0a891b9069b6a907354050b3575b7cc55b65526",
+      "published_bytes": 541,
+      "path_substitutions": [
+        {
+          "replacement": "../nhc-b-tool-call-application",
+          "form": "JSON escaped",
+          "occurrences": 2
+        },
+        {
+          "replacement": "[msvc]",
+          "form": "JSON escaped",
+          "occurrences": 1
+        },
+        {
+          "replacement": "[windows-sdk]",
+          "form": "JSON escaped",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "file": "final.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/final.json",
+      "source_sha256": "580012702284747cf0a328a5a1f137b55d16b677d00ae376af9e1b17c0eb5079",
+      "source_bytes": 93,
+      "published_sha256": "580012702284747cf0a328a5a1f137b55d16b677d00ae376af9e1b17c0eb5079",
+      "published_bytes": 93,
+      "path_substitutions": []
+    },
+    {
+      "file": "lib-preflight.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/lib-preflight.json",
+      "source_sha256": "96732b358a2a74ebf6eb436bfdbb66bda146dc58a4c053519bec3be6232b923c",
+      "source_bytes": 353,
+      "published_sha256": "96732b358a2a74ebf6eb436bfdbb66bda146dc58a4c053519bec3be6232b923c",
+      "published_bytes": 353,
+      "path_substitutions": []
+    },
+    {
+      "file": "postflight.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/postflight.json",
+      "source_sha256": "ce66ce925434c66f1233610ef36c6929b84592e0d6caeb2b80c3f4951a6aa862",
+      "source_bytes": 327,
+      "published_sha256": "ce66ce925434c66f1233610ef36c6929b84592e0d6caeb2b80c3f4951a6aa862",
+      "published_bytes": 327,
+      "path_substitutions": []
+    },
+    {
+      "file": "preflight.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/preflight.json",
+      "source_sha256": "77d5a186e6cd969dab4290d082d3bed257a48583a250205a9955d410289216e3",
+      "source_bytes": 327,
+      "published_sha256": "77d5a186e6cd969dab4290d082d3bed257a48583a250205a9955d410289216e3",
+      "published_bytes": 327,
+      "path_substitutions": []
+    },
+    {
+      "file": "retained-after-summary.txt",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/retained-after-summary.txt",
+      "source_sha256": "9146b7373930fa1d75e5c3c0b78c53a74913d9ad4da095679bffd46768fa9de9",
+      "source_bytes": 31,
+      "published_sha256": "9146b7373930fa1d75e5c3c0b78c53a74913d9ad4da095679bffd46768fa9de9",
+      "published_bytes": 31,
+      "path_substitutions": []
+    },
+    {
+      "file": "retained-after.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/retained-after.json",
+      "source_sha256": "07fc193f9d930c074b8466d1db087a5b2855713cf98d78153cb465241d7e8a6e",
+      "source_bytes": 1458054,
+      "published_sha256": "07fc193f9d930c074b8466d1db087a5b2855713cf98d78153cb465241d7e8a6e",
+      "published_bytes": 1458054,
+      "path_substitutions": []
+    },
+    {
+      "file": "retained-before-summary.txt",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/retained-before-summary.txt",
+      "source_sha256": "9e265ca145a28487a3b5605a52d1826c25a86f45172b510f07b81b386c884d1e",
+      "source_bytes": 31,
+      "published_sha256": "9e265ca145a28487a3b5605a52d1826c25a86f45172b510f07b81b386c884d1e",
+      "published_bytes": 31,
+      "path_substitutions": []
+    },
+    {
+      "file": "retained-before.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/retained-before.json",
+      "source_sha256": "7cfa94c61e4012a626715150733f86ebcd21d7404ecd59060835dd14daeac68d",
+      "source_bytes": 1102554,
+      "published_sha256": "7cfa94c61e4012a626715150733f86ebcd21d7404ecd59060835dd14daeac68d",
+      "published_bytes": 1102554,
+      "path_substitutions": []
+    },
+    {
+      "file": "retained-delta.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/retained-delta.json",
+      "source_sha256": "1a67af9adea6c4195900c93ebf8142626ccf873eb5f49cae4cf815fa52e924fd",
+      "source_bytes": 664308,
+      "published_sha256": "1a67af9adea6c4195900c93ebf8142626ccf873eb5f49cae4cf815fa52e924fd",
+      "published_bytes": 664308,
+      "path_substitutions": []
+    },
+    {
+      "file": "runner-console.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/runner-console.log",
+      "source_sha256": "1be7a152db887edb3783a94be57b2adf4c5e05cde3e82a3ad870c456a4b21b4a",
+      "source_bytes": 204,
+      "published_sha256": "1be7a152db887edb3783a94be57b2adf4c5e05cde3e82a3ad870c456a4b21b4a",
+      "published_bytes": 204,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-after-01-check.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/source-after-01-check.json",
+      "source_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "source_bytes": 24024,
+      "published_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "published_bytes": 24024,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-after-02-build-cli.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/source-after-02-build-cli.json",
+      "source_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "source_bytes": 24024,
+      "published_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "published_bytes": 24024,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-after-03-lib.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/source-after-03-lib.json",
+      "source_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "source_bytes": 24024,
+      "published_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "published_bytes": 24024,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-after.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/source-after.json",
+      "source_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "source_bytes": 24024,
+      "published_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "published_bytes": 24024,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-before.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/source-before.json",
+      "source_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "source_bytes": 24024,
+      "published_sha256": "700f080810e6ea4963068ab28778c093609574bf853642fb712bce1d37e16c8c",
+      "published_bytes": 24024,
+      "path_substitutions": []
+    },
+    {
+      "file": "source-git-byte-comparison.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/source-git-byte-comparison.json",
+      "source_sha256": "33748e9d0a3282a60127f85d983a5b956c4c96b49e6f6f5588bb2932e78ba285",
+      "source_bytes": 389,
+      "published_sha256": "33748e9d0a3282a60127f85d983a5b956c4c96b49e6f6f5588bb2932e78ba285",
+      "published_bytes": 389,
+      "path_substitutions": []
+    },
+    {
+      "file": "state-after-01-check.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/state-after-01-check.json",
+      "source_sha256": "cd88c0a4171f1eea4eddd090e084a47d0669a38db4fea83338fd0480ab2c987f",
+      "source_bytes": 327,
+      "published_sha256": "cd88c0a4171f1eea4eddd090e084a47d0669a38db4fea83338fd0480ab2c987f",
+      "published_bytes": 327,
+      "path_substitutions": []
+    },
+    {
+      "file": "state-after-02-build-cli.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/state-after-02-build-cli.json",
+      "source_sha256": "55b55954914153222e00f2f8a592e04b6228a650c5748a44cf56ce1c8cc96b0c",
+      "source_bytes": 327,
+      "published_sha256": "55b55954914153222e00f2f8a592e04b6228a650c5748a44cf56ce1c8cc96b0c",
+      "published_bytes": 327,
+      "path_substitutions": []
+    },
+    {
+      "file": "state-after-03-lib.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/state-after-03-lib.json",
+      "source_sha256": "b94159294076d1072f79c2ebcada75242e61a16ebd7278292e4b401f63166133",
+      "source_bytes": 327,
+      "published_sha256": "b94159294076d1072f79c2ebcada75242e61a16ebd7278292e4b401f63166133",
+      "published_bytes": 327,
+      "path_substitutions": []
+    },
+    {
+      "file": "toolchain-setup.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/logs/toolchain-setup.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published_bytes": 0,
+      "path_substitutions": []
+    },
+    {
+      "file": "t05-before-process.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/nhc-t05-B4F0nN/process.json",
+      "source_sha256": "4bf641602aa06b25e7843cb86c06f29477fd5cd9be71af9da3402b730a4cdc9f",
+      "source_bytes": 675,
+      "published_sha256": "4bf641602aa06b25e7843cb86c06f29477fd5cd9be71af9da3402b730a4cdc9f",
+      "published_bytes": 675,
+      "path_substitutions": []
+    },
+    {
+      "file": "t05-after-process.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/nhc-t05-tnTJJU/process.json",
+      "source_sha256": "e00b560a27a34c91bcd566d580fd4fd5aa04769a3ef1288d83aee556ae463795",
+      "source_bytes": 678,
+      "published_sha256": "e00b560a27a34c91bcd566d580fd4fd5aa04769a3ef1288d83aee556ae463795",
+      "published_bytes": 678,
+      "path_substitutions": []
+    },
+    {
+      "file": "legacy-process.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmp2BxDOJ/legacy-process.json",
+      "source_sha256": "0cefec6b7ca5bb2cb79daadf561d56c282938b46ac8c721ec8adca363b08e89d",
+      "source_bytes": 734,
+      "published_sha256": "0cefec6b7ca5bb2cb79daadf561d56c282938b46ac8c721ec8adca363b08e89d",
+      "published_bytes": 734,
+      "path_substitutions": []
+    },
+    {
+      "file": "denied-process.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmpNu1soA/proof-process.json",
+      "source_sha256": "7f8084b9ebe55dbd93db485dfb1b9ab270a2b6643d41cdc2f1a32ff77edad4d2",
+      "source_bytes": 742,
+      "published_sha256": "7f8084b9ebe55dbd93db485dfb1b9ab270a2b6643d41cdc2f1a32ff77edad4d2",
+      "published_bytes": 742,
+      "path_substitutions": []
+    },
+    {
+      "file": "cancelled-process.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmp5DJp7v/proof-process.json",
+      "source_sha256": "97c60b9e6d99cbfc4fb4e61adb58dd948851fdfc86588a2153fa8d88b955c63f",
+      "source_bytes": 741,
+      "published_sha256": "97c60b9e6d99cbfc4fb4e61adb58dd948851fdfc86588a2153fa8d88b955c63f",
+      "published_bytes": 741,
+      "path_substitutions": []
+    },
+    {
+      "file": "host-denied-process.json",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmpLx4g7R/host-denied-process.json",
+      "source_sha256": "db1a69a83cc284dbbd183f693f6cc83c350f8f17a649d795d8a0dc616e703d42",
+      "source_bytes": 718,
+      "published_sha256": "db1a69a83cc284dbbd183f693f6cc83c350f8f17a649d795d8a0dc616e703d42",
+      "published_bytes": 718,
+      "path_substitutions": []
+    },
+    {
+      "file": "w08-lifecycle.jsonl",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmpyhZH0h/lifecycle.jsonl",
+      "source_sha256": "ce721da7fb5ed85285de4075ad20d8a87a4304a4f2944155fa0404db06ddeaaa",
+      "source_bytes": 1051,
+      "published_sha256": "ce721da7fb5ed85285de4075ad20d8a87a4304a4f2944155fa0404db06ddeaaa",
+      "published_bytes": 1051,
+      "path_substitutions": []
+    },
+    {
+      "file": "w08-child-claim.log",
+      "source": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/tmp/.tmpyhZH0h/child-claim.log",
+      "source_sha256": "daf071121a9ffe32bbce44190e37a068c96d08bff63fd7b660dd95b77d786dca",
+      "source_bytes": 16,
+      "published_sha256": "daf071121a9ffe32bbce44190e37a068c96d08bff63fd7b660dd95b77d786dca",
+      "published_bytes": 16,
+      "path_substitutions": []
+    }
+  ]
+}
