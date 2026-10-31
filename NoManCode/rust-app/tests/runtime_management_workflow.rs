@@ -543,10 +543,18 @@ async fn empty_database_disable_restart_enable_and_completion() {
             "runtime-story",
         ])
         .await;
+    assert_eq!(run["tasks"][0]["tools"], false);
+    assert_eq!(run["tasks"][0]["write_scopes"], json!([]));
     let run_id = run["run_id"].as_str().unwrap();
     let task_id = run["tasks"][0]["id"].as_str().unwrap();
     h.done(run_id, task_id).await;
     assert_eq!(h.script.requests.lock().unwrap().len(), 1);
+    let request = h.script.requests.lock().unwrap().last().unwrap().clone();
+    assert!(
+        request
+            .get("tools")
+            .is_none_or(|v| v.as_array().is_some_and(Vec::is_empty))
+    );
     h.stop().await;
 }
 
@@ -583,6 +591,9 @@ async fn disabled_completion_preserves_completed_models_receipt() {
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0]["purpose"], "models");
     assert_eq!(calls[0]["state"], "finished");
+    let call_id = calls[0]["call_id"].as_str().unwrap();
+    let persisted = h.ok(&["network", "call", call_id]).await;
+    assert_eq!(persisted, calls[0]);
     assert_eq!(h.script.models.load(Ordering::SeqCst), 1);
     assert!(h.script.requests.lock().unwrap().is_empty());
     assert_eq!(
@@ -590,5 +601,411 @@ async fn disabled_completion_preserves_completed_models_receipt() {
             .await,
         before
     );
+    h.stop().await;
+}
+
+async fn start_text(h: &Host, key: &str) -> Value {
+    h.ok(&[
+        "run",
+        "start",
+        "--title",
+        "No tools",
+        "--route",
+        "local",
+        "--message",
+        "hello",
+        "--key",
+        key,
+    ])
+    .await
+}
+async fn terminal(h: &Host, run: &str, task: &str) -> Value {
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            let value = h.ok(&["run", "status", run]).await;
+            let item = value["tasks"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|item| item["id"] == task)
+                .unwrap();
+            if matches!(
+                item["status"].as_str(),
+                Some("completed" | "failed" | "cancelled" | "interrupted")
+            ) {
+                return item.clone();
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap()
+}
+#[tokio::test]
+async fn each_disabled_component_blocks_new_task_without_completion_claim() {
+    let mut h = host(vec![
+        json!({"content":"agent restored"}),
+        json!({"content":"provider restored"}),
+    ])
+    .await;
+    let project = h.ok(&["project", "current"]).await;
+    let project_id = project["project_id"].as_str().unwrap();
+    for (id, off_key, on_key, run_key, restored_key) in [
+        (
+            "builtin.chat-agent",
+            "agent-off-only",
+            "agent-on-only",
+            "blocked-agent",
+            "restored-agent",
+        ),
+        (
+            "builtin.provider-xpeach",
+            "provider-off-only",
+            "provider-on-only",
+            "blocked-provider",
+            "restored-provider",
+        ),
+    ] {
+        let before_budget = h
+            .ok(&["project", "budget", "status", "--id", project_id])
+            .await;
+        let before_requests = h.script.requests.lock().unwrap().len();
+        set(&h, id, "false", "0", off_key).await;
+        let created = start_text(&h, run_key).await;
+        let run = created["run_id"].as_str().unwrap();
+        let task = created["tasks"][0]["id"].as_str().unwrap();
+        let result = terminal(&h, run, task).await;
+        assert_eq!(result["status"], "failed", "{result}");
+        let replayed = start_text(&h, run_key).await;
+        assert_eq!(replayed["run_id"], run);
+        assert_eq!(
+            h.ok(&["task", "network-calls", task]).await["calls"],
+            json!([])
+        );
+        assert_eq!(h.script.requests.lock().unwrap().len(), before_requests);
+        assert_eq!(
+            h.ok(&["project", "budget", "status", "--id", project_id])
+                .await,
+            before_budget
+        );
+        set(&h, id, "true", "1", on_key).await;
+        let restored = start_text(&h, restored_key).await;
+        let restored_run = restored["run_id"].as_str().unwrap();
+        let restored_task = restored["tasks"][0]["id"].as_str().unwrap();
+        h.done(restored_run, restored_task).await;
+        assert_eq!(h.script.requests.lock().unwrap().len(), before_requests + 1);
+        let request = h.script.requests.lock().unwrap().last().unwrap().clone();
+        assert!(
+            request
+                .get("tools")
+                .is_none_or(|v| v.as_array().is_some_and(Vec::is_empty))
+        );
+    }
+    h.stop().await;
+}
+
+fn failed(output: &Output) -> Value {
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stdout.is_empty());
+    serde_json::from_slice(&output.stderr).unwrap()
+}
+#[tokio::test]
+async fn draining_busy_does_not_consume_key_and_old_receipt_replays() {
+    let mut h = host(vec![json!({"hold":true})]).await;
+    let run = start_text(&h, "in-flight").await;
+    let run_id = run["run_id"].as_str().unwrap();
+    let task_id = run["tasks"][0]["id"].as_str().unwrap();
+    tokio::time::timeout(Duration::from_secs(8), h.script.entered.notified())
+        .await
+        .unwrap();
+    let off = set(&h, "builtin.chat-agent", "false", "0", "drain-disable").await;
+    assert_eq!(off["current"]["runtime"]["draining"], true);
+    let busy_args = [
+        "runtime",
+        "component",
+        "set-enabled",
+        "builtin.chat-agent",
+        "--enabled",
+        "true",
+        "--expected-revision",
+        "1",
+        "--key",
+        "busy-then-enable",
+    ];
+    let busy = failed(&h.command(&busy_args).await);
+    assert_eq!(busy["code"], "runtime_busy");
+    let replay = set(&h, "builtin.chat-agent", "false", "0", "drain-disable").await;
+    assert_eq!(replay["receipt"], off["receipt"]);
+    assert_eq!(replay["replayed"], true);
+    h.script.release.notify_one();
+    h.done(run_id, task_id).await;
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            let status = h
+                .ok(&["runtime", "component", "status", "builtin.chat-agent"])
+                .await;
+            if status["converged"] == true {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    let enabled = h.ok(&busy_args).await;
+    assert_eq!(enabled["receipt"]["revision"], 2);
+    h.stop().await;
+}
+
+#[tokio::test]
+async fn global_plugin_key_cas_and_same_state_revision() {
+    let mut h = host(vec![]).await;
+    let files = h
+        .ok(&[
+            "plugin",
+            "set-enabled",
+            "builtin.files",
+            "--enabled",
+            "true",
+            "--expected-revision",
+            "0",
+            "--key",
+            "shared-files",
+        ])
+        .await;
+    assert_eq!(files["receipt"]["revision"], 1);
+    let shared = [
+        vec![
+            "plugin",
+            "set-enabled",
+            "builtin.shell",
+            "--enabled",
+            "true",
+            "--expected-revision",
+            "0",
+            "--key",
+            "shared-files",
+        ],
+        vec![
+            "runtime",
+            "component",
+            "set-enabled",
+            "builtin.chat-agent",
+            "--enabled",
+            "true",
+            "--expected-revision",
+            "0",
+            "--key",
+            "shared-files",
+        ],
+        vec![
+            "runtime",
+            "component",
+            "set-enabled",
+            "builtin.provider-xpeach",
+            "--enabled",
+            "true",
+            "--expected-revision",
+            "0",
+            "--key",
+            "shared-files",
+        ],
+    ];
+    for args in shared {
+        let error = failed(&h.command(&args).await);
+        assert!(matches!(
+            error["code"].as_str(),
+            Some("plugin_idempotency_conflict" | "runtime_idempotency_conflict")
+        ));
+    }
+    let same = set(&h, "builtin.chat-agent", "true", "0", "same-true").await;
+    assert_eq!(same["receipt"]["revision"], 1);
+    assert_eq!(same["current"]["runtime"]["generation"], 1);
+    let replay = set(&h, "builtin.chat-agent", "true", "0", "same-true").await;
+    assert_eq!(replay["receipt"], same["receipt"]);
+    assert_eq!(replay["replayed"], true);
+    assert_eq!(replay["current"]["runtime"]["generation"], 1);
+    let stale = failed(
+        &h.command(&[
+            "runtime",
+            "component",
+            "set-enabled",
+            "builtin.chat-agent",
+            "--enabled",
+            "false",
+            "--expected-revision",
+            "0",
+            "--key",
+            "stale-cas",
+        ])
+        .await,
+    );
+    assert_eq!(stale["code"], "runtime_revision_conflict");
+    h.stop().await;
+}
+
+#[derive(Clone)]
+struct LossProxy {
+    target_port: u16,
+    token: String,
+    writes: Arc<AtomicUsize>,
+    receipt: Arc<Mutex<Option<Value>>>,
+}
+async fn loss_bootstrap(State(proxy): State<LossProxy>) -> Json<Value> {
+    Json(json!({"token":proxy.token}))
+}
+async fn commit_then_drop(
+    State(proxy): State<LossProxy>,
+    request: axum::extract::Request,
+) -> Response {
+    let key = request
+        .headers()
+        .get("idempotency-key")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(
+        request.headers().get("x-peachsh-token").unwrap(),
+        proxy.token.as_str()
+    );
+    let body = axum::body::to_bytes(request.into_body(), 4096)
+        .await
+        .unwrap();
+    let received: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(received, json!({"enabled":false,"expected_revision":0}));
+    proxy.writes.fetch_add(1, Ordering::SeqCst);
+    let response = reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .unwrap()
+        .put(format!(
+            "http://127.0.0.1:{}/api/runtime/components/builtin.chat-agent/enabled",
+            proxy.target_port
+        ))
+        .header("x-peachsh-token", &proxy.token)
+        .header("idempotency-key", key)
+        .header("content-type", "application/json")
+        .body(body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    *proxy.receipt.lock().unwrap() = Some(response.json().await.unwrap());
+    (
+        [
+            ("content-type", "application/json"),
+            ("content-length", "100"),
+        ],
+        "{",
+    )
+        .into_response()
+}
+#[tokio::test]
+async fn committed_put_lost_response_has_one_send_and_explicit_real_replay() {
+    let mut h = host(vec![]).await;
+    let proxy = LossProxy {
+        target_port: h.port,
+        token: h.token.clone(),
+        writes: Arc::new(AtomicUsize::new(0)),
+        receipt: Arc::new(Mutex::new(None)),
+    };
+    let app = Router::new()
+        .route("/api/bootstrap", axum::routing::get(loss_bootstrap))
+        .route(
+            "/api/runtime/components/builtin.chat-agent/enabled",
+            axum::routing::put(commit_then_drop),
+        )
+        .with_state(proxy.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let service = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let args = [
+        "runtime",
+        "component",
+        "set-enabled",
+        "builtin.chat-agent",
+        "--enabled",
+        "false",
+        "--expected-revision",
+        "0",
+        "--key",
+        "lost-real-receipt",
+    ];
+    let output = cli(port, &h.cwd(), &args, None).await;
+    assert_eq!(failed(&output)["code"], "operation_result_unknown");
+    assert_eq!(proxy.writes.load(Ordering::SeqCst), 1);
+    let committed = proxy.receipt.lock().unwrap().clone().unwrap();
+    let status = h
+        .ok(&["runtime", "component", "status", "builtin.chat-agent"])
+        .await;
+    assert_eq!(status["desired"]["enabled"], false);
+    let replay = h.ok(&args).await;
+    assert_eq!(replay["replayed"], true);
+    assert_eq!(replay["receipt"], committed["receipt"]);
+    assert_eq!(proxy.writes.load(Ordering::SeqCst), 1);
+    service.abort();
+    h.stop().await;
+}
+
+#[tokio::test]
+async fn balance_remains_available_when_completion_disabled() {
+    let mut h = host(vec![]).await;
+    let hits = Arc::new(AtomicUsize::new(0));
+    let counter = hits.clone();
+    let app = Router::new().route(
+        "/api/user/self",
+        axum::routing::get(move || {
+            let counter = counter.clone();
+            async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                Json(json!({"success":true,"data":{"quota":10}}))
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let bind = client.put(format!("http://127.0.0.1:{}/api/newapi", h.port))
+        .header("x-peachsh-token", &h.token)
+        .json(&json!({"account":{"base_url":base,"user_id":"42","quota_per_unit":2.0},"token":"synthetic-balance-key"})).send().await.unwrap();
+    assert!(bind.status().is_success());
+    let preview = h.ok(&["network", "preview", "--account"]).await;
+    h.ok(&[
+        "network",
+        "authorize",
+        "--account",
+        "--config-revision",
+        &preview["config_revision"].to_string(),
+        "--credential-revision",
+        &preview["credential_revision"].to_string(),
+        "--binding",
+        preview["binding_digest"].as_str().unwrap(),
+        "--purpose",
+        "balance",
+        "--key",
+        "allow-balance",
+    ])
+    .await;
+    set(
+        &h,
+        "builtin.provider-xpeach",
+        "false",
+        "0",
+        "disable-before-balance",
+    )
+    .await;
+    let balance = h.ok(&["account", "balance"]).await;
+    assert_eq!(balance["result"]["balance"], 5.0);
+    assert_eq!(balance["calls"][0]["purpose"], "balance");
+    assert_eq!(hits.load(Ordering::SeqCst), 1);
+    assert!(h.script.requests.lock().unwrap().is_empty());
+    server.abort();
     h.stop().await;
 }

@@ -1907,12 +1907,19 @@ fn validate_runtime_component(value: &Value) -> Result<(), Failure> {
     let flight = r["in_flight"].as_u64().ok_or_else(invalid_response)?;
     let effects = r["effects"].as_u64().ok_or_else(invalid_response)?;
     let recovery = r["recovery"].as_u64().ok_or_else(invalid_response)?;
-    if r["generation"].as_u64().is_none_or(|n| n == 0) || (!transition && admission && !active) {
+    if r["generation"].as_u64().is_none_or(|n| n == 0)
+        || (transition && admission)
+        || (!transition && admission && !active)
+    {
         return Err(invalid_response());
     }
     let (failure, draining) = if agent {
         let draining = r["draining"].as_bool().ok_or_else(invalid_response)?;
-        if draining != (!admission && flight > 0) {
+        if draining != (!admission && flight > 0)
+            || (draining && (!active || transition))
+            || (transition && (active || flight != 0))
+            || (active && !transition && effects == 0)
+        {
             return Err(invalid_response());
         }
         let failure = if r["last_failure"].is_null() {

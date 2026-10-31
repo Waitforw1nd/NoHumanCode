@@ -199,3 +199,147 @@ async fn hostile_status_objects_never_reach_stdout() {
         task.abort();
     }
 }
+
+#[tokio::test]
+async fn runtime_state_relations_accept_real_lifecycle_and_reject_impossible_transition() {
+    let mut draining = current(false, 1);
+    draining["runtime"]["active"] = json!(true);
+    draining["runtime"]["in_flight"] = json!(u64::MAX);
+    draining["runtime"]["generation"] = json!(u64::MAX);
+    draining["runtime"]["draining"] = json!(true);
+    draining["runtime"]["effects"] = json!(1);
+    draining["converged"] = json!(false);
+    let provider = json!({"id":"builtin.provider-xpeach","capability":"provider.completion-codec@1.0.0","desired":{"scope":"host","enabled":false,"revision":1,"updated_at":1},"runtime":{"kind":"completion_provider","scope":"process","active":false,"admission_open":false,"in_flight":u64::MAX,"generation":u64::MAX,"transitioning":false,"effects":0,"recovery":0,"lifecycle_failed":false},"converged":true});
+    let mut transition = current(false, 1);
+    transition["runtime"]["transitioning"] = json!(true);
+    transition["runtime"]["effects"] = json!(1);
+    transition["converged"] = json!(false);
+    for value in [draining, provider, transition.clone()] {
+        let id = value["id"].as_str().unwrap();
+        let (port, _, task) = server(value.to_string(), axum::http::StatusCode::OK).await;
+        let out = cli(port, &["runtime", "component", "status", id]).await;
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(serde_json::from_slice::<Value>(&out.stdout).unwrap(), value);
+        task.abort();
+    }
+    transition["runtime"]["admission_open"] = json!(true);
+    let (port, _, task) = server(transition.to_string(), axum::http::StatusCode::OK).await;
+    let out = cli(
+        port,
+        &["runtime", "component", "status", "builtin.chat-agent"],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(out.stdout.is_empty());
+    task.abort();
+    let body = json!({"receipt":{"plugin_id":"builtin.chat-agent","enabled":false,"previous_revision":0,"revision":1,"committed_at":1},"replayed":false,"current":transition});
+    let (port, _, task) = server(body.to_string(), axum::http::StatusCode::OK).await;
+    let out = cli(
+        port,
+        &[
+            "runtime",
+            "component",
+            "set-enabled",
+            "builtin.chat-agent",
+            "--enabled",
+            "false",
+            "--expected-revision",
+            "0",
+            "--key",
+            "bad-state",
+        ],
+    )
+    .await;
+    assert_eq!(
+        serde_json::from_slice::<Value>(&out.stderr).unwrap()["code"],
+        "operation_result_unknown"
+    );
+    assert!(out.stdout.is_empty());
+    task.abort();
+}
+
+#[tokio::test]
+async fn malformed_nested_duplicate_oversize_and_error_mapping_are_rejected() {
+    let valid = current(true, 0).to_string();
+    let nested = valid.replacen(
+        "\"scope\":\"process\"",
+        "\"scope\":\"process\",\"scope\":\"process\"",
+        1,
+    );
+    assert_ne!(nested, valid);
+    let cases = [
+        (nested, axum::http::StatusCode::OK),
+        ("x".repeat(256 * 1024 + 1), axum::http::StatusCode::OK),
+        (json!({"code":"runtime_busy","message":"Runtime transition busy","error":"Runtime transition busy","retryable":false}).to_string(), axum::http::StatusCode::BAD_REQUEST),
+        (json!({"code":"runtime_busy","message":"Runtime transition busy","error":"Runtime transition busy","retryable":"false"}).to_string(), axum::http::StatusCode::CONFLICT),
+    ];
+    for (body, status) in cases {
+        let (port, calls, task) = server(body, status).await;
+        let out = cli(
+            port,
+            &[
+                "runtime",
+                "component",
+                "set-enabled",
+                "builtin.chat-agent",
+                "--enabled",
+                "false",
+                "--expected-revision",
+                "0",
+                "--key",
+                "boundary",
+            ],
+        )
+        .await;
+        assert_eq!(out.status.code(), Some(1));
+        assert_eq!(
+            serde_json::from_slice::<Value>(&out.stderr).unwrap()["code"],
+            "operation_result_unknown"
+        );
+        assert!(out.stdout.is_empty());
+        assert!(!String::from_utf8_lossy(&out.stderr).contains(TOKEN));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        task.abort();
+    }
+}
+#[tokio::test]
+async fn human_output_and_argument_exit_codes() {
+    let value = current(true, 0);
+    let (port, _, task) = server(value.to_string(), axum::http::StatusCode::OK).await;
+    let out = tokio::time::timeout(
+        Duration::from_secs(12),
+        Command::new(BIN)
+            .arg("--port")
+            .arg(port.to_string())
+            .args(["runtime", "component", "status", "builtin.chat-agent"])
+            .stdin(Stdio::null())
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(serde_json::from_slice::<Value>(&out.stdout).unwrap(), value);
+    let invalid = cli(
+        port,
+        &[
+            "runtime",
+            "component",
+            "set-enabled",
+            "builtin.chat-agent",
+            "--expected-revision",
+            "0",
+            "--key",
+            "missing-enabled",
+        ],
+    )
+    .await;
+    assert_eq!(invalid.status.code(), Some(2));
+    task.abort();
+}

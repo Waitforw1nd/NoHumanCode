@@ -4264,11 +4264,108 @@ mod runtime_management_http_tests {
         let list: Value = list.json().await.unwrap();
         assert_eq!(list["components"][0]["id"], "builtin.chat-agent");
         assert_eq!(list["components"][1]["id"], "builtin.provider-xpeach");
+        let head = client
+            .head(&base)
+            .header("x-peachsh-token", token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(head.status(), StatusCode::OK);
+        assert!(head.bytes().await.unwrap().is_empty());
+        assert_eq!(
+            client
+                .post(&base)
+                .header("x-peachsh-token", token)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::METHOD_NOT_ALLOWED
+        );
+        assert_eq!(
+            client
+                .get(&base)
+                .header("x-peachsh-token", token)
+                .header("host", "wrong.invalid")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            client
+                .get(&base)
+                .header("x-peachsh-token", token)
+                .body("x")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
         let url = format!("{base}/builtin.chat-agent/enabled");
+        let valid_body = r#"{"enabled":false,"expected_revision":0}"#;
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("content-type", "application/json")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "a")
+                .header("idempotency-key", "b")
+                .header("content-type", "application/json")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "a,b")
+                .header("content-type", "application/json")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            client
+                .put(&url)
+                .header("x-peachsh-token", token)
+                .header("idempotency-key", "a")
+                .header("content-type", "text/plain")
+                .body(valid_body)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
         for body in [
             r#"{"enabled":false,"enabled":false,"expected_revision":0}"#,
             r#"{"enabled":false,"expected_revision":0,"extra":1}"#,
             r#"{"enabled":"false","expected_revision":0}"#,
+            r#"[]"#,
+            r#"{"enabled":false}"#,
+            r#"{"enabled":false,"expected_revision":-1}"#,
+            r#"{"enabled":false,"expected_revision":9223372036854775808}"#,
         ] {
             let response = client
                 .put(&url)
