@@ -1,0 +1,14 @@
+{
+  "operation": "manager ff-only after original D readonly task completed",
+  "destination": "../nhc-d-tool-result-tests",
+  "branch": "codex/d/tool-result-tests",
+  "before": "3a1ea4f82b21413b98e5f8f0236e04e2b72067ef",
+  "after": "a3279c8ce1ae3c9b81ee7eb5f9c699318f98c753",
+  "product_tree": "d7255928f661d45039f2adebb846443434447588",
+  "rust_tree": "07688925b53c8858c1ec1a606c86ebe0355e8612",
+  "source_clean": true,
+  "destination_before_clean": true,
+  "destination_after_clean": true,
+  "source_remains_frozen": true,
+  "main_product_unchanged": true
+}
