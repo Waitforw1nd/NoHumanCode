@@ -6601,3 +6601,7 @@ mod composition_tests {
         assert!(snapshot.plugins.iter().all(|p| !p.runtime.admission_open));
     }
 }
+
+#[cfg(all(test, windows))]
+#[path = "composition_tests.rs"]
+mod composition_independent_tests;
