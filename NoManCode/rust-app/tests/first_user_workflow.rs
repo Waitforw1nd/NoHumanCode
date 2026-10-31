@@ -495,6 +495,31 @@ async fn start(h: &Host, key: &str) -> Value {
     .await
 }
 
+async fn assert_sealed_resume(h: &Host, run: &str, task: &str) {
+    let before = h.ok(&["run", "status", run]).await;
+    let context = h.context(run).await;
+    let requests = h.script.requests.lock().unwrap().len();
+    let file = std::fs::read(h.workspace().join("src/a.txt")).unwrap();
+    let shell_effect = std::fs::read(h.workspace().join("shell-effect.txt")).unwrap();
+    let rejected = failure(
+        &h.command(&["task", "resume", task, "--message", "must stay sealed"])
+            .await,
+    );
+    assert_eq!(rejected["code"], "conflict");
+    assert_eq!(rejected["retryable"], false);
+    assert_eq!(h.ok(&["run", "status", run]).await, before);
+    assert_eq!(h.context(run).await, context);
+    assert_eq!(h.script.requests.lock().unwrap().len(), requests);
+    assert_eq!(
+        std::fs::read(h.workspace().join("src/a.txt")).unwrap(),
+        file
+    );
+    assert_eq!(
+        std::fs::read(h.workspace().join("shell-effect.txt")).unwrap(),
+        shell_effect
+    );
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn empty_database_public_cli_development_restore_and_restart() {
     let mut h = host(vec![
@@ -620,6 +645,7 @@ async fn empty_database_public_cli_development_restore_and_restart() {
         h.ok(&["checkpoint", "get", checkpoint_id]).await["checkpoint"],
         checkpoint["checkpoint"]
     );
+    assert_sealed_resume(&h, run_id, task).await;
     std::fs::write(h.workspace().join("src/a.txt"), "external\n").unwrap();
     let conflict = failure(&h.command(&["checkpoint", "restore", checkpoint_id]).await);
     assert_eq!(conflict["code"], "conflict");
@@ -643,11 +669,7 @@ async fn empty_database_public_cli_development_restore_and_restart() {
         h.ok(&["checkpoint", "restore", checkpoint_id]).await,
         restored
     );
-    let sealed = failure(
-        &h.command(&["task", "resume", task, "--message", "must stay sealed"])
-            .await,
-    );
-    assert_eq!(sealed["code"], "conflict");
+    assert_sealed_resume(&h, run_id, task).await;
     let previous = context["latest_turn"]["id"].as_str().unwrap();
     let sent = h
         .ok(&[
