@@ -1,0 +1,9 @@
+{
+  "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+  "command": "cargo test --offline --locked --workspace -- --nocapture",
+  "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+  "exit_code": 0,
+  "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+  "ended_utc": "2026-10-31T21:28:59.3232065Z",
+  "started_utc": "2026-10-31T21:25:49.2139718Z"
+}

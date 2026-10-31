@@ -1,0 +1,239 @@
+   Compiling peachsh v0.2.0 (../nhc-c-default-composition\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 6.16s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src\lib.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh-dc94de63d8d31b10.exe)
+a10-fixture {"directory":"../nhc-c-default-composition\\NoManCode\\rust-app\\.local\\next20-c-5d7e2685-final-attempt3\\tmp\\.tmp5232C9","phase":"write_pre_fs"}
+a10-fixture {"directory":"../nhc-c-default-composition\\NoManCode\\rust-app\\.local\\next20-c-5d7e2685-final-attempt3\\tmp\\.tmpEruTQ9","phase":"agent_after_assistant_save"}
+a10-kill {"exit_code":1,"phase":"agent_after_assistant_save","pid":49236,"task_id":"aea7c418-68bd-4ed9-bf04-b02da5f639c0"}
+fixture case=s06-inherited-pipe phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmphfdBWL
+s06-process {"case":"execute-two-second","cleanup_unknown":false,"created":134379555565268227,"phase":"capture-original-child","pid":53328,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"identity-controls","created":134379555565329950,"exit_confirmed":false,"phase":"live-original","pid":62064,"query_error":null,"wait_status":258}
+s06-process {"case":"identity-controls","created":134379555565329950,"exit_confirmed":false,"phase":"query-without-synchronize","pid":62064,"query_error":5,"wait_status":4294967295}
+s06-process {"case":"identity-controls","exit_code":1,"phase":"original-child-wait"}
+s06-process {"case":"identity-controls","created":134379555565329950,"exit_confirmed":true,"phase":"waited-original","pid":62064,"query_error":null,"wait_status":0}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (62380) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+s06-process {"case":"reader-error","cleanup_unknown":false,"created":134379555565379498,"phase":"capture-original-child","pid":63184,"probe_error":null,"reader_error":true,"wait_error":false}
+s06-process {"case":"reader-error","created":134379555565379498,"exit_confirmed":true,"phase":"assert-original-exited","pid":63184,"query_error":null,"wait_status":0}
+s06-process {"case":"real-timeout","cleanup_unknown":false,"created":134379555565430796,"phase":"capture-original-child","pid":41932,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"cleanup-unknown","cleanup_unknown":true,"created":134379555565550020,"phase":"capture-original-child","pid":22404,"probe_error":null,"reader_error":false,"wait_error":false}
+a10-kill {"exit_code":1,"phase":"write_pre_fs","pid":53780,"task_id":"a649582f-7c8e-408f-94a7-84f761247603"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\ca93f6c2-c4d4-41ba-b02d-95cceddee4eb","phase":"agent_after_assistant_save-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\6bf6c49d-9858-44b7-9257-b0aff5b87474","phase":"write_pre_fs-killed","snapshot":"agent-snapshot.db"}
+s06-process {"case":"task-scoped-unknown","cleanup_unknown":false,"created":134379555570157617,"phase":"capture-original-child","pid":32464,"probe_error":null,"reader_error":false,"wait_error":false}
+s06-process {"case":"task-scoped-unknown","created":134379555570157617,"exit_confirmed":true,"phase":"assert-original-exited","pid":32464,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\d778364e-4bd2-4e3c-9a9d-a0c633a10c67","phase":"write_pre_fs-unknown-1","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":53780,"mock_completions":1,"recovery_pid":55024,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\4a9d4f11-5288-429a-84b7-a56dfbdf0cb8","phase":"agent_after_assistant_save-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":49236,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":62140,"run":1}
+case=s06-inherited-pipe phase=descendant-owned parent_pid=55560 parent_created=134379555565199134 descendant_pid=59764 descendant_created=134379555571865644
+a10-evidence {"directory":".local\\next17-a10-evidence\\8fae1f04-faa5-4051-bd19-418b255026a3","phase":"write_pre_fs-unknown-2","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":53780,"mock_completions":1,"recovery_pid":55008,"run":2}
+
+thread 'command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn' (62380) panicked at src\command_execution.rs:49:5:
+duplicate task-scoped command fault registration
+a10-evidence {"directory":".local\\next17-a10-evidence\\b3b8948a-888c-42c0-b22e-08faadfb40b5","phase":"agent_after_assistant_save-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":49236,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":59524,"run":2}
+F07 child kill+wait completed: exit code: 1; persisted revision=1, before apply
+s06-process {"case":"real-timeout","created":134379555565430796,"exit_confirmed":true,"phase":"assert-original-exited","pid":41932,"query_error":null,"wait_status":0}
+s06-process {"case":"cleanup-unknown","created":134379555565550020,"exit_confirmed":true,"phase":"assert-original-exited","pid":22404,"query_error":null,"wait_status":0}
+s06-process {"case":"wait-error","cleanup_unknown":false,"created":134379555575684744,"phase":"capture-original-child","pid":18084,"probe_error":null,"reader_error":false,"wait_error":true}
+S09: actual claim-before-spawn child kill+wait complete: exit code: 1
+a10-fixture {"directory":"../nhc-c-default-composition\\NoManCode\\rust-app\\.local\\next20-c-5d7e2685-final-attempt3\\tmp\\.tmpyykiMO","phase":"agent_before_denied_result"}
+case=s06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true
+a10-kill {"exit_code":1,"phase":"agent_before_denied_result","pid":35592,"task_id":"8c13af1b-b061-4151-a3a1-cdc0c1c465de"}
+S06: task-scoped test injection after real spawn; typed unknown preserved claim, not a claim of actual OS cleanup failure
+a10-evidence {"directory":".local\\next17-a10-evidence\\c5901ff7-672d-48a1-ac61-588301b00224","phase":"agent_before_denied_result-killed","snapshot":"agent-snapshot.db"}
+s06-process {"case":"wait-error","created":134379555575684744,"exit_confirmed":true,"phase":"assert-original-exited","pid":18084,"query_error":null,"wait_status":0}
+a10-evidence {"directory":".local\\next17-a10-evidence\\e9b1baea-eef7-4254-8343-c884c3286789","phase":"agent_before_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":35592,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":61556,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\c28d0b3f-7fef-4cf1-9ba1-976079c9f6dd","phase":"agent_before_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":35592,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":54436,"run":2}
+a10-fixture {"directory":"../nhc-c-default-composition\\NoManCode\\rust-app\\.local\\next20-c-5d7e2685-final-attempt3\\tmp\\.tmpcZ73UI","phase":"agent_after_denied_result"}
+fixture case=w06-inherited-pipe phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmpwKwTCb
+s06-process {"case":"execute-two-second","created":134379555565268227,"exit_confirmed":true,"phase":"assert-original-exited","pid":53328,"query_error":null,"wait_status":0}
+a10-kill {"exit_code":1,"phase":"agent_after_denied_result","pid":50716,"task_id":"3a8fb93b-9cf5-4d0d-9d17-c1e58cdfbe4f"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\d7da8aca-8c37-4ac9-a7bd-36590718a197","phase":"agent_after_denied_result-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\3574f839-bd38-4224-9588-6cb09c9672f7","phase":"agent_after_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":50716,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":56100,"run":1}
+I09 retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-i09-after_commit-efb23285-bab2-4f87-95a0-71010369894d
+I09 retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-i09-before_commit-7416bc03-dfc5-477b-927d-27d3f4f9ab88
+a10-evidence {"directory":".local\\next17-a10-evidence\\9ec14dd6-39f2-42df-bcf6-0335bb64568f","phase":"agent_after_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":50716,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":61792,"run":2}
+a10-fixture {"directory":"../nhc-c-default-composition\\NoManCode\\rust-app\\.local\\next20-c-5d7e2685-final-attempt3\\tmp\\.tmp5RU7pu","phase":"agent_after_applied_result"}
+case=w06-inherited-pipe phase=descendant-owned parent_pid=30180 parent_created=134379555585181271 descendant_pid=34392 descendant_created=134379555591030899
+D08 case deadline_ms=3000
+a10-kill {"exit_code":1,"phase":"agent_after_applied_result","pid":61012,"task_id":"07ab7d46-6196-42e8-9652-0f7a1812605e"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\05d1517b-a9d6-49b8-bd04-d1b67be7b246","phase":"agent_after_applied_result-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\d85dc7b0-8885-4d56-b5e8-8d49b0953e54","phase":"agent_after_applied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":61012,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":60688,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\4cb92e9e-f4e4-4d2d-903a-bc04d1eca767","phase":"agent_after_applied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":61012,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":58812,"run":2}
+case=w06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true
+D08 cleanup pid=22404 created=134379555592713108 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(7))))
+D08 original-handle pid=22404 created=134379555592713108 signal=0
+s06 case=inherited-pipe phase=collector result=timeout elapsed_ms=2001 parent_waited=true readers=0 fixture=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmphfdBWL
+D08 cleanup pid=18288 created=134379555594196757 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=18288 created=134379555594196757 signal=0
+fixture case=no-marker phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmpRgGUAL
+case=s06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0
+case=s06-inherited-pipe phase=job-drop cleanup_ok=true error=None
+case=supervisor-error-cleanup phase=job-drop cleanup_ok=true error=None
+D08 case deadline_ms=1000
+D08 cleanup pid=9052 created=134379555585953796 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+w06 case=run-two-second outcome_unknown=true elapsed_ms=2020 pid=9052 created=134379555585953796 signal=0
+p06-recovery {"call_id":"e881916f-0f67-4820-8af5-db6bef0ec88c","event":"killed-and-waited","exit_code":1,"mock_completions":0,"phase":"budget-after-claim","pid":57916}
+p06-recovery {"call_id":"e881916f-0f67-4820-8af5-db6bef0ec88c","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":50680,"run":1,"unresolved_count":1}
+p06-recovery {"call_id":"e881916f-0f67-4820-8af5-db6bef0ec88c","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":0,"network_state":"unknown","phase":"budget-after-claim","pid":57832,"run":2,"unresolved_count":1}
+p06-recovery {"call_id":"29ccdc16-694d-4f27-83c3-6e5550e3e514","event":"killed-and-waited","exit_code":1,"mock_completions":1,"phase":"budget-before-finish","pid":55892}
+p06-recovery {"call_id":"29ccdc16-694d-4f27-83c3-6e5550e3e514","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":58812,"run":1,"unresolved_count":1}
+D08 cleanup pid=58340 created=134379555605677609 signal=0 kill=Ok(()) wait=Ok(Ok(ExitStatus(ExitStatus(1))))
+D08 original-handle pid=58340 created=134379555605677609 signal=0
+p06-recovery {"call_id":"29ccdc16-694d-4f27-83c3-6e5550e3e514","event":"recovery-waited","exit_code":0,"held_tokens":100,"mock_completions":1,"network_state":"unknown","phase":"budget-before-finish","pid":43680,"run":2,"unresolved_count":1}
+w06 case=inherited-pipe phase=collector outcome_unknown=true elapsed_ms=2001 fixture=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmpwKwTCb
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+case=w06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0
+case=w06-inherited-pipe phase=job-drop cleanup_ok=true error=None
+sealed checks: counts_before=(1, 1, 4) counts_after=(1, 1, 4) provider_before=4 provider_after=4 task_unchanged=true receipt_unchanged=true fs_unchanged=true
+
+thread 'tool_runtime::tests::f07_activation_failure_is_queryable_clean_and_explicit_rebuild_preserves_recovery' (60376) panicked at src\tool_runtime.rs:1208:22:
+sensitive panic payload
+
+thread '<unnamed>' (58752) panicked at src\tool_runtime.rs:1435:17:
+poison test
+
+thread 'tool_runtime::tests::s05_worker_channel_loss_is_unknown_and_releases_owned_count' (61336) panicked at src\tool_runtime.rs:2241:30:
+controlled shell worker disappearance
+case=restart phase=job-drop cleanup_ok=true error=None
+case=claim phase=job-drop cleanup_ok=true error=None
+N13 actual kill+wait phase=claim child=31796 exit=exit code: 1 operation=c693613f-8428-4a55-8c76-acf1525153a8
+case=claim phase=job-drop cleanup_ok=true error=None
+case=caller phase=job-drop cleanup_ok=true error=None
+N13 actual kill+wait phase=created child=45488 exit=exit code: 1 operation=86228e11-b508-471a-a714-e93954a70081
+case=no-marker phase=preparation-failed error=fixture preparation exceeded 15 seconds: deadline has elapsed
+case=no-marker phase=job-drop cleanup_ok=true error=None
+fixture case=parent-exit phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmps12KZr
+case=parent-exit phase=preparation-failed error=parent exited before handle publication: code=Some(42)
+case=parent-exit phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmpkT4H36
+case=pipe-eof phase=descendant-owned parent_pid=40084 parent_created=134379555751436456 descendant_pid=46160 descendant_created=134379555754713090
+case=pipe-eof phase=preparation-failed error=stdout EOF after parent exit and sentinel
+case=pipe-eof phase=job-drop cleanup_ok=true error=None
+fixture case=pipe-eof-between phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmpr4sxlN
+case=restart phase=job-drop cleanup_ok=true error=None
+case=created phase=job-drop cleanup_ok=true error=None
+case=pipe-eof-between phase=descendant-owned parent_pid=59716 parent_created=134379555759043773 descendant_pid=52716 descendant_created=134379555762676081
+case=created phase=job-drop cleanup_ok=true error=None
+case=pipe-eof-between phase=preparation-failed error=stderr EOF after parent exit
+case=pipe-eof-between phase=job-drop cleanup_ok=true error=None
+fixture case=ack-fail phase=retained root=../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\.tmpbGEH9Q
+case=ack-fail phase=descendant-owned parent_pid=31396 parent_created=134379555766586758 descendant_pid=48592 descendant_created=134379555769936922
+case=ack-fail phase=preparation-failed error=injected ack failure
+case=ack-fail phase=job-drop cleanup_ok=true error=None
+N13 actual kill+wait phase=registered child=62832 exit=exit code: 1 operation=20a21cd0-2a28-4ace-bb02-466ef6b87422
+case=restart phase=job-drop cleanup_ok=true error=None
+case=registered phase=job-drop cleanup_ok=true error=None
+case=registered phase=job-drop cleanup_ok=true error=None
+     Running unittests src\main.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh-1d1752439a8bd22a.exe)
+     Running tests\agent_runtime_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\agent_runtime_cli-03bc7a41ca356387.exe)
+     Running tests\approval_gate.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\approval_gate-96bb86c355a07ed3.exe)
+     Running tests\approval_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\approval_http-e02fa56c0f91cdbe.exe)
+     Running tests\assessment_adversarial.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\assessment_adversarial-28e97f889fa46ca2.exe)
+     Running tests\budget.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\budget-62fd45bca79f52e3.exe)
+     Running tests\budget_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\budget_cli-e860463b6113e8f9.exe)
+     Running tests\budget_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\budget_http-46b0eb1d45ca4fe3.exe)
+     Running tests\checkpoint.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\checkpoint-81154909f600c8e9.exe)
+     Running tests\checkpoint_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\checkpoint_http-990802a22ef2f8fd.exe)
+     Running tests\cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\cli-366a345e2dc00137.exe)
+     Running tests\cli_workflow.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\cli_workflow-e8359a2797feb354.exe)
+     Running tests\composition_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\composition_cli-ff3a000416fe5fae.exe)
+     Running tests\composition_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\composition_http-432b0699b60f0768.exe)
+     Running tests\final_acceptance.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\final_acceptance-1cfaaa4c23baf20f.exe)
+     Running tests\first_user_workflow.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\first_user_workflow-5a3c83aad910ecd6.exe)
+     Running tests\git_diff.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\git_diff-b9f0abc396968a98.exe)
+     Running tests\host_configuration.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration-63b2d6312839739a.exe)
+     Running tests\host_configuration_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_cli-3f91e9ccec73bb5a.exe)
+     Running tests\host_configuration_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_http-433c442c689f38b6.exe)
+     Running tests\host_configuration_schema.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_schema-ae721cb78d1a72dd.exe)
+     Running tests\host_configuration_security.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\host_configuration_security-be1fd5d45255deee.exe)
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-environment-parent-f5582e38-6620-446f-bac8-ce9116713fab
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-inflight-404-8079494e-1774-48b0-9890-c4578182d44a
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-legacy-and-prompt-1d89ab83-20d6-480a-a8b8-8fefd754a6b8
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-invalid-input-df04788b-3823-41d0-b88d-cd01e6fc791d
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-0-true-14b0d58d-959f-4e64-9f95-78c56d99840c
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-nonempty-budget-e4253158-a467-41a8-8164-5da8c286821a
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-0-false-405e2a1b-0edf-4f5e-b6c3-e9cb7f55e099
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-1-true-f125e00d-80c5-41f8-8e3f-2ac743e58867
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-1-false-ab141aa5-d5c2-4065-81b4-5612e440966d
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-2-true-63045f88-7fb7-48c9-891e-827369dce0b6
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-2-false-b2115699-b63a-4283-9aef-a3fa25af377e
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-3-true-36923f8d-5e56-439a-96bb-4953cce6b05d
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-3-false-e03cff1e-fd76-443e-a2d7-0015c061f4cd
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-4-true-c44b9118-3f97-43f8-9eb0-aa40ab767f7f
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-4-false-105b781e-5207-49e8-beee-4060f0b31a67
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-5-true-0079d0c0-ac0d-4c0d-9dc9-b625894af583
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-5-false-115d58a9-6277-47a2-a732-cc3c5995b65f
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-6-true-38e0148f-ef24-4c84-a7c2-a1cd7a4bb8c2
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-6-false-23fa2acf-d09a-4075-bd3b-560208636919
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-7-true-fa381c9e-a106-4144-a71c-cd6c76cfa4d0
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-7-false-be8e3112-ac3b-44dd-a56c-fbf16ae97513
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-8-true-442c965e-f687-433f-aef0-5be2223bcd57
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-8-false-80107ba9-5664-4a31-a4ce-cef4491bedd1
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-9-true-186dfe05-c6dd-4e04-ac76-a60ea9482507
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-9-false-cce22ae4-9e6b-4176-a5f2-da8b35bae1f1
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-10-true-6ddcd3f1-9183-461c-8784-1b7399f96668
+D security retained fixture: ../nhc-c-default-composition\NoManCode\rust-app\.local\next20-c-5d7e2685-final-attempt3\tmp\nhc-security-hostile-10-false-b7816207-823a-40f9-a3b0-60a292194e77
+     Running tests\host_initialization_workflow.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\host_initialization_workflow-a7c69416ffbbf71f.exe)
+     Running tests\http_contract.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\http_contract-fe1366011fd3c1c2.exe)
+     Running tests\live.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\live-db566652a1c86345.exe)
+     Running tests\network_authorization.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\network_authorization-59b8f7ec0a27f8ea.exe)
+     Running tests\network_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\network_cli-2891fa65a6dafd05.exe)
+     Running tests\network_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\network_http-584b587a6bda6ffe.exe)
+     Running tests\plugin_catalog.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_catalog-8f0b96b63269fbad.exe)
+     Running tests\plugin_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_cli-75f02029d10720e4.exe)
+     Running tests\plugin_host.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_host-2cfbf46ece62304d.exe)
+
+thread 'h10_recovery_list_records_incomplete_cleanup' (51288) panicked at tests\plugin_host.rs:1368:9:
+deliberate deactivate panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'panicking_subscriber_fails_alone_and_delivery_continues' (59720) panicked at tests\plugin_host.rs:1627:41:
+deliberate subscription panic
+
+thread 'h05_activation_failure_rolls_back_in_plan_reverse' (47880) panicked at tests\plugin_host.rs:249:9:
+deliberate activate panic
+     Running tests\plugin_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_http-418b63849597b7aa.exe)
+     Running tests\plugin_management.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\plugin_management-fff8213c415f1303.exe)
+     Running tests\project_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\project_cli-601bf3b19a345153.exe)
+     Running tests\project_context.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\project_context-edcb20853590cb75.exe)
+     Running tests\project_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\project_http-c589a71b352f90d6.exe)
+     Running tests\project_migration.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\project_migration-1c802c05a076b373.exe)
+     Running tests\provider_network.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\provider_network-9778c7326318053e.exe)
+     Running tests\provider_usage.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\provider_usage-cfc03bf1d015d78d.exe)
+     Running tests\review_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\review_cli-93a47a282c670466.exe)
+     Running tests\runtime.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime-dee77ff274e01c8a.exe)
+     Running tests\runtime_management_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime_management_cli-5d2e967190605be1.exe)
+     Running tests\runtime_management_schema.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime_management_schema-2f6fe34f1ee3771a.exe)
+     Running tests\runtime_management_workflow.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\runtime_management_workflow-36274ec859886c83.exe)
+     Running tests\session_turns.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\session_turns-a0f55013e306078b.exe)
+     Running tests\tool_call_workflow.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_call_workflow-a7d3a55528578e53.exe)
+     Running tests\tool_result_crash.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_result_crash-6110c11f89b7b4a8.exe)
+     Running tests\tool_runtime.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_runtime-7de2db0b61b1302d.exe)
+     Running tests\tool_session_turns.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\tool_session_turns-7882548023251ae5.exe)
+     Running tests\turn_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\turn_http-817a873d3b91439f.exe)
+n07 cumulative: fixed=201045 over_pad=1298956 over_len=1500001 boundary_pad=1298955 boundary_len=1500000
+     Running tests\workspace_changes.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_changes-aea784dee7b6e4f7.exe)
+symlink creation succeeded
+     Running tests\workspace_crash.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_crash-ded3fd18dd422d17.exe)
+     Running tests\workspace_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_http-1c419f245afe3c8f.exe)
+     Running tests\workspace_identity.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\workspace_identity-942086fcfd459d0b.exe)
+     Running tests\worktree_cli.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\worktree_cli-1fd06a14ba1acda5.exe)
+     Running tests\worktree_http.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\worktree_http-9a168587209109d7.exe)
+     Running unittests src\lib.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh_protocol-2b9873fc9281da35.exe)
+     Running unittests src\lib.rs (../nhc-c-tool-call-workflow\NoManCode\rust-app\.local\next19-c-a3279c8-attempt1\target\debug\deps\peachsh_ui-4ed1c77431e40834.exe)
+   Doc-tests peachsh
+   Doc-tests peachsh_protocol
+   Doc-tests peachsh_ui

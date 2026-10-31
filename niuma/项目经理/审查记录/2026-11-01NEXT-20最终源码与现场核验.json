@@ -1,0 +1,551 @@
+{
+  "candidate": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+  "source_manifests": 8,
+  "source_files": 147,
+  "old_files_unchanged": 8091,
+  "retained_files_hashed": 8211,
+  "all_six_commands_exit_zero": true,
+  "commands": [
+    {
+      "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+      "command": "cargo check --offline --locked --workspace --all-targets",
+      "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+      "exit_code": 0,
+      "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+      "ended_utc": "2026-10-31T21:25:42.9852003Z",
+      "started_utc": "2026-10-31T21:25:41.2093674Z"
+    },
+    {
+      "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+      "command": "cargo build --offline --locked --bin peachsh",
+      "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+      "exit_code": 0,
+      "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+      "ended_utc": "2026-10-31T21:25:48.6875555Z",
+      "started_utc": "2026-10-31T21:25:43.4868434Z"
+    },
+    {
+      "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+      "command": "cargo test --offline --locked --workspace -- --nocapture",
+      "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+      "exit_code": 0,
+      "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+      "ended_utc": "2026-10-31T21:28:59.3232065Z",
+      "started_utc": "2026-10-31T21:25:49.2139718Z"
+    },
+    {
+      "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+      "command": "cargo fmt --all -- --check",
+      "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+      "exit_code": 0,
+      "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+      "ended_utc": "2026-10-31T21:29:01.2718720Z",
+      "started_utc": "2026-10-31T21:28:59.8570531Z"
+    },
+    {
+      "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+      "command": "cargo clippy --offline --locked --workspace --all-targets -- -D warnings",
+      "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+      "exit_code": 0,
+      "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+      "ended_utc": "2026-10-31T21:29:09.7552159Z",
+      "started_utc": "2026-10-31T21:29:01.7470156Z"
+    },
+    {
+      "product_tree": "5ebccc0f2cc4232d67060563dcee0d5e6f6d309b",
+      "command": "cargo check --offline --locked -p peachsh-ui --target wasm32-unknown-unknown",
+      "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+      "exit_code": 0,
+      "head": "5d7e26857b8192912412a1456f3aa0b091dd6288",
+      "ended_utc": "2026-10-31T21:29:11.2831139Z",
+      "started_utc": "2026-10-31T21:29:10.3007361Z"
+    }
+  ],
+  "suite_results": [
+    [
+      "378",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "2",
+      "0",
+      "0"
+    ],
+    [
+      "35",
+      "0",
+      "0"
+    ],
+    [
+      "16",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "10",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "15",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "15",
+      "0",
+      "0"
+    ],
+    [
+      "18",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "1"
+    ],
+    [
+      "16",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "17",
+      "0",
+      "0"
+    ],
+    [
+      "10",
+      "0",
+      "0"
+    ],
+    [
+      "24",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "3",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "10",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "7",
+      "0",
+      "0"
+    ],
+    [
+      "19",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "1",
+      "0",
+      "0"
+    ],
+    [
+      "4",
+      "0",
+      "0"
+    ],
+    [
+      "11",
+      "0",
+      "0"
+    ],
+    [
+      "17",
+      "0",
+      "0"
+    ],
+    [
+      "21",
+      "0",
+      "0"
+    ],
+    [
+      "6",
+      "0",
+      "0"
+    ],
+    [
+      "2",
+      "0",
+      "0"
+    ],
+    [
+      "9",
+      "0",
+      "0"
+    ],
+    [
+      "8",
+      "0",
+      "0"
+    ],
+    [
+      "2",
+      "0",
+      "0"
+    ],
+    [
+      "5",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "0",
+      "0",
+      "0"
+    ]
+  ],
+  "totals": [
+    837,
+    0,
+    1
+  ],
+  "scenes": [
+    {
+      "scene": ".tmpOnVZpy",
+      "metadata": "host-denied-process.json",
+      "pid": 48956,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "c7635f98-32a7-417f-a933-b01c16e0a826": {
+          "status": "running",
+          "tool_messages": 1
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": ".tmppPFO4N",
+      "metadata": "proof-process.json",
+      "pid": 63376,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "c6a857cd-1885-4c0f-bf2e-e8cfc23e60c1": {
+          "status": "cancelled",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 0,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": ".tmps5vzfc",
+      "metadata": "proof-process.json",
+      "pid": 48536,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "15b38791-9e92-49f3-8568-01c607689860": {
+          "status": "running",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 0,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": ".tmpt1s5cD",
+      "metadata": "legacy-process.json",
+      "pid": 51680,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "7354f1e4-daca-476e-b657-311364a76bab": {
+          "status": "running",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": "nhc-result-host-1PW16i",
+      "metadata": "host-process.json",
+      "pid": 23776,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "task": {
+          "status": "interrupted",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": "nhc-t05-7mEcC7",
+      "metadata": "process.json",
+      "pid": 23156,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "task": {
+          "status": "queued",
+          "tool_messages": 0
+        }
+      },
+      "tool_results": 0,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    },
+    {
+      "scene": "nhc-t05-hKIsea",
+      "metadata": "process.json",
+      "pid": 14700,
+      "kill": "ok",
+      "reaped": true,
+      "tasks": {
+        "task": {
+          "status": "queued",
+          "tool_messages": 1
+        }
+      },
+      "tool_results": 1,
+      "tool_starts": 0,
+      "raw_query_equal": true
+    }
+  ],
+  "t13": {
+    "scene": ".tmpz3WbbT",
+    "stops": [
+      {
+        "exit_code": 1,
+        "pid": 54668,
+        "success": false,
+        "waited": true
+      },
+      {
+        "exit_code": 1,
+        "pid": 53100,
+        "success": false,
+        "waited": true
+      }
+    ],
+    "stopped_tasks_completed": 2,
+    "final_tasks_completed": 3,
+    "tool_results_before_and_after": 5,
+    "raw_query_equal": true,
+    "approved_side_effect_once": true,
+    "denied_side_effects_absent": true
+  },
+  "originals_unchanged_after_querying_copies": true,
+  "cli_explicit_build": {
+    "checked_utc": "2026-10-31T21:25:49.2124747Z",
+    "sha256": "92BAC905B4541F95500B2A5FEE6CC0BEE081EA012F759491EE54BEAC3B247D8E",
+    "bytes": 29979136,
+    "path": "../nhc-c-tool-call-workflow/NoManCode/rust-app/.local/next19-c-a3279c8-attempt1/target/debug/peachsh.exe"
+  },
+  "cli_after_test": {
+    "checked_utc": "2026-10-31T21:28:59.8557379Z",
+    "sha256": "287225C205F29697BEAAEC70167FA52659CABE6F72259F5087A68870472A2425",
+    "bytes": 30964736,
+    "path": "../nhc-c-tool-call-workflow/NoManCode/rust-app/.local/next19-c-a3279c8-attempt1/target/debug/peachsh.exe"
+  },
+  "tmp_actual_files_checked": 2213,
+  "current_cli_matches_after_test": true,
+  "first_user_workflow": {
+    "passed": true,
+    "verified_block_kill_wait_count": 3,
+    "fixture": "original temporary directory removed by its lifetime; stdout and fixed source used"
+  },
+  "review_correction": "Manager initially counted P07 across the complete workspace log; other suites reuse this label. Count scoped to the first_user_workflow result block is exactly three. No product test rerun.",
+  "publication": {
+    "files": 65,
+    "original_published_hashes_all_match": true,
+    "exact_transformations_all_match": true,
+    "manifest_sha256": "800c743df639c3f2731d45ea886681f9ab85220f152b47830fcd418cfd6a87de"
+  },
+  "delivery": {
+    "head": "ee33ef1a9acf51a20841eb587034cbe4a6a1297e",
+    "product_tree": "897cc8510c0c56118df04c2c1dbcea9c999e539f",
+    "rust_tree": "3672895f5b4083c3d0a7a09d9d520c4a9ceadada",
+    "change_from_tested": "docs only; exact same Rust tree"
+  }
+}

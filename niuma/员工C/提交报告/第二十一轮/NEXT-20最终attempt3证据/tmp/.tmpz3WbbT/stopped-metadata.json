@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "bytes": 4096,
+      "name": "peachsh.sqlite3",
+      "present": true,
+      "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+    },
+    {
+      "bytes": 2088872,
+      "name": "peachsh.sqlite3-wal",
+      "present": true,
+      "sha256": "26bf5e4e9b79dc568b70fb45b0134834a88b3faa16dd091c0d32125cd72830e9"
+    },
+    {
+      "bytes": 32768,
+      "name": "peachsh.sqlite3-shm",
+      "present": true,
+      "sha256": "8769ff2a436627d0eb057263877baec48de9ff08b2efc111a144117913442f64"
+    }
+  ],
+  "host_pid": 54668,
+  "killed_and_waited": true,
+  "query_is_separate_copy": true
+}

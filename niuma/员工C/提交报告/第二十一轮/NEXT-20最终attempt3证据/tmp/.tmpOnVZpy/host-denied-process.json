@@ -1,0 +1,29 @@
+{
+  "call": "host-kill",
+  "files": [
+    {
+      "bytes": 4096,
+      "name": "agent.db",
+      "present": true,
+      "sha256": "edbee11a2e909b4413b8e2265b665c0f156aaba120e5c715a11d8fc30ba789d7"
+    },
+    {
+      "bytes": 1124792,
+      "name": "agent.db-wal",
+      "present": true,
+      "sha256": "53fc06374fe6f006efff4069dfa410fb75f4113a68dd0549d1f9767d8c91bc7c"
+    },
+    {
+      "bytes": 32768,
+      "name": "agent.db-shm",
+      "present": true,
+      "sha256": "c0c0e44b9132a74198e1876a285f2a17960dfb678647b6177d9e2b3cbcfd8d06"
+    }
+  ],
+  "kill": "ok",
+  "phase": "after_commit",
+  "pid": 48956,
+  "reaped": true,
+  "task": "c7635f98-32a7-417f-a933-b01c16e0a826",
+  "wait": "ExitStatus(ExitStatus(1))"
+}
