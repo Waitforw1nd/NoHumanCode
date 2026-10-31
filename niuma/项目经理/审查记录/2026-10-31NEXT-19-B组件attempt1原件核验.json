@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-31",
+  "candidate": "11e1882b56c79c2e79c27641e740443b0f166e3d",
+  "product_tree": "f8b738c59f27bd816f7add4c190ee2b2962cba7b",
+  "rust_tree": "297e97269e8e63c9b968c7aba960e1b70ffaaf14",
+  "original_root": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-11e1882b-attempt1",
+  "source_entries": 136,
+  "before_after_identical": true,
+  "source_matches_worktree_bytes": true,
+  "git_blob_exact_count": 135,
+  "git_checkout_filters_applied": [],
+  "git_normalized_only": [
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "worktree_bytes": 1144,
+      "git_blob_bytes": 1098,
+      "crlf_count": 46,
+      "worktree_sha256": "7702FFA967D44DE867548ABAC3F65D71EC2417B900E5304BA4F32F0A55EE5F24",
+      "git_blob_sha256": "60795FC963D06D07BCFFEFD6A49FD091C415A45BC2360130F0436E6F2FCF3172",
+      "kind": "CRLF_WORKTREE_VS_LF_BLOB_ONLY",
+      "attributes": [
+        "NoManCode/rust-app/src/lib.rs: text: auto",
+        "NoManCode/rust-app/src/lib.rs: eol: lf"
+      ]
+    }
+  ],
+  "commands": {
+    "check": 0,
+    "build_cli": 0,
+    "lib_test": 101,
+    "clippy": "NOT_RUN",
+    "fmt": "NOT_RUN"
+  },
+  "lib_tests": {
+    "passed": 324,
+    "failed": 1,
+    "ignored": 0
+  },
+  "cli_sha256": "E3B7FF436995F83DFC58B477570FB12D08AA3477198C59AF334FC6FF49340815",
+  "cli_matches_current_binary": true,
+  "postflight_clean": true,
+  "logs": [
+    {
+      "path": "logs/01-check.json",
+      "bytes": 354,
+      "sha256": "F035F4972F556A0E4C5FF857B8C61D98026DAAF4AA4F634E9CB054F0ADAE4978"
+    },
+    {
+      "path": "logs/01-check.log",
+      "bytes": 5573,
+      "sha256": "B714D8B680A46820A89B585B0E7C51863C82E1822F568849AE959D8DCAA8D35F"
+    },
+    {
+      "path": "logs/02-build-cli.json",
+      "bytes": 362,
+      "sha256": "2C06F4F1A50A403F6CFC566309658B90FE41456485D84033661478473926508D"
+    },
+    {
+      "path": "logs/02-build-cli.log",
+      "bytes": 4859,
+      "sha256": "38D683AEB76D24124680BC29EC0685251448921F8A650704E23287A5B04CDDEF"
+    },
+    {
+      "path": "logs/03-test.json",
+      "bytes": 370,
+      "sha256": "2847ED8270171E14A2BBA54BFB56E8FE5E1BF72A35F3A4D5FC97DD10D8752675"
+    },
+    {
+      "path": "logs/03-test.log",
+      "bytes": 48696,
+      "sha256": "23AC3E72C397816327131B44F47FE9BE9EA237F702669AABD4215CC6C88C35E6"
+    },
+    {
+      "path": "logs/cli-binary.json",
+      "bytes": 279,
+      "sha256": "3014357D36AE2464EF86E6EEC1B2F22A92823AF5D854F75A6536AB1DF4D70EE2"
+    },
+    {
+      "path": "logs/postflight.json",
+      "bytes": 308,
+      "sha256": "DB215FADA594BB068BF6D5C72EBCE0D0126CBDCCDE4633BDAAC12DB1ECE341B2"
+    },
+    {
+      "path": "logs/preflight.json",
+      "bytes": 922,
+      "sha256": "9F5B159C9C156AEE1651E2E95D1F4749E5C76AC1610D8CC687B7C276DE8FA820"
+    },
+    {
+      "path": "logs/retained-evidence-inventory.json",
+      "bytes": 360985,
+      "sha256": "1EC280726B12BA41BA008EC26BBB5098E57AC2E51655745D0A9D1A8960B0B9AA"
+    },
+    {
+      "path": "logs/source-after.json",
+      "bytes": 23496,
+      "sha256": "45583FBFEC45AF16A894A7EFF03FB5758F64EABEAC9490A5CD88BD951AE71E6E"
+    },
+    {
+      "path": "logs/source-before.json",
+      "bytes": 23496,
+      "sha256": "45583FBFEC45AF16A894A7EFF03FB5758F64EABEAC9490A5CD88BD951AE71E6E"
+    }
+  ],
+  "published_copy_audit": {
+    "files": 14,
+    "substitution_rules_verified": 10,
+    "hash_and_substitution_match": true,
+    "manifest_sha256": "3969f738268253a1d920a19ae4974016dfa5af847b274e9c285d314e53a13220"
+  },
+  "product_tests_run_by_manager": false,
+  "retained_inventory_audit": {
+    "files": 1507,
+    "errors": [],
+    "all_current_bytes_match": true,
+    "inventory_sha256": "1ec280726b12ba41ba008ec26bbb5098e57ac2e51655745d0a9d1a8960b0b9aa",
+    "scope": "Integrity only; not semantic verification of every database or attribution of the failed a09 fixture."
+  }
+}
