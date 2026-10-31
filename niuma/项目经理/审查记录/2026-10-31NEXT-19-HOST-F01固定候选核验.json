@@ -1,0 +1,10 @@
+{
+  "head": "2f1bc071ca4494404c8d0370604240aa29a93b55",
+  "path": "NoManCode/rust-app/tests/tool_result_crash.rs",
+  "sha256": "ffb1a558e122e9e201004cde592f9e569dfe563375fd7915f22492e295e56ea1",
+  "blob": "cff1409d1203fd6350a166e57381a7fc392cc840",
+  "actual_equals_blob": true,
+  "only_changed_path": true,
+  "clean": true,
+  "static_review": "Only imports fresh_settings and initializes empty Store before legacy history; all existing assertions and production files unchanged."
+}
