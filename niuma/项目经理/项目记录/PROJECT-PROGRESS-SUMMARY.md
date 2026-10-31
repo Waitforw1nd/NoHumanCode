@@ -1,3 +1,7 @@
+## 2026-10-31 NEXT-18 B组件通过与依赖整合
+
+B a26363f1的check/build/test/lib Clippy/fmt全0，lib290/0/0，原件16对与128源码已核；两轮失败保留。经理收本人释放冻结后串行C/D到B，合后ee675255/12e6ecd1/f3f4cf15，27owner路径保持。B仅登记真实D测试模块，下一复核固定组合并串行组件，主线NEXT-17与完整项目进行中状态保持。
+
 ## 2026-10-31 NEXT-18组件前置闭合与限定lint返工
 
 更新人：项目经理。B attempt1 check0/test101（289/1/0）因经理测试序列漏CLI预构建；同ffeeac候选attempt2补build后全lib290/0/0，W08前置闭合。lib Clippy两个collapsible_if失败，fmt未执行，窗口已释放；原B获两处等价静态修正，固定后再审再验。经理已核21对原/发布文件、路径转换与128源码清单；两轮原件和review保留。C273895d/D36b73d冻结no-build，未跨树合入或认定组件完成。下一第一操作核B最小修订的固定SHA、两tree与clean后放组件，之后串行组合；完整项目继续，架构仍保留基础并重构Engine/兼容和正式Desktop。

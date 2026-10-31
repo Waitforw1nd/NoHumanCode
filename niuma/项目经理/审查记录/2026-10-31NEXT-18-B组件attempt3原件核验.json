@@ -1,0 +1,171 @@
+{
+  "candidate": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+  "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+  "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+  "commands": [
+    {
+      "ended_utc": "2026-10-31T06:15:42.4783108Z",
+      "command": "cargo check --offline --locked --lib",
+      "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+      "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+      "started_utc": "2026-10-31T06:15:37.9491141Z",
+      "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-31T06:15:57.2670900Z",
+      "command": "cargo build --offline --locked --bin peachsh",
+      "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+      "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+      "started_utc": "2026-10-31T06:15:42.5917851Z",
+      "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-31T06:16:43.7574214Z",
+      "command": "cargo test --offline --locked --lib -- --nocapture",
+      "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+      "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+      "started_utc": "2026-10-31T06:15:57.4102897Z",
+      "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-31T06:16:49.1565402Z",
+      "command": "cargo clippy --offline --locked --lib -- -D warnings",
+      "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+      "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+      "started_utc": "2026-10-31T06:16:43.8654070Z",
+      "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-10-31T06:16:50.6496110Z",
+      "command": "cargo fmt --all -- --check",
+      "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+      "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+      "started_utc": "2026-10-31T06:16:49.2664038Z",
+      "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+      "exit_code": 0
+    }
+  ],
+  "postflight": {
+    "finished_utc": "2026-10-31T06:16:50.8333423Z",
+    "staged": [],
+    "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
+    "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
+    "status": [],
+    "exit_code": 0,
+    "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
+    "unmerged": []
+  },
+  "source_files_verified": 128,
+  "source_before_after_equal": true,
+  "test_results": [
+    [
+      "290",
+      "0",
+      "0"
+    ]
+  ],
+  "raw_hashes": [
+    {
+      "file": "run.ps1",
+      "bytes": 5025,
+      "sha256": "ca676b08bb4b346871c1422a92319cf366c6da2d4891517da9e44f118c1394bf"
+    },
+    {
+      "file": "logs/01-check.json",
+      "bytes": 354,
+      "sha256": "77c526ec57be7adfeb17f3a27ff92c64bc1cb3399c51478c1ec9c07d249a8d0d"
+    },
+    {
+      "file": "logs/01-check.log",
+      "bytes": 144,
+      "sha256": "92e15bab5ef396053e076468763adf88dff54c1ea0ca31f5bf834c60a90fea73"
+    },
+    {
+      "file": "logs/02-build-cli.json",
+      "bytes": 362,
+      "sha256": "f492458bd491bd8748e154c9b137fd4d0f9b7101e812f6401c3e2f7c715d7cc6"
+    },
+    {
+      "file": "logs/02-build-cli.log",
+      "bytes": 145,
+      "sha256": "0b43a4b7731442303f1ae80efbb4f57947b1c6ec7305df5d450b86ac75d48db1"
+    },
+    {
+      "file": "logs/03-test.json",
+      "bytes": 368,
+      "sha256": "31ee13723aaeef6b760d887a25704a66005fab82cf81c6f64b6dbe1124d247b0"
+    },
+    {
+      "file": "logs/03-test.log",
+      "bytes": 42161,
+      "sha256": "c9e6d510f69c34eeabe0173ce1d804a6570c7022380c6c6feb7391790fc1af59"
+    },
+    {
+      "file": "logs/04-clippy.json",
+      "bytes": 370,
+      "sha256": "dcb40ff3c9dcd7d5f16f08f78113c55d59b58d5ea783539aa3d111880547042a"
+    },
+    {
+      "file": "logs/04-clippy.log",
+      "bytes": 144,
+      "sha256": "6a5584b8de07573348d76f05fc6729a218237a5e2d988874b304316fa60c24a9"
+    },
+    {
+      "file": "logs/05-fmt.json",
+      "bytes": 344,
+      "sha256": "c7d197bca37d7d4cd5506e1353e5d7e99de62eedcfed95bd099f30e866cc4797"
+    },
+    {
+      "file": "logs/05-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "logs/cli-binary.json",
+      "bytes": 310,
+      "sha256": "a6c6c40336f4faa6b48ee9c071fe0968cdae8827cf54187ba74f63dd19841b2b"
+    },
+    {
+      "file": "logs/postflight.json",
+      "bytes": 306,
+      "sha256": "0c635dd66baa595b17866168f6126721b1f21ca9573d2e56212ee0a4e0789bf9"
+    },
+    {
+      "file": "logs/preflight.json",
+      "bytes": 947,
+      "sha256": "40404de716b044a050a4a19cf24c1074ca783c1fee1fbd7a384f974d516fd86e"
+    },
+    {
+      "file": "logs/source-after.json",
+      "bytes": 22050,
+      "sha256": "4044c3ba288f88ab8a7ace35728c7d6a057a32cc9539c6b53e57b8d9ce8a395b"
+    },
+    {
+      "file": "logs/source-before.json",
+      "bytes": 22050,
+      "sha256": "4044c3ba288f88ab8a7ace35728c7d6a057a32cc9539c6b53e57b8d9ce8a395b"
+    }
+  ],
+  "published_pairs_hash_length_path_only_verified": [
+    "run.ps1",
+    "01-check.json",
+    "01-check.log",
+    "02-build-cli.json",
+    "02-build-cli.log",
+    "03-test.json",
+    "03-test.log",
+    "04-clippy.json",
+    "04-clippy.log",
+    "05-fmt.json",
+    "05-fmt.log",
+    "cli-binary.json",
+    "postflight.json",
+    "preflight.json",
+    "source-after.json",
+    "source-before.json"
+  ]
+}
