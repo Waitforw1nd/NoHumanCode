@@ -5,7 +5,7 @@ mod network_fixture;
 
 use axum::{Json, Router, extract::State, routing::post};
 use peachsh::{
-    approval::{ApprovalStatus, ExecutionState},
+    approval::{self, ApprovalStatus, ExecutionState},
     domain::*,
     engine::Engine,
     server::{self, App},
@@ -2100,7 +2100,13 @@ async fn ah15_command_network_ack_is_explicit_and_legacy_approved_waits_without_
 
 #[test]
 fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
-    for cancelled in [false, true] {
+    let bearer = "Bearer n19fixturetoken 普通🙂 \"quoted\" \\ path";
+    for (content, secret, cancelled) in [
+        ("sk-abc", "sk-abc", false),
+        ("sk-abc", "sk-abc", true),
+        (bearer, "n19fixturetoken", false),
+        (bearer, "n19fixturetoken", true),
+    ] {
         let temp = tempfile::tempdir().unwrap();
         let db_path = temp.path().join("proof-restart.db");
         let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -2108,22 +2114,61 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
             let (base, _calls, _provider) = provider_server(vec![vec![tool_call(
                 "redacted-call",
                 "write_file",
-                json!({"path":"src/proof.txt","content":"sk-abc"}),
+                json!({"path":"src/proof.txt","content":content}),
             )]])
             .await;
             let store = Arc::new(Store::open(&db_path).unwrap());
+            // configure_live registers/selects the project and authorizes its route
+            // through the production commands in network_fixture.
             configure_live(&store, temp.path(), &base);
+            let project = store.current_project().unwrap().project_id.unwrap();
             let engine = Engine::new(store, 2).unwrap();
             let mut request = run_request(false);
             request.kind = SessionKind::Chat;
             let task = engine.start(request).await.unwrap().tasks.remove(0);
+            let binding = engine.task_project_binding(&task.id).unwrap().unwrap();
+            assert_eq!(binding.project_id, project);
             let approval = pending_engine(&engine, &task.id).await;
             let persisted = engine.store.task(&task.id).unwrap();
-            assert!(
-                !serde_json::to_string(&persisted)
-                    .unwrap()
-                    .contains("sk-abc")
+            assert!(!serde_json::to_string(&persisted).unwrap().contains(secret));
+            let call = persisted
+                .messages
+                .iter()
+                .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+                .find(|c| c["id"] == "redacted-call")
+                .unwrap();
+            let args: Value =
+                serde_json::from_str(call["function"]["arguments"].as_str().unwrap()).unwrap();
+            assert!(args.is_object());
+            assert_eq!(args["path"], "src/proof.txt");
+            if secret == "n19fixturetoken" {
+                assert_eq!(
+                    args["content"],
+                    "bearer [redacted] 普通🙂 \"quoted\" \\ path"
+                );
+            }
+            let raw: String = Connection::open(&db_path)
+                .unwrap()
+                .query_row("SELECT value FROM tasks WHERE id=?1", [&task.id], |r| {
+                    r.get(0)
+                })
+                .unwrap();
+            assert!(!raw.contains(secret));
+            let db_task: Value = serde_json::from_str(&raw).unwrap();
+            assert!(!db_task.to_string().contains(secret));
+            let db_call = db_task["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .flat_map(|m| m["tool_calls"].as_array().into_iter().flatten())
+                .find(|c| c["id"] == "redacted-call")
+                .unwrap();
+            let db_arguments = db_call["function"]["arguments"].as_str().unwrap();
+            assert_eq!(
+                db_arguments,
+                call["function"]["arguments"].as_str().unwrap()
             );
+            assert_eq!(serde_json::from_str::<Value>(db_arguments).unwrap(), args);
             assert!(!temp.path().join("src/proof.txt").exists());
             (task, approval, base)
         });
@@ -2148,15 +2193,66 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
                 .unwrap();
             assert_eq!(response.status(), StatusCode::OK);
             let public_approval: Value = response.json().await.unwrap();
-            let exposed = public_approval.to_string();
+            let dto_fields: BTreeSet<String> = [
+                "command_network_ack",
+                "network_notice",
+                "created_at",
+                "decided_at",
+                "decided_by",
+                "execution_state",
+                "id",
+                "preview",
+                "session_id",
+                "status",
+                "task_id",
+                "tool_call_id",
+                "tool_name",
+                "turn_id",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+            assert_eq!(
+                public_approval
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                dto_fields
+            );
+            let list = client()
+                .get(format!("{origin}/api/tasks/{}/approvals", task.id))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(list.status(), StatusCode::OK);
+            let list: Value = list.json().await.unwrap();
+            let records = list["approvals"].as_array().unwrap();
+            assert_eq!(records.len(), 1);
+            assert_eq!(records[0]["id"], approval.id);
+            assert_eq!(
+                records[0]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                dto_fields
+            );
+            let exposed = format!("{} {}", public_approval, list);
             for secret in [
-                "sk-abc",
+                secret,
+                "safe_call_digest",
                 "args_digest",
                 "binding_digest",
                 "write_scopes",
                 "allow_commands",
             ] {
                 assert!(!exposed.contains(secret));
+            }
+            for forbidden in [&approval.args_digest, &approval.binding_digest] {
+                assert!(!exposed.contains(forbidden.as_str()));
             }
             if cancelled {
                 assert_eq!(
@@ -2184,7 +2280,86 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
                 .collect();
             assert_eq!(proofs.len(), 1);
             assert_eq!(proofs[0].data["evidence_version"], 1);
-            assert!(!proofs[0].data.to_string().contains("sk-abc"));
+            let proof_fields: BTreeSet<String> = [
+                "approval_id",
+                "evidence_version",
+                "preview",
+                "safe_call_digest",
+                "session_id",
+                "task_id",
+                "tool_call_id",
+                "tool_name",
+                "turn_id",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+            assert_eq!(
+                proofs[0]
+                    .data
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                proof_fields
+            );
+            let safe_digest = proofs[0].data["safe_call_digest"].as_str().unwrap();
+            assert_eq!(safe_digest.len(), 64);
+            assert!(
+                safe_digest
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            );
+            assert_eq!(proofs[0].data["approval_id"], approval.id);
+            assert_eq!(proofs[0].data["tool_call_id"], "redacted-call");
+            let proof = proofs[0].data.to_string();
+            for forbidden in [
+                secret,
+                "args_digest",
+                "binding_digest",
+                approval.args_digest.as_str(),
+                approval.binding_digest.as_str(),
+            ] {
+                assert!(!proof.contains(forbidden));
+            }
+            let mut stream = client()
+                .get(format!("{origin}/api/runs/{}/events", task.run_id))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(stream.status(), StatusCode::OK);
+            let mut buffer = String::new();
+            let requested = loop {
+                let frame = next_sse(&mut stream, &mut buffer).await;
+                if frame.event == "approval.requested"
+                    && frame.data["data"]["approval_id"] == approval.id
+                {
+                    break frame;
+                }
+            };
+            let data = &requested.data["data"];
+            assert_eq!(
+                data.as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<BTreeSet<_>>(),
+                proof_fields
+            );
+            assert_eq!(data["evidence_version"], 1);
+            assert_eq!(data["safe_call_digest"], safe_digest);
+            let wire = requested.data.to_string();
+            for forbidden in [
+                secret,
+                "args_digest",
+                "binding_digest",
+                approval.args_digest.as_str(),
+                approval.binding_digest.as_str(),
+            ] {
+                assert!(!wire.contains(forbidden));
+            }
+            drop(stream);
             engine.resume(&task.id, "continue").await.unwrap();
             let done = settled_engine(&engine, &task.id).await;
             assert_eq!(done.status, "completed");
@@ -2194,6 +2369,21 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
             assert!(!events.iter().any(|e| e.kind == "tool_start"));
             let results: Vec<_> = events.iter().filter(|e| e.kind == "tool_result").collect();
             assert_eq!(results.len(), 1);
+            let status = if cancelled {
+                ApprovalStatus::Cancelled
+            } else {
+                ApprovalStatus::Denied
+            };
+            let expected = if cancelled {
+                "审批已取消，工具未执行。"
+            } else {
+                "审批已拒绝，工具未执行。"
+            };
+            assert_eq!(approval::tool_error(status), expected);
+            assert_eq!(results[0].data["origin_version"], 1);
+            assert_eq!(results[0].data["name"], "write_file");
+            assert_eq!(results[0].data["tool_call_id"], "redacted-call");
+            assert_eq!(results[0].data["result"].as_str(), Some(expected));
             assert_eq!(
                 results[0].data["origin"],
                 if cancelled {
@@ -2209,6 +2399,13 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
                     .count(),
                 1
             );
+            let message = done
+                .messages
+                .iter()
+                .find(|m| m["tool_call_id"] == "redacted-call")
+                .unwrap();
+            assert_eq!(message["role"], "tool");
+            assert_eq!(message["content"].as_str(), Some(expected));
             let (session, agent, turn): (String, String, String) = Connection::open(&db_path)
                 .unwrap()
                 .query_row(
@@ -2238,6 +2435,20 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
         runtime.shutdown_timeout(Duration::from_secs(2));
         let reopened = Store::open(&db_path).unwrap();
         reopened.recover().unwrap();
+        reopened.recover().unwrap();
+        let saved = reopened.task(&task.id).unwrap();
+        let messages: Vec<_> = saved
+            .messages
+            .iter()
+            .filter(|m| m["tool_call_id"] == "redacted-call")
+            .collect();
+        assert_eq!(messages.len(), 1);
+        let expected = if cancelled {
+            "审批已取消，工具未执行。"
+        } else {
+            "审批已拒绝，工具未执行。"
+        };
+        assert_eq!(messages[0]["content"].as_str(), Some(expected));
         assert_eq!(
             reopened
                 .events(&task.run_id, 0)

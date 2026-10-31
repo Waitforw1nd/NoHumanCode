@@ -821,6 +821,108 @@ fn t12_read_result_json_unicode_and_secret_redaction_are_consistent() {
     assert_eq!(snapshot(&store), before);
 }
 
+fn stored_task_json(store: &Store) -> (String, Value) {
+    let db = store.db.lock().unwrap();
+    let raw: String = db
+        .query_row("SELECT value FROM tasks WHERE id='task'", [], |r| r.get(0))
+        .unwrap();
+    let parsed = serde_json::from_str(&raw).unwrap();
+    (raw, parsed)
+}
+
+fn task_arguments(task: &Task) -> &str {
+    task.messages[1]["tool_calls"][0]["function"]["arguments"]
+        .as_str()
+        .unwrap()
+}
+
+#[test]
+fn p01_sensitive_argument_object_survives_real_task_persistence_and_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("parameter-object.db");
+    // This is a persistence fixture, not a claim about executable write_file schema.
+    let args = json!({"text":"Bearer n19fixturetoken", "nested":{"API_KEY":"n19nestedfixture", "label":"普通🙂 \"quoted\" \\ path"}, "items":[true, 17, null, {"enabled":false}], "ratio":1.5});
+    let (store, _) = fixture_call(&path, "persistence_fixture", args);
+    let task = store.task("task").unwrap();
+    let first = task_arguments(&task).to_owned();
+    let safe: Value = serde_json::from_str(&first).unwrap();
+    assert_eq!(
+        safe,
+        json!({"text":"bearer [redacted]", "nested":{"API_KEY":"[redacted]", "label":"普通🙂 \"quoted\" \\ path"}, "items":[true, 17, null, {"enabled":false}], "ratio":1.5})
+    );
+    let (raw, persisted): (String, Value) = stored_task_json(&store);
+    assert_eq!(
+        persisted["messages"][1]["tool_calls"][0]["function"]["arguments"].as_str(),
+        Some(first.as_str())
+    );
+    for secret in ["n19fixturetoken", "n19nestedfixture"] {
+        assert!(!raw.contains(secret));
+        assert!(!serde_json::to_string(&task).unwrap().contains(secret));
+    }
+    store.save_task(&task).unwrap();
+    drop(store);
+    let reopened = Store::open(&path).unwrap();
+    let saved = reopened.task("task").unwrap();
+    assert_eq!(task_arguments(&saved), first);
+    assert_eq!(
+        serde_json::from_str::<Value>(task_arguments(&saved)).unwrap(),
+        safe
+    );
+    let (raw_again, persisted_again) = stored_task_json(&reopened);
+    assert_eq!(
+        persisted_again["messages"][1]["tool_calls"][0]["function"]["arguments"].as_str(),
+        Some(first.as_str())
+    );
+    for secret in ["n19fixturetoken", "n19nestedfixture"] {
+        assert!(!raw_again.contains(secret));
+    }
+    reopened.save_task(&saved).unwrap();
+    drop(reopened);
+    let again = Store::open(&path).unwrap();
+    assert_eq!(task_arguments(&again.task("task").unwrap()), first);
+}
+
+#[test]
+fn p02_safe_legacy_raw_and_invalid_arguments_remain_unmodified() {
+    for (case, raw) in [
+        ("object", r#"{  "z" : "普通🙂", "a" : [3, true] }"#),
+        ("malformed", "{not-json"),
+        ("array", "[1,2]"),
+        ("scalar", "false"),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(format!("{case}.db"));
+        let call = json!({"id":"call","type":"function","function":{"name":"legacy_fixture","arguments":raw}});
+        let (store, _) = fixture_calls(&path, vec![call]);
+        let task = store.task("task").unwrap();
+        assert_eq!(task_arguments(&task), raw, "{case}");
+        let (_, persisted) = stored_task_json(&store);
+        assert_eq!(
+            persisted["messages"][1]["tool_calls"][0]["function"]["arguments"].as_str(),
+            Some(raw)
+        );
+        let parsed = serde_json::from_str::<Value>(task_arguments(&task));
+        if case == "object" {
+            assert!(parsed.unwrap().is_object());
+        } else {
+            assert!(
+                parsed.is_err() || !parsed.unwrap().is_object(),
+                "{case} must not become an object"
+            );
+        }
+        store.save_task(&task).unwrap();
+        drop(store);
+        let reopened = Store::open(&path).unwrap();
+        let saved = reopened.task("task").unwrap();
+        assert_eq!(task_arguments(&saved), raw, "{case}");
+        let (_, persisted) = stored_task_json(&reopened);
+        assert_eq!(
+            persisted["messages"][1]["tool_calls"][0]["function"]["arguments"].as_str(),
+            Some(raw)
+        );
+    }
+}
+
 #[test]
 fn t07_no_id_duplicate_result_cannot_be_attributed_to_the_next_call() {
     let dir = tempfile::tempdir().unwrap();

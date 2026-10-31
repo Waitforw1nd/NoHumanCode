@@ -37,10 +37,9 @@ async fn host(root: &Path, port: u16, label: &str) -> Child {
                 .get(format!("http://127.0.0.1:{port}/api/health"))
                 .send()
                 .await
+                && r.status().is_success()
             {
-                if r.status().is_success() {
-                    break;
-                }
+                break;
             }
             tokio::task::yield_now().await;
         }
