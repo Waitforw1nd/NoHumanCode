@@ -1,3 +1,7 @@
+## 2026-11-01 W1-ID01已整合，W2实施与W3恢复证明并行
+
+更新人：项目经理。原C07f84cc9身份兼容修正已核六清单185输入、两Git变化、旧34证据不变与新28现场；check/8组件测试/fmt/Clippy全0，保留依赖future-incompatibility警告。普通merge8128f5c1已合main，产品a1af1c01/Rustc41e4a9b与受测同树；未运行worker或全量workspace重测。原B第二十一轮在已签新树静态实施W2，尚无固定候选/动态；原C第二十六轮正式只读设计可验证的持久cleanup_unknown解除，命名Job只是待证候选，未授权产品或实验。D冻结，原生A反例仍OPEN。下一第一操作审B完整候选及C恢复算法，之后串行真实worker验证。继承41行保持，全项目active；核心优先、用户应用层后移。证据见W1-ID01验收/核验/整合记录，任务见W2组件实施与W3只读设计。
+
 ## 2026-11-01 W1组件已合入，B接续W2生命周期设计
 
 更新人：项目经理。C最终7229dae2 check/build/组件6通过/fmt/Clippy全0，经理核7清单185输入/五Git变化、旧24文件不变及新34证据，普通merge5b1c91da已合main，产品7267b118/Rustfb9828e6与受测同树。显式build与后续target二进制hash不同已如实补正，bin未执行；NEXT-20的837结果不冒称新版本全量重测。B attempt9 check/build通过，Derive成功但CreateProcessW错误2无PID、位置unknown，核旧67不变/新34原件；A冻结6c7f629a，P08/网络/注册表仍OPEN。正式派原B第二十一轮W2只读设计，聚焦8MiB管道/全deadline/迟到创建取消/Host独持Job与真杀回收，无产品/动态；C/D冻结。下一第一操作审W2具体可实施方案再签新树范围。继承41行保持；完整核心/项目active，应用层后移。
