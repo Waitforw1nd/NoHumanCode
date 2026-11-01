@@ -49,6 +49,9 @@ mod tool_results;
 pub mod tool_runtime;
 pub mod wasm;
 pub mod wasm_worker_executor;
+pub mod wasm_worker_process;
+#[cfg(all(test, windows))]
+mod wasm_worker_process_tests;
 pub mod wasm_worker_protocol;
 pub mod workspace;
 pub mod workspace_changes;
