@@ -21,7 +21,9 @@ fn main() {
         manifest: request.manifest,
         outcome,
     };
-    if protocol::write_response(&mut io::stdout().lock(), &response).is_err() {
+    let stdout = io::stdout();
+    let mut output = stdout.lock();
+    if protocol::write_response(&mut output, &response).is_err() || output.flush().is_err() {
         let _ = writeln!(io::stderr().lock(), "worker output error");
         std::process::exit(1);
     }

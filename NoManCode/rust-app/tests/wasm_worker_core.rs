@@ -93,9 +93,24 @@ fn rejects_module_errors_and_budget() {
         r#"(module (memory (export "memory") 1 1) (func (export "alloc") (param i32) (result i32) i32.const -1) (func (export "run_json") (param i32 i32) (result i64) i64.const 0))"#,
         r#"(module (memory (export "memory") 1 1) (func (export "alloc") (param i32) (result i32) i32.const 0) (func (export "run_json") (param i32 i32) (result i64) (loop $l br $l) i64.const 0))"#,
     ];
-    for case in cases {
-        assert!(check_wat(case).is_err());
+    let expected = [
+        Error::Module,
+        Error::Module,
+        Error::Module,
+        Error::Module,
+        Error::Execution,
+        Error::Execution,
+    ];
+    for (case, expected) in cases.into_iter().zip(expected) {
+        assert_eq!(check_wat(case), Err(expected));
     }
+    let start_loop = r#"(module
+        (memory (export "memory") 1 1)
+        (func $start (loop $l br $l))
+        (start $start)
+        (func (export "alloc") (param i32) (result i32) i32.const 0)
+        (func (export "run_json") (param i32 i32) (result i64) i64.const 0))"#;
+    assert_eq!(check_wat(start_loop), Err(Error::Execution));
     let bad = module_with_output(r#"{"action":"use_tools","indices":[1,0]}"#, "");
     assert_eq!(
         execute(&manifest(&bad), &before(), &bad),
