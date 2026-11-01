@@ -1976,14 +1976,18 @@ mod platform {
             test_hooks::checkpoint("resume_after_ticket", Some(information.dwProcessId));
         }
         let resume_result = unsafe { ResumeThread(raw(&thread_handle)) };
+        let resume_error = if resume_result == u32::MAX {
+            Some(failure("worker_resume"))
+        } else {
+            None
+        };
         #[cfg(test)]
         record_count(
             "resume_api_return",
             information.dwProcessId,
             resume_result as usize,
         );
-        if resume_result == u32::MAX {
-            let error = failure("worker_resume");
+        if let Some(error) = resume_error {
             gate.stop();
             return Err(error);
         }
