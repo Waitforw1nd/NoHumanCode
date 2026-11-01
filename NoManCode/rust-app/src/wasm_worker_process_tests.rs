@@ -832,8 +832,16 @@ mod fault_matrix {
         let active_two = serde_json::json!({"kind":"notification","pid":64492,
             "list_complete":true,"accounting_ok":true,"list_ids":[64492],
             "active":2,"total":2});
-        assert!(p01_boundary_check(&[extra], 64492).is_err());
-        assert!(p01_boundary_check(&[active_two], 64492).is_err());
+        assert!(
+            p01_boundary_check(&[extra], 64492)
+                .expect_err("attempt8 extra object must fail")
+                .starts_with("extra observed object:")
+        );
+        assert!(
+            p01_boundary_check(&[active_two], 64492)
+                .expect_err("attempt8 active count must fail")
+                .starts_with("job count exceeds one:")
+        );
         let log = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("stage log"));
         let (service, probe_log) = fault_service("p01-memory");
         let release = probe_log.with_extension("release");
