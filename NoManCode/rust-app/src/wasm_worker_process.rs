@@ -317,8 +317,9 @@ mod platform {
             IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED},
             JobObjects::{
                 CreateJobObjectW, IsProcessInJob, JOB_OBJECT_LIMIT_ACTIVE_PROCESS,
-                JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_PROCESS_MEMORY,
-                JOB_OBJECT_LIMIT_PROCESS_TIME, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
+                JOB_OBJECT_LIMIT_BREAKAWAY_OK, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                JOB_OBJECT_LIMIT_PROCESS_MEMORY, JOB_OBJECT_LIMIT_PROCESS_TIME,
+                JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
                 JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectBasicAccountingInformation,
                 JobObjectExtendedLimitInformation, QueryInformationJobObject,
                 SetInformationJobObject, TerminateJobObject,
@@ -1071,6 +1072,9 @@ mod platform {
             || actual.BasicLimitInformation.PerProcessUserTimeLimit != 30_000_000
             || actual.BasicLimitInformation.LimitFlags & limits.BasicLimitInformation.LimitFlags
                 != limits.BasicLimitInformation.LimitFlags
+            || actual.BasicLimitInformation.LimitFlags
+                & (JOB_OBJECT_LIMIT_BREAKAWAY_OK | JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK)
+                != 0
         {
             return Err(WorkerError::IsolationUnavailable(
                 "job_limits_mismatch",
