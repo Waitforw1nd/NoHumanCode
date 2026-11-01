@@ -1,0 +1,18 @@
+[
+  {
+    "name": "execution_authority::tests::same_file_and_hard_link_contend_for_one_mutex",
+    "command": "E:/code/nhc-c-domain-authority/.local/u35-pre-a-attempt2/peachsh-libtest.exe execution_authority::tests::same_file_and_hard_link_contend_for_one_mutex --exact --nocapture --test-threads=1",
+    "start_utc": "2026-11-01T15:29:55.6815245Z",
+    "end_utc": "2026-11-01T15:29:56.1649416Z",
+    "exit_code": 0,
+    "one_pass": true
+  },
+  {
+    "name": "execution_authority::tests::delete_sharing_and_disposition_controls",
+    "command": "E:/code/nhc-c-domain-authority/.local/u35-pre-a-attempt2/peachsh-libtest.exe execution_authority::tests::delete_sharing_and_disposition_controls --exact --nocapture --test-threads=1",
+    "start_utc": "2026-11-01T15:29:56.1803661Z",
+    "end_utc": "2026-11-01T15:29:56.2217804Z",
+    "exit_code": 101,
+    "one_pass": false
+  }
+]

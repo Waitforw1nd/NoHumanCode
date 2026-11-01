@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-01",
+  "reviewer": "项目经理",
+  "kind": "read-only byte-for-byte archive verification, not product tests",
+  "manifests": [
+    {
+      "path": "niuma/员工B/提交报告/第二十一轮/B21-FULL-A-attempt1证据/双hash清单.json",
+      "sha256": "eaf1eec7299a587d4a2f0c662d2d8e34094e05e695661c191de8f9cd32d85475",
+      "files": 25,
+      "bytes": 221168,
+      "mismatches": 0
+    },
+    {
+      "path": "niuma/员工C/提交报告/第三十五轮/U35-PRE-A证据/manifest.json",
+      "sha256": "7548572ba3ee616c9de736dd13cf50294b564d75eaae660107aacd6c5122eae1",
+      "files": 10,
+      "bytes": 25213,
+      "mismatches": 0
+    }
+  ],
+  "method": "Resolved source and published paths within each role's authorized tree; read every original and copy; compared byte length and SHA256 to both manifest hashes. Original log bytes unchanged.",
+  "scope": "B first runner attempt and audit; C two PRE-A attempts. Does not cover B second attempt or later candidates."
+}

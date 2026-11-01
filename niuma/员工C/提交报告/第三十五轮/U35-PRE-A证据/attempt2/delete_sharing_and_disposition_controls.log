@@ -1,0 +1,17 @@
+
+running 1 test
+
+thread 'execution_authority::tests::delete_sharing_and_disposition_controls' (57372) panicked at src\execution_authority.rs:556:9:
+assertion `left == right` failed: DeleteFile unexpectedly removed alias while pinned
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test execution_authority::tests::delete_sharing_and_disposition_controls ... FAILED
+
+failures:
+
+failures:
+    execution_authority::tests::delete_sharing_and_disposition_controls
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 385 filtered out; finished in 0.00s
+

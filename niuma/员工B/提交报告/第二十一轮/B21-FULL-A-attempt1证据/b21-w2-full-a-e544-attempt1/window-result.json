@@ -1,0 +1,8 @@
+{
+  "error": "Exception: E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\tests\\support\\wasm_worker_process\\run-controlled.ps1:75\r\nLine |\r\n  75 |          if (($stdout + $stderr).Contains('NHC_TERMINAL_UNKNOWN:')) {  …\r\n     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | You cannot call a method on a null-valued expression.\r\n\r\n",
+  "started_utc": "2026-11-01T15:36:10.4905480Z",
+  "exit_code": 1,
+  "gate": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\nhc-w2-window.lock",
+  "state": "failed",
+  "ended_utc": "2026-11-01T15:36:51.8364627Z"
+}
