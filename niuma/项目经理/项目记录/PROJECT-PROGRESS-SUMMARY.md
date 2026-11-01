@@ -1,3 +1,7 @@
+## 2026-11-01 W1组件已合入，B接续W2生命周期设计
+
+更新人：项目经理。C最终7229dae2 check/build/组件6通过/fmt/Clippy全0，经理核7清单185输入/五Git变化、旧24文件不变及新34证据，普通merge5b1c91da已合main，产品7267b118/Rustfb9828e6与受测同树。显式build与后续target二进制hash不同已如实补正，bin未执行；NEXT-20的837结果不冒称新版本全量重测。B attempt9 check/build通过，Derive成功但CreateProcessW错误2无PID、位置unknown，核旧67不变/新34原件；A冻结6c7f629a，P08/网络/注册表仍OPEN。正式派原B第二十一轮W2只读设计，聚焦8MiB管道/全deadline/迟到创建取消/Host独持Job与真杀回收，无产品/动态；C/D冻结。下一第一操作审W2具体可实施方案再签新树范围。继承41行保持；完整核心/项目active，应用层后移。
+
 ## 2026-11-01 W1静态通过，C唯一组件验证
 
 更新人：项目经理。完整审C48232412五文件593新增，fe226ea8补精确错误断言/start fuel/flush后进入唯一check/build/新W1组件/fmt/Clippy；不得运行worker进程，未称OS隔离通过。B补充04固定6c7f629a两文件275+/6-已静审核收，等待C释放后经理消息再跑三步可行性；没有并行动态。main仍NEXT-20，继承41行保留。下一第一操作审C实际结果与首失败，再放行B；完整核心与项目active。
