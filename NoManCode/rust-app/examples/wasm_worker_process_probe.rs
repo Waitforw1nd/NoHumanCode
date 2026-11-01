@@ -149,9 +149,24 @@ fn main() {
     mark("request_eof");
     if mode == "job-cpu" {
         mark("cpu_loop_start");
-        loop {
-            std::hint::black_box(1usize.wrapping_add(std::hint::black_box(1)));
-        }
+        let marker_lock = std::sync::Mutex::new(());
+        thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    {
+                        let _guard = marker_lock.lock().unwrap();
+                        mark("cpu_thread_started");
+                    }
+                    loop {
+                        std::hint::black_box(1usize.wrapping_add(std::hint::black_box(1)));
+                    }
+                });
+            }
+            {
+                let _guard = marker_lock.lock().unwrap();
+                mark("cpu_threads_started");
+            }
+        });
     }
     if mode == "job-memory" {
         use windows_sys::Win32::System::Memory::{

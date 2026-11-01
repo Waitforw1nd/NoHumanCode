@@ -496,6 +496,15 @@ mod fault_matrix {
             );
             assert!(max_count(log, "job_extended_query", pid) > 0);
             if mode == "job-cpu" {
+                let thread_marker = format!("pid={pid} phase=cpu_thread_started");
+                assert_eq!(
+                    probe
+                        .lines()
+                        .filter(|line| *line == thread_marker.as_str())
+                        .count(),
+                    8,
+                    "all finite busy threads must actually start"
+                );
                 assert!(max_count(log, "job_user_100ns", pid) >= 30_000_000);
                 assert!(
                     elapsed < Duration::from_secs(5),
@@ -757,7 +766,14 @@ mod fault_matrix {
         real_limit("memory", 2, true).await;
         real_limit("memory-declaration", 1, false).await;
         real_limit("memory-declaration", 2, true).await;
-        case("job-cpu", Expected::CpuLimit, "cpu_loop_start", None, false).await;
+        case(
+            "job-cpu",
+            Expected::CpuLimit,
+            "cpu_threads_started",
+            None,
+            false,
+        )
+        .await;
         case(
             "job-memory",
             Expected::Exit43,
