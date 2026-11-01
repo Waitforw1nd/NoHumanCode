@@ -1934,6 +1934,10 @@ mod fault_matrix {
             "phase=resumed ",
             "phase=submit_ticket_granted ",
             "phase=stdin_pending ",
+            "phase=cancel_io_return ",
+            "phase=stdin_io_settled ",
+            "phase=stdout_io_settled ",
+            "phase=stderr_io_settled ",
             "phase=stopper_join_failed ",
             "phase=injection_timeout ",
         ] {
