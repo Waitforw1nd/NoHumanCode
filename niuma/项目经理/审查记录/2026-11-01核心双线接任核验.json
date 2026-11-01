@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-01",
+  "author": "接任项目经理",
+  "kind": "manager read-only baseline and documentation evidence",
+  "inherited_manager_added_lines": 41,
+  "files": [
+    {
+      "path": "niuma/项目经理/个人身份认知.md",
+      "before_sha256": "0986a4525421c075ba65f94d26ce8e4a44d49d4175a6c08f31f6b697a3c7758f",
+      "before_bytes": 268679,
+      "added_prefix_bytes": 842,
+      "preserved_original_sha256": "0986a4525421c075ba65f94d26ce8e4a44d49d4175a6c08f31f6b697a3c7758f"
+    },
+    {
+      "path": "niuma/项目经理/当前任务板.md",
+      "before_sha256": "d4307a7b25f48f4eaa98c46e36d135d43b0eb76f20d45c10570ce526894990c4",
+      "before_bytes": 252505,
+      "added_prefix_bytes": 772,
+      "preserved_original_sha256": "d4307a7b25f48f4eaa98c46e36d135d43b0eb76f20d45c10570ce526894990c4"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+      "before_sha256": "f25ea39076fd3a82c9f5f3f21cfc8fa94d4415d27967d66a20f5251e82c1e905",
+      "before_bytes": 295976,
+      "added_prefix_bytes": 908,
+      "preserved_original_sha256": "f25ea39076fd3a82c9f5f3f21cfc8fa94d4415d27967d66a20f5251e82c1e905"
+    },
+    {
+      "path": "niuma/项目经理/项目记录/CONVERSATION-FULL.md",
+      "before_sha256": "f5c5d4e332db9c21d82dcc2d27a7375baaabe2f99da5ea2853c083fa9e7c7d06",
+      "before_bytes": 399409,
+      "added_prefix_bytes": 832,
+      "preserved_original_sha256": "f5c5d4e332db9c21d82dcc2d27a7375baaabe2f99da5ea2853c083fa9e7c7d06"
+    }
+  ],
+  "product_test_status": "not_run",
+  "main_product_tree": "a1af1c0169fa4aed2948b65d5e006a5b5ac51f58",
+  "c_resume_delta": {
+    "path": "../nhc-c-domain-authority/NoManCode/rust-app/src/execution_authority.rs",
+    "sha256": "147451294aed542026272ea6f4f341e454e2892932ac667dd130110e644c55f4",
+    "bytes": 17417,
+    "model": "gpt-6-astra",
+    "status": "retained, unvalidated"
+  },
+  "employee_replies": "Both Terra workers actually replied and performed static work; continuing original tasks."
+}
