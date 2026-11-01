@@ -2,9 +2,11 @@ param(
     [Parameter(Mandatory=$true)][string]$ExpectedHead,
     [Parameter(Mandatory=$true)][string]$TargetDir,
     [Parameter(Mandatory=$true)][string]$AttemptDir,
+    [string]$ExactTest,
     [ValidateRange(30,1800)][int]$CaseTimeoutSeconds = 180
 )
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
 Set-StrictMode -Version Latest
 if ($ExpectedHead -notmatch '^[0-9a-fA-F]{40}$') { throw 'ExpectedHead must be a complete commit SHA' }
 if (Test-Path -LiteralPath $AttemptDir) { throw 'Attempt directory must not exist' }
@@ -106,31 +108,6 @@ try {
     $sourceValidated = $true
     Save-Json (Join-Path $attempt 'source-before.json') $sourceBefore
     Write-Gate ([ordered]@{state='building'; expected_head=$ExpectedHead; attempt=$attempt; source=$sourceBefore})
-    if ('NhcDirectProcess' -as [type]) { throw 'run from a fresh PowerShell process so the launcher type matches this source' }
-    Add-Type -Path (Join-Path $PSScriptRoot 'DirectProcess.cs')
-    & cargo build --offline --locked --target-dir $target --bin peachsh-wasm-worker --example wasm_worker_process_probe 1> (Join-Path $attempt 'build.stdout') 2> (Join-Path $attempt 'build.stderr')
-    if ($LASTEXITCODE -ne 0) { throw 'build failed' }
-    $json = Join-Path $attempt 'test-build.jsonl'
-    & cargo test --offline --locked --target-dir $target --lib --no-run --message-format=json 1> $json 2> (Join-Path $attempt 'test-build.stderr')
-    if ($LASTEXITCODE -ne 0) { throw 'test build failed' }
-    $afterBuild = Get-SourceState
-    Save-Json (Join-Path $attempt 'source-after-build.json') $afterBuild
-    Assert-Source $afterBuild
-    $bins = @(Get-Content -LiteralPath $json | ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } | Where-Object { $_ -and $_.PSObject.Properties['reason'] -and $_.reason -eq 'compiler-artifact' -and $_.profile.test -eq $true -and $_.target.kind -contains 'lib' -and $_.executable } | ForEach-Object { $_.executable } | Select-Object -Unique)
-    if ($bins.Count -ne 1) { throw "expected exactly one lib test binary; found $($bins.Count)" }
-    $fixed = Join-Path $attempt 'fixed'
-    New-Item -ItemType Directory -Path $fixed | Out-Null
-    $sources = @((Join-Path $target 'debug/peachsh-wasm-worker.exe'), (Join-Path $target 'debug/examples/wasm_worker_process_probe.exe'), $bins[0])
-    $names = @('worker.exe','probe.exe','lib-test.exe')
-    $manifest = for ($i=0; $i -lt $sources.Count; $i++) {
-        $source = (Resolve-Path -LiteralPath $sources[$i]).Path
-        $dest = Join-Path $fixed $names[$i]
-        Copy-Item -LiteralPath $source -Destination $dest
-        $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
-        if ((Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash -ne $hash) { throw 'fixed copy mismatch' }
-        [pscustomobject]@{ name=$names[$i]; source=$source; sha256=$hash.ToLowerInvariant(); bytes=(Get-Item -LiteralPath $dest).Length }
-    }
-    $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $attempt 'manifest.json') -Encoding UTF8
     $tests = @(
         'wasm_worker_process_tests::w01_real_worker_before_after_and_near_8mib',
         'wasm_worker_process_tests::fault_matrix::w02_protocol_fault_matrix',
@@ -158,6 +135,54 @@ try {
         'wasm_worker_process::platform::w06_handle_tests::positive_helper',
         'wasm_worker_process::platform::w06_limit_tests::limit_helper'
     )
+    if ($PSBoundParameters.ContainsKey('ExactTest')) {
+        if ($tests -cnotcontains $ExactTest) { throw "ExactTest is not an allowed mapped case: $ExactTest" }
+        $selected = @($ExactTest)
+        $scope = 'single'
+    } else {
+        $selected = @($tests)
+        $scope = 'full'
+    }
+    Save-Json (Join-Path $attempt 'selection.json') ([ordered]@{scope=$scope; selected=$selected; selected_count=$selected.Count; mapped_count=$tests.Count; note='single scope is not W01-W06 completion'})
+    if ('NhcDirectProcess' -as [type]) { throw 'run from a fresh PowerShell process so the launcher type matches this source' }
+    Add-Type -Path (Join-Path $PSScriptRoot 'DirectProcess.cs')
+    $buildMeta = [ordered]@{command='cargo build --offline --locked --target-dir <target> --bin peachsh-wasm-worker --example wasm_worker_process_probe'; target=$target; started_utc=[DateTime]::UtcNow.ToString('o'); state='started'; exit_code=$null}
+    Save-Json (Join-Path $attempt 'build-meta.json') $buildMeta
+    & cargo build --offline --locked --target-dir $target --bin peachsh-wasm-worker --example wasm_worker_process_probe 1> (Join-Path $attempt 'build.stdout') 2> (Join-Path $attempt 'build.stderr')
+    $buildCode = $LASTEXITCODE
+    $buildMeta.state = 'exited'
+    $buildMeta.exit_code = $buildCode
+    $buildMeta['ended_utc'] = [DateTime]::UtcNow.ToString('o')
+    Save-Json (Join-Path $attempt 'build-meta.json') $buildMeta
+    if ($buildCode -ne 0) { throw 'build failed' }
+    $json = Join-Path $attempt 'test-build.jsonl'
+    $testBuildMeta = [ordered]@{command='cargo test --offline --locked --target-dir <target> --lib --no-run --message-format=json'; target=$target; started_utc=[DateTime]::UtcNow.ToString('o'); state='started'; exit_code=$null}
+    Save-Json (Join-Path $attempt 'test-build-meta.json') $testBuildMeta
+    & cargo test --offline --locked --target-dir $target --lib --no-run --message-format=json 1> $json 2> (Join-Path $attempt 'test-build.stderr')
+    $testBuildCode = $LASTEXITCODE
+    $testBuildMeta.state = 'exited'
+    $testBuildMeta.exit_code = $testBuildCode
+    $testBuildMeta['ended_utc'] = [DateTime]::UtcNow.ToString('o')
+    Save-Json (Join-Path $attempt 'test-build-meta.json') $testBuildMeta
+    if ($testBuildCode -ne 0) { throw 'test build failed' }
+    $afterBuild = Get-SourceState
+    Save-Json (Join-Path $attempt 'source-after-build.json') $afterBuild
+    Assert-Source $afterBuild
+    $bins = @(Get-Content -LiteralPath $json | ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } | Where-Object { $_ -and $_.PSObject.Properties['reason'] -and $_.reason -eq 'compiler-artifact' -and $_.profile.test -eq $true -and $_.target.kind -contains 'lib' -and $_.executable } | ForEach-Object { $_.executable } | Select-Object -Unique)
+    if ($bins.Count -ne 1) { throw "expected exactly one lib test binary; found $($bins.Count)" }
+    $fixed = Join-Path $attempt 'fixed'
+    New-Item -ItemType Directory -Path $fixed | Out-Null
+    $sources = @((Join-Path $target 'debug/peachsh-wasm-worker.exe'), (Join-Path $target 'debug/examples/wasm_worker_process_probe.exe'), $bins[0])
+    $names = @('worker.exe','probe.exe','lib-test.exe')
+    $manifest = for ($i=0; $i -lt $sources.Count; $i++) {
+        $source = (Resolve-Path -LiteralPath $sources[$i]).Path
+        $dest = Join-Path $fixed $names[$i]
+        Copy-Item -LiteralPath $source -Destination $dest
+        $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+        if ((Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash -ne $hash) { throw 'fixed copy mismatch' }
+        [pscustomobject]@{ name=$names[$i]; source=$source; sha256=$hash.ToLowerInvariant(); bytes=(Get-Item -LiteralPath $dest).Length }
+    }
+    $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $attempt 'manifest.json') -Encoding UTF8
     $listingSite = Join-Path $attempt 'listing'
     New-Item -ItemType Directory -Path $listingSite | Out-Null
     $listingFile = Run-Controlled '__list__' '--list --ignored --format terse' $listingSite $CaseTimeoutSeconds
@@ -166,7 +191,7 @@ try {
     foreach ($name in $discovered) { if ($name -notin $tests -and $name -notin $helpers) { throw "unmapped controlled test: $name" } }
     foreach ($name in @($tests + $helpers)) { if ($name -notin $discovered) { throw "missing ignored controlled test: $name" } }
     $index = 0
-    foreach ($test in $tests) {
+    foreach ($test in $selected) {
         Assert-Source (Get-SourceState)
         foreach ($entry in $manifest) {
             if ((Get-FileHash -LiteralPath (Join-Path $fixed $entry.name) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.sha256) { throw 'fixed artifact changed' }
@@ -200,7 +225,7 @@ try {
     $sourceAfter = Get-SourceState
     Save-Json (Join-Path $attempt 'source-after.json') $sourceAfter
     Assert-Source $sourceAfter
-    Write-Output 'All listed exact cases completed; inspect logs for scoped evidence.'
+    Write-Output "Completed $($selected.Count) selected exact case(s); scope=$scope; inspect logs for evidence."
 } catch {
     if ($unsafeWindow) {
         $active.state = 'terminal_unknown'
