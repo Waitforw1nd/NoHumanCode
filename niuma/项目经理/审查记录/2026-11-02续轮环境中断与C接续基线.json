@@ -1,0 +1,85 @@
+{
+  "checked_utc": "2026-11-01T22:58:42.943802+00:00",
+  "reason": "resumed original C runtime became gpt-6-astra; C explicitly stopped without writes, close_agent completed",
+  "old_c_agent": "01a197a8-57b7-7541-abb3-29a4ec0d3ff9",
+  "tree": "../nhc-c-domain-authority",
+  "head": "a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac",
+  "index": [],
+  "retained_uncommitted_files": [
+    {
+      "path": "NoManCode/rust-app/src/engine.rs",
+      "bytes": 266705,
+      "sha256": "a23a9f48a4c222e05c2f510ea83059dc5233fa20dbeb6fae8c6f5ce89ad42ac9"
+    },
+    {
+      "path": "NoManCode/rust-app/src/execution_authority.rs",
+      "bytes": 94149,
+      "sha256": "2f173173f172a6b41341d18b3649516fc8ad99ed797d89368937dc2f06f3e1b8"
+    },
+    {
+      "path": "NoManCode/rust-app/src/host_services.rs",
+      "bytes": 39651,
+      "sha256": "24b397240b1734a60ee8d917551f2a74abd627d93b996ef063ade58ec2b97492"
+    },
+    {
+      "path": "NoManCode/rust-app/src/main.rs",
+      "bytes": 6019,
+      "sha256": "9d918e526e69b9b2f134ebe77b4ef36453e8eaca4cddacb5aec84d5e1a8bffb9"
+    },
+    {
+      "path": "NoManCode/rust-app/src/network_authorization.rs",
+      "bytes": 51821,
+      "sha256": "1014a733c581073a2c1daee6acfc2c84ccacd1f65bc33f1b1bba0e4de3dc56fe"
+    },
+    {
+      "path": "NoManCode/rust-app/src/plugin_management.rs",
+      "bytes": 42708,
+      "sha256": "3410fbf5a28c777efab5181d0d8cb153647981472f4619bc4df0d7d8e73ac30e"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider.rs",
+      "bytes": 42630,
+      "sha256": "531ae2e6d9e70a3278aceed44809fd9b5e8bc1f1551ba5fa0991dcfd4f750c98"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_runtime.rs",
+      "bytes": 23703,
+      "sha256": "c62e3f7ded58a6b81e3c2cc246cdf04b6441aba60cd7dbe76422837c1f05b8a1"
+    },
+    {
+      "path": "NoManCode/rust-app/src/provider_transport.rs",
+      "bytes": 19003,
+      "sha256": "952afc1276b1c561ec71c56ec6db643a92ded210c2d7f2c4dbccdf1bc35b75ab"
+    },
+    {
+      "path": "NoManCode/rust-app/src/store.rs",
+      "bytes": 232762,
+      "sha256": "6ae9297357f2ae6bc6827d672c9c4a66bc3123d8c2d4d7f9f895031a9750e771"
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_call_application.rs",
+      "bytes": 23884,
+      "sha256": "fed4baab75337ccfd37995170fc3d8230ea8427cc6856497c6b8068e15f2059b"
+    },
+    {
+      "path": "NoManCode/rust-app/src/tool_runtime.rs",
+      "bytes": 97052,
+      "sha256": "1a7751410126654fac29d52fde7625450aa8a54a85e5becb8304a72562968849"
+    },
+    {
+      "path": "NoManCode/rust-app/src/workspace.rs",
+      "bytes": 17951,
+      "sha256": "4f2ea8012722100bc7cff13dbe13526ddfee7edfc0f8b885fc4c4391557a047b"
+    },
+    {
+      "path": "NoManCode/rust-app/src/worktree_management.rs",
+      "bytes": 92492,
+      "sha256": "005c5a5d7c51e46638bcd8194e9671c159edeb48d67e83357293cc6306193743"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/approval_gate.rs",
+      "bytes": 76437,
+      "sha256": "9a792a2cb935637ad9f658b367168e3aa6c26860bcd3cb8ce45f951a149c8369"
+    }
+  ]
+}
