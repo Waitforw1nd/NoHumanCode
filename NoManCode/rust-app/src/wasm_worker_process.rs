@@ -1726,12 +1726,12 @@ mod platform {
         #[test]
         #[ignore = "requires controlled isolated process or artifact fixture"]
         fn sentinel_explicit_inheritance_control() {
-            let mut security = SECURITY_ATTRIBUTES {
+            let security = SECURITY_ATTRIBUTES {
                 nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
                 lpSecurityDescriptor: null_mut(),
                 bInheritHandle: 1,
             };
-            let event = unsafe { own(CreateEventW(&mut security, 1, 0, null()), "positive_event") }
+            let event = unsafe { own(CreateEventW(&security, 1, 0, null()), "positive_event") }
                 .expect("positive sentinel");
             let mut event_flags = 0;
             assert_ne!(
@@ -1748,7 +1748,7 @@ mod platform {
             let mut parent_in = null_mut();
             let mut parent_out = null_mut();
             let mut child_out = null_mut();
-            if unsafe { CreatePipe(&mut child_in, &mut parent_in, &mut security, 0) } == 0 {
+            if unsafe { CreatePipe(&mut child_in, &mut parent_in, &security, 0) } == 0 {
                 panic!(
                     "W06 positive stdin pipe not established: {:?}",
                     std::io::Error::last_os_error().raw_os_error()
@@ -1756,7 +1756,7 @@ mod platform {
             }
             let child_in = unsafe { OwnedHandle::from_raw_handle(child_in) };
             let parent_in = unsafe { OwnedHandle::from_raw_handle(parent_in) };
-            if unsafe { CreatePipe(&mut parent_out, &mut child_out, &mut security, 0) } == 0 {
+            if unsafe { CreatePipe(&mut parent_out, &mut child_out, &security, 0) } == 0 {
                 panic!(
                     "W06 positive stdout pipe not established: {:?}",
                     std::io::Error::last_os_error().raw_os_error()

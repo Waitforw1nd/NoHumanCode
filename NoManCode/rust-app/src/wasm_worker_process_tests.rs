@@ -1117,12 +1117,12 @@ mod fault_matrix {
                 PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
             },
         };
-        let mut attributes = SECURITY_ATTRIBUTES {
+        let attributes = SECURITY_ATTRIBUTES {
             nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
             lpSecurityDescriptor: std::ptr::null_mut(),
             bInheritHandle: 1,
         };
-        let event_raw = unsafe { CreateEventW(&mut attributes, 1, 0, std::ptr::null()) };
+        let event_raw = unsafe { CreateEventW(&attributes, 1, 0, std::ptr::null()) };
         assert!(
             !event_raw.is_null(),
             "create sentinel: {:?}",
@@ -1540,9 +1540,8 @@ mod fault_matrix {
                             && v["kind"] == "advance"
                             && v["helper_pid"].as_u64() == Some(helper_pid as u64)
                     })
-                    && later.is_some()
+                    && let Some(phase) = later
                 {
-                    let phase = later.unwrap();
                     test_hooks::release_with_next(phase);
                     let reached =
                         wait_until(|| test_hooks::phase_reached(phase), Duration::from_secs(3))
