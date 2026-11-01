@@ -1,0 +1,12 @@
+
+running 1 test
+test wasm_worker_process_tests::fault_matrix::w04_cpu_budget_boundaries ... CPU gate phase=cpu_before_first_sample cancelled=true pid=79488
+CPU gate phase=cpu_before_first_sample cancelled=false pid=71876
+CPU gate phase=cpu_final_checked cancelled=true pid=73704
+CPU gate phase=cpu_before_final_sample cancelled=true pid=78420
+CPU gate phase=cpu_before_final_sample cancelled=false pid=7600
+CPU final gate rejected valid response pid=75920
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 405 filtered out; finished in 16.09s
+

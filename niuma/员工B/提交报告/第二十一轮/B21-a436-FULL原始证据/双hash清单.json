@@ -1,0 +1,1848 @@
+{
+  "utc": "2026-11-01T23:42:37.886975+00:00",
+  "source_paths_relative_to": "repository root",
+  "count": 230,
+  "bytes": 903588,
+  "files": [
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/environment.json",
+      "copy": "attempt/environment.json",
+      "bytes": 1035,
+      "source_sha256_before": "dc643698af0d26e298165e37841870a82a08dc04a01b462485447f92a8df7c9b",
+      "source_sha256_after": "dc643698af0d26e298165e37841870a82a08dc04a01b462485447f92a8df7c9b",
+      "copy_sha256": "dc643698af0d26e298165e37841870a82a08dc04a01b462485447f92a8df7c9b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/launcher.json",
+      "copy": "attempt/launcher.json",
+      "bytes": 1350,
+      "source_sha256_before": "9181f3b114f1e8d47ac285204de0818dcf93391f188f1e31e4f4aed336da70bc",
+      "source_sha256_after": "9181f3b114f1e8d47ac285204de0818dcf93391f188f1e31e4f4aed336da70bc",
+      "copy_sha256": "9181f3b114f1e8d47ac285204de0818dcf93391f188f1e31e4f4aed336da70bc"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/build-meta.json",
+      "copy": "attempt/runner/build-meta.json",
+      "bytes": 395,
+      "source_sha256_before": "08b1f9eea788388c23651b862062bfa08f0f00fba5b6a168e73ed4e8d4360421",
+      "source_sha256_after": "08b1f9eea788388c23651b862062bfa08f0f00fba5b6a168e73ed4e8d4360421",
+      "copy_sha256": "08b1f9eea788388c23651b862062bfa08f0f00fba5b6a168e73ed4e8d4360421"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/build.stderr",
+      "copy": "attempt/runner/build.stderr",
+      "bytes": 146,
+      "source_sha256_before": "de75244d537852851a59a6593e96c5eaa78269976367b4fe1c335ae7e1f018a9",
+      "source_sha256_after": "de75244d537852851a59a6593e96c5eaa78269976367b4fe1c335ae7e1f018a9",
+      "copy_sha256": "de75244d537852851a59a6593e96c5eaa78269976367b4fe1c335ae7e1f018a9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/build.stdout",
+      "copy": "attempt/runner/build.stdout",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-01/case.json",
+      "copy": "attempt/runner/case-01/case.json",
+      "bytes": 1997,
+      "source_sha256_before": "9b081106367b3349ca0a83c4aed64d20d3234891d35a428048c116588ca6f38d",
+      "source_sha256_after": "9b081106367b3349ca0a83c4aed64d20d3234891d35a428048c116588ca6f38d",
+      "copy_sha256": "9b081106367b3349ca0a83c4aed64d20d3234891d35a428048c116588ca6f38d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-01/host.stage",
+      "copy": "attempt/runner/case-01/host.stage",
+      "bytes": 25159,
+      "source_sha256_before": "aa62958b5318d6bbd1cce31655497fdaf46b8d59930210f8e441f06c9bc44dad",
+      "source_sha256_after": "aa62958b5318d6bbd1cce31655497fdaf46b8d59930210f8e441f06c9bc44dad",
+      "copy_sha256": "aa62958b5318d6bbd1cce31655497fdaf46b8d59930210f8e441f06c9bc44dad"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-01/probes/manifest.json",
+      "copy": "attempt/runner/case-01/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-01/test.stderr",
+      "copy": "attempt/runner/case-01/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-01/test.stdout",
+      "copy": "attempt/runner/case-01/test.stdout",
+      "bytes": 362,
+      "source_sha256_before": "184ba99099cf0896d7cec41d9412446a702e8d1d23b9b48b23646c65a6b9cdd1",
+      "source_sha256_after": "184ba99099cf0896d7cec41d9412446a702e8d1d23b9b48b23646c65a6b9cdd1",
+      "copy_sha256": "184ba99099cf0896d7cec41d9412446a702e8d1d23b9b48b23646c65a6b9cdd1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-01/w05/manifest.json",
+      "copy": "attempt/runner/case-01/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/case.json",
+      "copy": "attempt/runner/case-02/case.json",
+      "bytes": 1995,
+      "source_sha256_before": "e846741fd6b16f3f1326b07ab06321fb6cadad96f0c0f580a8812a5272691147",
+      "source_sha256_after": "e846741fd6b16f3f1326b07ab06321fb6cadad96f0c0f580a8812a5272691147",
+      "copy_sha256": "e846741fd6b16f3f1326b07ab06321fb6cadad96f0c0f580a8812a5272691147"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/host.stage",
+      "copy": "attempt/runner/case-02/host.stage",
+      "bytes": 84979,
+      "source_sha256_before": "601247bb77e1549ab818266aef7f8a1bc5434aca9121370b62f28cfe62c88bb9",
+      "source_sha256_after": "601247bb77e1549ab818266aef7f8a1bc5434aca9121370b62f28cfe62c88bb9",
+      "copy_sha256": "601247bb77e1549ab818266aef7f8a1bc5434aca9121370b62f28cfe62c88bb9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/bad-json.stage",
+      "copy": "attempt/runner/case-02/probes/bad-json.stage",
+      "bytes": 104,
+      "source_sha256_before": "db4d9256c37cdfc369e1e1cce32238928ef71283e73a7d0b155b153bc4e6c98e",
+      "source_sha256_after": "db4d9256c37cdfc369e1e1cce32238928ef71283e73a7d0b155b153bc4e6c98e",
+      "copy_sha256": "db4d9256c37cdfc369e1e1cce32238928ef71283e73a7d0b155b153bc4e6c98e"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/bad-utf8.stage",
+      "copy": "attempt/runner/case-02/probes/bad-utf8.stage",
+      "bytes": 104,
+      "source_sha256_before": "4eb7dc141ffafa746f1b4a5ee4c557cbac2c0ac8f5daeada3c5caadfac8a4175",
+      "source_sha256_after": "4eb7dc141ffafa746f1b4a5ee4c557cbac2c0ac8f5daeada3c5caadfac8a4175",
+      "copy_sha256": "4eb7dc141ffafa746f1b4a5ee4c557cbac2c0ac8f5daeada3c5caadfac8a4175"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/control.stage",
+      "copy": "attempt/runner/case-02/probes/control.stage",
+      "bytes": 3524,
+      "source_sha256_before": "81afbc02c3d87b07ef0358c1a0b8189b79a80b7b226eeea3590936da2b82e361",
+      "source_sha256_after": "81afbc02c3d87b07ef0358c1a0b8189b79a80b7b226eeea3590936da2b82e361",
+      "copy_sha256": "81afbc02c3d87b07ef0358c1a0b8189b79a80b7b226eeea3590936da2b82e361"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/decision-duplicate.stage",
+      "copy": "attempt/runner/case-02/probes/decision-duplicate.stage",
+      "bytes": 104,
+      "source_sha256_before": "bb4e9d804a74c4003adbb4111dbfb1e1e4c8b8427eae5744908c49ad1d27e32f",
+      "source_sha256_after": "bb4e9d804a74c4003adbb4111dbfb1e1e4c8b8427eae5744908c49ad1d27e32f",
+      "copy_sha256": "bb4e9d804a74c4003adbb4111dbfb1e1e4c8b8427eae5744908c49ad1d27e32f"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/decision-index.stage",
+      "copy": "attempt/runner/case-02/probes/decision-index.stage",
+      "bytes": 104,
+      "source_sha256_before": "8e5f9bd10233eb26dffb794d9692e8587357f1b12d9dd4c5ac19d3b3fa619f26",
+      "source_sha256_after": "8e5f9bd10233eb26dffb794d9692e8587357f1b12d9dd4c5ac19d3b3fa619f26",
+      "copy_sha256": "8e5f9bd10233eb26dffb794d9692e8587357f1b12d9dd4c5ac19d3b3fa619f26"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/decision-no-tools.stage",
+      "copy": "attempt/runner/case-02/probes/decision-no-tools.stage",
+      "bytes": 104,
+      "source_sha256_before": "5f3d54311ab428ea68636c7baa9b9e2839f8bf8edc12f8dec24ba7ae6d88f57d",
+      "source_sha256_after": "5f3d54311ab428ea68636c7baa9b9e2839f8bf8edc12f8dec24ba7ae6d88f57d",
+      "copy_sha256": "5f3d54311ab428ea68636c7baa9b9e2839f8bf8edc12f8dec24ba7ae6d88f57d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/decision-order.stage",
+      "copy": "attempt/runner/case-02/probes/decision-order.stage",
+      "bytes": 104,
+      "source_sha256_before": "da19677ce24d7dd3f5170817118b2952b8de1955d8e79e7da465bb36eba59901",
+      "source_sha256_after": "da19677ce24d7dd3f5170817118b2952b8de1955d8e79e7da465bb36eba59901",
+      "copy_sha256": "da19677ce24d7dd3f5170817118b2952b8de1955d8e79e7da465bb36eba59901"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/decision-phase.stage",
+      "copy": "attempt/runner/case-02/probes/decision-phase.stage",
+      "bytes": 104,
+      "source_sha256_before": "c80a89475aa79785c177af124000e6b6c193c74b741c8ed49fb9d483b22b0d4f",
+      "source_sha256_after": "c80a89475aa79785c177af124000e6b6c193c74b741c8ed49fb9d483b22b0d4f",
+      "copy_sha256": "c80a89475aa79785c177af124000e6b6c193c74b741c8ed49fb9d483b22b0d4f"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/decision-votes.stage",
+      "copy": "attempt/runner/case-02/probes/decision-votes.stage",
+      "bytes": 104,
+      "source_sha256_before": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0",
+      "source_sha256_after": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0",
+      "copy_sha256": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/delayed.stage",
+      "copy": "attempt/runner/case-02/probes/delayed.stage",
+      "bytes": 81,
+      "source_sha256_before": "845a00e687355920d805d67b75edcec73472f83c71668f03cd423f92b6bf1d9b",
+      "source_sha256_after": "845a00e687355920d805d67b75edcec73472f83c71668f03cd423f92b6bf1d9b",
+      "copy_sha256": "845a00e687355920d805d67b75edcec73472f83c71668f03cd423f92b6bf1d9b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/duplicate-field.stage",
+      "copy": "attempt/runner/case-02/probes/duplicate-field.stage",
+      "bytes": 104,
+      "source_sha256_before": "2c760ce527cf513afc8b77a54820f3cf26dd87ccce9ffe0ce287da5bc8019511",
+      "source_sha256_after": "2c760ce527cf513afc8b77a54820f3cf26dd87ccce9ffe0ce287da5bc8019511",
+      "copy_sha256": "2c760ce527cf513afc8b77a54820f3cf26dd87ccce9ffe0ce287da5bc8019511"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/duplicate-frame.stage",
+      "copy": "attempt/runner/case-02/probes/duplicate-frame.stage",
+      "bytes": 104,
+      "source_sha256_before": "d16ad5657fc68129847d21f0fc3e173572986022b4257949a109d04cc6d779ad",
+      "source_sha256_after": "d16ad5657fc68129847d21f0fc3e173572986022b4257949a109d04cc6d779ad",
+      "copy_sha256": "d16ad5657fc68129847d21f0fc3e173572986022b4257949a109d04cc6d779ad"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/exit-empty.stage",
+      "copy": "attempt/runner/case-02/probes/exit-empty.stage",
+      "bytes": 76,
+      "source_sha256_before": "04c959e42e37c35b0ba0500249143dedc87ec72bd3430f63e9e9f61dabee5899",
+      "source_sha256_after": "04c959e42e37c35b0ba0500249143dedc87ec72bd3430f63e9e9f61dabee5899",
+      "copy_sha256": "04c959e42e37c35b0ba0500249143dedc87ec72bd3430f63e9e9f61dabee5899"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/exit-output.stage",
+      "copy": "attempt/runner/case-02/probes/exit-output.stage",
+      "bytes": 107,
+      "source_sha256_before": "008d0e082145171015cbd09a044479dce367d7af00d7ca9bf3bcae8041baf480",
+      "source_sha256_after": "008d0e082145171015cbd09a044479dce367d7af00d7ca9bf3bcae8041baf480",
+      "copy_sha256": "008d0e082145171015cbd09a044479dce367d7af00d7ca9bf3bcae8041baf480"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/hold-prefix.stage",
+      "copy": "attempt/runner/case-02/probes/hold-prefix.stage",
+      "bytes": 112,
+      "source_sha256_before": "4e63e5e178b00292d3a40acfc75694225dc3f61086a1c0d1ca680e1956fdd996",
+      "source_sha256_after": "4e63e5e178b00292d3a40acfc75694225dc3f61086a1c0d1ca680e1956fdd996",
+      "copy_sha256": "4e63e5e178b00292d3a40acfc75694225dc3f61086a1c0d1ca680e1956fdd996"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/hold-valid.stage",
+      "copy": "attempt/runner/case-02/probes/hold-valid.stage",
+      "bytes": 112,
+      "source_sha256_before": "dd2f440ab2e7e00ee32056f8bbba610a961df0bc73b24c6b02e5670739ca7ba4",
+      "source_sha256_after": "dd2f440ab2e7e00ee32056f8bbba610a961df0bc73b24c6b02e5670739ca7ba4",
+      "copy_sha256": "dd2f440ab2e7e00ee32056f8bbba610a961df0bc73b24c6b02e5670739ca7ba4"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-digest.stage",
+      "copy": "attempt/runner/case-02/probes/id-digest.stage",
+      "bytes": 104,
+      "source_sha256_before": "92535912e7f294cea84a4888db9efa86880124c55efec5415cb729aa90540d5a",
+      "source_sha256_after": "92535912e7f294cea84a4888db9efa86880124c55efec5415cb729aa90540d5a",
+      "copy_sha256": "92535912e7f294cea84a4888db9efa86880124c55efec5415cb729aa90540d5a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-fuel.stage",
+      "copy": "attempt/runner/case-02/probes/id-fuel.stage",
+      "bytes": 104,
+      "source_sha256_before": "112ac64e06524b7da0e05f3246e67b5b9e0b360330c4855db099a396aa2c2570",
+      "source_sha256_after": "112ac64e06524b7da0e05f3246e67b5b9e0b360330c4855db099a396aa2c2570",
+      "copy_sha256": "112ac64e06524b7da0e05f3246e67b5b9e0b360330c4855db099a396aa2c2570"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-generation.stage",
+      "copy": "attempt/runner/case-02/probes/id-generation.stage",
+      "bytes": 104,
+      "source_sha256_before": "baa19fd7405c2a39903823d4691ac14034c0813f1ed16e56441493a9d2658a2b",
+      "source_sha256_after": "baa19fd7405c2a39903823d4691ac14034c0813f1ed16e56441493a9d2658a2b",
+      "copy_sha256": "baa19fd7405c2a39903823d4691ac14034c0813f1ed16e56441493a9d2658a2b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-memory.stage",
+      "copy": "attempt/runner/case-02/probes/id-memory.stage",
+      "bytes": 104,
+      "source_sha256_before": "2e99ca274a51ab142b23aeccfda59a6075fd65522e3d3ba4d95149a216a775e0",
+      "source_sha256_after": "2e99ca274a51ab142b23aeccfda59a6075fd65522e3d3ba4d95149a216a775e0",
+      "copy_sha256": "2e99ca274a51ab142b23aeccfda59a6075fd65522e3d3ba4d95149a216a775e0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-nonce.stage",
+      "copy": "attempt/runner/case-02/probes/id-nonce.stage",
+      "bytes": 104,
+      "source_sha256_before": "0fe8da288563105ce78677ae1ed84b1b96c450eda09279826283fc38157d7082",
+      "source_sha256_after": "0fe8da288563105ce78677ae1ed84b1b96c450eda09279826283fc38157d7082",
+      "copy_sha256": "0fe8da288563105ce78677ae1ed84b1b96c450eda09279826283fc38157d7082"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-plugin-version.stage",
+      "copy": "attempt/runner/case-02/probes/id-plugin-version.stage",
+      "bytes": 104,
+      "source_sha256_before": "6283a6160f27baf964f005670572399f229146c4257dbbdc468604deff60df95",
+      "source_sha256_after": "6283a6160f27baf964f005670572399f229146c4257dbbdc468604deff60df95",
+      "copy_sha256": "6283a6160f27baf964f005670572399f229146c4257dbbdc468604deff60df95"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-plugin.stage",
+      "copy": "attempt/runner/case-02/probes/id-plugin.stage",
+      "bytes": 100,
+      "source_sha256_before": "cfd29e2e70b89f5a463282818557aad16b93bc4c3257762e72c5da223f363dec",
+      "source_sha256_after": "cfd29e2e70b89f5a463282818557aad16b93bc4c3257762e72c5da223f363dec",
+      "copy_sha256": "cfd29e2e70b89f5a463282818557aad16b93bc4c3257762e72c5da223f363dec"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-request.stage",
+      "copy": "attempt/runner/case-02/probes/id-request.stage",
+      "bytes": 104,
+      "source_sha256_before": "6fdd8fd5f74761cc383c7405b408bd1cdfebd6baaa779a7bb2e1a854de74bc4b",
+      "source_sha256_after": "6fdd8fd5f74761cc383c7405b408bd1cdfebd6baaa779a7bb2e1a854de74bc4b",
+      "copy_sha256": "6fdd8fd5f74761cc383c7405b408bd1cdfebd6baaa779a7bb2e1a854de74bc4b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/id-version.stage",
+      "copy": "attempt/runner/case-02/probes/id-version.stage",
+      "bytes": 104,
+      "source_sha256_before": "30fdfba238efdef5fd2905a552d7f228943d08e32814b61bc7c27d8ba517a056",
+      "source_sha256_after": "30fdfba238efdef5fd2905a552d7f228943d08e32814b61bc7c27d8ba517a056",
+      "copy_sha256": "30fdfba238efdef5fd2905a552d7f228943d08e32814b61bc7c27d8ba517a056"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/long-length.stage",
+      "copy": "attempt/runner/case-02/probes/long-length.stage",
+      "bytes": 104,
+      "source_sha256_before": "4d0e38856ae849fbfc7d017bf612c7c260a68eacf93a48ee41148c677ef1faaf",
+      "source_sha256_after": "4d0e38856ae849fbfc7d017bf612c7c260a68eacf93a48ee41148c677ef1faaf",
+      "copy_sha256": "4d0e38856ae849fbfc7d017bf612c7c260a68eacf93a48ee41148c677ef1faaf"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/manifest.json",
+      "copy": "attempt/runner/case-02/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/rejected.stage",
+      "copy": "attempt/runner/case-02/probes/rejected.stage",
+      "bytes": 100,
+      "source_sha256_before": "3f2686d947e1f9116c6fdfed8282c30a64811363468d51575b410e7c2ddeed59",
+      "source_sha256_after": "3f2686d947e1f9116c6fdfed8282c30a64811363468d51575b410e7c2ddeed59",
+      "copy_sha256": "3f2686d947e1f9116c6fdfed8282c30a64811363468d51575b410e7c2ddeed59"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/short-header-1.stage",
+      "copy": "attempt/runner/case-02/probes/short-header-1.stage",
+      "bytes": 104,
+      "source_sha256_before": "4cdf16c5b58cf72ad86d9514b7346dd577fe09675ef0ccfae1378f3a173136a0",
+      "source_sha256_after": "4cdf16c5b58cf72ad86d9514b7346dd577fe09675ef0ccfae1378f3a173136a0",
+      "copy_sha256": "4cdf16c5b58cf72ad86d9514b7346dd577fe09675ef0ccfae1378f3a173136a0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/short-header-2.stage",
+      "copy": "attempt/runner/case-02/probes/short-header-2.stage",
+      "bytes": 104,
+      "source_sha256_before": "ea80a03353362d8d23b7edc66d8c841c1f3f99eb00ea50c1ad2975e9e285fc4a",
+      "source_sha256_after": "ea80a03353362d8d23b7edc66d8c841c1f3f99eb00ea50c1ad2975e9e285fc4a",
+      "copy_sha256": "ea80a03353362d8d23b7edc66d8c841c1f3f99eb00ea50c1ad2975e9e285fc4a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/short-header.stage",
+      "copy": "attempt/runner/case-02/probes/short-header.stage",
+      "bytes": 104,
+      "source_sha256_before": "1519621582e4cde793d86e29b64f946b5d1fc2833b2f272273ce20266049aadf",
+      "source_sha256_after": "1519621582e4cde793d86e29b64f946b5d1fc2833b2f272273ce20266049aadf",
+      "copy_sha256": "1519621582e4cde793d86e29b64f946b5d1fc2833b2f272273ce20266049aadf"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/short-payload.stage",
+      "copy": "attempt/runner/case-02/probes/short-payload.stage",
+      "bytes": 104,
+      "source_sha256_before": "8403e15822e0f032ada0ba64eab9200d89c045e0133c9dadfa22c302d3b653fb",
+      "source_sha256_after": "8403e15822e0f032ada0ba64eab9200d89c045e0133c9dadfa22c302d3b653fb",
+      "copy_sha256": "8403e15822e0f032ada0ba64eab9200d89c045e0133c9dadfa22c302d3b653fb"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/trailing.stage",
+      "copy": "attempt/runner/case-02/probes/trailing.stage",
+      "bytes": 104,
+      "source_sha256_before": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0",
+      "source_sha256_after": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0",
+      "copy_sha256": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/unknown-field.stage",
+      "copy": "attempt/runner/case-02/probes/unknown-field.stage",
+      "bytes": 104,
+      "source_sha256_before": "dd6ca7dd78ef2333da72bcd16b9bf4b22c4f5c323678d30bec5fe953bf35738f",
+      "source_sha256_after": "dd6ca7dd78ef2333da72bcd16b9bf4b22c4f5c323678d30bec5fe953bf35738f",
+      "copy_sha256": "dd6ca7dd78ef2333da72bcd16b9bf4b22c4f5c323678d30bec5fe953bf35738f"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/probes/zero-length.stage",
+      "copy": "attempt/runner/case-02/probes/zero-length.stage",
+      "bytes": 104,
+      "source_sha256_before": "c7aa9696773268f5584fc1a71dcc8b815134ba14d170586568b9c51d1e56a0c7",
+      "source_sha256_after": "c7aa9696773268f5584fc1a71dcc8b815134ba14d170586568b9c51d1e56a0c7",
+      "copy_sha256": "c7aa9696773268f5584fc1a71dcc8b815134ba14d170586568b9c51d1e56a0c7"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/test.stderr",
+      "copy": "attempt/runner/case-02/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/test.stdout",
+      "copy": "attempt/runner/case-02/test.stdout",
+      "bytes": 2208,
+      "source_sha256_before": "5a8586d3ef6efad6d79c7ff21447b39928cbcd7dd321b1c93ff87773550fd8f4",
+      "source_sha256_after": "5a8586d3ef6efad6d79c7ff21447b39928cbcd7dd321b1c93ff87773550fd8f4",
+      "copy_sha256": "5a8586d3ef6efad6d79c7ff21447b39928cbcd7dd321b1c93ff87773550fd8f4"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-02/w05/manifest.json",
+      "copy": "attempt/runner/case-02/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/case.json",
+      "copy": "attempt/runner/case-03/case.json",
+      "bytes": 1991,
+      "source_sha256_before": "09dc3fcf3a3776d26d256263c84484546e15b0b17dd5e47fd6dcb2bc41026442",
+      "source_sha256_after": "09dc3fcf3a3776d26d256263c84484546e15b0b17dd5e47fd6dcb2bc41026442",
+      "copy_sha256": "09dc3fcf3a3776d26d256263c84484546e15b0b17dd5e47fd6dcb2bc41026442"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/host.stage",
+      "copy": "attempt/runner/case-03/host.stage",
+      "bytes": 32552,
+      "source_sha256_before": "ddb42fd9e9efe041ffc838cbc47457e9e67eb9188182265af7af5fa67ec00edd",
+      "source_sha256_after": "ddb42fd9e9efe041ffc838cbc47457e9e67eb9188182265af7af5fa67ec00edd",
+      "copy_sha256": "ddb42fd9e9efe041ffc838cbc47457e9e67eb9188182265af7af5fa67ec00edd"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/closed-stdout.stage",
+      "copy": "attempt/runner/case-03/probes/closed-stdout.stage",
+      "bytes": 82,
+      "source_sha256_before": "be1663204ffdb2deb3ac680c83fd2d59e55199270b96fd818ee53b49f5d4620f",
+      "source_sha256_after": "be1663204ffdb2deb3ac680c83fd2d59e55199270b96fd818ee53b49f5d4620f",
+      "copy_sha256": "be1663204ffdb2deb3ac680c83fd2d59e55199270b96fd818ee53b49f5d4620f"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/concurrent.stage",
+      "copy": "attempt/runner/case-03/probes/concurrent.stage",
+      "bytes": 86,
+      "source_sha256_before": "18dcc2509bc35af40615d0f07e1c9ba3fcaf1caf537b8c94086b8ffb45103209",
+      "source_sha256_after": "18dcc2509bc35af40615d0f07e1c9ba3fcaf1caf537b8c94086b8ffb45103209",
+      "copy_sha256": "18dcc2509bc35af40615d0f07e1c9ba3fcaf1caf537b8c94086b8ffb45103209"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/control.stage",
+      "copy": "attempt/runner/case-03/probes/control.stage",
+      "bytes": 1144,
+      "source_sha256_before": "31eb0a4874c728d0144d6780d282cf17ebd34a11f5018be58c871f52470251c2",
+      "source_sha256_after": "31eb0a4874c728d0144d6780d282cf17ebd34a11f5018be58c871f52470251c2",
+      "copy_sha256": "31eb0a4874c728d0144d6780d282cf17ebd34a11f5018be58c871f52470251c2"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/dual-pressure.stage",
+      "copy": "attempt/runner/case-03/probes/dual-pressure.stage",
+      "bytes": 104,
+      "source_sha256_before": "4ac7599b8f4821e2ae1f3c793517dcc50e78639ea74f48dc6a1e14e1950943a3",
+      "source_sha256_after": "4ac7599b8f4821e2ae1f3c793517dcc50e78639ea74f48dc6a1e14e1950943a3",
+      "copy_sha256": "4ac7599b8f4821e2ae1f3c793517dcc50e78639ea74f48dc6a1e14e1950943a3"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/manifest.json",
+      "copy": "attempt/runner/case-03/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/no-read.stage",
+      "copy": "attempt/runner/case-03/probes/no-read.stage",
+      "bytes": 61,
+      "source_sha256_before": "2d9ed4366de7fa36fa68b29fd44f88934b0af1a881f585e4cca35567794c804c",
+      "source_sha256_after": "2d9ed4366de7fa36fa68b29fd44f88934b0af1a881f585e4cca35567794c804c",
+      "copy_sha256": "2d9ed4366de7fa36fa68b29fd44f88934b0af1a881f585e4cca35567794c804c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/partial-read.release",
+      "copy": "attempt/runner/case-03/probes/partial-read.release",
+      "bytes": 7,
+      "source_sha256_before": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829",
+      "source_sha256_after": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829",
+      "copy_sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/partial-read.stage",
+      "copy": "attempt/runner/case-03/probes/partial-read.stage",
+      "bytes": 107,
+      "source_sha256_before": "6fee15b6da8c5f14272fa78e47055edf7fd97203a52a9660d70bdb400c659825",
+      "source_sha256_after": "6fee15b6da8c5f14272fa78e47055edf7fd97203a52a9660d70bdb400c659825",
+      "copy_sha256": "6fee15b6da8c5f14272fa78e47055edf7fd97203a52a9660d70bdb400c659825"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/partial-stdout.stage",
+      "copy": "attempt/runner/case-03/probes/partial-stdout.stage",
+      "bytes": 112,
+      "source_sha256_before": "81f889ced82a3166262e18c09934681362222b809736078f296515fc2d9842bf",
+      "source_sha256_after": "81f889ced82a3166262e18c09934681362222b809736078f296515fc2d9842bf",
+      "copy_sha256": "81f889ced82a3166262e18c09934681362222b809736078f296515fc2d9842bf"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/stderr-limit.stage",
+      "copy": "attempt/runner/case-03/probes/stderr-limit.stage",
+      "bytes": 87,
+      "source_sha256_before": "198631cb29cbf1064af4942076edec97a765c51da4c3351c277daf4e40fae02e",
+      "source_sha256_after": "198631cb29cbf1064af4942076edec97a765c51da4c3351c277daf4e40fae02e",
+      "copy_sha256": "198631cb29cbf1064af4942076edec97a765c51da4c3351c277daf4e40fae02e"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/stdout-limit.stage",
+      "copy": "attempt/runner/case-03/probes/stdout-limit.stage",
+      "bytes": 139,
+      "source_sha256_before": "f9fd2c95430fa68ace764e253f0e0d33341e728f21b6b9ceeec5986999a400af",
+      "source_sha256_after": "f9fd2c95430fa68ace764e253f0e0d33341e728f21b6b9ceeec5986999a400af",
+      "copy_sha256": "f9fd2c95430fa68ace764e253f0e0d33341e728f21b6b9ceeec5986999a400af"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/zero-stderr.stage",
+      "copy": "attempt/runner/case-03/probes/zero-stderr.stage",
+      "bytes": 165,
+      "source_sha256_before": "e674dfaab5edc4cd192d8b4a409ff1c695cf9fdf963d7dd4de3b697ebaa85ef7",
+      "source_sha256_after": "e674dfaab5edc4cd192d8b4a409ff1c695cf9fdf963d7dd4de3b697ebaa85ef7",
+      "copy_sha256": "e674dfaab5edc4cd192d8b4a409ff1c695cf9fdf963d7dd4de3b697ebaa85ef7"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/probes/zero-stdout.stage",
+      "copy": "attempt/runner/case-03/probes/zero-stdout.stage",
+      "bytes": 165,
+      "source_sha256_before": "ff13a7ade70dd20fccfebb4034778999e823c793ab811372ac7859ccbe7bedcc",
+      "source_sha256_after": "ff13a7ade70dd20fccfebb4034778999e823c793ab811372ac7859ccbe7bedcc",
+      "copy_sha256": "ff13a7ade70dd20fccfebb4034778999e823c793ab811372ac7859ccbe7bedcc"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/test.stderr",
+      "copy": "attempt/runner/case-03/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/test.stdout",
+      "copy": "attempt/runner/case-03/test.stdout",
+      "bytes": 1097,
+      "source_sha256_before": "98f09fcabdceb7e7913453d6a430ca51b3b22b5b3bd14814a956d101d6b01313",
+      "source_sha256_after": "98f09fcabdceb7e7913453d6a430ca51b3b22b5b3bd14814a956d101d6b01313",
+      "copy_sha256": "98f09fcabdceb7e7913453d6a430ca51b3b22b5b3bd14814a956d101d6b01313"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-03/w05/manifest.json",
+      "copy": "attempt/runner/case-03/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/case.json",
+      "copy": "attempt/runner/case-04/case.json",
+      "bytes": 1988,
+      "source_sha256_before": "f94ef205247dce5e39a0de7ec021f18a8979f0156515c48f9daa86574563e9fb",
+      "source_sha256_after": "f94ef205247dce5e39a0de7ec021f18a8979f0156515c48f9daa86574563e9fb",
+      "copy_sha256": "f94ef205247dce5e39a0de7ec021f18a8979f0156515c48f9daa86574563e9fb"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/host.stage",
+      "copy": "attempt/runner/case-04/host.stage",
+      "bytes": 21941,
+      "source_sha256_before": "559a357cd34287be19128f48ece64670c35ed3d2b1a26664d59aea97753fa243",
+      "source_sha256_after": "559a357cd34287be19128f48ece64670c35ed3d2b1a26664d59aea97753fa243",
+      "copy_sha256": "559a357cd34287be19128f48ece64670c35ed3d2b1a26664d59aea97753fa243"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/probes/control.stage",
+      "copy": "attempt/runner/case-04/probes/control.stage",
+      "bytes": 936,
+      "source_sha256_before": "24bf7a42902181e9de77bb02b2fb89edda9c50da5f5eb5317deb25da64ed90e0",
+      "source_sha256_after": "24bf7a42902181e9de77bb02b2fb89edda9c50da5f5eb5317deb25da64ed90e0",
+      "copy_sha256": "24bf7a42902181e9de77bb02b2fb89edda9c50da5f5eb5317deb25da64ed90e0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/probes/job-cpu.stage",
+      "copy": "attempt/runner/case-04/probes/job-cpu.stage",
+      "bytes": 399,
+      "source_sha256_before": "9efd5e73fae0fafb167d1603355cc241d59272ddcaaa3c42d3ccc38394a106b1",
+      "source_sha256_after": "9efd5e73fae0fafb167d1603355cc241d59272ddcaaa3c42d3ccc38394a106b1",
+      "copy_sha256": "9efd5e73fae0fafb167d1603355cc241d59272ddcaaa3c42d3ccc38394a106b1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/probes/job-memory.stage",
+      "copy": "attempt/runner/case-04/probes/job-memory.stage",
+      "bytes": 201,
+      "source_sha256_before": "95f0f5c391739e79c068c6188766070839d2df779ed3803cd25668a8273e9cda",
+      "source_sha256_after": "95f0f5c391739e79c068c6188766070839d2df779ed3803cd25668a8273e9cda",
+      "copy_sha256": "95f0f5c391739e79c068c6188766070839d2df779ed3803cd25668a8273e9cda"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/probes/manifest.json",
+      "copy": "attempt/runner/case-04/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/test.stderr",
+      "copy": "attempt/runner/case-04/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/test.stdout",
+      "copy": "attempt/runner/case-04/test.stdout",
+      "bytes": 1007,
+      "source_sha256_before": "e0fe00942da8a5b0671a764173ec1db332b0ae00bc5479f1c551416b5b2edca8",
+      "source_sha256_after": "e0fe00942da8a5b0671a764173ec1db332b0ae00bc5479f1c551416b5b2edca8",
+      "copy_sha256": "e0fe00942da8a5b0671a764173ec1db332b0ae00bc5479f1c551416b5b2edca8"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-04/w05/manifest.json",
+      "copy": "attempt/runner/case-04/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/case.json",
+      "copy": "attempt/runner/case-05/case.json",
+      "bytes": 1995,
+      "source_sha256_before": "b5c23c7282bcdbdabbd8cd005b158250f94c9684625a244b15041b206b91a958",
+      "source_sha256_after": "b5c23c7282bcdbdabbd8cd005b158250f94c9684625a244b15041b206b91a958",
+      "copy_sha256": "b5c23c7282bcdbdabbd8cd005b158250f94c9684625a244b15041b206b91a958"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/host.stage",
+      "copy": "attempt/runner/case-05/host.stage",
+      "bytes": 12647,
+      "source_sha256_before": "61f40a0cfa13c1b0f016911f8a9e003ff6df30b1bd8f33260e65c16f7e4d10ed",
+      "source_sha256_after": "61f40a0cfa13c1b0f016911f8a9e003ff6df30b1bd8f33260e65c16f7e4d10ed",
+      "copy_sha256": "61f40a0cfa13c1b0f016911f8a9e003ff6df30b1bd8f33260e65c16f7e4d10ed"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/probes/cpu-valid-cancel.stage",
+      "copy": "attempt/runner/case-05/probes/cpu-valid-cancel.stage",
+      "bytes": 199,
+      "source_sha256_before": "71a86a6d0f388fc53aaffb0fcdadb7e81df2a5a9da8387104a3940d6a195093c",
+      "source_sha256_after": "71a86a6d0f388fc53aaffb0fcdadb7e81df2a5a9da8387104a3940d6a195093c",
+      "copy_sha256": "71a86a6d0f388fc53aaffb0fcdadb7e81df2a5a9da8387104a3940d6a195093c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/probes/cpu-valid-deadline.stage",
+      "copy": "attempt/runner/case-05/probes/cpu-valid-deadline.stage",
+      "bytes": 193,
+      "source_sha256_before": "79f220e2db9860acfb025019fea7fdb8d8d0fca0a5778350f16b175d1dd5174b",
+      "source_sha256_after": "79f220e2db9860acfb025019fea7fdb8d8d0fca0a5778350f16b175d1dd5174b",
+      "copy_sha256": "79f220e2db9860acfb025019fea7fdb8d8d0fca0a5778350f16b175d1dd5174b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/probes/cpu-valid.stage",
+      "copy": "attempt/runner/case-05/probes/cpu-valid.stage",
+      "bytes": 199,
+      "source_sha256_before": "e9d8ea7d06af9cf78efe9b97f99230e7346198b37cd083dbf61996863f4cb47e",
+      "source_sha256_after": "e9d8ea7d06af9cf78efe9b97f99230e7346198b37cd083dbf61996863f4cb47e",
+      "copy_sha256": "e9d8ea7d06af9cf78efe9b97f99230e7346198b37cd083dbf61996863f4cb47e"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/probes/manifest.json",
+      "copy": "attempt/runner/case-05/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/test.stderr",
+      "copy": "attempt/runner/case-05/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/test.stdout",
+      "copy": "attempt/runner/case-05/test.stdout",
+      "bytes": 558,
+      "source_sha256_before": "26c8ed636b2751d7909c8421fc19c3c7ae8306305cb8dd4aca8d2aaf6c6df722",
+      "source_sha256_after": "26c8ed636b2751d7909c8421fc19c3c7ae8306305cb8dd4aca8d2aaf6c6df722",
+      "copy_sha256": "26c8ed636b2751d7909c8421fc19c3c7ae8306305cb8dd4aca8d2aaf6c6df722"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-05/w05/manifest.json",
+      "copy": "attempt/runner/case-05/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/case.json",
+      "copy": "attempt/runner/case-06/case.json",
+      "bytes": 2003,
+      "source_sha256_before": "c94217fc066948dcdccfb252338a492c2451f6cd3398bf64f93c4428090c84b0",
+      "source_sha256_after": "c94217fc066948dcdccfb252338a492c2451f6cd3398bf64f93c4428090c84b0",
+      "copy_sha256": "c94217fc066948dcdccfb252338a492c2451f6cd3398bf64f93c4428090c84b0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/host.stage",
+      "copy": "attempt/runner/case-06/host.stage",
+      "bytes": 6572,
+      "source_sha256_before": "65e21b561c4f776002bdca74195def6e91334297d66036051f974817eeab6062",
+      "source_sha256_after": "65e21b561c4f776002bdca74195def6e91334297d66036051f974817eeab6062",
+      "copy_sha256": "65e21b561c4f776002bdca74195def6e91334297d66036051f974817eeab6062"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/probes/control.stage",
+      "copy": "attempt/runner/case-06/probes/control.stage",
+      "bytes": 312,
+      "source_sha256_before": "2e9533dd22269505f2b5eacaf40bd94de08ff26fcbd2fa147b9353eec1f90e24",
+      "source_sha256_after": "2e9533dd22269505f2b5eacaf40bd94de08ff26fcbd2fa147b9353eec1f90e24",
+      "copy_sha256": "2e9533dd22269505f2b5eacaf40bd94de08ff26fcbd2fa147b9353eec1f90e24"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/probes/manifest.json",
+      "copy": "attempt/runner/case-06/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/probes/valid-output.stage",
+      "copy": "attempt/runner/case-06/probes/valid-output.stage",
+      "bytes": 104,
+      "source_sha256_before": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0",
+      "source_sha256_after": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0",
+      "copy_sha256": "8eefbefa907be4a0636c4549d353f908ab9eaba5ba2843ff675872590b88b5d0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/probes/valid-stderr.stage",
+      "copy": "attempt/runner/case-06/probes/valid-stderr.stage",
+      "bytes": 135,
+      "source_sha256_before": "8817ce5e5e45af06afa76c28d82a9bb7f8868de698b63d6bec7c8f77cf6986d6",
+      "source_sha256_after": "8817ce5e5e45af06afa76c28d82a9bb7f8868de698b63d6bec7c8f77cf6986d6",
+      "copy_sha256": "8817ce5e5e45af06afa76c28d82a9bb7f8868de698b63d6bec7c8f77cf6986d6"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/test.stderr",
+      "copy": "attempt/runner/case-06/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/test.stdout",
+      "copy": "attempt/runner/case-06/test.stdout",
+      "bytes": 570,
+      "source_sha256_before": "b7e72028599b3fe4c75ef95ea1bb095aec824681cff585a8932e2cf67aef38c9",
+      "source_sha256_after": "b7e72028599b3fe4c75ef95ea1bb095aec824681cff585a8932e2cf67aef38c9",
+      "copy_sha256": "b7e72028599b3fe4c75ef95ea1bb095aec824681cff585a8932e2cf67aef38c9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-06/w05/manifest.json",
+      "copy": "attempt/runner/case-06/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/case.json",
+      "copy": "attempt/runner/case-07/case.json",
+      "bytes": 2004,
+      "source_sha256_before": "4b4148e65fc84cc1ba3100b86b4f9904f2c502cb243120568b0b22475cd6d44c",
+      "source_sha256_after": "4b4148e65fc84cc1ba3100b86b4f9904f2c502cb243120568b0b22475cd6d44c",
+      "copy_sha256": "4b4148e65fc84cc1ba3100b86b4f9904f2c502cb243120568b0b22475cd6d44c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/host.stage",
+      "copy": "attempt/runner/case-07/host.stage",
+      "bytes": 22222,
+      "source_sha256_before": "64ef06301cb6fafa9c0402d1844d9dd8c45686961e10e4316a58317818e8a216",
+      "source_sha256_after": "64ef06301cb6fafa9c0402d1844d9dd8c45686961e10e4316a58317818e8a216",
+      "copy_sha256": "64ef06301cb6fafa9c0402d1844d9dd8c45686961e10e4316a58317818e8a216"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/probes/control.stage",
+      "copy": "attempt/runner/case-07/probes/control.stage",
+      "bytes": 936,
+      "source_sha256_before": "acced1d5b6f71cc02e7ad8e67346f3d894c023d92505129a66dd64086fee2c86",
+      "source_sha256_after": "acced1d5b6f71cc02e7ad8e67346f3d894c023d92505129a66dd64086fee2c86",
+      "copy_sha256": "acced1d5b6f71cc02e7ad8e67346f3d894c023d92505129a66dd64086fee2c86"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/probes/manifest.json",
+      "copy": "attempt/runner/case-07/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/probes/no-read.stage",
+      "copy": "attempt/runner/case-07/probes/no-read.stage",
+      "bytes": 305,
+      "source_sha256_before": "96088e2afb925022d30e0beaf22c3c86c6de2f6266b75991f9f8b793a292e553",
+      "source_sha256_after": "96088e2afb925022d30e0beaf22c3c86c6de2f6266b75991f9f8b793a292e553",
+      "copy_sha256": "96088e2afb925022d30e0beaf22c3c86c6de2f6266b75991f9f8b793a292e553"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/test.stderr",
+      "copy": "attempt/runner/case-07/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/test.stdout",
+      "copy": "attempt/runner/case-07/test.stdout",
+      "bytes": 927,
+      "source_sha256_before": "a8ad1c2734c6a00608edd1693a925d32c3282bff762b35cff70ddb3a04c9de95",
+      "source_sha256_after": "a8ad1c2734c6a00608edd1693a925d32c3282bff762b35cff70ddb3a04c9de95",
+      "copy_sha256": "a8ad1c2734c6a00608edd1693a925d32c3282bff762b35cff70ddb3a04c9de95"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-07/w05/manifest.json",
+      "copy": "attempt/runner/case-07/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/case.json",
+      "copy": "attempt/runner/case-08/case.json",
+      "bytes": 2012,
+      "source_sha256_before": "4c88c5b8165c479e4c53f96820a153861e9c67c83caecb2f9c48cc777a496bf8",
+      "source_sha256_after": "4c88c5b8165c479e4c53f96820a153861e9c67c83caecb2f9c48cc777a496bf8",
+      "copy_sha256": "4c88c5b8165c479e4c53f96820a153861e9c67c83caecb2f9c48cc777a496bf8"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/host.stage",
+      "copy": "attempt/runner/case-08/host.stage",
+      "bytes": 21082,
+      "source_sha256_before": "e6c454088594c523a1e98e1eeed1843332c85bce69f07934657317a86efc0786",
+      "source_sha256_after": "e6c454088594c523a1e98e1eeed1843332c85bce69f07934657317a86efc0786",
+      "copy_sha256": "e6c454088594c523a1e98e1eeed1843332c85bce69f07934657317a86efc0786"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/probes/control.stage",
+      "copy": "attempt/runner/case-08/probes/control.stage",
+      "bytes": 936,
+      "source_sha256_before": "ede089a1655af8d0ff755958a7ba82471f38ad90900e7459099ed881efdbdcf3",
+      "source_sha256_after": "ede089a1655af8d0ff755958a7ba82471f38ad90900e7459099ed881efdbdcf3",
+      "copy_sha256": "ede089a1655af8d0ff755958a7ba82471f38ad90900e7459099ed881efdbdcf3"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/probes/manifest.json",
+      "copy": "attempt/runner/case-08/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/test.stderr",
+      "copy": "attempt/runner/case-08/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/test.stdout",
+      "copy": "attempt/runner/case-08/test.stdout",
+      "bytes": 211,
+      "source_sha256_before": "2083efba205b7389ab103d1e9586de393fa4434be9d789b1304bef032c3f86da",
+      "source_sha256_after": "2083efba205b7389ab103d1e9586de393fa4434be9d789b1304bef032c3f86da",
+      "copy_sha256": "2083efba205b7389ab103d1e9586de393fa4434be9d789b1304bef032c3f86da"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-08/w05/manifest.json",
+      "copy": "attempt/runner/case-08/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/case.json",
+      "copy": "attempt/runner/case-09/case.json",
+      "bytes": 2006,
+      "source_sha256_before": "2f221b2bb2b0af92746fc1f7e0004bc820a3427e5c63524d933e98139d8b0d05",
+      "source_sha256_after": "2f221b2bb2b0af92746fc1f7e0004bc820a3427e5c63524d933e98139d8b0d05",
+      "copy_sha256": "2f221b2bb2b0af92746fc1f7e0004bc820a3427e5c63524d933e98139d8b0d05"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/host.stage",
+      "copy": "attempt/runner/case-09/host.stage",
+      "bytes": 3884,
+      "source_sha256_before": "a12448701faa57828cba79339672c27122b3ae11d83d85af522273a95f5132f9",
+      "source_sha256_after": "a12448701faa57828cba79339672c27122b3ae11d83d85af522273a95f5132f9",
+      "copy_sha256": "a12448701faa57828cba79339672c27122b3ae11d83d85af522273a95f5132f9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/probes/control.stage",
+      "copy": "attempt/runner/case-09/probes/control.stage",
+      "bytes": 208,
+      "source_sha256_before": "bf8c9bd5ca3122ac2d3ed4743eb6fc63ceeab3d6a8f066b098a6174c728d2603",
+      "source_sha256_after": "bf8c9bd5ca3122ac2d3ed4743eb6fc63ceeab3d6a8f066b098a6174c728d2603",
+      "copy_sha256": "bf8c9bd5ca3122ac2d3ed4743eb6fc63ceeab3d6a8f066b098a6174c728d2603"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/probes/manifest.json",
+      "copy": "attempt/runner/case-09/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/test.stderr",
+      "copy": "attempt/runner/case-09/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/test.stdout",
+      "copy": "attempt/runner/case-09/test.stdout",
+      "bytes": 205,
+      "source_sha256_before": "849ba7df2fe5a933a08f1100c4e2f7371c460b3c15df7d635f17823e71050ede",
+      "source_sha256_after": "849ba7df2fe5a933a08f1100c4e2f7371c460b3c15df7d635f17823e71050ede",
+      "copy_sha256": "849ba7df2fe5a933a08f1100c4e2f7371c460b3c15df7d635f17823e71050ede"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-09/w05/manifest.json",
+      "copy": "attempt/runner/case-09/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/case.json",
+      "copy": "attempt/runner/case-10/case.json",
+      "bytes": 2021,
+      "source_sha256_before": "a1c2b3dea15efbc02418af29813d8ca30d931a3c84d0a4dd4e58225c6104405e",
+      "source_sha256_after": "a1c2b3dea15efbc02418af29813d8ca30d931a3c84d0a4dd4e58225c6104405e",
+      "copy_sha256": "a1c2b3dea15efbc02418af29813d8ca30d931a3c84d0a4dd4e58225c6104405e"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/host.stage",
+      "copy": "attempt/runner/case-10/host.stage",
+      "bytes": 70323,
+      "source_sha256_before": "253629fe2b961571edbe4f79243ff7d95f5a9e019a14312dc8dc8dbcca304302",
+      "source_sha256_after": "253629fe2b961571edbe4f79243ff7d95f5a9e019a14312dc8dc8dbcca304302",
+      "copy_sha256": "253629fe2b961571edbe4f79243ff7d95f5a9e019a14312dc8dc8dbcca304302"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/probes/control.stage",
+      "copy": "attempt/runner/case-10/probes/control.stage",
+      "bytes": 312,
+      "source_sha256_before": "4703a4f0511775a7fda6f584e01e2ad08cb15b8a2770189ba8debdb93978b3d7",
+      "source_sha256_after": "4703a4f0511775a7fda6f584e01e2ad08cb15b8a2770189ba8debdb93978b3d7",
+      "copy_sha256": "4703a4f0511775a7fda6f584e01e2ad08cb15b8a2770189ba8debdb93978b3d7"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/probes/manifest.json",
+      "copy": "attempt/runner/case-10/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/probes/no-read.stage",
+      "copy": "attempt/runner/case-10/probes/no-read.stage",
+      "bytes": 24,
+      "source_sha256_before": "edcff586bcd94a092bf8d202f324bff30e87882a2bdae12ad008c9961ba0040b",
+      "source_sha256_after": "edcff586bcd94a092bf8d202f324bff30e87882a2bdae12ad008c9961ba0040b",
+      "copy_sha256": "edcff586bcd94a092bf8d202f324bff30e87882a2bdae12ad008c9961ba0040b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/test.stderr",
+      "copy": "attempt/runner/case-10/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/test.stdout",
+      "copy": "attempt/runner/case-10/test.stdout",
+      "bytes": 383,
+      "source_sha256_before": "6782d9b0d0b5efba3cbb6d0a4e2b940ca5a3bc8f8b51b0fb4ac138c92437ce2e",
+      "source_sha256_after": "6782d9b0d0b5efba3cbb6d0a4e2b940ca5a3bc8f8b51b0fb4ac138c92437ce2e",
+      "copy_sha256": "6782d9b0d0b5efba3cbb6d0a4e2b940ca5a3bc8f8b51b0fb4ac138c92437ce2e"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-10/w05/manifest.json",
+      "copy": "attempt/runner/case-10/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/case.json",
+      "copy": "attempt/runner/case-11/case.json",
+      "bytes": 1993,
+      "source_sha256_before": "7dafaf67e43bae1a6e1f9f6a26b7db6e42e9d5cfeb13f2f2a6f471c095d1c4f3",
+      "source_sha256_after": "7dafaf67e43bae1a6e1f9f6a26b7db6e42e9d5cfeb13f2f2a6f471c095d1c4f3",
+      "copy_sha256": "7dafaf67e43bae1a6e1f9f6a26b7db6e42e9d5cfeb13f2f2a6f471c095d1c4f3"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/probes/manifest.json",
+      "copy": "attempt/runner/case-11/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/test.stderr",
+      "copy": "attempt/runner/case-11/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/test.stdout",
+      "copy": "attempt/runner/case-11/test.stdout",
+      "bytes": 1322,
+      "source_sha256_before": "90f12c77773fbb9aabc70785e504a79072dc1447ccb2d884416893e47344d3a2",
+      "source_sha256_after": "90f12c77773fbb9aabc70785e504a79072dc1447ccb2d884416893e47344d3a2",
+      "copy_sha256": "90f12c77773fbb9aabc70785e504a79072dc1447ccb2d884416893e47344d3a2"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/before-host.stage",
+      "copy": "attempt/runner/case-11/w05/before-host.stage",
+      "bytes": 392,
+      "source_sha256_before": "71461245e0cda8eb78fd10474311e01447341bc5a1df4b27597f767db671aeee",
+      "source_sha256_after": "71461245e0cda8eb78fd10474311e01447341bc5a1df4b27597f767db671aeee",
+      "copy_sha256": "71461245e0cda8eb78fd10474311e01447341bc5a1df4b27597f767db671aeee"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/manifest.json",
+      "copy": "attempt/runner/case-11/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/pending/no-read.stage",
+      "copy": "attempt/runner/case-11/w05/pending/no-read.stage",
+      "bytes": 61,
+      "source_sha256_before": "a2930f45012f942865b3445c2f27036f9644b6767be2193516bbe67b8f028cdc",
+      "source_sha256_after": "a2930f45012f942865b3445c2f27036f9644b6767be2193516bbe67b8f028cdc",
+      "copy_sha256": "a2930f45012f942865b3445c2f27036f9644b6767be2193516bbe67b8f028cdc"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/pending-host.stage",
+      "copy": "attempt/runner/case-11/w05/pending-host.stage",
+      "bytes": 910,
+      "source_sha256_before": "c18eba505b2f482f4596da22ab29a2d4e68d4e44ead333682e755b7e76209436",
+      "source_sha256_after": "c18eba505b2f482f4596da22ab29a2d4e68d4e44ead333682e755b7e76209436",
+      "copy_sha256": "c18eba505b2f482f4596da22ab29a2d4e68d4e44ead333682e755b7e76209436"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/resumed/no-read.stage",
+      "copy": "attempt/runner/case-11/w05/resumed/no-read.stage",
+      "bytes": 61,
+      "source_sha256_before": "f67fa5f377513c443b80389e5a90cc18eb99fb42d778d855f3e2a8b600f084f2",
+      "source_sha256_after": "f67fa5f377513c443b80389e5a90cc18eb99fb42d778d855f3e2a8b600f084f2",
+      "copy_sha256": "f67fa5f377513c443b80389e5a90cc18eb99fb42d778d855f3e2a8b600f084f2"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/resumed-host.stage",
+      "copy": "attempt/runner/case-11/w05/resumed-host.stage",
+      "bytes": 726,
+      "source_sha256_before": "9118aa68937b79afad78ee9e4efc190bac5feeb2b7fc8cf1e3a013c380b3c091",
+      "source_sha256_after": "9118aa68937b79afad78ee9e4efc190bac5feeb2b7fc8cf1e3a013c380b3c091",
+      "copy_sha256": "9118aa68937b79afad78ee9e4efc190bac5feeb2b7fc8cf1e3a013c380b3c091"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-11/w05/suspended-host.stage",
+      "copy": "attempt/runner/case-11/w05/suspended-host.stage",
+      "bytes": 442,
+      "source_sha256_before": "98bf0d1ccefa1eee82739604319006b8e14e4e7612726ccfa755e06f1544ae97",
+      "source_sha256_after": "98bf0d1ccefa1eee82739604319006b8e14e4e7612726ccfa755e06f1544ae97",
+      "copy_sha256": "98bf0d1ccefa1eee82739604319006b8e14e4e7612726ccfa755e06f1544ae97"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/case.json",
+      "copy": "attempt/runner/case-12/case.json",
+      "bytes": 1996,
+      "source_sha256_before": "fab9a12a952c55c0c4999530c873fca519abb912005d19d40ef21554f5cc29ec",
+      "source_sha256_after": "fab9a12a952c55c0c4999530c873fca519abb912005d19d40ef21554f5cc29ec",
+      "copy_sha256": "fab9a12a952c55c0c4999530c873fca519abb912005d19d40ef21554f5cc29ec"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/host.stage",
+      "copy": "attempt/runner/case-12/host.stage",
+      "bytes": 12651,
+      "source_sha256_before": "df68ccf1db01ed08e85712ee6546a129aa91d7ddb8b2add7cb1deaf644ea97ae",
+      "source_sha256_after": "df68ccf1db01ed08e85712ee6546a129aa91d7ddb8b2add7cb1deaf644ea97ae",
+      "copy_sha256": "df68ccf1db01ed08e85712ee6546a129aa91d7ddb8b2add7cb1deaf644ea97ae"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/probes/manifest.json",
+      "copy": "attempt/runner/case-12/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/probes/p01-memory.release",
+      "copy": "attempt/runner/case-12/probes/p01-memory.release",
+      "bytes": 7,
+      "source_sha256_before": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829",
+      "source_sha256_after": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829",
+      "copy_sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/probes/p01-memory.stage",
+      "copy": "attempt/runner/case-12/probes/p01-memory.stage",
+      "bytes": 255,
+      "source_sha256_before": "f698d0e48b30766a3828a43e2a06e406d5917d25c79d5f2aad8300697938e44b",
+      "source_sha256_after": "f698d0e48b30766a3828a43e2a06e406d5917d25c79d5f2aad8300697938e44b",
+      "copy_sha256": "f698d0e48b30766a3828a43e2a06e406d5917d25c79d5f2aad8300697938e44b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/test.stderr",
+      "copy": "attempt/runner/case-12/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/test.stdout",
+      "copy": "attempt/runner/case-12/test.stdout",
+      "bytes": 312,
+      "source_sha256_before": "4f50dc12e769910cc62fcc300a619a655e5cfce1a76579fa9c32599e034d98b5",
+      "source_sha256_after": "4f50dc12e769910cc62fcc300a619a655e5cfce1a76579fa9c32599e034d98b5",
+      "copy_sha256": "4f50dc12e769910cc62fcc300a619a655e5cfce1a76579fa9c32599e034d98b5"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-12/w05/manifest.json",
+      "copy": "attempt/runner/case-12/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-13/case.json",
+      "copy": "attempt/runner/case-13/case.json",
+      "bytes": 2002,
+      "source_sha256_before": "aeecc17c886b9d02df42bb13f7b93b980cd3de908de87b08142104bf5393c83d",
+      "source_sha256_after": "aeecc17c886b9d02df42bb13f7b93b980cd3de908de87b08142104bf5393c83d",
+      "copy_sha256": "aeecc17c886b9d02df42bb13f7b93b980cd3de908de87b08142104bf5393c83d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-13/probes/manifest.json",
+      "copy": "attempt/runner/case-13/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-13/test.stderr",
+      "copy": "attempt/runner/case-13/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-13/test.stdout",
+      "copy": "attempt/runner/case-13/test.stdout",
+      "bytes": 202,
+      "source_sha256_before": "1a8fb674691d9ebcffb95265102a8de99d7c9b15e1685d01fe4bc5d64a83d7e6",
+      "source_sha256_after": "1a8fb674691d9ebcffb95265102a8de99d7c9b15e1685d01fe4bc5d64a83d7e6",
+      "copy_sha256": "1a8fb674691d9ebcffb95265102a8de99d7c9b15e1685d01fe4bc5d64a83d7e6"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-13/w05/manifest.json",
+      "copy": "attempt/runner/case-13/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-14/case.json",
+      "copy": "attempt/runner/case-14/case.json",
+      "bytes": 2007,
+      "source_sha256_before": "3e7f73d7823df05d344608185b2cb9a5003d996fff068b889179ce7e4d74bf75",
+      "source_sha256_after": "3e7f73d7823df05d344608185b2cb9a5003d996fff068b889179ce7e4d74bf75",
+      "copy_sha256": "3e7f73d7823df05d344608185b2cb9a5003d996fff068b889179ce7e4d74bf75"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-14/probes/manifest.json",
+      "copy": "attempt/runner/case-14/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-14/test.stderr",
+      "copy": "attempt/runner/case-14/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-14/test.stdout",
+      "copy": "attempt/runner/case-14/test.stdout",
+      "bytes": 254,
+      "source_sha256_before": "f22f0a5e4f59857ad614e4391b22fe5064dc1f8aed8c1755f8bef810268910e2",
+      "source_sha256_after": "f22f0a5e4f59857ad614e4391b22fe5064dc1f8aed8c1755f8bef810268910e2",
+      "copy_sha256": "f22f0a5e4f59857ad614e4391b22fe5064dc1f8aed8c1755f8bef810268910e2"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-14/w05/manifest.json",
+      "copy": "attempt/runner/case-14/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-15/case.json",
+      "copy": "attempt/runner/case-15/case.json",
+      "bytes": 2016,
+      "source_sha256_before": "d90235fc87257d6d2c54b78380691bb7f2092dece8091241fddce92d31a91a33",
+      "source_sha256_after": "d90235fc87257d6d2c54b78380691bb7f2092dece8091241fddce92d31a91a33",
+      "copy_sha256": "d90235fc87257d6d2c54b78380691bb7f2092dece8091241fddce92d31a91a33"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-15/probes/manifest.json",
+      "copy": "attempt/runner/case-15/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-15/test.stderr",
+      "copy": "attempt/runner/case-15/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-15/test.stdout",
+      "copy": "attempt/runner/case-15/test.stdout",
+      "bytes": 259,
+      "source_sha256_before": "69a39b2dc2783e6937fb5222384a7039f872176710efea00af718a732d9a896a",
+      "source_sha256_after": "69a39b2dc2783e6937fb5222384a7039f872176710efea00af718a732d9a896a",
+      "copy_sha256": "69a39b2dc2783e6937fb5222384a7039f872176710efea00af718a732d9a896a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-15/w05/manifest.json",
+      "copy": "attempt/runner/case-15/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-16/case.json",
+      "copy": "attempt/runner/case-16/case.json",
+      "bytes": 2013,
+      "source_sha256_before": "4d6d25f43604f7346888c11c78028e94ec5d3a1d97ad7ac4e2fa0ff9b28ba135",
+      "source_sha256_after": "4d6d25f43604f7346888c11c78028e94ec5d3a1d97ad7ac4e2fa0ff9b28ba135",
+      "copy_sha256": "4d6d25f43604f7346888c11c78028e94ec5d3a1d97ad7ac4e2fa0ff9b28ba135"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-16/probes/manifest.json",
+      "copy": "attempt/runner/case-16/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-16/test.stderr",
+      "copy": "attempt/runner/case-16/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-16/test.stdout",
+      "copy": "attempt/runner/case-16/test.stdout",
+      "bytes": 282,
+      "source_sha256_before": "9fd46c1e982a19e6095fb9b4d8d6237a5713cc3a57168c0e8a2083e036798034",
+      "source_sha256_after": "9fd46c1e982a19e6095fb9b4d8d6237a5713cc3a57168c0e8a2083e036798034",
+      "copy_sha256": "9fd46c1e982a19e6095fb9b4d8d6237a5713cc3a57168c0e8a2083e036798034"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-16/w05/manifest.json",
+      "copy": "attempt/runner/case-16/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/case.json",
+      "copy": "attempt/runner/case-17/case.json",
+      "bytes": 1993,
+      "source_sha256_before": "e0b820322df83b9408bc6ff7afb698756f58501224262bafae741360f509e31a",
+      "source_sha256_after": "e0b820322df83b9408bc6ff7afb698756f58501224262bafae741360f509e31a",
+      "copy_sha256": "e0b820322df83b9408bc6ff7afb698756f58501224262bafae741360f509e31a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/host.stage",
+      "copy": "attempt/runner/case-17/host.stage",
+      "bytes": 1264,
+      "source_sha256_before": "eebb22648b5c3dae1e57d6d02d82778582e03a77e0a0791da19000a3b78ba5d7",
+      "source_sha256_after": "eebb22648b5c3dae1e57d6d02d82778582e03a77e0a0791da19000a3b78ba5d7",
+      "copy_sha256": "eebb22648b5c3dae1e57d6d02d82778582e03a77e0a0791da19000a3b78ba5d7"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/probes/manifest.json",
+      "copy": "attempt/runner/case-17/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/probes/w06-sentinel.stage",
+      "copy": "attempt/runner/case-17/probes/w06-sentinel.stage",
+      "bytes": 211,
+      "source_sha256_before": "210f0ba983a3e890c5c100e3db5736edc2ae1ebdb019dedc82ca6a0d18f30e07",
+      "source_sha256_after": "210f0ba983a3e890c5c100e3db5736edc2ae1ebdb019dedc82ca6a0d18f30e07",
+      "copy_sha256": "210f0ba983a3e890c5c100e3db5736edc2ae1ebdb019dedc82ca6a0d18f30e07"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/test.stderr",
+      "copy": "attempt/runner/case-17/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/test.stdout",
+      "copy": "attempt/runner/case-17/test.stdout",
+      "bytes": 258,
+      "source_sha256_before": "ff7b7ba97d9dad99961960319cc256a750b4075139daef612e4ef24374582c0c",
+      "source_sha256_after": "ff7b7ba97d9dad99961960319cc256a750b4075139daef612e4ef24374582c0c",
+      "copy_sha256": "ff7b7ba97d9dad99961960319cc256a750b4075139daef612e4ef24374582c0c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-17/w05/manifest.json",
+      "copy": "attempt/runner/case-17/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/case.json",
+      "copy": "attempt/runner/case-18/case.json",
+      "bytes": 1996,
+      "source_sha256_before": "d79002446aff22dd0fd76a6eb00ecd4870dfff2d645e3e76876fe257c7ecfc4d",
+      "source_sha256_after": "d79002446aff22dd0fd76a6eb00ecd4870dfff2d645e3e76876fe257c7ecfc4d",
+      "copy_sha256": "d79002446aff22dd0fd76a6eb00ecd4870dfff2d645e3e76876fe257c7ecfc4d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/host.stage",
+      "copy": "attempt/runner/case-18/host.stage",
+      "bytes": 1264,
+      "source_sha256_before": "e0bf9b2492108ebcf8d9dbb56cf9001f066eceddc891d050d64078d8b577d871",
+      "source_sha256_after": "e0bf9b2492108ebcf8d9dbb56cf9001f066eceddc891d050d64078d8b577d871",
+      "copy_sha256": "e0bf9b2492108ebcf8d9dbb56cf9001f066eceddc891d050d64078d8b577d871"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/probes/manifest.json",
+      "copy": "attempt/runner/case-18/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/probes/w06-job.job",
+      "copy": "attempt/runner/case-18/probes/w06-job.job",
+      "bytes": 36,
+      "source_sha256_before": "48ddf40992eb82fe50cad536bdd9c105bab3091e2d4da3cc47ef38db5446df8c",
+      "source_sha256_after": "48ddf40992eb82fe50cad536bdd9c105bab3091e2d4da3cc47ef38db5446df8c",
+      "copy_sha256": "48ddf40992eb82fe50cad536bdd9c105bab3091e2d4da3cc47ef38db5446df8c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/probes/w06-job.stage",
+      "copy": "attempt/runner/case-18/probes/w06-job.stage",
+      "bytes": 149,
+      "source_sha256_before": "3839d9ab1ce3dc550aa4fc9562190ff21eb19519a0421bfa3987e6ce062babcb",
+      "source_sha256_after": "3839d9ab1ce3dc550aa4fc9562190ff21eb19519a0421bfa3987e6ce062babcb",
+      "copy_sha256": "3839d9ab1ce3dc550aa4fc9562190ff21eb19519a0421bfa3987e6ce062babcb"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/test.stderr",
+      "copy": "attempt/runner/case-18/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/test.stdout",
+      "copy": "attempt/runner/case-18/test.stdout",
+      "bytes": 250,
+      "source_sha256_before": "650bf849fd390bc377a3b9556eaf9f7452e8c3443f979a138b29a9ee6f6fc46c",
+      "source_sha256_after": "650bf849fd390bc377a3b9556eaf9f7452e8c3443f979a138b29a9ee6f6fc46c",
+      "copy_sha256": "650bf849fd390bc377a3b9556eaf9f7452e8c3443f979a138b29a9ee6f6fc46c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-18/w05/manifest.json",
+      "copy": "attempt/runner/case-18/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/case.json",
+      "copy": "attempt/runner/case-19/case.json",
+      "bytes": 2001,
+      "source_sha256_before": "84de9cd99c060db6f721590cda76168e1463682042e862e8e5c5c79095e6b9c9",
+      "source_sha256_after": "84de9cd99c060db6f721590cda76168e1463682042e862e8e5c5c79095e6b9c9",
+      "copy_sha256": "84de9cd99c060db6f721590cda76168e1463682042e862e8e5c5c79095e6b9c9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/probes/manifest.json",
+      "copy": "attempt/runner/case-19/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/test.stderr",
+      "copy": "attempt/runner/case-19/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/test.stdout",
+      "copy": "attempt/runner/case-19/test.stdout",
+      "bytes": 733,
+      "source_sha256_before": "5c0302050aa245b6d1e6e886c15436a4e00243028847c9b6955b624ba52755ad",
+      "source_sha256_after": "5c0302050aa245b6d1e6e886c15436a4e00243028847c9b6955b624ba52755ad",
+      "copy_sha256": "5c0302050aa245b6d1e6e886c15436a4e00243028847c9b6955b624ba52755ad"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/w05/manifest.json",
+      "copy": "attempt/runner/case-19/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/w06/active-control.json",
+      "copy": "attempt/runner/case-19/w06/active-control.json",
+      "bytes": 215,
+      "source_sha256_before": "a4cc0eb7e8d561473d2b970c7c0e911f58b8389b3ae3b5a158a29c66217340c9",
+      "source_sha256_after": "a4cc0eb7e8d561473d2b970c7c0e911f58b8389b3ae3b5a158a29c66217340c9",
+      "copy_sha256": "a4cc0eb7e8d561473d2b970c7c0e911f58b8389b3ae3b5a158a29c66217340c9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-19/w06/active-one.json",
+      "copy": "attempt/runner/case-19/w06/active-one.json",
+      "bytes": 103,
+      "source_sha256_before": "282c117cdecb369ba1625a0482c440d3891aa72092635ec99cba8bf360619d89",
+      "source_sha256_after": "282c117cdecb369ba1625a0482c440d3891aa72092635ec99cba8bf360619d89",
+      "copy_sha256": "282c117cdecb369ba1625a0482c440d3891aa72092635ec99cba8bf360619d89"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/case.json",
+      "copy": "attempt/runner/case-20/case.json",
+      "bytes": 1998,
+      "source_sha256_before": "8aeb1fc1cf5f641e18d0b3c26434b34c85ab14fdaefd80497707d4c75b63a339",
+      "source_sha256_after": "8aeb1fc1cf5f641e18d0b3c26434b34c85ab14fdaefd80497707d4c75b63a339",
+      "copy_sha256": "8aeb1fc1cf5f641e18d0b3c26434b34c85ab14fdaefd80497707d4c75b63a339"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/probes/manifest.json",
+      "copy": "attempt/runner/case-20/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/test.stderr",
+      "copy": "attempt/runner/case-20/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/test.stdout",
+      "copy": "attempt/runner/case-20/test.stdout",
+      "bytes": 745,
+      "source_sha256_before": "fce1b5ec8db0cc5e26a0ede9b7598013e401b19b300a4b86e2f28ad293b1c55c",
+      "source_sha256_after": "fce1b5ec8db0cc5e26a0ede9b7598013e401b19b300a4b86e2f28ad293b1c55c",
+      "copy_sha256": "fce1b5ec8db0cc5e26a0ede9b7598013e401b19b300a4b86e2f28ad293b1c55c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/w05/manifest.json",
+      "copy": "attempt/runner/case-20/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/w06/breakaway-control.json",
+      "copy": "attempt/runner/case-20/w06/breakaway-control.json",
+      "bytes": 221,
+      "source_sha256_before": "97f0c6d1654bc6b7de59f7400cdbb203161e413d7162055d46b8b6e4f5c3b1c9",
+      "source_sha256_after": "97f0c6d1654bc6b7de59f7400cdbb203161e413d7162055d46b8b6e4f5c3b1c9",
+      "copy_sha256": "97f0c6d1654bc6b7de59f7400cdbb203161e413d7162055d46b8b6e4f5c3b1c9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-20/w06/breakaway-denied.json",
+      "copy": "attempt/runner/case-20/w06/breakaway-denied.json",
+      "bytes": 105,
+      "source_sha256_before": "c55741ccc372a51984a759321d5a3d04d14db6f5367fd44538f2a1db417a6626",
+      "source_sha256_after": "c55741ccc372a51984a759321d5a3d04d14db6f5367fd44538f2a1db417a6626",
+      "copy_sha256": "c55741ccc372a51984a759321d5a3d04d14db6f5367fd44538f2a1db417a6626"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-21/case.json",
+      "copy": "attempt/runner/case-21/case.json",
+      "bytes": 2024,
+      "source_sha256_before": "f8e54efd432fb2b3585e899cabfe1df6747cc29be2434a439b6e4a0d2c0b9eb6",
+      "source_sha256_after": "f8e54efd432fb2b3585e899cabfe1df6747cc29be2434a439b6e4a0d2c0b9eb6",
+      "copy_sha256": "f8e54efd432fb2b3585e899cabfe1df6747cc29be2434a439b6e4a0d2c0b9eb6"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-21/host.stage",
+      "copy": "attempt/runner/case-21/host.stage",
+      "bytes": 830,
+      "source_sha256_before": "a6d4bf1cf5abe60745b923970eed2aa885239ddbd81c7916f5a6c74ca34dad0c",
+      "source_sha256_after": "a6d4bf1cf5abe60745b923970eed2aa885239ddbd81c7916f5a6c74ca34dad0c",
+      "copy_sha256": "a6d4bf1cf5abe60745b923970eed2aa885239ddbd81c7916f5a6c74ca34dad0c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-21/probes/manifest.json",
+      "copy": "attempt/runner/case-21/probes/manifest.json",
+      "bytes": 8586,
+      "source_sha256_before": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "source_sha256_after": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435",
+      "copy_sha256": "77573b94a8ababfe83c185e6070c1f5c5657968af0767c0bcf65773bf5141435"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-21/test.stderr",
+      "copy": "attempt/runner/case-21/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-21/test.stdout",
+      "copy": "attempt/runner/case-21/test.stdout",
+      "bytes": 309,
+      "source_sha256_before": "741d9ebda7e0062e7685e3096a7eec1d1015f56f0c347b32260fc79b74b64979",
+      "source_sha256_after": "741d9ebda7e0062e7685e3096a7eec1d1015f56f0c347b32260fc79b74b64979",
+      "copy_sha256": "741d9ebda7e0062e7685e3096a7eec1d1015f56f0c347b32260fc79b74b64979"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/case-21/w05/manifest.json",
+      "copy": "attempt/runner/case-21/w05/manifest.json",
+      "bytes": 555,
+      "source_sha256_before": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "source_sha256_after": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1",
+      "copy_sha256": "098f0525b4497d0e3eb6915391e2de96e000a2f28e2a25bc5d47ecb4002766a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/listing/case.json",
+      "copy": "attempt/runner/listing/case.json",
+      "bytes": 1935,
+      "source_sha256_before": "325e72c297f5053e554c8071cace134bdd7ce6a304cda5ef4ad822b92671e9a1",
+      "source_sha256_after": "325e72c297f5053e554c8071cace134bdd7ce6a304cda5ef4ad822b92671e9a1",
+      "copy_sha256": "325e72c297f5053e554c8071cace134bdd7ce6a304cda5ef4ad822b92671e9a1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/listing/test.stderr",
+      "copy": "attempt/runner/listing/test.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/listing/test.stdout",
+      "copy": "attempt/runner/listing/test.stdout",
+      "bytes": 1915,
+      "source_sha256_before": "676b7db640fa9b9af98f0aa417a79d1f854599e57e07b68be2a923bd17dba4c9",
+      "source_sha256_after": "676b7db640fa9b9af98f0aa417a79d1f854599e57e07b68be2a923bd17dba4c9",
+      "copy_sha256": "676b7db640fa9b9af98f0aa417a79d1f854599e57e07b68be2a923bd17dba4c9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/manifest.json",
+      "copy": "attempt/runner/manifest.json",
+      "bytes": 923,
+      "source_sha256_before": "664b2b626210e2d596e75a8f57bf86f74c572ead102a8542f61562c741b3e32a",
+      "source_sha256_after": "664b2b626210e2d596e75a8f57bf86f74c572ead102a8542f61562c741b3e32a",
+      "copy_sha256": "664b2b626210e2d596e75a8f57bf86f74c572ead102a8542f61562c741b3e32a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/selection.json",
+      "copy": "attempt/runner/selection.json",
+      "bytes": 1904,
+      "source_sha256_before": "1e75ffc530a56917c3b78682e191accd64e0f23d5441dc3d536953c0834e42d2",
+      "source_sha256_after": "1e75ffc530a56917c3b78682e191accd64e0f23d5441dc3d536953c0834e42d2",
+      "copy_sha256": "1e75ffc530a56917c3b78682e191accd64e0f23d5441dc3d536953c0834e42d2"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/source-after-build.json",
+      "copy": "attempt/runner/source-after-build.json",
+      "bytes": 216,
+      "source_sha256_before": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "source_sha256_after": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "copy_sha256": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/source-after.json",
+      "copy": "attempt/runner/source-after.json",
+      "bytes": 216,
+      "source_sha256_before": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "source_sha256_after": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "copy_sha256": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/source-before.json",
+      "copy": "attempt/runner/source-before.json",
+      "bytes": 216,
+      "source_sha256_before": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "source_sha256_after": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "copy_sha256": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/source-final.json",
+      "copy": "attempt/runner/source-final.json",
+      "bytes": 216,
+      "source_sha256_before": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "source_sha256_after": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1",
+      "copy_sha256": "1b14efcc5e4b327c317d3c09e5dc6d9581079c2e438fa59d540cf5eb59dbcad1"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/test-build-meta.json",
+      "copy": "attempt/runner/test-build-meta.json",
+      "bytes": 369,
+      "source_sha256_before": "f988349669a170c7d6aa27e25d169698059fdeb8f3433760c9044f169371b1d3",
+      "source_sha256_after": "f988349669a170c7d6aa27e25d169698059fdeb8f3433760c9044f169371b1d3",
+      "copy_sha256": "f988349669a170c7d6aa27e25d169698059fdeb8f3433760c9044f169371b1d3"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/test-build.jsonl",
+      "copy": "attempt/runner/test-build.jsonl",
+      "bytes": 200380,
+      "source_sha256_before": "4e82e6c295624ced0ece773f6ccf3ba23dd6d3f6cf6f4221bb52c27c8d696378",
+      "source_sha256_after": "4e82e6c295624ced0ece773f6ccf3ba23dd6d3f6cf6f4221bb52c27c8d696378",
+      "copy_sha256": "4e82e6c295624ced0ece773f6ccf3ba23dd6d3f6cf6f4221bb52c27c8d696378"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner/test-build.stderr",
+      "copy": "attempt/runner/test-build.stderr",
+      "bytes": 147,
+      "source_sha256_before": "2dd1d5517001e83c38416724781366cf62b9016574528ed8ae460ef1c364833a",
+      "source_sha256_after": "2dd1d5517001e83c38416724781366cf62b9016574528ed8ae460ef1c364833a",
+      "copy_sha256": "2dd1d5517001e83c38416724781366cf62b9016574528ed8ae460ef1c364833a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner.stderr",
+      "copy": "attempt/runner.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/runner.stdout",
+      "copy": "attempt/runner.stdout",
+      "bytes": 77,
+      "source_sha256_before": "ee2b2cc8c0959021cef59c5484d3314026282f96ccb35ae897cdb0d2f8f6db88",
+      "source_sha256_after": "ee2b2cc8c0959021cef59c5484d3314026282f96ccb35ae897cdb0d2f8f6db88",
+      "copy_sha256": "ee2b2cc8c0959021cef59c5484d3314026282f96ccb35ae897cdb0d2f8f6db88"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/source-before.json",
+      "copy": "attempt/source-before.json",
+      "bytes": 258,
+      "source_sha256_before": "80fa9a54fa90423ab01542abe179abef46419e653c74c14ff69eeac31e743fa9",
+      "source_sha256_after": "80fa9a54fa90423ab01542abe179abef46419e653c74c14ff69eeac31e743fa9",
+      "copy_sha256": "80fa9a54fa90423ab01542abe179abef46419e653c74c14ff69eeac31e743fa9"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/source-files-before.json",
+      "copy": "attempt/source-files-before.json",
+      "bytes": 33569,
+      "source_sha256_before": "9b7f293d058f7b3f1c53d1ed9f8ead274dd68fd7c58475a8523015f53445929a",
+      "source_sha256_after": "9b7f293d058f7b3f1c53d1ed9f8ead274dd68fd7c58475a8523015f53445929a",
+      "copy_sha256": "9b7f293d058f7b3f1c53d1ed9f8ead274dd68fd7c58475a8523015f53445929a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/source-files-final.json",
+      "copy": "attempt/source-files-final.json",
+      "bytes": 33569,
+      "source_sha256_before": "9b7f293d058f7b3f1c53d1ed9f8ead274dd68fd7c58475a8523015f53445929a",
+      "source_sha256_after": "9b7f293d058f7b3f1c53d1ed9f8ead274dd68fd7c58475a8523015f53445929a",
+      "copy_sha256": "9b7f293d058f7b3f1c53d1ed9f8ead274dd68fd7c58475a8523015f53445929a"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/source-final.json",
+      "copy": "attempt/source-final.json",
+      "bytes": 258,
+      "source_sha256_before": "6903d8087a444ad944abc547b9ae767084b0db11499ccb9b87b4ead990439705",
+      "source_sha256_after": "6903d8087a444ad944abc547b9ae767084b0db11499ccb9b87b4ead990439705",
+      "copy_sha256": "6903d8087a444ad944abc547b9ae767084b0db11499ccb9b87b4ead990439705"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/supervisor.stderr",
+      "copy": "attempt/supervisor.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/supervisor.stdout",
+      "copy": "attempt/supervisor.stdout",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/toolchain.log",
+      "copy": "attempt/toolchain.log",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-attempt1/window-result.json",
+      "copy": "attempt/window-result.json",
+      "bytes": 163,
+      "source_sha256_before": "46107827e60dbebb90e715e7ae97a8645b26d3bab63260158e1759f5bf5976f5",
+      "source_sha256_after": "46107827e60dbebb90e715e7ae97a8645b26d3bab63260158e1759f5bf5976f5",
+      "copy_sha256": "46107827e60dbebb90e715e7ae97a8645b26d3bab63260158e1759f5bf5976f5"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-prepared/GateProcess.cs",
+      "copy": "prepared/GateProcess.cs",
+      "bytes": 3909,
+      "source_sha256_before": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42",
+      "source_sha256_after": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42",
+      "copy_sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-prepared/launch.ps1",
+      "copy": "prepared/launch.ps1",
+      "bytes": 7958,
+      "source_sha256_before": "a848c720d42fdd9e1fbae9e14c882626e2591b0118fc044973967e3f87dcf43d",
+      "source_sha256_after": "a848c720d42fdd9e1fbae9e14c882626e2591b0118fc044973967e3f87dcf43d",
+      "copy_sha256": "a848c720d42fdd9e1fbae9e14c882626e2591b0118fc044973967e3f87dcf43d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-prepared/manifest.json",
+      "copy": "prepared/manifest.json",
+      "bytes": 800,
+      "source_sha256_before": "962f176319122e3e7ede6611cb78f14528552a316adab385446120825ae96a07",
+      "source_sha256_after": "962f176319122e3e7ede6611cb78f14528552a316adab385446120825ae96a07",
+      "copy_sha256": "962f176319122e3e7ede6611cb78f14528552a316adab385446120825ae96a07"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-a436-prepared/supervisor.ps1",
+      "copy": "prepared/supervisor.ps1",
+      "bytes": 6130,
+      "source_sha256_before": "4685d6244fcbfef568aa85e65b60007ee844a52911960152ae1b3cc12cbca14b",
+      "source_sha256_after": "4685d6244fcbfef568aa85e65b60007ee844a52911960152ae1b3cc12cbca14b",
+      "copy_sha256": "4685d6244fcbfef568aa85e65b60007ee844a52911960152ae1b3cc12cbca14b"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/tests/support/wasm_worker_process/run-controlled.ps1",
+      "copy": "tracked-runner/run-controlled.ps1",
+      "bytes": 16925,
+      "source_sha256_before": "e9843e61f1e97ec5b0149030a8519038e2970a532dc4277f6fdc5436763ac9c0",
+      "source_sha256_after": "e9843e61f1e97ec5b0149030a8519038e2970a532dc4277f6fdc5436763ac9c0",
+      "copy_sha256": "e9843e61f1e97ec5b0149030a8519038e2970a532dc4277f6fdc5436763ac9c0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/tests/support/wasm_worker_process/DirectProcess.cs",
+      "copy": "tracked-runner/DirectProcess.cs",
+      "bytes": 3316,
+      "source_sha256_before": "7c85ab87fe34ba201015ed078dc7aada3c48cba02bffcf3418af1a007e33949d",
+      "source_sha256_after": "7c85ab87fe34ba201015ed078dc7aada3c48cba02bffcf3418af1a007e33949d",
+      "copy_sha256": "7c85ab87fe34ba201015ed078dc7aada3c48cba02bffcf3418af1a007e33949d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/tests/support/wasm_worker_process/prepare-probes.ps1",
+      "copy": "tracked-runner/prepare-probes.ps1",
+      "bytes": 1821,
+      "source_sha256_before": "88e11236e21b387837e361891835b8eed43eb5389a10cec12086fdd1fb7be450",
+      "source_sha256_after": "88e11236e21b387837e361891835b8eed43eb5389a10cec12086fdd1fb7be450",
+      "copy_sha256": "88e11236e21b387837e361891835b8eed43eb5389a10cec12086fdd1fb7be450"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/tests/support/wasm_worker_process/prepare-w05.ps1",
+      "copy": "tracked-runner/prepare-w05.ps1",
+      "bytes": 1168,
+      "source_sha256_before": "1197ce986383010ef48b6f52aa396d92829febed50e3e37ab0499372d271fbf2",
+      "source_sha256_after": "1197ce986383010ef48b6f52aa396d92829febed50e3e37ab0499372d271fbf2",
+      "copy_sha256": "1197ce986383010ef48b6f52aa396d92829febed50e3e37ab0499372d271fbf2"
+    }
+  ]
+}

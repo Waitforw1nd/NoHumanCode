@@ -1,0 +1,24 @@
+{
+  "candidate_head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+  "product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+  "rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+  "scope": "full controlled 21",
+  "tracked_runner": "NoManCode/rust-app/tests/support/wasm_worker_process/run-controlled.ps1",
+  "files": [
+    {
+      "path": "GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "path": "launch.ps1",
+      "bytes": 7958,
+      "sha256": "a848c720d42fdd9e1fbae9e14c882626e2591b0118fc044973967e3f87dcf43d"
+    },
+    {
+      "path": "supervisor.ps1",
+      "bytes": 6130,
+      "sha256": "4685d6244fcbfef568aa85e65b60007ee844a52911960152ae1b3cc12cbca14b"
+    }
+  ]
+}

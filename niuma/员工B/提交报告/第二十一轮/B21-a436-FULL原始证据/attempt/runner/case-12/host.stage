@@ -1,0 +1,63 @@
+phase=supervision_started pid=None
+p01={"active_limit":1,"host_in_any_job":1,"host_in_any_job_error":null,"host_in_any_job_query_ok":true,"host_pid":83280,"kind":"configuration","limit_flags":8458,"monotonic_us":0,"observed_unix_ms":1793576427848,"sequence":0}
+phase=p01_collector_ready pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+p01={"error":258,"key":0,"kind":"dequeue","message":0,"monotonic_us":54660,"observed_unix_ms":1793576427902,"ok":false,"raw_data":0,"sequence":1}
+p01={"assigned":0,"complete":true,"count":0,"error":null,"ids":[],"kind":"list_before_open","monotonic_us":55217,"observed_unix_ms":1793576427903,"ok":true,"scan":1,"sequence":2}
+p01={"ids":[],"kind":"scan_complete","monotonic_us":56127,"observed_unix_ms":1793576427904,"scan":1,"sequence":3,"target_after":null,"target_before":null}
+p01={"error":258,"key":0,"kind":"dequeue","message":0,"monotonic_us":116540,"observed_unix_ms":1793576427964,"ok":false,"raw_data":0,"sequence":4}
+p01={"assigned":0,"complete":true,"count":0,"error":null,"ids":[],"kind":"list_before_open","monotonic_us":117027,"observed_unix_ms":1793576427965,"ok":true,"scan":2,"sequence":5}
+p01={"ids":[],"kind":"scan_complete","monotonic_us":117383,"observed_unix_ms":1793576427965,"scan":2,"sequence":6,"target_after":null,"target_before":null}
+p01={"error":258,"key":0,"kind":"dequeue","message":0,"monotonic_us":179920,"observed_unix_ms":1793576428028,"ok":false,"raw_data":0,"sequence":7}
+p01={"assigned":0,"complete":true,"count":0,"error":null,"ids":[],"kind":"list_before_open","monotonic_us":180283,"observed_unix_ms":1793576428028,"ok":true,"scan":3,"sequence":8}
+p01={"ids":[],"kind":"scan_complete","monotonic_us":180555,"observed_unix_ms":1793576428028,"scan":3,"sequence":9,"target_after":null,"target_before":null}
+p01={"error":null,"key":1,"kind":"dequeue","message":6,"monotonic_us":199358,"observed_unix_ms":1793576428047,"ok":true,"raw_data":68536,"sequence":10}
+p01={"accounting_error":null,"accounting_ok":true,"active":1,"any_job":1,"any_job_error":null,"any_job_ok":true,"creation_filetime":134380500278521121,"end_monotonic_us":199996,"handle_pid":68536,"handle_pid_error":null,"image":"E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-a436-attempt1\\runner\\case-12\\probes\\p01-memory.exe","image_error":null,"kind":"notification","list_assigned":1,"list_complete":true,"list_count":1,"list_error":null,"list_ids":[68536],"list_ok":true,"member":1,"member_error":null,"member_ok":true,"message":6,"monotonic_us":200005,"observed_unix_ms":1793576428047,"pid":68536,"process_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"process_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"retained_handle":true,"scan":0,"sequence":11,"start_monotonic_us":199809,"target_after":null,"target_before":null,"terminated":0,"times_error":null,"times_ok":true,"total":1,"wait":258}
+p01={"assigned":1,"complete":true,"count":1,"error":null,"ids":[68536],"kind":"list_before_open","monotonic_us":200804,"observed_unix_ms":1793576428048,"ok":true,"scan":4,"sequence":12}
+p01={"accounting_error":null,"accounting_ok":true,"active":1,"any_job":1,"any_job_error":null,"any_job_ok":true,"creation_filetime":134380500278521121,"end_monotonic_us":201177,"handle_pid":68536,"handle_pid_error":null,"image":"E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-a436-attempt1\\runner\\case-12\\probes\\p01-memory.exe","image_error":null,"kind":"job_list","list_assigned":1,"list_complete":true,"list_count":1,"list_error":null,"list_ids":[68536],"list_ok":true,"member":1,"member_error":null,"member_ok":true,"message":0,"monotonic_us":201185,"observed_unix_ms":1793576428049,"pid":68536,"process_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"process_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"retained_handle":true,"scan":4,"sequence":13,"start_monotonic_us":201051,"target_after":null,"target_before":null,"terminated":0,"times_error":null,"times_ok":true,"total":1,"wait":258}
+p01={"ids":[68536],"kind":"scan_complete","monotonic_us":201768,"observed_unix_ms":1793576428049,"scan":4,"sequence":14,"target_after":null,"target_before":null}
+phase=created_suspended pid=Some(68536)
+p01={"accounting_error":null,"accounting_ok":true,"active":1,"any_job":1,"any_job_error":null,"any_job_ok":true,"creation_filetime":134380500278521121,"end_monotonic_us":202753,"handle_pid":68536,"handle_pid_error":null,"image":"E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-a436-attempt1\\runner\\case-12\\probes\\p01-memory.exe","image_error":null,"kind":"host_suspended","list_assigned":1,"list_complete":true,"list_count":1,"list_error":null,"list_ids":[68536],"list_ok":true,"member":1,"member_error":null,"member_ok":true,"message":0,"monotonic_us":202764,"observed_unix_ms":1793576428050,"pid":68536,"process_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"process_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"retained_handle":true,"scan":0,"sequence":15,"start_monotonic_us":202646,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"terminated":0,"times_error":null,"times_ok":true,"total":1,"wait":258}
+phase=resume_ticket_granted pid=Some(68536)
+phase=resume_api_return pid=Some(68536) count=1
+phase=resumed pid=Some(68536)
+phase=cpu_first_user_100ns pid=Some(68536) count=0
+phase=submit_ticket_granted pid=Some(68536)
+phase=stdin_io_settled pid=Some(68536)
+p01={"error":258,"key":0,"kind":"dequeue","message":0,"monotonic_us":258107,"observed_unix_ms":1793576428106,"ok":false,"raw_data":0,"sequence":16}
+p01={"assigned":1,"complete":true,"count":1,"error":null,"ids":[68536],"kind":"list_before_open","monotonic_us":258697,"observed_unix_ms":1793576428106,"ok":true,"scan":5,"sequence":17}
+p01={"accounting_error":null,"accounting_ok":true,"active":1,"any_job":1,"any_job_error":null,"any_job_ok":true,"creation_filetime":134380500278521121,"end_monotonic_us":259151,"handle_pid":68536,"handle_pid_error":null,"image":"E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-a436-attempt1\\runner\\case-12\\probes\\p01-memory.exe","image_error":null,"kind":"job_list","list_assigned":1,"list_complete":true,"list_count":1,"list_error":null,"list_ids":[68536],"list_ok":true,"member":1,"member_error":null,"member_ok":true,"message":0,"monotonic_us":259160,"observed_unix_ms":1793576428107,"pid":68536,"process_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"process_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"retained_handle":true,"scan":5,"sequence":18,"start_monotonic_us":258999,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"terminated":0,"times_error":null,"times_ok":true,"total":1,"wait":258}
+p01={"ids":[68536],"kind":"scan_complete","monotonic_us":259837,"observed_unix_ms":1793576428107,"scan":5,"sequence":19,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null}}
+p01={"error":null,"key":1,"kind":"dequeue","message":9,"monotonic_us":263821,"observed_unix_ms":1793576428111,"ok":true,"raw_data":68536,"sequence":20}
+p01={"accounting_error":null,"accounting_ok":true,"active":1,"any_job":1,"any_job_error":null,"any_job_ok":true,"creation_filetime":134380500278521121,"end_monotonic_us":264232,"handle_pid":68536,"handle_pid_error":null,"image":null,"image_error":5,"kind":"notification","list_assigned":1,"list_complete":true,"list_count":1,"list_error":null,"list_ids":[68536],"list_ok":true,"member":1,"member_error":null,"member_ok":true,"message":9,"monotonic_us":264239,"observed_unix_ms":1793576428112,"pid":68536,"process_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"process_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"retained_handle":true,"scan":0,"sequence":21,"start_monotonic_us":264139,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":258,"wait_error":null},"terminated":0,"times_error":null,"times_ok":true,"total":1,"wait":258}
+p01={"assigned":0,"complete":true,"count":0,"error":null,"ids":[],"kind":"list_before_open","monotonic_us":264867,"observed_unix_ms":1793576428113,"ok":true,"scan":6,"sequence":22}
+p01={"ids":[],"kind":"scan_complete","monotonic_us":265107,"observed_unix_ms":1793576428113,"scan":6,"sequence":23,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null}}
+p01={"error":null,"key":1,"kind":"dequeue","message":7,"monotonic_us":265356,"observed_unix_ms":1793576428113,"ok":true,"raw_data":68536,"sequence":24}
+phase=stdout_eof pid=Some(68536)
+phase=stderr_eof pid=Some(68536)
+phase=process_wait pid=Some(68536) count=0
+phase=job_query pid=Some(68536) count=1
+phase=job_active pid=Some(68536) count=0
+phase=job_user_100ns pid=Some(68536) count=0
+phase=job_extended_query pid=Some(68536) count=1
+phase=job_memory_limit pid=Some(68536) count=134217728
+phase=job_peak_process_memory pid=Some(68536) count=131026944
+phase=job_cpu_limit_100ns pid=Some(68536) count=30000000
+phase=cpu_final_user_100ns pid=Some(68536) count=0
+phase=io_complete_reaped pid=Some(68536)
+phase=stderr_io_settled pid=Some(68536)
+p01={"accounting_error":null,"accounting_ok":true,"active":0,"any_job":1,"any_job_error":null,"any_job_ok":true,"creation_filetime":134380500278521121,"end_monotonic_us":265608,"handle_pid":68536,"handle_pid_error":null,"image":null,"image_error":31,"kind":"notification","list_assigned":0,"list_complete":true,"list_count":0,"list_error":null,"list_ids":[],"list_ok":true,"member":1,"member_error":null,"member_ok":true,"message":7,"monotonic_us":267330,"observed_unix_ms":1793576428113,"pid":68536,"process_after":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"process_before":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"retained_handle":true,"scan":0,"sequence":25,"start_monotonic_us":265537,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"terminated":0,"times_error":null,"times_ok":true,"total":1,"wait":0}
+phase=stdout_io_settled pid=Some(68536)
+p01={"assigned":0,"complete":true,"count":0,"error":null,"ids":[],"kind":"list_before_open","monotonic_us":268099,"observed_unix_ms":1793576428116,"ok":true,"scan":7,"sequence":26}
+p01={"ids":[],"kind":"scan_complete","monotonic_us":268335,"observed_unix_ms":1793576428116,"scan":7,"sequence":27,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null}}
+p01={"error":null,"key":1,"kind":"dequeue","message":4,"monotonic_us":268560,"observed_unix_ms":1793576428116,"ok":true,"raw_data":0,"sequence":28}
+p01={"kind":"nonprocess_notification","message":4,"monotonic_us":268749,"observed_unix_ms":1793576428116,"raw_data":0,"sequence":29}
+p01={"assigned":0,"complete":true,"count":0,"error":null,"ids":[],"kind":"list_before_open","monotonic_us":268926,"observed_unix_ms":1793576428117,"ok":true,"scan":8,"sequence":30}
+p01={"ids":[],"kind":"scan_complete","monotonic_us":269136,"observed_unix_ms":1793576428117,"scan":8,"sequence":31,"target_after":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null},"target_before":{"member":1,"member_error":null,"member_ok":true,"wait":0,"wait_error":null}}
+p01={"error":258,"key":0,"kind":"dequeue","message":0,"monotonic_us":321218,"observed_unix_ms":1793576428169,"ok":false,"raw_data":0,"sequence":32}
+phase=p01_collector_stopped pid=None
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(68536)
+phase=supervisor_platform_returned pid=None

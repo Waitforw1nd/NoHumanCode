@@ -1,3 +1,7 @@
+## 2026-11-02 a436矩阵核收与四门签窗（摘要记录）
+
+更新人：项目经理。a436完整21矩阵各1/0，原supervisor81924退出0，192源码前后/当前相同、1200固定与每例EXE零差异，230原件903588字节双hash核零差异。已签B Lorentz原树final4-a436-attempt1唯一窗口：debug Host build、workspace显式单线程test、fmt、UI wasm；同候选check/Clippy已通过无需重复。C Euclid继续完整U静态，新增反馈Git普通拒绝不可全部变永久unknown、核recover/controller绑定；D冻结。下一第一操作核四门实际终态和完整证据，再做W2最终审查。主线W1-ID01/schema17未改、W2/U未合、41继承行完整，三版后续未完成。
+
 ## 2026-11-02 a436矩阵签窗（摘要记录）
 
 更新人：项目经理。新矩阵两脚本逐行及四门相对旧外围diff已审、8文件hash吻合；矩阵manifest962f1763、四门ea51f553。只签B Lorentz原树a436完整21矩阵attempt1，192源码/三固定件及每例工件、两锁和原监督边界按审查记录核证；四门尚未签动态。check/Clippy当前候选0已归档。C Euclid继续全入口U静态，现24文件2647+/406-，HEAD a799、index空，未形成完整候选；D冻结。下一第一操作核矩阵实际原件与双hash，再签四门。主线W1-ID01/schema17不变，W2/U未合、继承41行保持、核心三版目标继续。

@@ -1,0 +1,16 @@
+{
+  "source": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-a436-attempt1\\runner\\fixed\\probe.exe",
+  "source_sha256": "20d55aa460182f930a2505b32b05a28b73ca3b98891d114d44eb4ae9d31286fe",
+  "copies": [
+    {
+      "scenario": "resumed",
+      "bytes": 2755072,
+      "sha256": "20d55aa460182f930a2505b32b05a28b73ca3b98891d114d44eb4ae9d31286fe"
+    },
+    {
+      "scenario": "pending",
+      "bytes": 2755072,
+      "sha256": "20d55aa460182f930a2505b32b05a28b73ca3b98891d114d44eb4ae9d31286fe"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+
+running 1 test
+test wasm_worker_process_tests::fault_matrix::w03_pipe_fault_matrix ... zero-stdout actual_zero_read_observed=false
+zero-stdout pid=82956 elapsed_ms=250 result=Err(Protocol)
+zero-stderr actual_zero_read_observed=false
+zero-stderr pid=55548 elapsed_ms=280 result=Ok(WorkerSuccess { decision: Stop, process_id: 55548, exit_code: 0, process_signaled: true, job_active_processes: 0, io_completed: true })
+stdout-limit pid=82364 elapsed_ms=365 result=Err(Protocol)
+stderr-limit pid=81336 elapsed_ms=291 result=Err(IsolationUnavailable("stderr_limit", None))
+no-read pid=70920 elapsed_ms=5008 result=Err(Deadline)
+partial-read pid=3128 elapsed_ms=380 result=Err(IsolationUnavailable("io_completion", Some(109)))
+partial-stdout pid=83196 elapsed_ms=5011 result=Err(Deadline)
+closed-stdout pid=83220 elapsed_ms=5008 result=Err(Deadline)
+concurrent pid=312 elapsed_ms=5017 result=Err(Deadline)
+dual-pressure pid=81440 elapsed_ms=398 result=Err(IsolationUnavailable("stderr_limit", None))
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 405 filtered out; finished in 23.97s
+

@@ -1,0 +1,4 @@
+pid=3128 phase=started
+pid=3128 phase=read_32
+pid=3128 phase=pending_confirmed
+pid=3128 phase=stdin_closed

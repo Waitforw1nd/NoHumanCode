@@ -1,0 +1,10 @@
+{
+  "checked_utc": "2026-11-01T23:48:02.488620+00:00",
+  "author": "项目经理",
+  "manifest": "niuma/员工B/提交报告/第二十一轮/B21-a436-FULL原始证据/双hash清单.json",
+  "manifest_sha256": "cb016fccc2a3c530d1d5c993ec974290d7e88e33ee6545ab2c1b6f7b8f3952bb",
+  "count": 230,
+  "bytes": 903588,
+  "mismatches": 0,
+  "scope": "源/副逐字节及原清单全部hash核验，EXE另见矩阵工件核验"
+}

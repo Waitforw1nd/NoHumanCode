@@ -1,0 +1,5 @@
+pid=41096 phase=started
+pid=41096 phase=request_eof
+pid=41096 phase=memory_allocation_start
+pid=41096 phase=memory_allocation_failed count=130023424 error=1455
+pid=41096 phase=memory_allocation_failed

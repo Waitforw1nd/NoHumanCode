@@ -1,0 +1,12 @@
+pid=32100 phase=started
+pid=32100 phase=request_eof
+pid=32100 phase=cpu_loop_start
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_threads_started
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_thread_started
+pid=32100 phase=cpu_thread_started
