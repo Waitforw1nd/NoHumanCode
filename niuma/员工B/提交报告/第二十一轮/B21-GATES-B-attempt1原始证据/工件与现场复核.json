@@ -1,0 +1,56 @@
+{
+  "utc": "2026-11-01T23:01:35.577562+00:00",
+  "checks": [
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-c-f898-attempt1/runner/fixed/worker.exe",
+      "expected": "05d1a4b1c8c089f175ec316001036723930ba8dbdd4e7fb26ffca415f0770691",
+      "actual": "05d1a4b1c8c089f175ec316001036723930ba8dbdd4e7fb26ffca415f0770691",
+      "match": true
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-c-f898-attempt1/runner/fixed/probe.exe",
+      "expected": "6691e01d920e457d942d5a3e17883ea55e35a0dbbeb056c10d139bc530c70e6a",
+      "actual": "6691e01d920e457d942d5a3e17883ea55e35a0dbbeb056c10d139bc530c70e6a",
+      "match": true
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-c-f898-attempt1/runner/fixed/lib-test.exe",
+      "expected": "6b98bbaa4313d0d5e72b6ed13c7847858e2a41a6f7262ad62e86d6dd560ca38d",
+      "actual": "6b98bbaa4313d0d5e72b6ed13c7847858e2a41a6f7262ad62e86d6dd560ca38d",
+      "match": true
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt1/artifact/peachsh.exe",
+      "expected": "4989c227468ca477da3d31a4aeca0116cd88c6d8455daa7506556c9859f5a29a",
+      "actual": "4989c227468ca477da3d31a4aeca0116cd88c6d8455daa7506556c9859f5a29a",
+      "match": true
+    },
+    {
+      "path": "../nhc-b-tool-call-application/NoManCode/rust-app/.local/next19-b-a7fe2626-attempt4/target/debug/peachsh.exe",
+      "expected": "4989c227468ca477da3d31a4aeca0116cd88c6d8455daa7506556c9859f5a29a",
+      "actual": "e34312754b08e514feae01520f5cb311e37c984d7486e93ab1cebfc3e732ec32",
+      "match": false
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/nhc-w2-window.lock",
+      "actual": "a810bed31bfb6ad756df4f901cadcd976f7db078ee6bb59ca31c5c4d3e7c103a",
+      "bytes": 457
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt1/03-test-serial.stdout",
+      "actual": "3329d6aac9087dec4729c21611166702188e2b236f13d5544609361123186c43",
+      "bytes": 14595
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt1/03-test-serial.stderr",
+      "actual": "991ff0f069cbabe8ce1c6e6fb30d7d1e897b6e70a62f03750ef8885fb45a0dcb",
+      "bytes": 5209
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-prepared/manifest.json",
+      "actual": "9cc4dba82ac2a63d18e4ab44e79949e4a2f079cb10ec3b8f72dbafe9817cad31",
+      "bytes": 548
+    }
+  ],
+  "paths_relative_to": "repository root"
+}

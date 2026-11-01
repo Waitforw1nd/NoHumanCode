@@ -1,0 +1,56 @@
+{
+  "utc": "2026-11-01T23:01:35.0822925Z",
+  "os_boot_local": "2026-10-31T08:39:59.5000000+08:00",
+  "excluded_current_query_pid": 39416,
+  "criteria": "named cargo/rustc/git/cmd/pwsh/powershell/peachsh/wasm/test executables, original PIDs, B worktree/cache paths in executable or command line",
+  "other_shell_command_lines": "omitted unless B path matches",
+  "processes": [
+    {
+      "pid": 22292,
+      "parent_pid": 45284,
+      "name": "cmd.exe",
+      "executable": "C:\\Windows\\system32\\cmd.exe",
+      "creation": "2026-10-31T06:14:48.1645710Z",
+      "b_path_match": false,
+      "command_line": null
+    },
+    {
+      "pid": 45048,
+      "parent_pid": 45284,
+      "name": "cmd.exe",
+      "executable": "C:\\Windows\\system32\\cmd.exe",
+      "creation": "2026-10-31T12:16:37.4341150Z",
+      "b_path_match": false,
+      "command_line": null
+    },
+    {
+      "pid": 1088,
+      "parent_pid": 69392,
+      "name": "cmd.exe",
+      "executable": "C:\\Windows\\system32\\cmd.exe",
+      "creation": "2026-11-01T22:56:44.0165700Z",
+      "b_path_match": false,
+      "command_line": null
+    },
+    {
+      "pid": 76140,
+      "parent_pid": 69392,
+      "name": "cmd.exe",
+      "executable": "C:\\Windows\\system32\\cmd.exe",
+      "creation": "2026-11-01T22:59:21.9316840Z",
+      "b_path_match": false,
+      "command_line": null
+    },
+    {
+      "pid": 73464,
+      "parent_pid": 69392,
+      "name": "cmd.exe",
+      "executable": "C:\\Windows\\system32\\cmd.exe",
+      "creation": "2026-11-01T23:00:01.0422180Z",
+      "b_path_match": false,
+      "command_line": null
+    }
+  ],
+  "original_pids_present": [],
+  "limits": "point-in-time snapshot; does not prove original handle signal or all descendants reaped"
+}

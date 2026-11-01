@@ -1,0 +1,31 @@
+{
+  "checked_utc": "2026-11-01T23:04:07.292173+00:00",
+  "author": "项目经理",
+  "manifest": "niuma/员工B/提交报告/第二十一轮/B21-GATES-B-attempt1原始证据/双hash清单.json",
+  "manifest_sha256": "0a39f861339cc88a91d79c53d05153e0bf5514f7b82f566816d3a7e9d874cfee",
+  "files": 33,
+  "bytes": 251515,
+  "mismatches": 0,
+  "current_source_files_checked": 192,
+  "source_mismatches": 0,
+  "immutable_artifacts_checked": [
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-c-f898-attempt1/runner/fixed/worker.exe",
+      "sha256": "05d1a4b1c8c089f175ec316001036723930ba8dbdd4e7fb26ffca415f0770691"
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-c-f898-attempt1/runner/fixed/probe.exe",
+      "sha256": "6691e01d920e457d942d5a3e17883ea55e35a0dbbeb056c10d139bc530c70e6a"
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-c-f898-attempt1/runner/fixed/lib-test.exe",
+      "sha256": "6b98bbaa4313d0d5e72b6ed13c7847858e2a41a6f7262ad62e86d6dd560ca38d"
+    },
+    {
+      "path": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt1/artifact/peachsh.exe",
+      "sha256": "4989c227468ca477da3d31a4aeca0116cd88c6d8455daa7506556c9859f5a29a"
+    }
+  ],
+  "attempt_status": "check/build 0; test no terminal evidence; fmt/clippy/wasm not run",
+  "scope": "publication bytes and current source/artifacts only; not original process termination proof"
+}
