@@ -1,0 +1,17 @@
+{
+  "state": "completed",
+  "expected_head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+  "attempt": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-attempt1",
+  "target": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target",
+  "pid": 82020,
+  "creation_filetime": 134380492309280011,
+  "stdout": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-attempt1\\supervisor.stdout",
+  "stderr": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-attempt1\\supervisor.stderr",
+  "started_utc": "2026-11-01T23:27:10.4863310Z",
+  "command": "\"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" -NoProfile -File \"E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-prepared\\supervisor.ps1\" -AttemptDir \"E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-attempt1\" -TargetDir \"E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\"",
+  "flags": "CREATE_SUSPENDED | CREATE_NO_WINDOW",
+  "timeout_seconds": 2700,
+  "creation_error": 0,
+  "exit_code": 0,
+  "signal_utc": "2026-11-01T23:27:54.9159063Z"
+}

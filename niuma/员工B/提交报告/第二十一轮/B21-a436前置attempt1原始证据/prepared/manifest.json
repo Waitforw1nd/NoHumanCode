@@ -1,0 +1,23 @@
+{
+  "candidate_head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+  "product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+  "rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+  "scope": "preflight check and clippy only",
+  "files": [
+    {
+      "path": "GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "path": "launch.ps1",
+      "bytes": 7009,
+      "sha256": "36092b054ee42ebe861a4c4bd9da34bcb94c1ffa5ac038e14ff6d3d086876d5f"
+    },
+    {
+      "path": "supervisor.ps1",
+      "bytes": 9032,
+      "sha256": "cbb8ad73fd5e352941167d5514c60fecc412e25e2ef240b7e81259ef49a98e9e"
+    }
+  ]
+}

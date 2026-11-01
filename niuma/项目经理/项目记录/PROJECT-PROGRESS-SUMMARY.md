@@ -1,3 +1,7 @@
+## 2026-11-02 a436前置核收
+
+当前a436 check/Clippy两项0，192源码相同、29发布原件经理核验零差异。B下一21矩阵与build/workspace test/fmt/UI四门仍待，不能视作W2完成。C完整U静态继续，主线W1-ID01/schema17未合W2/U；下一操作审具体矩阵外围，核心三版持续。
+
 ## 2026-11-02 当前固定B为a436但尚未动态
 
 更新人：项目经理。B新固定a4366b56cc88644336d45f961313f294b05ea5ec（产品4935f1aa104de548c97a26043cb0d5e442e24dea/Rustbfea730396003f4aa675cc25dcfaa1c6b39f1e14）两份测试代码最小lint差异已完整静审，clean/index空，新候选无动态证据。唯一B Lorentz继续生成仅check→Clippy新外围固定副本供最后审查，原锁不迁、旧prepared不改，当前没有新重型授权。受影响later分支实为W05 helper；W06事件/继承正控和W05父测试覆盖不得误写成W04。

@@ -1,0 +1,15 @@
+{
+  "name": "01-check",
+  "command": "cargo check --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\"",
+  "start_utc": "2026-11-01T23:27:12.7482269Z",
+  "end_utc": "2026-11-01T23:27:31.2892870Z",
+  "state": "passed",
+  "pid": 78904,
+  "creation_filetime": 134380492327565295,
+  "creation_error": 0,
+  "exit_code": 0,
+  "stdout": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-attempt1\\01-check.stdout",
+  "stderr": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-preflight-a436-attempt1\\01-check.stderr",
+  "timeout_seconds": 1200,
+  "elapsed_ms": 18539
+}

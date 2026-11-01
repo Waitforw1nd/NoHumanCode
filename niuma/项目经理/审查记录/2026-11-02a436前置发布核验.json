@@ -1,0 +1,10 @@
+{
+  "checked_utc": "2026-11-01T23:30:38.703220+00:00",
+  "author": "项目经理",
+  "manifest": "niuma/员工B/提交报告/第二十一轮/B21-a436前置attempt1原始证据/双hash清单.json",
+  "manifest_sha256": "35e65309ce60bfa23a3ff3548c4593ec9dcbef71f18be7512dcff0de92a62226",
+  "files": 29,
+  "bytes": 229113,
+  "mismatches": 0,
+  "scope": "a436 preflight check/clippy only; raw publication"
+}
