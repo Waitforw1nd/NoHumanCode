@@ -26,14 +26,13 @@ static SLOT: AtomicBool = AtomicBool::new(false);
 #[cfg(all(test, windows))]
 fn record_stage(phase: &'static str, pid: Option<u32>) {
     use std::io::Write;
-    if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG") {
-        if let Ok(mut file) = std::fs::OpenOptions::new()
+    if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG")
+        && let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(path)
-        {
-            let _ = writeln!(file, "phase={phase} pid={pid:?}");
-        }
+    {
+        let _ = writeln!(file, "phase={phase} pid={pid:?}");
     }
 }
 #[cfg(not(all(test, windows)))]
@@ -1009,14 +1008,13 @@ mod platform {
 
     fn io_loop(
         input: Vec<u8>,
-        stdin: Arc<OwnedHandle>,
-        stdout: Arc<OwnedHandle>,
-        stderr: Arc<OwnedHandle>,
+        pipes: [Arc<OwnedHandle>; 3],
         process: &mut ProcessGuard,
         stopper: &Stopper,
         gate: &Gate,
         deadline: Instant,
     ) -> Result<Vec<u8>, WorkerError> {
+        let [stdin, stdout, stderr] = pipes;
         let mut writer = Some(Operation::new(stdin, true)?);
         let mut out = Operation::new(stdout, false)?;
         let mut err = Operation::new(stderr, false)?;
@@ -1029,6 +1027,7 @@ mod platform {
         let mut stderr_count = 0usize;
         let mut stdout_eof = false;
         let mut stderr_eof = false;
+        let mut stdout_zero_observed = false;
         loop {
             if gate.stopped(deadline) {
                 gate.stop();
@@ -1069,7 +1068,12 @@ mod platform {
                     }
                 }
                 match op.poll() {
-                    Ok(Some(0)) => *eof = true,
+                    Ok(Some(0)) => {
+                        if target && !stdout_zero_observed {
+                            record_stage("stdout_zero_read", Some(process.pid));
+                            stdout_zero_observed = true;
+                        }
+                    }
                     Ok(Some(n)) => {
                         if target {
                             response.extend_from_slice(&op.buffer[..n as usize]);
@@ -1286,9 +1290,7 @@ mod platform {
         record_stage("resumed", Some(information.dwProcessId));
         let response = io_loop(
             frame,
-            stdin,
-            stdout,
-            stderr,
+            [stdin, stdout, stderr],
             &mut process,
             &stopper,
             gate,

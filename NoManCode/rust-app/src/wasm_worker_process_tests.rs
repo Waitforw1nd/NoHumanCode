@@ -1,5 +1,5 @@
 //! Component tests for the trusted worker supervisor.
-use super::wasm_worker_process::{TrustedWorker, WorkerService};
+use super::wasm_worker_process::{TrustedWorker, WorkerError, WorkerService};
 use super::wasm_worker_protocol::{
     self as protocol, Decision, Input, Manifest, Phase, ToolClass, Vote,
 };
@@ -163,4 +163,32 @@ async fn w01_real_worker_before_after_and_near_8mib() {
             );
         }
     }
+}
+
+#[tokio::test]
+async fn w02_zero_write_then_trailing_byte_is_rejected() {
+    let stage_log = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("attempt stage log"));
+    assert!(!stage_log.exists(), "stage log must be new");
+    let path = PathBuf::from(std::env::var_os("NHC_W2_FAULT_SNAPSHOT").expect("fault snapshot"));
+    let expected = std::env::var("NHC_W2_FAULT_SHA256").expect("fault snapshot digest");
+    let hash = Sha256::digest(fs::read(&path).expect("read fault snapshot"));
+    assert_eq!(format!("{hash:x}"), expected);
+    let digest: [u8; 32] = hash.into();
+    let service = WorkerService::from_trusted(TrustedWorker::from_host_install(path, digest));
+    let input = Input {
+        round: 0,
+        max_rounds: 3,
+        decision: Phase::Before {
+            tools: vec![ToolClass::Read],
+        },
+    };
+    let result = service
+        .call(manifest(), input, wasm(), CancellationToken::new())
+        .await;
+    let stages = fs::read_to_string(stage_log).expect("read supervisor stages");
+    println!(
+        "W02 stdout_zero_read_observed={}",
+        stages.contains("phase=stdout_zero_read ")
+    );
+    assert!(matches!(result, Err(WorkerError::Protocol)), "{result:?}");
 }
