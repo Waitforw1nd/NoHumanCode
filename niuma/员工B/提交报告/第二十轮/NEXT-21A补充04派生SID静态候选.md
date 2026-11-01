@@ -1,0 +1,9 @@
+# NEXT-21A 补充04派生SID静态候选
+
+2026-11-01，员工 B。基线 `568834561c42c808559b967e574644f7de592309`；候选 `6c7f629a596754b062541ead07c9dfe4b67e5fb2`，产品树 `dcfe53dfac88e92160ab781981a2353890773651`，Rust树 `8f6b698ace59c336f53d66a6e90299ccec0fb3dc`。独立树clean，两个授权路径：隔离模块和integration测试；fmt及diff-check通过，未编译、构建或运行。C当前拥有唯一动态窗口，本候选等待经理静审及串行放行。
+
+新增独立隐藏诊断入口 `run_derived_sid_probe`：随机名称调用 `DeriveAppContainerSidFromAppContainerName`，成功SID在Drop中FreeSid，标记身份不曾主动创建profile，绝不调用CreateAppContainerProfile或DeleteAppContainerProfile；其返回类型无profile删除结果。仍复用原工件/环境/ACL/LPAC/零capability/原子Job/管道/真实token及访问语义校验和有界运行路径，原profile入口及attempt8反例断言保持。派生失败保留阶段与HRESULT，禁止普通进程fallback。
+
+在派生后、挂起后、恢复后、正常回收后按该SID调用 `GetAppContainerFolderPath`，记录HRESULT、SID、返回路径、可确认路径的存在性、类型和metadata错误；调用自身可能有副作用，路径不可确认仍为unknown，找不到路径仅是事实，既不是权限拒绝，也不证明无存储。失败关闭时会保留已到达阶段的事件；检查失败且回收完成的路径亦记录一次回收后观察。本切片不预置或清理profile哨兵，不增加服务或持久schema。异常的其他交界及查询本身的全生命周期硬期限仍未证明。
+
+新增exact `derived_sid_without_profile_creation_stdio_feasibility` 记录所有事件及运行结果，并要求真实LPAC三项访问语义、零capability、低完整性、Job、正常stdio、退出回收及四阶段位置事件；测试不要求任一路径存在或不存在。首次动态建议仅check、显式probe build、此测试；首失败停止并保留新attempt原件。即使通过也只证明该次可启动及记录到的事实，不能声称P08、真实profile、注册表、网络、Host强杀、资源或完整S01–S08通过。
