@@ -1,0 +1,392 @@
+{
+  "utc": "2026-11-01T23:23:49.708558+00:00",
+  "manifest_sha256": "37baf313be64fe5aad9b3cf35448b809647bd52c655a35f36472d80062cf807e",
+  "count": 48,
+  "mismatches": 0,
+  "files": [
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/01-check.json",
+      "copy": "attempt/01-check.json",
+      "source_sha256": "88a8387dbc220d67cb9e519109d6e0f7fcae1317fcfc69e5c3e5ce22cae5abae",
+      "copy_sha256": "88a8387dbc220d67cb9e519109d6e0f7fcae1317fcfc69e5c3e5ce22cae5abae",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/01-check.stderr",
+      "copy": "attempt/01-check.stderr",
+      "source_sha256": "8d81a6c4fbf71736d2afba3685b4f899c7990978a0ce116c890fcc7a817224ab",
+      "copy_sha256": "8d81a6c4fbf71736d2afba3685b4f899c7990978a0ce116c890fcc7a817224ab",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/01-check.stdout",
+      "copy": "attempt/01-check.stdout",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/02-build-host.json",
+      "copy": "attempt/02-build-host.json",
+      "source_sha256": "4fed26674b2e3e5751cb0c1fa27eedab113445128ac17fb136d1d9b2b7c671cf",
+      "copy_sha256": "4fed26674b2e3e5751cb0c1fa27eedab113445128ac17fb136d1d9b2b7c671cf",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/02-build-host.stderr",
+      "copy": "attempt/02-build-host.stderr",
+      "source_sha256": "b8bd16f78cb2c0157399e33d07bfd50cc775bb906ff03722db0943fb1dc12d5a",
+      "copy_sha256": "b8bd16f78cb2c0157399e33d07bfd50cc775bb906ff03722db0943fb1dc12d5a",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/02-build-host.stdout",
+      "copy": "attempt/02-build-host.stdout",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/03-test-serial.json",
+      "copy": "attempt/03-test-serial.json",
+      "source_sha256": "0caf08eed1f3acb40ea56507fa9f379d7c29cc90d0362a27d6451e3d2634aa2e",
+      "copy_sha256": "0caf08eed1f3acb40ea56507fa9f379d7c29cc90d0362a27d6451e3d2634aa2e",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/03-test-serial.stderr",
+      "copy": "attempt/03-test-serial.stderr",
+      "source_sha256": "66b16a8ae1ee48352564d06de151049632e89e29667ed08215fc17496fda2d21",
+      "copy_sha256": "66b16a8ae1ee48352564d06de151049632e89e29667ed08215fc17496fda2d21",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/03-test-serial.stdout",
+      "copy": "attempt/03-test-serial.stdout",
+      "source_sha256": "29e3070db46729544c4ae4a15dcf0acbfae951af02c1a93c5eaf44161a93ebb3",
+      "copy_sha256": "29e3070db46729544c4ae4a15dcf0acbfae951af02c1a93c5eaf44161a93ebb3",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/04-fmt.json",
+      "copy": "attempt/04-fmt.json",
+      "source_sha256": "dbbef9519b2663497b8a3dea1e4104c15cf03db575107440ecb34fb64d2cb50f",
+      "copy_sha256": "dbbef9519b2663497b8a3dea1e4104c15cf03db575107440ecb34fb64d2cb50f",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/04-fmt.stderr",
+      "copy": "attempt/04-fmt.stderr",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/04-fmt.stdout",
+      "copy": "attempt/04-fmt.stdout",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/05-clippy.json",
+      "copy": "attempt/05-clippy.json",
+      "source_sha256": "e8d80b8a428dd5bff28af3fc4aa4b7f8e2fd741314d1e2344b8402135456b2b3",
+      "copy_sha256": "e8d80b8a428dd5bff28af3fc4aa4b7f8e2fd741314d1e2344b8402135456b2b3",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/05-clippy.stderr",
+      "copy": "attempt/05-clippy.stderr",
+      "source_sha256": "5b1289c47d7b3a5326b097de4e3d40d24643b9d376beca639fe3ee67ac2fba5e",
+      "copy_sha256": "5b1289c47d7b3a5326b097de4e3d40d24643b9d376beca639fe3ee67ac2fba5e",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/05-clippy.stdout",
+      "copy": "attempt/05-clippy.stdout",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/environment.json",
+      "copy": "attempt/environment.json",
+      "source_sha256": "ab5ba65a44ce4e927b23f0347ecce06ad047a2c783620f257f7571f3a9e9f216",
+      "copy_sha256": "ab5ba65a44ce4e927b23f0347ecce06ad047a2c783620f257f7571f3a9e9f216",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/host-artifact.json",
+      "copy": "attempt/host-artifact.json",
+      "source_sha256": "5d53e725d741436023e5e6b32ae6bdd46662ee165b17dc389bb0ed99c466049c",
+      "copy_sha256": "5d53e725d741436023e5e6b32ae6bdd46662ee165b17dc389bb0ed99c466049c",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/incident.json",
+      "copy": "attempt/incident.json",
+      "source_sha256": "b3a06899a3e89ae0ae198eda85dca5196ee210dce149dd1f6c733b02b6263371",
+      "copy_sha256": "b3a06899a3e89ae0ae198eda85dca5196ee210dce149dd1f6c733b02b6263371",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/launcher-incident.json",
+      "copy": "attempt/launcher-incident.json",
+      "source_sha256": "4dd3dfcbddf3d83ad477a9644f25febbea2cb3f7a4ca37d65c81f3bdc57ec188",
+      "copy_sha256": "4dd3dfcbddf3d83ad477a9644f25febbea2cb3f7a4ca37d65c81f3bdc57ec188",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/launcher.json",
+      "copy": "attempt/launcher.json",
+      "source_sha256": "59d76cdec46f85e60b9720ebb10372a90fe7e2a6763154591983acaeef740c4e",
+      "copy_sha256": "59d76cdec46f85e60b9720ebb10372a90fe7e2a6763154591983acaeef740c4e",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-after-01-check.json",
+      "copy": "attempt/source-after-01-check.json",
+      "source_sha256": "2a319dc019da2cb48919a33d2a048818e5946cb5bb12a2f40d367b4520357e3a",
+      "copy_sha256": "2a319dc019da2cb48919a33d2a048818e5946cb5bb12a2f40d367b4520357e3a",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-after-02-build-host.json",
+      "copy": "attempt/source-after-02-build-host.json",
+      "source_sha256": "417ba9889ea149a84f312a0877c2cebf2642e7af53ff228cfad60464a09ea6f9",
+      "copy_sha256": "417ba9889ea149a84f312a0877c2cebf2642e7af53ff228cfad60464a09ea6f9",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-after-03-test-serial.json",
+      "copy": "attempt/source-after-03-test-serial.json",
+      "source_sha256": "3d39f787bfffbd57fab9aea666abb981730a788a7d29c5dd846170042a517e42",
+      "copy_sha256": "3d39f787bfffbd57fab9aea666abb981730a788a7d29c5dd846170042a517e42",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-after-04-fmt.json",
+      "copy": "attempt/source-after-04-fmt.json",
+      "source_sha256": "8de7745469e4c54ff53ddcff59fb82b161f88b6872c0a6730c307bf95f8186d9",
+      "copy_sha256": "8de7745469e4c54ff53ddcff59fb82b161f88b6872c0a6730c307bf95f8186d9",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-before-01-check.json",
+      "copy": "attempt/source-before-01-check.json",
+      "source_sha256": "86fa912ec1d4258912a29041c352e46a211f3a67e0d3018904cd5305448bd6ea",
+      "copy_sha256": "86fa912ec1d4258912a29041c352e46a211f3a67e0d3018904cd5305448bd6ea",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-before-02-build-host.json",
+      "copy": "attempt/source-before-02-build-host.json",
+      "source_sha256": "38c57a85462285aa9ef4c0aac54619628f0539425cb5400ce5c23b8d15695a85",
+      "copy_sha256": "38c57a85462285aa9ef4c0aac54619628f0539425cb5400ce5c23b8d15695a85",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-before-03-test-serial.json",
+      "copy": "attempt/source-before-03-test-serial.json",
+      "source_sha256": "c8803c94229283b981accbbdb78fdde51bc7a24e9ef17751a21bd3463c6c40b8",
+      "copy_sha256": "c8803c94229283b981accbbdb78fdde51bc7a24e9ef17751a21bd3463c6c40b8",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-before-04-fmt.json",
+      "copy": "attempt/source-before-04-fmt.json",
+      "source_sha256": "ef35eb6f2bdc4758499ac32cbc62a725044be54c1cb6d387782aa6fdd7de73cb",
+      "copy_sha256": "ef35eb6f2bdc4758499ac32cbc62a725044be54c1cb6d387782aa6fdd7de73cb",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-before-05-clippy.json",
+      "copy": "attempt/source-before-05-clippy.json",
+      "source_sha256": "00277bfac02bb77359c85f604cbff335860cf9b972d88610965aaa04dd841cd8",
+      "copy_sha256": "00277bfac02bb77359c85f604cbff335860cf9b972d88610965aaa04dd841cd8",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-before.json",
+      "copy": "attempt/source-before.json",
+      "source_sha256": "311f2a76067a38727adc3fc91985a00c9e394830f785ebc140a2b28d9cec921b",
+      "copy_sha256": "311f2a76067a38727adc3fc91985a00c9e394830f785ebc140a2b28d9cec921b",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-after-01-check.json",
+      "copy": "attempt/source-files-after-01-check.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-after-02-build-host.json",
+      "copy": "attempt/source-files-after-02-build-host.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-after-03-test-serial.json",
+      "copy": "attempt/source-files-after-03-test-serial.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-after-04-fmt.json",
+      "copy": "attempt/source-files-after-04-fmt.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-before-01-check.json",
+      "copy": "attempt/source-files-before-01-check.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-before-02-build-host.json",
+      "copy": "attempt/source-files-before-02-build-host.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-before-03-test-serial.json",
+      "copy": "attempt/source-files-before-03-test-serial.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-before-04-fmt.json",
+      "copy": "attempt/source-files-before-04-fmt.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-before-05-clippy.json",
+      "copy": "attempt/source-files-before-05-clippy.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-before.json",
+      "copy": "attempt/source-files-before.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-files-stopped.json",
+      "copy": "attempt/source-files-stopped.json",
+      "source_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/source-stopped.json",
+      "copy": "attempt/source-stopped.json",
+      "source_sha256": "b1b6a3dd3f916fca7722ff3f1c7379ee6891b3981a5c284b6f2c0afc3c94d345",
+      "copy_sha256": "b1b6a3dd3f916fca7722ff3f1c7379ee6891b3981a5c284b6f2c0afc3c94d345",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/supervisor-state.json",
+      "copy": "attempt/supervisor-state.json",
+      "source_sha256": "387fdc5b56c2a36568323dd2863153b6d59092ca64ace6256f26d0740b765ea8",
+      "copy_sha256": "387fdc5b56c2a36568323dd2863153b6d59092ca64ace6256f26d0740b765ea8",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/supervisor.stderr",
+      "copy": "attempt/supervisor.stderr",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/supervisor.stdout",
+      "copy": "attempt/supervisor.stdout",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/toolchain.log",
+      "copy": "attempt/toolchain.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt3/window-result.json",
+      "copy": "attempt/window-result.json",
+      "source_sha256": "b88acf2b0d6fef6f14f3467cbe5b0b7ad08a6834a945cbeb8f77c52b95d6f7b6",
+      "copy_sha256": "b88acf2b0d6fef6f14f3467cbe5b0b7ad08a6834a945cbeb8f77c52b95d6f7b6",
+      "length_match": true,
+      "match": true
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/nhc-w2-window.lock",
+      "copy": "original-lock-copy/nhc-w2-window.lock",
+      "source_sha256": "1913b9fa7a99ed3b0c7c5d60111308509f329d15014fd92a78a453b1b40757f4",
+      "copy_sha256": "1913b9fa7a99ed3b0c7c5d60111308509f329d15014fd92a78a453b1b40757f4",
+      "length_match": true,
+      "match": true
+    }
+  ]
+}

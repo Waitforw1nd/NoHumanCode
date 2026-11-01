@@ -1,3 +1,9 @@
+## 2026-11-02 a436最小差异与48原件核验摘要
+
+更新人：项目经理。B新固定a4366b56cc88644336d45f961313f294b05ea5ec（产品4935f1aa104de548c97a26043cb0d5e442e24dea/Rustbfea730396003f4aa675cc25dcfaa1c6b39f1e14）两份测试代码最小lint差异已完整静审，clean/index空，新候选无动态证据。唯一B Lorentz继续生成仅check→Clippy新外围固定副本供最后审查，原锁不迁、旧prepared不改，当前没有新重型授权。受影响later分支实为W05 helper；W06事件/继承正控和W05父测试覆盖不得误写成W04。
+
+f898 attempt3完整workspace849/0/25及fmt0为旧固定候选事实，Clippy5错、UI未跑；48原件478558字节已经理独立核零差异。C Euclid继续完整U静态，D冻结。下一第一操作读B新前置脚本/manifest，审后签窗口，继续当前候选21矩阵与最终门禁；不把旧成绩冒充a436。主线W1-ID01/schema17未改，41继承行保持，核心V1/V2/V3目标active，未最终验收或整合W2/U。
+
 ## 2026-11-02 当前门禁首败接续摘要
 
 更新人：项目经理，2026-11-02。B固定f898新attempt3 check/build/test/fmt为0，workspace完整64块849/0/25，Clippy五处新增测试侧lint退出101，UI wasm未运行；192源码前后hash一致、原监督exit1。已授权唯一B Lorentz最小静态引用/if-let修订并固定新候选，未签再次动态，W2不得合入。旧失败/中断/原件/锁保留，不把f898成绩冒称新候选实跑。

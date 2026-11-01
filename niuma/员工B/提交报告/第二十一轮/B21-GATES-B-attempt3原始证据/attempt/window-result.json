@@ -1,0 +1,7 @@
+{
+  "state": "failed",
+  "exit_code": 1,
+  "started_utc": "2026-11-01T23:09:01.7882301Z",
+  "ended_utc": "2026-11-01T23:18:56.6040458Z",
+  "reason": "Exception: E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-gates-b-f898-prepared\\supervisor.ps1:121\r\nLine |\r\n 121 |          if($code -ne 0){throw \"step $($c.name) failed exit $code\"}\r\n     |                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | step 05-clippy failed exit 101\r\n\r\n"
+}
