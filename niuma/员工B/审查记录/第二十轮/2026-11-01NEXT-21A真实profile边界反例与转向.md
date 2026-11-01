@@ -1,0 +1,11 @@
+# NEXT-21A真实profile边界反例与转向
+
+2026-11-01，项目经理。结论CHANGES_REQUIRED。固定568834561c42c808559b967e574644f7de592309的attempt8于北京时间08:05至08:06执行，check/build/普通AC/S01通过，真实profile测试exit101。经理已读profile-events.json、profile-result.txt和profile-stdout.bin，受限PID58260真实读、写、创建均成功；Host独立hash变化且新哨兵存在。位置查询拒绝5不能证明位置不可访问。正常退出0及profile删除HRESULT0不证明异常路径/Host强杀回收。
+
+已核7份清单185输入一致、实际输入hash及四变化文件Git blob；attempt6/7的152原件保持；本轮67原件hash保存于经理attempt8核验JSON。后续文件、Job、S05、S08、网络、fmt/Clippy未执行；本轮没有通过完整A，不整合或开放process。
+
+正式记录P08：CreateAppContainerProfile带来的自身持久存储仍可被真实零capability LPAC直接访问，违背本轮不允许隐式文件读写边界。不能降低断言、给profile改ACL制造测试绿或把任意自身可写存储归入loader例外。原B先封存报告和身份，再仅只读提出不创建存储的身份方案或身份与存储分离方案；没有新增动态/权限授权。方案须说明API实际保证、目录/registry是否可能自动创建、S01与完整攻击配对、异常回收、无profile状态独立证据和支持失败的明确结果。
+
+经理本轮通过urllib实际读取Microsoft官方CreateAppContainerProfile、DeriveAppContainerSidFromAppContainerName、DeleteAppContainerProfile正文（web搜索无正文，不以空返回为已读）。Create明确建立per-user/per-app文件及注册表存储；Derive仅说明名称到SID，页面未保证无profile启动行为；Delete失败状态undetermined。无profile可行性因此仍待实验，不能当作已解决。
+
+C24只读核收，原C新派NEXT-21W1静态实现真实WASM执行器和严格协议，独立d5b34a5f基线，不等网络子项；worker OS生命周期、真实Engine/持久绑定仍未完成。此转向增加独立核心进展，不取消原生process边界。main仍NEXT-20，全项目目标保持active。

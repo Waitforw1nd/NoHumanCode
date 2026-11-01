@@ -1,3 +1,7 @@
+## 2026-11-01 真实profile隔离反例，WASM执行器独立推进
+
+更新人：项目经理。固定56883456 attempt8 check/build/普通AC/S01通过；真实profile直接读写创建均成功，Host hash变化及新文件存在，确认P08边界反例而非定位API拒绝。核7清单185输入/四Git变化及67原件，attempt6/7的152原件不变。后续分项停，原B只读设计无隐式可写存储路线，未授权改ACL或新动态。C24已核收；正式派原C第二十五轮NEXT-21W1，在新../nhc-c-wasm-worker-core、codex/c/wasm-worker-core、d5b34a5f/原产品双tree实施真实单次执行器与有界协议，当前静态/fmt-only，固定后串行组件验证。D冻结；main产品仍NEXT-20，继承41行保持。下一第一操作审B具体修正方案与C固定W1；完整核心及项目active，应用层后移。关键证据为B第二十轮真实profile反例review、经理attempt8核验JSON、NEXT-21W1任务。
+
 ## 2026-11-01 NEXT-21A基础启动与鉴别通过，补真实profile/Job反例
 
 更新人：项目经理。attempt6/7 check/build、真实普通AC鉴别及S01通过；83b2e3a7攻防正常返回七文件和三Host访问拒绝5，但网络WSAStartup10107未执行TCP/UDP、profile仅定位API拒绝、child1816，整体仍失败。核旧185原件不变、两轮各七清单185输入/76原件及哨兵hash，签补充03：B继续真实Host profile位置和普通Job上限1/2控制，拆分网络后移但不忽略；固定后一次静审。C24网络只读预审已派，无产品/动态；D冻结，B唯一产品写入。main仍NEXT-20/继承41行保持。下一第一操作审B新候选及C具体网络实验建议；完整核心与项目active。
