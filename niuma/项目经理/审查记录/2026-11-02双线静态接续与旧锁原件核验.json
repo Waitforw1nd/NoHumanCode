@@ -1,0 +1,64 @@
+{
+  "captured_utc": "2026-11-01T16:33:54.728335+00:00",
+  "classification": "verified_wait_and_same_role_continuation",
+  "new_dynamic_window": false,
+  "trees": [
+    {
+      "role": "main",
+      "root": ".",
+      "head": "667fc1b752ca0b644835e459db3d7ba8cc1f2786",
+      "product_tree": "a1af1c0169fa4aed2948b65d5e006a5b5ac51f58",
+      "rust_tree": "c41e4a9bbad9052444f0d9277ed5c753f42c9917",
+      "index_empty": true,
+      "product_modified_files": []
+    },
+    {
+      "role": "B",
+      "root": "../nhc-b-wasm-worker-process",
+      "head": "82a0016ef1d582abc963270b48149e10fca1220f",
+      "product_tree": "99ed0add4a89fbee1473a3c511a9972a54148a65",
+      "rust_tree": "8fccff04244c3a3b04e120f7bbb2b6e3d5ecdea4",
+      "index_empty": true,
+      "product_modified_files": [
+        "NoManCode/rust-app/examples/wasm_worker_process_probe.rs",
+        "NoManCode/rust-app/src/wasm_worker_process.rs",
+        "NoManCode/rust-app/src/wasm_worker_process_tests.rs",
+        "NoManCode/rust-app/tests/support/wasm_worker_process/prepare-probes.ps1",
+        "NoManCode/rust-app/tests/support/wasm_worker_process/run-controlled.ps1"
+      ]
+    },
+    {
+      "role": "C",
+      "root": "../nhc-c-domain-authority",
+      "head": "a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac",
+      "product_tree": "c0d65c90a3621cf9132c95a979076f3c75c8178e",
+      "rust_tree": "1c9715a687d2da1fc1eee0427496e1f525e6a1c9",
+      "index_empty": true,
+      "product_modified_files": [
+        "NoManCode/rust-app/src/engine.rs",
+        "NoManCode/rust-app/src/execution_authority.rs",
+        "NoManCode/rust-app/src/main.rs",
+        "NoManCode/rust-app/src/network_authorization.rs",
+        "NoManCode/rust-app/src/plugin_management.rs",
+        "NoManCode/rust-app/src/provider.rs",
+        "NoManCode/rust-app/src/provider_runtime.rs",
+        "NoManCode/rust-app/src/provider_transport.rs",
+        "NoManCode/rust-app/src/store.rs",
+        "NoManCode/rust-app/src/tool_call_application.rs",
+        "NoManCode/rust-app/src/tool_runtime.rs",
+        "NoManCode/rust-app/src/worktree_management.rs"
+      ]
+    }
+  ],
+  "b_original_gate": {
+    "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-full-b-82a0016e-attempt1-audit/case04-gate.original.json",
+    "sha256": "a73a9675dff8b8009a83ee07d90d5902519c9c97c46069c6bc6e9ec964ce59e6",
+    "unchanged": true
+  },
+  "agents": {
+    "B": "01a197a8-5716-7852-8a86-d68caa56ffc9",
+    "C": "01a197a8-57b7-7541-abb3-29a4ec0d3ff9",
+    "evidence": "read_thread reports active; B recent file edits and completed rustfmt; C same-role send_input received and resumed; wait timeouts not treated as terminal"
+  },
+  "inherited_manager_41_lines_preserved": true
+}
