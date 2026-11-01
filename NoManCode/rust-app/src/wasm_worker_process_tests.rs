@@ -996,15 +996,6 @@ mod fault_matrix {
         }
     }
 
-    fn test_mark(path: &std::path::Path, marker: &str) {
-        use std::io::Write;
-        let mut file = fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .unwrap();
-        writeln!(file, "phase={marker} pid=None").unwrap();
-    }
     async fn boundary_case(phase: &'static str, drop_future: bool) {
         let log_path = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").unwrap());
         let offset = read_log(&log_path).len();
@@ -1027,7 +1018,7 @@ mod fault_matrix {
         if drop_future {
             task.abort();
             dropped = matches!((&mut task).await, Err(ref e) if e.is_cancelled());
-            test_mark(&log_path, "future_dropped");
+            test_hooks::mark("future_dropped");
             drop_busy = Some(
                 service
                     .call(manifest(), before(), Vec::new(), CancellationToken::new())
@@ -1035,7 +1026,7 @@ mod fault_matrix {
             );
         } else {
             cancel.cancel();
-            test_mark(&log_path, "cancellation_sent");
+            test_hooks::mark("cancellation_sent");
         }
         test_hooks::release();
         let outcome = if drop_future {

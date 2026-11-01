@@ -24,8 +24,12 @@ const REAP_LIMIT: Duration = Duration::from_secs(2);
 static SLOT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(all(test, windows))]
+static STAGE_LOG_LOCK: Mutex<()> = Mutex::new(());
+
+#[cfg(all(test, windows))]
 fn record_stage(phase: &'static str, pid: Option<u32>) {
     use std::io::Write;
+    let _guard = STAGE_LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG")
         && let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)
@@ -41,6 +45,7 @@ fn record_stage(_phase: &'static str, _pid: Option<u32>) {}
 #[cfg(all(test, windows))]
 fn record_count(phase: &'static str, pid: u32, count: usize) {
     use std::io::Write;
+    let _guard = STAGE_LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG")
         && let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)
@@ -259,6 +264,9 @@ pub(crate) mod test_hooks {
     }
     pub(crate) fn slot_free() -> bool {
         !super::SLOT.load(Ordering::Acquire)
+    }
+    pub(crate) fn mark(phase: &'static str) {
+        super::record_stage(phase, None);
     }
     pub(crate) fn release() {
         let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
