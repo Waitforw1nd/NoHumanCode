@@ -1,0 +1,1047 @@
+{
+  "candidate": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+  "product": "ae6c70c035b241621b4519600fa00e303d179d9a",
+  "rust": "5a612320aea734bbe318917b928be66f337142c7",
+  "attempt": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/next21w2-b-2d14e14f-attempt5",
+  "source_count": 189,
+  "identical_source_manifests": 11,
+  "source_manifest_sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61",
+  "git_sources_match_except_recorded_eol": true,
+  "eol_only_paths": [
+    "NoManCode/dsh-peachsh.cmd",
+    "NoManCode/newapi.cmd",
+    "NoManCode/rust-app/tests/support/wasm_worker_process/prepare-probes.ps1",
+    "NoManCode/start-peachsh-legacy.cmd",
+    "NoManCode/start-peachsh.cmd"
+  ],
+  "current_source_differences": [],
+  "artifact_count": 110,
+  "artifacts_match": true,
+  "prior_files_unchanged": {
+    "attempt2": 63,
+    "attempt3": 62,
+    "attempt4": 193
+  },
+  "steps": [
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:41:30.1604814Z",
+      "ended_utc": "2026-11-01T02:41:46.6590485Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo check --offline --locked --workspace --all-targets"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:41:47.4677684Z",
+      "ended_utc": "2026-11-01T02:42:16.1381118Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib --no-run"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:42:17.1013629Z",
+      "ended_utc": "2026-11-01T02:42:31.0231217Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo build --offline --locked --bin peachsh-wasm-worker --example wasm_worker_process_probe"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:42:32.3718741Z",
+      "ended_utc": "2026-11-01T02:42:32.8338680Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib wasm_worker_process::gate_tests::already_received_deadline_does_not_poll_receiver_again -- --exact --test-threads=1 --nocapture"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:42:33.3699015Z",
+      "ended_utc": "2026-11-01T02:42:33.7793146Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib wasm_worker_process::gate_tests::cancel_and_accept_have_one_winner -- --exact --test-threads=1 --nocapture"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:42:34.2783828Z",
+      "ended_utc": "2026-11-01T02:42:34.7618869Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib wasm_worker_process::gate_tests::background_gate_observes_cancel_without_caller_poll -- --exact --test-threads=1 --nocapture"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:42:35.3032097Z",
+      "ended_utc": "2026-11-01T02:42:35.8176953Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib wasm_worker_process::gate_tests::already_cancelled_never_starts_supervisor -- --exact --test-threads=1 --nocapture"
+    },
+    {
+      "exit_code": 0,
+      "started_utc": "2026-11-01T02:42:36.3907314Z",
+      "ended_utc": "2026-11-01T02:42:39.4324330Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib wasm_worker_process_tests::w01_real_worker_before_after_and_near_8mib -- --exact --test-threads=1 --nocapture"
+    },
+    {
+      "exit_code": 101,
+      "started_utc": "2026-11-01T02:42:40.9197307Z",
+      "ended_utc": "2026-11-01T02:42:52.2617844Z",
+      "product_tree": "ae6c70c035b241621b4519600fa00e303d179d9a",
+      "rust_tree": "5a612320aea734bbe318917b928be66f337142c7",
+      "head": "2d14e14f61112f1a51f1d0a8101a65f746e22219",
+      "command": "cargo test --offline --locked --lib wasm_worker_process_tests::fault_matrix::w04_resource_limits -- --exact --test-threads=1 --nocapture"
+    }
+  ],
+  "attempt_files": [
+    {
+      "path": "artifact/peachsh-wasm-worker.exe",
+      "bytes": 10861056,
+      "sha256": "d6502ccccb9ad73c22d195f348d79b69d5d486bbb22b13c33beb8932c0f75f8a"
+    },
+    {
+      "path": "artifact/wasm_worker_process_probe.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "logs/01-check.json",
+      "bytes": 374,
+      "sha256": "403bf82bf3f5fba188715ed7e5b6acfdfbed442ad1306aaac8e7cc2985c4b09f"
+    },
+    {
+      "path": "logs/01-check.stderr.log",
+      "bytes": 403,
+      "sha256": "1fb941ba16f19391e71b7880b0c81b397fc52f0ca0a2c08a29fa74902c4dfd85"
+    },
+    {
+      "path": "logs/01-check.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/02-test-no-run.json",
+      "bytes": 362,
+      "sha256": "ee01e102bc975bd1c0a975f8b7b9713c34f5b73d727d77586f12b4a8e8db9662"
+    },
+    {
+      "path": "logs/02-test-no-run.stderr.log",
+      "bytes": 320,
+      "sha256": "82cbc81e2fe3584ddf62a1d5ecf25b5395d22a8c1b89d24ea9f64ddffcde8461"
+    },
+    {
+      "path": "logs/02-test-no-run.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/03-build-artifacts.json",
+      "bytes": 410,
+      "sha256": "8d2ce1281de4e5bed1a439a6f0215572b062738fb59df809d30141159fe47fb4"
+    },
+    {
+      "path": "logs/03-build-artifacts.stderr.log",
+      "bytes": 146,
+      "sha256": "d8d258291b551e5a0e6727bcaeb0bd9ecfaa76bdb6090f7650e8a98c385e4883"
+    },
+    {
+      "path": "logs/03-build-artifacts.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/04-gate-r01.json",
+      "bytes": 481,
+      "sha256": "e26545271cd6094886fa6a54de33605b0eb091a2f2db73cc348a42c232bdd643"
+    },
+    {
+      "path": "logs/04-gate-r01.stderr.log",
+      "bytes": 235,
+      "sha256": "3d07fa9748380696cfe1769e55aad45fe9b6d6d5a9f8a42bca83fee8e57abf93"
+    },
+    {
+      "path": "logs/04-gate-r01.stdout.log",
+      "bytes": 214,
+      "sha256": "3a49b09a8d072e154ec88dfccd787ef438ca98a77dc44b1f92f9fe9a44011821"
+    },
+    {
+      "path": "logs/05-gate-r02.json",
+      "bytes": 460,
+      "sha256": "490618fc873e03b8557a4b423de9795d6c8f376d8d868890bdff93ebcec03ed4"
+    },
+    {
+      "path": "logs/05-gate-r02.stderr.log",
+      "bytes": 235,
+      "sha256": "d6a3796a450bb8647292f21632e4c6da8af5a6486278543d73c89295e5927ac9"
+    },
+    {
+      "path": "logs/05-gate-r02.stdout.log",
+      "bytes": 193,
+      "sha256": "3ef9fcf085786a6ee5c6eea79c49c85dadc82f3e19709e2af6d6a56c535e366e"
+    },
+    {
+      "path": "logs/06-gate-r03-bg.json",
+      "bytes": 478,
+      "sha256": "b05473507931b6946a5f356c94615ae6e30520c1d8baec00ef6e45183e8d39cd"
+    },
+    {
+      "path": "logs/06-gate-r03-bg.stderr.log",
+      "bytes": 235,
+      "sha256": "b3b445e0f9fd1e347d1da2747b54e991bfae32e9c467a210df216668424342fc"
+    },
+    {
+      "path": "logs/06-gate-r03-bg.stdout.log",
+      "bytes": 211,
+      "sha256": "4e7d357dbb379c744a13e34848885f7a67ae2522d872f2f29de146307280465e"
+    },
+    {
+      "path": "logs/07-gate-r03-pre.json",
+      "bytes": 468,
+      "sha256": "4703550a07bf1a3ae2b851f05ef25e108e063f491ec1229cf064311344879204"
+    },
+    {
+      "path": "logs/07-gate-r03-pre.stderr.log",
+      "bytes": 235,
+      "sha256": "d6a3796a450bb8647292f21632e4c6da8af5a6486278543d73c89295e5927ac9"
+    },
+    {
+      "path": "logs/07-gate-r03-pre.stdout.log",
+      "bytes": 201,
+      "sha256": "846da3c33d769df4e21f20eadf182bcba87d6b49d83530ab192bb78b1fb8b27d"
+    },
+    {
+      "path": "logs/08-w01-stage.log",
+      "bytes": 24714,
+      "sha256": "6bea5460e30894428c69f8ab942330a2869ad0bf840fc8088a54ad42fb487e7e"
+    },
+    {
+      "path": "logs/08-w01.json",
+      "bytes": 463,
+      "sha256": "947214ecc3373fe97682194d5a80b4cb89bb586bfebda7837ccb951d3f4fb3a3"
+    },
+    {
+      "path": "logs/08-w01.stderr.log",
+      "bytes": 235,
+      "sha256": "3d07fa9748380696cfe1769e55aad45fe9b6d6d5a9f8a42bca83fee8e57abf93"
+    },
+    {
+      "path": "logs/08-w01.stdout.log",
+      "bytes": 362,
+      "sha256": "b8426e8be8365134fa05ad00a2c7be491e06b597d9483f01de137b6bfb8d53da"
+    },
+    {
+      "path": "logs/09-resource-stage.log",
+      "bytes": 14853,
+      "sha256": "ec7098700463cd6f96c3aca191ef1dfbb7b64f537f8f165097cb95e746372c5b"
+    },
+    {
+      "path": "logs/09-resource.json",
+      "bytes": 456,
+      "sha256": "73323f8b2fb9802b2441a5091faae548514b2872b93ba3964866da86a2d9e296"
+    },
+    {
+      "path": "logs/09-resource.stderr.log",
+      "bytes": 515,
+      "sha256": "e7d3616885c4f0b8df4e8247d5a6dce786623ade5c613155031faaa4a3742c21"
+    },
+    {
+      "path": "logs/09-resource.stdout.log",
+      "bytes": 917,
+      "sha256": "a93b651537ab619802342a23ada5ca582e07049e85bb8f86286ff1deb2f557a4"
+    },
+    {
+      "path": "logs/artifacts-after.json",
+      "bytes": 28559,
+      "sha256": "e3d133cd842567cacaf8e1ef5ee1871280d6f68ad6d60895b05d1f5992ca59f2"
+    },
+    {
+      "path": "logs/artifacts-before.json",
+      "bytes": 866,
+      "sha256": "d1b3083436882163f32c09367ec775bb6118015369e2127003dd372c131dc121"
+    },
+    {
+      "path": "logs/environment.json",
+      "bytes": 667,
+      "sha256": "aaae7f9952db71c1472576e69cbcc91b1767caddbfac68c304406ea8f1e97f71"
+    },
+    {
+      "path": "logs/final.json",
+      "bytes": 93,
+      "sha256": "f2da0ad96ca7baddb4eca6a1b3d98e1dad93ad924a4accf5d53462f453c43f1c"
+    },
+    {
+      "path": "logs/postflight.json",
+      "bytes": 325,
+      "sha256": "de52e6c8dedfeae294fcb4203d31650278bab28e5d2282c1766635b290036667"
+    },
+    {
+      "path": "logs/preflight.json",
+      "bytes": 325,
+      "sha256": "839aa01c1c73c60bccbaced7a248bba721e4cbf967ccac46f989044d5db5c350"
+    },
+    {
+      "path": "logs/runner.json",
+      "bytes": 134,
+      "sha256": "326f0fd84b077d07784656d88c8addeb6c6c6e075a39adbfa695eb7aa33efcce"
+    },
+    {
+      "path": "logs/source-after-01-check.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-02-test-no-run.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-03-build-artifacts.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-04-gate-r01.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-05-gate-r02.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-06-gate-r03-bg.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-07-gate-r03-pre.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-08-w01.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after-09-resource.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-after.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/source-before.json",
+      "bytes": 32968,
+      "sha256": "3c207d0c466e370ecf2ae595715477a19ce8b108e3589b4f1262fde98328fc61"
+    },
+    {
+      "path": "logs/state-after-01-check.json",
+      "bytes": 325,
+      "sha256": "a9086a991eda375afa62366f2adbb805234b683321fbe1408a95174230f07519"
+    },
+    {
+      "path": "logs/state-after-02-test-no-run.json",
+      "bytes": 325,
+      "sha256": "c689ff49c6ffc6e61be3f5d5f060697392441db590deb49d9a00f9ddfad1202e"
+    },
+    {
+      "path": "logs/state-after-03-build-artifacts.json",
+      "bytes": 325,
+      "sha256": "792235e7ae59a10da930a9ddab674f75725b4c87651f514bee3e7040b0d29fce"
+    },
+    {
+      "path": "logs/state-after-04-gate-r01.json",
+      "bytes": 325,
+      "sha256": "c2febecef8298a47784f973850c0d301e739857d4081335d1be9345d2d9c4003"
+    },
+    {
+      "path": "logs/state-after-05-gate-r02.json",
+      "bytes": 325,
+      "sha256": "7b80defdf6bef653a1a51a877ed8d485dda9955cd2c4bbd807efb4d88614cf71"
+    },
+    {
+      "path": "logs/state-after-06-gate-r03-bg.json",
+      "bytes": 325,
+      "sha256": "982d8ef6d2ff24faebda5eba713cdcbc14bb933970022e247285d536a824f74b"
+    },
+    {
+      "path": "logs/state-after-07-gate-r03-pre.json",
+      "bytes": 325,
+      "sha256": "21431f4fc64d3aa3159e98389cdfb5a2ed698c2d9b8ae712dfae3f173604ef29"
+    },
+    {
+      "path": "logs/state-after-08-w01.json",
+      "bytes": 325,
+      "sha256": "ee50ea88bad132433efdf2a42f43f7671a41fa544ffda0ab9b9091b1e814d8c7"
+    },
+    {
+      "path": "logs/state-after-09-resource.json",
+      "bytes": 325,
+      "sha256": "1a400426811cf50db3aab43fef43f440c91782df4d67897b142e714a6d6fbbed"
+    },
+    {
+      "path": "logs/toolchain-setup.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "modes/09-resource/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/09-resource/control.stage",
+      "bytes": 724,
+      "sha256": "a7b2ff66b762fdcc28e4037d9c34d722f0157675ee4f1f5002d84b09b650c2cb"
+    },
+    {
+      "path": "modes/09-resource/job-cpu.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/09-resource/job-cpu.stage",
+      "bytes": 83,
+      "sha256": "ebcc6022a7e3583793ba75eed17f21a97aaf9288122af3d48255e174ed3d73ff"
+    },
+    {
+      "path": "modes/09-resource/job-memory.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/09-resource/manifest.json",
+      "bytes": 718,
+      "sha256": "479502950b9c97e8bccad5032628fec829f6af3028b21ac82f3f27e0e1c0f89b"
+    },
+    {
+      "path": "modes/10-zero/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/10-zero/manifest.json",
+      "bytes": 725,
+      "sha256": "452d4de4e515fe07a05b74c3cb39e0f490ca9618186579c59c4c4f5796b4faf1"
+    },
+    {
+      "path": "modes/10-zero/valid-output.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/10-zero/valid-stderr.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/11-boundary/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/11-boundary/manifest.json",
+      "bytes": 415,
+      "sha256": "aa6c3f831e59e644a820469d7885893d4ebda8a03d4fdc27c9134b2692bafba8"
+    },
+    {
+      "path": "modes/12-unknown/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/12-unknown/manifest.json",
+      "bytes": 565,
+      "sha256": "e6dfaa64f3aa3b8ffd9de70dbdb6a47ff9f9220cd2fa7d2e6a54bc6b6a58ca7a"
+    },
+    {
+      "path": "modes/12-unknown/no-read.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/13-persistent/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/13-persistent/manifest.json",
+      "bytes": 565,
+      "sha256": "e6dfaa64f3aa3b8ffd9de70dbdb6a47ff9f9220cd2fa7d2e6a54bc6b6a58ca7a"
+    },
+    {
+      "path": "modes/13-persistent/no-read.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/14-membership/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/14-membership/manifest.json",
+      "bytes": 415,
+      "sha256": "aa6c3f831e59e644a820469d7885893d4ebda8a03d4fdc27c9134b2692bafba8"
+    },
+    {
+      "path": "modes/16-w02/bad-json.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/bad-utf8.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/closed-stdout.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/concurrent.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/decision-duplicate.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/decision-index.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/decision-no-tools.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/decision-order.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/decision-phase.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/decision-votes.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/delayed.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/dual-pressure.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/duplicate-field.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/duplicate-frame.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/exit-empty.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/exit-output.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/hold-prefix.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/hold-valid.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-digest.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-fuel.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-generation.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-memory.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-nonce.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-plugin-version.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-plugin.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-request.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/id-version.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/job-cpu.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/job-memory.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/long-length.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/manifest.json",
+      "bytes": 7674,
+      "sha256": "64de4b51010ca8dc289ed7459a14879d4ae64c49a5e6027181031313e34d76ed"
+    },
+    {
+      "path": "modes/16-w02/no-read.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/partial-read.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/partial-stdout.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/rejected.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/short-header-1.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/short-header-2.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/short-header.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/short-payload.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/stderr-limit.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/stdout-limit.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/trailing.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/unknown-field.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/valid-output.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/valid-stderr.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/zero-length.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/zero-stderr.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/16-w02/zero-stdout.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/bad-json.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/bad-utf8.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/closed-stdout.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/concurrent.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/control.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/decision-duplicate.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/decision-index.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/decision-no-tools.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/decision-order.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/decision-phase.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/decision-votes.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/delayed.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/dual-pressure.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/duplicate-field.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/duplicate-frame.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/exit-empty.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/exit-output.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/hold-prefix.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/hold-valid.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-digest.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-fuel.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-generation.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-memory.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-nonce.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-plugin-version.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-plugin.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-request.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/id-version.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/job-cpu.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/job-memory.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/long-length.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/manifest.json",
+      "bytes": 7674,
+      "sha256": "64de4b51010ca8dc289ed7459a14879d4ae64c49a5e6027181031313e34d76ed"
+    },
+    {
+      "path": "modes/17-w03/no-read.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/partial-read.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/partial-stdout.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/rejected.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/short-header-1.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/short-header-2.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/short-header.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/short-payload.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/stderr-limit.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/stdout-limit.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/trailing.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/unknown-field.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/valid-output.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/valid-stderr.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/zero-length.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/zero-stderr.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "modes/17-w03/zero-stdout.exe",
+      "bytes": 2706432,
+      "sha256": "89bb64224b5c2eeb9dc8b7a242a01d42facbccb386744b03b8a8e0cba3333218"
+    },
+    {
+      "path": "run.ps1",
+      "bytes": 12829,
+      "sha256": "45a52f8ac15d3274b40fcf662456e3f46212ee27aa457710b497d0ac475226e2"
+    }
+  ],
+  "conclusion": "Steps 01-08 pass; 09-resource fails at job-cpu Deadline. Six WASM resource subcases ran. No W04 acceptance; later exacts and final lint/fmt not executed.",
+  "runtime_cleanup": {
+    "08-w01": {
+      "pids": [
+        "60964",
+        "36272"
+      ],
+      "cleanup": {
+        "60964": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "36272": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released"
+      }
+    },
+    "09-resource": {
+      "pids": [
+        "4940",
+        "62896",
+        "56136",
+        "63148",
+        "24228",
+        "48836",
+        "21912",
+        "38852",
+        "62744",
+        "57144",
+        "36448",
+        "46408",
+        "36636",
+        "64048"
+      ],
+      "cleanup": {
+        "4940": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "62896": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "56136": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "63148": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "24228": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "48836": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "21912": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "38852": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "62744": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "57144": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "36448": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "46408": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "36636": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released",
+        "64048": "process signaled; successful Job query active0; stdin/stdout/stderr settled; handles released"
+      }
+    }
+  }
+}
