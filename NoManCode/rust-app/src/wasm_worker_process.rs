@@ -23,6 +23,22 @@ const CALL_LIMIT: Duration = Duration::from_secs(5);
 const REAP_LIMIT: Duration = Duration::from_secs(2);
 static SLOT: AtomicBool = AtomicBool::new(false);
 
+#[cfg(all(test, windows))]
+fn record_stage(phase: &'static str, pid: Option<u32>) {
+    use std::io::Write;
+    if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG") {
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
+            let _ = writeln!(file, "phase={phase} pid={pid:?}");
+        }
+    }
+}
+#[cfg(not(all(test, windows)))]
+fn record_stage(_phase: &'static str, _pid: Option<u32>) {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkerError {
     Busy,
@@ -83,6 +99,9 @@ impl WorkerService {
         cancel: CancellationToken,
     ) -> Result<WorkerSuccess, WorkerError> {
         let deadline = Instant::now() + CALL_LIMIT;
+        if cancel.is_cancelled() {
+            return Err(WorkerError::Cancelled);
+        }
         if SLOT
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_err()
@@ -103,12 +122,15 @@ impl WorkerService {
         if Instant::now() >= deadline {
             return Err(WorkerError::Deadline);
         }
+        if cancel.is_cancelled() {
+            return Err(WorkerError::Cancelled);
+        }
         let request = Request {
             manifest,
             input,
             module,
         };
-        let gate = Arc::new(Gate::new());
+        let gate = Arc::new(Gate::new(cancel.clone()));
         let mut cancellation = CancelOnDrop(Some(gate.clone()));
         let (tx, mut rx) = oneshot::channel();
         let worker = self.worker.clone();
@@ -132,7 +154,7 @@ impl WorkerService {
             received = &mut rx => {
                 received_completion = true;
                 match received {
-                    Ok(Ok(success)) if gate.accept(&cancel, deadline) => Ok(success),
+                    Ok(Ok(success)) if gate.accept(deadline) => Ok(success),
                     Ok(_) if cancel.is_cancelled() => Err(WorkerError::Cancelled),
                     Ok(Err(error)) => Err(error),
                     Ok(Ok(_)) => Err(WorkerError::Deadline),
@@ -143,6 +165,7 @@ impl WorkerService {
         if matches!(result, Err(WorkerError::Cancelled | WorkerError::Deadline)) {
             gate.stop();
             if !finish_cleanup_wait(&mut rx, received_completion).await {
+                record_stage("cleanup_unknown", None);
                 cancellation.0 = None;
                 return Err(WorkerError::CleanupUnknown);
             }
@@ -175,12 +198,14 @@ impl Drop for SlotLease {
 struct Gate {
     state: AtomicU8,
     admission: Mutex<()>,
+    cancel: CancellationToken,
 }
 impl Gate {
-    fn new() -> Self {
+    fn new(cancel: CancellationToken) -> Self {
         Self {
             state: AtomicU8::new(0),
             admission: Mutex::new(()),
+            cancel,
         }
     }
     fn stop(&self) {
@@ -191,11 +216,13 @@ impl Gate {
     }
     #[cfg(windows)]
     fn stopped(&self, deadline: Instant) -> bool {
-        self.state.load(Ordering::Acquire) == 1 || Instant::now() >= deadline
+        self.cancel.is_cancelled()
+            || self.state.load(Ordering::Acquire) == 1
+            || Instant::now() >= deadline
     }
-    fn accept(&self, cancel: &CancellationToken, deadline: Instant) -> bool {
+    fn accept(&self, deadline: Instant) -> bool {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if cancel.is_cancelled() || Instant::now() >= deadline {
+        if self.cancel.is_cancelled() || Instant::now() >= deadline {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -208,7 +235,13 @@ impl Gate {
     #[cfg(windows)]
     fn authorize(&self, deadline: Instant) -> bool {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        self.state.load(Ordering::Acquire) == 0 && Instant::now() < deadline
+        if self.cancel.is_cancelled() || Instant::now() >= deadline {
+            let _ = self
+                .state
+                .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
+            return false;
+        }
+        self.state.load(Ordering::Acquire) == 0
     }
 }
 struct CancelOnDrop(Option<Arc<Gate>>);
@@ -239,7 +272,7 @@ mod gate_tests {
     #[test]
     fn cancel_and_accept_have_one_winner() {
         for _ in 0..256 {
-            let gate = Arc::new(Gate::new());
+            let gate = Arc::new(Gate::new(CancellationToken::new()));
             let barrier = Arc::new(Barrier::new(2));
             let other_gate = gate.clone();
             let other_barrier = barrier.clone();
@@ -248,20 +281,59 @@ mod gate_tests {
                 other_gate.stop();
             });
             barrier.wait();
-            let accepted = gate.accept(
-                &CancellationToken::new(),
-                Instant::now() + Duration::from_secs(1),
-            );
+            let accepted = gate.accept(Instant::now() + Duration::from_secs(1));
             thread.join().unwrap();
             assert_eq!(
                 gate.state.load(Ordering::Acquire),
                 if accepted { 2 } else { 1 }
             );
-            assert!(!gate.accept(
-                &CancellationToken::new(),
-                Instant::now() + Duration::from_secs(1)
-            ));
+            assert!(!gate.accept(Instant::now() + Duration::from_secs(1)));
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn background_gate_observes_cancel_without_caller_poll() {
+        let cancel = CancellationToken::new();
+        let gate = Gate::new(cancel.clone());
+        let deadline = Instant::now() + Duration::from_secs(1);
+        assert!(gate.authorize(deadline));
+        cancel.cancel();
+        assert!(gate.stopped(deadline));
+        assert!(!gate.authorize(deadline));
+        assert!(!gate.accept(deadline));
+        assert_eq!(gate.state.load(Ordering::Acquire), 1);
+    }
+
+    #[tokio::test]
+    async fn already_cancelled_never_starts_supervisor() {
+        let service =
+            WorkerService::from_trusted(TrustedWorker::from_host_install(PathBuf::new(), [0; 32]));
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let result = service
+            .call(
+                Manifest {
+                    version: 1,
+                    request_id: "unused".into(),
+                    nonce: "0".repeat(32),
+                    binding_generation: 0,
+                    plugin_id: "test".into(),
+                    plugin_version: "1.0.0".into(),
+                    digest: "0".repeat(64),
+                    fuel: 1,
+                    memory_pages: 1,
+                },
+                Input {
+                    round: 0,
+                    max_rounds: 1,
+                    decision: protocol::Phase::AfterNoTools {},
+                },
+                vec![0],
+                cancel,
+            )
+            .await;
+        assert!(matches!(result, Err(WorkerError::Cancelled)));
     }
 }
 
@@ -298,9 +370,10 @@ mod platform {
     };
     use windows_sys::Win32::{
         Foundation::{
-            ERROR_BROKEN_PIPE, ERROR_IO_INCOMPLETE, ERROR_IO_PENDING, ERROR_PIPE_CONNECTED,
-            GENERIC_READ, GENERIC_WRITE, HANDLE, HANDLE_FLAG_INHERIT, LocalFree,
-            SetHandleInformation, WAIT_OBJECT_0,
+            ERROR_BROKEN_PIPE, ERROR_IO_INCOMPLETE, ERROR_IO_PENDING, ERROR_NO_DATA,
+            ERROR_OPERATION_ABORTED, ERROR_PIPE_CONNECTED, ERROR_PIPE_NOT_CONNECTED, GENERIC_READ,
+            GENERIC_WRITE, HANDLE, HANDLE_FLAG_INHERIT, LocalFree, SetHandleInformation,
+            WAIT_OBJECT_0, WAIT_TIMEOUT,
         },
         Security::Authorization::{
             ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW,
@@ -335,7 +408,7 @@ mod platform {
                 InitializeProcThreadAttributeList, OpenProcessToken,
                 PROC_THREAD_ATTRIBUTE_HANDLE_LIST, PROC_THREAD_ATTRIBUTE_JOB_LIST,
                 PROCESS_INFORMATION, QueryFullProcessImageNameW, ResetEvent, ResumeThread,
-                STARTF_USESTDHANDLES, STARTUPINFOEXW, UpdateProcThreadAttribute,
+                STARTF_USESTDHANDLES, STARTUPINFOEXW, TerminateProcess, UpdateProcThreadAttribute,
                 WaitForSingleObject,
             },
         },
@@ -366,6 +439,16 @@ mod platform {
         } else {
             Ok(())
         }
+    }
+    fn known_terminal_error(code: Option<i32>) -> bool {
+        matches!(
+            code,
+            Some(code)
+                if code == ERROR_OPERATION_ABORTED as i32
+                    || code == ERROR_BROKEN_PIPE as i32
+                    || code == ERROR_NO_DATA as i32
+                    || code == ERROR_PIPE_NOT_CONNECTED as i32
+        )
     }
 
     struct Image {
@@ -648,17 +731,23 @@ mod platform {
                 let code = std::io::Error::last_os_error().raw_os_error();
                 if code == Some(ERROR_IO_PENDING as i32) {
                     loop {
-                        let mut transferred = 0;
-                        if unsafe { GetOverlappedResult(raw(&server), &*ov, &mut transferred, 0) }
-                            != 0
-                        {
-                            break;
+                        let state = unsafe { WaitForSingleObject(raw(&event), 0) };
+                        if state == WAIT_OBJECT_0 {
+                            let mut transferred = 0;
+                            if unsafe {
+                                GetOverlappedResult(raw(&server), &*ov, &mut transferred, 0)
+                            } != 0
+                            {
+                                break;
+                            }
+                            let err = std::io::Error::last_os_error().raw_os_error();
+                            if known_terminal_error(err) {
+                                return Err(WorkerError::IsolationUnavailable("pipe_connect", err));
+                            }
                         }
-                        let err = std::io::Error::last_os_error().raw_os_error();
-                        if err != Some(ERROR_IO_INCOMPLETE as i32) {
-                            return Err(WorkerError::IsolationUnavailable("pipe_connect", err));
-                        }
-                        if gate.stopped(deadline) {
+                        // A failed observation or contradictory incomplete result
+                        // cannot release the pending OVERLAPPED or its event.
+                        if state != WAIT_TIMEOUT || gate.stopped(deadline) {
                             unsafe { CancelIoEx(raw(&server), &*ov) };
                         }
                         thread::sleep(Duration::from_millis(5));
@@ -829,6 +918,13 @@ mod platform {
             if !self.pending {
                 return Ok(None);
             }
+            let state = unsafe { WaitForSingleObject(raw(&self.event), 0) };
+            if state == WAIT_TIMEOUT {
+                return Ok(None);
+            }
+            if state != WAIT_OBJECT_0 {
+                return Err(failure("io_event_observation"));
+            }
             let mut transferred = 0;
             if unsafe { GetOverlappedResult(raw(&self.pipe), &*self.ov, &mut transferred, 0) } != 0
             {
@@ -839,7 +935,9 @@ mod platform {
             if code == Some(ERROR_IO_INCOMPLETE as i32) {
                 return Ok(None);
             }
-            self.pending = false;
+            if known_terminal_error(code) {
+                self.pending = false;
+            }
             Err(WorkerError::IsolationUnavailable("io_completion", code))
         }
     }
@@ -858,6 +956,7 @@ mod platform {
     struct ProcessGuard {
         job: Arc<OwnedHandle>,
         process: OwnedHandle,
+        pid: u32,
         complete: bool,
     }
     struct StopOnFailure<'a> {
@@ -890,10 +989,14 @@ mod platform {
         }
         fn wait_reaped(&mut self) {
             while !self.reaped() {
-                unsafe { TerminateJobObject(raw(&self.job), 1) };
+                unsafe {
+                    TerminateJobObject(raw(&self.job), 1);
+                    TerminateProcess(raw(&self.process), 1);
+                }
                 thread::sleep(Duration::from_millis(5));
             }
             self.complete = true;
+            record_stage("failure_reaped", Some(self.pid));
         }
     }
     impl Drop for ProcessGuard {
@@ -994,6 +1097,7 @@ mod platform {
             }
             if writer.is_none() && stdout_eof && stderr_eof && process.reaped() {
                 process.complete = true;
+                record_stage("io_complete_reaped", Some(process.pid));
                 fail_stop.success = true;
                 return Ok(response);
             }
@@ -1007,6 +1111,7 @@ mod platform {
         deadline: Instant,
         gate: &Arc<Gate>,
     ) -> Result<WorkerSuccess, WorkerError> {
+        record_stage("supervision_started", None);
         let stopper = Stopper::start(gate.clone(), deadline)?;
         ensure_open(gate, deadline)?;
         let mut frame = Vec::with_capacity(
@@ -1110,6 +1215,7 @@ mod platform {
             .collect();
         let mut information: PROCESS_INFORMATION = unsafe { zeroed() };
         ensure_open(gate, deadline)?;
+        record_stage("before_create", None);
         let created = unsafe {
             CreateProcessW(
                 app.as_ptr(),
@@ -1128,13 +1234,19 @@ mod platform {
             )
         };
         if created == 0 {
-            return Err(failure("worker_create"));
+            let error = failure("worker_create");
+            record_stage("create_failed", None);
+            return Err(error);
         }
         let process_handle = match unsafe { own(information.hProcess, "worker_process_handle") } {
             Ok(handle) => handle,
             Err(_) => {
                 // A successful CreateProcess without an observable process handle
                 // cannot satisfy the cleanup proof. Keep this one slot occupied.
+                record_stage(
+                    "created_process_handle_unknown",
+                    Some(information.dwProcessId),
+                );
                 gate.stop();
                 loop {
                     thread::park_timeout(Duration::from_secs(1));
@@ -1144,8 +1256,10 @@ mod platform {
         let mut process = ProcessGuard {
             job: job.clone(),
             process: process_handle,
+            pid: information.dwProcessId,
             complete: false,
         };
+        record_stage("created_suspended", Some(information.dwProcessId));
         let thread_handle = unsafe { own(information.hThread, "worker_thread_handle")? };
         drop(child_stdin);
         drop(child_stdout);
@@ -1169,6 +1283,7 @@ mod platform {
             gate.stop();
             return Err(error);
         }
+        record_stage("resumed", Some(information.dwProcessId));
         let response = io_loop(
             frame,
             stdin,

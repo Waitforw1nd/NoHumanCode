@@ -94,6 +94,11 @@ fn manifest() -> Manifest {
 
 #[tokio::test]
 async fn w01_real_worker_before_after_and_near_8mib() {
+    let stage_log = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("attempt stage log"));
+    assert!(
+        !stage_log.exists(),
+        "stage log must belong to this attempt only"
+    );
     let service = worker();
     let before = Input {
         round: 0,
@@ -149,4 +154,13 @@ async fn w01_real_worker_before_after_and_near_8mib() {
     );
     assert!(second.process_id != 0 && second.process_signaled && second.io_completed);
     assert_eq!((second.exit_code, second.job_active_processes), (0, 0));
+    let stages = fs::read_to_string(stage_log).expect("read supervisor stages");
+    for pid in [first.process_id, second.process_id] {
+        for phase in ["created_suspended", "resumed", "io_complete_reaped"] {
+            assert!(
+                stages.contains(&format!("phase={phase} pid=Some({pid})")),
+                "missing {phase} for worker {pid}"
+            );
+        }
+    }
 }
