@@ -1151,7 +1151,7 @@ mod platform {
                     }
                     if unsafe { WaitForSingleObject(self.0.as_raw_handle(), 5000) } != WAIT_OBJECT_0
                     {
-                        eprintln!("W06 image process cleanup unknown");
+                        eprintln!("NHC_TERMINAL_UNKNOWN: W06 image process cleanup unknown");
                         loop {
                             thread::park_timeout(Duration::from_secs(1));
                         }
@@ -1302,7 +1302,9 @@ mod platform {
             };
             let waited = unsafe { WaitForSingleObject(raw(&process), 5000) };
             if killed == 0 || waited != WAIT_OBJECT_0 {
-                eprintln!("W06 limit child cleanup_unknown; preserving child handle");
+                eprintln!(
+                    "NHC_TERMINAL_UNKNOWN: W06 limit child cleanup_unknown; preserving child handle"
+                );
                 loop {
                     thread::park_timeout(Duration::from_secs(1));
                 }
@@ -1464,6 +1466,7 @@ mod platform {
             {
                 unsafe { TerminateProcess(raw(&process), 1) };
                 if unsafe { WaitForSingleObject(raw(&process), 5000) } != WAIT_OBJECT_0 {
+                    eprintln!("NHC_TERMINAL_UNKNOWN: W06 limit helper termination unconfirmed");
                     loop {
                         thread::park_timeout(Duration::from_secs(1));
                     }
@@ -1473,7 +1476,9 @@ mod platform {
             // On timeout keep both helper and Job alive. A breakaway child may exist;
             // killing the helper would discard its only guaranteed child handle.
             if unsafe { WaitForSingleObject(raw(&process), 10000) } != WAIT_OBJECT_0 {
-                eprintln!("W06 limit helper cleanup_unknown; retain Job and process");
+                eprintln!(
+                    "NHC_TERMINAL_UNKNOWN: W06 limit helper cleanup_unknown; retain Job and process"
+                );
                 loop {
                     thread::park_timeout(Duration::from_secs(1));
                 }
@@ -1485,7 +1490,9 @@ mod platform {
             {
                 // A helper failure may have occurred after a breakaway child was
                 // created but before its cleanup receipt. Do not assert cleanup.
-                eprintln!("W06 limit helper cleanup_unknown: missing trusted receipt");
+                eprintln!(
+                    "NHC_TERMINAL_UNKNOWN: W06 limit helper cleanup_unknown: missing trusted receipt"
+                );
                 loop {
                     thread::park_timeout(Duration::from_secs(1));
                 }
@@ -1496,7 +1503,9 @@ mod platform {
             {
                 Some(value) => value,
                 None => {
-                    eprintln!("W06 limit helper cleanup_unknown: unreadable receipt");
+                    eprintln!(
+                        "NHC_TERMINAL_UNKNOWN: W06 limit helper cleanup_unknown: unreadable receipt"
+                    );
                     loop {
                         thread::park_timeout(Duration::from_secs(1));
                     }
@@ -1513,7 +1522,9 @@ mod platform {
                 || value["helper_pid"].as_u64() != Some(info.dwProcessId as u64)
                 || value["flags"].as_u64() != Some(expected_flags as u64)
             {
-                eprintln!("W06 limit helper cleanup_unknown: receipt identity mismatch");
+                eprintln!(
+                    "NHC_TERMINAL_UNKNOWN: W06 limit helper cleanup_unknown: receipt identity mismatch"
+                );
                 loop {
                     thread::park_timeout(Duration::from_secs(1));
                 }
@@ -1619,7 +1630,7 @@ mod platform {
                     unsafe { TerminateProcess(raw(&self.0), 1) };
                 }
                 if unsafe { WaitForSingleObject(raw(&self.0), 5000) } != WAIT_OBJECT_0 {
-                    eprintln!("W06 positive launcher cleanup unknown");
+                    eprintln!("NHC_TERMINAL_UNKNOWN: W06 positive launcher cleanup unknown");
                     loop {
                         thread::park_timeout(Duration::from_secs(1));
                     }

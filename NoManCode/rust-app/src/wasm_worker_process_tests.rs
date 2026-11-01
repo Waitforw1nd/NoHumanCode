@@ -345,6 +345,9 @@ mod fault_matrix {
         if let Some(barrier) = barrier {
             assert!(barrier.join().expect("partial barrier thread"));
         }
+        if matches!(result, Err(WorkerError::CleanupUnknown)) {
+            eprintln!("NHC_TERMINAL_UNKNOWN: {mode} cleanup unconfirmed");
+        }
         assert!(
             !matches!(result, Err(WorkerError::CleanupUnknown)),
             "{mode}: cleanup unknown; stop matrix: {result:?}"
@@ -932,6 +935,9 @@ mod fault_matrix {
                 "P01 worker cleanup unknown for {pid}"
             );
         }
+        if matches!(result, Err(WorkerError::CleanupUnknown)) {
+            eprintln!("NHC_TERMINAL_UNKNOWN: P01 cleanup unconfirmed");
+        }
         assert!(
             !matches!(result, Err(WorkerError::CleanupUnknown)),
             "P01 cleanup unknown"
@@ -1210,7 +1216,9 @@ mod fault_matrix {
             || !test_hooks::slot_free()
             || !matches!(outcome, Ok(Ok(ref result)) if !matches!(result, Err(WorkerError::CleanupUnknown)))
         {
-            eprintln!("W06 sentinel cleanup unknown; retain original object and stop");
+            eprintln!(
+                "NHC_TERMINAL_UNKNOWN: W06 sentinel cleanup unknown; retain original object and stop"
+            );
             loop {
                 std::thread::park_timeout(Duration::from_secs(1));
             }
@@ -1369,7 +1377,9 @@ mod fault_matrix {
             || !test_hooks::slot_free()
             || !matches!(outcome, Ok(Ok(ref result)) if !matches!(result, Err(WorkerError::CleanupUnknown)))
         {
-            eprintln!("W06 job handle cleanup unknown; retain original objects and stop");
+            eprintln!(
+                "NHC_TERMINAL_UNKNOWN: W06 job handle cleanup unknown; retain original objects and stop"
+            );
             loop {
                 std::thread::park_timeout(Duration::from_secs(1));
             }
@@ -1633,7 +1643,9 @@ mod fault_matrix {
             let worker_known = worker_wait == Some(WAIT_OBJECT_0)
                 || (self.worker.is_none() && (self.before_proven || cleanup));
             if helper_wait != WAIT_OBJECT_0 || !reader_finished || !worker_known {
-                eprintln!("W05 cleanup_unknown: retain observed objects and stop");
+                eprintln!(
+                    "NHC_TERMINAL_UNKNOWN: W05 cleanup_unknown: retain observed objects and stop"
+                );
                 loop {
                     std::thread::park_timeout(Duration::from_secs(1));
                 }
