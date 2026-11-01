@@ -757,6 +757,123 @@ mod fault_matrix {
         control().await;
     }
     #[tokio::test]
+    async fn w06_p01_live_job_observation() {
+        let log = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("stage log"));
+        let (service, probe_log) = fault_service("p01-memory");
+        let release = probe_log.with_extension("release");
+        assert!(!log.exists() && !probe_log.exists() && !release.exists());
+        test_observer::arm(false);
+        test_hooks::arm_p01_events();
+        let barrier_log = log.clone();
+        let barrier_probe = probe_log.clone();
+        let barrier = std::thread::spawn(move || {
+            let started = Instant::now();
+            let mut observed = None;
+            let mut ready = false;
+            while started.elapsed() < Duration::from_millis(1500) {
+                if observed.is_none() {
+                    observed = test_observer::take();
+                }
+                let text = read_log(&barrier_log);
+                if let Some((pid, handle)) = observed.as_ref() {
+                    let records: Vec<serde_json::Value> = text
+                        .lines()
+                        .filter_map(|line| {
+                            serde_json::from_str::<serde_json::Value>(line.strip_prefix("p01=")?)
+                                .ok()
+                        })
+                        .collect();
+                    let snapshot = records.iter().any(|v| {
+                        v["kind"] == "job_list"
+                            && v["pid"].as_u64() == Some(*pid as u64)
+                            && v["list_complete"] == true
+                            && v["target_before"]["wait"].as_u64() == Some(258)
+                            && v["target_after"]["wait"].as_u64() == Some(258)
+                            && v["target_before"]["member_ok"] == true
+                            && v["target_after"]["member_ok"] == true
+                            && v["target_before"]["member"] == 1
+                            && v["target_after"]["member"] == 1
+                            && v["process_before"]["wait"].as_u64() == Some(258)
+                            && v["process_after"]["wait"].as_u64() == Some(258)
+                            && v["process_before"]["member_ok"] == true
+                            && v["process_after"]["member_ok"] == true
+                            && v["process_before"]["member"] == 1
+                            && v["process_after"]["member"] == 1
+                            && v["list_ids"].as_array().is_some_and(|ids| {
+                                ids.iter().any(|id| id.as_u64() == Some(*pid as u64))
+                            })
+                            && v["handle_pid"].as_u64() == Some(*pid as u64)
+                            && v["times_ok"] == true
+                            && v["creation_filetime"].as_u64().is_some_and(|t| t != 0)
+                            && v["image"].as_str().is_some()
+                            && records.iter().any(|end| {
+                                end["kind"] == "scan_complete"
+                                    && end["scan"] == v["scan"]
+                                    && end["target_before"]["wait"].as_u64() == Some(258)
+                                    && end["target_after"]["wait"].as_u64() == Some(258)
+                                    && end["target_before"]["member_ok"] == true
+                                    && end["target_after"]["member_ok"] == true
+                                    && end["target_before"]["member"] == 1
+                                    && end["target_after"]["member"] == 1
+                            })
+                    });
+                    if snapshot
+                        && text.contains("phase=p01_collector_ready")
+                        && text.contains("\"kind\":\"host_suspended\"")
+                        && probe_pid(&read_log(&barrier_probe), "p01_wait", *pid)
+                        && unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) } == 258
+                    {
+                        ready = true;
+                        break;
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            let released = fs::write(release, b"release").is_ok();
+            (observed, ready, released)
+        });
+        let result = service
+            .call(manifest(), before(), wasm(), CancellationToken::new())
+            .await;
+        let (observed, ready, released) = barrier.join().expect("P01 barrier");
+        let observed = observed.or_else(test_observer::take);
+        if let Some((pid, handle)) = observed.as_ref() {
+            assert_eq!(
+                unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) },
+                WAIT_OBJECT_0,
+                "P01 worker cleanup unknown for {pid}"
+            );
+        }
+        assert!(
+            !matches!(result, Err(WorkerError::CleanupUnknown)),
+            "P01 cleanup unknown"
+        );
+        assert!(
+            released && ready,
+            "P01 handshake incomplete; preserve evidence as unknown"
+        );
+        let (pid, _) = observed.expect("P01 worker observer");
+        let text = read_log(&log);
+        let probe = read_log(&probe_log);
+        assert!(probe_pid(&probe, "p01_released", pid));
+        assert!(probe_pid(&probe, "memory_allocation_failed", pid));
+        assert!(
+            matches!(
+                result,
+                Err(WorkerError::IsolationUnavailable("worker_exit", Some(43)))
+            ),
+            "P01 resource behavior not observed: {result:?}"
+        );
+        assert_reaped(&text, pid);
+        assert!(text.contains("phase=p01_collector_stopped"));
+        assert!(!text.contains("phase=p01_collector_shutdown_unknown"));
+        assert!(!text.contains("phase=p01_collector_failed"));
+        assert!(!text.contains("phase=p01_dequeue_failed"));
+        assert!(!text.contains("phase=p01_bad_completion_key"));
+        println!("P01 pid={pid} result={result:?}; extra observations require object-level review");
+    }
+
+    #[tokio::test]
     async fn w04_resource_limits() {
         fresh_group();
         control().await;

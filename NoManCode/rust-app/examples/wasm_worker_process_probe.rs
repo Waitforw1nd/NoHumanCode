@@ -68,6 +68,7 @@ fn main() {
         "dual-pressure",
         "job-cpu",
         "job-memory",
+        "p01-memory",
         "valid-output",
         "valid-stderr",
     ];
@@ -168,7 +169,20 @@ fn main() {
             }
         });
     }
-    if mode == "job-memory" {
+    if mode == "p01-memory" {
+        mark("p01_wait");
+        let release = path.with_extension("release");
+        let started = std::time::Instant::now();
+        while !release.exists() && started.elapsed() < Duration::from_secs(2) {
+            thread::sleep(Duration::from_millis(2));
+        }
+        if !release.exists() {
+            mark("p01_wait_timeout");
+            return;
+        }
+        mark("p01_released");
+    }
+    if matches!(mode, "job-memory" | "p01-memory") {
         use windows_sys::Win32::System::Memory::{
             MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc,
         };

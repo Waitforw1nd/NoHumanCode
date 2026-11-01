@@ -27,6 +27,11 @@ static SLOT: AtomicBool = AtomicBool::new(false);
 static STAGE_LOG_LOCK: Mutex<()> = Mutex::new(());
 
 #[cfg(all(test, windows))]
+static P01_START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+#[cfg(all(test, windows))]
+static P01_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+#[cfg(all(test, windows))]
 fn record_stage(phase: &'static str, pid: Option<u32>) {
     use std::io::Write;
     let _guard = STAGE_LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
@@ -57,6 +62,24 @@ fn record_count(phase: &'static str, pid: u32, count: usize) {
 }
 #[cfg(not(all(test, windows)))]
 fn record_count(_phase: &'static str, _pid: u32, _count: usize) {}
+
+#[cfg(all(test, windows))]
+fn record_p01(value: &serde_json::Value) {
+    use std::io::Write;
+    let _guard = STAGE_LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut value = value.clone();
+    value["sequence"] = serde_json::json!(P01_SEQUENCE.fetch_add(1, Ordering::Relaxed));
+    value["monotonic_us"] =
+        serde_json::json!(P01_START.get_or_init(Instant::now).elapsed().as_micros());
+    if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG")
+        && let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    {
+        let _ = writeln!(file, "p01={value}");
+    }
+}
 
 #[cfg(all(test, windows))]
 pub(crate) mod test_observer {
@@ -178,6 +201,7 @@ pub(crate) mod test_hooks {
     static ZERO: AtomicU8 = AtomicU8::new(0);
     static MEMBERSHIP: AtomicU8 = AtomicU8::new(0);
     static JOB_EVENTS: AtomicU8 = AtomicU8::new(0);
+    static P01_EVENTS: AtomicU8 = AtomicU8::new(0);
     static PERSISTENT_ERROR: AtomicU8 = AtomicU8::new(0);
 
     pub(crate) struct Guard;
@@ -325,6 +349,12 @@ pub(crate) mod test_hooks {
     }
     pub(super) fn take_job_events() -> bool {
         JOB_EVENTS.swap(0, Ordering::SeqCst) == 1
+    }
+    pub(crate) fn arm_p01_events() {
+        P01_EVENTS.store(1, Ordering::SeqCst);
+    }
+    pub(super) fn take_p01_events() -> bool {
+        P01_EVENTS.swap(0, Ordering::SeqCst) == 1
     }
 }
 
@@ -1455,6 +1485,456 @@ mod platform {
             }
         }
     }
+
+    #[cfg(test)]
+    struct P01Monitor {
+        stop: Arc<AtomicBool>,
+        target: Arc<Mutex<Option<OwnedHandle>>>,
+        finished: std::sync::mpsc::Receiver<()>,
+        thread: Option<thread::JoinHandle<()>>,
+    }
+    #[cfg(test)]
+    impl P01Monitor {
+        fn start(job: Arc<OwnedHandle>) -> Result<Self, WorkerError> {
+            use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+            use windows_sys::Win32::System::IO::CreateIoCompletionPort;
+            use windows_sys::Win32::System::JobObjects::{
+                JOBOBJECT_ASSOCIATE_COMPLETION_PORT, JobObjectAssociateCompletionPortInformation,
+            };
+            P01_START.get_or_init(Instant::now);
+            let port = unsafe {
+                own(
+                    CreateIoCompletionPort(INVALID_HANDLE_VALUE, null_mut(), 0, 1),
+                    "p01_port",
+                )?
+            };
+            let association = JOBOBJECT_ASSOCIATE_COMPLETION_PORT {
+                CompletionKey: std::ptr::dangling_mut::<c_void>(),
+                CompletionPort: raw(&port),
+            };
+            if unsafe {
+                SetInformationJobObject(
+                    raw(&job),
+                    JobObjectAssociateCompletionPortInformation,
+                    (&association as *const JOBOBJECT_ASSOCIATE_COMPLETION_PORT).cast(),
+                    size_of::<JOBOBJECT_ASSOCIATE_COMPLETION_PORT>() as u32,
+                )
+            } == 0
+            {
+                return Err(failure("p01_associate"));
+            }
+            let stop = Arc::new(AtomicBool::new(false));
+            let stop_thread = stop.clone();
+            let target = Arc::new(Mutex::new(None));
+            let target_thread = target.clone();
+            let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
+            let (done_tx, done_rx) = std::sync::mpsc::sync_channel(1);
+            let thread = thread::Builder::new()
+                .name("nhc-w2-p01-observer".into())
+                .spawn(move || {
+                    use std::collections::HashMap;
+                    use windows_sys::Win32::System::IO::GetQueuedCompletionStatus;
+                    let mut handles = HashMap::<u32, OwnedHandle>::new();
+                    let mut scan = 0u64;
+                    record_stage("p01_collector_ready", None);
+                    let _ = ready_tx.send(());
+                    loop {
+                        let mut message = 0u32;
+                        let mut key = 0usize;
+                        let mut data = null_mut();
+                        let result = unsafe {
+                            GetQueuedCompletionStatus(
+                                raw(&port),
+                                &mut message,
+                                &mut key,
+                                &mut data,
+                                50,
+                            )
+                        };
+                        let error = if result == 0 {
+                            std::io::Error::last_os_error().raw_os_error()
+                        } else {
+                            None
+                        };
+                        record_p01(&serde_json::json!({
+                            "kind":"dequeue", "ok":result != 0, "error":error,
+                            "message":message, "key":key, "raw_data":data as usize,
+                            "observed_unix_ms":p01_timestamp()
+                        }));
+                        if result != 0 && key == 1 {
+                            let data_value = data as usize;
+                            if matches!(message, 2 | 6 | 7 | 8 | 9) {
+                                let pid = data_value as u32;
+                                if message == 6 && pid != 0 {
+                                    p01_open("notification", pid, &mut handles);
+                                }
+                                p01_observe(
+                                    &job,
+                                    "notification",
+                                    message,
+                                    pid,
+                                    handles.get(&pid),
+                                    &target_thread,
+                                    0,
+                                );
+                            } else {
+                                record_p01(&serde_json::json!({
+                                    "kind":"nonprocess_notification", "message":message,
+                                    "raw_data":data_value, "observed_unix_ms":p01_timestamp()
+                                }));
+                            }
+                        } else if result == 0 {
+                            if error != Some(WAIT_TIMEOUT as i32) {
+                                record_stage("p01_dequeue_failed", None);
+                                break;
+                            }
+                            if stop_thread.load(Ordering::Acquire) {
+                                break;
+                            }
+                        } else {
+                            record_stage("p01_bad_completion_key", None);
+                            break;
+                        }
+                        scan += 1;
+                        p01_scan_job(&job, &mut handles, &target_thread, scan);
+                    }
+                    record_stage("p01_collector_stopped", None);
+                    let _ = done_tx.send(());
+                })
+                .map_err(|_| WorkerError::IsolationUnavailable("p01_thread", None))?;
+            let monitor = Self {
+                stop,
+                target,
+                finished: done_rx,
+                thread: Some(thread),
+            };
+            if ready_rx.recv_timeout(Duration::from_secs(1)).is_err() {
+                record_stage("p01_not_ready", None);
+                drop(monitor);
+                return Err(WorkerError::IsolationUnavailable("p01_not_ready", None));
+            }
+            Ok(monitor)
+        }
+        fn set_target(&self, process: &OwnedHandle) -> Result<(), WorkerError> {
+            use windows_sys::Win32::Foundation::DuplicateHandle;
+            let current = unsafe { GetCurrentProcess() };
+            let mut duplicate = null_mut();
+            if unsafe {
+                DuplicateHandle(
+                    current,
+                    raw(process),
+                    current,
+                    &mut duplicate,
+                    0x0010_1000,
+                    0,
+                    0,
+                )
+            } == 0
+            {
+                return Err(failure("p01_target_duplicate"));
+            }
+            let handle = unsafe { OwnedHandle::from_raw_handle(duplicate) };
+            *self.target.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle);
+            Ok(())
+        }
+    }
+    #[cfg(test)]
+    impl Drop for P01Monitor {
+        fn drop(&mut self) {
+            self.stop.store(true, Ordering::Release);
+            if let Some(thread) = self.thread.take() {
+                match self.finished.recv_timeout(Duration::from_secs(1)) {
+                    Ok(()) => {}
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                        record_stage("p01_collector_failed", None)
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                        record_stage("p01_collector_shutdown_unknown", None);
+                        while self.finished.recv_timeout(Duration::from_secs(1)).is_err() {
+                            if thread.is_finished() {
+                                break;
+                            }
+                        }
+                    }
+                }
+                if thread.join().is_err() {
+                    record_stage("p01_collector_failed", None);
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
+    fn p01_timestamp() -> u128 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+    }
+
+    #[cfg(test)]
+    fn p01_open(
+        origin: &'static str,
+        pid: u32,
+        handles: &mut std::collections::HashMap<u32, OwnedHandle>,
+    ) {
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+        };
+        if handles.contains_key(&pid) {
+            return;
+        }
+        let handle = unsafe {
+            OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                0,
+                pid,
+            )
+        };
+        if handle.is_null() {
+            let error = std::io::Error::last_os_error().raw_os_error();
+            record_p01(
+                &serde_json::json!({"kind":"open_failed", "origin":origin, "pid":pid, "error":error, "observed_unix_ms":p01_timestamp()}),
+            );
+        } else {
+            handles.insert(pid, unsafe { OwnedHandle::from_raw_handle(handle) });
+        }
+    }
+
+    #[cfg(test)]
+    fn p01_scan_job(
+        job: &OwnedHandle,
+        handles: &mut std::collections::HashMap<u32, OwnedHandle>,
+        target: &Arc<Mutex<Option<OwnedHandle>>>,
+        scan: u64,
+    ) {
+        use windows_sys::Win32::System::JobObjects::JobObjectBasicProcessIdList;
+        #[repr(C)]
+        struct ProcessList {
+            assigned: u32,
+            count: u32,
+            ids: [usize; 64],
+        }
+        let target_before = {
+            let guard = target.lock().unwrap_or_else(|e| e.into_inner());
+            guard.as_ref().map(|h| p01_status(job, h))
+        };
+        let mut list = ProcessList {
+            assigned: 0,
+            count: 0,
+            ids: [0; 64],
+        };
+        let ok = unsafe {
+            QueryInformationJobObject(
+                raw(job),
+                JobObjectBasicProcessIdList,
+                (&mut list as *mut ProcessList).cast(),
+                size_of::<ProcessList>() as u32,
+                null_mut(),
+            )
+        };
+        let error = if ok == 0 {
+            std::io::Error::last_os_error().raw_os_error()
+        } else {
+            None
+        };
+        let ids = list.ids[..(list.count as usize).min(list.ids.len())].to_vec();
+        record_p01(&serde_json::json!({
+            "kind":"list_before_open", "scan":scan, "ok":ok != 0, "error":error,
+            "assigned":list.assigned, "count":list.count, "ids":ids,
+            "complete":ok != 0 && list.count as usize <= list.ids.len() && list.assigned <= list.count,
+            "observed_unix_ms":p01_timestamp()
+        }));
+        if ok == 0 || list.count as usize > list.ids.len() || list.assigned > list.count {
+            record_p01(
+                &serde_json::json!({"kind":"list_failed", "error":error, "assigned":list.assigned, "count":list.count, "observed_unix_ms":p01_timestamp()}),
+            );
+            return;
+        }
+        for raw_pid in &list.ids[..list.count as usize] {
+            let pid = *raw_pid as u32;
+            p01_open("job_list", pid, handles);
+            p01_observe(job, "job_list", 0, pid, handles.get(&pid), target, scan);
+        }
+        let target_after = {
+            let guard = target.lock().unwrap_or_else(|e| e.into_inner());
+            guard.as_ref().map(|h| p01_status(job, h))
+        };
+        record_p01(&serde_json::json!({
+            "kind":"scan_complete", "scan":scan, "ids":ids,
+            "target_before":target_before, "target_after":target_after,
+            "observed_unix_ms":p01_timestamp()
+        }));
+    }
+
+    #[cfg(test)]
+    fn p01_status(job: &OwnedHandle, handle: &OwnedHandle) -> serde_json::Value {
+        let wait = unsafe { WaitForSingleObject(raw(handle), 0) };
+        let wait_error = if wait == windows_sys::Win32::Foundation::WAIT_FAILED {
+            std::io::Error::last_os_error().raw_os_error()
+        } else {
+            None
+        };
+        let mut member = 0;
+        let member_ok = unsafe { IsProcessInJob(raw(handle), raw(job), &mut member) };
+        let member_error = if member_ok == 0 {
+            std::io::Error::last_os_error().raw_os_error()
+        } else {
+            None
+        };
+        serde_json::json!({"wait":wait,"wait_error":wait_error,"member_ok":member_ok != 0,"member":member,"member_error":member_error})
+    }
+
+    #[cfg(test)]
+    fn p01_observe(
+        job: &OwnedHandle,
+        origin: &'static str,
+        message: u32,
+        pid: u32,
+        handle: Option<&OwnedHandle>,
+        target: &Arc<Mutex<Option<OwnedHandle>>>,
+        scan: u64,
+    ) {
+        use windows_sys::Win32::Foundation::FILETIME;
+        use windows_sys::Win32::System::JobObjects::JobObjectBasicProcessIdList;
+        use windows_sys::Win32::System::Threading::{GetProcessId, GetProcessTimes};
+        #[repr(C)]
+        struct ProcessList {
+            assigned: u32,
+            count: u32,
+            ids: [usize; 64],
+        }
+        let start_us = P01_START.get_or_init(Instant::now).elapsed().as_micros();
+        let target_guard = target.lock().unwrap_or_else(|e| e.into_inner());
+        let target_before = target_guard.as_ref().map(|h| p01_status(job, h));
+        let process_before = handle.map(|h| p01_status(job, h));
+        let observed_unix_ms = p01_timestamp();
+        let mut list = ProcessList {
+            assigned: 0,
+            count: 0,
+            ids: [0; 64],
+        };
+        let list_ok = unsafe {
+            QueryInformationJobObject(
+                raw(job),
+                JobObjectBasicProcessIdList,
+                (&mut list as *mut ProcessList).cast(),
+                size_of::<ProcessList>() as u32,
+                null_mut(),
+            )
+        };
+        let list_error = if list_ok == 0 {
+            std::io::Error::last_os_error().raw_os_error()
+        } else {
+            None
+        };
+        let mut accounting: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { zeroed() };
+        let accounting_ok = unsafe {
+            QueryInformationJobObject(
+                raw(job),
+                JobObjectBasicAccountingInformation,
+                (&mut accounting as *mut JOBOBJECT_BASIC_ACCOUNTING_INFORMATION).cast(),
+                size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
+                null_mut(),
+            )
+        };
+        let accounting_error = if accounting_ok == 0 {
+            std::io::Error::last_os_error().raw_os_error()
+        } else {
+            None
+        };
+        let ids: Vec<usize> = list.ids[..(list.count as usize).min(list.ids.len())].to_vec();
+        let mut observed = serde_json::json!({
+            "kind":origin, "message":message, "pid":pid, "scan":scan, "observed_unix_ms":observed_unix_ms,
+            "start_monotonic_us":start_us, "target_before":target_before, "process_before":process_before,
+            "retained_handle":handle.is_some(), "list_ok":list_ok != 0, "list_error":list_error,
+            "list_complete":list_ok != 0 && list.count as usize <= list.ids.len() && list.assigned <= list.count,
+            "list_assigned":list.assigned, "list_count":list.count, "list_ids":ids,
+            "accounting_ok":accounting_ok != 0, "accounting_error":accounting_error,
+            "total":accounting.TotalProcesses, "active":accounting.ActiveProcesses, "terminated":accounting.TotalTerminatedProcesses,
+        });
+        if let Some(handle) = handle {
+            let mut creation: FILETIME = unsafe { zeroed() };
+            let mut exit: FILETIME = unsafe { zeroed() };
+            let mut kernel: FILETIME = unsafe { zeroed() };
+            let mut user: FILETIME = unsafe { zeroed() };
+            let times_ok = unsafe {
+                GetProcessTimes(
+                    raw(handle),
+                    &mut creation,
+                    &mut exit,
+                    &mut kernel,
+                    &mut user,
+                )
+            };
+            let times_error = if times_ok == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            let mut image = vec![0u16; 32768];
+            let mut length = image.len() as u32;
+            let image_ok = unsafe {
+                QueryFullProcessImageNameW(raw(handle), 0, image.as_mut_ptr(), &mut length)
+            };
+            let image_error = if image_ok == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            let image_path = if image_ok != 0 {
+                Some(
+                    OsString::from_wide(&image[..length as usize])
+                        .to_string_lossy()
+                        .into_owned(),
+                )
+            } else {
+                None
+            };
+            let mut member = 0;
+            let member_ok = unsafe { IsProcessInJob(raw(handle), raw(job), &mut member) };
+            let member_error = if member_ok == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            let mut any_job = 0;
+            let any_ok = unsafe { IsProcessInJob(raw(handle), null_mut(), &mut any_job) };
+            let any_error = if any_ok == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            let handle_pid = unsafe { GetProcessId(raw(handle)) };
+            let handle_pid_error = if handle_pid == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            observed["handle_pid"] = serde_json::json!(handle_pid);
+            observed["handle_pid_error"] = serde_json::json!(handle_pid_error);
+            observed["creation_filetime"] = serde_json::json!(
+                ((creation.dwHighDateTime as u64) << 32) | creation.dwLowDateTime as u64
+            );
+            observed["times_ok"] = serde_json::json!(times_ok != 0);
+            observed["times_error"] = serde_json::json!(times_error);
+            observed["image"] = serde_json::json!(image_path);
+            observed["image_error"] = serde_json::json!(image_error);
+            observed["member_ok"] = serde_json::json!(member_ok != 0);
+            observed["member"] = serde_json::json!(member);
+            observed["member_error"] = serde_json::json!(member_error);
+            observed["any_job_ok"] = serde_json::json!(any_ok != 0);
+            observed["any_job"] = serde_json::json!(any_job);
+            observed["any_job_error"] = serde_json::json!(any_error);
+            observed["wait"] = serde_json::json!(unsafe { WaitForSingleObject(raw(handle), 0) });
+        }
+        observed["process_after"] = serde_json::json!(handle.map(|h| p01_status(job, h)));
+        observed["target_after"] =
+            serde_json::json!(target_guard.as_ref().map(|h| p01_status(job, h)));
+        observed["end_monotonic_us"] =
+            serde_json::json!(P01_START.get_or_init(Instant::now).elapsed().as_micros());
+        record_p01(&observed);
+    }
     #[cfg(test)]
     struct RunScope(Option<u32>);
     #[cfg(test)]
@@ -1802,7 +2282,18 @@ mod platform {
         ensure_open(gate, deadline)?;
         let job = Arc::new(unsafe { own(CreateJobObjectW(null(), null()), "job_create")? });
         #[cfg(test)]
-        let _job_events = if test_hooks::take_job_events() {
+        let p01_armed = test_hooks::take_p01_events();
+        #[cfg(test)]
+        let old_events_armed = test_hooks::take_job_events();
+        #[cfg(test)]
+        if p01_armed && old_events_armed {
+            return Err(WorkerError::IsolationUnavailable(
+                "p01_conflicting_observer",
+                None,
+            ));
+        }
+        #[cfg(test)]
+        let _job_events = if old_events_armed {
             Some(JobEvents::new(&job)?)
         } else {
             None
@@ -1856,6 +2347,26 @@ mod platform {
                 None,
             ));
         }
+        #[cfg(test)]
+        let _p01_monitor = if p01_armed {
+            let mut host_in_job = 0;
+            let host_job_ok =
+                unsafe { IsProcessInJob(GetCurrentProcess(), null_mut(), &mut host_in_job) };
+            let host_job_error = if host_job_ok == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            record_p01(&serde_json::json!({
+                "kind":"configuration", "host_pid":unsafe { GetCurrentProcessId() },
+                "host_in_any_job_query_ok":host_job_ok != 0, "host_in_any_job":host_in_job,
+                "host_in_any_job_error":host_job_error, "active_limit":actual.BasicLimitInformation.ActiveProcessLimit,
+                "limit_flags":actual.BasicLimitInformation.LimitFlags, "observed_unix_ms":p01_timestamp()
+            }));
+            Some(P01Monitor::start(job.clone())?)
+        } else {
+            None
+        };
         stopper.set_job(job.clone());
         let jobs = [raw(&job)];
         let handles = [raw(&child_stdin), raw(&child_stdout), raw(&child_stderr)];
@@ -1944,6 +2455,10 @@ mod platform {
             run_scope.0 = Some(information.dwProcessId);
         }
         let thread_handle = unsafe { own(information.hThread, "worker_thread_handle")? };
+        #[cfg(test)]
+        if let Some(monitor) = &_p01_monitor {
+            monitor.set_target(&process.process)?;
+        }
         record_stage("created_suspended", Some(information.dwProcessId));
         #[cfg(test)]
         test_observer::capture(information.dwProcessId)?;
@@ -1971,6 +2486,18 @@ mod platform {
         if inside == 0 {
             gate.stop();
             return Err(WorkerError::IsolationUnavailable("worker_not_in_job", None));
+        }
+        #[cfg(test)]
+        if let Some(monitor) = &_p01_monitor {
+            p01_observe(
+                &job,
+                "host_suspended",
+                0,
+                information.dwProcessId,
+                Some(&process.process),
+                &monitor.target,
+                0,
+            );
         }
         image.verify_process(raw(&process.process), &worker.digest)?;
         #[cfg(test)]
