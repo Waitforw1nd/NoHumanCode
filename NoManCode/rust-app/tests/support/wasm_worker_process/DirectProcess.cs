@@ -28,7 +28,9 @@ public static class NhcDirectProcess {
             if(o.IsInvalid || e.IsInvalid || i.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error());
             var si=new STARTUPINFO { cb=Marshal.SizeOf(typeof(STARTUPINFO)), flags=0x100, stdin=i.DangerousGetHandle(), stdout=o.DangerousGetHandle(), stderr=e.DangerousGetHandle() };
             PROCESS_INFORMATION pi;
-            if(!CreateProcessW(exe,new StringBuilder("\""+exe+"\" "+arguments),IntPtr.Zero,IntPtr.Zero,true,4,IntPtr.Zero,cwd,ref si,out pi)) throw new Win32Exception(Marshal.GetLastWin32Error());
+            // CREATE_SUSPENDED | CREATE_NO_WINDOW: observe identity before resume,
+            // without creating a visible console for the controlled test process.
+            if(!CreateProcessW(exe,new StringBuilder("\""+exe+"\" "+arguments),IntPtr.Zero,IntPtr.Zero,true,0x08000004,IntPtr.Zero,cwd,ref si,out pi)) throw new Win32Exception(Marshal.GetLastWin32Error());
             var handle=new SafeFileHandle(pi.process,true);
             long created, exited, kernel, user;
             if(!GetProcessTimes(handle,out created,out exited,out kernel,out user)) created=0;

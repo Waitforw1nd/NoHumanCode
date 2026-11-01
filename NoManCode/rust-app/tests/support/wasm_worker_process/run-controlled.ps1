@@ -75,7 +75,7 @@ function Run-Controlled($test, $arguments, $site, $timeoutSeconds) {
         if ([string]::Concat($stdout, $stderr).Contains('NHC_TERMINAL_UNKNOWN:')) { throw 'terminal unknown marker' }
         if (Test-Path -LiteralPath (Join-Path $site 'host.stage')) {
             $stage = [string](Get-Content -Raw -LiteralPath (Join-Path $site 'host.stage'))
-            if ([string]::Concat($stage).Contains('phase=created_process_handle_unknown ')) { throw 'terminal creation handle unknown' }
+            if ([string]::Concat($stage, '').Contains('phase=created_process_handle_unknown ')) { throw 'terminal creation handle unknown' }
         }
         if ($clock.Elapsed.TotalSeconds -ge $timeoutSeconds) { throw 'case deadline exceeded; process retained' }
         if ($process.HasExited) { break }
