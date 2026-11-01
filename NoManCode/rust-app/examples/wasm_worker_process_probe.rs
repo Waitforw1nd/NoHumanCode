@@ -69,6 +69,8 @@ fn main() {
         "job-cpu",
         "job-memory",
         "p01-memory",
+        "w06-sentinel",
+        "w06-job",
         "valid-output",
         "valid-stderr",
     ];
@@ -148,6 +150,40 @@ fn main() {
     let request =
         protocol::read_request(&mut io::stdin().lock()).expect("complete request and EOF");
     mark("request_eof");
+    if mode == "w06-sentinel" {
+        use windows_sys::Win32::{Foundation::HANDLE, System::Threading::SetEvent};
+        let text = std::str::from_utf8(&request.module).expect("sentinel request");
+        let (nonce, handle) = text.split_once(':').expect("sentinel payload");
+        assert_eq!(nonce.len(), 32);
+        let handle: usize = handle.parse().expect("sentinel handle");
+        let ok = unsafe { SetEvent(handle as HANDLE) };
+        let error = if ok == 0 {
+            io::Error::last_os_error().raw_os_error()
+        } else {
+            None
+        };
+        mark(&format!(
+            "sentinel_result nonce={nonce} ok={ok} error={error:?}"
+        ));
+        mark(&format!("sentinel_wait nonce={nonce}"));
+        hold();
+        return;
+    }
+    if mode == "w06-job" {
+        let control = path.with_extension("job");
+        mark("job_control_wait");
+        let started = std::time::Instant::now();
+        while !control.exists() && started.elapsed() < Duration::from_secs(2) {
+            thread::sleep(Duration::from_millis(2));
+        }
+        let text = std::fs::read_to_string(control).expect("job control");
+        let (nonce, handle) = text.trim().split_once(':').expect("job control payload");
+        assert_eq!(nonce.len(), 32);
+        let _: usize = handle.parse().expect("job handle");
+        mark(&format!("job_wait nonce={nonce}"));
+        hold();
+        return;
+    }
     if mode == "job-cpu" {
         mark("cpu_loop_start");
         let marker_lock = std::sync::Mutex::new(());

@@ -93,6 +93,7 @@ fn manifest() -> Manifest {
 }
 
 #[tokio::test]
+#[ignore = "requires controlled worker snapshots and isolated process observation"]
 async fn w01_real_worker_before_after_and_near_8mib() {
     let stage_log = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("attempt stage log"));
     assert!(
@@ -543,6 +544,7 @@ mod fault_matrix {
     }
 
     #[tokio::test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w02_protocol_fault_matrix() {
         fresh_group();
         control().await;
@@ -595,6 +597,7 @@ mod fault_matrix {
     }
 
     #[tokio::test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w03_pipe_fault_matrix() {
         fresh_group();
         control().await;
@@ -826,6 +829,7 @@ mod fault_matrix {
     }
 
     #[tokio::test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w06_p01_live_job_observation() {
         // attempt8 seq 14/17 observed this extra object and accounting state.
         let extra = serde_json::json!({"kind":"notification","pid":9276});
@@ -985,6 +989,7 @@ mod fault_matrix {
     }
 
     #[tokio::test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_resource_limits() {
         fresh_group();
         control().await;
@@ -1012,6 +1017,7 @@ mod fault_matrix {
         .await;
     }
     #[tokio::test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_injected_zero_read_sensitivity() {
         fresh_group();
         control().await;
@@ -1059,6 +1065,821 @@ mod fault_matrix {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
         predicate()
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
+    async fn w06_non_whitelisted_event() {
+        use std::os::windows::io::{FromRawHandle, OwnedHandle};
+        use windows_sys::Win32::{
+            Foundation::{
+                CompareObjectHandles, DUPLICATE_SAME_ACCESS, DuplicateHandle, GetHandleInformation,
+            },
+            Security::SECURITY_ATTRIBUTES,
+            System::Threading::{
+                CreateEventW, GetCurrentProcess, OpenProcess, PROCESS_DUP_HANDLE,
+                PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+            },
+        };
+        let mut attributes = SECURITY_ATTRIBUTES {
+            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: std::ptr::null_mut(),
+            bInheritHandle: 1,
+        };
+        let event_raw = unsafe { CreateEventW(&mut attributes, 1, 0, std::ptr::null()) };
+        assert!(
+            !event_raw.is_null(),
+            "create sentinel: {:?}",
+            std::io::Error::last_os_error()
+        );
+        let event = unsafe { OwnedHandle::from_raw_handle(event_raw) };
+        let mut flags = 0u32;
+        assert_ne!(
+            unsafe { GetHandleInformation(event.as_raw_handle(), &mut flags) },
+            0
+        );
+        assert_ne!(flags & 1, 0, "sentinel must actually be inheritable");
+        assert_eq!(
+            unsafe { WaitForSingleObject(event.as_raw_handle(), 0) },
+            258
+        );
+        let log_path = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("W06 stage"));
+        assert!(!log_path.exists());
+        let (service, probe_log) = fault_service("w06-sentinel");
+        assert!(!probe_log.exists());
+        let nonce = uuid::Uuid::new_v4().simple().to_string();
+        let payload = format!("{nonce}:{}", event.as_raw_handle() as usize).into_bytes();
+        let cancel = CancellationToken::new();
+        let child_cancel = cancel.clone();
+        test_observer::arm(false);
+        let mut call = tokio::spawn(async move {
+            service
+                .call(manifest(), before(), payload, child_cancel)
+                .await
+        });
+        let reached = wait_until(
+            || read_log(&probe_log).contains(&format!("phase=sentinel_wait nonce={nonce}")),
+            Duration::from_secs(3),
+        )
+        .await;
+        let mut observed = test_observer::take();
+        let mut evidence = Err("probe not ready or worker not observed".to_string());
+        if reached && let Some((pid, process)) = observed.as_ref() {
+            let original_identity = w05_identity(process);
+            let duplicate_process = unsafe {
+                OpenProcess(
+                    PROCESS_DUP_HANDLE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                    0,
+                    *pid,
+                )
+            };
+            if duplicate_process.is_null() {
+                evidence = Err(format!(
+                    "worker duplicate access failed: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                ));
+            } else {
+                let duplicate_process = unsafe { OwnedHandle::from_raw_handle(duplicate_process) };
+                let copied_identity = w05_identity(&duplicate_process);
+                if !matches!((&original_identity, &copied_identity),
+                    (Ok(a), Ok(b)) if a == b && a.0 == *pid)
+                    || unsafe { WaitForSingleObject(duplicate_process.as_raw_handle(), 0) } != 258
+                {
+                    evidence = Err(format!(
+                        "worker identity or liveness unknown: original={original_identity:?} copied={copied_identity:?}"
+                    ));
+                } else {
+                    let mut copy = std::ptr::null_mut();
+                    let ok = unsafe {
+                        DuplicateHandle(
+                            duplicate_process.as_raw_handle(),
+                            event.as_raw_handle(),
+                            GetCurrentProcess(),
+                            &mut copy,
+                            0,
+                            0,
+                            DUPLICATE_SAME_ACCESS,
+                        )
+                    };
+                    let error = if ok == 0 {
+                        std::io::Error::last_os_error().raw_os_error()
+                    } else {
+                        None
+                    };
+                    let same = if ok != 0 {
+                        let copy = unsafe { OwnedHandle::from_raw_handle(copy) };
+                        let mut copy_flags = 0;
+                        if unsafe { GetHandleInformation(copy.as_raw_handle(), &mut copy_flags) }
+                            == 0
+                        {
+                            None
+                        } else {
+                            Some(
+                                unsafe {
+                                    CompareObjectHandles(
+                                        event.as_raw_handle(),
+                                        copy.as_raw_handle(),
+                                    )
+                                } != 0,
+                            )
+                        }
+                    } else {
+                        None
+                    };
+                    let sentinel_wait = unsafe { WaitForSingleObject(event.as_raw_handle(), 0) };
+                    evidence = if sentinel_wait == 258 && (error == Some(6) || same == Some(false))
+                    {
+                        Ok((error, same))
+                    } else {
+                        Err(format!(
+                            "sentinel identity unknown or leaked: duplicate_error={error:?} same={same:?} event_wait={sentinel_wait}"
+                        ))
+                    };
+                }
+            }
+        }
+        cancel.cancel();
+        let outcome = tokio::time::timeout(Duration::from_secs(8), &mut call).await;
+        if observed.is_none() {
+            observed = test_observer::take();
+        }
+        let process_signaled = observed.as_ref().is_some_and(|(_, h)| {
+            (unsafe { WaitForSingleObject(h.as_raw_handle(), 0) }) == WAIT_OBJECT_0
+        });
+        if !process_signaled
+            || !test_hooks::slot_free()
+            || !matches!(outcome, Ok(Ok(ref result)) if !matches!(result, Err(WorkerError::CleanupUnknown)))
+        {
+            eprintln!("W06 sentinel cleanup unknown; retain original object and stop");
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
+        let (pid, _) = observed.expect("W06 worker observer");
+        assert!(reached, "sentinel probe did not reach hold");
+        assert!(read_log(&probe_log).contains(&format!("phase=sentinel_result nonce={nonce}")));
+        assert_reaped(&read_log(&log_path), pid);
+        println!("W06 non-whitelisted event pid={pid} evidence={evidence:?}");
+        assert!(evidence.is_ok(), "{evidence:?}");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
+    async fn w06_job_handle_not_inherited() {
+        use std::os::windows::io::{FromRawHandle, OwnedHandle};
+        use windows_sys::Win32::{
+            Foundation::{
+                CompareObjectHandles, DUPLICATE_SAME_ACCESS, DuplicateHandle, GetHandleInformation,
+            },
+            System::Threading::{
+                GetCurrentProcess, OpenProcess, PROCESS_DUP_HANDLE,
+                PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+            },
+        };
+        let log_path = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("W06 stage"));
+        assert!(!log_path.exists());
+        let (service, probe_log) = fault_service("w06-job");
+        let control = probe_log.with_extension("job");
+        let temporary_control = probe_log.with_extension("job-tmp");
+        assert!(!probe_log.exists() && !control.exists() && !temporary_control.exists());
+        let nonce = uuid::Uuid::new_v4().simple().to_string();
+        let cancel = CancellationToken::new();
+        let child_cancel = cancel.clone();
+        test_observer::arm(false);
+        test_observer::arm_job_probe();
+        let mut call = tokio::spawn(async move {
+            service
+                .call(manifest(), before(), wasm(), child_cancel)
+                .await
+        });
+        let ready = wait_until(
+            || read_log(&probe_log).contains("phase=job_control_wait"),
+            Duration::from_secs(3),
+        )
+        .await;
+        let job = test_observer::take_job();
+        let mut observed = test_observer::take();
+        let mut evidence = Err("job/probe observation not ready".to_string());
+        if ready && let (Some(job), Some((pid, process))) = (job.as_ref(), observed.as_ref()) {
+            let mut flags = 0u32;
+            let flag_ok = unsafe { GetHandleInformation(job.as_raw_handle(), &mut flags) };
+            if flag_ok == 0 || flags & 1 != 0 {
+                evidence = Err(format!(
+                    "job inherit flag unknown or enabled: ok={flag_ok} flags={flags}"
+                ));
+            } else if let Err(error) = fs::write(
+                &temporary_control,
+                format!("{nonce}:{}", job.as_raw_handle() as usize),
+            )
+            .and_then(|()| fs::rename(&temporary_control, &control))
+            {
+                evidence = Err(format!("job control write failed: {error}"));
+            } else if !wait_until(
+                || read_log(&probe_log).contains(&format!("phase=job_wait nonce={nonce}")),
+                Duration::from_secs(1),
+            )
+            .await
+            {
+                evidence = Err("job probe did not enter hold".into());
+            } else {
+                let handle = unsafe {
+                    OpenProcess(
+                        PROCESS_DUP_HANDLE
+                            | PROCESS_QUERY_LIMITED_INFORMATION
+                            | PROCESS_SYNCHRONIZE,
+                        0,
+                        *pid,
+                    )
+                };
+                if handle.is_null() {
+                    evidence = Err(format!(
+                        "worker duplicate access failed: {:?}",
+                        std::io::Error::last_os_error().raw_os_error()
+                    ));
+                } else {
+                    let handle = unsafe { OwnedHandle::from_raw_handle(handle) };
+                    let original_identity = w05_identity(process);
+                    let copied_identity = w05_identity(&handle);
+                    if !matches!((&original_identity, &copied_identity), (Ok(a), Ok(b)) if a == b && a.0 == *pid)
+                        || unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) } != 258
+                    {
+                        evidence = Err(format!(
+                            "worker identity unknown: original={original_identity:?} copied={copied_identity:?}"
+                        ));
+                    } else {
+                        let mut copy = std::ptr::null_mut();
+                        let ok = unsafe {
+                            DuplicateHandle(
+                                handle.as_raw_handle(),
+                                job.as_raw_handle(),
+                                GetCurrentProcess(),
+                                &mut copy,
+                                0,
+                                0,
+                                DUPLICATE_SAME_ACCESS,
+                            )
+                        };
+                        let error = if ok == 0 {
+                            std::io::Error::last_os_error().raw_os_error()
+                        } else {
+                            None
+                        };
+                        let same = if ok != 0 {
+                            let copy = unsafe { OwnedHandle::from_raw_handle(copy) };
+                            let mut copy_flags = 0;
+                            if unsafe {
+                                GetHandleInformation(copy.as_raw_handle(), &mut copy_flags)
+                            } == 0
+                            {
+                                None
+                            } else {
+                                Some(
+                                    unsafe {
+                                        CompareObjectHandles(
+                                            job.as_raw_handle(),
+                                            copy.as_raw_handle(),
+                                        )
+                                    } != 0,
+                                )
+                            }
+                        } else {
+                            None
+                        };
+                        evidence = if error == Some(6) || same == Some(false) {
+                            Ok((error, same))
+                        } else {
+                            Err(format!(
+                                "job identity unknown or leaked: duplicate_error={error:?} same={same:?}"
+                            ))
+                        };
+                    }
+                }
+            }
+        }
+        drop(job);
+        cancel.cancel();
+        let outcome = tokio::time::timeout(Duration::from_secs(8), &mut call).await;
+        if observed.is_none() {
+            observed = test_observer::take();
+        }
+        let process_signaled = observed.as_ref().is_some_and(|(_, h)| {
+            (unsafe { WaitForSingleObject(h.as_raw_handle(), 0) }) == WAIT_OBJECT_0
+        });
+        if !process_signaled
+            || !test_hooks::slot_free()
+            || !matches!(outcome, Ok(Ok(ref result)) if !matches!(result, Err(WorkerError::CleanupUnknown)))
+        {
+            eprintln!("W06 job handle cleanup unknown; retain original objects and stop");
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
+        let (pid, _) = observed.expect("W06 worker observer");
+        assert_reaped(&read_log(&log_path), pid);
+        println!("W06 job handle pid={pid} evidence={evidence:?}");
+        assert!(evidence.is_ok(), "{evidence:?}");
+    }
+
+    fn w05_identity(handle: &std::os::windows::io::OwnedHandle) -> Result<(u32, u64), String> {
+        use windows_sys::Win32::{
+            Foundation::FILETIME,
+            System::Threading::{GetProcessId, GetProcessTimes},
+        };
+        let pid = unsafe { GetProcessId(handle.as_raw_handle()) };
+        if pid == 0 {
+            return Err(format!(
+                "GetProcessId: {:?}",
+                std::io::Error::last_os_error().raw_os_error()
+            ));
+        }
+        let mut creation: FILETIME = unsafe { std::mem::zeroed() };
+        let mut exit: FILETIME = unsafe { std::mem::zeroed() };
+        let mut kernel: FILETIME = unsafe { std::mem::zeroed() };
+        let mut user: FILETIME = unsafe { std::mem::zeroed() };
+        let ok = unsafe {
+            GetProcessTimes(
+                handle.as_raw_handle(),
+                &mut creation,
+                &mut exit,
+                &mut kernel,
+                &mut user,
+            )
+        };
+        if ok == 0 {
+            return Err(format!(
+                "GetProcessTimes: {:?}",
+                std::io::Error::last_os_error().raw_os_error()
+            ));
+        }
+        Ok((
+            pid,
+            (u64::from(creation.dwHighDateTime) << 32) | u64::from(creation.dwLowDateTime),
+        ))
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
+    async fn w05_host_helper() {
+        use std::io::{BufRead, Write};
+        let scenario = std::env::var_os("NHC_W05_SCENARIO").expect("W05 helper scenario");
+        let scenario = scenario.to_string_lossy().into_owned();
+        let nonce = std::env::var("NHC_W05_NONCE").expect("W05 nonce");
+        let helper_pid = std::process::id();
+        let first = if scenario == "before" {
+            "w05_before_create"
+        } else {
+            "w05_suspended"
+        };
+        let later = match scenario.as_str() {
+            "resumed" => Some("w05_resumed"),
+            "pending" => Some("w05_stdin_pending"),
+            "before" | "suspended" => None,
+            _ => panic!("unknown W05 scenario"),
+        };
+        let (service, probe) = match scenario.as_str() {
+            "resumed" | "pending" => {
+                let (service, stage) = fault_service("no-read");
+                (service, Some(stage))
+            }
+            _ => (worker(), None),
+        };
+        test_hooks::w05_reset_stopper();
+        if scenario != "before" {
+            test_observer::arm(false);
+        }
+        let guard = test_hooks::arm(first);
+        let cancellation = CancellationToken::new();
+        let cancel_task = cancellation.clone();
+        let start = Instant::now();
+        let module = if scenario == "pending" {
+            near_limit(wasm())
+        } else {
+            wasm()
+        };
+        let mut call = tokio::spawn(async move {
+            service
+                .call(manifest(), before(), module, cancel_task)
+                .await
+        });
+        let mut observed = None;
+        let mut status = "setup_failed";
+        if wait_until(test_hooks::reached, Duration::from_secs(3)).await {
+            if scenario != "before" {
+                observed = test_observer::take();
+            }
+            let identity = observed.as_ref().and_then(|(_, h)| match w05_identity(h) {
+                Ok(value) => Some(value),
+                Err(error) => {
+                    eprintln!("W05 identity failed: {error}");
+                    None
+                }
+            });
+            let worker_live = observed
+                .as_ref()
+                .is_none_or(|(_, h)| (unsafe { WaitForSingleObject(h.as_raw_handle(), 0) }) == 258);
+            if (scenario == "before" || identity.is_some())
+                && worker_live
+                && !test_hooks::w05_stopper_started()
+                && start.elapsed() < Duration::from_millis(3500)
+            {
+                let event = serde_json::json!({
+                    "kind":"first", "nonce":nonce, "scenario":scenario,
+                    "helper_pid":helper_pid, "phase":first, "elapsed_ms":start.elapsed().as_millis(),
+                    "pid":identity.map(|v| v.0), "creation_filetime":identity.map(|v| v.1),
+                    "stopper_started":false
+                });
+                println!("W05={event}");
+                let _ = std::io::stdout().flush();
+                let mut line = String::new();
+                let received = std::io::stdin().lock().read_line(&mut line).unwrap_or(0);
+                let ack: Option<serde_json::Value> = serde_json::from_str(&line).ok();
+                if received > 0
+                    && ack.as_ref().is_some_and(|v| {
+                        v["nonce"] == nonce
+                            && v["scenario"] == scenario
+                            && v["kind"] == "advance"
+                            && v["helper_pid"].as_u64() == Some(helper_pid as u64)
+                    })
+                    && later.is_some()
+                {
+                    let phase = later.unwrap();
+                    test_hooks::release_with_next(phase);
+                    let reached =
+                        wait_until(|| test_hooks::phase_reached(phase), Duration::from_secs(3))
+                            .await;
+                    let probe_started = wait_until(
+                        || {
+                            probe.as_ref().is_some_and(|path| {
+                                identity.is_some_and(|(pid, _)| {
+                                    probe_pid(&read_log(path), "holding_without_read", pid)
+                                })
+                            })
+                        },
+                        Duration::from_secs(1),
+                    )
+                    .await;
+                    if reached
+                        && probe_started
+                        && !test_hooks::w05_stopper_started()
+                        && start.elapsed() < Duration::from_millis(3500)
+                        && observed.as_ref().is_some_and(|(_, h)| {
+                            (unsafe { WaitForSingleObject(h.as_raw_handle(), 0) }) == 258
+                        })
+                    {
+                        let event = serde_json::json!({
+                            "kind":"final", "nonce":nonce, "scenario":scenario,
+                            "helper_pid":helper_pid, "phase":phase,
+                            "elapsed_ms":start.elapsed().as_millis(), "stopper_started":false,
+                            "pid":identity.map(|v| v.0), "creation_filetime":identity.map(|v| v.1)
+                        });
+                        println!("W05={event}");
+                        let _ = std::io::stdout().flush();
+                        line.clear();
+                        let _ = std::io::stdin().lock().read_line(&mut line);
+                    }
+                }
+                status = "channel_closed_or_invalid";
+            }
+        }
+        cancellation.cancel();
+        test_hooks::release();
+        let outcome = tokio::time::timeout(Duration::from_secs(8), &mut call).await;
+        let worker_signaled = observed.as_ref().map(|(_, handle)| {
+            (unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) }) == WAIT_OBJECT_0
+        });
+        let known_outcome = matches!(outcome, Ok(Ok(ref result)) if !matches!(result, Err(WorkerError::CleanupUnknown)));
+        println!(
+            "W05={}",
+            serde_json::json!({"kind":"cleanup","nonce":nonce,"scenario":scenario,
+                "helper_pid":helper_pid,"status":status,
+                "call_returned":known_outcome,"worker_signaled":worker_signaled,
+                "slot_free":test_hooks::slot_free()})
+        );
+        drop(guard);
+    }
+
+    struct W05Parent {
+        child: std::process::Child,
+        worker: Option<std::os::windows::io::OwnedHandle>,
+        events: std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+        reader: Option<std::thread::JoinHandle<()>>,
+        reader_failed: bool,
+        nonce: String,
+        scenario: String,
+        helper_pid: u32,
+        before_proven: bool,
+        complete: bool,
+    }
+    impl W05Parent {
+        fn finish_reader(&mut self) -> bool {
+            if self.reader_failed {
+                return false;
+            }
+            let Some(reader) = self.reader.take() else {
+                return true;
+            };
+            let started = Instant::now();
+            while !reader.is_finished() && started.elapsed() < Duration::from_secs(2) {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            if !reader.is_finished() {
+                self.reader = Some(reader);
+                return false;
+            }
+            if reader.join().is_err() {
+                self.reader_failed = true;
+                return false;
+            }
+            true
+        }
+    }
+    impl Drop for W05Parent {
+        fn drop(&mut self) {
+            if self.complete {
+                return;
+            }
+            drop(self.child.stdin.take());
+            let started = Instant::now();
+            while started.elapsed() < Duration::from_secs(8) {
+                if matches!(self.child.try_wait(), Ok(Some(_))) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if !matches!(self.child.try_wait(), Ok(Some(_))) {
+                let _ = self.child.kill();
+            }
+            let helper_wait = unsafe { WaitForSingleObject(self.child.as_raw_handle(), 2000) };
+            let worker_wait = self
+                .worker
+                .as_ref()
+                .map(|h| unsafe { WaitForSingleObject(h.as_raw_handle(), 5000) });
+            let reader_finished = self.finish_reader();
+            let cleanup = self
+                .events
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .iter()
+                .any(|v| {
+                    v["kind"] == "cleanup"
+                        && v["nonce"] == self.nonce
+                        && v["scenario"] == self.scenario
+                        && v["helper_pid"].as_u64() == Some(self.helper_pid as u64)
+                        && v["call_returned"] == true
+                        && v["slot_free"] == true
+                        && (v["worker_signaled"] == true
+                            || (self.scenario == "before" && v["worker_signaled"].is_null()))
+                });
+            let worker_known = worker_wait == Some(WAIT_OBJECT_0)
+                || (self.worker.is_none() && (self.before_proven || cleanup));
+            if helper_wait != WAIT_OBJECT_0 || !reader_finished || !worker_known {
+                eprintln!("W05 cleanup_unknown: retain observed objects and stop");
+                loop {
+                    std::thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
+    fn w05_host_kill_boundaries() {
+        use std::{
+            io::{BufRead, BufReader, Write},
+            os::windows::io::FromRawHandle,
+            process::{Command, Stdio},
+            sync::{Arc, Mutex, mpsc},
+        };
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, TerminateProcess,
+        };
+        let root = PathBuf::from(std::env::var_os("NHC_W05_ROOT").expect("W05 fresh root"));
+        for scenario in ["before", "suspended", "resumed", "pending"] {
+            let stage = root.join(format!("{scenario}-host.stage"));
+            assert!(!stage.exists(), "W05 stage must be fresh");
+            let nonce = uuid::Uuid::new_v4().simple().to_string();
+            let mut command = Command::new(std::env::current_exe().expect("test executable"));
+            command
+                .args([
+                    "--exact",
+                    "wasm_worker_process_tests::fault_matrix::w05_host_helper",
+                    "--ignored",
+                    "--nocapture",
+                    "--test-threads=1",
+                ])
+                .env("NHC_W05_SCENARIO", scenario)
+                .env("NHC_W05_NONCE", &nonce)
+                .env("NHC_W2_STAGE_LOG", &stage)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit());
+            if matches!(scenario, "resumed" | "pending") {
+                command.env("NHC_W2_FAULT_DIR", root.join(scenario));
+                assert!(!root.join(scenario).join("no-read.stage").exists());
+            }
+            let started = Instant::now();
+            let mut child = command.spawn().expect("start W05 helper");
+            let helper_pid = child.id();
+            let stdout = child.stdout.take().expect("helper stdout");
+            let events = Arc::new(Mutex::new(Vec::new()));
+            let events_thread = events.clone();
+            let (sender, receiver) = mpsc::channel();
+            let reader = std::thread::spawn(move || {
+                for line in BufReader::new(stdout).lines() {
+                    let line = line.expect("W05 stdout reader failed");
+                    if let Some((_, json)) = line.split_once("W05=")
+                        && let Ok(value) = serde_json::from_str::<serde_json::Value>(json)
+                    {
+                        events_thread
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .push(value.clone());
+                        let _ = sender.send(value);
+                    }
+                }
+            });
+            let mut parent = W05Parent {
+                child,
+                worker: None,
+                events,
+                reader: Some(reader),
+                reader_failed: false,
+                nonce: nonce.clone(),
+                scenario: scenario.to_string(),
+                helper_pid,
+                before_proven: false,
+                complete: false,
+            };
+            let first = receiver
+                .recv_timeout(Duration::from_secs(4))
+                .expect("W05 first event");
+            assert!(
+                first["kind"] == "first"
+                    && first["nonce"] == nonce
+                    && first["scenario"] == scenario
+                    && first["helper_pid"].as_u64() == Some(helper_pid as u64)
+                    && first["stopper_started"] == false
+            );
+            assert_eq!(
+                first["phase"],
+                if scenario == "before" {
+                    "w05_before_create"
+                } else {
+                    "w05_suspended"
+                }
+            );
+            let identity = if scenario == "before" {
+                None
+            } else {
+                let pid = first["pid"]
+                    .as_u64()
+                    .and_then(|v| u32::try_from(v).ok())
+                    .expect("worker PID");
+                let creation = first["creation_filetime"]
+                    .as_u64()
+                    .expect("worker creation");
+                let raw = unsafe {
+                    OpenProcess(
+                        PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                        0,
+                        pid,
+                    )
+                };
+                assert!(
+                    !raw.is_null(),
+                    "worker observation open failed: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                );
+                let handle = unsafe { std::os::windows::io::OwnedHandle::from_raw_handle(raw) };
+                assert_eq!(
+                    w05_identity(&handle),
+                    Ok((pid, creation)),
+                    "worker identity mismatch"
+                );
+                assert_eq!(
+                    unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) },
+                    258
+                );
+                parent.worker = Some(handle);
+                Some((pid, creation))
+            };
+            if matches!(scenario, "resumed" | "pending") {
+                let ack = serde_json::json!({"kind":"advance","scenario":scenario,"nonce":nonce,"helper_pid":helper_pid});
+                writeln!(parent.child.stdin.as_mut().expect("helper input"), "{ack}")
+                    .expect("advance");
+                parent
+                    .child
+                    .stdin
+                    .as_mut()
+                    .unwrap()
+                    .flush()
+                    .expect("flush advance");
+                let final_event = receiver
+                    .recv_timeout(Duration::from_secs(4))
+                    .expect("W05 final event");
+                let (pid, creation) = identity.unwrap();
+                assert!(
+                    final_event["kind"] == "final"
+                        && final_event["nonce"] == nonce
+                        && final_event["scenario"] == scenario
+                        && final_event["helper_pid"].as_u64() == Some(helper_pid as u64)
+                        && final_event["pid"].as_u64() == Some(pid as u64)
+                        && final_event["creation_filetime"].as_u64() == Some(creation)
+                        && final_event["stopper_started"] == false
+                );
+                assert_eq!(
+                    final_event["phase"],
+                    if scenario == "resumed" {
+                        "w05_resumed"
+                    } else {
+                        "w05_stdin_pending"
+                    }
+                );
+            }
+            assert!(
+                started.elapsed() < Duration::from_millis(3500),
+                "W05 deadline margin lost"
+            );
+            let host_log = read_log(&stage);
+            assert!(!host_log.contains("phase=w05_gate_or_stopper_closed"));
+            assert!(host_log.contains("phase=w05_job_active_limit pid=Some(0) count=1"));
+            assert!(host_log.contains("phase=w05_job_handle_flags pid=Some(0) count="));
+            assert_eq!(max_count(&host_log, "w05_job_handle_flags", 0) & 1, 0);
+            assert!(host_log.contains("phase=w05_host_in_job pid=Some(0) count="));
+            use windows_sys::Win32::System::JobObjects::{
+                JOB_OBJECT_LIMIT_ACTIVE_PROCESS, JOB_OBJECT_LIMIT_BREAKAWAY_OK,
+                JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK,
+            };
+            let job_flags = max_count(&host_log, "w05_job_limit_flags", 0) as u32;
+            assert_eq!(
+                job_flags & (JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE),
+                JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            );
+            assert_eq!(
+                job_flags & (JOB_OBJECT_LIMIT_BREAKAWAY_OK | JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK),
+                0
+            );
+            let expected_phase = match scenario {
+                "before" => "w05_before_create",
+                "suspended" => "w05_suspended",
+                "resumed" => "w05_resumed",
+                _ => "w05_stdin_pending",
+            };
+            assert!(host_log.contains(&format!("phase={expected_phase} ")));
+            assert_eq!(
+                unsafe { WaitForSingleObject(parent.child.as_raw_handle(), 0) },
+                258
+            );
+            if let Some(handle) = &parent.worker {
+                assert_eq!(
+                    unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) },
+                    258
+                );
+            }
+            let kill_started_ms = started.elapsed().as_millis();
+            let killed = unsafe { TerminateProcess(parent.child.as_raw_handle(), 1) };
+            let kill_returned_ms = started.elapsed().as_millis();
+            let kill_error = if killed == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            println!(
+                "W05 scenario={scenario} helper={helper_pid} worker={identity:?} terminate={killed} error={kill_error:?} kill_started_ms={kill_started_ms} kill_returned_ms={kill_returned_ms}"
+            );
+            assert_ne!(killed, 0, "helper termination failed: {kill_error:?}");
+            if scenario == "before" && kill_returned_ms < 3500 {
+                parent.before_proven = true;
+            }
+            assert!(
+                kill_returned_ms < 3500,
+                "W05 kill completed after deadline margin"
+            );
+            let helper_wait_start_ms = started.elapsed().as_millis();
+            assert_eq!(
+                unsafe { WaitForSingleObject(parent.child.as_raw_handle(), 5000) },
+                WAIT_OBJECT_0
+            );
+            let helper_wait_end_ms = started.elapsed().as_millis();
+            let worker_wait_start_ms = started.elapsed().as_millis();
+            if let Some(handle) = &parent.worker {
+                assert_eq!(
+                    unsafe { WaitForSingleObject(handle.as_raw_handle(), 5000) },
+                    WAIT_OBJECT_0,
+                    "worker cleanup unknown"
+                );
+            }
+            let worker_wait_end_ms = started.elapsed().as_millis();
+            println!(
+                "W05 scenario={scenario} helper_wait=0 helper_wait_start_ms={helper_wait_start_ms} helper_wait_end_ms={helper_wait_end_ms} worker_wait={:?} worker_wait_start_ms={worker_wait_start_ms} worker_wait_end_ms={worker_wait_end_ms}",
+                parent.worker.as_ref().map(|_| WAIT_OBJECT_0),
+            );
+            assert!(
+                parent.finish_reader(),
+                "helper stdout reader cleanup unknown"
+            );
+            parent.complete = true;
+        }
     }
     async fn unknown_case(phase: &'static str) {
         let log_path = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").unwrap());
@@ -1208,6 +2029,7 @@ mod fault_matrix {
         control().await;
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_unknown_cleanup_and_slot_reuse() {
         fresh_group();
         control().await;
@@ -1409,6 +2231,7 @@ mod fault_matrix {
         control().await;
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_cancellation_and_acceptance_boundaries() {
         fresh_group();
         control().await;
@@ -1442,6 +2265,7 @@ mod fault_matrix {
     }
 
     #[tokio::test]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_injected_membership_failure_reaps() {
         fresh_group();
         control().await;
@@ -1567,6 +2391,7 @@ mod fault_matrix {
         control().await;
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_persistent_observation_errors_retain_io_and_slot() {
         fresh_group();
         control().await;

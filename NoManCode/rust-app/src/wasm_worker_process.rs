@@ -85,7 +85,7 @@ fn record_p01(value: &serde_json::Value) {
 pub(crate) mod test_observer {
     use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
     use std::sync::{
-        Mutex,
+        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
     };
     use windows_sys::Win32::System::Threading::{
@@ -96,6 +96,21 @@ pub(crate) mod test_observer {
     static ARMED: AtomicBool = AtomicBool::new(false);
     static PRESSURE: AtomicBool = AtomicBool::new(false);
     static IO_EVENT: Mutex<Option<OwnedHandle>> = Mutex::new(None);
+    static JOB: Mutex<Option<Arc<OwnedHandle>>> = Mutex::new(None);
+    static JOB_ARMED: AtomicBool = AtomicBool::new(false);
+
+    pub(crate) fn arm_job_probe() {
+        assert!(JOB.lock().unwrap().is_none());
+        assert!(!JOB_ARMED.swap(true, Ordering::SeqCst));
+    }
+    pub(super) fn capture_job(job: &Arc<OwnedHandle>) {
+        if JOB_ARMED.swap(false, Ordering::SeqCst) {
+            *JOB.lock().unwrap_or_else(|e| e.into_inner()) = Some(job.clone());
+        }
+    }
+    pub(crate) fn take_job() -> Option<Arc<OwnedHandle>> {
+        JOB.lock().unwrap_or_else(|e| e.into_inner()).take()
+    }
 
     pub(crate) fn arm(pressure: bool) {
         assert!(PROCESS.lock().unwrap().is_none());
@@ -181,18 +196,20 @@ pub(crate) mod test_observer {
 pub(crate) mod test_hooks {
     use std::sync::{
         Condvar, Mutex,
-        atomic::{AtomicU8, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
     };
     use std::time::{Duration, Instant};
 
     struct State {
         phase: Option<&'static str>,
+        next_phase: Option<&'static str>,
         reached: bool,
         released: bool,
         timed_out: bool,
     }
     static STATE: Mutex<State> = Mutex::new(State {
         phase: None,
+        next_phase: None,
         reached: false,
         released: false,
         timed_out: false,
@@ -203,6 +220,7 @@ pub(crate) mod test_hooks {
     static JOB_EVENTS: AtomicU8 = AtomicU8::new(0);
     static P01_EVENTS: AtomicU8 = AtomicU8::new(0);
     static PERSISTENT_ERROR: AtomicU8 = AtomicU8::new(0);
+    static W05_STOPPER_STARTED: AtomicBool = AtomicBool::new(false);
 
     pub(crate) struct Guard;
     impl Drop for Guard {
@@ -250,6 +268,7 @@ pub(crate) mod test_hooks {
         assert!(state.phase.is_none());
         *state = State {
             phase: Some(phase),
+            next_phase: None,
             reached: false,
             released: false,
             timed_out: false,
@@ -258,6 +277,10 @@ pub(crate) mod test_hooks {
     }
     pub(crate) fn reached() -> bool {
         STATE.lock().unwrap_or_else(|e| e.into_inner()).reached
+    }
+    pub(crate) fn phase_reached(phase: &'static str) -> bool {
+        let state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        state.phase == Some(phase) && state.reached
     }
     pub(super) fn armed(phase: &'static str) -> bool {
         STATE.lock().unwrap_or_else(|e| e.into_inner()).phase == Some(phase)
@@ -297,6 +320,21 @@ pub(crate) mod test_hooks {
         state.released = true;
         WAKE.notify_all();
     }
+    pub(crate) fn release_with_next(phase: &'static str) {
+        let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        state.next_phase = Some(phase);
+        state.released = true;
+        WAKE.notify_all();
+    }
+    pub(crate) fn w05_reset_stopper() {
+        W05_STOPPER_STARTED.store(false, Ordering::SeqCst);
+    }
+    pub(crate) fn w05_stopper_started() -> bool {
+        W05_STOPPER_STARTED.load(Ordering::SeqCst)
+    }
+    pub(super) fn w05_mark_stopper() {
+        W05_STOPPER_STARTED.store(true, Ordering::SeqCst);
+    }
     pub(super) fn checkpoint(phase: &'static str, pid: Option<u32>) -> bool {
         let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
         if state.phase != Some(phase) {
@@ -318,7 +356,15 @@ pub(crate) mod test_hooks {
         }
         let released = state.released;
         state.timed_out |= !released;
-        state.phase = None;
+        state.phase = if released {
+            state.next_phase.take()
+        } else {
+            None
+        };
+        if state.phase.is_some() {
+            state.reached = false;
+            state.released = false;
+        }
         drop(state);
         super::record_stage(
             if released {
@@ -911,6 +957,837 @@ mod platform {
         }
     }
 
+    #[cfg(test)]
+    mod w06_artifact_tests {
+        use super::*;
+        use std::io::Write;
+
+        fn digest(bytes: &[u8]) -> [u8; 32] {
+            Sha256::digest(bytes).into()
+        }
+
+        #[test]
+        #[ignore = "requires controlled isolated process or artifact fixture"]
+        fn pin_file_counterexamples() {
+            let root = PathBuf::from(std::env::var_os("NHC_W06_ROOT").expect("fresh W06 root"));
+            let dir = tempfile::Builder::new()
+                .prefix("w06-artifact-")
+                .tempdir_in(root)
+                .expect("W06 dedicated directory");
+            let path = dir.path().join("worker.exe");
+            let original = b"W06 original bytes";
+            let replacement = b"W06 replacement bytes";
+            std::fs::write(&path, original).expect("original artifact");
+            let expected = digest(original);
+            drop(Image::pin(&path, &expected).expect("valid digest control"));
+            assert!(matches!(
+                Image::pin(&path, &digest(b"wrong")),
+                Err(WorkerError::IsolationUnavailable("image_digest", None))
+            ));
+            let absent = dir.path().join("absent.exe");
+            assert!(matches!(
+                Image::pin(&absent, &expected),
+                Err(WorkerError::IsolationUnavailable("image_open", _))
+            ));
+
+            let backup = dir.path().join("before-pin-backup.exe");
+            std::fs::rename(&path, &backup).expect("before-pin replacement rename control");
+            std::fs::write(&path, replacement).expect("before-pin replacement write control");
+            assert_eq!(std::fs::read(&path).unwrap(), replacement);
+            assert!(matches!(
+                Image::pin(&path, &expected),
+                Err(WorkerError::IsolationUnavailable("image_digest", None))
+            ));
+            drop(Image::pin(&path, &digest(replacement)).expect("replacement digest control"));
+
+            let pinned = Image::pin(&path, &digest(replacement)).expect("post-pin control");
+            let rename = std::fs::rename(&path, dir.path().join("after-pin-moved.exe"));
+            let write = OpenOptions::new().write(true).open(&path);
+            assert!(rename.is_err(), "rename succeeded while image pinned");
+            assert!(write.is_err(), "write handle opened while image pinned");
+            assert_eq!(std::fs::read(&path).unwrap(), replacement);
+            drop(pinned);
+            std::fs::rename(&path, dir.path().join("after-unpin-moved.exe"))
+                .expect("rename works after unpin");
+            std::fs::write(&path, original).unwrap();
+
+            let link = dir.path().join("hard-link.exe");
+            match std::fs::hard_link(&path, &link) {
+                Ok(()) => {
+                    let metadata = std::fs::metadata(&link).unwrap();
+                    assert!(metadata.is_file());
+                    assert!(matches!(
+                        Image::pin(&link, &expected),
+                        Err(WorkerError::IsolationUnavailable("image_link", None))
+                    ));
+                    std::fs::remove_file(&link).unwrap();
+                    drop(Image::pin(&path, &expected).expect("hard-link removed control"));
+                }
+                Err(error) => panic!("W06 hard-link attack not established: {error}"),
+            }
+
+            let symlink = dir.path().join("symbolic-link.exe");
+            match std::os::windows::fs::symlink_file(&path, &symlink) {
+                Ok(()) => {
+                    let metadata = std::fs::symlink_metadata(&symlink).unwrap();
+                    assert_ne!(metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT, 0);
+                    assert!(matches!(
+                        Image::pin(&symlink, &expected),
+                        Err(WorkerError::IsolationUnavailable(
+                            "image_link" | "image_open",
+                            _
+                        ))
+                    ));
+                    std::fs::remove_file(&symlink).unwrap();
+                }
+                Err(error) => panic!("W06 reparse attack not established: {error}"),
+            }
+
+            let mut writer = OpenOptions::new()
+                .write(true)
+                .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+                .open(&path)
+                .expect("pre-held writer");
+            writer.write_all(original).expect("writer attack condition");
+            writer.flush().unwrap();
+            assert_eq!(std::fs::read(&path).unwrap(), original);
+            assert!(matches!(
+                Image::pin(&path, &expected),
+                Err(WorkerError::IsolationUnavailable("image_open", _))
+            ));
+            drop(writer);
+            drop(Image::pin(&path, &expected).expect("writer closed control"));
+        }
+
+        #[test]
+        #[ignore = "requires controlled isolated process or artifact fixture"]
+        fn pin_existing_writable_mapping() {
+            use windows_sys::Win32::System::Memory::{
+                CreateFileMappingW, FILE_MAP_WRITE, FlushViewOfFile, MEMORY_MAPPED_VIEW_ADDRESS,
+                MapViewOfFile, PAGE_READWRITE, UnmapViewOfFile,
+            };
+            struct View(MEMORY_MAPPED_VIEW_ADDRESS);
+            impl Drop for View {
+                fn drop(&mut self) {
+                    unsafe { UnmapViewOfFile(self.0) };
+                }
+            }
+            let root = PathBuf::from(std::env::var_os("NHC_W06_ROOT").expect("fresh W06 root"));
+            let dir = tempfile::Builder::new()
+                .prefix("w06-mapping-")
+                .tempdir_in(root)
+                .expect("W06 dedicated directory");
+            let path = dir.path().join("worker.exe");
+            let bytes = b"W06 mapping bytes";
+            std::fs::write(&path, bytes).unwrap();
+            drop(Image::pin(&path, &digest(bytes)).expect("mapping test valid control"));
+            let file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+                .open(&path)
+                .expect("mapping writer");
+            let mapping_raw = unsafe {
+                CreateFileMappingW(file.as_raw_handle(), null(), PAGE_READWRITE, 0, 0, null())
+            };
+            if mapping_raw.is_null() {
+                panic!(
+                    "W06 writable mapping not established: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                );
+            }
+            let mapping = unsafe { OwnedHandle::from_raw_handle(mapping_raw) };
+            let mapped = unsafe { MapViewOfFile(raw(&mapping), FILE_MAP_WRITE, 0, 0, bytes.len()) };
+            if mapped.Value.is_null() {
+                panic!(
+                    "W06 writable view not established: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                );
+            }
+            let view = View(mapped);
+            drop(file);
+            unsafe { view.0.Value.cast::<u8>().write(b'X') };
+            assert_ne!(unsafe { FlushViewOfFile(view.0.Value, bytes.len()) }, 0);
+            assert_eq!(
+                std::fs::read(&path).unwrap()[0],
+                b'X',
+                "mapping attack control"
+            );
+            unsafe { view.0.Value.cast::<u8>().write(bytes[0]) };
+            assert_ne!(unsafe { FlushViewOfFile(view.0.Value, bytes.len()) }, 0);
+            match Image::pin(&path, &digest(bytes)) {
+                Err(WorkerError::IsolationUnavailable("image_open", code)) => {
+                    println!("W06 active writable mapping rejected: {code:?}");
+                }
+                Ok(pinned) => {
+                    unsafe { view.0.Value.cast::<u8>().write(b'X') };
+                    assert_ne!(unsafe { FlushViewOfFile(view.0.Value, bytes.len()) }, 0);
+                    let changed = std::fs::read(&path).unwrap()[0] == b'X';
+                    unsafe { view.0.Value.cast::<u8>().write(bytes[0]) };
+                    let restored = unsafe { FlushViewOfFile(view.0.Value, bytes.len()) };
+                    drop(pinned);
+                    assert_ne!(restored, 0);
+                    assert!(!changed, "writable mapping changed the pinned image");
+                }
+                Err(error) => panic!("mapping pin returned unexpected result: {error:?}"),
+            }
+            drop(view);
+            drop(mapping);
+            drop(Image::pin(&path, &digest(bytes)).expect("mapping released control"));
+        }
+
+        #[test]
+        #[ignore = "requires controlled isolated process or artifact fixture"]
+        fn process_image_identity_counterexample() {
+            use std::{
+                os::windows::process::CommandExt,
+                process::{Child, Command, Stdio},
+            };
+            struct SuspendedChild(Child);
+            impl Drop for SuspendedChild {
+                fn drop(&mut self) {
+                    if unsafe { WaitForSingleObject(self.0.as_raw_handle(), 0) } != WAIT_OBJECT_0 {
+                        let _ = self.0.kill();
+                    }
+                    if unsafe { WaitForSingleObject(self.0.as_raw_handle(), 5000) } != WAIT_OBJECT_0
+                    {
+                        eprintln!("W06 image process cleanup unknown");
+                        loop {
+                            thread::park_timeout(Duration::from_secs(1));
+                        }
+                    }
+                }
+            }
+            let root = PathBuf::from(std::env::var_os("NHC_W06_ROOT").expect("fresh W06 root"));
+            let source = PathBuf::from(
+                std::env::var_os("NHC_W2_WORKER_SNAPSHOT").expect("fixed real worker"),
+            );
+            let expected = std::env::var("NHC_W2_WORKER_SHA256").expect("fixed worker digest");
+            let bytes = std::fs::read(source).expect("fixed real worker bytes");
+            assert_eq!(format!("{:x}", Sha256::digest(&bytes)), expected);
+            let dir = tempfile::Builder::new()
+                .prefix("w06-image-process-")
+                .tempdir_in(root)
+                .expect("W06 dedicated directory");
+            let first = dir.path().join("first.exe");
+            let second = dir.path().join("second.exe");
+            std::fs::write(&first, &bytes).unwrap();
+            std::fs::write(&second, &bytes).unwrap();
+            let hash = digest(&bytes);
+            let first_image = Image::pin(&first, &hash).expect("first image positive pin");
+            let second_image = Image::pin(&second, &hash).expect("second image positive pin");
+            let id = |image: &Image| {
+                (
+                    image.identity.dwVolumeSerialNumber,
+                    image.identity.nFileIndexHigh,
+                    image.identity.nFileIndexLow,
+                )
+            };
+            assert_ne!(
+                id(&first_image),
+                id(&second_image),
+                "different file identities"
+            );
+            let child = match Command::new(&second)
+                .creation_flags(CREATE_SUSPENDED | DETACHED_PROCESS)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+            {
+                Ok(child) => SuspendedChild(child),
+                Err(error) => {
+                    panic!("W06 process identity attack not established: {error}");
+                }
+            };
+            assert_eq!(
+                unsafe { WaitForSingleObject(child.0.as_raw_handle(), 0) },
+                WAIT_TIMEOUT
+            );
+            second_image
+                .verify_process(child.0.as_raw_handle(), &hash)
+                .expect("actual second process image positive control");
+            assert!(matches!(
+                first_image.verify_process(child.0.as_raw_handle(), &hash),
+                Err(WorkerError::IsolationUnavailable("image_changed", None))
+            ));
+            println!("W06 image identity actual process pid={}", child.0.id());
+        }
+    }
+
+    // This fixture deliberately passes a test Job handle to the helper. It is
+    // separate from W05 and tests limit effects, not last-handle semantics.
+    #[cfg(test)]
+    mod w06_limit_tests {
+        use super::*;
+        use windows_sys::Win32::System::Threading::CREATE_BREAKAWAY_FROM_JOB;
+
+        fn publish(path: &Path, value: &serde_json::Value) {
+            let tmp = path.with_extension("tmp");
+            std::fs::write(&tmp, value.to_string()).expect("limit receipt write");
+            std::fs::rename(tmp, path).expect("limit receipt publish");
+        }
+
+        #[test]
+        #[ignore = "requires isolated controlled Job and suspended process fixture"]
+        fn limit_helper() {
+            let path =
+                PathBuf::from(std::env::var_os("NHC_W06_LIMIT_RECEIPT").expect("receipt path"));
+            let job_number: usize = std::env::var("NHC_W06_LIMIT_JOB")
+                .expect("job handle")
+                .parse()
+                .expect("job number");
+            let breakaway = std::env::var("NHC_W06_LIMIT_BREAKAWAY").expect("attempt flag") == "1";
+            let nonce = std::env::var("NHC_W06_LIMIT_NONCE").expect("limit nonce");
+            let helper_pid = std::process::id();
+            let exe = std::env::current_exe().expect("fixed test executable");
+            let app = wide(exe.as_os_str());
+            let mut command = wide(OsStr::new(&format!(
+                "\"{}\" --exact wasm_worker_process::platform::w06_limit_tests::limit_helper --ignored",
+                exe.display()
+            )));
+            let mut startup: STARTUPINFOEXW = unsafe { zeroed() };
+            startup.StartupInfo.cb =
+                size_of::<windows_sys::Win32::System::Threading::STARTUPINFOW>() as u32;
+            let mut info: PROCESS_INFORMATION = unsafe { zeroed() };
+            let flags = CREATE_SUSPENDED
+                | DETACHED_PROCESS
+                | if breakaway {
+                    CREATE_BREAKAWAY_FROM_JOB
+                } else {
+                    0
+                };
+            let created = unsafe {
+                CreateProcessW(
+                    app.as_ptr(),
+                    command.as_mut_ptr(),
+                    null(),
+                    null(),
+                    0,
+                    flags,
+                    null_mut(),
+                    null(),
+                    &startup.StartupInfo,
+                    &mut info,
+                )
+            };
+            let error = if created == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            if created == 0 {
+                publish(
+                    &path,
+                    &serde_json::json!({"created": false, "error": error, "flags": flags, "nonce": nonce, "helper_pid": helper_pid}),
+                );
+                return;
+            }
+            let process = unsafe { OwnedHandle::from_raw_handle(info.hProcess) };
+            let _thread = unsafe { OwnedHandle::from_raw_handle(info.hThread) };
+            let alive = unsafe { WaitForSingleObject(raw(&process), 0) };
+            let mut member = 0;
+            let queried =
+                unsafe { IsProcessInJob(raw(&process), job_number as HANDLE, &mut member) };
+            let query_error = if queried == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            let killed = unsafe { TerminateProcess(raw(&process), 1) };
+            let kill_error = if killed == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            let waited = unsafe { WaitForSingleObject(raw(&process), 5000) };
+            if killed == 0 || waited != WAIT_OBJECT_0 {
+                eprintln!("W06 limit child cleanup_unknown; preserving child handle");
+                loop {
+                    thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+            publish(
+                &path,
+                &serde_json::json!({"created": true, "pid": info.dwProcessId, "flags": flags, "nonce": nonce, "helper_pid": helper_pid,
+                "alive_wait": alive, "membership_query": queried, "member": member,
+                "query_error": query_error, "terminate": killed, "terminate_error": kill_error, "wait": waited}),
+            );
+        }
+
+        fn case(
+            root: &Path,
+            label: &str,
+            active: u32,
+            breakaway_allowed: bool,
+            attempt_breakaway: bool,
+        ) -> serde_json::Value {
+            let receipt = root.join(format!("{label}.json"));
+            assert!(
+                !receipt.exists() && !receipt.with_extension("tmp").exists(),
+                "fresh limit fixture"
+            );
+            let job =
+                unsafe { own(CreateJobObjectW(null(), null()), "limit_job") }.expect("test job");
+            // The explicit handle list is test-control plumbing, not a production launch.
+            assert_ne!(
+                unsafe {
+                    SetHandleInformation(raw(&job), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)
+                },
+                0
+            );
+            let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { zeroed() };
+            limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+                | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                | JOB_OBJECT_LIMIT_PROCESS_TIME
+                | if breakaway_allowed {
+                    JOB_OBJECT_LIMIT_BREAKAWAY_OK
+                } else {
+                    0
+                };
+            limits.BasicLimitInformation.ActiveProcessLimit = active;
+            limits.BasicLimitInformation.PerProcessUserTimeLimit = 30_000_000;
+            limits.ProcessMemoryLimit = 128 * 1024 * 1024;
+            assert_ne!(
+                unsafe {
+                    SetInformationJobObject(
+                        raw(&job),
+                        JobObjectExtendedLimitInformation,
+                        (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                        size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                    )
+                },
+                0
+            );
+            let mut actual: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { zeroed() };
+            assert_ne!(
+                unsafe {
+                    QueryInformationJobObject(
+                        raw(&job),
+                        JobObjectExtendedLimitInformation,
+                        (&mut actual as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                        size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                        null_mut(),
+                    )
+                },
+                0
+            );
+            assert_eq!(
+                actual.BasicLimitInformation.LimitFlags,
+                limits.BasicLimitInformation.LimitFlags
+            );
+            assert_eq!(actual.BasicLimitInformation.ActiveProcessLimit, active);
+            assert_eq!(
+                actual.BasicLimitInformation.PerProcessUserTimeLimit,
+                limits.BasicLimitInformation.PerProcessUserTimeLimit
+            );
+            assert_eq!(actual.ProcessMemoryLimit, limits.ProcessMemoryLimit);
+            let exe = std::env::current_exe().expect("fixed test executable");
+            let app = wide(exe.as_os_str());
+            let mut command = wide(OsStr::new(&format!(
+                "\"{}\" --exact wasm_worker_process::platform::w06_limit_tests::limit_helper --ignored --nocapture",
+                exe.display()
+            )));
+            let jobs = [raw(&job)];
+            let handles = [raw(&job)];
+            let mut attributes = Attributes::new().expect("limit attributes");
+            attributes
+                .set(PROC_THREAD_ATTRIBUTE_JOB_LIST, &jobs)
+                .expect("limit job list");
+            attributes
+                .set(PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles)
+                .expect("limit control handle list");
+            let mut startup: STARTUPINFOEXW = unsafe { zeroed() };
+            startup.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
+            startup.lpAttributeList = attributes.list;
+            let keys = [
+                "NHC_W06_LIMIT_RECEIPT",
+                "NHC_W06_LIMIT_JOB",
+                "NHC_W06_LIMIT_BREAKAWAY",
+                "NHC_W06_LIMIT_NONCE",
+            ];
+            let mut vars: Vec<(OsString, OsString)> = std::env::vars_os()
+                .filter(|(k, _)| {
+                    !keys
+                        .iter()
+                        .any(|key| k.to_string_lossy().eq_ignore_ascii_case(key))
+                })
+                .collect();
+            vars.push((keys[0].into(), receipt.as_os_str().to_owned()));
+            vars.push((keys[1].into(), (raw(&job) as usize).to_string().into()));
+            vars.push((
+                keys[2].into(),
+                if attempt_breakaway { "1" } else { "0" }.into(),
+            ));
+            let nonce = uuid::Uuid::new_v4().simple().to_string();
+            vars.push((keys[3].into(), nonce.clone().into()));
+            vars.sort_by_key(|(k, _)| k.to_string_lossy().to_uppercase());
+            let mut environment = Vec::<u16>::new();
+            for (key, value) in vars {
+                environment.extend(key.encode_wide());
+                environment.push(b'=' as u16);
+                environment.extend(value.encode_wide());
+                environment.push(0);
+            }
+            environment.push(0);
+            let mut info: PROCESS_INFORMATION = unsafe { zeroed() };
+            let created = unsafe {
+                CreateProcessW(
+                    app.as_ptr(),
+                    command.as_mut_ptr(),
+                    null(),
+                    null(),
+                    1,
+                    CREATE_SUSPENDED
+                        | DETACHED_PROCESS
+                        | CREATE_UNICODE_ENVIRONMENT
+                        | EXTENDED_STARTUPINFO_PRESENT,
+                    environment.as_mut_ptr().cast(),
+                    null(),
+                    &startup.StartupInfo,
+                    &mut info,
+                )
+            };
+            assert_ne!(
+                created,
+                0,
+                "test helper not established: {:?}",
+                std::io::Error::last_os_error()
+            );
+            let process = unsafe { OwnedHandle::from_raw_handle(info.hProcess) };
+            let thread_handle = unsafe { OwnedHandle::from_raw_handle(info.hThread) };
+            let mut member = 0;
+            if unsafe { IsProcessInJob(raw(&process), raw(&job), &mut member) } == 0
+                || member == 0
+                || unsafe { ResumeThread(raw(&thread_handle)) } == u32::MAX
+            {
+                unsafe { TerminateProcess(raw(&process), 1) };
+                if unsafe { WaitForSingleObject(raw(&process), 5000) } != WAIT_OBJECT_0 {
+                    loop {
+                        thread::park_timeout(Duration::from_secs(1));
+                    }
+                }
+                panic!("test helper membership/resume not established");
+            }
+            // On timeout keep both helper and Job alive. A breakaway child may exist;
+            // killing the helper would discard its only guaranteed child handle.
+            if unsafe { WaitForSingleObject(raw(&process), 10000) } != WAIT_OBJECT_0 {
+                eprintln!("W06 limit helper cleanup_unknown; retain Job and process");
+                loop {
+                    thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+            let mut exit_code = 0;
+            if unsafe { GetExitCodeProcess(raw(&process), &mut exit_code) } == 0
+                || exit_code != 0
+                || !receipt.is_file()
+            {
+                // A helper failure may have occurred after a breakaway child was
+                // created but before its cleanup receipt. Do not assert cleanup.
+                eprintln!("W06 limit helper cleanup_unknown: missing trusted receipt");
+                loop {
+                    thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+            let value: serde_json::Value = match std::fs::read(&receipt)
+                .ok()
+                .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            {
+                Some(value) => value,
+                None => {
+                    eprintln!("W06 limit helper cleanup_unknown: unreadable receipt");
+                    loop {
+                        thread::park_timeout(Duration::from_secs(1));
+                    }
+                }
+            };
+            let expected_flags = CREATE_SUSPENDED
+                | DETACHED_PROCESS
+                | if attempt_breakaway {
+                    CREATE_BREAKAWAY_FROM_JOB
+                } else {
+                    0
+                };
+            if value["nonce"] != nonce
+                || value["helper_pid"].as_u64() != Some(info.dwProcessId as u64)
+                || value["flags"].as_u64() != Some(expected_flags as u64)
+            {
+                eprintln!("W06 limit helper cleanup_unknown: receipt identity mismatch");
+                loop {
+                    thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+            let mut accounting: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { zeroed() };
+            assert_ne!(
+                unsafe {
+                    QueryInformationJobObject(
+                        raw(&job),
+                        JobObjectBasicAccountingInformation,
+                        (&mut accounting as *mut JOBOBJECT_BASIC_ACCOUNTING_INFORMATION).cast(),
+                        size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
+                        null_mut(),
+                    )
+                },
+                0
+            );
+            assert_eq!(accounting.ActiveProcesses, 0, "test Job must be empty");
+            println!(
+                "W06 limit {label} active={active} breakaway_allowed={breakaway_allowed} attempt_breakaway={attempt_breakaway} actual_flags={} receipt={value}",
+                actual.BasicLimitInformation.LimitFlags
+            );
+            value
+        }
+
+        fn success(value: &serde_json::Value, member: bool) {
+            assert_eq!(
+                value["created"], true,
+                "positive creation was not established: {value}"
+            );
+            assert_eq!(value["alive_wait"], WAIT_TIMEOUT);
+            assert_eq!(value["membership_query"], 1);
+            assert_eq!(value["member"], if member { 1 } else { 0 });
+            assert_eq!(value["terminate"], 1);
+            assert_eq!(value["wait"], WAIT_OBJECT_0);
+        }
+
+        #[test]
+        #[ignore = "requires controlled single-factor active-process Job fixture"]
+        fn active_limit_single_factor() {
+            let root = PathBuf::from(std::env::var_os("NHC_W06_ROOT").expect("fresh W06 root"));
+            let control = case(&root, "active-control", 2, false, false);
+            success(&control, true);
+            let restricted = case(&root, "active-one", 1, false, false);
+            assert_eq!(
+                restricted["created"], false,
+                "active1 allowed child creation: {restricted}"
+            );
+        }
+
+        #[test]
+        #[ignore = "requires controlled single-factor breakaway Job fixture"]
+        fn breakaway_single_factor() {
+            let root = PathBuf::from(std::env::var_os("NHC_W06_ROOT").expect("fresh W06 root"));
+            // Active=2 in both cases removes active1 as a competing cause.
+            let control = case(&root, "breakaway-control", 2, true, true);
+            success(&control, false);
+            let restricted = case(&root, "breakaway-denied", 2, false, true);
+            assert_eq!(
+                restricted["created"], false,
+                "breakaway unexpectedly allowed: {restricted}"
+            );
+        }
+    }
+
+    #[cfg(test)]
+    mod w06_handle_tests {
+        use super::*;
+        use std::io::{BufRead, Write};
+        use windows_sys::Win32::{
+            Foundation::{CompareObjectHandles, DUPLICATE_SAME_ACCESS, DuplicateHandle},
+            System::Pipes::CreatePipe,
+        };
+
+        #[test]
+        #[ignore = "requires controlled isolated process or artifact fixture"]
+        fn positive_helper() {
+            std::env::var_os("NHC_W06_POSITIVE_HELPER").expect("positive helper environment");
+            let mut line = String::new();
+            std::io::stdin()
+                .lock()
+                .read_line(&mut line)
+                .expect("sentinel request");
+            let (nonce, number) = line.trim().split_once(':').expect("sentinel message");
+            assert_eq!(nonce.len(), 32);
+            let candidate: usize = number.parse().expect("sentinel numeric handle");
+            assert_ne!(
+                unsafe { windows_sys::Win32::System::Threading::SetEvent(candidate as HANDLE) },
+                0
+            );
+            line.clear();
+            std::io::stdin()
+                .lock()
+                .read_line(&mut line)
+                .expect("sentinel release");
+            assert_eq!(line.trim(), "release");
+        }
+
+        struct PositiveProcess(OwnedHandle);
+        impl Drop for PositiveProcess {
+            fn drop(&mut self) {
+                if unsafe { WaitForSingleObject(raw(&self.0), 0) } != WAIT_OBJECT_0 {
+                    unsafe { TerminateProcess(raw(&self.0), 1) };
+                }
+                if unsafe { WaitForSingleObject(raw(&self.0), 5000) } != WAIT_OBJECT_0 {
+                    eprintln!("W06 positive launcher cleanup unknown");
+                    loop {
+                        thread::park_timeout(Duration::from_secs(1));
+                    }
+                }
+            }
+        }
+
+        #[test]
+        #[ignore = "requires controlled isolated process or artifact fixture"]
+        fn sentinel_explicit_inheritance_control() {
+            let mut security = SECURITY_ATTRIBUTES {
+                nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
+                lpSecurityDescriptor: null_mut(),
+                bInheritHandle: 1,
+            };
+            let event = unsafe { own(CreateEventW(&mut security, 1, 0, null()), "positive_event") }
+                .expect("positive sentinel");
+            let mut event_flags = 0;
+            assert_ne!(
+                unsafe {
+                    windows_sys::Win32::Foundation::GetHandleInformation(
+                        raw(&event),
+                        &mut event_flags,
+                    )
+                },
+                0
+            );
+            assert_ne!(event_flags & HANDLE_FLAG_INHERIT, 0);
+            let mut child_in = null_mut();
+            let mut parent_in = null_mut();
+            let mut parent_out = null_mut();
+            let mut child_out = null_mut();
+            if unsafe { CreatePipe(&mut child_in, &mut parent_in, &mut security, 0) } == 0 {
+                panic!(
+                    "W06 positive stdin pipe not established: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                );
+            }
+            let child_in = unsafe { OwnedHandle::from_raw_handle(child_in) };
+            let parent_in = unsafe { OwnedHandle::from_raw_handle(parent_in) };
+            if unsafe { CreatePipe(&mut parent_out, &mut child_out, &mut security, 0) } == 0 {
+                panic!(
+                    "W06 positive stdout pipe not established: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                );
+            }
+            let parent_out = unsafe { OwnedHandle::from_raw_handle(parent_out) };
+            let child_out = unsafe { OwnedHandle::from_raw_handle(child_out) };
+            assert_ne!(
+                unsafe { SetHandleInformation(raw(&parent_in), HANDLE_FLAG_INHERIT, 0) },
+                0
+            );
+            assert_ne!(
+                unsafe { SetHandleInformation(raw(&parent_out), HANDLE_FLAG_INHERIT, 0) },
+                0
+            );
+            let handles = [raw(&event), raw(&child_in), raw(&child_out)];
+            let mut attributes = Attributes::new().expect("positive attributes");
+            attributes
+                .set(PROC_THREAD_ATTRIBUTE_HANDLE_LIST, &handles)
+                .expect("positive handle list");
+            let mut startup: STARTUPINFOEXW = unsafe { zeroed() };
+            startup.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
+            startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+            startup.StartupInfo.hStdInput = raw(&child_in);
+            startup.StartupInfo.hStdOutput = raw(&child_out);
+            startup.StartupInfo.hStdError = raw(&child_out);
+            startup.lpAttributeList = attributes.list;
+            let exe = std::env::current_exe().unwrap();
+            let app = wide(exe.as_os_str());
+            let mut command = wide(OsStr::new(&format!(
+                "\"{}\" --exact wasm_worker_process::platform::w06_handle_tests::positive_helper --ignored --nocapture",
+                exe.display()
+            )));
+            let mut vars: Vec<(OsString, OsString)> = std::env::vars_os()
+                .filter(|(key, _)| {
+                    !key.to_string_lossy()
+                        .eq_ignore_ascii_case("NHC_W06_POSITIVE_HELPER")
+                })
+                .collect();
+            vars.push((
+                OsString::from("NHC_W06_POSITIVE_HELPER"),
+                OsString::from("1"),
+            ));
+            vars.sort_by_key(|(key, _)| key.to_string_lossy().to_uppercase());
+            let mut environment = Vec::<u16>::new();
+            for (key, value) in vars {
+                environment.extend(key.encode_wide());
+                environment.push(b'=' as u16);
+                environment.extend(value.encode_wide());
+                environment.push(0);
+            }
+            environment.push(0);
+            let mut info: PROCESS_INFORMATION = unsafe { zeroed() };
+            let created = unsafe {
+                CreateProcessW(
+                    app.as_ptr(),
+                    command.as_mut_ptr(),
+                    null(),
+                    null(),
+                    1,
+                    DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
+                    environment.as_mut_ptr().cast(),
+                    null(),
+                    &startup.StartupInfo,
+                    &mut info,
+                )
+            };
+            if created == 0 {
+                panic!(
+                    "W06 positive launcher not established: {:?}",
+                    std::io::Error::last_os_error().raw_os_error()
+                );
+            }
+            let process = PositiveProcess(unsafe { OwnedHandle::from_raw_handle(info.hProcess) });
+            let _thread = unsafe { OwnedHandle::from_raw_handle(info.hThread) };
+            drop(child_in);
+            drop(child_out);
+            let mut input = File::from(parent_in);
+            let nonce = uuid::Uuid::new_v4().simple().to_string();
+            writeln!(input, "{nonce}:{}", raw(&event) as usize).unwrap();
+            input.flush().unwrap();
+            assert_eq!(
+                unsafe { WaitForSingleObject(raw(&event), 3000) },
+                WAIT_OBJECT_0,
+                "explicit inheritance control did not signal"
+            );
+            let mut duplicated = null_mut();
+            assert_ne!(
+                unsafe {
+                    DuplicateHandle(
+                        raw(&process.0),
+                        raw(&event),
+                        GetCurrentProcess(),
+                        &mut duplicated,
+                        0,
+                        0,
+                        DUPLICATE_SAME_ACCESS,
+                    )
+                },
+                0,
+                "positive sentinel duplicate"
+            );
+            let duplicated = unsafe { OwnedHandle::from_raw_handle(duplicated) };
+            assert_ne!(
+                unsafe { CompareObjectHandles(raw(&event), raw(&duplicated)) },
+                0,
+                "positive control must compare same object"
+            );
+            writeln!(input, "release").unwrap();
+            input.flush().unwrap();
+            assert_eq!(
+                unsafe { WaitForSingleObject(raw(&process.0), 3000) },
+                WAIT_OBJECT_0
+            );
+            let mut exit_code = 0;
+            assert_ne!(
+                unsafe { GetExitCodeProcess(raw(&process.0), &mut exit_code) },
+                0
+            );
+            assert_eq!(exit_code, 0, "positive helper failed");
+            println!(
+                "W06 explicit inheritance positive actual same-object event pid={}",
+                info.dwProcessId
+            );
+        }
+    }
+
     struct Attributes {
         buffer: Vec<usize>,
         list: *mut c_void,
@@ -1157,7 +2034,10 @@ mod platform {
                         }
                         if gate.stopped(deadline) {
                             #[cfg(test)]
-                            test_hooks::hold_stopper();
+                            {
+                                test_hooks::w05_mark_stopper();
+                                test_hooks::hold_stopper();
+                            }
                             if let Some(job) = job {
                                 unsafe { TerminateJobObject(raw(&job), 1) };
                             }
@@ -2097,6 +2977,10 @@ mod platform {
                     record_count("stdin_pending_bytes", process.pid, offset);
                     stdin_pending_observed = true;
                 }
+                #[cfg(test)]
+                if write.pending && test_hooks::armed("w05_stdin_pending") {
+                    w05_checkpoint("w05_stdin_pending", Some(process.pid), gate, deadline);
+                }
                 if offset == input.len() && !write.pending {
                     stopper.remove_pipe(&write.pipe);
                     writer = None;
@@ -2247,6 +3131,18 @@ mod platform {
         }
     }
 
+    #[cfg(test)]
+    fn w05_checkpoint(phase: &'static str, pid: Option<u32>, gate: &Gate, deadline: Instant) {
+        if !test_hooks::armed(phase) {
+            return;
+        }
+        if gate.stopped(deadline) || test_hooks::w05_stopper_started() {
+            record_stage("w05_gate_or_stopper_closed", pid);
+            return;
+        }
+        record_stage("w05_gate_open", pid);
+        test_hooks::checkpoint(phase, pid);
+    }
     pub(super) fn run(
         worker: &TrustedWorker,
         request: Request,
@@ -2348,6 +3244,32 @@ mod platform {
             ));
         }
         #[cfg(test)]
+        test_observer::capture_job(&job);
+        #[cfg(test)]
+        if test_hooks::armed("w05_before_create") || test_hooks::armed("w05_suspended") {
+            use windows_sys::Win32::Foundation::GetHandleInformation;
+            let mut handle_flags = 0u32;
+            if unsafe { GetHandleInformation(raw(&job), &mut handle_flags) } == 0 {
+                return Err(failure("w05_job_handle_flags"));
+            }
+            record_count("w05_job_handle_flags", 0, handle_flags as usize);
+            record_count(
+                "w05_job_limit_flags",
+                0,
+                actual.BasicLimitInformation.LimitFlags as usize,
+            );
+            record_count(
+                "w05_job_active_limit",
+                0,
+                actual.BasicLimitInformation.ActiveProcessLimit as usize,
+            );
+            let mut host_in_job = 0;
+            if unsafe { IsProcessInJob(GetCurrentProcess(), null_mut(), &mut host_in_job) } == 0 {
+                return Err(failure("w05_host_job_query"));
+            }
+            record_count("w05_host_in_job", 0, host_in_job as usize);
+        }
+        #[cfg(test)]
         let _p01_monitor = if p01_armed {
             let mut host_in_job = 0;
             let host_job_ok =
@@ -2412,6 +3334,8 @@ mod platform {
             | CREATE_UNICODE_ENVIRONMENT
             | EXTENDED_STARTUPINFO_PRESENT;
         record_count("create_flags", 0, creation_flags as usize);
+        #[cfg(test)]
+        w05_checkpoint("w05_before_create", None, gate, deadline);
         let created = unsafe {
             CreateProcessW(
                 app.as_ptr(),
@@ -2503,6 +3427,13 @@ mod platform {
         }
         image.verify_process(raw(&process.process), &worker.digest)?;
         #[cfg(test)]
+        w05_checkpoint(
+            "w05_suspended",
+            Some(information.dwProcessId),
+            gate,
+            deadline,
+        );
+        #[cfg(test)]
         test_hooks::checkpoint("resume_before_ticket", Some(information.dwProcessId));
         if !gate.authorize(deadline) {
             return Err(WorkerError::Deadline);
@@ -2529,6 +3460,8 @@ mod platform {
             return Err(error);
         }
         record_stage("resumed", Some(information.dwProcessId));
+        #[cfg(test)]
+        w05_checkpoint("w05_resumed", Some(information.dwProcessId), gate, deadline);
         let response = io_loop(
             frame,
             [stdin, stdout, stderr],
@@ -2584,6 +3517,7 @@ mod platform {
         }
 
         #[test]
+        #[ignore = "requires controlled isolated process or artifact fixture"]
         fn suspended_process_in_real_job_requires_process_fallback() {
             let path =
                 PathBuf::from(std::env::var_os("NHC_W2_WORKER_SNAPSHOT").expect("worker snapshot"));
