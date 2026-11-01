@@ -1,0 +1,4 @@
+pid=78844 phase=started
+pid=78844 phase=request_eof
+pid=78844 phase=job_control_wait
+pid=78844 phase=job_wait nonce=bd3b3a2928884af6a0d00ebe78493941

@@ -1,0 +1,4 @@
+pid=73568 phase=started
+pid=73568 phase=request_eof
+pid=73568 phase=sentinel_result nonce=ca01aeda5e014a7b8d94a1edeaf454da ok=0 error=Some(6)
+pid=73568 phase=sentinel_wait nonce=ca01aeda5e014a7b8d94a1edeaf454da

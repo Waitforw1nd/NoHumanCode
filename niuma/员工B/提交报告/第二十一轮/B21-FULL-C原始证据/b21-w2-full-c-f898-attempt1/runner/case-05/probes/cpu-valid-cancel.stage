@@ -1,0 +1,6 @@
+pid=68800 phase=started
+pid=68800 phase=request_eof
+pid=68800 phase=cpu_valid_reached user_100ns=30625000
+pid=68800 phase=cpu_valid_response_ready
+pid=68800 phase=output_written
+pid=68800 phase=done

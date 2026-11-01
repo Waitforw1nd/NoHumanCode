@@ -1,0 +1,7 @@
+
+running 1 test
+test wasm_worker_process::platform::r04_tests::suspended_process_in_real_job_requires_process_fallback ... R04 pid=76972 observed_wait=0 real_job_query=1 real_job_active=0 watchdog_used=false
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 405 filtered out; finished in 0.65s
+

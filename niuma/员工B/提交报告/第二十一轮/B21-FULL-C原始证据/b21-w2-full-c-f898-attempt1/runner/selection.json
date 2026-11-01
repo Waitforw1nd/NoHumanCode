@@ -1,0 +1,29 @@
+{
+  "scope": "full",
+  "selected": [
+    "wasm_worker_process_tests::w01_real_worker_before_after_and_near_8mib",
+    "wasm_worker_process_tests::fault_matrix::w02_protocol_fault_matrix",
+    "wasm_worker_process_tests::fault_matrix::w03_pipe_fault_matrix",
+    "wasm_worker_process_tests::fault_matrix::w04_resource_limits",
+    "wasm_worker_process_tests::fault_matrix::w04_cpu_budget_boundaries",
+    "wasm_worker_process_tests::fault_matrix::w04_injected_zero_read_sensitivity",
+    "wasm_worker_process_tests::fault_matrix::w04_unknown_cleanup_and_slot_reuse",
+    "wasm_worker_process_tests::fault_matrix::w04_cancellation_and_acceptance_boundaries",
+    "wasm_worker_process_tests::fault_matrix::w04_injected_membership_failure_reaps",
+    "wasm_worker_process_tests::fault_matrix::w04_persistent_observation_errors_retain_io_and_slot",
+    "wasm_worker_process_tests::fault_matrix::w05_host_kill_boundaries",
+    "wasm_worker_process_tests::fault_matrix::w06_p01_live_job_observation",
+    "wasm_worker_process::platform::w06_artifact_tests::pin_file_counterexamples",
+    "wasm_worker_process::platform::w06_artifact_tests::pin_existing_writable_mapping",
+    "wasm_worker_process::platform::w06_artifact_tests::process_image_identity_counterexample",
+    "wasm_worker_process::platform::w06_handle_tests::sentinel_explicit_inheritance_control",
+    "wasm_worker_process_tests::fault_matrix::w06_non_whitelisted_event",
+    "wasm_worker_process_tests::fault_matrix::w06_job_handle_not_inherited",
+    "wasm_worker_process::platform::w06_limit_tests::active_limit_single_factor",
+    "wasm_worker_process::platform::w06_limit_tests::breakaway_single_factor",
+    "wasm_worker_process::platform::r04_tests::suspended_process_in_real_job_requires_process_fallback"
+  ],
+  "selected_count": 21,
+  "mapped_count": 21,
+  "note": "single scope is not W01-W06 completion"
+}

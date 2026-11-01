@@ -1,0 +1,42 @@
+{
+  "test": "wasm_worker_process::platform::w06_artifact_tests::process_image_identity_counterexample",
+  "nonce": "031cf20673e445aa8f7dc5883cdb1af6",
+  "state": "passed",
+  "start_utc": "2026-11-01T16:49:05.2538594Z",
+  "timeout_seconds": 180,
+  "pid": 77724,
+  "creation_filetime": 134380253452566981,
+  "stdout": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-c-f898-attempt1\\runner\\case-15\\test.stdout",
+  "stderr": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-c-f898-attempt1\\runner\\case-15\\test.stderr",
+  "fixed_hashes": [
+    {
+      "name": "worker.exe",
+      "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\peachsh-wasm-worker.exe",
+      "sha256": "05d1a4b1c8c089f175ec316001036723930ba8dbdd4e7fb26ffca415f0770691",
+      "bytes": 10860544
+    },
+    {
+      "name": "probe.exe",
+      "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\examples\\wasm_worker_process_probe.exe",
+      "sha256": "6691e01d920e457d942d5a3e17883ea55e35a0dbbeb056c10d139bc530c70e6a",
+      "bytes": 2755072
+    },
+    {
+      "name": "lib-test.exe",
+      "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\deps\\peachsh-e2aa2d6365223fa4.exe",
+      "sha256": "6b98bbaa4313d0d5e72b6ed13c7847858e2a41a6f7262ad62e86d6dd560ca38d",
+      "bytes": 40079360
+    }
+  ],
+  "source": {
+    "head": "f898f0b372bada37e2b962890c3dca23935c2f40",
+    "product_tree": "77d0ecdf81b4ad90029bbc85db06271cc4478276",
+    "rust_tree": "43a9b604fb5e21b111cc831d98d2a92794d0962f",
+    "status": [],
+    "index": []
+  },
+  "attempt": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-c-f898-attempt1\\runner",
+  "end_utc": "2026-11-01T16:49:06.3887464Z",
+  "elapsed_ms": 1133,
+  "exit_code": 0
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "worker.exe",
+    "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\peachsh-wasm-worker.exe",
+    "sha256": "05d1a4b1c8c089f175ec316001036723930ba8dbdd4e7fb26ffca415f0770691",
+    "bytes": 10860544
+  },
+  {
+    "name": "probe.exe",
+    "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\examples\\wasm_worker_process_probe.exe",
+    "sha256": "6691e01d920e457d942d5a3e17883ea55e35a0dbbeb056c10d139bc530c70e6a",
+    "bytes": 2755072
+  },
+  {
+    "name": "lib-test.exe",
+    "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\deps\\peachsh-e2aa2d6365223fa4.exe",
+    "sha256": "6b98bbaa4313d0d5e72b6ed13c7847858e2a41a6f7262ad62e86d6dd560ca38d",
+    "bytes": 40079360
+  }
+]

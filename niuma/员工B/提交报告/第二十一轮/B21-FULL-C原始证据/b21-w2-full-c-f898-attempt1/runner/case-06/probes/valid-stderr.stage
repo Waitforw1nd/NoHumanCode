@@ -1,0 +1,5 @@
+pid=59844 phase=started
+pid=59844 phase=request_eof
+pid=59844 phase=output_written
+pid=59844 phase=stderr_written
+pid=59844 phase=done

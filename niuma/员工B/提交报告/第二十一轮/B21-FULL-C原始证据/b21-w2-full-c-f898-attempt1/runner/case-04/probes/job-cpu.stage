@@ -1,0 +1,12 @@
+pid=48192 phase=started
+pid=48192 phase=request_eof
+pid=48192 phase=cpu_loop_start
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_threads_started
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_thread_started
+pid=48192 phase=cpu_thread_started

@@ -1,0 +1,8 @@
+{
+  "command": "cargo build --offline --locked --target-dir <target> --bin peachsh-wasm-worker --example wasm_worker_process_probe",
+  "target": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target",
+  "started_utc": "2026-11-01T16:46:10.6595054Z",
+  "state": "exited",
+  "exit_code": 0,
+  "ended_utc": "2026-11-01T16:46:26.4410550Z"
+}
