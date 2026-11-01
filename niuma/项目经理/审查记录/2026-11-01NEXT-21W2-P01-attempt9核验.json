@@ -1,0 +1,355 @@
+{
+  "candidate": "1d1c1fcb706edf01b87f230c43be221a1d818232",
+  "source_count": 189,
+  "source_manifest_sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd",
+  "eol_only_paths": [
+    "NoManCode/dsh-peachsh.cmd",
+    "NoManCode/newapi.cmd",
+    "NoManCode/rust-app/tests/support/wasm_worker_process/prepare-probes.ps1",
+    "NoManCode/start-peachsh-legacy.cmd",
+    "NoManCode/start-peachsh.cmd"
+  ],
+  "prior_attempt8_files_unchanged": 31,
+  "product": "4684bd59691a4fb7b844f60575057c48edf8a634",
+  "rust": "ce1172cdbcee694b131985396f53e23ff9c1f185",
+  "attempt": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/next21w2-b-1d1c1fcb-attempt9",
+  "identical_source_manifests": 7,
+  "steps": [
+    {
+      "command": "cargo build --offline --locked --bin peachsh-wasm-worker --example wasm_worker_process_probe",
+      "exit_code": 0,
+      "ended_utc": "2026-11-01T03:33:05.5813127Z",
+      "started_utc": "2026-11-01T03:32:51.6914978Z"
+    },
+    {
+      "command": "cargo test --offline --locked --lib --no-run",
+      "exit_code": 0,
+      "ended_utc": "2026-11-01T03:33:33.6207206Z",
+      "started_utc": "2026-11-01T03:33:06.0621084Z"
+    },
+    {
+      "ended_utc": "2026-11-01T03:34:05.5435575Z",
+      "started_utc": "2026-11-01T03:34:04.6974190Z",
+      "exit_code": 0,
+      "command": "cargo test --offline --locked --lib wasm_worker_process_tests::fault_matrix::w06_p01_live_job_observation -- --exact --nocapture --test-threads=1"
+    },
+    {
+      "ended_utc": "2026-11-01T03:35:25.8430485Z",
+      "started_utc": "2026-11-01T03:35:22.8252364Z",
+      "command": "cargo test --offline --locked --lib wasm_worker_process_tests::w01_real_worker_before_after_and_near_8mib -- --exact --nocapture --test-threads=1",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-11-01T03:35:28.6298750Z",
+      "started_utc": "2026-11-01T03:35:27.1435668Z",
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    },
+    {
+      "ended_utc": "2026-11-01T03:35:48.3951842Z",
+      "started_utc": "2026-11-01T03:35:29.8471992Z",
+      "command": "cargo clippy --offline --locked --workspace --all-targets -- -D warnings",
+      "exit_code": 0
+    }
+  ],
+  "fixed_artifacts": [
+    {
+      "name": "probe.exe",
+      "bytes": 2719232,
+      "sha256": "3a0582a3c36a4db242fbdd8a0b16145d280e14fa63ad8bbb1e2d52bb1f92770d"
+    },
+    {
+      "name": "worker.exe",
+      "bytes": 10856960,
+      "sha256": "e83c3c4876722c2be6bd2635166625f2c2475a241bd025bb442bb52e90ca8d0a"
+    },
+    {
+      "name": "lib-test.exe",
+      "bytes": 39601152,
+      "sha256": "44d95c8d2c83aae871f5a6ab548794990076b2e0133c84bbe9932c473129398f"
+    }
+  ],
+  "artifact_after_manifests": 4,
+  "p01_sequence_count": 30,
+  "creation_flags": 525324,
+  "p01_pid": 9276,
+  "p01_creation_filetime": 134379776452395036,
+  "pid_reuse_not_same_object": true,
+  "p01_max_observed_active": 1,
+  "p01_max_observed_total": 1,
+  "w01_pids": [
+    47956,
+    34980
+  ],
+  "w01_near_limit_module_bytes": 8388544,
+  "all_three_process_job_io_cleanup_confirmed": true,
+  "p01_collector_stopped": true,
+  "attempt_files": [
+    {
+      "path": "artifact/lib-test.exe",
+      "bytes": 39601152,
+      "sha256": "44d95c8d2c83aae871f5a6ab548794990076b2e0133c84bbe9932c473129398f"
+    },
+    {
+      "path": "artifact/probe.exe",
+      "bytes": 2719232,
+      "sha256": "3a0582a3c36a4db242fbdd8a0b16145d280e14fa63ad8bbb1e2d52bb1f92770d"
+    },
+    {
+      "path": "artifact/worker.exe",
+      "bytes": 10856960,
+      "sha256": "e83c3c4876722c2be6bd2635166625f2c2475a241bd025bb442bb52e90ca8d0a"
+    },
+    {
+      "path": "logs/01-probe-build.json",
+      "bytes": 232,
+      "sha256": "158f6b31fff877f215457d549c5959d63f2e546cad7780c6f997e20a0c9c4baa"
+    },
+    {
+      "path": "logs/01-probe-build.stderr.log",
+      "bytes": 146,
+      "sha256": "ab2d2c79193ba958b4b11b3bbc84358a4e8aef9a09cdb9229c3b93bc409e539a"
+    },
+    {
+      "path": "logs/01-probe-build.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/02-lib-no-run.json",
+      "bytes": 184,
+      "sha256": "0ab7d1b649b68b39b32b3e5ff27e680be932f2f35269b463ceef44c49b6b28cf"
+    },
+    {
+      "path": "logs/02-lib-no-run.stderr.log",
+      "bytes": 320,
+      "sha256": "8ecb93204c1ca83ec69803aa7bd0c13f8a1adff49fa04b164b5b449f8906e843"
+    },
+    {
+      "path": "logs/02-lib-no-run.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/03-p01.json",
+      "bytes": 285,
+      "sha256": "ce03f8a3d850b332eb0c366b5f4428e337ba830b44f978a90990d0da8b96bde2"
+    },
+    {
+      "path": "logs/03-p01.stderr.log",
+      "bytes": 235,
+      "sha256": "133f713b0a66ba3d8b6e70ad542b8290566b7b54b3b938e1d3cf145a64a46528"
+    },
+    {
+      "path": "logs/03-p01.stdout.log",
+      "bytes": 311,
+      "sha256": "eb79d8d518a6ef40e992e99394e9be07df78a5b4dfe07dab6d5b7c7880a440d6"
+    },
+    {
+      "path": "logs/04-w01.json",
+      "bytes": 285,
+      "sha256": "6bcbfe913de9b54faeae403021e3d52dfe34a3294f5323c5c0555344bd4b31af"
+    },
+    {
+      "path": "logs/04-w01.stderr.log",
+      "bytes": 235,
+      "sha256": "3d07fa9748380696cfe1769e55aad45fe9b6d6d5a9f8a42bca83fee8e57abf93"
+    },
+    {
+      "path": "logs/04-w01.stdout.log",
+      "bytes": 362,
+      "sha256": "c2dad330b39da0af498cabc520c6eaed091f216a35e192b4491bbd8136f7c145"
+    },
+    {
+      "path": "logs/05-fmt.json",
+      "bytes": 166,
+      "sha256": "61720c40187b226bae7098e5e3bacce056e77713ea545ba4e8fec0b07cf6a0ac"
+    },
+    {
+      "path": "logs/05-fmt.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/05-fmt.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/06-clippy.json",
+      "bytes": 212,
+      "sha256": "de9ff78d0efadad2631d307c35ef4dd9886d30d48e344ef00c272b2301c1c6b5"
+    },
+    {
+      "path": "logs/06-clippy.stderr.log",
+      "bytes": 403,
+      "sha256": "cb284cbe302818ba7fd62c1e5be8f19a3df2d00a1a89046e57b618a1b1fe24be"
+    },
+    {
+      "path": "logs/06-clippy.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/artifacts-after-04-w01.json",
+      "bytes": 886,
+      "sha256": "09637392929a9a2af214ef44fa1714f10eae154b8bc06f136e8b6234fc7e08d3"
+    },
+    {
+      "path": "logs/artifacts-after-05-fmt.json",
+      "bytes": 886,
+      "sha256": "09637392929a9a2af214ef44fa1714f10eae154b8bc06f136e8b6234fc7e08d3"
+    },
+    {
+      "path": "logs/artifacts-after-06-clippy.json",
+      "bytes": 886,
+      "sha256": "09637392929a9a2af214ef44fa1714f10eae154b8bc06f136e8b6234fc7e08d3"
+    },
+    {
+      "path": "logs/artifacts-after.json",
+      "bytes": 886,
+      "sha256": "09637392929a9a2af214ef44fa1714f10eae154b8bc06f136e8b6234fc7e08d3"
+    },
+    {
+      "path": "logs/artifacts-before.json",
+      "bytes": 1335,
+      "sha256": "288040bb935beaace0d46c8972ea3f822d95ec9bf516c6b64a8ee52c01b05bc6"
+    },
+    {
+      "path": "logs/environment.json",
+      "bytes": 477,
+      "sha256": "bb7efc5c79051fe89fa9df37e38d96a9ac04b737f7041755f308e9e4427a81e2"
+    },
+    {
+      "path": "logs/p01-stage.log",
+      "bytes": 11905,
+      "sha256": "3c93298c431851a7ac9ecb8cc844f7af117021ed3bc6c875727d2f0ace17eba8"
+    },
+    {
+      "path": "logs/p01-start.json",
+      "bytes": 596,
+      "sha256": "3978ab888e800a3022d83affc3efb83abf8c484873c2e4fd9c51276411591b66"
+    },
+    {
+      "path": "logs/preflight.json",
+      "bytes": 325,
+      "sha256": "5a1f921241f03b426898387faa1ad9c8049517ccd9ca5f83dfef6a379625ec18"
+    },
+    {
+      "path": "logs/source-after-01-probe-build.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/source-after-02-lib-no-run.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/source-after-04-w01.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/source-after-05-fmt.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/source-after-06-clippy.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/source-after-p01.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/source-before.json",
+      "bytes": 32969,
+      "sha256": "5c1e044b7711a87f3c01fdf1b8afaf3d6aad2a082789ae7b4c4feacd8d53d8dd"
+    },
+    {
+      "path": "logs/state-after-01-probe-build.json",
+      "bytes": 325,
+      "sha256": "b8dbe577a88b02021bf3a11ab5873f7fe4e7ebf8d579f543600df73533128274"
+    },
+    {
+      "path": "logs/state-after-02-lib-no-run.json",
+      "bytes": 325,
+      "sha256": "f8900f4445835ac500e76cfdca51bd7c26d77e9770d664c4dac0320ed4252bcf"
+    },
+    {
+      "path": "logs/state-after-04-w01.json",
+      "bytes": 261,
+      "sha256": "a30be42624e7986b798a8f17bf02ad1ac54ea09114fa313469428b06cd9f05a4"
+    },
+    {
+      "path": "logs/state-after-05-fmt.json",
+      "bytes": 261,
+      "sha256": "f3b41c955084b70e8ab0aa5f1904f2a9172f28b09f7f81d69e4522e0a16edd48"
+    },
+    {
+      "path": "logs/state-after-06-clippy.json",
+      "bytes": 261,
+      "sha256": "6125031d2842817727bfdffbdd8aa4b9aabccf423c51abdde8c1a61df05dca89"
+    },
+    {
+      "path": "logs/state-after-p01.json",
+      "bytes": 261,
+      "sha256": "5e69776fdc02520cd7d92d6acf67d6c6a86388310a91d57dac860d22c10169d2"
+    },
+    {
+      "path": "logs/toolchain-p01.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/toolchain-rest.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/toolchain-setup.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/w01-stage.log",
+      "bytes": 24802,
+      "sha256": "d633b2f0c69ba2a34ac42ba1a73722a110be14375b1a869c4922985f0bc4ae44"
+    },
+    {
+      "path": "modes/p01/p01-memory.exe",
+      "bytes": 2719232,
+      "sha256": "3a0582a3c36a4db242fbdd8a0b16145d280e14fa63ad8bbb1e2d52bb1f92770d"
+    },
+    {
+      "path": "modes/p01/p01-memory.release",
+      "bytes": 7,
+      "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "path": "modes/p01/p01-memory.stage",
+      "bytes": 248,
+      "sha256": "e54c8a3bb0d9c99224b005f7ab28b9cd6adbb79bc58504ddb361ad3018b8547b"
+    },
+    {
+      "path": "run-build.ps1",
+      "bytes": 4135,
+      "sha256": "610a096e6a35ade2bf30f2daf92a2d764c29dc7ab3567514899f3f08c7fbe9ab"
+    },
+    {
+      "path": "run-p01.ps1",
+      "bytes": 5822,
+      "sha256": "aac448a492b769bfe3060a22e232f186238b539aeff0d20e33ab3d983b725210"
+    },
+    {
+      "path": "run-rest.ps1",
+      "bytes": 5265,
+      "sha256": "1848357080c2ee8a0ba5705eea141cef0a1213e576bee1607cdf2f3254711b02"
+    }
+  ],
+  "conclusion": "Six steps passed; controlled P01 observed only its target object and active/total 1, W01 two real worker calls passed under detached creation. This accepts the minimal fix within this case, not universal no-descendant proof, full W05/W06, or production integration. W2 remains unmerged."
+}
