@@ -1,0 +1,104 @@
+{
+  "utc": "2026-11-01T23:06:08.354247+00:00",
+  "source_paths_relative_to": "repository root",
+  "count": 12,
+  "bytes": 72353,
+  "files": [
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/incident.json",
+      "copy": "attempt/incident.json",
+      "bytes": 647,
+      "source_sha256_before": "0e107c8b8c720a84f91b5a66d27f498f9eabed55596bff8029534275d91fda43",
+      "source_sha256_after": "0e107c8b8c720a84f91b5a66d27f498f9eabed55596bff8029534275d91fda43",
+      "copy_sha256": "0e107c8b8c720a84f91b5a66d27f498f9eabed55596bff8029534275d91fda43"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/launcher-incident.json",
+      "copy": "attempt/launcher-incident.json",
+      "bytes": 1719,
+      "source_sha256_before": "81c55549a7f16c8a9a5715f4622eb7a6f06a3c1006d680df83dc84d9d062a72c",
+      "source_sha256_after": "81c55549a7f16c8a9a5715f4622eb7a6f06a3c1006d680df83dc84d9d062a72c",
+      "copy_sha256": "81c55549a7f16c8a9a5715f4622eb7a6f06a3c1006d680df83dc84d9d062a72c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/launcher.json",
+      "copy": "attempt/launcher.json",
+      "bytes": 1362,
+      "source_sha256_before": "d43a6edfb69b468c7027c08c5bb5ae9360b04ba56a54a526bc11f552975e947c",
+      "source_sha256_after": "d43a6edfb69b468c7027c08c5bb5ae9360b04ba56a54a526bc11f552975e947c",
+      "copy_sha256": "d43a6edfb69b468c7027c08c5bb5ae9360b04ba56a54a526bc11f552975e947c"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/source-before.json",
+      "copy": "attempt/source-before.json",
+      "bytes": 258,
+      "source_sha256_before": "c9a71cbb969f290219575ab20c00a086503789d7740a854c2acf7b61bd128748",
+      "source_sha256_after": "c9a71cbb969f290219575ab20c00a086503789d7740a854c2acf7b61bd128748",
+      "copy_sha256": "c9a71cbb969f290219575ab20c00a086503789d7740a854c2acf7b61bd128748"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/source-files-before.json",
+      "copy": "attempt/source-files-before.json",
+      "bytes": 33569,
+      "source_sha256_before": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "source_sha256_after": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/source-files-stopped.json",
+      "copy": "attempt/source-files-stopped.json",
+      "bytes": 33569,
+      "source_sha256_before": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "source_sha256_after": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d",
+      "copy_sha256": "ccb59edb918ae1ced6d5127fee5e24b0ede9e1ca16ed2a6b68a7bfd64487fa3d"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/source-stopped.json",
+      "copy": "attempt/source-stopped.json",
+      "bytes": 258,
+      "source_sha256_before": "226e8046fa20d6733fc00704abce55be6f8031b626e8e27beef475991860d612",
+      "source_sha256_after": "226e8046fa20d6733fc00704abce55be6f8031b626e8e27beef475991860d612",
+      "copy_sha256": "226e8046fa20d6733fc00704abce55be6f8031b626e8e27beef475991860d612"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/supervisor.stderr",
+      "copy": "attempt/supervisor.stderr",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/supervisor.stdout",
+      "copy": "attempt/supervisor.stdout",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/toolchain.log",
+      "copy": "attempt/toolchain.log",
+      "bytes": 0,
+      "source_sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-gates-b-f898-attempt2/window-result.json",
+      "copy": "attempt/window-result.json",
+      "bytes": 514,
+      "source_sha256_before": "24fe70aa24830ce9ee2ec23529a0c71a6437423248399acb9d567eb01a0b1ca0",
+      "source_sha256_after": "24fe70aa24830ce9ee2ec23529a0c71a6437423248399acb9d567eb01a0b1ca0",
+      "copy_sha256": "24fe70aa24830ce9ee2ec23529a0c71a6437423248399acb9d567eb01a0b1ca0"
+    },
+    {
+      "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/nhc-w2-window.lock",
+      "copy": "original-lock-copy/nhc-w2-window.lock",
+      "bytes": 457,
+      "source_sha256_before": "6262379b285922f249312805f1d134d2110bfadd8452b52945a25d99a8c41491",
+      "source_sha256_after": "6262379b285922f249312805f1d134d2110bfadd8452b52945a25d99a8c41491",
+      "copy_sha256": "6262379b285922f249312805f1d134d2110bfadd8452b52945a25d99a8c41491"
+    }
+  ]
+}

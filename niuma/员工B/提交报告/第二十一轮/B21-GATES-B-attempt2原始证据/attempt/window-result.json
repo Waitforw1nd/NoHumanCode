@@ -1,0 +1,7 @@
+{
+  "state": "failed",
+  "exit_code": 1,
+  "started_utc": "2026-11-01T23:05:27.1971902Z",
+  "ended_utc": "2026-11-01T23:05:28.2862676Z",
+  "reason": "Exception: \r\nLine |\r\n  44 |  … taskMsvc) { throw 'Missing Visual C++ x64 build tools. Install the C+ …\r\n     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | Missing Visual C++ x64 build tools. Install the C++ build tools for Visual Studio, or set VCToolsInstallDir / VSINSTALLDIR to their installation.\r\n"
+}
