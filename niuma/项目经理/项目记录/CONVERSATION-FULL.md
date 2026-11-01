@@ -1,3 +1,7 @@
+## 2026-11-01 真实失败驱动的域契约修正（摘要记录）
+
+C最小HANDLE修订36ae1973编译通过；第二个基础例实际证明原DB pin活着时另一hardlink仍可删除，首个mutex例通过，后四例/WAL未跑。经理保留否定证据，不改断言伪造原通过；确认活owner的file-ID全局mutex与统一连接路径仍需组合验证，跨owner死亡的DB单独移名/原WAL遗留须SQLite打开前持久绑定。裁决以NTFS ADS实现实际DB/sidecar父域、保守初始化、缺损封门；旧库迁移/备份/搬迁仍必须完成，禁止以一律unsupported缩减范围。B runner e544db0增量复审后接唯一动态窗，构建成功，list空日志null异常在489ms形成事故与停窗闩锁，20例未启动。原B核记录进程并最小修订，原C继续ADS静态；经理随后核B原进程/闩锁归档及249479ad小修，签第二attempt同20exact唯一窗口；C静态、D冻结。经理未改产品或代正式测试，main保持W1-ID01/schema17与原41行，持续目标active。
+
 ## 2026-11-01 双线固定候选与首个有限窗口（摘要记录）
 
 经理完成B f89aed73 W05/W06集中静审，返B21-R01：同步runner遇保留对象park不能有界报告停窗，原B静态补监督及源码manifest。C按U35-R01/R02返工固定e08a2c5d，连接包装持域Arc解决裸Connection寿命逃逸；WAL仅forget后panic仍不能保留退出进程的原handle，强杀窗口暂缓。经理实核固定三SHA/clean，签C唯一U35-PRE-A编译与六基础exact，首败停，随后首编译E0282失败、六例均未启动，经理已核原始错误日志，窗口停止。B无动态、D冻结。已补C散布Store写入口必要最小权限，继续原NEXT-21U；未实现产品的经理仍只审查与管理。用户核心优先及三个大版本持续目标active，主线W1-ID01/schema17与继承41行保持。
