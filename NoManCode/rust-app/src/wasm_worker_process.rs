@@ -21,6 +21,8 @@ use tokio_util::sync::CancellationToken;
 
 const CALL_LIMIT: Duration = Duration::from_secs(5);
 const REAP_LIMIT: Duration = Duration::from_secs(2);
+#[cfg(windows)]
+const CPU_USER_LIMIT_100NS: u64 = 30_000_000;
 static SLOT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(all(test, windows))]
@@ -233,6 +235,37 @@ pub(crate) mod test_hooks {
     static PERSISTENT_ERROR: AtomicU8 = AtomicU8::new(0);
     static W05_STOPPER_STARTED: AtomicBool = AtomicBool::new(false);
     static INVALID_CREATE_FLAGS: AtomicBool = AtomicBool::new(false);
+    static CPU_JOB_RELAX: AtomicBool = AtomicBool::new(false);
+    static CPU_QUERY_FAULT: AtomicBool = AtomicBool::new(false);
+    static CPU_FINAL_ONLY: AtomicBool = AtomicBool::new(false);
+
+    pub(crate) struct CpuFixtureGuard;
+    impl Drop for CpuFixtureGuard {
+        fn drop(&mut self) {
+            CPU_JOB_RELAX.store(false, Ordering::Release);
+            CPU_QUERY_FAULT.store(false, Ordering::Release);
+            CPU_FINAL_ONLY.store(false, Ordering::Release);
+        }
+    }
+    pub(crate) fn arm_cpu_fixture(
+        relax_job: bool,
+        query_fault: bool,
+        final_only: bool,
+    ) -> CpuFixtureGuard {
+        assert!(!CPU_JOB_RELAX.swap(relax_job, Ordering::AcqRel));
+        assert!(!CPU_QUERY_FAULT.swap(query_fault, Ordering::AcqRel));
+        assert!(!CPU_FINAL_ONLY.swap(final_only, Ordering::AcqRel));
+        CpuFixtureGuard
+    }
+    pub(super) fn take_cpu_job_relax() -> bool {
+        CPU_JOB_RELAX.swap(false, Ordering::AcqRel)
+    }
+    pub(super) fn take_cpu_query_fault() -> bool {
+        CPU_QUERY_FAULT.swap(false, Ordering::AcqRel)
+    }
+    pub(super) fn cpu_final_only() -> bool {
+        CPU_FINAL_ONLY.load(Ordering::Acquire)
+    }
 
     pub(crate) struct InvalidCreateGuard;
     impl Drop for InvalidCreateGuard {
@@ -645,6 +678,31 @@ impl Gate {
             return false;
         }
         self.state.load(Ordering::Acquire) == 0
+    }
+    #[cfg(windows)]
+    fn reject_cpu(&self, deadline: Instant, error: WorkerError) -> WorkerError {
+        let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
+        if self.cancel.is_cancelled() {
+            let _ = self
+                .state
+                .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
+            return WorkerError::Cancelled;
+        }
+        if Instant::now() >= deadline {
+            let _ = self
+                .state
+                .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
+            return WorkerError::Deadline;
+        }
+        if self
+            .state
+            .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+        {
+            error
+        } else {
+            WorkerError::Deadline
+        }
     }
 }
 struct CancelOnDrop(Option<Arc<Gate>>);
@@ -2990,6 +3048,141 @@ mod platform {
         }
     }
 
+    struct CpuBudget {
+        next_sample: Instant,
+        #[cfg(test)]
+        first_sample: bool,
+        #[cfg(test)]
+        final_only_logged: bool,
+    }
+    impl CpuBudget {
+        fn new() -> Self {
+            Self {
+                next_sample: Instant::now(),
+                #[cfg(test)]
+                first_sample: true,
+                #[cfg(test)]
+                final_only_logged: false,
+            }
+        }
+        fn sample(
+            &mut self,
+            process: &ProcessGuard,
+            gate: &Gate,
+            deadline: Instant,
+            final_sample: bool,
+        ) -> Result<(), WorkerError> {
+            #[cfg(test)]
+            if test_hooks::cpu_final_only() && !final_sample {
+                if !self.final_only_logged {
+                    record_stage("cpu_fixture_final_only", Some(process.pid));
+                    self.final_only_logged = true;
+                }
+                return Ok(());
+            }
+            if !final_sample && Instant::now() < self.next_sample {
+                return Ok(());
+            }
+            self.next_sample = Instant::now() + Duration::from_millis(10);
+            #[cfg(test)]
+            let first_sample = std::mem::replace(&mut self.first_sample, false);
+            use windows_sys::Win32::{Foundation::FILETIME, System::Threading::GetProcessTimes};
+            let mut creation: FILETIME = unsafe { zeroed() };
+            let mut exit: FILETIME = unsafe { zeroed() };
+            let mut kernel: FILETIME = unsafe { zeroed() };
+            let mut user: FILETIME = unsafe { zeroed() };
+            #[cfg(test)]
+            let handle = if test_hooks::take_cpu_query_fault() {
+                record_stage("cpu_query_invalid_handle_fixture", Some(process.pid));
+                null_mut()
+            } else {
+                raw(&process.process)
+            };
+            #[cfg(not(test))]
+            let handle = raw(&process.process);
+            let ok = unsafe {
+                GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user)
+            };
+            let error = if ok == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            if ok == 0 {
+                let result = gate.reject_cpu(
+                    deadline,
+                    WorkerError::IsolationUnavailable("worker_cpu_query", error),
+                );
+                record_stage("cpu_query_failed", Some(process.pid));
+                return Err(result);
+            }
+            let user_time = (u64::from(user.dwHighDateTime) << 32) | u64::from(user.dwLowDateTime);
+            if user_time >= CPU_USER_LIMIT_100NS {
+                let wait = unsafe { WaitForSingleObject(raw(&process.process), 0) };
+                if wait != WAIT_OBJECT_0 && wait != WAIT_TIMEOUT {
+                    let error = std::io::Error::last_os_error().raw_os_error();
+                    return Err(gate.reject_cpu(
+                        deadline,
+                        WorkerError::IsolationUnavailable("worker_cpu_query", error),
+                    ));
+                }
+                record_count("cpu_budget_process_wait", process.pid, wait as usize);
+                if wait == WAIT_OBJECT_0 {
+                    if !final_sample {
+                        // A signaled process may have been terminated by the OS;
+                        // let the ordinary exit path classify it.
+                        return Ok(());
+                    }
+                    let mut exit_code = 0;
+                    if unsafe { GetExitCodeProcess(raw(&process.process), &mut exit_code) } == 0 {
+                        let error = std::io::Error::last_os_error().raw_os_error();
+                        return Err(gate.reject_cpu(
+                            deadline,
+                            WorkerError::IsolationUnavailable("worker_cpu_query", error),
+                        ));
+                    }
+                    if exit_code != 0 {
+                        return Ok(());
+                    }
+                }
+                let result = gate.reject_cpu(
+                    deadline,
+                    WorkerError::IsolationUnavailable("worker_cpu_budget", None),
+                );
+                if final_sample {
+                    record_count("cpu_final_user_100ns", process.pid, user_time as usize);
+                }
+                #[cfg(test)]
+                if first_sample {
+                    record_count("cpu_first_user_100ns", process.pid, user_time as usize);
+                }
+                record_count("cpu_budget_user_100ns", process.pid, user_time as usize);
+                if matches!(
+                    result,
+                    WorkerError::IsolationUnavailable("worker_cpu_budget", None)
+                ) {
+                    record_stage(
+                        if wait == WAIT_TIMEOUT {
+                            "cpu_budget_host_won"
+                        } else {
+                            "cpu_budget_final_reject"
+                        },
+                        Some(process.pid),
+                    );
+                }
+                return Err(result);
+            }
+            if final_sample {
+                record_count("cpu_final_user_100ns", process.pid, user_time as usize);
+            }
+            #[cfg(test)]
+            if first_sample {
+                record_count("cpu_first_user_100ns", process.pid, user_time as usize);
+            }
+            Ok(())
+        }
+    }
+
     fn io_loop(
         input: Vec<u8>,
         pipes: [Arc<OwnedHandle>; 3],
@@ -2997,6 +3190,8 @@ mod platform {
         stopper: &Stopper,
         gate: &Gate,
         deadline: Instant,
+        cpu: &mut CpuBudget,
+        #[cfg(test)] expected: &Request,
     ) -> Result<Vec<u8>, WorkerError> {
         let [stdin, stdout, stderr] = pipes;
         let mut writer = Some(Operation::new(
@@ -3032,6 +3227,7 @@ mod platform {
                 gate.stop();
                 return Err(WorkerError::Deadline);
             }
+            cpu.sample(process, gate, deadline, false)?;
             if let Some(write) = &mut writer {
                 if !write.pending && offset < input.len() {
                     let end = (offset + CHUNK).min(input.len());
@@ -3194,6 +3390,18 @@ mod platform {
                 half_closed_observed = true;
             }
             if writer.is_none() && stdout_eof && stderr_eof && process.reaped() {
+                #[cfg(test)]
+                if test_hooks::cpu_final_only()
+                    && matches!(protocol::read_response(&mut response.as_slice(), &expected.manifest, &expected.input),
+                        Ok(response) if matches!(response.outcome, Outcome::Ok { decision: Decision::Stop {} }))
+                {
+                    record_stage("cpu_fixture_response_validated", Some(process.pid));
+                }
+                #[cfg(test)]
+                test_hooks::checkpoint("cpu_before_final_sample", Some(process.pid));
+                cpu.sample(process, gate, deadline, true)?;
+                #[cfg(test)]
+                test_hooks::checkpoint("cpu_final_checked", Some(process.pid));
                 process.complete = true;
                 record_stage("io_complete_reaped", Some(process.pid));
                 fail_stop.success = true;
@@ -3275,7 +3483,14 @@ mod platform {
             | JOB_OBJECT_LIMIT_PROCESS_MEMORY
             | JOB_OBJECT_LIMIT_PROCESS_TIME;
         limits.BasicLimitInformation.ActiveProcessLimit = 1;
-        limits.BasicLimitInformation.PerProcessUserTimeLimit = 30_000_000;
+        limits.BasicLimitInformation.PerProcessUserTimeLimit = CPU_USER_LIMIT_100NS as i64;
+        #[cfg(test)]
+        let cpu_fixture_job_relaxed = test_hooks::take_cpu_job_relax();
+        #[cfg(test)]
+        if cpu_fixture_job_relaxed {
+            limits.BasicLimitInformation.PerProcessUserTimeLimit = 300_000_000;
+            record_stage("cpu_fixture_relaxed_job_limit", None);
+        }
         limits.ProcessMemoryLimit = 128 * 1024 * 1024;
         if unsafe {
             SetInformationJobObject(
@@ -3303,7 +3518,8 @@ mod platform {
         }
         if actual.BasicLimitInformation.ActiveProcessLimit != 1
             || actual.ProcessMemoryLimit != limits.ProcessMemoryLimit
-            || actual.BasicLimitInformation.PerProcessUserTimeLimit != 30_000_000
+            || actual.BasicLimitInformation.PerProcessUserTimeLimit
+                != limits.BasicLimitInformation.PerProcessUserTimeLimit
             || actual.BasicLimitInformation.LimitFlags & limits.BasicLimitInformation.LimitFlags
                 != limits.BasicLimitInformation.LimitFlags
             || actual.BasicLimitInformation.LimitFlags
@@ -3314,6 +3530,14 @@ mod platform {
                 "job_limits_mismatch",
                 None,
             ));
+        }
+        #[cfg(test)]
+        if cpu_fixture_job_relaxed {
+            record_count(
+                "cpu_fixture_actual_job_limit",
+                0,
+                actual.BasicLimitInformation.PerProcessUserTimeLimit as usize,
+            );
         }
         #[cfg(test)]
         test_observer::capture_job(&job);
@@ -3580,6 +3804,10 @@ mod platform {
             return Err(error);
         }
         record_stage("resumed", Some(information.dwProcessId));
+        let mut cpu = CpuBudget::new();
+        #[cfg(test)]
+        test_hooks::checkpoint("cpu_before_first_sample", Some(information.dwProcessId));
+        cpu.sample(&process, gate, deadline, false)?;
         #[cfg(test)]
         w05_checkpoint("w05_resumed", Some(information.dwProcessId), gate, deadline);
         let response = io_loop(
@@ -3589,6 +3817,9 @@ mod platform {
             &stopper,
             gate,
             deadline,
+            &mut cpu,
+            #[cfg(test)]
+            &request,
         )?;
         ensure_open(gate, deadline)?;
         let mut exit_code = 0;

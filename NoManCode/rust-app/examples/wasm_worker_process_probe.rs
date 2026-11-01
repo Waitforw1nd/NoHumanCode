@@ -67,6 +67,9 @@ fn main() {
         "concurrent",
         "dual-pressure",
         "job-cpu",
+        "cpu-valid",
+        "cpu-valid-cancel",
+        "cpu-valid-deadline",
         "job-memory",
         "p01-memory",
         "w06-sentinel",
@@ -204,6 +207,54 @@ fn main() {
                 mark("cpu_threads_started");
             }
         });
+    }
+    if matches!(
+        mode,
+        "cpu-valid" | "cpu-valid-cancel" | "cpu-valid-deadline"
+    ) {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use windows_sys::Win32::{
+            Foundation::FILETIME,
+            System::Threading::{GetCurrentProcess, GetProcessTimes},
+        };
+        let finished = AtomicBool::new(false);
+        thread::scope(|scope| {
+            for _ in 0..8 {
+                let done = &finished;
+                scope.spawn(move || {
+                    while !done.load(Ordering::Relaxed) {
+                        std::hint::black_box(1usize.wrapping_add(std::hint::black_box(1)));
+                    }
+                });
+            }
+            loop {
+                let mut creation: FILETIME = unsafe { std::mem::zeroed() };
+                let mut exit: FILETIME = unsafe { std::mem::zeroed() };
+                let mut kernel: FILETIME = unsafe { std::mem::zeroed() };
+                let mut user: FILETIME = unsafe { std::mem::zeroed() };
+                assert_ne!(
+                    unsafe {
+                        GetProcessTimes(
+                            GetCurrentProcess(),
+                            &mut creation,
+                            &mut exit,
+                            &mut kernel,
+                            &mut user,
+                        )
+                    },
+                    0,
+                    "fixture process CPU query"
+                );
+                let ticks = (u64::from(user.dwHighDateTime) << 32) | u64::from(user.dwLowDateTime);
+                if ticks >= 30_500_000 {
+                    mark(&format!("cpu_valid_reached user_100ns={ticks}"));
+                    finished.store(true, Ordering::Relaxed);
+                    break;
+                }
+                thread::sleep(Duration::from_millis(2));
+            }
+        });
+        mark("cpu_valid_response_ready");
     }
     if mode == "p01-memory" {
         mark("p01_wait");

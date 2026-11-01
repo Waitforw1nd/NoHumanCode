@@ -163,6 +163,13 @@ async fn w01_real_worker_before_after_and_near_8mib() {
                 "missing {phase} for worker {pid}"
             );
         }
+        assert!(
+            stages
+                .lines()
+                .any(|line| line
+                    == format!("phase=job_cpu_limit_100ns pid=Some({pid}) count=30000000")),
+            "real worker must retain production Job CPU limit"
+        );
     }
 }
 
@@ -186,7 +193,7 @@ mod fault_matrix {
         Rejected,
         Exit42,
         Exit43,
-        CpuLimit,
+        HostCpuBudget,
         Deadline,
         BrokenPipe,
         StderrLimit,
@@ -329,6 +336,8 @@ mod fault_matrix {
             None
         };
         test_observer::arm(mode == "dual-pressure");
+        let cpu_fixture =
+            (mode == "job-cpu").then(|| test_hooks::arm_cpu_fixture(true, false, false));
         if matches!(mode, "job-cpu" | "job-memory") {
             test_hooks::arm_job_events();
         }
@@ -375,9 +384,12 @@ mod fault_matrix {
                 ),
                 "{mode}: {result:?}"
             ),
-            Expected::CpuLimit => assert!(
-                matches!(result, Err(WorkerError::IsolationUnavailable("worker_exit", Some(code))) if code != 0),
-                "{mode}: {result:?}"
+            Expected::HostCpuBudget => assert!(
+                matches!(
+                    result,
+                    Err(WorkerError::IsolationUnavailable("worker_cpu_budget", None))
+                ),
+                "{mode}: host CPU crossing not established before deadline or OS exit: {result:?}"
             ),
             Expected::Deadline => {
                 assert!(
@@ -491,13 +503,20 @@ mod fault_matrix {
         }
         if mode == "job-cpu" || mode == "job-memory" {
             assert_eq!(max_count(log, "job_memory_limit", pid), 128 * 1024 * 1024);
-            assert_eq!(max_count(log, "job_cpu_limit_100ns", pid), 30_000_000);
-            let notification = if mode == "job-cpu" { 2 } else { 9 };
-            assert!(
-                log.lines().any(|line| line
-                    == format!("phase=job_notification pid=Some({pid}) count={notification}")),
-                "{mode}: required Job notification absent: {log}"
-            );
+            let job_limit = if mode == "job-cpu" {
+                300_000_000
+            } else {
+                30_000_000
+            };
+            assert_eq!(max_count(log, "job_cpu_limit_100ns", pid), job_limit);
+            if mode == "job-memory" {
+                assert!(
+                    log.lines()
+                        .any(|line| line
+                            == format!("phase=job_notification pid=Some({pid}) count=9")),
+                    "{mode}: memory notification absent: {log}"
+                );
+            }
             assert!(max_count(log, "job_extended_query", pid) > 0);
             if mode == "job-cpu" {
                 let thread_marker = format!("pid={pid} phase=cpu_thread_started");
@@ -510,6 +529,16 @@ mod fault_matrix {
                     "all finite busy threads must actually start"
                 );
                 assert!(max_count(log, "job_user_100ns", pid) >= 30_000_000);
+                assert!(log.contains(&format!(
+                    "phase=cpu_first_user_100ns pid=Some({pid}) count="
+                )));
+                assert_eq!(
+                    max_count(log, "cpu_fixture_actual_job_limit", 0),
+                    300_000_000
+                );
+                assert!(contains_pid(log, "cpu_budget_host_won", pid));
+                assert_eq!(max_count(log, "cpu_budget_process_wait", pid), 258);
+                assert!(max_count(log, "cpu_budget_user_100ns", pid) >= 30_000_000);
                 assert!(
                     elapsed < Duration::from_secs(5),
                     "job CPU limit did not precede host deadline"
@@ -543,6 +572,7 @@ mod fault_matrix {
             elapsed.as_millis()
         );
         drop(handle);
+        drop(cpu_fixture);
         control().await;
     }
 
@@ -1007,7 +1037,7 @@ mod fault_matrix {
         real_limit("memory-declaration", 2, true).await;
         case(
             "job-cpu",
-            Expected::CpuLimit,
+            Expected::HostCpuBudget,
             "cpu_threads_started",
             None,
             false,
@@ -2202,6 +2232,215 @@ mod fault_matrix {
         ] {
             unknown_case(phase, false).await;
         }
+    }
+
+    async fn cpu_observed_reaped(stage: &std::path::Path, offset: usize) -> (u32, String) {
+        let free = wait_until(test_hooks::slot_free, Duration::from_secs(8)).await;
+        let observed = test_observer::take();
+        if !free || observed.is_none() {
+            eprintln!("NHC_TERMINAL_UNKNOWN: CPU fixture missing released slot or process handle");
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
+        let (pid, handle) = observed.unwrap();
+        if unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) } != WAIT_OBJECT_0 {
+            eprintln!("NHC_TERMINAL_UNKNOWN: CPU fixture process not signaled");
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
+        let log = read_log(stage);
+        assert_reaped(&log[offset..], pid);
+        (pid, log)
+    }
+
+    async fn cpu_gate_race(phase: &'static str, cancel: bool) {
+        let stage = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("stage log"));
+        let offset = read_log(&stage).len();
+        let query_fault = (phase == "cpu_before_first_sample")
+            .then(|| test_hooks::arm_cpu_fixture(false, true, false));
+        let cpu_fixture = (phase == "cpu_before_final_sample")
+            .then(|| test_hooks::arm_cpu_fixture(true, false, true));
+        let hook = test_hooks::arm(phase);
+        let token = CancellationToken::new();
+        let call_token = token.clone();
+        test_observer::arm(false);
+        let service = if phase == "cpu_before_final_sample" {
+            let mode = if cancel {
+                "cpu-valid-cancel"
+            } else {
+                "cpu-valid-deadline"
+            };
+            let (service, probe) = fault_service(mode);
+            assert!(!probe.exists());
+            service
+        } else {
+            worker()
+        };
+        let started = Instant::now();
+        let mut call =
+            tokio::spawn(
+                async move { service.call(manifest(), before(), wasm(), call_token).await },
+            );
+        let reached = wait_until(test_hooks::reached, Duration::from_secs(4)).await;
+        if cancel {
+            token.cancel();
+        } else {
+            tokio::time::sleep_until(tokio::time::Instant::from_std(
+                started + Duration::from_millis(5600),
+            ))
+            .await;
+        }
+        test_hooks::release();
+        let outcome = tokio::time::timeout(Duration::from_secs(8), &mut call).await;
+        let hook_ok = test_hooks::completed_without_timeout();
+        drop(hook);
+        if !matches!(&outcome, Ok(Ok(_))) {
+            eprintln!("NHC_TERMINAL_UNKNOWN: CPU gate race coordinator incomplete");
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
+        let (pid, full_log) = cpu_observed_reaped(&stage, offset).await;
+        drop(query_fault);
+        drop(cpu_fixture);
+        let log = &full_log[offset..];
+        assert!(reached && hook_ok, "CPU gate checkpoint not established");
+        assert!(contains_pid(log, phase, pid));
+        assert!(!contains_pid(log, "cpu_budget_host_won", pid));
+        if phase == "cpu_before_first_sample" {
+            assert!(contains_pid(log, "cpu_query_invalid_handle_fixture", pid));
+            assert!(contains_pid(log, "cpu_query_failed", pid));
+            assert!(!contains_pid(log, "submit_ticket_granted", pid));
+        } else {
+            for item in ["stdin_io_settled", "stdout_io_settled", "stderr_io_settled"] {
+                assert!(contains_pid(log, item, pid), "final gate missing {item}");
+            }
+        }
+        if phase == "cpu_before_final_sample" {
+            assert!(contains_pid(log, "cpu_fixture_final_only", pid));
+            assert!(contains_pid(log, "cpu_fixture_response_validated", pid));
+            assert_eq!(
+                max_count(log, "cpu_fixture_actual_job_limit", 0),
+                300_000_000
+            );
+            assert!(max_count(log, "cpu_budget_user_100ns", pid) >= 30_000_000);
+        }
+        if cancel {
+            assert!(
+                matches!(outcome, Ok(Ok(Err(WorkerError::Cancelled)))),
+                "{outcome:?}"
+            );
+        } else {
+            assert!(
+                matches!(outcome, Ok(Ok(Err(WorkerError::Deadline)))),
+                "{outcome:?}"
+            );
+        }
+        println!("CPU gate phase={phase} cancelled={cancel} pid={pid}");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires controlled CPU worker snapshots and isolated process observation"]
+    async fn w04_cpu_budget_boundaries() {
+        fresh_group();
+        let stage = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("stage log"));
+        // Positive is the real W1 worker, with the unmodified production Job limit.
+        let real = worker()
+            .call(manifest(), before(), wasm(), CancellationToken::new())
+            .await
+            .expect("low CPU real W1 control");
+        assert_eq!(real.decision, Decision::UseTools { indices: vec![1] });
+        assert!(real.process_signaled && real.io_completed && real.job_active_processes == 0);
+        let real_log = read_log(&stage);
+        assert_reaped(&real_log, real.process_id);
+        assert_eq!(
+            max_count(&real_log, "job_cpu_limit_100ns", real.process_id),
+            30_000_000
+        );
+        assert!(real_log.contains(&format!(
+            "phase=cpu_final_user_100ns pid=Some({}) count=",
+            real.process_id
+        )));
+        assert!(real_log.contains(&format!(
+            "phase=cpu_first_user_100ns pid=Some({}) count=",
+            real.process_id
+        )));
+
+        let query_offset = read_log(&stage).len();
+        let query = test_hooks::arm_cpu_fixture(false, true, false);
+        test_observer::arm(false);
+        let result = worker()
+            .call(manifest(), before(), wasm(), CancellationToken::new())
+            .await;
+        let (pid, full_log) = cpu_observed_reaped(&stage, query_offset).await;
+        let log = &full_log[query_offset..];
+        drop(query);
+        assert!(contains_pid(log, "cpu_query_invalid_handle_fixture", pid));
+        assert!(contains_pid(log, "cpu_query_failed", pid));
+        assert!(!contains_pid(log, "submit_ticket_granted", pid));
+        assert!(
+            matches!(
+                result,
+                Err(WorkerError::IsolationUnavailable(
+                    "worker_cpu_query",
+                    Some(6)
+                ))
+            ),
+            "actual invalid-handle query: {result:?}"
+        );
+        assert!(!contains_pid(log, "cpu_budget_host_won", pid));
+
+        cpu_gate_race("cpu_before_first_sample", true).await;
+        cpu_gate_race("cpu_before_first_sample", false).await;
+        cpu_gate_race("cpu_final_checked", true).await;
+        cpu_gate_race("cpu_before_final_sample", true).await;
+        cpu_gate_race("cpu_before_final_sample", false).await;
+
+        // Skip only periodic Host sampling in this fixture. The worker computes
+        // actual process user time, produces a valid response, and final sampling
+        // must refuse it; the Job CPU limit is independently raised and queried.
+        let final_offset = read_log(&stage).len();
+        let fixture = test_hooks::arm_cpu_fixture(true, false, true);
+        let (service, probe_stage) = fault_service("cpu-valid");
+        assert!(!probe_stage.exists());
+        test_observer::arm(false);
+        let result = service
+            .call(manifest(), before(), wasm(), CancellationToken::new())
+            .await;
+        let (pid, full_log) = cpu_observed_reaped(&stage, final_offset).await;
+        let log = &full_log[final_offset..];
+        drop(fixture);
+        assert!(
+            matches!(
+                result,
+                Err(WorkerError::IsolationUnavailable("worker_cpu_budget", None))
+            ),
+            "final CPU rejection not established: {result:?}"
+        );
+        assert_eq!(
+            max_count(log, "cpu_fixture_actual_job_limit", 0),
+            300_000_000
+        );
+        assert!(max_count(log, "cpu_final_user_100ns", pid) >= 30_000_000);
+        assert!(contains_pid(log, "cpu_budget_final_reject", pid));
+        assert!(!contains_pid(log, "cpu_budget_host_won", pid));
+        assert!(contains_pid(log, "cpu_fixture_final_only", pid));
+        assert!(contains_pid(log, "cpu_fixture_response_validated", pid));
+        for item in ["stdin_io_settled", "stdout_io_settled", "stderr_io_settled"] {
+            assert!(
+                contains_pid(log, item, pid),
+                "final CPU rejection missing {item}"
+            );
+        }
+        let probe = read_log(&probe_stage);
+        assert!(probe.lines().any(|line| {
+            line.starts_with(&format!("pid={pid} phase=cpu_valid_reached user_100ns="))
+        }));
+        assert!(probe_pid(&probe, "cpu_valid_response_ready", pid));
+        assert!(probe_pid(&probe, "output_written", pid));
+        println!("CPU final gate rejected valid response pid={pid}");
     }
 
     async fn boundary_case(phase: &'static str, drop_future: bool) {

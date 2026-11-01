@@ -113,6 +113,7 @@ try {
         'wasm_worker_process_tests::fault_matrix::w02_protocol_fault_matrix',
         'wasm_worker_process_tests::fault_matrix::w03_pipe_fault_matrix',
         'wasm_worker_process_tests::fault_matrix::w04_resource_limits',
+        'wasm_worker_process_tests::fault_matrix::w04_cpu_budget_boundaries',
         'wasm_worker_process_tests::fault_matrix::w04_injected_zero_read_sensitivity',
         'wasm_worker_process_tests::fault_matrix::w04_unknown_cleanup_and_slot_reuse',
         'wasm_worker_process_tests::fault_matrix::w04_cancellation_and_acceptance_boundaries',
