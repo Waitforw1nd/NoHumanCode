@@ -48,6 +48,8 @@ mod tool_result_tests;
 mod tool_results;
 pub mod tool_runtime;
 pub mod wasm;
+pub mod wasm_worker_executor;
+pub mod wasm_worker_protocol;
 pub mod workspace;
 pub mod workspace_changes;
 pub mod workspace_identity;
