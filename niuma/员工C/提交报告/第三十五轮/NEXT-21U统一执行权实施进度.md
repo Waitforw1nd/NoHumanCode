@@ -142,3 +142,37 @@ bootstrap 在锁下先创建/flush 目录意图，再 create_new 数据库、取
 测试父内部 unknown 时持原 Child handle、保留 case 目录并写 unknown 文件后驻留；监督器检测 unknown 或超时停止并保留父进程；stdout/stderr 直接文件，不依赖监督者存活。这是静态设计与实现，不是实测生存证明；进程创建/创建时间获取/写 incident 失败、监督器或测试父崩溃等均保持 unknown，不能推断子进程回收。监督器退出后自身的原父进程 handle 不再保活，活父才保有其 Child handle；异常状态须按 PID+创建时间及保留现场独立诊断，不自动重新打开窗口。最终 WAL 验收仍需真实受控验证，且当前无动态授权。
 
 PowerShell Parser 与暂存 diff --check 0；C# 未编译、runner 未运行、无进程探针。runner SHA256 `ED0138A6F483920424CD8F21E19F26FC0D1C66C0FA3326E7192F575292771310`，DirectProcess.cs `7B40CFC51658757F87E16478026358F2535233FC80BE89D2BDD1A1AB5B6BFB9D`。R03 原独立提交仍可按 `09c690d4` 单独审阅；当前完整头含 R04 两提交，待经理集中审查与精确动态窗口。Store/schema18/真实接纳及执行全入口仍未完成。
+
+## U35-PRE-B a799 组件与 WAL 窗口（2026-11-02 本地 / 2026-11-01 UTC）
+
+受测 HEAD `a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac`、产品 `c0d65c90a3621cf9132c95a979076f3c75c8178e`、Rust `1c9715a687d2da1fc1eee0427496e1f525e6a1c9`，前后 clean/index 空、source SHA256 `BE3E0CB89D507E290E3B6E258DD59C2D15EC99DB945CF7AEB5AF54E3071831E0` 一致。E 盘独立 attempt2 风格新目录 `../nhc-c-domain-authority/.local/u35-pre-b-attempt1/`，target 复用 PRE-A attempt1，TMP/TEMP 新目录，Rust 1.98.1/MSVC 14.43.34808 Hostx86/x64/SDK 10.0.22621.0 只读既有安装，jobs2/debug0/incremental0。`cargo test -p peachsh --lib --no-run --offline --locked` UTC 2026-11-01 15:58:08.3989987—15:58:33.0468568，exit 0，3 warnings；原日志保留。生成 lib test 副本、构建目标及 WAL 副本均前后 SHA256 `72E468A6F7AEBD6240F81F437D7EA61863BD4BA52A3BF76EF070A78DFA7F5901`，38,901,760 字节；本轮 build receipt 与固定 commit/双 tree/source/log/二进制绑定。
+
+以下完整名称均以 `execution_authority::tests::` 为前缀，均为独立固定二进制 `--exact --nocapture --test-threads=1`，UTC、exit 与真实结果如下（每项 1 passed / 0 failed / 0 ignored）：
+
+| 名称 | UTC 开始—结束 | exit |
+| --- | --- | --- |
+| binding_missing_corrupt_and_truncated_are_closed | 11/01/2026 15:59:12 — 11/01/2026 15:59:13 | 0 |
+| observed_binding_corruption_permanently_seals_owner | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| initialized_missing_db_and_bootstrap_interrupt_refuse_recreation | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| single_link_move_and_whole_directory_move_are_rejected | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| same_path_with_replaced_parent_rejects_bound_database_and_marker | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| legacy_proof_cannot_be_reused_after_same_path_parent_replacement | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| sole_surviving_hard_link_is_not_silently_adopted | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| legacy_requires_proof_and_adoption_preserves_live_wal | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| same_file_and_hard_link_contend_for_one_mutex | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| pinned_original_and_transient_alias_cannot_form_a_second_product_domain | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| fresh_database_competitors_have_one_owner | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| directory_reparse_is_rejected | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+| connections_keep_the_domain_pinned_until_the_last_one_drops | 11/01/2026 15:59:13 — 11/01/2026 15:59:13 | 0 |
+
+13 项均实际为 1/0/0；历史两个 ignored 反证未运行。其后仅运行监督脚本中一个 WAL 父 exact（`--ignored --exact`），父 case UTC 2026-11-01 15:59:30.2889096—15:59:31.1871199，exit 0，父测试 1 passed/0 failed/0 ignored；helper 仅由父启动、实际被强杀，不将其 `running 1 test` 计为通过。监督 case PID 77384、原对象 creation FILETIME 134380223706854534；case state passed、无 unknown，闩锁检查不存在。原 stdout/stderr、case/source JSON 保留，case 现场继续留 E；未独立运行 helper 或全量 suite。父由 DirectProcess `CREATE_NO_WINDOW` 启动，helper Command 本身未显式 NO_WINDOW；本轮没有可靠视觉观测，实际是否出现窗口未知，不声称已证实隐藏或可见。
+
+原始 compile/test/WAL 日志、meta、执行脚本、runner 源及 C# 共 27 份逐字节发布 [U35-PRE-B 证据清单](U35-PRE-B证据/manifest.json)，原/发布 hash 一致；target/38,901,760 字节测试 exe 不复制，路径与 hash 记录清单。构建记录和每例完整命令/时间在 evidence/components 的 compile-meta.json/test-meta.json；WAL 原始元数据在 evidence/wal。窗口结束归还，B 可按经理调度；该结果仅限固定候选 ADS/前置测试，未验证真实旧库接纳、Store/schema18/Engine/在途全部接线，也未覆盖 WAL 监督 unknown 反例、helper 视觉隐藏或全量 workspace。无产品源码修改，主仓 index 未操作。
+
+## 2026-11-02 PRE-B 后 NEXT-21U 静态接线进行中
+
+经理限定核收 a799 OS/SQLite 前置 14 项，监督故障注入仍未验证。本轮继受测干净基线后，独立树 execution_authority.rs 未提交 SHA256 `C1221831A769431A877B9F7C988FC367AEBE0DF69B5B89D508CA5DAB3E60D462`；仅 rustfmt --check 与 git diff --check，未编译/测试/进程。WAL helper 新源码增加 CREATE_NO_WINDOW；PRE-B 当次 helper 是否出现窗口仍未知，不能追认为隐藏。
+
+开始受域连接/owner 静态基础：schema17 后新增受控 IMMEDIATE schema18 owner 表初稿，含 domain_identity、非负 epoch、recovering/active、迁移 marker；登记/激活改接私有 PinnedConnection 并要求同一 Arc 域，防跨域连接；提交不确定及事务内校验失败封门；增加 schema18/epoch/跨域拒绝测试源码。此初稿调用方必须先验证完整 schema17，尚未接入 Store，未提供完整 schema18 重开验证和真实迁移回归；`activate` 尚未由不可伪造 recovery receipt 约束，不能认作完成恢复封门或开放运行入口。当前 Store::open/--check 仍为旧行为，Engine/所有散布事务/Provider body 与工具在途均尚未接线，真实 legacy 受控证明及入口未实现。此状态不是完整候选、不提交审定、不改变 a799 组件通过事实。
+
+下一步：设计 Store 与 PinnedConnection 不暴露可替换裸 Connection 的内部事务持有方式，将验证及 schema18 路径接到迁移前取得的真实域；补完整 schema18 检验和恢复 receipt，再逐个事务 fence 与 in-flight 接线。任何新候选必须集中静审后另签动态窗口；PRE-B 原件/27 对发布证据保持不变。

@@ -1,0 +1,4 @@
+
+thread 'wasm_worker_process_tests::fault_matrix::w04_unknown_cleanup_and_slot_reuse' (71492) panicked at src\wasm_worker_process_tests.rs:1976:39:
+created worker was observed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

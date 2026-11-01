@@ -1,0 +1,6 @@
+
+running 1 test
+test execution_authority::tests::same_file_and_hard_link_contend_for_one_mutex ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 394 filtered out; finished in 0.00s
+

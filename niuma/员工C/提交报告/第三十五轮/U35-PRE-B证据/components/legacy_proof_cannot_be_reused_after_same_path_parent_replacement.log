@@ -1,0 +1,6 @@
+
+running 1 test
+test execution_authority::tests::legacy_proof_cannot_be_reused_after_same_path_parent_replacement ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 394 filtered out; finished in 0.00s
+

@@ -1,0 +1,9 @@
+{
+  "scope": "single",
+  "selected": [
+    "wasm_worker_process_tests::fault_matrix::w04_unknown_cleanup_and_slot_reuse"
+  ],
+  "selected_count": 1,
+  "mapped_count": 20,
+  "note": "single scope is not W01-W06 completion"
+}

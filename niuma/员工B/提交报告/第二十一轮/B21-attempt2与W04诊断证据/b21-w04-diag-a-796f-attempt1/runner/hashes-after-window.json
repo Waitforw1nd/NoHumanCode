@@ -1,0 +1,26 @@
+{
+  "utc": "2026-11-01T15:54:59.5895173Z",
+  "binaries": [
+    {
+      "name": "worker.exe",
+      "declared": "63eef9ce2895c6f73a5389a321d6ff2c0fe8bccbd47048afb0bd23c4be3b8956",
+      "source": "63eef9ce2895c6f73a5389a321d6ff2c0fe8bccbd47048afb0bd23c4be3b8956",
+      "fixed": "63eef9ce2895c6f73a5389a321d6ff2c0fe8bccbd47048afb0bd23c4be3b8956"
+    },
+    {
+      "name": "probe.exe",
+      "declared": "b3cf1f0e3aa6c8d60d5a4a04c4ae2b3b3a20f91d2c0b8fd122e2df2c8a95d2f2",
+      "source": "b3cf1f0e3aa6c8d60d5a4a04c4ae2b3b3a20f91d2c0b8fd122e2df2c8a95d2f2",
+      "fixed": "b3cf1f0e3aa6c8d60d5a4a04c4ae2b3b3a20f91d2c0b8fd122e2df2c8a95d2f2"
+    },
+    {
+      "name": "lib-test.exe",
+      "declared": "3024421fca421dfb7d09cc02c325aa378d032e55f52b28038ba6e2518f0f785f",
+      "source": "3024421fca421dfb7d09cc02c325aa378d032e55f52b28038ba6e2518f0f785f",
+      "fixed": "3024421fca421dfb7d09cc02c325aa378d032e55f52b28038ba6e2518f0f785f"
+    }
+  ],
+  "worker_case_hash": "63eef9ce2895c6f73a5389a321d6ff2c0fe8bccbd47048afb0bd23c4be3b8956",
+  "probe_count": 53,
+  "probe_mismatch": []
+}

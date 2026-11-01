@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-02",
+  "author": "项目经理",
+  "scope": "原件与发布副本逐字节哈希；不是重跑测试",
+  "archives": [
+    {
+      "manifest": "niuma/员工B/提交报告/第二十一轮/B21-attempt2与W04诊断证据/双hash清单.json",
+      "manifest_sha256": "2484c1a1c0707a4381f1bf5c08b51109ed16790c5e0f749c352e5ceb92cc5927",
+      "files": 143,
+      "bytes": 695705,
+      "mismatches": 0
+    },
+    {
+      "manifest": "niuma/员工C/提交报告/第三十五轮/U35-PRE-B证据/manifest.json",
+      "manifest_sha256": "f3594f9d3f76054e7acc57c30ddea061849d1cc915b47ca981fadd80958ab1c3",
+      "files": 27,
+      "bytes": 33873,
+      "mismatches": 0
+    }
+  ],
+  "files_total": 170,
+  "bytes_total": 729578
+}

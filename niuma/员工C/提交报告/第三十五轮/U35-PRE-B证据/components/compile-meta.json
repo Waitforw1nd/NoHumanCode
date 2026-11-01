@@ -1,0 +1,18 @@
+{
+  "start_utc": "2026-11-01T15:58:08.3989987Z",
+  "cwd": "E:\\code\\nhc-c-domain-authority\\NoManCode\\rust-app",
+  "command": "cargo test -p peachsh --lib --no-run --offline --locked",
+  "cargo": "C:\\Users\\Administrator\\.cargo\\bin\\cargo.exe",
+  "rustc": "C:\\Users\\Administrator\\.cargo\\bin\\rustc.exe",
+  "msvc": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+  "bin": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx86\\x64",
+  "sdk": "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.22621.0",
+  "tmp": "E:/code/nhc-c-domain-authority/.local/u35-pre-b-attempt1/tmp",
+  "target": "E:/code/nhc-c-domain-authority/.local/u35-pre-a-attempt1/target",
+  "jobs": "2",
+  "incremental": "0",
+  "dev_debug": "0",
+  "test_debug": "0",
+  "exit_code": 0,
+  "end_utc": "2026-11-01T15:58:33.0468568Z"
+}

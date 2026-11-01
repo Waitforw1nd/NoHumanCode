@@ -1,0 +1,5 @@
+pid=76928 phase=started
+pid=76928 phase=request_eof
+pid=76928 phase=output_written
+pid=76928 phase=stderr_written
+pid=76928 phase=done

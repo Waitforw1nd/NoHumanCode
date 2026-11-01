@@ -1,0 +1,38 @@
+   Compiling peachsh v0.2.0 (E:\code\nhc-c-domain-authority\NoManCode\rust-app)
+warning: method `identity_key` is never used
+   --> src\execution_authority.rs:674:12
+    |
+414 |     impl PinnedDomain {
+    |     ----------------- method in this implementation
+...
+674 |         fn identity_key(&self) -> String {
+    |            ^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `ExecutionAuthority` is never constructed
+   --> src\execution_authority.rs:692:23
+    |
+692 |     pub(crate) struct ExecutionAuthority {
+    |                       ^^^^^^^^^^^^^^^^^^
+
+warning: associated items `register`, `check`, `activate`, and `acquire_controller` are never used
+   --> src\execution_authority.rs:699:23
+    |
+698 |     impl ExecutionAuthority {
+    |     ----------------------- associated items in this implementation
+699 |         pub(crate) fn register(
+    |                       ^^^^^^^^
+...
+732 |         pub(crate) fn check(
+    |                       ^^^^^
+...
+747 |         pub(crate) fn activate(&self, db: &mut rusqlite::Connection) -> Result<()> {
+    |                       ^^^^^^^^
+...
+761 |         pub(crate) fn acquire_controller(&self) -> Result<()> {
+    |                       ^^^^^^^^^^^^^^^^^^
+
+warning: `peachsh` (lib test) generated 3 warnings
+    Finished `test` profile [unoptimized] target(s) in 24.50s
+  Executable unittests src\lib.rs (E:/code/nhc-c-domain-authority/.local/u35-pre-a-attempt1/target\debug\deps\peachsh-f0145451881169e5.exe)

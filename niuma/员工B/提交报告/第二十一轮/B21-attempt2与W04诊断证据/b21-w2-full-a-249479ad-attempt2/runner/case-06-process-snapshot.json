@@ -1,0 +1,6 @@
+{
+  "utc": "2026-11-01T15:46:09.8819365Z",
+  "processes": [],
+  "worker_name_snapshot": [],
+  "note": "Current numeric PID snapshot only; no retrospective object identity or cleanup proof. The runner case metadata recorded original test object exit 101."
+}

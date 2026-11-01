@@ -1,0 +1,5 @@
+pid=72012 phase=started
+pid=72012 phase=request_eof
+pid=72012 phase=stdout_limit_write
+pid=72012 phase=output_written
+pid=72012 phase=done

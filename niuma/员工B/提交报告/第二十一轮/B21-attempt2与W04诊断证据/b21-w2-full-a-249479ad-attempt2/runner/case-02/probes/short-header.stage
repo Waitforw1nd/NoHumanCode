@@ -1,0 +1,4 @@
+pid=40228 phase=started
+pid=40228 phase=request_eof
+pid=40228 phase=output_written
+pid=40228 phase=done
