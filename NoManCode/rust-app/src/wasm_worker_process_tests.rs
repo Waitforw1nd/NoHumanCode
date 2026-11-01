@@ -1688,12 +1688,13 @@ mod fault_matrix {
     fn w05_host_kill_boundaries() {
         use std::{
             io::{BufRead, BufReader, Write},
-            os::windows::io::FromRawHandle,
+            os::windows::{io::FromRawHandle, process::CommandExt},
             process::{Command, Stdio},
             sync::{Arc, Mutex, mpsc},
         };
         use windows_sys::Win32::System::Threading::{
-            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, TerminateProcess,
+            CREATE_NO_WINDOW, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+            TerminateProcess,
         };
         let root = PathBuf::from(std::env::var_os("NHC_W05_ROOT").expect("W05 fresh root"));
         for scenario in ["before", "suspended", "resumed", "pending"] {
@@ -1702,6 +1703,7 @@ mod fault_matrix {
             let nonce = uuid::Uuid::new_v4().simple().to_string();
             let mut command = Command::new(std::env::current_exe().expect("test executable"));
             command
+                .creation_flags(CREATE_NO_WINDOW)
                 .args([
                     "--exact",
                     "wasm_worker_process_tests::fault_matrix::w05_host_helper",

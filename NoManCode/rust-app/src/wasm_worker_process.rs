@@ -3183,6 +3183,8 @@ mod platform {
         }
     }
 
+    // The extra test-only request enables validation of the final-gate fixture.
+    #[cfg_attr(test, allow(clippy::too_many_arguments))]
     fn io_loop(
         input: Vec<u8>,
         pipes: [Arc<OwnedHandle>; 3],
