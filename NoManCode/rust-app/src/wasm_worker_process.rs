@@ -504,6 +504,7 @@ impl WorkerService {
             .name("nhc-wasm-worker-supervision".into())
             .spawn(move || {
                 let result = platform::run(&worker, request, deadline, &gate_for_thread);
+                record_stage("supervisor_platform_returned", None);
                 // The slot is released only when the platform has returned after
                 // confirmed cleanup. Pending kernel calls retain this thread.
                 drop(lease);
@@ -2033,6 +2034,8 @@ mod platform {
                 .spawn(move || {
                     #[cfg(test)]
                     let mut reported_cancel = false;
+                    #[cfg(test)]
+                    let mut reported_job = false;
                     loop {
                         let (job, pipes, finished) = {
                             let state = shared
@@ -2050,7 +2053,28 @@ mod platform {
                                 test_hooks::hold_stopper();
                             }
                             if let Some(job) = job {
-                                unsafe { TerminateJobObject(raw(&job), 1) };
+                                let _terminated = unsafe { TerminateJobObject(raw(&job), 1) };
+                                #[cfg(test)]
+                                if !reported_job {
+                                    let code = if _terminated == 0 {
+                                        std::io::Error::last_os_error().raw_os_error()
+                                    } else {
+                                        None
+                                    };
+                                    record_count(
+                                        "stopper_terminate_job_return",
+                                        0,
+                                        _terminated as usize,
+                                    );
+                                    if let Some(code) = code {
+                                        record_count(
+                                            "stopper_terminate_job_error",
+                                            0,
+                                            code as usize,
+                                        );
+                                    }
+                                    reported_job = true;
+                                }
                             }
                             for pipe in pipes {
                                 let _cancelled = unsafe { CancelIoEx(raw(&pipe), null()) };
@@ -2095,7 +2119,18 @@ mod platform {
                 .unwrap_or_else(|p| p.into_inner())
                 .finished = true;
             if let Some(thread) = self.thread.take() {
-                let _ = thread.join();
+                let joined = thread.join();
+                #[cfg(test)]
+                record_stage(
+                    if joined.is_ok() {
+                        "stopper_joined"
+                    } else {
+                        "stopper_join_failed"
+                    },
+                    None,
+                );
+                #[cfg(not(test))]
+                let _ = joined;
             }
         }
     }
@@ -3364,6 +3399,45 @@ mod platform {
         if created == 0 {
             let error = failure("worker_create");
             record_stage("create_failed", None);
+            #[cfg(test)]
+            {
+                if let WorkerError::IsolationUnavailable(_, Some(code)) = &error {
+                    record_count("create_failed_win32_error", 0, *code as usize);
+                }
+                // Join the Stopper before inspecting this same Job, so the log
+                // distinguishes an API failure from a late successful process.
+                drop(stopper);
+                let mut accounting: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { zeroed() };
+                let queried = unsafe {
+                    QueryInformationJobObject(
+                        raw(&job),
+                        JobObjectBasicAccountingInformation,
+                        (&mut accounting as *mut JOBOBJECT_BASIC_ACCOUNTING_INFORMATION).cast(),
+                        size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
+                        null_mut(),
+                    )
+                };
+                let query_error = if queried == 0 {
+                    std::io::Error::last_os_error().raw_os_error()
+                } else {
+                    None
+                };
+                record_count("create_failed_job_query", 0, queried as usize);
+                if queried != 0 {
+                    record_count(
+                        "create_failed_job_active",
+                        0,
+                        accounting.ActiveProcesses as usize,
+                    );
+                    record_count(
+                        "create_failed_job_total",
+                        0,
+                        accounting.TotalProcesses as usize,
+                    );
+                } else if let Some(code) = query_error {
+                    record_count("create_failed_job_query_error", 0, code as usize);
+                }
+            }
             return Err(error);
         }
         let process_handle = match unsafe { own(information.hProcess, "worker_process_handle") } {
