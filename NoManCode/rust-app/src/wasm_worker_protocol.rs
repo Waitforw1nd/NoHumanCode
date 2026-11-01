@@ -97,10 +97,24 @@ fn token(s: &str, max: usize) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 fn version_token(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 64
-        && s.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+    let mut parts = s.split('.');
+    let mut component = || {
+        parts.next().is_some_and(|part| {
+            !part.is_empty()
+                && part.bytes().all(|b| b.is_ascii_digit())
+                && part.parse::<u32>().is_ok_and(|n| n.to_string() == part)
+        })
+    };
+    component() && component() && component() && parts.next().is_none()
+}
+fn plugin_id(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    !bytes.is_empty()
+        && bytes.len() <= 64
+        && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
+        && bytes[1..].iter().all(|b| {
+            b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'.' | b'_' | b'-')
+        })
 }
 impl Manifest {
     pub fn validate(&self) -> Result<(), Error> {
@@ -108,7 +122,7 @@ impl Manifest {
             || !token(&self.request_id, 64)
             || self.nonce.len() != 32
             || !self.nonce.bytes().all(|b| b.is_ascii_hexdigit())
-            || !token(&self.plugin_id, 64)
+            || !plugin_id(&self.plugin_id)
             || !version_token(&self.plugin_version)
             || self.digest.len() != 64
             || !self.digest.bytes().all(|b| b.is_ascii_hexdigit())
