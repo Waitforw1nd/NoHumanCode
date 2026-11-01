@@ -66,6 +66,10 @@ fn main() {
         "closed-stdout",
         "concurrent",
         "dual-pressure",
+        "job-cpu",
+        "job-memory",
+        "valid-output",
+        "valid-stderr",
     ];
     assert!(modes.contains(&mode), "unknown probe mode");
     let stage_path = path.with_extension("stage");
@@ -143,6 +147,57 @@ fn main() {
     let request =
         protocol::read_request(&mut io::stdin().lock()).expect("complete request and EOF");
     mark("request_eof");
+    if mode == "job-cpu" {
+        mark("cpu_loop_start");
+        loop {
+            std::hint::black_box(1usize.wrapping_add(std::hint::black_box(1)));
+        }
+    }
+    if mode == "job-memory" {
+        use windows_sys::Win32::System::Memory::{
+            MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE, VirtualAlloc,
+        };
+        mark("memory_allocation_start");
+        let mut failure_log = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&stage_path)
+            .expect("open memory failure log");
+        let mut blocks = Vec::new();
+        loop {
+            let allocation = unsafe {
+                VirtualAlloc(
+                    std::ptr::null(),
+                    4 * 1024 * 1024,
+                    MEM_COMMIT | MEM_RESERVE,
+                    PAGE_READWRITE,
+                )
+            };
+            if allocation.is_null() {
+                let error = io::Error::last_os_error().raw_os_error().unwrap_or(0);
+                writeln!(
+                    failure_log,
+                    "pid={} phase=memory_allocation_failed count={} error={error}",
+                    std::process::id(),
+                    blocks.len() * 4 * 1024 * 1024
+                )
+                .unwrap();
+                writeln!(
+                    failure_log,
+                    "pid={} phase=memory_allocation_failed",
+                    std::process::id()
+                )
+                .unwrap();
+                failure_log.flush().unwrap();
+                std::process::exit(43);
+            }
+            blocks.push(allocation);
+            assert!(
+                blocks.len() <= 64,
+                "memory limit failed to constrain allocation"
+            );
+        }
+    }
     if mode == "exit-empty" {
         mark("exit_42");
         std::process::exit(42);
@@ -284,6 +339,12 @@ fn main() {
     out.write_all(&bytes).expect("write response bytes");
     out.flush().expect("flush response bytes");
     mark("output_written");
+    if mode == "valid-stderr" {
+        io::stderr()
+            .write_all(b"stderr-after-injection")
+            .expect("stderr data");
+        mark("stderr_written");
+    }
     if mode == "zero-stdout" || mode == "zero-stderr" {
         let handle = unsafe {
             GetStdHandle(if mode == "zero-stdout" {

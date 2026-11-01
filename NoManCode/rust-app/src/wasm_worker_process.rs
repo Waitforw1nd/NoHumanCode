@@ -55,7 +55,7 @@ fn record_count(_phase: &'static str, _pid: u32, _count: usize) {}
 
 #[cfg(all(test, windows))]
 pub(crate) mod test_observer {
-    use std::os::windows::io::{FromRawHandle, OwnedHandle};
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
     use std::sync::{
         Mutex,
         atomic::{AtomicBool, Ordering},
@@ -67,6 +67,7 @@ pub(crate) mod test_observer {
     static PROCESS: Mutex<Option<(u32, OwnedHandle)>> = Mutex::new(None);
     static ARMED: AtomicBool = AtomicBool::new(false);
     static PRESSURE: AtomicBool = AtomicBool::new(false);
+    static IO_EVENT: Mutex<Option<OwnedHandle>> = Mutex::new(None);
 
     pub(crate) fn arm(pressure: bool) {
         assert!(PROCESS.lock().unwrap().is_none());
@@ -109,6 +110,213 @@ pub(crate) mod test_observer {
 
     pub(crate) fn take() -> Option<(u32, OwnedHandle)> {
         PROCESS.lock().unwrap().take()
+    }
+    pub(super) fn capture_event(event: &OwnedHandle) -> Result<(), super::WorkerError> {
+        use windows_sys::Win32::Foundation::DuplicateHandle;
+        use windows_sys::Win32::System::Threading::GetCurrentProcess;
+        let current = unsafe { GetCurrentProcess() };
+        let mut duplicate = std::ptr::null_mut();
+        if unsafe {
+            DuplicateHandle(
+                current,
+                event.as_raw_handle(),
+                current,
+                &mut duplicate,
+                0x0010_0000,
+                0,
+                0,
+            )
+        } == 0
+        {
+            return Err(super::WorkerError::IsolationUnavailable(
+                "test_event_duplicate",
+                std::io::Error::last_os_error().raw_os_error(),
+            ));
+        }
+        let handle = unsafe { OwnedHandle::from_raw_handle(duplicate) };
+        let mut slot = IO_EVENT.lock().unwrap_or_else(|e| e.into_inner());
+        if slot.is_some() {
+            return Err(super::WorkerError::IsolationUnavailable(
+                "test_event_busy",
+                None,
+            ));
+        }
+        *slot = Some(handle);
+        Ok(())
+    }
+    pub(crate) fn take_event() -> Option<OwnedHandle> {
+        IO_EVENT.lock().unwrap().take()
+    }
+}
+
+#[cfg(all(test, windows))]
+pub(crate) mod test_hooks {
+    use std::sync::{
+        Condvar, Mutex,
+        atomic::{AtomicU8, Ordering},
+    };
+    use std::time::{Duration, Instant};
+
+    struct State {
+        phase: Option<&'static str>,
+        reached: bool,
+        released: bool,
+        timed_out: bool,
+    }
+    static STATE: Mutex<State> = Mutex::new(State {
+        phase: None,
+        reached: false,
+        released: false,
+        timed_out: false,
+    });
+    static WAKE: Condvar = Condvar::new();
+    static ZERO: AtomicU8 = AtomicU8::new(0);
+    static MEMBERSHIP: AtomicU8 = AtomicU8::new(0);
+    static JOB_EVENTS: AtomicU8 = AtomicU8::new(0);
+    static PERSISTENT_ERROR: AtomicU8 = AtomicU8::new(0);
+
+    pub(crate) struct Guard;
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            release();
+        }
+    }
+    pub(crate) struct PersistentGuard;
+    impl Drop for PersistentGuard {
+        fn drop(&mut self) {
+            release_persistent_error();
+        }
+    }
+    pub(crate) fn arm_persistent_error(result_error: bool) -> PersistentGuard {
+        assert_eq!(
+            PERSISTENT_ERROR.swap(if result_error { 3 } else { 1 }, Ordering::SeqCst),
+            0
+        );
+        PersistentGuard
+    }
+    pub(crate) fn persistent_reached() -> bool {
+        matches!(PERSISTENT_ERROR.load(Ordering::SeqCst), 2 | 4)
+    }
+    pub(crate) fn release_persistent_error() {
+        PERSISTENT_ERROR.store(0, Ordering::SeqCst);
+    }
+    pub(super) fn persistent_event_active() -> bool {
+        PERSISTENT_ERROR.load(Ordering::SeqCst) == 2
+    }
+    pub(super) fn start_persistent_event() -> bool {
+        PERSISTENT_ERROR
+            .compare_exchange(1, 2, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+    pub(super) fn persistent_result_active() -> bool {
+        PERSISTENT_ERROR.load(Ordering::SeqCst) == 4
+    }
+    pub(super) fn start_persistent_result() -> bool {
+        PERSISTENT_ERROR
+            .compare_exchange(3, 4, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+    pub(crate) fn arm(phase: &'static str) -> Guard {
+        let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        assert!(state.phase.is_none());
+        *state = State {
+            phase: Some(phase),
+            reached: false,
+            released: false,
+            timed_out: false,
+        };
+        Guard
+    }
+    pub(crate) fn reached() -> bool {
+        STATE.lock().unwrap_or_else(|e| e.into_inner()).reached
+    }
+    pub(super) fn armed(phase: &'static str) -> bool {
+        STATE.lock().unwrap_or_else(|e| e.into_inner()).phase == Some(phase)
+    }
+    pub(super) fn hold_stopper() {
+        let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        if state.phase != Some("observation_injected") {
+            return;
+        }
+        super::record_stage("injected_stopper_held", None);
+        let deadline = Instant::now() + Duration::from_secs(15);
+        while !state.released {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                state.timed_out = true;
+                super::record_stage("injection_timeout", None);
+                break;
+            }
+            state = WAKE
+                .wait_timeout(state, remaining)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+    }
+    pub(crate) fn completed_without_timeout() -> bool {
+        let state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        state.reached && state.released && !state.timed_out && state.phase.is_none()
+    }
+    pub(crate) fn slot_free() -> bool {
+        !super::SLOT.load(Ordering::Acquire)
+    }
+    pub(crate) fn release() {
+        let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        state.released = true;
+        WAKE.notify_all();
+    }
+    pub(super) fn checkpoint(phase: &'static str, pid: Option<u32>) -> bool {
+        let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        if state.phase != Some(phase) {
+            return false;
+        }
+        state.reached = true;
+        super::record_stage(phase, pid);
+        WAKE.notify_all();
+        let deadline = Instant::now() + Duration::from_secs(15);
+        while !state.released {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            let result = WAKE
+                .wait_timeout(state, remaining)
+                .unwrap_or_else(|e| e.into_inner());
+            state = result.0;
+        }
+        let released = state.released;
+        state.timed_out |= !released;
+        state.phase = None;
+        drop(state);
+        super::record_stage(
+            if released {
+                "injection_released"
+            } else {
+                "injection_timeout"
+            },
+            pid,
+        );
+        true
+    }
+    pub(crate) fn arm_zero(stdout: bool) {
+        ZERO.store(if stdout { 1 } else { 2 }, Ordering::SeqCst);
+    }
+    pub(super) fn inject_zero(stdout: bool) -> bool {
+        let expected = if stdout { 1 } else { 2 };
+        ZERO.compare_exchange(expected, 0, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+    }
+    pub(crate) fn arm_membership_failure() {
+        MEMBERSHIP.store(1, Ordering::SeqCst);
+    }
+    pub(super) fn inject_membership_failure() -> bool {
+        MEMBERSHIP.swap(0, Ordering::SeqCst) == 1
+    }
+    pub(crate) fn arm_job_events() {
+        JOB_EVENTS.store(1, Ordering::SeqCst);
+    }
+    pub(super) fn take_job_events() -> bool {
+        JOB_EVENTS.swap(0, Ordering::SeqCst) == 1
     }
 }
 
@@ -227,10 +435,21 @@ impl WorkerService {
             received = &mut rx => {
                 received_completion = true;
                 match received {
-                    Ok(Ok(success)) if gate.accept(deadline) => Ok(success),
+                    Ok(Ok(success)) => {
+                        #[cfg(all(test, windows))]
+                        test_hooks::checkpoint("accept_before", Some(success.process_id));
+                        if gate.accept(deadline) {
+                            #[cfg(all(test, windows))]
+                            test_hooks::checkpoint("accept_after", Some(success.process_id));
+                            Ok(success)
+                        } else if cancel.is_cancelled() {
+                            Err(WorkerError::Cancelled)
+                        } else {
+                            Err(WorkerError::Deadline)
+                        }
+                    },
                     Ok(_) if cancel.is_cancelled() => Err(WorkerError::Cancelled),
                     Ok(Err(error)) => Err(error),
-                    Ok(Ok(_)) => Err(WorkerError::Deadline),
                     Err(_) => Err(WorkerError::CleanupUnknown),
                 }
             },
@@ -886,6 +1105,8 @@ mod platform {
             let thread = thread::Builder::new()
                 .name("nhc-wasm-stop".into())
                 .spawn(move || {
+                    #[cfg(test)]
+                    let mut reported_cancel = false;
                     loop {
                         let (job, pipes, finished) = {
                             let state = shared
@@ -897,11 +1118,22 @@ mod platform {
                             break;
                         }
                         if gate.stopped(deadline) {
+                            #[cfg(test)]
+                            test_hooks::hold_stopper();
                             if let Some(job) = job {
                                 unsafe { TerminateJobObject(raw(&job), 1) };
                             }
                             for pipe in pipes {
-                                unsafe { CancelIoEx(raw(&pipe), null()) };
+                                let _cancelled = unsafe { CancelIoEx(raw(&pipe), null()) };
+                                #[cfg(test)]
+                                if !reported_cancel {
+                                    record_count(
+                                        "stopper_cancel_io_return",
+                                        0,
+                                        _cancelled as usize,
+                                    );
+                                    reported_cancel = true;
+                                }
                             }
                         }
                         thread::sleep(Duration::from_millis(5));
@@ -994,9 +1226,18 @@ mod platform {
             // Register before admission so a cancellation after admission
             // cannot release storage while the OS call is still returning.
             self.pending = true;
+            #[cfg(test)]
+            if self.write {
+                test_hooks::checkpoint("submit_before_ticket", Some(self.pid));
+            }
             if !gate.authorize(deadline) {
                 self.pending = false;
                 return Err(WorkerError::Deadline);
+            }
+            #[cfg(test)]
+            if self.write {
+                record_stage("submit_ticket_granted", Some(self.pid));
+                test_hooks::checkpoint("submit_after_ticket", Some(self.pid));
             }
             let result = unsafe {
                 if self.write {
@@ -1017,12 +1258,18 @@ mod platform {
                     )
                 }
             };
-            if result == 0 {
-                let code = std::io::Error::last_os_error().raw_os_error();
-                if code != Some(ERROR_IO_PENDING as i32) {
-                    self.pending = false;
-                    return Err(WorkerError::IsolationUnavailable("io_submit", code));
-                }
+            let code = if result == 0 {
+                std::io::Error::last_os_error().raw_os_error()
+            } else {
+                None
+            };
+            #[cfg(test)]
+            if self.write && code == Some(ERROR_IO_PENDING as i32) {
+                test_hooks::checkpoint("submit_returned_pending", Some(self.pid));
+            }
+            if result == 0 && code != Some(ERROR_IO_PENDING as i32) {
+                self.pending = false;
+                return Err(WorkerError::IsolationUnavailable("io_submit", code));
             }
             Ok(())
         }
@@ -1031,19 +1278,74 @@ mod platform {
                 return Ok(None);
             }
             let state = unsafe { WaitForSingleObject(raw(&self.event), 0) };
+            #[cfg(test)]
+            let (state, injected_error) = {
+                let first =
+                    self.write && state == WAIT_TIMEOUT && test_hooks::start_persistent_event();
+                if first {
+                    record_stage("persistent_injected_event_error", Some(self.pid));
+                }
+                if first || (self.write && test_hooks::persistent_event_active()) {
+                    (windows_sys::Win32::Foundation::WAIT_FAILED, true)
+                } else {
+                    (state, false)
+                }
+            };
+            #[cfg(not(test))]
+            let injected_error = false;
             if state == WAIT_TIMEOUT {
+                #[cfg(test)]
+                if self.write && test_hooks::armed("observation_injected") {
+                    record_stage("kernel_write_event_unsignaled", Some(self.pid));
+                    test_observer::capture_event(&self.event)?;
+                    if test_hooks::checkpoint("observation_injected", Some(self.pid)) {
+                        return Err(WorkerError::IsolationUnavailable(
+                            "test_observation_injected",
+                            None,
+                        ));
+                    }
+                }
                 return Ok(None);
             }
             if state != WAIT_OBJECT_0 {
-                return Err(failure("io_event_observation"));
+                let error = if injected_error {
+                    WorkerError::IsolationUnavailable("io_event_observation", Some(6))
+                } else {
+                    failure("io_event_observation")
+                };
+                return Err(error);
+            }
+            #[cfg(test)]
+            if self.write && test_hooks::checkpoint("result_observation_injected", Some(self.pid)) {
+                return Err(WorkerError::IsolationUnavailable("io_completion", Some(6)));
             }
             let mut transferred = 0;
-            if unsafe { GetOverlappedResult(raw(&self.pipe), &*self.ov, &mut transferred, 0) } != 0
-            {
+            #[cfg(test)]
+            let injected_result_error = if self.write {
+                let first = test_hooks::start_persistent_result();
+                if first {
+                    record_stage("persistent_injected_result_error", Some(self.pid));
+                }
+                first || test_hooks::persistent_result_active()
+            } else {
+                false
+            };
+            #[cfg(not(test))]
+            let injected_result_error = false;
+            let completed = if injected_result_error {
+                0
+            } else {
+                unsafe { GetOverlappedResult(raw(&self.pipe), &*self.ov, &mut transferred, 0) }
+            };
+            if completed != 0 {
                 self.pending = false;
                 return Ok(Some(transferred));
             }
-            let code = std::io::Error::last_os_error().raw_os_error();
+            let code = if injected_result_error {
+                Some(6)
+            } else {
+                std::io::Error::last_os_error().raw_os_error()
+            };
             if code == Some(ERROR_IO_INCOMPLETE as i32) {
                 return Ok(None);
             }
@@ -1056,7 +1358,15 @@ mod platform {
     impl Drop for Operation {
         fn drop(&mut self) {
             while self.pending {
-                unsafe { CancelIoEx(raw(&self.pipe), &*self.ov) };
+                let _cancelled = unsafe { CancelIoEx(raw(&self.pipe), &*self.ov) };
+                #[cfg(test)]
+                {
+                    record_count("cancel_io_return", self.pid, _cancelled as usize);
+                    if self.write {
+                        record_stage("stdin_cancel_returned", Some(self.pid));
+                        test_hooks::checkpoint("cancel_after_api", Some(self.pid));
+                    }
+                }
                 let _ = self.poll();
                 if self.pending {
                     thread::sleep(Duration::from_millis(5));
@@ -1072,6 +1382,70 @@ mod platform {
         process: OwnedHandle,
         pid: u32,
         complete: bool,
+    }
+    #[cfg(test)]
+    struct JobEvents(OwnedHandle);
+    #[cfg(test)]
+    impl JobEvents {
+        fn new(job: &OwnedHandle) -> Result<Self, WorkerError> {
+            use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+            use windows_sys::Win32::System::IO::CreateIoCompletionPort;
+            use windows_sys::Win32::System::JobObjects::{
+                JOBOBJECT_ASSOCIATE_COMPLETION_PORT, JobObjectAssociateCompletionPortInformation,
+            };
+            let port = unsafe {
+                own(
+                    CreateIoCompletionPort(INVALID_HANDLE_VALUE, null_mut(), 0, 1),
+                    "test_job_port",
+                )?
+            };
+            let association = JOBOBJECT_ASSOCIATE_COMPLETION_PORT {
+                CompletionKey: std::ptr::dangling_mut::<c_void>(),
+                CompletionPort: raw(&port),
+            };
+            if unsafe {
+                SetInformationJobObject(
+                    raw(job),
+                    JobObjectAssociateCompletionPortInformation,
+                    (&association as *const JOBOBJECT_ASSOCIATE_COMPLETION_PORT).cast(),
+                    size_of::<JOBOBJECT_ASSOCIATE_COMPLETION_PORT>() as u32,
+                )
+            } == 0
+            {
+                return Err(failure("test_job_port_associate"));
+            }
+            Ok(Self(port))
+        }
+    }
+    #[cfg(test)]
+    impl Drop for JobEvents {
+        fn drop(&mut self) {
+            use windows_sys::Win32::System::IO::GetQueuedCompletionStatus;
+            loop {
+                let mut message = 0;
+                let mut key = 0usize;
+                let mut process = null_mut();
+                if unsafe {
+                    GetQueuedCompletionStatus(
+                        raw(&self.0),
+                        &mut message,
+                        &mut key,
+                        &mut process,
+                        100,
+                    )
+                } == 0
+                {
+                    break;
+                }
+                if key == 1 {
+                    record_count(
+                        "job_notification",
+                        process as usize as u32,
+                        message as usize,
+                    );
+                }
+            }
+        }
     }
     #[cfg(test)]
     struct RunScope(Option<u32>);
@@ -1114,6 +1488,34 @@ mod platform {
                 record_count("process_wait", self.pid, wait as usize);
                 record_count("job_query", self.pid, queried as usize);
                 record_count("job_active", self.pid, info.ActiveProcesses as usize);
+                #[cfg(test)]
+                {
+                    record_count("job_user_100ns", self.pid, info.TotalUserTime as usize);
+                    let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { zeroed() };
+                    let ok = unsafe {
+                        QueryInformationJobObject(
+                            raw(&self.job),
+                            JobObjectExtendedLimitInformation,
+                            (&mut limits as *mut JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                            size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                            null_mut(),
+                        )
+                    };
+                    record_count("job_extended_query", self.pid, ok as usize);
+                    if ok != 0 {
+                        record_count("job_memory_limit", self.pid, limits.ProcessMemoryLimit);
+                        record_count(
+                            "job_peak_process_memory",
+                            self.pid,
+                            limits.PeakProcessMemoryUsed,
+                        );
+                        record_count(
+                            "job_cpu_limit_100ns",
+                            self.pid,
+                            limits.BasicLimitInformation.PerProcessUserTimeLimit as usize,
+                        );
+                    }
+                }
                 true
             } else {
                 false
@@ -1122,8 +1524,17 @@ mod platform {
         fn wait_reaped(&mut self) {
             while !self.reaped() {
                 unsafe {
-                    TerminateJobObject(raw(&self.job), 1);
-                    TerminateProcess(raw(&self.process), 1);
+                    let _job_result = TerminateJobObject(raw(&self.job), 1);
+                    let _process_result = TerminateProcess(raw(&self.process), 1);
+                    #[cfg(test)]
+                    {
+                        record_count("terminate_job_return", self.pid, _job_result as usize);
+                        record_count(
+                            "terminate_process_return",
+                            self.pid,
+                            _process_result as usize,
+                        );
+                    }
                 }
                 thread::sleep(Duration::from_millis(5));
             }
@@ -1265,7 +1676,22 @@ mod platform {
                         other => other?,
                     }
                 }
-                match op.poll() {
+                #[cfg(test)]
+                let injected = test_hooks::inject_zero(target);
+                #[cfg(not(test))]
+                let injected = false;
+                if injected {
+                    record_stage(
+                        if target {
+                            "injected_stdout_zero"
+                        } else {
+                            "injected_stderr_zero"
+                        },
+                        Some(process.pid),
+                    );
+                }
+                let polled = if injected { Ok(Some(0)) } else { op.poll() };
+                match polled {
                     Ok(Some(0)) => {
                         if target && !stdout_zero_observed {
                             record_stage("stdout_zero_read", Some(process.pid));
@@ -1367,6 +1793,12 @@ mod platform {
         stopper.set_pipes(vec![stdin.clone(), stdout.clone(), stderr.clone()]);
         ensure_open(gate, deadline)?;
         let job = Arc::new(unsafe { own(CreateJobObjectW(null(), null()), "job_create")? });
+        #[cfg(test)]
+        let _job_events = if test_hooks::take_job_events() {
+            Some(JobEvents::new(&job)?)
+        } else {
+            None
+        };
         if unsafe { SetHandleInformation(raw(&job), HANDLE_FLAG_INHERIT, 0) } == 0 {
             return Err(failure("job_inherit"));
         }
@@ -1446,6 +1878,16 @@ mod platform {
         let mut information: PROCESS_INFORMATION = unsafe { zeroed() };
         ensure_open(gate, deadline)?;
         record_stage("before_create", None);
+        #[cfg(test)]
+        test_hooks::checkpoint("create_before_ticket", None);
+        if !gate.authorize(deadline) {
+            return Err(WorkerError::Deadline);
+        }
+        #[cfg(test)]
+        {
+            record_stage("create_ticket_granted", None);
+            test_hooks::checkpoint("create_after_ticket", None);
+        }
         let created = unsafe {
             CreateProcessW(
                 app.as_ptr(),
@@ -1497,6 +1939,8 @@ mod platform {
         record_stage("created_suspended", Some(information.dwProcessId));
         #[cfg(test)]
         test_observer::capture(information.dwProcessId)?;
+        #[cfg(test)]
+        test_hooks::checkpoint("create_returned_suspended", Some(information.dwProcessId));
         drop(child_stdin);
         drop(child_stdout);
         drop(child_stderr);
@@ -1506,15 +1950,39 @@ mod platform {
             gate.stop();
             return Err(error);
         }
+        #[cfg(test)]
+        if test_hooks::inject_membership_failure() {
+            record_count(
+                "membership_actual",
+                information.dwProcessId,
+                inside as usize,
+            );
+            record_stage("membership_failure_injected", Some(information.dwProcessId));
+            inside = 0;
+        }
         if inside == 0 {
             gate.stop();
             return Err(WorkerError::IsolationUnavailable("worker_not_in_job", None));
         }
         image.verify_process(raw(&process.process), &worker.digest)?;
+        #[cfg(test)]
+        test_hooks::checkpoint("resume_before_ticket", Some(information.dwProcessId));
         if !gate.authorize(deadline) {
             return Err(WorkerError::Deadline);
         }
-        if unsafe { ResumeThread(raw(&thread_handle)) } == u32::MAX {
+        #[cfg(test)]
+        {
+            record_stage("resume_ticket_granted", Some(information.dwProcessId));
+            test_hooks::checkpoint("resume_after_ticket", Some(information.dwProcessId));
+        }
+        let resume_result = unsafe { ResumeThread(raw(&thread_handle)) };
+        #[cfg(test)]
+        record_count(
+            "resume_api_return",
+            information.dwProcessId,
+            resume_result as usize,
+        );
+        if resume_result == u32::MAX {
             let error = failure("worker_resume");
             gate.stop();
             return Err(error);
@@ -1552,6 +2020,169 @@ mod platform {
                 io_completed: true,
             }),
             Outcome::Error { .. } => Err(WorkerError::WorkerRejected),
+        }
+    }
+
+    #[cfg(test)]
+    mod r04_tests {
+        use super::*;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+        };
+
+        struct UnwindCleanup(Arc<OwnedHandle>);
+        impl Drop for UnwindCleanup {
+            fn drop(&mut self) {
+                if std::thread::panicking() {
+                    unsafe {
+                        TerminateJobObject(raw(&self.0), 1);
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn suspended_process_in_real_job_requires_process_fallback() {
+            let path =
+                PathBuf::from(std::env::var_os("NHC_W2_WORKER_SNAPSHOT").expect("worker snapshot"));
+            let hash = Sha256::digest(std::fs::read(&path).expect("worker bytes"));
+            assert_eq!(
+                format!("{hash:x}"),
+                std::env::var("NHC_W2_WORKER_SHA256").unwrap()
+            );
+            let digest: [u8; 32] = hash.into();
+            let image = Image::pin(&path, &digest).expect("pin worker");
+            let real_job =
+                Arc::new(unsafe { own(CreateJobObjectW(null(), null()), "real_job") }.unwrap());
+            let empty_job =
+                Arc::new(unsafe { own(CreateJobObjectW(null(), null()), "empty_job") }.unwrap());
+            let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { zeroed() };
+            limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+                | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                | JOB_OBJECT_LIMIT_PROCESS_TIME;
+            limits.BasicLimitInformation.ActiveProcessLimit = 1;
+            limits.BasicLimitInformation.PerProcessUserTimeLimit = 30_000_000;
+            limits.ProcessMemoryLimit = 128 * 1024 * 1024;
+            assert_ne!(
+                unsafe {
+                    SetInformationJobObject(
+                        raw(&real_job),
+                        JobObjectExtendedLimitInformation,
+                        (&limits as *const JOBOBJECT_EXTENDED_LIMIT_INFORMATION).cast(),
+                        size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                    )
+                },
+                0
+            );
+            let mut attributes = Attributes::new().unwrap();
+            let jobs = [raw(&real_job)];
+            attributes
+                .set(PROC_THREAD_ATTRIBUTE_JOB_LIST, &jobs)
+                .unwrap();
+            let mut startup: STARTUPINFOEXW = unsafe { zeroed() };
+            startup.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
+            startup.lpAttributeList = attributes.list;
+            let application = wide(image.path.as_os_str());
+            let mut command = wide(OsStr::new(&format!("\"{}\"", image.path.display())));
+            let mut info: PROCESS_INFORMATION = unsafe { zeroed() };
+            assert_ne!(
+                unsafe {
+                    CreateProcessW(
+                        application.as_ptr(),
+                        command.as_mut_ptr(),
+                        null(),
+                        null(),
+                        0,
+                        CREATE_SUSPENDED | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
+                        null_mut(),
+                        null(),
+                        &startup.StartupInfo,
+                        &mut info,
+                    )
+                },
+                0
+            );
+            let process = unsafe { own(info.hProcess, "real_process") }.unwrap();
+            let thread_handle = unsafe { own(info.hThread, "real_thread") }.unwrap();
+            let mut guard = ProcessGuard {
+                job: empty_job,
+                process,
+                pid: info.dwProcessId,
+                complete: false,
+            };
+            let _unwind_cleanup = UnwindCleanup(real_job.clone());
+            image
+                .verify_process(raw(&guard.process), &digest)
+                .expect("same snapshot");
+            let mut in_real_job = 0;
+            assert_ne!(
+                unsafe { IsProcessInJob(raw(&guard.process), raw(&real_job), &mut in_real_job) },
+                0
+            );
+            assert_ne!(in_real_job, 0);
+            let observed = Arc::new(
+                unsafe {
+                    own(
+                        OpenProcess(
+                            PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                            0,
+                            info.dwProcessId,
+                        ),
+                        "observer",
+                    )
+                }
+                .unwrap(),
+            );
+            let fallback_used = Arc::new(AtomicBool::new(false));
+            let watchdog = {
+                let real_job = real_job.clone();
+                let observed = observed.clone();
+                let fallback_used = fallback_used.clone();
+                thread::spawn(move || {
+                    if unsafe { WaitForSingleObject(raw(&observed), 2500) } != WAIT_OBJECT_0 {
+                        fallback_used.store(true, Ordering::SeqCst);
+                        unsafe {
+                            TerminateJobObject(raw(&real_job), 1);
+                        }
+                    }
+                })
+            };
+            guard.wait_reaped();
+            watchdog.join().unwrap();
+            let wait = unsafe { WaitForSingleObject(raw(&observed), 0) };
+            let mut accounting: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { zeroed() };
+            let deadline = Instant::now() + Duration::from_secs(2);
+            let queried = loop {
+                let query = unsafe {
+                    QueryInformationJobObject(
+                        raw(&real_job),
+                        JobObjectBasicAccountingInformation,
+                        (&mut accounting as *mut JOBOBJECT_BASIC_ACCOUNTING_INFORMATION).cast(),
+                        size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
+                        null_mut(),
+                    )
+                };
+                if query == 0 || accounting.ActiveProcesses == 0 || Instant::now() >= deadline {
+                    break query;
+                }
+                thread::sleep(Duration::from_millis(5));
+            };
+            println!(
+                "R04 pid={} observed_wait={wait} real_job_query={queried} real_job_active={} watchdog_used={}",
+                info.dwProcessId,
+                accounting.ActiveProcesses,
+                fallback_used.load(Ordering::SeqCst)
+            );
+            assert!(
+                !fallback_used.load(Ordering::SeqCst),
+                "empty Job could not terminate real worker"
+            );
+            assert_eq!(wait, WAIT_OBJECT_0);
+            assert_ne!(queried, 0);
+            assert_eq!(accounting.ActiveProcesses, 0);
+            drop(thread_handle);
         }
     }
 }
