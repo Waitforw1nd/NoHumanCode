@@ -72,10 +72,10 @@ function Run-Controlled($test, $arguments, $site, $timeoutSeconds) {
     while ($true) {
         $stdout = [string](Get-Content -Raw -LiteralPath $log)
         $stderr = [string](Get-Content -Raw -LiteralPath $err)
-        if (($stdout + $stderr).Contains('NHC_TERMINAL_UNKNOWN:')) { throw 'terminal unknown marker' }
+        if ([string]::Concat($stdout, $stderr).Contains('NHC_TERMINAL_UNKNOWN:')) { throw 'terminal unknown marker' }
         if (Test-Path -LiteralPath (Join-Path $site 'host.stage')) {
             $stage = [string](Get-Content -Raw -LiteralPath (Join-Path $site 'host.stage'))
-            if ($stage.Contains('phase=created_process_handle_unknown ')) { throw 'terminal creation handle unknown' }
+            if ([string]::Concat($stage).Contains('phase=created_process_handle_unknown ')) { throw 'terminal creation handle unknown' }
         }
         if ($clock.Elapsed.TotalSeconds -ge $timeoutSeconds) { throw 'case deadline exceeded; process retained' }
         if ($process.HasExited) { break }
@@ -86,7 +86,7 @@ function Run-Controlled($test, $arguments, $site, $timeoutSeconds) {
     $script:active['exit_code'] = $process.ExitCode
     $script:active.state = 'exited'
     Save-Json $metadata $script:active
-    $contents = [string](Get-Content -Raw -LiteralPath $log) + [string](Get-Content -Raw -LiteralPath $err)
+    $contents = [string]::Concat((Get-Content -Raw -LiteralPath $log), (Get-Content -Raw -LiteralPath $err))
     if ($contents.Contains('NHC_TERMINAL_UNKNOWN:')) { throw 'terminal unknown marker at exit' }
     if ($process.ExitCode -ne 0) { throw 'case failed; cleanup not independently confirmed' }
     if ($test -ne '__list__' -and ($contents -notmatch 'test result: ok\. 1 passed; 0 failed' -or $contents -match '(?i)not established')) { throw 'missing single passing case or attack not established' }
