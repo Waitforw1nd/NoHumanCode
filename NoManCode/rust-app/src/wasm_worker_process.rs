@@ -2149,8 +2149,18 @@ mod platform {
                     }
                 })
             };
-            guard.wait_reaped();
+            let (done_tx, done_rx) = std::sync::mpsc::sync_channel(1);
+            let cleanup = thread::spawn(move || {
+                guard.wait_reaped();
+                let _ = done_tx.send(());
+            });
+            let done = done_rx.recv_timeout(Duration::from_secs(6)).is_ok();
             watchdog.join().unwrap();
+            assert!(
+                done,
+                "R04 cleanup remains unknown; stop and inspect retained process"
+            );
+            cleanup.join().unwrap();
             let wait = unsafe { WaitForSingleObject(raw(&observed), 0) };
             let mut accounting: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { zeroed() };
             let deadline = Instant::now() + Duration::from_secs(2);
