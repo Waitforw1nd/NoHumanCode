@@ -154,6 +154,17 @@ pub(crate) mod test_observer {
     pub(crate) fn take() -> Option<(u32, OwnedHandle)> {
         PROCESS.lock().unwrap().take()
     }
+    // Caller must first prove the supervisor returned and released its slot.
+    // A consumed arm or a captured handle means this is not a no-process case.
+    pub(crate) fn disarm_after_return_without_capture() -> bool {
+        let process = PROCESS.lock().unwrap_or_else(|e| e.into_inner());
+        if process.is_some() {
+            return false;
+        }
+        ARMED
+            .compare_exchange(true, false, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
     pub(super) fn capture_event(event: &OwnedHandle) -> Result<(), super::WorkerError> {
         use windows_sys::Win32::Foundation::DuplicateHandle;
         use windows_sys::Win32::System::Threading::GetCurrentProcess;
@@ -221,6 +232,21 @@ pub(crate) mod test_hooks {
     static P01_EVENTS: AtomicU8 = AtomicU8::new(0);
     static PERSISTENT_ERROR: AtomicU8 = AtomicU8::new(0);
     static W05_STOPPER_STARTED: AtomicBool = AtomicBool::new(false);
+    static INVALID_CREATE_FLAGS: AtomicBool = AtomicBool::new(false);
+
+    pub(crate) struct InvalidCreateGuard;
+    impl Drop for InvalidCreateGuard {
+        fn drop(&mut self) {
+            INVALID_CREATE_FLAGS.store(false, Ordering::Release);
+        }
+    }
+    pub(crate) fn arm_invalid_create_flags() -> InvalidCreateGuard {
+        assert!(!INVALID_CREATE_FLAGS.swap(true, Ordering::AcqRel));
+        InvalidCreateGuard
+    }
+    pub(super) fn take_invalid_create_flags() -> bool {
+        INVALID_CREATE_FLAGS.swap(false, Ordering::AcqRel)
+    }
 
     pub(crate) struct Guard;
     impl Drop for Guard {
@@ -3379,6 +3405,15 @@ mod platform {
             | DETACHED_PROCESS
             | CREATE_UNICODE_ENVIRONMENT
             | EXTENDED_STARTUPINFO_PRESENT;
+        #[cfg(test)]
+        let creation_flags = if test_hooks::take_invalid_create_flags() {
+            record_stage("fixture_invalid_create_flags", None);
+            // Windows rejects CREATE_NEW_CONSOLE combined with DETACHED_PROCESS.
+            // The real API is still called; no result or error is injected.
+            creation_flags | windows_sys::Win32::System::Threading::CREATE_NEW_CONSOLE
+        } else {
+            creation_flags
+        };
         record_count("create_flags", 0, creation_flags as usize);
         #[cfg(test)]
         w05_checkpoint("w05_before_create", None, gate, deadline);

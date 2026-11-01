@@ -1893,13 +1893,74 @@ mod fault_matrix {
             parent.complete = true;
         }
     }
-    async fn unknown_case(phase: &'static str) {
+    fn cancelled_creation_failure_evidence(log: &str) -> Result<(usize, usize), String> {
+        fn count(log: &str, phase: &str) -> Result<usize, String> {
+            let prefix = format!("phase={phase} pid=Some(0) count=");
+            let values: Vec<_> = log
+                .lines()
+                .filter_map(|line| line.strip_prefix(&prefix))
+                .collect();
+            if values.len() != 1 {
+                return Err(format!("{phase}: expected exactly one observation"));
+            }
+            values[0]
+                .parse()
+                .map_err(|_| format!("{phase}: invalid count"))
+        }
+        let ordered = [
+            "phase=create_ticket_granted ",
+            "phase=create_after_ticket ",
+            "phase=cleanup_unknown ",
+            "phase=injection_released ",
+            "phase=create_flags ",
+            "phase=create_failed ",
+            "phase=stopper_joined ",
+            "phase=create_failed_job_query ",
+            "phase=supervisor_platform_returned ",
+        ];
+        let mut previous = 0;
+        for phase in ordered {
+            let position = log.find(phase).ok_or_else(|| format!("missing {phase}"))?;
+            if position < previous {
+                return Err(format!("out of order: {phase}"));
+            }
+            previous = position;
+        }
+        for forbidden in [
+            "phase=created_suspended ",
+            "phase=created_process_handle_unknown ",
+            "phase=resume_ticket_granted ",
+            "phase=resume_api_return ",
+            "phase=resumed ",
+            "phase=submit_ticket_granted ",
+            "phase=stdin_pending ",
+            "phase=stopper_join_failed ",
+            "phase=injection_timeout ",
+        ] {
+            if log.contains(forbidden) {
+                return Err(format!("unexpected {forbidden}"));
+            }
+        }
+        let error = count(log, "create_failed_win32_error")?;
+        if error == 0
+            || count(log, "stopper_terminate_job_return")? != 1
+            || count(log, "create_failed_job_query")? != 1
+            || count(log, "create_failed_job_active")? != 0
+            || count(log, "create_failed_job_total")? > 1
+        {
+            return Err("create error, Stopper, or Job evidence incomplete".into());
+        }
+        Ok((error, count(log, "create_flags")?))
+    }
+
+    async fn unknown_case(phase: &'static str, force_create_failure: bool) {
         let log_path = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").unwrap());
         let offset = read_log(&log_path).len();
         let (service, _) = fault_service("no-read");
         let token = CancellationToken::new();
         let gate = test_hooks::arm(phase);
         test_observer::arm(false);
+        let invalid_flags = force_create_failure.then(test_hooks::arm_invalid_create_flags);
         let service_task = service.clone();
         let token_task = token.clone();
         let mut task = tokio::spawn(async move {
@@ -1958,6 +2019,12 @@ mod fault_matrix {
         let hook_ok = test_hooks::completed_without_timeout();
         drop(gate);
         let observed = observed_early.or_else(test_observer::take);
+        if !free {
+            eprintln!("NHC_TERMINAL_UNKNOWN: supervisor did not release its slot");
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
         assert!(
             reached && free && hook_ok,
             "{phase}: reached={reached} free={free} hook_ok={hook_ok}"
@@ -1973,6 +2040,47 @@ mod fault_matrix {
             "{phase}: concurrent={busy_concurrent:?}, busy A={busy_a:?}, B={busy_b:?}"
         );
         assert!(created_before <= 1, "{phase}: second worker was created");
+        if phase == "create_after_ticket" && observed.is_none() {
+            let text = read_log(&log_path);
+            let log = &text[offset..];
+            let (error, flags) = match cancelled_creation_failure_evidence(log) {
+                Ok(evidence) => evidence,
+                Err(reason) => {
+                    eprintln!("NHC_TERMINAL_UNKNOWN: creation failure evidence: {reason}");
+                    loop {
+                        std::thread::park_timeout(Duration::from_secs(1));
+                    }
+                }
+            };
+            if !test_observer::disarm_after_return_without_capture() {
+                eprintln!("NHC_TERMINAL_UNKNOWN: creation observer was consumed or captured");
+                loop {
+                    std::thread::park_timeout(Duration::from_secs(1));
+                }
+            }
+            if force_create_failure {
+                assert!(log.contains("phase=fixture_invalid_create_flags "));
+                use windows_sys::Win32::System::Threading::{CREATE_NEW_CONSOLE, DETACHED_PROCESS};
+                assert_eq!(
+                    flags & (CREATE_NEW_CONSOLE | DETACHED_PROCESS) as usize,
+                    (CREATE_NEW_CONSOLE | DETACHED_PROCESS) as usize,
+                    "fixture must pass the actual incompatible flags"
+                );
+                assert_eq!(
+                    error,
+                    windows_sys::Win32::Foundation::ERROR_INVALID_PARAMETER as usize,
+                    "real invalid flag combination must return ERROR_INVALID_PARAMETER"
+                );
+            } else {
+                assert!(!log.contains("phase=fixture_invalid_create_flags "));
+            }
+            println!(
+                "unknown {phase} cancelled_create_rejected=true win32_error={error} flags={flags} job_active=0"
+            );
+            drop(invalid_flags);
+            control().await;
+            return;
+        }
         let (pid, process) = observed.expect("created worker was observed");
         assert_eq!(
             unsafe { WaitForSingleObject(process.as_raw_handle(), 0) },
@@ -1982,6 +2090,10 @@ mod fault_matrix {
         let text = read_log(&log_path);
         let log = &text[offset..];
         assert_reaped(log, pid);
+        assert!(
+            !force_create_failure,
+            "invalid creation flags unexpectedly created a process; held object was reaped"
+        );
         for item in [
             "created_suspended",
             "failure_reaped",
@@ -1993,11 +2105,25 @@ mod fault_matrix {
             );
         }
         assert!(!log.contains("phase=injection_timeout "));
-        if phase == "create_returned_suspended" {
+        if matches!(phase, "create_after_ticket" | "create_returned_suspended") {
             assert!(
                 !contains_pid(log, "resumed", pid),
                 "late created worker was resumed"
             );
+            for forbidden in [
+                "resume_ticket_granted",
+                "resume_api_return",
+                "submit_ticket_granted",
+                "stdin_pending",
+                "stdin_io_settled",
+                "stdout_io_settled",
+                "stderr_io_settled",
+            ] {
+                assert!(
+                    !log.lines().any(|line| line.starts_with(&format!("phase={forbidden} pid=Some({pid})"))),
+                    "late suspended worker reached {forbidden}"
+                );
+            }
         }
         if phase == "observation_injected" {
             assert!(contains_pid(log, "kernel_write_event_unsignaled", pid));
@@ -2038,13 +2164,29 @@ mod fault_matrix {
             assert!(contains_pid(log, "stdin_io_settled", pid));
         }
         println!("unknown {phase} pid={pid} busy_before_release=2 actual_reaped=true");
+        drop(invalid_flags);
         control().await;
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore = "requires controlled worker snapshots and isolated process observation"]
     async fn w04_unknown_cleanup_and_slot_reuse() {
         fresh_group();
+        let real = worker()
+            .call(manifest(), before(), wasm(), CancellationToken::new())
+            .await
+            .expect("real worker positive control");
+        assert_eq!(real.decision, Decision::UseTools { indices: vec![1] });
+        assert!(real.process_id != 0 && real.process_signaled && real.io_completed);
+        assert_eq!((real.exit_code, real.job_active_processes), (0, 0));
+        assert_reaped(
+            &read_log(&PathBuf::from(
+                std::env::var_os("NHC_W2_STAGE_LOG").expect("stage log"),
+            )),
+            real.process_id,
+        );
+        println!("W04 real worker positive pid={}", real.process_id);
         control().await;
+        unknown_case("create_after_ticket", true).await;
         for phase in [
             "create_after_ticket",
             "create_returned_suspended",
@@ -2054,7 +2196,7 @@ mod fault_matrix {
             "result_observation_injected",
             "cancel_after_api",
         ] {
-            unknown_case(phase).await;
+            unknown_case(phase, false).await;
         }
     }
 
