@@ -1,0 +1,737 @@
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(32924)
+phase=resume_ticket_granted pid=Some(32924)
+phase=resume_api_return pid=Some(32924) count=1
+phase=resumed pid=Some(32924)
+phase=submit_ticket_granted pid=Some(32924)
+phase=stdin_io_settled pid=Some(32924)
+phase=stdout_data pid=Some(32924)
+phase=stdout_bytes pid=Some(32924) count=355
+phase=stderr_eof pid=Some(32924)
+phase=stdout_eof pid=Some(32924)
+phase=process_wait pid=Some(32924) count=0
+phase=job_query pid=Some(32924) count=1
+phase=job_active pid=Some(32924) count=0
+phase=job_user_100ns pid=Some(32924) count=0
+phase=job_extended_query pid=Some(32924) count=1
+phase=job_memory_limit pid=Some(32924) count=134217728
+phase=job_peak_process_memory pid=Some(32924) count=815104
+phase=job_cpu_limit_100ns pid=Some(32924) count=30000000
+phase=io_complete_reaped pid=Some(32924)
+phase=stderr_io_settled pid=Some(32924)
+phase=stdout_io_settled pid=Some(32924)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(32924)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(78124)
+phase=resume_ticket_granted pid=Some(78124)
+phase=resume_api_return pid=Some(78124) count=1
+phase=resumed pid=Some(78124)
+phase=submit_ticket_granted pid=Some(78124)
+phase=stdin_io_settled pid=Some(78124)
+phase=stdout_data pid=Some(78124)
+phase=stdout_bytes pid=Some(78124) count=355
+phase=stderr_eof pid=Some(78124)
+phase=stdout_data pid=Some(78124)
+phase=stdout_bytes pid=Some(78124) count=356
+phase=stdout_eof pid=Some(78124)
+phase=process_wait pid=Some(78124) count=0
+phase=job_query pid=Some(78124) count=1
+phase=job_active pid=Some(78124) count=0
+phase=job_user_100ns pid=Some(78124) count=0
+phase=job_extended_query pid=Some(78124) count=1
+phase=job_memory_limit pid=Some(78124) count=134217728
+phase=job_peak_process_memory pid=Some(78124) count=843776
+phase=job_cpu_limit_100ns pid=Some(78124) count=30000000
+phase=io_complete_reaped pid=Some(78124)
+phase=stderr_io_settled pid=Some(78124)
+phase=stdout_io_settled pid=Some(78124)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(78124)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(78208)
+phase=resume_ticket_granted pid=Some(78208)
+phase=resume_api_return pid=Some(78208) count=1
+phase=resumed pid=Some(78208)
+phase=submit_ticket_granted pid=Some(78208)
+phase=stdin_io_settled pid=Some(78208)
+phase=stdout_data pid=Some(78208)
+phase=stdout_bytes pid=Some(78208) count=355
+phase=stderr_eof pid=Some(78208)
+phase=stdout_eof pid=Some(78208)
+phase=process_wait pid=Some(78208) count=0
+phase=job_query pid=Some(78208) count=1
+phase=job_active pid=Some(78208) count=0
+phase=job_user_100ns pid=Some(78208) count=0
+phase=job_extended_query pid=Some(78208) count=1
+phase=job_memory_limit pid=Some(78208) count=134217728
+phase=job_peak_process_memory pid=Some(78208) count=778240
+phase=job_cpu_limit_100ns pid=Some(78208) count=30000000
+phase=io_complete_reaped pid=Some(78208)
+phase=stderr_io_settled pid=Some(78208)
+phase=stdout_io_settled pid=Some(78208)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(78208)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(49612)
+phase=resume_ticket_granted pid=Some(49612)
+phase=resume_api_return pid=Some(49612) count=1
+phase=resumed pid=Some(49612)
+phase=submit_ticket_granted pid=Some(49612)
+phase=stdin_io_settled pid=Some(49612)
+phase=stdout_data pid=Some(49612)
+phase=stdout_bytes pid=Some(49612) count=355
+phase=stderr_data pid=Some(49612)
+phase=stderr_bytes pid=Some(49612) count=10
+phase=stdout_eof pid=Some(49612)
+phase=stderr_eof pid=Some(49612)
+phase=process_wait pid=Some(49612) count=0
+phase=job_query pid=Some(49612) count=1
+phase=job_active pid=Some(49612) count=0
+phase=job_user_100ns pid=Some(49612) count=0
+phase=job_extended_query pid=Some(49612) count=1
+phase=job_memory_limit pid=Some(49612) count=134217728
+phase=job_peak_process_memory pid=Some(49612) count=806912
+phase=job_cpu_limit_100ns pid=Some(49612) count=30000000
+phase=io_complete_reaped pid=Some(49612)
+phase=stderr_io_settled pid=Some(49612)
+phase=stdout_io_settled pid=Some(49612)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(49612)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(56628)
+phase=resume_ticket_granted pid=Some(56628)
+phase=resume_api_return pid=Some(56628) count=1
+phase=resumed pid=Some(56628)
+phase=submit_ticket_granted pid=Some(56628)
+phase=stdin_io_settled pid=Some(56628)
+phase=stdout_data pid=Some(56628)
+phase=stdout_bytes pid=Some(56628) count=355
+phase=stdout_eof pid=Some(56628)
+phase=stderr_eof pid=Some(56628)
+phase=process_wait pid=Some(56628) count=0
+phase=job_query pid=Some(56628) count=1
+phase=job_active pid=Some(56628) count=0
+phase=job_user_100ns pid=Some(56628) count=0
+phase=job_extended_query pid=Some(56628) count=1
+phase=job_memory_limit pid=Some(56628) count=134217728
+phase=job_peak_process_memory pid=Some(56628) count=782336
+phase=job_cpu_limit_100ns pid=Some(56628) count=30000000
+phase=io_complete_reaped pid=Some(56628)
+phase=stderr_io_settled pid=Some(56628)
+phase=stdout_io_settled pid=Some(56628)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(56628)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(67652)
+phase=resume_ticket_granted pid=Some(67652)
+phase=resume_api_return pid=Some(67652) count=1
+phase=resumed pid=Some(67652)
+phase=submit_ticket_granted pid=Some(67652)
+phase=stdin_io_settled pid=Some(67652)
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=16384
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=32768
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=49152
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=65536
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=81920
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=98304
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=114688
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=131072
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=147456
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=163840
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=180224
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=196608
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=212992
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=229376
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=245760
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=262144
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=278528
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=294912
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=311296
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=327680
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=344064
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=360448
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=376832
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=393216
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=409600
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=425984
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=442368
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=458752
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=475136
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=491520
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=507904
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=524288
+phase=stdout_data pid=Some(67652)
+phase=stdout_bytes pid=Some(67652) count=524293
+phase=stdout_limit pid=Some(67652)
+phase=cancel_io_return pid=Some(67652) count=0
+phase=stderr_io_settled pid=Some(67652)
+phase=stdout_io_settled pid=Some(67652)
+phase=process_wait pid=Some(67652) count=0
+phase=job_query pid=Some(67652) count=1
+phase=job_active pid=Some(67652) count=0
+phase=job_user_100ns pid=Some(67652) count=0
+phase=job_extended_query pid=Some(67652) count=1
+phase=job_memory_limit pid=Some(67652) count=134217728
+phase=job_peak_process_memory pid=Some(67652) count=1372160
+phase=job_cpu_limit_100ns pid=Some(67652) count=30000000
+phase=failure_reaped pid=Some(67652)
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(67652)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(77540)
+phase=resume_ticket_granted pid=Some(77540)
+phase=resume_api_return pid=Some(77540) count=1
+phase=resumed pid=Some(77540)
+phase=submit_ticket_granted pid=Some(77540)
+phase=stdin_io_settled pid=Some(77540)
+phase=stdout_data pid=Some(77540)
+phase=stdout_bytes pid=Some(77540) count=355
+phase=stderr_eof pid=Some(77540)
+phase=stdout_eof pid=Some(77540)
+phase=process_wait pid=Some(77540) count=0
+phase=job_query pid=Some(77540) count=1
+phase=job_active pid=Some(77540) count=0
+phase=job_user_100ns pid=Some(77540) count=0
+phase=job_extended_query pid=Some(77540) count=1
+phase=job_memory_limit pid=Some(77540) count=134217728
+phase=job_peak_process_memory pid=Some(77540) count=778240
+phase=job_cpu_limit_100ns pid=Some(77540) count=30000000
+phase=io_complete_reaped pid=Some(77540)
+phase=stderr_io_settled pid=Some(77540)
+phase=stdout_io_settled pid=Some(77540)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(77540)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(20668)
+phase=resume_ticket_granted pid=Some(20668)
+phase=resume_api_return pid=Some(20668) count=1
+phase=resumed pid=Some(20668)
+phase=submit_ticket_granted pid=Some(20668)
+phase=stdin_io_settled pid=Some(20668)
+phase=stderr_data pid=Some(20668)
+phase=stderr_bytes pid=Some(20668) count=16384
+phase=stderr_data pid=Some(20668)
+phase=stderr_bytes pid=Some(20668) count=32768
+phase=stderr_data pid=Some(20668)
+phase=stderr_bytes pid=Some(20668) count=49152
+phase=stderr_data pid=Some(20668)
+phase=stderr_bytes pid=Some(20668) count=65536
+phase=stderr_data pid=Some(20668)
+phase=stderr_bytes pid=Some(20668) count=65537
+phase=stderr_limit pid=Some(20668)
+phase=stderr_io_settled pid=Some(20668)
+phase=cancel_io_return pid=Some(20668) count=1
+phase=stdout_io_settled pid=Some(20668)
+phase=terminate_job_return pid=Some(20668) count=1
+phase=terminate_process_return pid=Some(20668) count=0
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=process_wait pid=Some(20668) count=0
+phase=job_query pid=Some(20668) count=1
+phase=job_active pid=Some(20668) count=0
+phase=job_user_100ns pid=Some(20668) count=0
+phase=job_extended_query pid=Some(20668) count=1
+phase=job_memory_limit pid=Some(20668) count=134217728
+phase=job_peak_process_memory pid=Some(20668) count=811008
+phase=job_cpu_limit_100ns pid=Some(20668) count=30000000
+phase=failure_reaped pid=Some(20668)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(20668)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(76868)
+phase=resume_ticket_granted pid=Some(76868)
+phase=resume_api_return pid=Some(76868) count=1
+phase=resumed pid=Some(76868)
+phase=submit_ticket_granted pid=Some(76868)
+phase=stdin_io_settled pid=Some(76868)
+phase=stdout_data pid=Some(76868)
+phase=stdout_bytes pid=Some(76868) count=355
+phase=stdout_eof pid=Some(76868)
+phase=stderr_eof pid=Some(76868)
+phase=process_wait pid=Some(76868) count=0
+phase=job_query pid=Some(76868) count=1
+phase=job_active pid=Some(76868) count=0
+phase=job_user_100ns pid=Some(76868) count=0
+phase=job_extended_query pid=Some(76868) count=1
+phase=job_memory_limit pid=Some(76868) count=134217728
+phase=job_peak_process_memory pid=Some(76868) count=778240
+phase=job_cpu_limit_100ns pid=Some(76868) count=30000000
+phase=io_complete_reaped pid=Some(76868)
+phase=stderr_io_settled pid=Some(76868)
+phase=stdout_io_settled pid=Some(76868)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(76868)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(62264)
+phase=resume_ticket_granted pid=Some(62264)
+phase=resume_api_return pid=Some(62264) count=1
+phase=resumed pid=Some(62264)
+phase=submit_ticket_granted pid=Some(62264)
+phase=submit_ticket_granted pid=Some(62264)
+phase=stdin_pending pid=Some(62264)
+phase=stdin_pending_bytes pid=Some(62264) count=16384
+phase=cancel_io_return pid=Some(62264) count=1
+phase=stderr_io_settled pid=Some(62264)
+phase=cancel_io_return pid=Some(62264) count=1
+phase=stdout_io_settled pid=Some(62264)
+phase=cancel_io_return pid=Some(62264) count=1
+phase=stdin_cancel_returned pid=Some(62264)
+phase=stdin_io_settled pid=Some(62264)
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=terminate_job_return pid=Some(62264) count=1
+phase=terminate_process_return pid=Some(62264) count=0
+phase=process_wait pid=Some(62264) count=0
+phase=job_query pid=Some(62264) count=1
+phase=job_active pid=Some(62264) count=0
+phase=job_user_100ns pid=Some(62264) count=0
+phase=job_extended_query pid=Some(62264) count=1
+phase=job_memory_limit pid=Some(62264) count=134217728
+phase=job_peak_process_memory pid=Some(62264) count=729088
+phase=job_cpu_limit_100ns pid=Some(62264) count=30000000
+phase=failure_reaped pid=Some(62264)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(62264)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(72764)
+phase=resume_ticket_granted pid=Some(72764)
+phase=resume_api_return pid=Some(72764) count=1
+phase=resumed pid=Some(72764)
+phase=submit_ticket_granted pid=Some(72764)
+phase=stdin_io_settled pid=Some(72764)
+phase=stdout_data pid=Some(72764)
+phase=stdout_bytes pid=Some(72764) count=355
+phase=stderr_eof pid=Some(72764)
+phase=stdout_eof pid=Some(72764)
+phase=process_wait pid=Some(72764) count=0
+phase=job_query pid=Some(72764) count=1
+phase=job_active pid=Some(72764) count=0
+phase=job_user_100ns pid=Some(72764) count=0
+phase=job_extended_query pid=Some(72764) count=1
+phase=job_memory_limit pid=Some(72764) count=134217728
+phase=job_peak_process_memory pid=Some(72764) count=774144
+phase=job_cpu_limit_100ns pid=Some(72764) count=30000000
+phase=io_complete_reaped pid=Some(72764)
+phase=stderr_io_settled pid=Some(72764)
+phase=stdout_io_settled pid=Some(72764)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(72764)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(74868)
+phase=resume_ticket_granted pid=Some(74868)
+phase=resume_api_return pid=Some(74868) count=1
+phase=resumed pid=Some(74868)
+phase=submit_ticket_granted pid=Some(74868)
+phase=submit_ticket_granted pid=Some(74868)
+phase=stdin_pending pid=Some(74868)
+phase=stdin_pending_bytes pid=Some(74868) count=16384
+phase=cancel_io_return pid=Some(74868) count=1
+phase=stderr_io_settled pid=Some(74868)
+phase=cancel_io_return pid=Some(74868) count=1
+phase=stdout_io_settled pid=Some(74868)
+phase=stdin_io_settled pid=Some(74868)
+phase=terminate_job_return pid=Some(74868) count=1
+phase=terminate_process_return pid=Some(74868) count=0
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=process_wait pid=Some(74868) count=0
+phase=job_query pid=Some(74868) count=1
+phase=job_active pid=Some(74868) count=0
+phase=job_user_100ns pid=Some(74868) count=0
+phase=job_extended_query pid=Some(74868) count=1
+phase=job_memory_limit pid=Some(74868) count=134217728
+phase=job_peak_process_memory pid=Some(74868) count=737280
+phase=job_cpu_limit_100ns pid=Some(74868) count=30000000
+phase=failure_reaped pid=Some(74868)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(74868)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(42636)
+phase=resume_ticket_granted pid=Some(42636)
+phase=resume_api_return pid=Some(42636) count=1
+phase=resumed pid=Some(42636)
+phase=submit_ticket_granted pid=Some(42636)
+phase=stdin_io_settled pid=Some(42636)
+phase=stdout_data pid=Some(42636)
+phase=stdout_bytes pid=Some(42636) count=355
+phase=stdout_eof pid=Some(42636)
+phase=stderr_eof pid=Some(42636)
+phase=process_wait pid=Some(42636) count=0
+phase=job_query pid=Some(42636) count=1
+phase=job_active pid=Some(42636) count=0
+phase=job_user_100ns pid=Some(42636) count=0
+phase=job_extended_query pid=Some(42636) count=1
+phase=job_memory_limit pid=Some(42636) count=134217728
+phase=job_peak_process_memory pid=Some(42636) count=782336
+phase=job_cpu_limit_100ns pid=Some(42636) count=30000000
+phase=io_complete_reaped pid=Some(42636)
+phase=stderr_io_settled pid=Some(42636)
+phase=stdout_io_settled pid=Some(42636)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(42636)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(64552)
+phase=resume_ticket_granted pid=Some(64552)
+phase=resume_api_return pid=Some(64552) count=1
+phase=resumed pid=Some(64552)
+phase=submit_ticket_granted pid=Some(64552)
+phase=stdin_io_settled pid=Some(64552)
+phase=stdout_data pid=Some(64552)
+phase=stdout_bytes pid=Some(64552) count=2
+phase=cancel_io_return pid=Some(64552) count=1
+phase=stderr_io_settled pid=Some(64552)
+phase=cancel_io_return pid=Some(64552) count=1
+phase=stdout_io_settled pid=Some(64552)
+phase=terminate_job_return pid=Some(64552) count=1
+phase=terminate_process_return pid=Some(64552) count=0
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=process_wait pid=Some(64552) count=0
+phase=job_query pid=Some(64552) count=1
+phase=job_active pid=Some(64552) count=0
+phase=job_user_100ns pid=Some(64552) count=0
+phase=job_extended_query pid=Some(64552) count=1
+phase=job_memory_limit pid=Some(64552) count=134217728
+phase=job_peak_process_memory pid=Some(64552) count=761856
+phase=job_cpu_limit_100ns pid=Some(64552) count=30000000
+phase=failure_reaped pid=Some(64552)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(64552)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(68772)
+phase=resume_ticket_granted pid=Some(68772)
+phase=resume_api_return pid=Some(68772) count=1
+phase=resumed pid=Some(68772)
+phase=submit_ticket_granted pid=Some(68772)
+phase=stdin_io_settled pid=Some(68772)
+phase=stdout_data pid=Some(68772)
+phase=stdout_bytes pid=Some(68772) count=355
+phase=stdout_eof pid=Some(68772)
+phase=stderr_eof pid=Some(68772)
+phase=process_wait pid=Some(68772) count=0
+phase=job_query pid=Some(68772) count=1
+phase=job_active pid=Some(68772) count=0
+phase=job_user_100ns pid=Some(68772) count=0
+phase=job_extended_query pid=Some(68772) count=1
+phase=job_memory_limit pid=Some(68772) count=134217728
+phase=job_peak_process_memory pid=Some(68772) count=782336
+phase=job_cpu_limit_100ns pid=Some(68772) count=30000000
+phase=io_complete_reaped pid=Some(68772)
+phase=stderr_io_settled pid=Some(68772)
+phase=stdout_io_settled pid=Some(68772)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(68772)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(67988)
+phase=resume_ticket_granted pid=Some(67988)
+phase=resume_api_return pid=Some(67988) count=1
+phase=resumed pid=Some(67988)
+phase=submit_ticket_granted pid=Some(67988)
+phase=stdin_io_settled pid=Some(67988)
+phase=stdout_eof pid=Some(67988)
+phase=stdout_eof_process_alive_stderr_open pid=Some(67988)
+phase=cancel_io_return pid=Some(67988) count=1
+phase=stderr_io_settled pid=Some(67988)
+phase=stdout_io_settled pid=Some(67988)
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=terminate_job_return pid=Some(67988) count=1
+phase=terminate_process_return pid=Some(67988) count=0
+phase=process_wait pid=Some(67988) count=0
+phase=job_query pid=Some(67988) count=1
+phase=job_active pid=Some(67988) count=0
+phase=job_user_100ns pid=Some(67988) count=0
+phase=job_extended_query pid=Some(67988) count=1
+phase=job_memory_limit pid=Some(67988) count=134217728
+phase=job_peak_process_memory pid=Some(67988) count=761856
+phase=job_cpu_limit_100ns pid=Some(67988) count=30000000
+phase=failure_reaped pid=Some(67988)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(67988)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(78188)
+phase=resume_ticket_granted pid=Some(78188)
+phase=resume_api_return pid=Some(78188) count=1
+phase=resumed pid=Some(78188)
+phase=submit_ticket_granted pid=Some(78188)
+phase=stdin_io_settled pid=Some(78188)
+phase=stdout_data pid=Some(78188)
+phase=stdout_bytes pid=Some(78188) count=355
+phase=stderr_eof pid=Some(78188)
+phase=stdout_eof pid=Some(78188)
+phase=process_wait pid=Some(78188) count=0
+phase=job_query pid=Some(78188) count=1
+phase=job_active pid=Some(78188) count=0
+phase=job_user_100ns pid=Some(78188) count=0
+phase=job_extended_query pid=Some(78188) count=1
+phase=job_memory_limit pid=Some(78188) count=134217728
+phase=job_peak_process_memory pid=Some(78188) count=786432
+phase=job_cpu_limit_100ns pid=Some(78188) count=30000000
+phase=io_complete_reaped pid=Some(78188)
+phase=stderr_io_settled pid=Some(78188)
+phase=stdout_io_settled pid=Some(78188)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(78188)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(49612)
+phase=resume_ticket_granted pid=Some(49612)
+phase=resume_api_return pid=Some(49612) count=1
+phase=resumed pid=Some(49612)
+phase=submit_ticket_granted pid=Some(49612)
+phase=submit_ticket_granted pid=Some(49612)
+phase=stdin_pending pid=Some(49612)
+phase=stdin_pending_bytes pid=Some(49612) count=16384
+phase=stdout_data pid=Some(49612)
+phase=stdout_bytes pid=Some(49612) count=4096
+phase=stderr_data pid=Some(49612)
+phase=stderr_bytes pid=Some(49612) count=4096
+phase=stdout_data pid=Some(49612)
+phase=stdout_bytes pid=Some(49612) count=20480
+phase=stderr_data pid=Some(49612)
+phase=stderr_bytes pid=Some(49612) count=20480
+phase=stdout_data pid=Some(49612)
+phase=stdout_bytes pid=Some(49612) count=32768
+phase=stderr_data pid=Some(49612)
+phase=stderr_bytes pid=Some(49612) count=32768
+phase=cancel_io_return pid=Some(49612) count=1
+phase=stderr_io_settled pid=Some(49612)
+phase=cancel_io_return pid=Some(49612) count=1
+phase=stdout_io_settled pid=Some(49612)
+phase=cancel_io_return pid=Some(49612) count=1
+phase=stdin_cancel_returned pid=Some(49612)
+phase=stdin_io_settled pid=Some(49612)
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=process_wait pid=Some(49612) count=0
+phase=job_query pid=Some(49612) count=1
+phase=job_active pid=Some(49612) count=0
+phase=job_user_100ns pid=Some(49612) count=0
+phase=job_extended_query pid=Some(49612) count=1
+phase=job_memory_limit pid=Some(49612) count=134217728
+phase=job_peak_process_memory pid=Some(49612) count=729088
+phase=job_cpu_limit_100ns pid=Some(49612) count=30000000
+phase=failure_reaped pid=Some(49612)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(49612)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(74316)
+phase=resume_ticket_granted pid=Some(74316)
+phase=resume_api_return pid=Some(74316) count=1
+phase=resumed pid=Some(74316)
+phase=submit_ticket_granted pid=Some(74316)
+phase=stdin_io_settled pid=Some(74316)
+phase=stdout_data pid=Some(74316)
+phase=stdout_bytes pid=Some(74316) count=355
+phase=stdout_eof pid=Some(74316)
+phase=stderr_eof pid=Some(74316)
+phase=process_wait pid=Some(74316) count=0
+phase=job_query pid=Some(74316) count=1
+phase=job_active pid=Some(74316) count=0
+phase=job_user_100ns pid=Some(74316) count=0
+phase=job_extended_query pid=Some(74316) count=1
+phase=job_memory_limit pid=Some(74316) count=134217728
+phase=job_peak_process_memory pid=Some(74316) count=774144
+phase=job_cpu_limit_100ns pid=Some(74316) count=30000000
+phase=io_complete_reaped pid=Some(74316)
+phase=stderr_io_settled pid=Some(74316)
+phase=stdout_io_settled pid=Some(74316)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(74316)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(75892)
+phase=resume_ticket_granted pid=Some(75892)
+phase=resume_api_return pid=Some(75892) count=1
+phase=resumed pid=Some(75892)
+phase=submit_ticket_granted pid=Some(75892)
+phase=submit_ticket_granted pid=Some(75892)
+phase=stdin_pending pid=Some(75892)
+phase=stdin_pending_bytes pid=Some(75892) count=16384
+phase=pressure_stdout_capacity pid=Some(75892) count=16384
+phase=pressure_stdout_available pid=Some(75892) count=131072
+phase=pressure_stderr_capacity pid=Some(75892) count=16384
+phase=pressure_stderr_available pid=Some(75892) count=131072
+phase=dual_pressure_release pid=Some(75892)
+phase=stdout_data pid=Some(75892)
+phase=stdout_bytes pid=Some(75892) count=16384
+phase=stderr_data pid=Some(75892)
+phase=stderr_bytes pid=Some(75892) count=16384
+phase=stdout_data pid=Some(75892)
+phase=stdout_bytes pid=Some(75892) count=32768
+phase=stderr_data pid=Some(75892)
+phase=stderr_bytes pid=Some(75892) count=32768
+phase=stdout_data pid=Some(75892)
+phase=stdout_bytes pid=Some(75892) count=49152
+phase=stderr_data pid=Some(75892)
+phase=stderr_bytes pid=Some(75892) count=49152
+phase=stdout_data pid=Some(75892)
+phase=stdout_bytes pid=Some(75892) count=65536
+phase=stderr_data pid=Some(75892)
+phase=stderr_bytes pid=Some(75892) count=65536
+phase=stdout_data pid=Some(75892)
+phase=stdout_bytes pid=Some(75892) count=81920
+phase=stderr_data pid=Some(75892)
+phase=stderr_bytes pid=Some(75892) count=81920
+phase=stderr_limit pid=Some(75892)
+phase=stderr_io_settled pid=Some(75892)
+phase=stdout_io_settled pid=Some(75892)
+phase=cancel_io_return pid=Some(75892) count=1
+phase=stdin_cancel_returned pid=Some(75892)
+phase=stdin_io_settled pid=Some(75892)
+phase=terminate_job_return pid=Some(75892) count=1
+phase=terminate_process_return pid=Some(75892) count=0
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=process_wait pid=Some(75892) count=0
+phase=job_query pid=Some(75892) count=1
+phase=job_active pid=Some(75892) count=0
+phase=job_user_100ns pid=Some(75892) count=0
+phase=job_extended_query pid=Some(75892) count=1
+phase=job_memory_limit pid=Some(75892) count=134217728
+phase=job_peak_process_memory pid=Some(75892) count=1093632
+phase=job_cpu_limit_100ns pid=Some(75892) count=30000000
+phase=failure_reaped pid=Some(75892)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(75892)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(66484)
+phase=resume_ticket_granted pid=Some(66484)
+phase=resume_api_return pid=Some(66484) count=1
+phase=resumed pid=Some(66484)
+phase=submit_ticket_granted pid=Some(66484)
+phase=stdin_io_settled pid=Some(66484)
+phase=stdout_data pid=Some(66484)
+phase=stdout_bytes pid=Some(66484) count=355
+phase=stderr_eof pid=Some(66484)
+phase=stdout_eof pid=Some(66484)
+phase=process_wait pid=Some(66484) count=0
+phase=job_query pid=Some(66484) count=1
+phase=job_active pid=Some(66484) count=0
+phase=job_user_100ns pid=Some(66484) count=0
+phase=job_extended_query pid=Some(66484) count=1
+phase=job_memory_limit pid=Some(66484) count=134217728
+phase=job_peak_process_memory pid=Some(66484) count=798720
+phase=job_cpu_limit_100ns pid=Some(66484) count=30000000
+phase=io_complete_reaped pid=Some(66484)
+phase=stderr_io_settled pid=Some(66484)
+phase=stdout_io_settled pid=Some(66484)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(66484)
+phase=supervisor_platform_returned pid=None

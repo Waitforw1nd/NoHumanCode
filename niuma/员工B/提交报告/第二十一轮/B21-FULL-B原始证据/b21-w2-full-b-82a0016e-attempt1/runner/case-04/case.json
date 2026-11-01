@@ -1,0 +1,45 @@
+{
+  "test": "wasm_worker_process_tests::fault_matrix::w04_resource_limits",
+  "nonce": "8c255fd0fe69436db8e6018b68ceac87",
+  "state": "terminal_unknown",
+  "start_utc": "2026-11-01T16:10:37.1071369Z",
+  "timeout_seconds": 180,
+  "pid": 57692,
+  "creation_filetime": 134380230371094423,
+  "stdout": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-b-82a0016e-attempt1\\runner\\case-04\\test.stdout",
+  "stderr": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-b-82a0016e-attempt1\\runner\\case-04\\test.stderr",
+  "fixed_hashes": [
+    {
+      "name": "worker.exe",
+      "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\peachsh-wasm-worker.exe",
+      "sha256": "f981aaabfb14534a36e1fed8607d50e37c6856a966a73aba7478a51a943cf443",
+      "bytes": 10856960
+    },
+    {
+      "name": "probe.exe",
+      "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\examples\\wasm_worker_process_probe.exe",
+      "sha256": "f8b6521fe824928065f5d573c28a671e9b92b7b706c0b565fe7f835182e1a43c",
+      "bytes": 2746880
+    },
+    {
+      "name": "lib-test.exe",
+      "source": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\\debug\\deps\\peachsh-e2aa2d6365223fa4.exe",
+      "sha256": "a4833adccdf808918c0d252ee67810bfc68a69d9fac09ab616b8362f36300772",
+      "bytes": 40002560
+    }
+  ],
+  "source": {
+    "head": "82a0016ef1d582abc963270b48149e10fca1220f",
+    "product_tree": "99ed0add4a89fbee1473a3c511a9972a54148a65",
+    "rust_tree": "8fccff04244c3a3b04e120f7bbb2b6e3d5ecdea4",
+    "status": [],
+    "index": []
+  },
+  "attempt": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-b-82a0016e-attempt1\\runner",
+  "end_utc": "2026-11-01T16:10:46.8534511Z",
+  "elapsed_ms": 9747,
+  "exit_code": 101,
+  "reason": "case failed; cleanup not independently confirmed",
+  "detected_utc": "2026-11-01T16:10:46.8534511Z",
+  "instruction": "Do not reopen the window until retained objects and unknown cleanup are independently resolved."
+}

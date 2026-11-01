@@ -1,0 +1,12 @@
+{
+  "checked_utc": "2026-11-01T16:36:23.506128+00:00",
+  "author": "项目经理",
+  "manifest": "niuma/员工B/提交报告/第二十一轮/B21-FULL-B原始证据/双hash清单.json",
+  "manifest_sha256": "c640448d222c1ebc735bd31d9b6cac292ddf5677cba49a749df3cf1701d4a8f9",
+  "files": 97,
+  "bytes": 428872,
+  "mismatches": 0,
+  "scope": "原FULL-B失败现场与audit原件/发布副本逐字节与双hash，不是新产品测试",
+  "candidate": "82a0016ef1d582abc963270b48149e10fca1220f",
+  "result": "first 3 exact passed; case04 failed; remaining16 not run; CPU fix not yet tested"
+}

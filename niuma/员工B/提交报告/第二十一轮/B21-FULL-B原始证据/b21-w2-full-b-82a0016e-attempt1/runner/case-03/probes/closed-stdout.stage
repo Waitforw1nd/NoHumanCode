@@ -1,0 +1,3 @@
+pid=67988 phase=started
+pid=67988 phase=request_eof
+pid=67988 phase=stdout_closed

@@ -1,0 +1,8 @@
+{
+  "error": "Exception: E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\tests\\support\\wasm_worker_process\\run-controlled.ps1:93\r\nLine |\r\n  93 |  … de -ne 0) { throw 'case failed; cleanup not independently confirmed'  …\r\n     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | case failed; cleanup not independently confirmed\r\n\r\n",
+  "started_utc": "2026-11-01T16:08:58.9439888Z",
+  "ended_utc": "2026-11-01T16:10:47.1134432Z",
+  "exit_code": 1,
+  "gate": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\nhc-w2-window.lock",
+  "state": "failed"
+}

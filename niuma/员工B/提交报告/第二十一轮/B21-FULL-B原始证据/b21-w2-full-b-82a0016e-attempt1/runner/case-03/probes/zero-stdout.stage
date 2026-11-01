@@ -1,0 +1,6 @@
+pid=78124 phase=started
+pid=78124 phase=request_eof
+pid=78124 phase=output_written
+pid=78124 phase=zero_write
+pid=78124 phase=zero_tail_written
+pid=78124 phase=done
