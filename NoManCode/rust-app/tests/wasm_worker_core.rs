@@ -314,3 +314,100 @@ fn unit_variants_reject_unknown_fields_at_framed_boundaries() {
         );
     }
 }
+
+fn catalog_manifest(id: &str, version: (u32, u32, u32)) -> String {
+    serde_json::json!({
+        "manifest_version": 1,
+        "id": id,
+        "display_name": "Wasm strategy",
+        "version": {"major": version.0, "minor": version.1, "patch": version.2},
+        "scope": "host", "runtime": "wasm", "lifecycle": "host_managed",
+        "surfaces": ["cli"], "permissions": [], "config_schema": {},
+        "provides": [{"kind":"service","name":"agent.strategy","version":{"major":1,"minor":0,"patch":0}}],
+        "requires": []
+    }).to_string()
+}
+
+#[test]
+fn catalog_id_and_exact_version_survive_framed_worker_protocol() {
+    let module = module_with_output(r#"{"action":"finish"}"#, "");
+    let ids = [
+        "a1.b-c_d".to_owned(),
+        "a".to_owned(),
+        "0".to_owned(),
+        format!("a{}", "z".repeat(63)),
+    ];
+    for id in ids {
+        let catalog =
+            peachsh::plugin_catalog::parse_manifest(&catalog_manifest(&id, (1, 2, 3))).unwrap();
+        let mut identity = manifest(&module);
+        identity.plugin_id = catalog.id.clone();
+        identity.plugin_version = catalog.version.to_string();
+        let request = Request {
+            manifest: identity.clone(),
+            input: before(),
+            module: module.clone(),
+        };
+        let mut frame = Vec::new();
+        p::write_request(&mut frame, &request).unwrap();
+        let actual = p::read_request(&mut &frame[..]).unwrap();
+        assert_eq!(actual.manifest.plugin_id, catalog.id);
+        assert_eq!(actual.manifest.plugin_version, catalog.version.to_string());
+        assert_eq!(actual.manifest, identity);
+    }
+}
+
+#[test]
+fn worker_identity_rules_match_catalog_and_canonical_versions() {
+    let module = module_with_output(r#"{"action":"finish"}"#, "");
+    for id in [
+        "A",
+        "aB",
+        ".first",
+        "_first",
+        "-first",
+        "slash/name",
+        "back\\name",
+        "",
+        &"a".repeat(65),
+    ] {
+        let catalog_valid =
+            peachsh::plugin_catalog::parse_manifest(&catalog_manifest(id, (0, 0, 0))).is_ok();
+        let mut identity = manifest(&module);
+        identity.plugin_id = id.to_owned();
+        assert!(!catalog_valid, "catalog unexpectedly accepted {id:?}");
+        assert_eq!(
+            identity.validate(),
+            Err(Error::Manifest),
+            "worker accepted {id:?}"
+        );
+    }
+    let mut identity = manifest(&module);
+    for version in ["0.0.0", "4294967295.4294967295.4294967295"] {
+        identity.plugin_version = version.into();
+        assert_eq!(identity.validate(), Ok(()), "rejected {version}");
+    }
+    for version in [
+        "4294967296.0.0",
+        "0.4294967296.0",
+        "0.0.4294967296",
+        "00.0.0",
+        "0.01.0",
+        "0.0.01",
+        "1.2",
+        "1.2.3.4",
+        "1..3",
+        ".1.2",
+        "1.2.",
+        "1.2.3-beta",
+        "+1.2.3",
+        "1.2.x",
+    ] {
+        identity.plugin_version = version.into();
+        assert_eq!(
+            identity.validate(),
+            Err(Error::Manifest),
+            "accepted {version}"
+        );
+    }
+}
