@@ -38,6 +38,80 @@ fn record_stage(phase: &'static str, pid: Option<u32>) {
 #[cfg(not(all(test, windows)))]
 fn record_stage(_phase: &'static str, _pid: Option<u32>) {}
 
+#[cfg(all(test, windows))]
+fn record_count(phase: &'static str, pid: u32, count: usize) {
+    use std::io::Write;
+    if let Some(path) = std::env::var_os("NHC_W2_STAGE_LOG")
+        && let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    {
+        let _ = writeln!(file, "phase={phase} pid=Some({pid}) count={count}");
+    }
+}
+#[cfg(not(all(test, windows)))]
+fn record_count(_phase: &'static str, _pid: u32, _count: usize) {}
+
+#[cfg(all(test, windows))]
+pub(crate) mod test_observer {
+    use std::os::windows::io::{FromRawHandle, OwnedHandle};
+    use std::sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    };
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+    };
+
+    static PROCESS: Mutex<Option<(u32, OwnedHandle)>> = Mutex::new(None);
+    static ARMED: AtomicBool = AtomicBool::new(false);
+    static PRESSURE: AtomicBool = AtomicBool::new(false);
+
+    pub(crate) fn arm(pressure: bool) {
+        assert!(PROCESS.lock().unwrap().is_none());
+        PRESSURE.store(pressure, Ordering::SeqCst);
+        assert!(!ARMED.swap(true, Ordering::SeqCst));
+    }
+
+    pub(super) fn take_pressure() -> bool {
+        PRESSURE.swap(false, Ordering::SeqCst)
+    }
+
+    pub(crate) fn capture(pid: u32) -> Result<(), super::WorkerError> {
+        if !ARMED.swap(false, Ordering::SeqCst) {
+            return Ok(());
+        }
+        let handle = unsafe {
+            OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                0,
+                pid,
+            )
+        };
+        if handle.is_null() {
+            return Err(super::WorkerError::IsolationUnavailable(
+                "test_observer_open",
+                std::io::Error::last_os_error().raw_os_error(),
+            ));
+        }
+        let owned = unsafe { OwnedHandle::from_raw_handle(handle) };
+        let mut slot = PROCESS.lock().unwrap_or_else(|e| e.into_inner());
+        if slot.is_some() {
+            return Err(super::WorkerError::IsolationUnavailable(
+                "test_observer_busy",
+                None,
+            ));
+        }
+        *slot = Some((pid, owned));
+        Ok(())
+    }
+
+    pub(crate) fn take() -> Option<(u32, OwnedHandle)> {
+        PROCESS.lock().unwrap().take()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkerError {
     Busy,
@@ -415,6 +489,32 @@ mod platform {
 
     const CHUNK: usize = 16 * 1024;
     const MAX_STDERR: usize = 64 * 1024;
+
+    #[cfg(test)]
+    fn pipe_pressure(pipe: &OwnedHandle) -> Result<(u32, u32), WorkerError> {
+        use windows_sys::Win32::System::Pipes::{GetNamedPipeInfo, PeekNamedPipe};
+        let mut capacity = 0;
+        let mut available = 0;
+        if unsafe { GetNamedPipeInfo(raw(pipe), null_mut(), null_mut(), &mut capacity, null_mut()) }
+            == 0
+        {
+            return Err(failure("test_pipe_info"));
+        }
+        if unsafe {
+            PeekNamedPipe(
+                raw(pipe),
+                null_mut(),
+                0,
+                null_mut(),
+                &mut available,
+                null_mut(),
+            )
+        } == 0
+        {
+            return Err(failure("test_pipe_peek"));
+        }
+        Ok((capacity, available))
+    }
 
     fn failure(stage: &'static str) -> WorkerError {
         WorkerError::IsolationUnavailable(stage, std::io::Error::last_os_error().raw_os_error())
@@ -846,9 +946,18 @@ mod platform {
         buffer: Vec<u8>,
         pending: bool,
         write: bool,
+        #[cfg(test)]
+        label: &'static str,
+        #[cfg(test)]
+        pid: u32,
     }
     impl Operation {
-        fn new(pipe: Arc<OwnedHandle>, write: bool) -> Result<Self, WorkerError> {
+        fn new(
+            pipe: Arc<OwnedHandle>,
+            write: bool,
+            _label: &'static str,
+            _pid: u32,
+        ) -> Result<Self, WorkerError> {
             let event = unsafe { own(CreateEventW(null(), 1, 0, null()), "io_event")? };
             let mut ov: Box<OVERLAPPED> = Box::new(unsafe { zeroed() });
             ov.hEvent = raw(&event);
@@ -859,6 +968,10 @@ mod platform {
                 buffer: vec![0; CHUNK],
                 pending: false,
                 write,
+                #[cfg(test)]
+                label: _label,
+                #[cfg(test)]
+                pid: _pid,
             })
         }
         fn issue(
@@ -949,6 +1062,8 @@ mod platform {
                     thread::sleep(Duration::from_millis(5));
                 }
             }
+            #[cfg(test)]
+            record_stage(self.label, Some(self.pid));
         }
     }
 
@@ -957,6 +1072,16 @@ mod platform {
         process: OwnedHandle,
         pid: u32,
         complete: bool,
+    }
+    #[cfg(test)]
+    struct RunScope(Option<u32>);
+    #[cfg(test)]
+    impl Drop for RunScope {
+        fn drop(&mut self) {
+            if let Some(pid) = self.0 {
+                record_stage("run_handles_released", Some(pid));
+            }
+        }
     }
     struct StopOnFailure<'a> {
         gate: &'a Gate,
@@ -971,19 +1096,27 @@ mod platform {
     }
     impl ProcessGuard {
         fn reaped(&self) -> bool {
-            if unsafe { WaitForSingleObject(raw(&self.process), 0) } != WAIT_OBJECT_0 {
+            let wait = unsafe { WaitForSingleObject(raw(&self.process), 0) };
+            if wait != WAIT_OBJECT_0 {
                 return false;
             }
             let mut info: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { zeroed() };
-            unsafe {
+            let queried = unsafe {
                 QueryInformationJobObject(
                     raw(&self.job),
                     JobObjectBasicAccountingInformation,
                     (&mut info as *mut JOBOBJECT_BASIC_ACCOUNTING_INFORMATION).cast(),
                     size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32,
                     null_mut(),
-                ) != 0
-                    && info.ActiveProcesses == 0
+                )
+            };
+            if queried != 0 && info.ActiveProcesses == 0 {
+                record_count("process_wait", self.pid, wait as usize);
+                record_count("job_query", self.pid, queried as usize);
+                record_count("job_active", self.pid, info.ActiveProcesses as usize);
+                true
+            } else {
+                false
             }
         }
         fn wait_reaped(&mut self) {
@@ -1015,9 +1148,14 @@ mod platform {
         deadline: Instant,
     ) -> Result<Vec<u8>, WorkerError> {
         let [stdin, stdout, stderr] = pipes;
-        let mut writer = Some(Operation::new(stdin, true)?);
-        let mut out = Operation::new(stdout, false)?;
-        let mut err = Operation::new(stderr, false)?;
+        let mut writer = Some(Operation::new(
+            stdin,
+            true,
+            "stdin_io_settled",
+            process.pid,
+        )?);
+        let mut out = Operation::new(stdout, false, "stdout_io_settled", process.pid)?;
+        let mut err = Operation::new(stderr, false, "stderr_io_settled", process.pid)?;
         let mut fail_stop = StopOnFailure {
             gate,
             success: false,
@@ -1028,6 +1166,16 @@ mod platform {
         let mut stdout_eof = false;
         let mut stderr_eof = false;
         let mut stdout_zero_observed = false;
+        #[cfg(test)]
+        let mut stderr_zero_observed = false;
+        #[cfg(test)]
+        let mut stdin_pending_observed = false;
+        #[cfg(test)]
+        let mut half_closed_observed = false;
+        #[cfg(test)]
+        let mut hold_reads = test_observer::take_pressure();
+        #[cfg(test)]
+        let pressure_start = Instant::now();
         loop {
             if gate.stopped(deadline) {
                 gate.stop();
@@ -1044,9 +1192,54 @@ mod platform {
                     }
                     offset += n as usize;
                 }
+                #[cfg(test)]
+                if write.pending && !stdin_pending_observed {
+                    record_stage("stdin_pending", Some(process.pid));
+                    record_count("stdin_pending_bytes", process.pid, offset);
+                    stdin_pending_observed = true;
+                }
                 if offset == input.len() && !write.pending {
                     stopper.remove_pipe(&write.pipe);
                     writer = None;
+                }
+            }
+            #[cfg(test)]
+            if hold_reads {
+                let (out_capacity, out_available) = pipe_pressure(&out.pipe)?;
+                let (err_capacity, err_available) = pipe_pressure(&err.pipe)?;
+                let pending = writer.as_ref().is_some_and(|write| write.pending);
+                if pending
+                    && out_capacity > 0
+                    && err_capacity > 0
+                    && out_available >= out_capacity
+                    && err_available >= err_capacity
+                {
+                    for (phase, value) in [
+                        ("pressure_stdout_capacity", out_capacity),
+                        ("pressure_stdout_available", out_available),
+                        ("pressure_stderr_capacity", err_capacity),
+                        ("pressure_stderr_available", err_available),
+                    ] {
+                        record_count(phase, process.pid, value as usize);
+                    }
+                    record_stage("dual_pressure_release", Some(process.pid));
+                    hold_reads = false;
+                } else if pressure_start.elapsed() >= Duration::from_secs(3) {
+                    for (phase, value) in [
+                        ("pressure_stdout_capacity", out_capacity),
+                        ("pressure_stdout_available", out_available),
+                        ("pressure_stderr_capacity", err_capacity),
+                        ("pressure_stderr_available", err_available),
+                    ] {
+                        record_count(phase, process.pid, value as usize);
+                    }
+                    return Err(WorkerError::IsolationUnavailable(
+                        "test_pressure_timeout",
+                        None,
+                    ));
+                } else {
+                    thread::sleep(Duration::from_millis(2));
+                    continue;
                 }
             }
             for (op, eof, target) in [
@@ -1062,6 +1255,11 @@ mod platform {
                             if code == ERROR_BROKEN_PIPE as i32 =>
                         {
                             *eof = true;
+                            if target {
+                                record_stage("stdout_eof", Some(process.pid));
+                            } else {
+                                record_stage("stderr_eof", Some(process.pid));
+                            }
                             continue;
                         }
                         other => other?,
@@ -1072,17 +1270,29 @@ mod platform {
                         if target && !stdout_zero_observed {
                             record_stage("stdout_zero_read", Some(process.pid));
                             stdout_zero_observed = true;
+                        } else {
+                            #[cfg(test)]
+                            if !target && !stderr_zero_observed {
+                                record_stage("stderr_zero_read", Some(process.pid));
+                                stderr_zero_observed = true;
+                            }
                         }
                     }
                     Ok(Some(n)) => {
                         if target {
                             response.extend_from_slice(&op.buffer[..n as usize]);
+                            record_stage("stdout_data", Some(process.pid));
+                            record_count("stdout_bytes", process.pid, response.len());
                             if response.len() > protocol::MAX_RESPONSE + 4 {
+                                record_stage("stdout_limit", Some(process.pid));
                                 return Err(WorkerError::Protocol);
                             }
                         } else {
                             stderr_count += n as usize;
+                            record_stage("stderr_data", Some(process.pid));
+                            record_count("stderr_bytes", process.pid, stderr_count);
                             if stderr_count > MAX_STDERR {
+                                record_stage("stderr_limit", Some(process.pid));
                                 return Err(WorkerError::IsolationUnavailable(
                                     "stderr_limit",
                                     None,
@@ -1094,10 +1304,24 @@ mod platform {
                     Err(WorkerError::IsolationUnavailable(_, Some(code)))
                         if code == ERROR_BROKEN_PIPE as i32 =>
                     {
-                        *eof = true
+                        *eof = true;
+                        if target {
+                            record_stage("stdout_eof", Some(process.pid));
+                        } else {
+                            record_stage("stderr_eof", Some(process.pid));
+                        }
                     }
                     Err(error) => return Err(error),
                 }
+            }
+            #[cfg(test)]
+            if !half_closed_observed
+                && stdout_eof
+                && !stderr_eof
+                && unsafe { WaitForSingleObject(raw(&process.process), 0) } == WAIT_TIMEOUT
+            {
+                record_stage("stdout_eof_process_alive_stderr_open", Some(process.pid));
+                half_closed_observed = true;
             }
             if writer.is_none() && stdout_eof && stderr_eof && process.reaped() {
                 process.complete = true;
@@ -1115,6 +1339,8 @@ mod platform {
         deadline: Instant,
         gate: &Arc<Gate>,
     ) -> Result<WorkerSuccess, WorkerError> {
+        #[cfg(test)]
+        let mut run_scope = RunScope(None);
         record_stage("supervision_started", None);
         let stopper = Stopper::start(gate.clone(), deadline)?;
         ensure_open(gate, deadline)?;
@@ -1263,8 +1489,14 @@ mod platform {
             pid: information.dwProcessId,
             complete: false,
         };
-        record_stage("created_suspended", Some(information.dwProcessId));
+        #[cfg(test)]
+        {
+            run_scope.0 = Some(information.dwProcessId);
+        }
         let thread_handle = unsafe { own(information.hThread, "worker_thread_handle")? };
+        record_stage("created_suspended", Some(information.dwProcessId));
+        #[cfg(test)]
+        test_observer::capture(information.dwProcessId)?;
         drop(child_stdin);
         drop(child_stdout);
         drop(child_stderr);
