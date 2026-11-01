@@ -37,7 +37,7 @@ pub enum ToolClass {
 #[serde(tag = "phase", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Phase {
     Before { tools: Vec<ToolClass> },
-    AfterNoTools,
+    AfterNoTools {},
     AfterTools { tools: Vec<ToolClass> },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,8 +58,8 @@ pub enum Vote {
 pub enum Decision {
     UseTools { indices: Vec<usize> },
     ToolVotes { votes: Vec<Vote> },
-    Finish,
-    Stop,
+    Finish {},
+    Stop {},
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -124,7 +124,7 @@ impl Input {
     pub fn validate(&self) -> Result<(), Error> {
         let count = match &self.decision {
             Phase::Before { tools } | Phase::AfterTools { tools } => tools.len(),
-            Phase::AfterNoTools => 0,
+            Phase::AfterNoTools {} => 0,
         };
         if self.max_rounds == 0
             || self.max_rounds > 10_000
@@ -138,11 +138,11 @@ impl Input {
     }
     pub fn validate_decision(&self, decision: &Decision) -> Result<(), Error> {
         let valid = match (&self.decision, decision) {
-            (_, Decision::Stop) => true,
+            (_, Decision::Stop {}) => true,
             (Phase::Before { tools }, Decision::UseTools { indices }) => {
                 indices.iter().all(|i| *i < tools.len()) && indices.windows(2).all(|w| w[0] < w[1])
             }
-            (Phase::AfterNoTools, Decision::Finish) => true,
+            (Phase::AfterNoTools {}, Decision::Finish {}) => true,
             (Phase::AfterTools { tools }, Decision::ToolVotes { votes }) => {
                 votes.len() == tools.len()
             }

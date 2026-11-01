@@ -72,11 +72,11 @@ fn real_wasm_single_start_and_valid_phases() {
     let input = Input {
         round: 1,
         max_rounds: 3,
-        decision: Phase::AfterNoTools,
+        decision: Phase::AfterNoTools {},
     };
     assert_eq!(
         execute(&manifest(&c), &input, &c).unwrap(),
-        Decision::Finish
+        Decision::Finish {}
     );
 }
 fn check_wat(wat: &str) -> Result<Decision, Error> {
@@ -165,7 +165,7 @@ fn framing_rejects_lengths_truncation_tail_and_identity() {
         Err(Error::Identity)
     );
     let mut out_of_phase = req.input.clone();
-    out_of_phase.decision = Phase::AfterNoTools;
+    out_of_phase.decision = Phase::AfterNoTools {};
     assert_eq!(
         p::read_response(&mut &result[..], &req.manifest, &out_of_phase),
         Err(Error::Decision)
@@ -243,4 +243,74 @@ fn protocol_rejects_wrong_version_invalid_utf8_and_response_tail() {
     p::write_response(&mut invalid_utf8, &response).unwrap();
     invalid_utf8.push(0);
     assert!(p::read_response(&mut &invalid_utf8[..], &identity, &before()).is_err());
+}
+
+fn test_frame(output: &mut Vec<u8>, payload: &[u8]) {
+    output.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+    output.extend_from_slice(payload);
+}
+
+#[test]
+fn unit_variants_reject_unknown_fields_at_framed_boundaries() {
+    let module = module_with_output(r#"{"action":"finish"}"#, "");
+    let identity = manifest(&module);
+    let mut request = Vec::new();
+    test_frame(&mut request, &serde_json::to_vec(&identity).unwrap());
+    test_frame(
+        &mut request,
+        br#"{"round":0,"max_rounds":1,"decision":{"phase":"after_no_tools","extra":"forbidden"}}"#,
+    );
+    test_frame(&mut request, &module);
+    assert_eq!(
+        p::read_request(&mut &request[..]).err(),
+        Some(Error::Protocol)
+    );
+
+    let input = Input {
+        round: 0,
+        max_rounds: 1,
+        decision: Phase::AfterNoTools {},
+    };
+    let mut valid_request = Vec::new();
+    p::write_request(
+        &mut valid_request,
+        &Request {
+            manifest: identity.clone(),
+            input: input.clone(),
+            module,
+        },
+    )
+    .unwrap();
+    assert!(p::read_request(&mut &valid_request[..]).is_ok());
+    for action in ["finish", "stop"] {
+        let mut response = Vec::new();
+        let body = serde_json::json!({
+            "manifest": identity,
+            "outcome": {"status": "ok", "decision": {"action": action, "extra": "forbidden"}}
+        });
+        test_frame(&mut response, &serde_json::to_vec(&body).unwrap());
+        assert_eq!(
+            p::read_response(&mut &response[..], &identity, &input),
+            Err(Error::Protocol)
+        );
+    }
+    for decision in [Decision::Finish {}, Decision::Stop {}] {
+        let mut response = Vec::new();
+        p::write_response(
+            &mut response,
+            &Response {
+                manifest: identity.clone(),
+                outcome: Outcome::Ok {
+                    decision: decision.clone(),
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            p::read_response(&mut &response[..], &identity, &input)
+                .unwrap()
+                .outcome,
+            Outcome::Ok { decision }
+        );
+    }
 }
