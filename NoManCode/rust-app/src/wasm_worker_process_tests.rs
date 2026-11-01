@@ -756,8 +756,84 @@ mod fault_matrix {
         println!("resource {mode} pages={pages} pid={pid} result={result:?}");
         control().await;
     }
+    fn p01_boundary_check(records: &[serde_json::Value], pid: u32) -> Result<(), String> {
+        for v in records {
+            let kind = v["kind"].as_str().ok_or("missing record kind")?;
+            if matches!(kind, "open_failed" | "list_failed") {
+                return Err(format!("observation failed: {v}"));
+            }
+            if kind == "configuration"
+                && (v["host_in_any_job_query_ok"] != true || v["active_limit"] != 1)
+            {
+                return Err(format!("job configuration unknown: {v}"));
+            }
+            if kind == "list_before_open" {
+                if v["complete"] != true {
+                    return Err(format!("incomplete job list: {v}"));
+                }
+                let ids = v["ids"].as_array().ok_or("missing first job list")?;
+                if ids.iter().any(|id| id.as_u64() != Some(pid as u64)) {
+                    return Err(format!("extra list object: {v}"));
+                }
+            }
+            if matches!(kind, "job_list" | "notification" | "host_suspended") {
+                if v["pid"].as_u64() != Some(pid as u64) {
+                    return Err(format!("extra observed object: {v}"));
+                }
+                if v["list_complete"] != true || v["accounting_ok"] != true {
+                    return Err(format!("job query incomplete: {v}"));
+                }
+                let ids = v["list_ids"].as_array().ok_or("missing second job list")?;
+                if ids.iter().any(|id| id.as_u64() != Some(pid as u64)) {
+                    return Err(format!("extra list object: {v}"));
+                }
+                if v["active"].as_u64().ok_or("missing active count")? > 1
+                    || v["total"].as_u64().ok_or("missing total count")? > 1
+                {
+                    return Err(format!("job count exceeds one: {v}"));
+                }
+                if v["retained_handle"] != true
+                    || v["handle_pid"].as_u64() != Some(pid as u64)
+                    || v["member_ok"] != true
+                    || v["member"] != 1
+                    || v["any_job_ok"] != true
+                    || v["any_job"] != 1
+                    || v["times_ok"] != true
+                    || !v["creation_filetime"].as_u64().is_some_and(|t| t != 0)
+                {
+                    return Err(format!("process identity or membership unknown: {v}"));
+                }
+                for field in ["process_before", "process_after"] {
+                    if v[field]["member_ok"] != true
+                        || v[field]["member"] != 1
+                        || !matches!(v[field]["wait"].as_u64(), Some(0 | 258))
+                    {
+                        return Err(format!("process status unknown: {v}"));
+                    }
+                }
+            }
+            for field in ["target_before", "target_after"] {
+                if !v[field].is_null()
+                    && (v[field]["member_ok"] != true
+                        || v[field]["member"] != 1
+                        || !matches!(v[field]["wait"].as_u64(), Some(0 | 258)))
+                {
+                    return Err(format!("target status unknown: {v}"));
+                }
+            }
+        }
+        Ok(())
+    }
+
     #[tokio::test]
     async fn w06_p01_live_job_observation() {
+        // attempt8 seq 14/17 observed this extra object and accounting state.
+        let extra = serde_json::json!({"kind":"notification","pid":9276});
+        let active_two = serde_json::json!({"kind":"notification","pid":64492,
+            "list_complete":true,"accounting_ok":true,"list_ids":[64492],
+            "active":2,"total":2});
+        assert!(p01_boundary_check(&[extra], 64492).is_err());
+        assert!(p01_boundary_check(&[active_two], 64492).is_err());
         let log = PathBuf::from(std::env::var_os("NHC_W2_STAGE_LOG").expect("stage log"));
         let (service, probe_log) = fault_service("p01-memory");
         let release = probe_log.with_extension("release");
@@ -870,7 +946,34 @@ mod fault_matrix {
         assert!(!text.contains("phase=p01_collector_failed"));
         assert!(!text.contains("phase=p01_dequeue_failed"));
         assert!(!text.contains("phase=p01_bad_completion_key"));
-        println!("P01 pid={pid} result={result:?}; extra observations require object-level review");
+        use windows_sys::Win32::System::Threading::{
+            CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, DETACHED_PROCESS,
+            EXTENDED_STARTUPINFO_PRESENT,
+        };
+        let flags = CREATE_SUSPENDED
+            | DETACHED_PROCESS
+            | CREATE_UNICODE_ENVIRONMENT
+            | EXTENDED_STARTUPINFO_PRESENT;
+        assert!(
+            text.lines()
+                .any(|line| line == format!("phase=create_flags pid=Some(0) count={flags}"))
+        );
+        let records = text
+            .lines()
+            .filter_map(|line| line.strip_prefix("p01="))
+            .map(serde_json::from_str::<serde_json::Value>)
+            .collect::<Result<Vec<_>, _>>()
+            .expect("valid P01 records");
+        assert!(
+            records
+                .iter()
+                .enumerate()
+                .all(|(i, record)| record["sequence"].as_u64() == Some(i as u64)),
+            "P01 records missing or out of order"
+        );
+        p01_boundary_check(&records, pid)
+            .expect("P01 job observation violates boundary or is unknown");
+        println!("P01 pid={pid} result={result:?}; observed records meet this case's boundary");
     }
 
     #[tokio::test]

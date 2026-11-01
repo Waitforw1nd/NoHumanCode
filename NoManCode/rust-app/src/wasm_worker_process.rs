@@ -732,8 +732,8 @@ mod platform {
                 PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE,
             },
             Threading::{
-                CREATE_NO_WINDOW, CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateEventW,
-                CreateProcessW, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT,
+                CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateEventW, CreateProcessW,
+                DETACHED_PROCESS, DeleteProcThreadAttributeList, EXTENDED_STARTUPINFO_PRESENT,
                 GetCurrentProcess, GetCurrentProcessId, GetExitCodeProcess,
                 InitializeProcThreadAttributeList, OpenProcessToken,
                 PROC_THREAD_ATTRIBUTE_HANDLE_LIST, PROC_THREAD_ATTRIBUTE_JOB_LIST,
@@ -2407,6 +2407,11 @@ mod platform {
             record_stage("create_ticket_granted", None);
             test_hooks::checkpoint("create_after_ticket", None);
         }
+        let creation_flags = CREATE_SUSPENDED
+            | DETACHED_PROCESS
+            | CREATE_UNICODE_ENVIRONMENT
+            | EXTENDED_STARTUPINFO_PRESENT;
+        record_count("create_flags", 0, creation_flags as usize);
         let created = unsafe {
             CreateProcessW(
                 app.as_ptr(),
@@ -2414,10 +2419,7 @@ mod platform {
                 null(),
                 null(),
                 1,
-                CREATE_SUSPENDED
-                    | CREATE_NO_WINDOW
-                    | CREATE_UNICODE_ENVIRONMENT
-                    | EXTENDED_STARTUPINFO_PRESENT,
+                creation_flags,
                 environment.as_mut_ptr().cast(),
                 dir.as_ptr(),
                 &startup.StartupInfo,
@@ -2567,7 +2569,7 @@ mod platform {
         use super::*;
         use std::sync::atomic::{AtomicBool, Ordering};
         use windows_sys::Win32::System::Threading::{
-            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+            CREATE_NO_WINDOW, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
         };
 
         struct UnwindCleanup(Arc<OwnedHandle>);
