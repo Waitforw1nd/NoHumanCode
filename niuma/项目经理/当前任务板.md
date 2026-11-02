@@ -1,3 +1,9 @@
+## 2026-11-02 NT诊断终态已核，原矩阵定点回收仅预检
+
+经理核NT13查询快照/7release原件：唯一Job/Process同对象观察成立，Jobactive0及helper退出；诊断49760 signal/exit0、exec1729=0，9本地close成功。原矩阵仍15pass/16unknown/4未跑、26580与两gate保留。回收包477cbfd9全文静审，仅签原B一次编译和PREFLIGHT_READY，四进程精确身份、原父process handle比较及Job/helper实证先审，未授权阶段请求/终止。C继续原域夹具/全入口，Git已完成但注册unknown的票结算返工已收到待复核；真实Host/--check创建前containment新缺口已退回补齐测试辅助。无C编译/进程窗口。
+
+B/C同ID实际Terra/high已核；主线产品4935f1aa/Rustbfea7303/schema17不变，继承41行保持未暂存，完整U/W3及V1/V2/V3未完成。下一步第一操作核回收实际预检并按原对象逐层收束，随后才固定最小夹具返工候选。
+
 ## 2026-11-02 PSS诊断释放核收，NT句柄限定查询签窗
 
 PSS v2原诊断92080 signal/exit0，6源复核与25本地close成功；exec16881因历史空stdout异常exit1，14查询快照及10release原件经理双hash核收。未识别原Job，原矩阵仍15pass/16unknown/4未跑，26580与两gate保留。原B仅执行新固定NT诊断包f9b4994b的一次编译/查询，副本release仍待实际结果审定，不重跑产品矩阵。C审批/配置与原域恢复夹具继续静态，双Store与入口覆盖尚待收口；完整U/W3和后续V2/V3未完成。
