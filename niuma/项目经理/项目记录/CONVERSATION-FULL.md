@@ -1,3 +1,7 @@
+## 2026-11-02 B23构建核收，20 exact唯一窗口
+
+B98ce BUILD attempt1 probe0/lib-no-run0/supervisor0/exec36098=0；经理核196×6源、工具、35原件及唯一Cargo lib工件，receipt974a1dec。仅签固定包7f520941和固定构建工件的20 exact串行矩阵，尚未运行或通过。C继续未完成fixture确定性与监督器静态返工；全U/schema18、W3、V1/V2/V3仍未完成，主线产品未变。
+
 ## 2026-11-02 98ce第三轮预检核收及构建推进
 
 B原Jason在Terra/high同ID接续后完成attempt3：check0/Clippy0/supervisor0/exec88259=0，196源文件六份一致；33原件1534511字节发布双hash经经理核一致。固定98ce三对象不变、clean/index空，gate成功释放。只证明预检，20进程矩阵尚未执行。经理静审并保全BUILD准备包，manifest5aac39f3，仅签一次probe build→lib no-run，成功回执审定后再签矩阵；C原Curie继续静态，D与旧W2树冻结。

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "probe.exe",
+    "source": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\target\\debug\\examples\\process_lifetime_probe.exe",
+    "copy": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\fixed\\probe.exe",
+    "bytes": 335872,
+    "sha256": "bcc63ab6b6dfc982033c2e052d9b88d900fb6fb07c982435206290c9897b67c3"
+  },
+  {
+    "name": "lib-test.exe",
+    "source": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\target\\debug\\deps\\peachsh-772c8a6873d0d381.exe",
+    "copy": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\fixed\\lib-test.exe",
+    "bytes": 40629760,
+    "sha256": "95a58781a58981fda0fbc4e4bd9517548642800312c7c02ec448fbeccd0d2991"
+  }
+]
