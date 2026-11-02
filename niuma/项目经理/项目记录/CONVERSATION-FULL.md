@@ -1,3 +1,7 @@
+## 2026-11-02 Git diff与恢复寿命分类（摘要记录）
+
+经理核C公开commit_turn修订和五模式测试后，继续跨host_services/git_diff审计，定位普通InvalidPath误永久封域、Git diff仍直接child收集及无界最后wait、同步restore已返回失败却不结算票。已授权C最小git_diff与测试接线，同一组件与整项/代次能力，保留业务未知/不重发与真实在途负控；不停用合法功能。B新测试probe原child对象复制方向保留，补显式隐藏和harness创建身份核验。均未动态。进度读取迟未返回的只读cell已停止，原B/C wait超时不等于终止，未重启员工。
+
 ## 2026-11-02 公开回合创建旁路（摘要记录）
 
 经理继续检查Store未替换的tx.commit，实读公开commit_turn、commit_turn_in_tx及Repository::commit_turn：可创建turn/tasks但无admission/epoch/phase校验，bundle入口的fence不覆盖。已保存静态反例原函数/hash并指派C修本入口和直接正负控；不删API、不将测试改走bundle来掩盖。尚未动态复现或固定候选，B/C持续原工作，无新重型窗口，完整目标保持。

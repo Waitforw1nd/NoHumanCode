@@ -1,3 +1,7 @@
+## 2026-11-02 跨模块错误分类继续收口
+
+C commit_turn已静态补IMMEDIATE/admission/提交fence并加入直接五模式源码测试，仍未验证。经理继续找到Git diff独立collector和InvalidPath误封域、同步恢复错误已返回仍永久留票，已派C在原U补git_diff调用者及错误分类，所有实际进程共用B组件。业务unknown不等于本地工作必然仍活，真正未确认仍必须封门持有。B已新增probe和过程测试草稿，固定审查/动态仍未到达。原agent持续，观察工具超时不作员工终态，继承41行与后续范围保持。
+
 ## 2026-11-02 公开commit_turn缺口已定位
 
 经理逐入口审查确认Store::commit_turn直接创建turn/legacy task而无执行权fence；PinnedConnection和Repository SAVEPOINT不补该保护。原函数与整文件hash已保全，已交C修公开入口及关闭controller/旧epoch/wrongphase/commit确认不明的直接测试，未动态复现。完整入口映射仍是U必需项，不因组件或相邻bundle通过而关闭。B/C继续原树，重型未开，主线W2/schema17与继承41行保持。
