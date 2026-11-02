@@ -1,3 +1,7 @@
+## 2026-11-02 公开回合创建旁路（摘要记录）
+
+经理继续检查Store未替换的tx.commit，实读公开commit_turn、commit_turn_in_tx及Repository::commit_turn：可创建turn/tasks但无admission/epoch/phase校验，bundle入口的fence不覆盖。已保存静态反例原函数/hash并指派C修本入口和直接正负控；不删API、不将测试改走bundle来掩盖。尚未动态复现或固定候选，B/C持续原工作，无新重型窗口，完整目标保持。
+
 ## 2026-11-02 共享接口与旧库边界（摘要记录）
 
 经理根据C实际动态并发设置批准B同对象resize并要求与submit一致裁决；B已静态落实并修reader Err已join可cleanup-only释放，业务unknown不改。C形成Git整项唯一票/顺序代次与Shell原票一次移交短文，经理核方向并明确seal同锁、settle锁外。四强杀ready完整phase已补，均未运行。

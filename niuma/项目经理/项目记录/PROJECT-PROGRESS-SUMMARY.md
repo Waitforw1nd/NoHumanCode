@@ -1,3 +1,7 @@
+## 2026-11-02 公开commit_turn缺口已定位
+
+经理逐入口审查确认Store::commit_turn直接创建turn/legacy task而无执行权fence；PinnedConnection和Repository SAVEPOINT不补该保护。原函数与整文件hash已保全，已交C修公开入口及关闭controller/旧epoch/wrongphase/commit确认不明的直接测试，未动态复现。完整入口映射仍是U必需项，不因组件或相邻bundle通过而关闭。B/C继续原树，重型未开，主线W2/schema17与继承41行保持。
+
 ## 2026-11-02 共享容量与Git持票方案收口
 
 B/C最终接口方向已冻结：同一Supervisor resize和占槽同锁；seal先封准入再发布；settle裁决后锁外消费，槽覆盖真实结束；reader错误但实际join/树空可释放资源，业务unknown保持。经理实读新增源码，未验证运行。C Git整项唯一原票和顺序代次adapter、Shell移交原票/ToolLease方向核收；四强杀精确phase静态补齐。
