@@ -48,5 +48,61 @@
     }
   ],
   "scope": "same roles, original tasks and trees; only one current writer per role; heavy window not authorized",
-  "public_doc_limits": "official docs describe orchestration and inheritance; actual local turn configuration and exit verified by runtime metadata, not public documentation"
+  "public_doc_limits": "official docs describe orchestration and inheritance; actual local turn configuration and exit verified by runtime metadata, not public documentation",
+  "implementation_followup": {
+    "captured_utc": "2026-11-02T03:11:52.072840+00:00",
+    "C_readonly_checkin": "completed; a799, index empty, 29 tracked + tests/execution_authority.rs; no writes/tests in check-in",
+    "write_authority": "same original static scopes explicitly restored after actual Terra verification",
+    "B_actual_implementation_turn": {
+      "id": "01a19a33-48a0-7210-b9be-7b24f49fd2a8",
+      "utc": "2026-11-02T03:00:14.690Z",
+      "model": "gpt-6.1-terra",
+      "effort": "high"
+    },
+    "C_actual_implementation_turn": {
+      "id": "01a19a33-e579-7cf2-9b9a-da86cecacf57",
+      "utc": "2026-11-02T03:00:54.822Z",
+      "model": "gpt-6.1-terra",
+      "effort": "high"
+    },
+    "files": [
+      {
+        "source": "../nhc-b-process-lifetime/NoManCode/rust-app/src/process_lifetime.rs",
+        "bytes": 64395,
+        "sha256": "359b1d6eb1f035bfc13c800c3e61b3cc5d26c6be2dc48d0d2f16330fd483c94e",
+        "same_on_reread": true
+      },
+      {
+        "source": "../nhc-b-process-lifetime/NoManCode/rust-app/src/process_lifetime_tests.rs",
+        "bytes": 35120,
+        "sha256": "2c3a9edfd11dcd92530607b96846f95510a7acf5727a16b8e5461f8bac899e76",
+        "same_on_reread": true
+      },
+      {
+        "source": "../nhc-b-process-lifetime/NoManCode/rust-app/tests/support/process_lifetime/run-fixed.ps1",
+        "bytes": 11010,
+        "sha256": "a1ec4b5fcd354a87922a9d1f94f1a7ad9eef97e05194eb7b0c1eb7b0dd96e1ba",
+        "same_on_reread": true
+      },
+      {
+        "source": "../nhc-c-domain-authority/NoManCode/rust-app/src/store.rs",
+        "bytes": 241032,
+        "sha256": "c66b6d58674308913555af3b011dfc7cf66bec9661046630308f20d208383697",
+        "same_on_reread": true
+      },
+      {
+        "source": "../nhc-c-domain-authority/NoManCode/rust-app/src/host_services.rs",
+        "bytes": 40489,
+        "sha256": "9a51a657bfee00b62d7371ff4ab90469fea0f46912d1c9ec2d49f051aa5b2fc7",
+        "same_on_reread": true
+      },
+      {
+        "source": "../nhc-c-domain-authority/NoManCode/rust-app/src/engine.rs",
+        "bytes": 270690,
+        "sha256": "71ae24d7ed8783804d9ff1062db5fa38f966aa50d264635922149bb144be1cc3",
+        "same_on_reread": true
+      }
+    ],
+    "candidate_status": "in-flight; not atomic/full/fixed; no compilation or tests"
+  }
 }

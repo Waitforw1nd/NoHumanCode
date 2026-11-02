@@ -1,3 +1,7 @@
+## 2026-11-02 新实施轮与静态修订核收（摘要记录）
+
+经理收齐Jason/Curie只读回执并交还原任务唯一静态写权，核03:00新轮实际Terra/high，看到两树开始实际修订。B exit-code分类与新增用例、C恢复mark_unknown后结算和path级故障/幂等副产物断言已见，未测试。新runner临时编译E盘约束与actual source hash清单、恢复第二owner正负控/旧迁移测试保真要求已反馈。继续完整核心及三版目标，不把草稿或组件当完成。
+
 ## 2026-11-02 配置失配及确认终态后同角色接续（摘要记录）
 
 经理使用OpenAI Docs技能核协调说明，再只读宿主runtime元数据，发现02:37复用实际Astra/xhigh，与指定Terra不符；不以旧02:33日志代替新轮证明。关闭原B/C后收到双shutdown且loop退出02:56:39，才显式创建同角色接续Jason/Curie，两实际contextTerra/high已核。B只读回原HEAD/index和五路径，C回执待收；原范围静态实现继续，未替换源码/启动重复写者/运行重型测试。
