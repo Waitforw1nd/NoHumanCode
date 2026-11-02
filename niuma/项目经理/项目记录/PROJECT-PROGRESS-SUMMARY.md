@@ -1,3 +1,7 @@
+## 2026-11-02 进程组件接口审查继续
+
+更新人：项目经理。B23实际Terra/high已核，初步接口继续静态；首审要求普通取消/Drop先请求停止并持票监督，已证实收束可正常结算，只有真正Unknown才封新准入且保持不可撤销。settle须有一次性消费与完成/取消竞争裁决，不能仅靠&self注释。C暂不按未定trait接线，继续真实Host/epoch等独立实现；下一第一操作核修订接口及源码。主线W2/schema17不变、41继承行保留，未签新动态，U/W3和三版目标继续。
+
 ## 2026-11-02 共用进程组件接口约束
 
 更新人：项目经理。B已提出有界Supervisor+Spec+NotStarted/Settled/Unknown方向，静态确认本地windows-sys API可用，尚未编译/动态。经理要求不透明仿射lease由C接真实域票，Unknown须先关闭本域新准入再通知且继续持有原对象/票；迟到收束不重开同controller或重发业务。Supervisor由同controller/域共享给Shell/Git，容量沿现有并发配置，不每call重置。B新独立组件/C原树接线与真实Host/epoch测试分工保持；下一第一操作核具体trait/返回凭据与拥有关系。主线W2/schema17、41继承行及三版完整目标不变，仍无新重型窗口。
