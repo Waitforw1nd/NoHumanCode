@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-11-02T03:49:47.941006+00:00",
+  "heads": [
+    "e8d6a2bdd6adc932155fc9aba612dcff8f8be6a8",
+    "93abce5f31628d8464d836b1c56483b323a8509c",
+    "5097c8c7ed84cef0aa1a1b6596d03812b5ca4573"
+  ],
+  "files": [
+    {
+      "path": "GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "path": "launch.ps1",
+      "bytes": 9954,
+      "sha256": "ce9ed41ac5c92726fc20fb78acc07a5e53b758045a34b6b631b843c235924edc"
+    },
+    {
+      "path": "supervisor.ps1",
+      "bytes": 12486,
+      "sha256": "39ab442be72ecbf87c58f10116c981523da64d4886c6aaa28c14c5809ba9d1dd"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 723,
+      "sha256": "6bf7b8c7b5b8210819dcecd55e2ed371e8705013572eb4537038a755136cf6fc"
+    }
+  ],
+  "delta": "Three candidate IDs only compared with reviewed previous package; semantics and bounds identical",
+  "attempt": "b23-precheck-e8d6a2bd-attempt2",
+  "source_raw_unchanged": true
+}
