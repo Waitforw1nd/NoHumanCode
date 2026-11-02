@@ -1,0 +1,52 @@
+{
+  "captured_utc": "2026-11-02T03:00:13.212808+00:00",
+  "cause": "resumed runtime turn selected gpt-6-astra/xhigh, inconsistent with requested Terra; not inferred from observation timeout",
+  "old_agents": [
+    {
+      "role": "B",
+      "id": "01a19957-1fd8-7fd1-acda-8a7f0b683100",
+      "mismatched_turn": "01a19a1d-b4e6-7251-a8ce-ae2643a1db3b",
+      "runtime_log_utc": "2026-11-02T02:36:55Z"
+    },
+    {
+      "role": "C",
+      "id": "01a19956-8d40-7700-970e-836a91f60edb",
+      "mismatched_turn": "01a19a1e-4b82-7020-98c1-ffe6bd5f66bf",
+      "runtime_log_utc": "2026-11-02T02:37:34Z"
+    }
+  ],
+  "confirmed_stop": {
+    "close_previous": "running",
+    "wait_after_close": "not_found",
+    "both_received_subagent_notification": "shutdown",
+    "both_actual_agent_loop_exited_utc": "2026-11-02T02:56:39Z"
+  },
+  "new_continuations": [
+    {
+      "role": "B",
+      "id": "01a19a31-0789-70c0-8b7f-d363a6f247d9",
+      "nickname": "Jason",
+      "tree": "../nhc-b-process-lifetime",
+      "HEAD": "3dc44827ec9b501bd85913e43c28627eb2aaa0ae",
+      "actual_turn": "01a19a31-0891-7d22-a725-63d689b8aae8",
+      "actual_turn_utc": "2026-11-02T02:57:50.136Z",
+      "actual_model": "gpt-6.1-terra",
+      "actual_effort": "high",
+      "readonly_checkin": "completed; five original in-flight paths, index empty, no writes/tests"
+    },
+    {
+      "role": "C",
+      "id": "01a19a31-08b3-7463-bc73-7ef7ffa5e14a",
+      "nickname": "Curie",
+      "tree": "../nhc-c-domain-authority",
+      "HEAD": "a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac",
+      "actual_turn": "01a19a31-0a2f-7a33-b609-bbb3527d79a5",
+      "actual_turn_utc": "2026-11-02T02:57:48.756Z",
+      "actual_model": "gpt-6.1-terra",
+      "actual_effort": "high",
+      "readonly_checkin": "awaiting reply when record created"
+    }
+  ],
+  "scope": "same roles, original tasks and trees; only one current writer per role; heavy window not authorized",
+  "public_doc_limits": "official docs describe orchestration and inheritance; actual local turn configuration and exit verified by runtime metadata, not public documentation"
+}

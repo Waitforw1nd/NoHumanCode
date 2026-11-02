@@ -1,3 +1,7 @@
+## 2026-11-02 配置失配及确认终态后同角色接续（摘要记录）
+
+经理使用OpenAI Docs技能核协调说明，再只读宿主runtime元数据，发现02:37复用实际Astra/xhigh，与指定Terra不符；不以旧02:33日志代替新轮证明。关闭原B/C后收到双shutdown且loop退出02:56:39，才显式创建同角色接续Jason/Curie，两实际contextTerra/high已核。B只读回原HEAD/index和五路径，C回执待收；原范围静态实现继续，未替换源码/启动重复写者/运行重型测试。
+
 ## 2026-11-02 原B/C关闭后复用（摘要记录）
 
 经理分别关闭原B/C，工具返回previous running，随后wait not_found；再resume同一ID返回interrupted，并发完整原树接续指令，未spawn新员工。实际日志核02:33轮次Terra/high，02:37接续后的新轮和工作回执仍待验证。静审补B真实参数/环境回执要求，C原返工继续；主线源码与所有index清洁、员工草稿和经理继承41行保留，未开动态、未冒称候选通过。

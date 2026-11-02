@@ -1,3 +1,7 @@
+## 2026-11-02 运行配置查实后接续原树
+
+原B/C 02:37复用新轮实际Astra/xhigh已由runtime日志核实，02:56:39停止终态由shutdown通知与loop退出双证确认。新B Jason、新C Curie显式Terra/high且02:57实际context已核，原树3dc44827/a799及全部草稿保留。B只读接手回执已到，C待收，恢复原静态工作且无重型窗口。主线W2/schema17与完整核心/三版后续不变；41行完整。
+
 ## 2026-11-02 原员工复用与静审交付
 
 原B/C经close previous running及wait not_found后resume同一ID，返回interrupted并已发原任务接续；没有重复写者。最近可核实际模型为02:33 Terra/high，新02:37轮次回执/实际配置待核。B进程signal与exit-code分类、argv/env兼容测试及完整runner继续，C恢复/commit_turn/Git diff接线继续。经理本轮报告与验收台账已同步，未运行新候选；41行及所有代码证据保持，W2组件/schema17以外核心/三版后续仍未完成。
