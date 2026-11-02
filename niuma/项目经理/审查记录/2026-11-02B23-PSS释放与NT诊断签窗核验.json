@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-02",
+  "author": "项目经理",
+  "product_tests": "not_run_by_manager",
+  "evidence": [
+    {
+      "directory": "niuma/员工B/提交报告/第二十三轮/B23-case16-PSS-v2-attempt1查询快照",
+      "files": 14,
+      "bytes": 50075,
+      "manifest_sha256": "6b7824e8a496e0c816640deb100168f50535b4122c6517d59501fc722db171a7",
+      "source_copy_match": true,
+      "query_stdout_preserved_prefix": true
+    },
+    {
+      "directory": "niuma/员工B/提交报告/第二十三轮/B23-case16-PSS-v2-release原始证据",
+      "files": 10,
+      "bytes": 11014,
+      "manifest_sha256": "dc1365065b68e637118507ff13746b7a0b657c0eb4baa35a60273578f97ad022",
+      "source_copy_match": true,
+      "query_stdout_preserved_prefix": false
+    }
+  ],
+  "prepared_manifest_sha256": "f9b4994bc183c477956a50c2a8a7e6c71487312a266171545c4d39fc7239a6e6",
+  "matrix_status": "15 passed; case16 sticky unknown; 4 not started; original session26580 and gates retained",
+  "pss_diagnostic": "original92080 signal exit0, 25 local closes successful, exec16881 exit1 monitoring exception preserved",
+  "authorization": "only original B compile/query fresh NT diagnostic attempt1; release requires actual evidence review"
+}

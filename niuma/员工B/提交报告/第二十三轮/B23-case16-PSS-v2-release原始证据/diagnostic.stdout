@@ -1,0 +1,107 @@
+compare_api resolved_from=system_KernelBase.dll
+carrier pid=89780 creation=134381029069968888 wait=258
+carrier pid=89780 creation=134381029069968888 wait=258
+snapshot_candidate label=A value=268 kind=Thread specific=1 process_id=89780 thread_id=91472
+snapshot_candidate label=A value=276 kind=Thread specific=1 process_id=89780 thread_id=90256
+snapshot_candidate label=A value=280 kind=Thread specific=1 process_id=89780 thread_id=45204
+snapshot_candidate label=A value=292 kind=Thread specific=1 process_id=91236 thread_id=91164
+snapshot_candidate label=A value=296 kind=Process specific=1 process_id=91236 thread_id=0
+snapshot_candidate label=A value=6784 kind=Thread specific=1 process_id=73644 thread_id=62416
+snapshot label=A walked=134 candidates=6 walk_rc=259 marker_free=0 snapshot_free=0
+snapshot_types label=A process=1 thread=5 job=0 other=128 no_type_name=29
+carrier pid=89780 creation=134381029069968888 wait=258
+carrier pid=89780 creation=134381029069968888 wait=258
+snapshot_candidate label=B value=268 kind=Thread specific=1 process_id=89780 thread_id=91472
+snapshot_candidate label=B value=276 kind=Thread specific=1 process_id=89780 thread_id=90256
+snapshot_candidate label=B value=280 kind=Thread specific=1 process_id=89780 thread_id=45204
+snapshot_candidate label=B value=292 kind=Thread specific=1 process_id=91236 thread_id=91164
+snapshot_candidate label=B value=296 kind=Process specific=1 process_id=91236 thread_id=0
+snapshot_candidate label=B value=6784 kind=Thread specific=1 process_id=73644 thread_id=62416
+snapshot label=B walked=134 candidates=6 walk_rc=259 marker_free=0 snapshot_free=0
+snapshot_types label=B process=1 thread=5 job=0 other=128 no_type_name=29
+carrier pid=89780 creation=134381029069968888 wait=258
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=268 copy=196 round=1
+duplicate source=268 copy=168 round=2
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=276 copy=200 round=1
+duplicate source=276 copy=204 round=2
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=280 copy=208 round=1
+duplicate source=280 copy=212 round=2
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=292 copy=216 round=1
+duplicate source=292 copy=220 round=2
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=296 copy=224 round=1
+duplicate source=296 copy=228 round=2
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=6784 copy=232 round=1
+duplicate source=6784 copy=236 round=2
+carrier pid=89780 creation=134381029069968888 wait=258
+snapshot_candidate label=C value=268 kind=Thread specific=1 process_id=89780 thread_id=91472
+snapshot_candidate label=C value=276 kind=Thread specific=1 process_id=89780 thread_id=90256
+snapshot_candidate label=C value=280 kind=Thread specific=1 process_id=89780 thread_id=45204
+snapshot_candidate label=C value=292 kind=Thread specific=1 process_id=91236 thread_id=91164
+snapshot_candidate label=C value=296 kind=Process specific=1 process_id=91236 thread_id=0
+snapshot_candidate label=C value=6784 kind=Thread specific=1 process_id=73644 thread_id=62416
+snapshot label=C walked=134 candidates=6 walk_rc=259 marker_free=0 snapshot_free=0
+snapshot_types label=C process=1 thread=5 job=0 other=128 no_type_name=29
+carrier pid=89780 creation=134381029069968888 wait=258
+duplicate source=268 copy=240 round=3
+candidate value=268 kind=Thread snapshot_specific=1 same_duplicate_object=1
+thread tid=91472 pid=89780 wait=258 snapshot_ids_match=1
+duplicate source=276 copy=244 round=3
+candidate value=276 kind=Thread snapshot_specific=1 same_duplicate_object=1
+thread tid=90256 pid=89780 wait=258 snapshot_ids_match=1
+duplicate source=280 copy=248 round=3
+candidate value=280 kind=Thread snapshot_specific=1 same_duplicate_object=1
+thread tid=45204 pid=89780 wait=258 snapshot_ids_match=1
+duplicate source=292 copy=252 round=3
+candidate value=292 kind=Thread snapshot_specific=1 same_duplicate_object=1
+thread tid=91164 pid=91236 wait=0 snapshot_ids_match=1
+duplicate source=296 copy=256 round=3
+candidate value=296 kind=Process snapshot_specific=1 same_duplicate_object=1
+process pid=91236 creation=134381029070411070 times_ok=1 wait=0 exit_ok=1 exit=0 snapshot_pid_match=1
+duplicate source=6784 copy=260 round=3
+candidate value=6784 kind=Thread snapshot_specific=1 same_duplicate_object=1
+thread tid=62416 pid=73644 wait=258 snapshot_ids_match=1
+carrier pid=89780 creation=134381029069968888 wait=258
+COUNTS walked=402 process=3 thread=15 job=0 other=384 no_type_name=87 duplicate_value=0 snapshot_errors=0 ab_missing=0 ab_mismatch=0 c_missing=0 c_mismatch=0 duplicate_failures=0 comparison_failures=0 query_failures=0 identity_mismatches=0 duplicates=18 validated=6
+NOTE: snapshots and comparisons do not establish stack ownership, preclude ABA, or prove last-close.
+QUERY_COMPLETE: retain all duplicates and carrier; waiting for attempt-specific release.request
+carrier pid=89780 creation=134381029069968888 wait=258
+release_source value=268 verification_copy=264 compare_all=1
+release_source value=276 verification_copy=268 compare_all=1
+release_source value=280 verification_copy=272 compare_all=1
+release_source value=292 verification_copy=276 compare_all=1
+release_source value=296 verification_copy=280 compare_all=1
+release_source value=6784 verification_copy=284 compare_all=1
+carrier pid=89780 creation=134381029069968888 wait=258
+RELEASE_VERIFIED: source slot comparisons passed; closing diagnostic-owned copies only; this is not a last-close proof
+release_close copy=196 ok=1 error=0
+release_close copy=168 ok=1 error=0
+release_close copy=240 ok=1 error=0
+release_close copy=200 ok=1 error=0
+release_close copy=204 ok=1 error=0
+release_close copy=244 ok=1 error=0
+release_close copy=208 ok=1 error=0
+release_close copy=212 ok=1 error=0
+release_close copy=248 ok=1 error=0
+release_close copy=216 ok=1 error=0
+release_close copy=220 ok=1 error=0
+release_close copy=252 ok=1 error=0
+release_close copy=224 ok=1 error=0
+release_close copy=228 ok=1 error=0
+release_close copy=256 ok=1 error=0
+release_close copy=232 ok=1 error=0
+release_close copy=236 ok=1 error=0
+release_close copy=260 ok=1 error=0
+release_close copy=264 ok=1 error=0
+release_close copy=268 ok=1 error=0
+release_close copy=272 ok=1 error=0
+release_close copy=276 ok=1 error=0
+release_close copy=280 ok=1 error=0
+release_close copy=284 ok=1 error=0
+release_close copy=192 ok=1 error=0
+RELEASE_COMPLETE

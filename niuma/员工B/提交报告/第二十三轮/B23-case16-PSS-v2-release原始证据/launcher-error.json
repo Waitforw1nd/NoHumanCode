@@ -1,0 +1,4 @@
+{
+  "state": "stopped",
+  "reason": "InvalidOperation: E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-prepared\\launch.ps1:28\r\nLine |\r\n  28 |  …          if(-not $querySeen -and $content.Contains('QUERY_COMPLETE:') …\r\n     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | You cannot call a method on a null-valued expression.\r\n\r\n"
+}

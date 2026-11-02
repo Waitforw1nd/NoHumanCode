@@ -1,0 +1,27 @@
+{
+  "scope": "static diagnostic candidate; no execution authorized",
+  "carrier_pid": 89780,
+  "carrier_creation": "134381029069968888",
+  "files": [
+    {
+      "path": "GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "path": "case16_pss.cpp",
+      "bytes": 19951,
+      "sha256": "1432f90a15b84e0a81ab2068c3f6e72b0fe2d1550e184ed7895b11947bd70209"
+    },
+    {
+      "path": "launch.ps1",
+      "bytes": 11369,
+      "sha256": "487475c5b5571592e30e0918194526e05fec15b55992c5aab1584b9adb480ab2"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5749,
+      "sha256": "70a687a48e378c02d59e91bb5efef4491f14a98d6c705b8d301951256f3e0930"
+    }
+  ]
+}

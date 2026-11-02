@@ -1,0 +1,12 @@
+{
+  "stage": "compile",
+  "state": "exited",
+  "command": "\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx86\\x64\\cl.exe\" /nologo /EHsc /std:c++17 /W4 /D_WIN32_WINNT=0x0A00 /Fo\"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-attempt1\\case16_pss.obj\" /Fe\"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-attempt1\\case16_pss.exe\" \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-attempt1\\prepared\\case16_pss.cpp\" /link kernel32.lib",
+  "pid": 90680,
+  "creation_filetime": 134381043357364037,
+  "started_utc": "2026-11-02T14:45:35.7214749Z",
+  "creation_error": 0,
+  "signal_utc": "2026-11-02T14:45:36.4512684Z",
+  "exit_code": 0,
+  "elapsed_ms": 696
+}

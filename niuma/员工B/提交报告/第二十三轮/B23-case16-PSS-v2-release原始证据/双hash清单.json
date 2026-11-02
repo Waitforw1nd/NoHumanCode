@@ -1,0 +1,66 @@
+{
+  "count": 10,
+  "scope": "release and original diagnostics; excludes exe obj tmp",
+  "files": [
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/release.request",
+      "copy": "release.request",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/diagnostic.stdout",
+      "copy": "diagnostic.stdout",
+      "bytes": 6570,
+      "sha256": "accc003e0eccc4c72db4c85224f1c65674683e0607780558ca8f02f4d857708f"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/diagnostic.stderr",
+      "copy": "diagnostic.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/diagnostic.json",
+      "copy": "diagnostic.json",
+      "bytes": 622,
+      "sha256": "e66c4532e12bdb0b1eccb97ad5b1b341c4669bd1f960a0596455acf2b00ee947"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/diagnostic-artifact.json",
+      "copy": "diagnostic-artifact.json",
+      "bytes": 325,
+      "sha256": "ac7417c047b64a0e8af8b114f6343879fe15423c67213caea70ec9e5409a33e9"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/incident-monitor-exception.json",
+      "copy": "incident-monitor-exception.json",
+      "bytes": 590,
+      "sha256": "defc497f156c0d6b09f760527ada94f5f080a51907a3e59c76c3469dd3ad4a30"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/incident-late-signal.json",
+      "copy": "incident-late-signal.json",
+      "bytes": 697,
+      "sha256": "faa547633216fee393dfbb69c7f6093391aabd2b650e9781c750201a23815cae"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/launcher-error.json",
+      "copy": "launcher-error.json",
+      "bytes": 432,
+      "sha256": "5630b02d6abca9a51063010d6809bd50d5b995f308d8f81e29e0ccfacac33e7b"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/compile.json",
+      "copy": "compile.json",
+      "bytes": 862,
+      "sha256": "94cc117e002f17cb06fd16ea83bfccc6d662bc6f1f78fd3d4deda2096e2c13ca"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-case16-pss-diagnostic-v2-attempt1/environment.json",
+      "copy": "environment.json",
+      "bytes": 916,
+      "sha256": "ace000e5d00514668924d01b2d2423ff42d52925cde56dbaae55466a02b227c2"
+    }
+  ]
+}

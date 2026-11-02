@@ -1,0 +1,11 @@
+{
+  "stage": "diagnostic",
+  "state": "running",
+  "command": "\"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-attempt1\\case16_pss.exe\" \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-attempt1\\release.request\"",
+  "pid": 92080,
+  "creation_filetime": 134381043364666972,
+  "started_utc": "2026-11-02T14:45:36.4644380Z",
+  "release_path": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-attempt1\\release.request",
+  "query_timeout_seconds": 120,
+  "creation_error": 0
+}
