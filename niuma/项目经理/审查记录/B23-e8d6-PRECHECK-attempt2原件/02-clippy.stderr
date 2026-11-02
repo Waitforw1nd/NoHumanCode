@@ -1,0 +1,129 @@
+    Checking peachsh-protocol v0.1.0 (E:\code\nhc-b-process-lifetime\NoManCode\rust-app\crates\protocol)
+    Checking peachsh v0.2.0 (E:\code\nhc-b-process-lifetime\NoManCode\rust-app)
+    Checking peachsh-ui v0.1.0 (E:\code\nhc-b-process-lifetime\NoManCode\rust-app\crates\ui)
+error: called `expect` on `identity` after checking its variant with `is_none`
+    --> src\process_lifetime.rs:1426:35
+     |
+1421 |                 let outcome = if io_failed || exit_code_unavailable || identity.is_none() {
+     |                                                                        ------------------ the check is happening here
+...
+1426 |                         identity: identity.expect("original creation identity"),
+     |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: try using `if let` or `match`
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#unnecessary_unwrap
+     = note: `-D clippy::unnecessary-unwrap` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap)]`
+
+error: could not compile `peachsh` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: field `identity` is never read
+   --> src\process_lifetime.rs:123:9
+    |
+121 | pub(crate) struct Settled {
+    |                   ------- field in this struct
+122 |     pub reason: CompletionReason,
+123 |     pub identity: ProcessIdentity,
+    |         ^^^^^^^^
+    |
+    = note: `Settled` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `-D dead-code` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+error: fields `stage` and `os_error` are never read
+   --> src\process_lifetime.rs:139:9
+    |
+138 |     NotStarted {
+    |     ---------- fields in this variant
+139 |         stage: &'static str,
+    |         ^^^^^
+140 |         os_error: Option<i32>,
+    |         ^^^^^^^^
+    |
+    = note: `Outcome` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+error: this `if` statement can be collapsed
+   --> src\process_lifetime.rs:959:17
+    |
+959 | /                 if let Some(hooks) = &watcher_hooks {
+960 | |                     if hooks.hold_watchdog_exit.load(Ordering::Acquire) {
+961 | |                         hooks.watchdog_held.store(true, Ordering::Release);
+962 | |                         while !hooks.release_watchdog.load(Ordering::Acquire) {
+...   |
+966 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+959 ~                 if let Some(hooks) = &watcher_hooks
+960 ~                     && hooks.hold_watchdog_exit.load(Ordering::Acquire) {
+961 |                         hooks.watchdog_held.store(true, Ordering::Release);
+...
+964 |                         }
+965 ~                     }
+    |
+
+error: this `if` statement can be collapsed
+    --> src\process_lifetime.rs:1175:9
+     |
+1175 | /         if let Some(hooks) = &spec.test_hooks {
+1176 | |             if hooks.hold_created.load(Ordering::Acquire) {
+1177 | |                 hooks.created_held.store(true, Ordering::Release);
+1178 | |                 while !hooks.release_created.load(Ordering::Acquire) {
+...    |
+1182 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+     |
+1175 ~         if let Some(hooks) = &spec.test_hooks
+1176 ~             && hooks.hold_created.load(Ordering::Acquire) {
+1177 |                 hooks.created_held.store(true, Ordering::Release);
+ ...
+1180 |                 }
+1181 ~             }
+     |
+
+error: this `if` statement can be collapsed
+    --> src\process_lifetime.rs:1412:13
+     |
+1412 | /             if active == Some(0) {
+1413 | |                 if let Some(hooks) = &spec.test_hooks {
+1414 | |                     hooks.job_empty.store(true, Ordering::Release);
+1415 | |                 }
+1416 | |             }
+     | |_____________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+     |
+1412 ~             if active == Some(0)
+1413 ~                 && let Some(hooks) = &spec.test_hooks {
+1414 |                     hooks.job_empty.store(true, Ordering::Release);
+1415 ~                 }
+     |
+
+error: used `assert_eq!` with a literal bool
+    --> src\process_lifetime.rs:1675:9
+     |
+1675 | /         assert_eq!(
+1676 | |             observed.unwrap(),
+1677 | |             false,
+1678 | |             "real terminal proof wins before callback"
+1679 | |         );
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#bool_assert_comparison
+     = note: `-D clippy::bool-assert-comparison` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::bool_assert_comparison)]`
+help: replace it with `assert!(..)`
+     |
+1675 ~         assert!(
+1676 ~             !observed.unwrap(),
+     |
+
+error: could not compile `peachsh` (lib test) due to 7 previous errors

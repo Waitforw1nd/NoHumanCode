@@ -1,0 +1,89 @@
+{
+  "at_utc": "2026-11-02T03:57:39.216675+00:00",
+  "candidate": "e8d6a2bdd6adc932155fc9aba612dcff8f8be6a8",
+  "records": {
+    "01-check.json": {
+      "name": "01-check",
+      "command": "cargo check --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\target\"",
+      "start_utc": "2026-11-02T03:51:38.2098314Z",
+      "end_utc": "2026-11-02T03:53:20.2749711Z",
+      "state": "passed",
+      "pid": 80776,
+      "creation_filetime": 134380650982178043,
+      "creation_error": 0,
+      "exit_code": 0,
+      "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\01-check.stdout",
+      "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\01-check.stderr",
+      "timeout_seconds": 1200,
+      "elapsed_ms": 102062
+    },
+    "02-clippy.json": {
+      "name": "02-clippy",
+      "command": "cargo clippy --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\target\" -- -D warnings",
+      "start_utc": "2026-11-02T03:53:22.2603368Z",
+      "end_utc": "2026-11-02T03:53:34.2779816Z",
+      "state": "exited",
+      "pid": 83420,
+      "creation_filetime": 134380652022627082,
+      "creation_error": 0,
+      "exit_code": 101,
+      "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\02-clippy.stdout",
+      "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\02-clippy.stderr",
+      "timeout_seconds": 1200,
+      "elapsed_ms": 12016
+    },
+    "launcher.json": {
+      "state": "exited",
+      "expected_head": "e8d6a2bdd6adc932155fc9aba612dcff8f8be6a8",
+      "attempt": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2",
+      "target": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\target",
+      "pid": 84720,
+      "creation_filetime": 134380650732353764,
+      "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\supervisor.stdout",
+      "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\supervisor.stderr",
+      "started_utc": "2026-11-02T03:51:12.8465367Z",
+      "command": "\"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" -NoProfile -File \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-prepared\\supervisor.ps1\" -AttemptDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\" -TargetDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-e8d6a2bd-attempt2\\target\"",
+      "flags": "CREATE_SUSPENDED | CREATE_NO_WINDOW",
+      "timeout_seconds": 2700,
+      "creation_error": 0,
+      "exit_code": 1,
+      "signal_utc": "2026-11-02T03:53:36.3382085Z"
+    }
+  },
+  "exec_session": {
+    "id": 43000,
+    "exit_code": 1,
+    "source": "员工报告原exec终态"
+  },
+  "source_snapshots": {
+    "count": 6,
+    "files_each": 196,
+    "equal": true
+  },
+  "raw_manifest_sha256": "7e0b636be44715c7e1b04f1c68c83036490f472b085eab0519deccb9d884f0a9",
+  "gate_sha256": "a3c936f5a2d1153294705d2a4081fb2ba247d12475e53003a9364ace6894123b",
+  "gate_disposition": "exact gate moved by manager to B23-e8d6-PRECHECK-attempt2原件/gate-retired.raw.json; old path absent; hash unchanged; no attempt3 authorized",
+  "test_status": "not_executed",
+  "findings": [
+    "check0，libtest两条未读字段warning和依赖future-incompat提示",
+    "Clippy101：同一unnecessary_unwrap在lib/test报告，test共7诊断；不扩大抑制",
+    "全源码及固定三对象一致；不将原Cargo终态扩大成任意后代证明"
+  ],
+  "model_contexts": [
+    {
+      "agent": "Jason",
+      "at_utc": "2026-11-02T03:49:49.985Z",
+      "turn": "01a19a60-aef2-70e3-8005-cb4abaed2136",
+      "model": "gpt-6.1-terra",
+      "effort": "high"
+    },
+    {
+      "agent": "Curie",
+      "at_utc": "2026-11-02T03:46:59.388Z",
+      "turn": "01a19a5e-14a0-7840-8668-e8fb7c5378e8",
+      "model": "gpt-6.1-terra",
+      "effort": "high"
+    }
+  ],
+  "gate_retired_utc": "2026-11-02T03:59:31.183087+00:00"
+}
