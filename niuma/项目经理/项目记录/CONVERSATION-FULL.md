@@ -1,3 +1,7 @@
+## 2026-11-02 原员工检查点与exit-code分类（摘要记录）
+
+经理提交64a65db6七份既有审查文档，继承41行完整留在工作区。继续核B实际state_tests、holder线程原句柄延迟回收，定位signal后读取exit-code失败不能抹掉终态事实并交B补分类及测试。app只读read/wait连续未返回，仅终止观察；multi_agent等待无终态。02:33 UTC对原B/C发送interrupt要求明确检查点后继续原树静态工作，未起重复员工、无重型窗口，当前回执待收。
+
 ## 2026-11-02 过程用例覆盖与恢复回执（摘要记录）
 
 经理读B十个过程用例源码，确认当前已有后代/取消/reader/Job/watchdog断言，要求补resize/阻塞settle/breakaway独立对照并明确created hold证明范围；probe隐藏和harness创建时间检查已见。C restore部分普通失败已settle，经理继续要求落库失败与本地寿命分开裁决，保持封门/业务未知而不永久保留已无工作的guard。无动态测试或新候选验收，继续原核心与三版目标。
