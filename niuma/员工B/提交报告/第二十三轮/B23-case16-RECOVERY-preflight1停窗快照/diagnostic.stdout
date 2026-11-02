@@ -1,0 +1,8 @@
+identity role=case pid=89780 creation=134381029069968888 wait=258 path_match=1
+identity role=runner pid=62476 creation=134381028898031298 wait=258 path_match=1
+identity role=supervisor pid=87376 creation=134381028875429933 wait=258 path_match=1
+identity role=launcher pid=90776 creation=134381028866695431 wait=258 path_match=1
+bind stage=runner_to_case seen=546 matching_original=1 errors=0 walk=259 marker_free=0 snapshot_free=0
+bind stage=supervisor_to_runner seen=528 matching_original=1 errors=0 walk=259 marker_free=0 snapshot_free=0
+bind stage=launcher_to_supervisor seen=530 matching_original=1 errors=0 walk=259 marker_free=0 snapshot_free=0
+RECOVERY_UNKNOWN reason=initial_job_helper_proof_failed retained=9

@@ -1,0 +1,27 @@
+{
+  "scope": "static staged case16 recovery candidate; no termination authorized",
+  "carrier_pid": 89780,
+  "carrier_creation": "134381029069968888",
+  "files": [
+    {
+      "path": "GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "path": "recover.cpp",
+      "bytes": 14159,
+      "sha256": "1a5238c47e2cedd9b813e221bee40ddf6462abd5e6d8fd5d28153f243a2a5b00"
+    },
+    {
+      "path": "launch.ps1",
+      "bytes": 12965,
+      "sha256": "10c826589f31d05acac9b3a0cb7daebe1a2e39e3ff43bcee76351eb66245c5e2"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6347,
+      "sha256": "02dfc457fe51015a03e9fba640e3ebca0862df543f786c67251dfea1e3f9e909"
+    }
+  ]
+}

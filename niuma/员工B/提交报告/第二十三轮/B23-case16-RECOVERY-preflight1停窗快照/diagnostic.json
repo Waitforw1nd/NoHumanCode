@@ -1,0 +1,12 @@
+{
+  "stage": "diagnostic",
+  "state": "release_unknown_retaining",
+  "command": "\"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-recovery-attempt1\\recover.exe\" \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-recovery-attempt1\" \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-matrix-98cec2e4-attempt1\\matrix\\fixed\\lib-test.exe\" \"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-matrix-98cec2e4-attempt1\\matrix\\fixed\\probe.exe\" \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-matrix-98cec2e4-attempt1\"",
+  "pid": 44296,
+  "creation_filetime": 134381061967575472,
+  "started_utc": "2026-11-02T15:16:36.7552615Z",
+  "stage_requests": "01-case through 05-release-diagnostic-objects",
+  "query_timeout_seconds": 120,
+  "creation_error": 0,
+  "release_unknown_utc": "2026-11-02T15:16:37.2269783Z"
+}

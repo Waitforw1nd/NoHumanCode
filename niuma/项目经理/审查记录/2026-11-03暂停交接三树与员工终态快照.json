@@ -1,0 +1,366 @@
+{
+  "date": "2026-11-03 Asia/Shanghai",
+  "purpose": "pause handoff read-only filesystem snapshot; no process terminal diagnosis",
+  "goal": "paused",
+  "trees": [
+    {
+      "role": "main",
+      "root": ".",
+      "head": "a1be18176caea8fd36fa75862533daccf03ce687",
+      "product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+      "rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+      "status": "M niuma/员工B/个人身份认知.md\n M niuma/员工C/个人身份认知.md\n M niuma/员工C/提交报告/第三十五轮/NEXT-21U统一执行权实施进度.md\n M niuma/员工D/个人身份认知.md\n M niuma/项目经理/个人身份认知.md\n M niuma/项目经理/当前任务板.md\n M niuma/项目经理/项目记录/CONVERSATION-FULL.md\n M niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md\n?? niuma/员工B/提交报告/第二十一轮/B21-attempt2与W04诊断证据/发布复核.json\n?? niuma/员工B/提交报告/第二十三轮/B23-case16-RECOVERY-preflight1停窗快照/\n?? niuma/员工B/提交报告/第二十三轮/NEXT-21U-B23-98ce返工与预检外围.md\n?? niuma/员工B/提交报告/第二十三轮/NEXT-21U-B23-case16-PSS原对象诊断静态草案.md\n?? niuma/员工B/提交报告/第二十三轮/NEXT-21U-B23-case16回收v2与v1退场静态方案.md\n?? niuma/员工B/提交报告/第二十三轮/NEXT-21U-B23-case16回收预检attempt1未就绪.md\n?? niuma/员工B/提交报告/第二十三轮/NEXT-21U进程寿命API与持有契约.md\n?? niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19-R01-R02静态返工.md\n?? niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19独立测试模块接线.md\n?? niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19组件attempt1.md\n?? niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19组件attempt2.md\n?? niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19静态候选.md\n?? niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/\n?? niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02C35入口事务与在途映射.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02agent原域恢复夹具静态迁移.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02二次接续工具结果与流式恢复静态增量.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02共同进程寿命接线规划.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02原句柄顺序与源快照静态增量.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02同角色接续恢复与提交静态检查点.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02工具结果强杀夹具原域接续.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02恢复旧夹具继续检查点.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02接续兼容与入口映射增量.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02监督与取消统一静态候选.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02窗口粘性未知与精确用例静态增量.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02迁移故障断言静态增量.md\n?? niuma/员工C/提交报告/第三十五轮/2026-11-02预算与工作树旧夹具静态增量.md\n?? niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19-R03已提交HostDenied重启静态候选.md\n?? niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19T04审查增量静态候选.md\n?? niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19完整独立测试静态候选.md\n?? niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19组件前置夹具适配.md\n?? niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/\n?? niuma/项目经理/任务/2026-09-29NEXT-15-D补充06静态交付反馈-用户转交.md\n?? niuma/项目经理/审查记录/2026-09-29NEXT-15-D71e928接续实核.json\n?? niuma/项目经理/审查记录/2026-09-29NEXT-15-D补充06静态证据核验0.4.json\n?? niuma/项目经理/审查记录/2026-09-29NEXT-15全员换窗基线核验.json\n?? niuma/项目经理/审查记录/2026-09-29NEXT-15接任管理自检.md\n?? niuma/项目经理/审查记录/2026-09-29NEXT-15新窗口回执增量核验.json\n?? niuma/项目经理/审查记录/2026-09-29NEXT-15新经理接任复核.json\n?? niuma/项目经理/审查记录/NEXT-15全员换窗证据/\n?? niuma/项目经理/提交报告/2026-09-29NEXT-15新经理接任与手动串行接续.md\n?? niuma/项目经理/项目记录/历史交接/2026-09-29全员换窗前根交接.md\n?? niuma/项目经理/项目记录/历史交接/2026-09-29全员换窗前经理提示词.md",
+      "index": ""
+    },
+    {
+      "role": "B",
+      "root": "../nhc-b-process-lifetime",
+      "head": "98cec2e441adcb7cd0476c81db075c8f1ce4659e",
+      "product_tree": "85020d9c3c34e9f498fc9f4e4b5f855b087c5f4e",
+      "rust_tree": "951cff6854e0a8bc0b7cc48d559b735c60256c21",
+      "status": "",
+      "index": ""
+    },
+    {
+      "role": "C",
+      "root": "../nhc-c-domain-authority",
+      "head": "a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac",
+      "product_tree": "c0d65c90a3621cf9132c95a979076f3c75c8178e",
+      "rust_tree": "1c9715a687d2da1fc1eee0427496e1f525e6a1c9",
+      "status": "M NoManCode/rust-app/src/agent_runtime_tests.rs\n M NoManCode/rust-app/src/budget.rs\n M NoManCode/rust-app/src/engine.rs\n M NoManCode/rust-app/src/execution_authority.rs\n M NoManCode/rust-app/src/git_diff.rs\n M NoManCode/rust-app/src/git_worktree.rs\n M NoManCode/rust-app/src/host_configuration_crash_tests.rs\n M NoManCode/rust-app/src/host_services.rs\n M NoManCode/rust-app/src/main.rs\n M NoManCode/rust-app/src/network_authorization.rs\n M NoManCode/rust-app/src/plugin_management.rs\n M NoManCode/rust-app/src/process_test_fixture.rs\n M NoManCode/rust-app/src/provider.rs\n M NoManCode/rust-app/src/provider_runtime_tests.rs\n M NoManCode/rust-app/src/provider_transport.rs\n M NoManCode/rust-app/src/restore_http_tests.rs\n M NoManCode/rust-app/src/server.rs\n M NoManCode/rust-app/src/store.rs\n M NoManCode/rust-app/src/tool_application_tests.rs\n M NoManCode/rust-app/src/tool_call_application.rs\n M NoManCode/rust-app/src/tool_result_tests.rs\n M NoManCode/rust-app/src/tool_runtime.rs\n M NoManCode/rust-app/src/workspace.rs\n M NoManCode/rust-app/src/worktree_management.rs\n M NoManCode/rust-app/tests/approval_gate.rs\n M NoManCode/rust-app/tests/approval_http.rs\n M NoManCode/rust-app/tests/checkpoint.rs\n M NoManCode/rust-app/tests/final_acceptance.rs\n M NoManCode/rust-app/tests/host_configuration.rs\n M NoManCode/rust-app/tests/host_configuration_schema.rs\n M NoManCode/rust-app/tests/host_configuration_security.rs\n M NoManCode/rust-app/tests/network_authorization.rs\n M NoManCode/rust-app/tests/project_context.rs\n M NoManCode/rust-app/tests/project_migration.rs\n M NoManCode/rust-app/tests/runtime.rs\n M NoManCode/rust-app/tests/runtime_management_schema.rs\n M NoManCode/rust-app/tests/session_turns.rs\n M NoManCode/rust-app/tests/support/execution_authority/DirectProcess.cs\n M NoManCode/rust-app/tests/support/project_fixture.rs\n M NoManCode/rust-app/tests/support/schema_fixture.rs\n M NoManCode/rust-app/tests/tool_result_crash.rs\n M NoManCode/rust-app/tests/turn_http.rs\n M NoManCode/rust-app/tests/workspace_changes.rs\n M NoManCode/rust-app/tests/workspace_crash.rs\n?? NoManCode/rust-app/tests/execution_authority.rs\n?? NoManCode/rust-app/tests/support/execution_authority/C35-exact-cases.md\n?? NoManCode/rust-app/tests/support/execution_authority/run-c35-exact.ps1",
+      "index": "",
+      "dirty_files": [
+        {
+          "path": "NoManCode/rust-app/src/agent_runtime_tests.rs",
+          "bytes": 156354,
+          "sha256": "f17c9dcfad158b97adecccc53ee0c5448cd19553d24bc477bcbbd9341f663b3b",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/budget.rs",
+          "bytes": 68543,
+          "sha256": "1a5b68ebd850e5c5dc08da06364e2b9f5cfd1d1592ad56b69a6e9edf337412da",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/engine.rs",
+          "bytes": 279243,
+          "sha256": "c721394216a78f66e47b3425ccecc4c3e63f725d12e8f2ceb866cce6f2987027",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/execution_authority.rs",
+          "bytes": 120269,
+          "sha256": "a96e88d1ad9687076d10dce421b035a711c26cc58c5076de0d2e8df16725dd11",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/git_diff.rs",
+          "bytes": 20677,
+          "sha256": "bc165d1bc3b320fc5b9722870f72acb467bead26bde0f8d3f2e8ea0a8eebeebf",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/git_worktree.rs",
+          "bytes": 93107,
+          "sha256": "52bd3059669f673ce592bd5b2d2ef8cdbb9a8a418f6cfb73ddf65d22bd935c6c",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/host_configuration_crash_tests.rs",
+          "bytes": 28864,
+          "sha256": "dbcfad6f756bf3bf92baab1502f2fb12998a50faae86ecb36c21896f7a320a3b",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/host_services.rs",
+          "bytes": 40692,
+          "sha256": "78c41312abf797e71c44f2dd48e28e4d0f321793d581e113d70cdea2a0ad0dbb",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/main.rs",
+          "bytes": 6019,
+          "sha256": "9d918e526e69b9b2f134ebe77b4ef36453e8eaca4cddacb5aec84d5e1a8bffb9",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/network_authorization.rs",
+          "bytes": 51821,
+          "sha256": "1014a733c581073a2c1daee6acfc2c84ccacd1f65bc33f1b1bba0e4de3dc56fe",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/plugin_management.rs",
+          "bytes": 42708,
+          "sha256": "3410fbf5a28c777efab5181d0d8cb153647981472f4619bc4df0d7d8e73ac30e",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/process_test_fixture.rs",
+          "bytes": 53614,
+          "sha256": "0fd6ec2340b975b0b5fe1bf9e23a1bc69f78ff5b3b0f4890e48cd839835692d5",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/provider.rs",
+          "bytes": 42636,
+          "sha256": "57222efbaa6a79c757b5970039826a3a58da72fb7d0213aa8b4f262d0c9318d5",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/provider_runtime_tests.rs",
+          "bytes": 68462,
+          "sha256": "ded1a21b5404e792ccda27092817688746fb82fec4e518a3eb9c65a268a731f6",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/provider_transport.rs",
+          "bytes": 33718,
+          "sha256": "6758ad80a5c314289234b49edc07f6a541d9faadbbeecd4598ec00795645b0b7",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/restore_http_tests.rs",
+          "bytes": 19593,
+          "sha256": "e5779add93291c7d6d9c0a979fae186a18f0bfd7dbe59fb12f61bb9c1bd483ca",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/server.rs",
+          "bytes": 183060,
+          "sha256": "531646e731a6fe9326647828e8de4e8d11253665475ec3b0f28db3432e6ef40d",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/store.rs",
+          "bytes": 244017,
+          "sha256": "67fe55325df12ff7efd19a2bb6afdaf218711d5faeb55015afe8581b67a86b13",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_application_tests.rs",
+          "bytes": 4955,
+          "sha256": "e340dba712674162396a10bf8bc2939fc1ab4a68fb91f52bdb806dc9ba4b3286",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_call_application.rs",
+          "bytes": 23884,
+          "sha256": "fed4baab75337ccfd37995170fc3d8230ea8427cc6856497c6b8068e15f2059b",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_result_tests.rs",
+          "bytes": 44073,
+          "sha256": "aa5b212d9ac1de78238cda5cf25038249d99a293002e91288ab03139e4e4cb68",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_runtime.rs",
+          "bytes": 97052,
+          "sha256": "1a7751410126654fac29d52fde7625450aa8a54a85e5becb8304a72562968849",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/workspace.rs",
+          "bytes": 18634,
+          "sha256": "243c303069fb378b00df6b7ef63070044a863dde656dd91ea9c0ea1063c7e5cf",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/src/worktree_management.rs",
+          "bytes": 104727,
+          "sha256": "0d579959b7f27898c8453ba2dd47fe2d4ea49fbd2f7e9c9a636437aa351a49b9",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/approval_gate.rs",
+          "bytes": 81635,
+          "sha256": "19e486d38ba49e06ef2987a9c6aa919383e482711c1d457a70e28d69339db8a5",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/approval_http.rs",
+          "bytes": 88106,
+          "sha256": "24e9cf458d604ba71da9cd1b1f9e2f4ac1d519c83a77a4ea56c6a219808e8396",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/checkpoint.rs",
+          "bytes": 51679,
+          "sha256": "6db2ab9db6a7c260287e5863c22c29729c415dbedde9eb4c6807943e004e8818",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/final_acceptance.rs",
+          "bytes": 13862,
+          "sha256": "4574fb67085077bc8adf5f62b8442b2059e77779abd915add1f9bb516ab5f281",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/host_configuration.rs",
+          "bytes": 40156,
+          "sha256": "d80b1e6e6c4dff23d9fa1bc7efc167a3cc49fc828732fdff3fa9f3fe27923658",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/host_configuration_schema.rs",
+          "bytes": 10381,
+          "sha256": "47ad11a72ba5b6fe474ad568a7782ac927e1888f6bd1df284ef4580d6f69296c",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/host_configuration_security.rs",
+          "bytes": 50154,
+          "sha256": "f382c609ca6582ecde22b82ba9c65a4a5e17ed9c487368a10f40da449152cbd1",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/network_authorization.rs",
+          "bytes": 34484,
+          "sha256": "4bfe4316f348673d488d2b7c4a9e7067c570bc796e26527e51bd7fb393bdf712",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/project_context.rs",
+          "bytes": 24151,
+          "sha256": "352ce9531c039a8e3edfff81ee2d8d923c2870545e309e68c8f6663dd80cf141",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/project_migration.rs",
+          "bytes": 10033,
+          "sha256": "354f3471e5c1ef0fc48408c3d8605fe5664df653c6f6a54e60fafe51402c6ff7",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/runtime.rs",
+          "bytes": 35856,
+          "sha256": "8706d1b63871ccec5fba0004cbfd4f118c7cc797bcf636982a92e783eb41d942",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/runtime_management_schema.rs",
+          "bytes": 17775,
+          "sha256": "ee7279491ba7cce7e6e5cde94230ed85aa1afbe52332ec71aa08dc48e43596be",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/session_turns.rs",
+          "bytes": 70542,
+          "sha256": "e3839b46d656aa47f20555ad5d2793323934bb58e8e89bf19fc770d0e7aa7c58",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/execution_authority/DirectProcess.cs",
+          "bytes": 4648,
+          "sha256": "61ad2ffbb64ac2cc11aea6945fe0f1c9dd5c8bbe69e23e79e618a65bce33ced2",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/project_fixture.rs",
+          "bytes": 2546,
+          "sha256": "13945fb02a583329a1c1752ee3a0beefea9fc347dda20f30513690b0aab87ba1",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/schema_fixture.rs",
+          "bytes": 2888,
+          "sha256": "1f2d3e5904deb02e1d491f4c35d54e2c0ee80471fd45dedc89916da3bfcf9c36",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/tool_result_crash.rs",
+          "bytes": 17950,
+          "sha256": "e009144b676c1f12740d1038fc35e1dae1584d94c3d9955240e263d9acd0df7c",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/turn_http.rs",
+          "bytes": 98705,
+          "sha256": "7a371d76314bdae2be76ae0c51af57f542e650616cd5c9daa1ecadb216163af2",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/workspace_changes.rs",
+          "bytes": 49443,
+          "sha256": "e59ff6145917cd5d859dee2b21d10233852ea5613eb1b09b27774b1e0ec9e482",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/workspace_crash.rs",
+          "bytes": 31646,
+          "sha256": "f05794990f53c2431df56833281e9984ecec9908373e80ad3c708ad893c56eac",
+          "untracked": false
+        },
+        {
+          "path": "NoManCode/rust-app/tests/execution_authority.rs",
+          "bytes": 5743,
+          "sha256": "0ad432625ac3f5c5285e4887c3872588bbbc4a34fe031209ab40559e0078cd47",
+          "untracked": true
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/execution_authority/C35-exact-cases.md",
+          "bytes": 7622,
+          "sha256": "4d298de20fd1dc3b899219db870e9559d469e083148821e1c16a8564e576f03d",
+          "untracked": true
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/execution_authority/run-c35-exact.ps1",
+          "bytes": 8310,
+          "sha256": "b2033d1c08469b5149191f30a45f889e79f89a065441c5144f64ec0b7ce73a57",
+          "untracked": true
+        }
+      ],
+      "tracked_modified_count": 44,
+      "untracked_count": 3
+    },
+    {
+      "role": "old_W2_B",
+      "root": "../nhc-b-wasm-worker-process",
+      "head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+      "product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+      "rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+      "status": "",
+      "index": ""
+    }
+  ],
+  "employees": {
+    "B": {
+      "thread": "01a19a31-0789-70c0-8b7f-d363a6f247d9",
+      "turn": "01a19d04-7adb-7383-8ad9-6d85050ecb79",
+      "status": "completed/idle",
+      "stop_ack": true
+    },
+    "C": {
+      "thread": "01a19a31-08b3-7463-bc73-7ef7ffa5e14a",
+      "turn": "01a19d04-7bed-7091-bd75-0f58e6a49d27",
+      "status": "completed/idle",
+      "stop_ack": true
+    }
+  },
+  "os_objects": "Not re-diagnosed during pause. Last employee observations: matrix exec26580 and recovery-v1 exec47108 held. Do not infer terminal from idle chats.",
+  "inherited_manager_files": [
+    {
+      "path": "niuma/项目经理/个人身份认知.md",
+      "original_suffix_preserved": true,
+      "remaining_diff": "10\t0\t\"niuma/\\351\\241\\271\\347\\233\\256\\347\\273\\217\\347\\220\\206/\\344\\270\\252\\344\\272\\272\\350\\272\\253\\344\\273\\275\\350\\256\\244\\347\\237\\245.md\""
+    },
+    {
+      "path": "niuma/项目经理/当前任务板.md",
+      "original_suffix_preserved": true,
+      "remaining_diff": "10\t0\t\"niuma/\\351\\241\\271\\347\\233\\256\\347\\273\\217\\347\\220\\206/\\345\\275\\223\\345\\211\\215\\344\\273\\273\\345\\212\\241\\346\\235\\277.md\""
+    },
+    {
+      "path": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+      "original_suffix_preserved": true,
+      "remaining_diff": "10\t0\t\"niuma/\\351\\241\\271\\347\\233\\256\\347\\273\\217\\347\\220\\206/\\351\\241\\271\\347\\233\\256\\350\\256\\260\\345\\275\\225/PROJECT-PROGRESS-SUMMARY.md\""
+    },
+    {
+      "path": "niuma/项目经理/项目记录/CONVERSATION-FULL.md",
+      "original_suffix_preserved": true,
+      "remaining_diff": "11\t0\t\"niuma/\\351\\241\\271\\347\\233\\256\\347\\273\\217\\347\\220\\206/\\351\\241\\271\\347\\233\\256\\350\\256\\260\\345\\275\\225/CONVERSATION-FULL.md\""
+    }
+  ]
+}
