@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "pid": 70860,
+  "state": "passed",
+  "started_utc": "2026-11-02T14:21:33.9654845Z",
+  "creation_filetime": 134381028939675950,
+  "elapsed_ms": 5163,
+  "case": "process_lifetime_tests::timeout_and_cancel_reap_original_tree_without_sealing"
+}

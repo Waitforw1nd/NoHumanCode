@@ -1,0 +1,6 @@
+
+running 1 test
+test process_lifetime_tests::failed_job_observation_stays_unknown_until_late_real_cleanup ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 425 filtered out; finished in 0.06s
+

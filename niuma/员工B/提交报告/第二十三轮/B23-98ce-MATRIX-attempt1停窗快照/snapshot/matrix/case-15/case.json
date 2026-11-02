@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "pid": 91892,
+  "state": "passed",
+  "started_utc": "2026-11-02T14:21:46.4225718Z",
+  "creation_filetime": 134381029064243236,
+  "elapsed_ms": 136,
+  "case": "process_lifetime_tests::argv_cwd_environment_roundtrip_and_invalid_prestart"
+}

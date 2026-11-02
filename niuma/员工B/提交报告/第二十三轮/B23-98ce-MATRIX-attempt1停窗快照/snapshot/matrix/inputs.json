@@ -1,0 +1,7 @@
+{
+  "probe_sha256": "bcc63ab6b6dfc982033c2e052d9b88d900fb6fb07c982435206290c9897b67c3",
+  "test": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\fixed\\lib-test.exe",
+  "launcher_sha256": "7C85AB87FE34BA201015ED078DC7AADA3C48CBA02BFFCF3418AF1A007E33949D",
+  "test_sha256": "95a58781a58981fda0fbc4e4bd9517548642800312c7c02ec448fbeccd0d2991",
+  "probe": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\fixed\\probe.exe"
+}

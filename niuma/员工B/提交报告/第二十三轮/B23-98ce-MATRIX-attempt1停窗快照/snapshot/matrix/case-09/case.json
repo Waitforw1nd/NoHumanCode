@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "pid": 63284,
+  "state": "passed",
+  "started_utc": "2026-11-02T14:21:42.1890005Z",
+  "creation_filetime": 134381029021909983,
+  "elapsed_ms": 1127,
+  "case": "process_lifetime_tests::unknown_on_membership_and_created_hold_retains_then_cleans"
+}

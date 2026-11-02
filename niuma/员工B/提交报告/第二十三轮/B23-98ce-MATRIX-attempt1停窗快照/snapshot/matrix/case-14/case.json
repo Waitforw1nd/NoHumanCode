@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "pid": 73868,
+  "state": "passed",
+  "started_utc": "2026-11-02T14:21:45.8808367Z",
+  "creation_filetime": 134381029058824917,
+  "elapsed_ms": 140,
+  "case": "process_lifetime_tests::resize_races_submit_without_erasing_existing_slots"
+}

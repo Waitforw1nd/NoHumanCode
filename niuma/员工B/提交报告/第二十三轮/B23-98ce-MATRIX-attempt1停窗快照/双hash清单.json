@@ -1,0 +1,450 @@
+{
+  "scope": "live unknown snapshot; excludes fixed executables, temp, target and locks; may gain later incident records",
+  "count": 74,
+  "files": [
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/build-provenance.json",
+      "copy": "snapshot/build-provenance.json",
+      "bytes": 2913,
+      "sha256": "2e342c50ee4757eb52f993bf27e7bc69a838c9abb4f9a6e984585ea225d0e280"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/incident.json",
+      "copy": "snapshot/incident.json",
+      "bytes": 1766,
+      "sha256": "6f9777f837f4a82b4a161a02f80b51e1d4fa06a9f2c71db2c43605fc5b1b9eb0"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/launcher-incident.json",
+      "copy": "snapshot/launcher-incident.json",
+      "bytes": 1584,
+      "sha256": "8fc927fefec54eb951d91b671ec99539f65ca5a47c6be0a63f122ca7fa65411e"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/launcher.json",
+      "copy": "snapshot/launcher.json",
+      "bytes": 1472,
+      "sha256": "a3f5b4f954c02b1cadf91f3b140f2b32fee73a84875e27202cbb4a68afffa5dc"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/.tmpio5Sbs/allow",
+      "copy": "snapshot/matrix/.tmpio5Sbs/allow",
+      "bytes": 34,
+      "sha256": "eeb0f78804f6805ea438d2029928899de9efeaff5832abb7e62947291309540d"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-01/case.json",
+      "copy": "snapshot/matrix/case-01/case.json",
+      "bytes": 255,
+      "sha256": "d5356b7e467688ef4f25a69ef1823e7ad4ded1b651eb6709848043c02499dfdc"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-01/stderr",
+      "copy": "snapshot/matrix/case-01/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-01/stdout",
+      "copy": "snapshot/matrix/case-01/stdout",
+      "bytes": 188,
+      "sha256": "422633ecce2bc127f02011ccbda23d71cf966da9b187563e65bbe916191ff56c"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-02/case.json",
+      "copy": "snapshot/matrix/case-02/case.json",
+      "bytes": 263,
+      "sha256": "202922ad34cca9f9bf93e0243f6588400e5d97494e4d5d645b7285658c950983"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-02/stderr",
+      "copy": "snapshot/matrix/case-02/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-02/stdout",
+      "copy": "snapshot/matrix/case-02/stdout",
+      "bytes": 196,
+      "sha256": "91415b30e2f060c2d3ff6eebd3704ca0e37b71627c149e0ec1ecdd5627707788"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-03/case.json",
+      "copy": "snapshot/matrix/case-03/case.json",
+      "bytes": 272,
+      "sha256": "f858a32015f535f4d3f95e0d5a0d7c7efb00bcc1057d40a11ad561a8e04d7a9b"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-03/stderr",
+      "copy": "snapshot/matrix/case-03/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-03/stdout",
+      "copy": "snapshot/matrix/case-03/stdout",
+      "bytes": 204,
+      "sha256": "bb9ba5fcc5ac4c19a4ef95db0aea385f4a829e7f91eeabd07cd5708652712117"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-04/case.json",
+      "copy": "snapshot/matrix/case-04/case.json",
+      "bytes": 275,
+      "sha256": "53f6f340028e61af10f73a745514c0a465d2ed1224f009995ca772c53136df23"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-04/stderr",
+      "copy": "snapshot/matrix/case-04/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-04/stdout",
+      "copy": "snapshot/matrix/case-04/stdout",
+      "bytes": 208,
+      "sha256": "3f7075ef4994e1c1da0eb341de5270fa64d4c02c8bb804cf8a8c52be0408424b"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-05/case.json",
+      "copy": "snapshot/matrix/case-05/case.json",
+      "bytes": 272,
+      "sha256": "18327fb7c837e9cd6582110d6991d89b3b6ad18295c815746869f3ab95b7fcaf"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-05/stderr",
+      "copy": "snapshot/matrix/case-05/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-05/stdout",
+      "copy": "snapshot/matrix/case-05/stdout",
+      "bytes": 205,
+      "sha256": "f7f7c6e09a105eba48e78ed2ab75c0369833a8252744482e40a9214b6b91cf02"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-06/case.json",
+      "copy": "snapshot/matrix/case-06/case.json",
+      "bytes": 277,
+      "sha256": "c1145250b782c2a1e771302510bc7c250bf7eee2173cddc66204cd809a6123f4"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-06/stderr",
+      "copy": "snapshot/matrix/case-06/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-06/stdout",
+      "copy": "snapshot/matrix/case-06/stdout",
+      "bytes": 211,
+      "sha256": "875f417a77740330004a3326603cb3f54a1e43a1cbc2896a757f5d624228fdd0"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-07/case.json",
+      "copy": "snapshot/matrix/case-07/case.json",
+      "bytes": 268,
+      "sha256": "57cb41f15f479ca3a432d66485ce6c0406896d931986d727b9c01c68f1739beb"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-07/stderr",
+      "copy": "snapshot/matrix/case-07/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-07/stdout",
+      "copy": "snapshot/matrix/case-07/stdout",
+      "bytes": 202,
+      "sha256": "53be3cce8912a33d21e3c3eac3f10a74dcaa56bb7d5d5c593810ba399c516614"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-08/case.json",
+      "copy": "snapshot/matrix/case-08/case.json",
+      "bytes": 273,
+      "sha256": "cae29146cb1ba232953eb108af5838179d68d03b59d5add6f3d3fbd1ffc23ed0"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-08/stderr",
+      "copy": "snapshot/matrix/case-08/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-08/stdout",
+      "copy": "snapshot/matrix/case-08/stdout",
+      "bytes": 207,
+      "sha256": "f70c03c59fa28f950cc69faae14bd9771628737b7d9f9b94503c46b2ee7fe430"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-09/case.json",
+      "copy": "snapshot/matrix/case-09/case.json",
+      "bytes": 277,
+      "sha256": "2bd5274580b0016c065a5fbe494998f6884d4c4f8839045d4f65c9f1e3c9a29e"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-09/stderr",
+      "copy": "snapshot/matrix/case-09/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-09/stdout",
+      "copy": "snapshot/matrix/case-09/stdout",
+      "bytes": 209,
+      "sha256": "84c5a7639ce3278c2189bfa94f17a404c292ce5ae8feeba5c6b0f770ec9acb3f"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-10/case.json",
+      "copy": "snapshot/matrix/case-10/case.json",
+      "bytes": 254,
+      "sha256": "19020ed3829f336d9cad379615bda0adfe277b6134f89840c9a98fc4e6b3f461"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-10/stderr",
+      "copy": "snapshot/matrix/case-10/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-10/stdout",
+      "copy": "snapshot/matrix/case-10/stdout",
+      "bytes": 188,
+      "sha256": "3b77f8d6ef2376985eb9d6c571a8f097ce417430aeb4eb8b6df472d666f33440"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-11/case.json",
+      "copy": "snapshot/matrix/case-11/case.json",
+      "bytes": 269,
+      "sha256": "d2f8493469ced15c82d6124a03a1a8cf0539a87e1354219cc1188d9108267ae7"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-11/stderr",
+      "copy": "snapshot/matrix/case-11/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-11/stdout",
+      "copy": "snapshot/matrix/case-11/stdout",
+      "bytes": 202,
+      "sha256": "a69a299dca67b1c5979ec193ac6ce3ea19c763cbc2b5dc808e51f693aa7d2f61"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-12/case.json",
+      "copy": "snapshot/matrix/case-12/case.json",
+      "bytes": 269,
+      "sha256": "da8ec577bd5b561e1dfe68230b6e79cb836f245907fc508c692ddae7601882cb"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-12/stderr",
+      "copy": "snapshot/matrix/case-12/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-12/stdout",
+      "copy": "snapshot/matrix/case-12/stdout",
+      "bytes": 203,
+      "sha256": "2d7a08c759a3065e2af663bfd4f47934867a4617e09135c53acd4b4ec0ff78b2"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-13/case.json",
+      "copy": "snapshot/matrix/case-13/case.json",
+      "bytes": 287,
+      "sha256": "df133fdd6fcb3b2400e472dead4b44d3400adf54d8eb471cc40177a4063e1f54"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-13/stderr",
+      "copy": "snapshot/matrix/case-13/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-13/stdout",
+      "copy": "snapshot/matrix/case-13/stdout",
+      "bytes": 220,
+      "sha256": "af9264272652c62f8e1d26603f13c2fd8a58ced2a7f231df1f6d756fab834f50"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-14/case.json",
+      "copy": "snapshot/matrix/case-14/case.json",
+      "bytes": 268,
+      "sha256": "ce2ef8e85b23661e90dd608de77ec54ff4c26939d4efab9245c7141dd7a76ada"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-14/stderr",
+      "copy": "snapshot/matrix/case-14/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-14/stdout",
+      "copy": "snapshot/matrix/case-14/stdout",
+      "bytes": 201,
+      "sha256": "c235c26602bda6b28be944d5f16c1c2c7624fb02accb7208b29c0ad0a21cb86f"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-15/case.json",
+      "copy": "snapshot/matrix/case-15/case.json",
+      "bytes": 269,
+      "sha256": "d1a4584b92f6e1e85e0edb519c40804daa7bf9fe195d6f4aab9219148b292051"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-15/stderr",
+      "copy": "snapshot/matrix/case-15/stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-15/stdout",
+      "copy": "snapshot/matrix/case-15/stdout",
+      "bytes": 202,
+      "sha256": "0ee73102ea83ae6e99c532e96e5d554ef8cee3fe5884b5cc2ebd61ddd6835de5"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-16/case.json",
+      "copy": "snapshot/matrix/case-16/case.json",
+      "bytes": 229,
+      "sha256": "08078d4a337f06fb4e025eea35f55039c7de3327808f495d4d9e3f4d1658276a"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-16/stderr",
+      "copy": "snapshot/matrix/case-16/stderr",
+      "bytes": 59,
+      "sha256": "a12c948e303b3ef8cd0595bfdd4bd31aba54f60a89c268c637cb65dae3eac85d"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/case-16/stdout",
+      "copy": "snapshot/matrix/case-16/stdout",
+      "bytes": 101,
+      "sha256": "82b44b69335c496e010532b26904878c949dcecfe3c8a0166a1ebfafc695a9ab"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/incident.json",
+      "copy": "snapshot/matrix/incident.json",
+      "bytes": 391,
+      "sha256": "790f7f7d3d35e802e5f67093b90213463955725073185a4f46df3c59299d745e"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/inputs.json",
+      "copy": "snapshot/matrix/inputs.json",
+      "bytes": 518,
+      "sha256": "085425a268dedbaa04bb71fe3474b8bf26a7e16c7df31866a12d1cabd8fcbee2"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/source-before.json",
+      "copy": "snapshot/matrix/source-before.json",
+      "bytes": 206,
+      "sha256": "0a2b4163e8cf1a7c8abb7d37de381ce139411dcce91a70dc78b16a50766597ba"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix/source-files-before.json",
+      "copy": "snapshot/matrix/source-files-before.json",
+      "bytes": 28196,
+      "sha256": "993e0bdecef8bd6ffd8990fe60c9f5fde5d3f946eb360d76e7a4df8a9507e751"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix-step.json",
+      "copy": "snapshot/matrix-step.json",
+      "bytes": 1661,
+      "sha256": "d7063a1c3cda72507912d3ac907df022e62f9037ba60fc13057521140baad27d"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix.stderr",
+      "copy": "snapshot/matrix.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/matrix.stdout",
+      "copy": "snapshot/matrix.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/prepared/GateProcess.cs",
+      "copy": "snapshot/prepared/GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/prepared/launch.ps1",
+      "copy": "snapshot/prepared/launch.ps1",
+      "bytes": 10377,
+      "sha256": "6edc3390ed026626341d0b99ce22094e5a0e8bfe9ef365f3186c54483917c2f5"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/prepared/manifest.json",
+      "copy": "snapshot/prepared/manifest.json",
+      "bytes": 722,
+      "sha256": "7f5209418ae59fcc471a03318954c0f6a00b8985e4e389d28f3adfe57ff38e0a"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/prepared/supervisor.ps1",
+      "copy": "snapshot/prepared/supervisor.ps1",
+      "bytes": 11515,
+      "sha256": "fa611527317f585acd14e63409e29b06cbed809c7e5e8f4b218f0853c6ec52d7"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/source-before-matrix.json",
+      "copy": "snapshot/source-before-matrix.json",
+      "bytes": 258,
+      "sha256": "da8760b0bf442eb56d6056270d6536673a60366049debd54fd3ba5c123a461fc"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/source-before.json",
+      "copy": "snapshot/source-before.json",
+      "bytes": 258,
+      "sha256": "ead1e345eda5e11ddbb30f1c4dd5b160d9aaeedb96f04dabe8c124d929645514"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/source-files-before-matrix.json",
+      "copy": "snapshot/source-files-before-matrix.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/source-files-before.json",
+      "copy": "snapshot/source-files-before.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/source-files-unknown.json",
+      "copy": "snapshot/source-files-unknown.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/source-unknown.json",
+      "copy": "snapshot/source-unknown.json",
+      "bytes": 258,
+      "sha256": "46a12c9820f7dbff5775c7628c3575fb8af836163a119727a1489b0bd5d01293"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/supervisor-state.json",
+      "copy": "snapshot/supervisor-state.json",
+      "bytes": 1766,
+      "sha256": "6f9777f837f4a82b4a161a02f80b51e1d4fa06a9f2c71db2c43605fc5b1b9eb0"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/supervisor.stderr",
+      "copy": "snapshot/supervisor.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/supervisor.stdout",
+      "copy": "snapshot/supervisor.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-matrix-98cec2e4-attempt1/terminal-unknown.marker",
+      "copy": "snapshot/terminal-unknown.marker",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

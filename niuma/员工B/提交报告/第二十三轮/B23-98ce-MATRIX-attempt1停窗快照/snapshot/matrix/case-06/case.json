@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "pid": 63636,
+  "state": "passed",
+  "started_utc": "2026-11-02T14:21:40.6814378Z",
+  "creation_filetime": 134381029006831807,
+  "elapsed_ms": 83,
+  "case": "process_lifetime_tests::failed_job_observation_stays_unknown_until_late_real_cleanup"
+}

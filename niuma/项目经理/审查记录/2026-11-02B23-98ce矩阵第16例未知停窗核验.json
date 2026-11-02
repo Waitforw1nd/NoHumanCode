@@ -1,0 +1,167 @@
+{
+  "utc": "2026-11-02T14:29:41.226482+00:00",
+  "state": "retained_unknown_not_complete",
+  "candidate_head": "98cec2e441adcb7cd0476c81db075c8f1ce4659e",
+  "exec_session": 26580,
+  "exec_terminal": "not_confirmed_running",
+  "snapshot_manifest_sha256": "1551eb5703569cb54c69e58729dcab7feb248f3dcc8c48bf4349de192bf89b9a",
+  "snapshot_files": 74,
+  "snapshot_bytes": 178184,
+  "source_copy_hashes_match": true,
+  "sources": {
+    "snapshots": 3,
+    "entries_each": 196,
+    "current_equal": true
+  },
+  "fixed_binaries_match_build": true,
+  "passed_case_records": [
+    {
+      "exit_code": 0,
+      "pid": 80504,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:31.9560535Z",
+      "creation_filetime": 134381028919773472,
+      "elapsed_ms": 412,
+      "case": "process_lifetime_tests::normal_nonzero_and_prestart_rejection"
+    },
+    {
+      "exit_code": 0,
+      "pid": 91392,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:33.1684120Z",
+      "creation_filetime": 134381028931708154,
+      "elapsed_ms": 260,
+      "case": "process_lifetime_tests::detached_multi_child_waits_for_real_tree_zero"
+    },
+    {
+      "exit_code": 0,
+      "pid": 70860,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:33.9654845Z",
+      "creation_filetime": 134381028939675950,
+      "elapsed_ms": 5163,
+      "case": "process_lifetime_tests::timeout_and_cancel_reap_original_tree_without_sealing"
+    },
+    {
+      "exit_code": 0,
+      "pid": 59152,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:39.5657058Z",
+      "creation_filetime": 134381028995675876,
+      "elapsed_ms": 115,
+      "case": "process_lifetime_tests::dropped_caller_requests_cleanup_without_immediate_unknown"
+    },
+    {
+      "exit_code": 0,
+      "pid": 70148,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:40.1315123Z",
+      "creation_filetime": 134381029001335390,
+      "elapsed_ms": 112,
+      "case": "process_lifetime_tests::output_limit_termination_keeps_tree_until_real_cleanup"
+    },
+    {
+      "exit_code": 0,
+      "pid": 63636,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:40.6814378Z",
+      "creation_filetime": 134381029006831807,
+      "elapsed_ms": 83,
+      "case": "process_lifetime_tests::failed_job_observation_stays_unknown_until_late_real_cleanup"
+    },
+    {
+      "exit_code": 0,
+      "pid": 80372,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:41.1724350Z",
+      "creation_filetime": 134381029011741829,
+      "elapsed_ms": 70,
+      "case": "process_lifetime_tests::reader_error_joins_and_cleans_but_unknown_is_sticky"
+    },
+    {
+      "exit_code": 0,
+      "pid": 89844,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:41.6631221Z",
+      "creation_filetime": 134381029016649964,
+      "elapsed_ms": 94,
+      "case": "process_lifetime_tests::live_reader_keeps_slot_even_after_process_and_job_finish"
+    },
+    {
+      "exit_code": 0,
+      "pid": 63284,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:42.1890005Z",
+      "creation_filetime": 134381029021909983,
+      "elapsed_ms": 1127,
+      "case": "process_lifetime_tests::unknown_on_membership_and_created_hold_retains_then_cleans"
+    },
+    {
+      "exit_code": 0,
+      "pid": 91652,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:43.7359700Z",
+      "creation_filetime": 134381029037378154,
+      "elapsed_ms": 92,
+      "case": "process_lifetime_tests::watchdog_real_exit_is_covered_by_slot"
+    },
+    {
+      "exit_code": 0,
+      "pid": 78624,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:44.2314196Z",
+      "creation_filetime": 134381029042332654,
+      "elapsed_ms": 143,
+      "case": "process_lifetime_tests::exit_code_failure_preserves_signal_and_waits_for_io"
+    },
+    {
+      "exit_code": 0,
+      "pid": 86816,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:44.8022592Z",
+      "creation_filetime": 134381029048040741,
+      "elapsed_ms": 96,
+      "case": "process_lifetime_tests::exit_code_failure_returns_unknown_then_releases_once"
+    },
+    {
+      "exit_code": 0,
+      "pid": 91836,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:45.3117807Z",
+      "creation_filetime": 134381029053134787,
+      "elapsed_ms": 133,
+      "case": "process_lifetime_tests::termination_failure_retains_live_tree_then_recovers_without_reopening"
+    },
+    {
+      "exit_code": 0,
+      "pid": 73868,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:45.8808367Z",
+      "creation_filetime": 134381029058824917,
+      "elapsed_ms": 140,
+      "case": "process_lifetime_tests::resize_races_submit_without_erasing_existing_slots"
+    },
+    {
+      "exit_code": 0,
+      "pid": 91892,
+      "state": "passed",
+      "started_utc": "2026-11-02T14:21:46.4225718Z",
+      "creation_filetime": 134381029064243236,
+      "elapsed_ms": 136,
+      "case": "process_lifetime_tests::argv_cwd_environment_roundtrip_and_invalid_prestart"
+    }
+  ],
+  "case16": {
+    "pid": 89780,
+    "state": "running",
+    "started_utc": "2026-11-02T14:21:46.9950400Z",
+    "creation_filetime": 134381029069968888,
+    "case": "process_lifetime_tests::breakaway_independent_controls_and_component_denial"
+  },
+  "unknown_marker": "NHC_TERMINAL_UNKNOWN: control helper lacks cleanup receipt\n",
+  "case17_20_not_started": true,
+  "original_handles_retained": true,
+  "gates_not_released": true,
+  "diagnostic_status": "PSS/DuplicateHandle read-only package requested; not executed",
+  "manager_ran_tests": false
+}

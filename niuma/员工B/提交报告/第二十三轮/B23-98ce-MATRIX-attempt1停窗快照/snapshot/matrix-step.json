@@ -1,0 +1,16 @@
+{
+  "name": "20-exact",
+  "command": "\"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" -NoProfile -File \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\tests\\support\\process_lifetime\\run-fixed.ps1\" -ExpectedHead 98cec2e441adcb7cd0476c81db075c8f1ce4659e -ExpectedProductTree 85020d9c3c34e9f498fc9f4e4b5f855b087c5f4e -ExpectedRustTree 951cff6854e0a8bc0b7cc48d559b735c60256c21 -TestExe \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\fixed\\lib-test.exe\" -TestSha256 95a58781a58981fda0fbc4e4bd9517548642800312c7c02ec448fbeccd0d2991 -ProbeExe \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1\\fixed\\probe.exe\" -ProbeSha256 bcc63ab6b6dfc982033c2e052d9b88d900fb6fb07c982435206290c9897b67c3 -AttemptDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-matrix-98cec2e4-attempt1\\matrix\"",
+  "start_utc": "2026-11-02T14:21:29.2526960Z",
+  "end_utc": null,
+  "state": "running",
+  "pid": 62476,
+  "creation_filetime": 134381028898031298,
+  "creation_error": 0,
+  "exit_code": null,
+  "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-matrix-98cec2e4-attempt1\\matrix.stdout",
+  "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-matrix-98cec2e4-attempt1\\matrix.stderr",
+  "timeout_seconds": 4200,
+  "build_dir": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-build-98cec2e4-attempt1",
+  "build_receipt_sha256": "974a1dec4a2087a84c1dfb0cf741f9da2fd8755b581425469a92a42a89940582"
+}

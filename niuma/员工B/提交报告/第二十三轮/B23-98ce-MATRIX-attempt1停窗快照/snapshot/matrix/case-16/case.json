@@ -1,0 +1,7 @@
+{
+  "pid": 89780,
+  "state": "running",
+  "started_utc": "2026-11-02T14:21:46.9950400Z",
+  "creation_filetime": 134381029069968888,
+  "case": "process_lifetime_tests::breakaway_independent_controls_and_component_denial"
+}

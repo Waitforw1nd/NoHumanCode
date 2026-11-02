@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "pid": 86816,
+  "state": "passed",
+  "started_utc": "2026-11-02T14:21:44.8022592Z",
+  "creation_filetime": 134381029048040741,
+  "elapsed_ms": 96,
+  "case": "process_lifetime_tests::exit_code_failure_returns_unknown_then_releases_once"
+}
