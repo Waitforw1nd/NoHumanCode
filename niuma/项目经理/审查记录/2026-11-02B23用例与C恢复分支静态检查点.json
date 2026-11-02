@@ -1,0 +1,30 @@
+{
+  "captured_utc": "2026-11-02T02:18:09.417811+00:00",
+  "scope": "in-flight static follow-up; no fixed candidate, no test execution",
+  "files": [
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/src/process_lifetime_tests.rs",
+      "bytes": 21920,
+      "sha256": "7231f81a332f5ecd047fdb97e35e1f4200337f7bf39f860f39f1b5e44eeae2c5",
+      "same_on_reread": true
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/examples/process_lifetime_probe.rs",
+      "bytes": 10471,
+      "sha256": "b5a314354b0aaa03a0c2eed3a65ab350f9bac78c68bef466191959efad951b4e",
+      "same_on_reread": true
+    },
+    {
+      "source": "../nhc-c-domain-authority/NoManCode/rust-app/src/host_services.rs",
+      "bytes": 40326,
+      "sha256": "9a14b6941700e7499c287c4df046f2933d32ff6e5490607c603104d7654f04ca",
+      "same_on_reread": true
+    },
+    {
+      "source": "../nhc-c-domain-authority/NoManCode/rust-app/src/store.rs",
+      "bytes": 237427,
+      "sha256": "0eea0be58c142fc9e81f1ceefd37607cad64b8be420842ad284de608d76e640a",
+      "same_on_reread": true
+    }
+  ]
+}

@@ -1,3 +1,7 @@
+## 2026-11-02 过程用例覆盖与恢复回执（摘要记录）
+
+经理读B十个过程用例源码，确认当前已有后代/取消/reader/Job/watchdog断言，要求补resize/阻塞settle/breakaway独立对照并明确created hold证明范围；probe隐藏和harness创建时间检查已见。C restore部分普通失败已settle，经理继续要求落库失败与本地寿命分开裁决，保持封门/业务未知而不永久保留已无工作的guard。无动态测试或新候选验收，继续原核心与三版目标。
+
 ## 2026-11-02 Git diff与恢复寿命分类（摘要记录）
 
 经理核C公开commit_turn修订和五模式测试后，继续跨host_services/git_diff审计，定位普通InvalidPath误永久封域、Git diff仍直接child收集及无界最后wait、同步restore已返回失败却不结算票。已授权C最小git_diff与测试接线，同一组件与整项/代次能力，保留业务未知/不重发与真实在途负控；不停用合法功能。B新测试probe原child对象复制方向保留，补显式隐藏和harness创建身份核验。均未动态。进度读取迟未返回的只读cell已停止，原B/C wait超时不等于终止，未重启员工。
