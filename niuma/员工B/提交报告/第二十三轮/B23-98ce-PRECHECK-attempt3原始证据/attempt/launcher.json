@@ -1,0 +1,17 @@
+{
+  "state": "completed",
+  "expected_head": "98cec2e441adcb7cd0476c81db075c8f1ce4659e",
+  "attempt": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3",
+  "target": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\target",
+  "pid": 52820,
+  "creation_filetime": 134381014855724998,
+  "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\supervisor.stdout",
+  "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\supervisor.stderr",
+  "started_utc": "2026-11-02T13:58:05.0712518Z",
+  "command": "\"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" -NoProfile -File \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-prepared\\supervisor.ps1\" -AttemptDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\" -TargetDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\target\"",
+  "flags": "CREATE_SUSPENDED | CREATE_NO_WINDOW",
+  "timeout_seconds": 2700,
+  "creation_error": 0,
+  "exit_code": 0,
+  "signal_utc": "2026-11-02T14:00:36.7321284Z"
+}

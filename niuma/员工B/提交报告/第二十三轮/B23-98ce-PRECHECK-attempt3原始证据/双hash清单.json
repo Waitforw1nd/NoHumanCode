@@ -1,0 +1,204 @@
+{
+  "scope": "top-level attempt files plus four prepared files; no target/tmp/cache",
+  "count": 33,
+  "files": [
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/01-check.json",
+      "copy": "attempt/01-check.json",
+      "bytes": 747,
+      "sha256": "570a935008bf83a0e528b8b3e1683d9577825b6c6abd241fa639517744f5919f"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/01-check.stderr",
+      "copy": "attempt/01-check.stderr",
+      "bytes": 9522,
+      "sha256": "83d6c58de4c4aa5c1cc4ed8b61065140e98fd0b6281e643f27f479981948ac7c"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/01-check.stdout",
+      "copy": "attempt/01-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/02-clippy.json",
+      "copy": "attempt/02-clippy.json",
+      "bytes": 766,
+      "sha256": "087adf71d770df10039d1f9a65c1ab025965b184c228d5cf2cdda5f57f0f1e14"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/02-clippy.stderr",
+      "copy": "attempt/02-clippy.stderr",
+      "bytes": 594,
+      "sha256": "93877f7cf3efc983c901f28703a196a59acf409211237951dd126e7a3b04d79c"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/02-clippy.stdout",
+      "copy": "attempt/02-clippy.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/artifacts-after-01-check.json",
+      "copy": "attempt/artifacts-after-01-check.json",
+      "bytes": 598856,
+      "sha256": "179fd98f7a6458c8d695c7af4e518d82b2b68a587589cd0edc39f2c04a892ff2"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/artifacts-after-02-clippy.json",
+      "copy": "attempt/artifacts-after-02-clippy.json",
+      "bytes": 679760,
+      "sha256": "cccc0578c466aa72fc81bb20239b9d1134dd817883d2d7aa9741cab6d0978895"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/artifacts-before.json",
+      "copy": "attempt/artifacts-before.json",
+      "bytes": 4,
+      "sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/environment.json",
+      "copy": "attempt/environment.json",
+      "bytes": 5009,
+      "sha256": "03f31816f5a8a8e84b0ab9861d8481b44622b7d1a5162496b73534e408c13b5b"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/launcher.json",
+      "copy": "attempt/launcher.json",
+      "bytes": 1358,
+      "sha256": "a18bbe752c303a212f534a3d4fff484ad202a6abe26ad038fa49c18c51576f74"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-after-01-check.json",
+      "copy": "attempt/source-after-01-check.json",
+      "bytes": 258,
+      "sha256": "f59032613e9cb2b73d7633c6360fa41085c67eb7297fe74a245b1c9cc42eac5e"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-after-02-clippy.json",
+      "copy": "attempt/source-after-02-clippy.json",
+      "bytes": 258,
+      "sha256": "92701cc29c6b8f5113b5e6d28f9c0bb5787f2720881073782f7ec01c315c4a51"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-before-01-check.json",
+      "copy": "attempt/source-before-01-check.json",
+      "bytes": 258,
+      "sha256": "1bda04b16efa0c163f80099f855c1da6279fe33487fe1747e7d0e48d855ed642"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-before-02-clippy.json",
+      "copy": "attempt/source-before-02-clippy.json",
+      "bytes": 258,
+      "sha256": "30914c65758d050d666b760dc4ddbbb485beb01876b39df2034aec485d8e06d0"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-before.json",
+      "copy": "attempt/source-before.json",
+      "bytes": 258,
+      "sha256": "917801a4ce7a09e98d866adcef816e12b1d181d3ed0a64d6ea278056fb01c462"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-files-after-01-check.json",
+      "copy": "attempt/source-files-after-01-check.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-files-after-02-clippy.json",
+      "copy": "attempt/source-files-after-02-clippy.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-files-before-01-check.json",
+      "copy": "attempt/source-files-before-01-check.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-files-before-02-clippy.json",
+      "copy": "attempt/source-files-before-02-clippy.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-files-before.json",
+      "copy": "attempt/source-files-before.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-files-final.json",
+      "copy": "attempt/source-files-final.json",
+      "bytes": 34299,
+      "sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/source-final.json",
+      "copy": "attempt/source-final.json",
+      "bytes": 258,
+      "sha256": "bbd29bc6a857dfa7458a15bdb8407beb2733807ca98a1a7fa98663ed6988646e"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/supervisor-state.json",
+      "copy": "attempt/supervisor-state.json",
+      "bytes": 766,
+      "sha256": "087adf71d770df10039d1f9a65c1ab025965b184c228d5cf2cdda5f57f0f1e14"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/supervisor.stderr",
+      "copy": "attempt/supervisor.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/supervisor.stdout",
+      "copy": "attempt/supervisor.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/tools-final.json",
+      "copy": "attempt/tools-final.json",
+      "bytes": 1284,
+      "sha256": "37beb921b8018f56424835f4c7876f83431e19672f4edc3a4287129ca642f245"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/tools.json",
+      "copy": "attempt/tools.json",
+      "bytes": 1284,
+      "sha256": "37beb921b8018f56424835f4c7876f83431e19672f4edc3a4287129ca642f245"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/window-result.json",
+      "copy": "attempt/window-result.json",
+      "bytes": 147,
+      "sha256": "0896b37a3646b694f7fb8723ef04ebacde119ffa68b292835f64564e64fec06c"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/prepared/GateProcess.cs",
+      "copy": "prepared/GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/prepared/launch.ps1",
+      "copy": "prepared/launch.ps1",
+      "bytes": 9954,
+      "sha256": "dbdc8ad2ddde27f1ba97642294c0a26a5a9fcfd720e252e2cb5503639695d71c"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/prepared/manifest.json",
+      "copy": "prepared/manifest.json",
+      "bytes": 723,
+      "sha256": "c32080b4df76cfc3a711ee024ab0d72034602f7d8e536962d566bf90cdd0af73"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-98cec2e4-attempt3/prepared/supervisor.ps1",
+      "copy": "prepared/supervisor.ps1",
+      "bytes": 12486,
+      "sha256": "c676837bca939eb4c47a339e56f9123915d24ef7e20d9c591b322c057ed87bde"
+    }
+  ]
+}

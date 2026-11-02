@@ -1,0 +1,15 @@
+{
+  "name": "02-clippy",
+  "command": "cargo clippy --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\target\" -- -D warnings",
+  "start_utc": "2026-11-02T14:00:10.9425598Z",
+  "end_utc": "2026-11-02T14:00:34.6227071Z",
+  "state": "passed",
+  "pid": 88308,
+  "creation_filetime": 134381016109447877,
+  "creation_error": 0,
+  "exit_code": 0,
+  "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\02-clippy.stdout",
+  "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-98cec2e4-attempt3\\02-clippy.stderr",
+  "timeout_seconds": 1200,
+  "elapsed_ms": 23678
+}

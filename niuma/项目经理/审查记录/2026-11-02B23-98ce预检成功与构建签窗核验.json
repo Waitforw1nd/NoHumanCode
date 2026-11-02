@@ -1,0 +1,50 @@
+{
+  "utc": "2026-11-02T14:14:12.376944+00:00",
+  "author": "项目经理",
+  "candidate_head": "98cec2e441adcb7cd0476c81db075c8f1ce4659e",
+  "product_tree": "85020d9c3c34e9f498fc9f4e4b5f855b087c5f4e",
+  "rust_tree": "951cff6854e0a8bc0b7cc48d559b735c60256c21",
+  "raw_publication_manifest_sha256": "d1dbf138db63e5c3978f8840b2d4bfefcb8d4fb86e9f9e44a5e48b7bce71045c",
+  "raw_count": 33,
+  "raw_bytes": 1534511,
+  "source_copy_hashes_verified": true,
+  "source_snapshot_count": 6,
+  "source_entries_each": 196,
+  "snapshot_sha256": "8662e8fc9dae1b58c8ea64e6ed4ebe9a610141c277c787b882cf78579ac5d5ce",
+  "current_source_bytes_match": true,
+  "process_evidence": {
+    "01-check.json": {
+      "state": "passed",
+      "pid": 89592,
+      "creation_filetime": 134381015117668828,
+      "exit_code": 0,
+      "start_utc": "2026-11-02T13:58:31.7589380Z",
+      "end_utc": "2026-11-02T14:00:08.8099214Z"
+    },
+    "02-clippy.json": {
+      "state": "passed",
+      "pid": 88308,
+      "creation_filetime": 134381016109447877,
+      "exit_code": 0,
+      "start_utc": "2026-11-02T14:00:10.9425598Z",
+      "end_utc": "2026-11-02T14:00:34.6227071Z"
+    },
+    "launcher.json": {
+      "state": "completed",
+      "pid": 52820,
+      "creation_filetime": 134381014855724998,
+      "exit_code": 0,
+      "signal_utc": "2026-11-02T14:00:36.7321284Z"
+    },
+    "window-result.json": {
+      "state": "completed",
+      "exit_code": 0
+    }
+  },
+  "employee_exec_session": 88259,
+  "employee_exec_exit": 0,
+  "build_prepared_manifest_sha256": "5aac39f3d5aaa9f3206a60c09937e0ebb30c70797f4743aa8b2a308de12af2bb",
+  "gate_absent_before_build": true,
+  "build_not_started": true,
+  "manager_ran_product_tests": false
+}
