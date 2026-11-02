@@ -1,0 +1,601 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.26
+    Checking pin-project-lite v0.2.17
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+   Compiling version_check v0.9.5
+    Checking futures-core v0.3.34
+   Compiling syn v3.0.6
+   Compiling syn v2.0.119
+   Compiling serde_core v1.0.229
+    Checking once_cell v1.21.4
+    Checking futures-sink v0.3.34
+    Checking windows-link v0.2.1
+    Checking futures-channel v0.3.34
+   Compiling serde_derive v1.0.229
+   Compiling futures-macro v0.3.34
+    Checking futures-io v0.3.34
+    Checking futures-task v0.3.34
+    Checking slab v0.4.12
+    Checking futures-util v0.3.34
+    Checking windows-sys v0.61.2
+   Compiling serde v1.0.229
+    Checking itoa v1.0.18
+   Compiling synstructure v0.14.0
+    Checking smallvec v1.16.1
+    Checking bytes v1.12.1
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.3
+    Checking zerofrom v0.1.8
+    Checking stable_deref_trait v1.2.1
+   Compiling zerovec-derive v0.11.6
+    Checking yoke v0.8.3
+   Compiling displaydoc v0.2.7
+   Compiling generic-array v0.14.7
+    Checking zerovec v0.11.8
+    Checking http v1.5.0
+   Compiling zmij v1.0.23
+    Checking tinystr v0.8.4
+   Compiling find-msvc-tools v0.1.13
+    Checking writeable v0.6.4
+   Compiling shlex v2.0.1
+    Checking litemap v0.8.3
+    Checking percent-encoding v2.3.2
+   Compiling serde_json v1.0.151
+    Checking icu_locale_core v2.3.0
+   Compiling cc v1.4.7
+    Checking potential_utf v0.1.6
+    Checking zerotrie v0.2.5
+   Compiling parking_lot_core v0.9.12
+   Compiling icu_properties_data v2.3.0
+   Compiling icu_normalizer_data v2.3.0
+    Checking utf8_iter v1.0.4
+    Checking icu_collections v2.3.0
+    Checking icu_provider v2.3.1
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.2
+    Checking icu_properties v2.3.0
+    Checking indexmap v2.14.2
+    Checking icu_normalizer v2.3.0
+    Checking parking_lot v0.12.5
+    Checking form_urlencoded v1.2.2
+    Checking mio v1.2.3
+    Checking socket2 v0.6.5
+   Compiling tokio-macros v2.7.2
+   Compiling getrandom v0.4.3
+    Checking idna_adapter v1.2.2
+    Checking tokio v1.53.1
+   Compiling anyhow v1.0.104
+    Checking base64 v0.22.1
+    Checking idna v1.1.0
+   Compiling ring v0.17.14
+    Checking http-body v1.1.0
+    Checking tracing-core v0.1.36
+    Checking log v0.4.34
+    Checking tracing v0.1.44
+    Checking url v2.5.8
+    Checking zeroize v1.9.0
+   Compiling httparse v1.10.1
+    Checking tower-service v0.3.3
+    Checking rustls-pki-types v1.15.1
+    Checking getrandom v0.2.17
+   Compiling libc v0.2.189
+    Checking try-lock v0.2.5
+    Checking untrusted v0.9.0
+    Checking want v0.3.1
+    Checking sync_wrapper v1.0.2
+    Checking tower-layer v0.3.3
+   Compiling libm v0.2.16
+    Checking atomic-waker v1.1.2
+    Checking httpdate v1.0.3
+   Compiling rustls v0.23.45
+    Checking typenum v1.20.1
+    Checking bitflags v2.13.2
+    Checking rustls-webpki v0.103.15
+    Checking hyper v1.11.1
+    Checking ipnet v2.12.2
+    Checking subtle v2.6.1
+    Checking leb128fmt v0.1.0
+    Checking ryu v1.0.23
+   Compiling vcpkg v0.2.15
+   Compiling windows_x86_64_msvc v0.52.6
+    Checking once_cell_polyfill v1.70.2
+    Checking anstyle v1.0.14
+    Checking utf8parse v0.2.2
+   Compiling pkg-config v0.3.34
+    Checking anstyle-parse v1.0.0
+    Checking anstyle-wincon v3.0.11
+   Compiling libsqlite3-sys v0.35.0
+    Checking wasm-encoder v0.259.0
+    Checking hyper-util v0.1.20
+    Checking tower v0.5.3
+    Checking http-body-util v0.1.5
+    Checking anstyle-query v1.1.5
+   Compiling wasmparser v0.228.0
+    Checking unicode-width v0.2.2
+   Compiling wasmi_ir v2.0.0
+    Checking colorchoice v1.0.5
+    Checking bumpalo v3.20.3
+    Checking foldhash v0.1.5
+    Checking is_terminal_polyfill v1.70.2
+    Checking anstream v1.0.0
+    Checking hashbrown v0.15.5
+    Checking wast v259.0.0
+    Checking tokio-rustls v0.26.5
+    Checking wasmi_core v2.0.0
+    Checking serde_urlencoded v0.7.1
+    Checking block-buffer v0.10.4
+    Checking crypto-common v0.1.7
+    Checking webpki-roots v1.0.9
+    Checking peachsh-protocol v0.1.0 (E:\code\nhc-b-process-lifetime\NoManCode\rust-app\crates\protocol)
+   Compiling heck v0.5.0
+    Checking mime v0.3.17
+    Checking strsim v0.11.1
+   Compiling wasmi v2.0.0
+    Checking clap_lex v1.1.1
+    Checking clap_builder v4.6.7
+    Checking axum-core v0.5.6
+   Compiling clap_derive v4.6.7
+    Checking hyper-rustls v0.27.9
+    Checking wat v1.259.0
+    Checking digest v0.10.7
+    Checking windows-targets v0.52.6
+    Checking hashlink v0.10.0
+    Checking tower-http v0.6.11
+    Checking tokio-util v0.7.19
+    Checking serde_path_to_error v0.1.20
+   Compiling async-stream-impl v0.3.6
+    Checking matchit v0.8.4
+    Checking wasmi_collections v2.0.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking spin v0.9.9
+    Checking unsafe-libyaml v0.2.11
+    Checking cpufeatures v0.2.17
+    Checking fallible-iterator v0.3.0
+    Checking rusqlite v0.37.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking sha2 v0.10.9
+    Checking axum v0.8.9
+    Checking async-stream v0.3.6
+    Checking reqwest v0.12.28
+    Checking clap v4.6.7
+    Checking windows-sys v0.59.0
+    Checking uuid v1.26.1
+    Checking fastrand v2.5.0
+    Checking tempfile v3.27.0
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling wasm-bindgen-shared v0.2.128
+    Checking peachsh v0.2.0 (E:\code\nhc-b-process-lifetime\NoManCode\rust-app)
+   Compiling thiserror v2.0.20
+   Compiling thiserror-impl v2.0.20
+   Compiling rustversion v1.0.23
+   Compiling wasm-bindgen-macro-support v0.2.128
+warning: trait `DomainLease` is never used
+  --> src\process_lifetime.rs:24:18
+   |
+24 | pub(crate) trait DomainLease: Send + Sync + 'static {
+   |                  ^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: enum `OverflowPolicy` is never used
+  --> src\process_lifetime.rs:30:17
+   |
+30 | pub(crate) enum OverflowPolicy {
+   |                 ^^^^^^^^^^^^^^
+
+warning: struct `ProcessSpec` is never constructed
+  --> src\process_lifetime.rs:39:19
+   |
+39 | pub(crate) struct ProcessSpec {
+   |                   ^^^^^^^^^^^
+
+warning: associated function `new` is never used
+  --> src\process_lifetime.rs:57:19
+   |
+54 | impl ProcessSpec {
+   | ---------------- associated function in this implementation
+...
+57 |     pub(crate) fn new(
+   |                   ^^^
+
+warning: struct `Capture` is never constructed
+   --> src\process_lifetime.rs:105:19
+    |
+105 | pub(crate) struct Capture {
+    |                   ^^^^^^^
+
+warning: enum `CompletionReason` is never used
+   --> src\process_lifetime.rs:111:17
+    |
+111 | pub(crate) enum CompletionReason {
+    |                 ^^^^^^^^^^^^^^^^
+
+warning: struct `Settled` is never constructed
+   --> src\process_lifetime.rs:121:19
+    |
+121 | pub(crate) struct Settled {
+    |                   ^^^^^^^
+
+warning: struct `ProcessIdentity` is never constructed
+   --> src\process_lifetime.rs:130:19
+    |
+130 | pub(crate) struct ProcessIdentity {
+    |                   ^^^^^^^^^^^^^^^
+
+warning: enum `Outcome` is never used
+   --> src\process_lifetime.rs:136:17
+    |
+136 | pub(crate) enum Outcome {
+    |                 ^^^^^^^
+
+warning: struct `NotStarted` is never constructed
+   --> src\process_lifetime.rs:151:19
+    |
+151 | pub(crate) struct NotStarted {
+    |                   ^^^^^^^^^^
+
+warning: enum `Phase` is never used
+   --> src\process_lifetime.rs:157:6
+    |
+157 | enum Phase {
+    |      ^^^^^
+
+warning: struct `LeaseState` is never constructed
+   --> src\process_lifetime.rs:165:8
+    |
+165 | struct LeaseState {
+    |        ^^^^^^^^^^
+
+warning: struct `LeaseCell` is never constructed
+   --> src\process_lifetime.rs:171:8
+    |
+171 | struct LeaseCell(Mutex<LeaseState>);
+    |        ^^^^^^^^^
+
+warning: methods `decide_unknown`, `finish`, and `take_outcome` are never used
+   --> src\process_lifetime.rs:174:8
+    |
+173 | impl LeaseCell {
+    | -------------- methods in this implementation
+174 |     fn decide_unknown(&self) -> bool {
+    |        ^^^^^^^^^^^^^^
+...
+191 |     fn finish(&self, outcome: Outcome) {
+    |        ^^^^^^
+...
+214 |     fn take_outcome(&self) -> Outcome {
+    |        ^^^^^^^^^^^^
+
+warning: struct `Capacity` is never constructed
+   --> src\process_lifetime.rs:224:8
+    |
+224 | struct Capacity {
+    |        ^^^^^^^^
+
+warning: method `reap_completed` is never used
+   --> src\process_lifetime.rs:233:8
+    |
+231 | impl Capacity {
+    | ------------- method in this implementation
+232 |     #[cfg(windows)]
+233 |     fn reap_completed(&mut self) {
+    |        ^^^^^^^^^^^^^^
+
+warning: struct `Slot` is never constructed
+   --> src\process_lifetime.rs:256:8
+    |
+256 | struct Slot {
+    |        ^^^^
+
+warning: methods `release_unstarted` and `attach_current_thread` are never used
+   --> src\process_lifetime.rs:264:8
+    |
+262 | impl Slot {
+    | --------- methods in this implementation
+263 |     /// Only before a holder thread has been successfully created.
+264 |     fn release_unstarted(&mut self) {
+    |        ^^^^^^^^^^^^^^^^^
+...
+274 |     fn attach_current_thread(&mut self) -> std::io::Result<()> {
+    |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `Supervisor` is never constructed
+   --> src\process_lifetime.rs:318:19
+    |
+318 | pub(crate) struct Supervisor {
+    |                   ^^^^^^^^^^
+
+warning: associated items `new`, `resize`, `reserve`, and `submit` are never used
+   --> src\process_lifetime.rs:323:19
+    |
+322 | impl Supervisor {
+    | --------------- associated items in this implementation
+323 |     pub(crate) fn new(capacity: NonZeroUsize) -> Self {
+    |                   ^^^
+...
+337 |     pub(crate) fn resize(&self, capacity: NonZeroUsize) {
+    |                   ^^^^^^
+...
+352 |     fn reserve(&self) -> Option<Slot> {
+    |        ^^^^^^^
+...
+366 |     pub(crate) fn submit(
+    |                   ^^^^^^
+
+warning: struct `Operation` is never constructed
+   --> src\process_lifetime.rs:480:19
+    |
+480 | pub(crate) struct Operation {
+    |                   ^^^^^^^^^
+
+warning: methods `request_cancel`, `cancel`, and `wait` are never used
+   --> src\process_lifetime.rs:491:8
+    |
+490 | impl Operation {
+    | -------------- methods in this implementation
+491 |     fn request_cancel(&self) {
+    |        ^^^^^^^^^^^^^^
+...
+499 |     pub(crate) fn cancel(&self) {
+    |                   ^^^^^^
+...
+503 |     pub(crate) async fn wait(mut self) -> Outcome {
+    |                         ^^^^
+
+warning: type alias `Signal` is never used
+   --> src\process_lifetime.rs:581:10
+    |
+581 |     type Signal = Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>;
+    |          ^^^^^^
+
+warning: function `notify` is never used
+   --> src\process_lifetime.rs:582:8
+    |
+582 |     fn notify(signal: &Signal) {
+    |        ^^^^^^
+
+warning: function `unknown` is never used
+   --> src\process_lifetime.rs:587:8
+    |
+587 |     fn unknown(lease: &LeaseCell, signal: &Signal) {
+    |        ^^^^^^^
+
+warning: struct `WatchdogExit` is never constructed
+   --> src\process_lifetime.rs:592:12
+    |
+592 |     struct WatchdogExit {
+    |            ^^^^^^^^^^^^
+
+warning: function `raw` is never used
+   --> src\process_lifetime.rs:604:8
+    |
+604 |     fn raw(handle: &OwnedHandle) -> HANDLE {
+    |        ^^^
+
+warning: function `last_error` is never used
+   --> src\process_lifetime.rs:607:8
+    |
+607 |     fn last_error() -> Option<i32> {
+    |        ^^^^^^^^^^
+
+warning: function `owned` is never used
+   --> src\process_lifetime.rs:610:15
+    |
+610 |     unsafe fn owned(handle: HANDLE) -> io::Result<OwnedHandle> {
+    |               ^^^^^
+
+warning: struct `Holder` is never constructed
+   --> src\process_lifetime.rs:618:12
+    |
+618 |     struct Holder {
+    |            ^^^^^^
+
+warning: method `finish` is never used
+   --> src\process_lifetime.rs:624:12
+    |
+623 |     impl Holder {
+    |     ----------- method in this implementation
+624 |         fn finish(&mut self, outcome: Outcome, signal: &Signal) {
+    |            ^^^^^^
+
+warning: struct `Evidence` is never constructed
+   --> src\process_lifetime.rs:646:12
+    |
+646 |     struct Evidence {
+    |            ^^^^^^^^
+
+warning: struct `Attributes` is never constructed
+   --> src\process_lifetime.rs:670:12
+    |
+670 |     struct Attributes {
+    |            ^^^^^^^^^^
+
+warning: associated items `new` and `set` are never used
+   --> src\process_lifetime.rs:675:12
+    |
+674 |     impl Attributes {
+    |     --------------- associated items in this implementation
+675 |         fn new() -> io::Result<Self> {
+    |            ^^^
+...
+688 |         fn set<T>(&mut self, attribute: u32, value: &T) -> io::Result<()> {
+    |            ^^^
+
+warning: function `wide` is never used
+   --> src\process_lifetime.rs:714:8
+    |
+714 |     fn wide(value: &OsStr) -> io::Result<Vec<u16>> {
+    |        ^^^^
+
+warning: function `append_argument` is never used
+   --> src\process_lifetime.rs:725:8
+    |
+725 |     fn append_argument(line: &mut Vec<u16>, arg: &OsStr) -> io::Result<()> {
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `environment` is never used
+   --> src\process_lifetime.rs:750:8
+    |
+750 |     fn environment(entries: &[(OsString, OsString)]) -> io::Result<Vec<u16>> {
+    |        ^^^^^^^^^^^
+
+warning: function `pipe` is never used
+   --> src\process_lifetime.rs:815:8
+    |
+815 |     fn pipe() -> io::Result<(OwnedHandle, OwnedHandle)> {
+    |        ^^^^
+
+warning: function `reader` is never used
+   --> src\process_lifetime.rs:834:8
+    |
+834 |     fn reader(
+    |        ^^^^^^
+
+warning: function `accounting` is never used
+   --> src\process_lifetime.rs:884:8
+    |
+884 |     fn accounting(job: &OwnedHandle) -> io::Result<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION> {
+    |        ^^^^^^^^^^
+
+warning: function `prestart` is never used
+   --> src\process_lifetime.rs:902:8
+    |
+902 |     fn prestart(holder: &mut Holder, signal: &Signal, stage: &'static str, error: Option<i32>) {
+    |        ^^^^^^^^
+
+warning: function `run` is never used
+   --> src\process_lifetime.rs:912:19
+    |
+912 |     pub(super) fn run(
+    |                   ^^^
+
+warning: function `run_inner` is never used
+   --> src\process_lifetime.rs:987:8
+    |
+987 |     fn run_inner(
+    |        ^^^^^^^^^
+
+warning: `peachsh` (lib) generated 43 warnings
+   Compiling wasm-bindgen v0.2.128
+   Compiling proc-macro-error-attr2 v2.0.0
+   Compiling proc-macro-error2 v2.0.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling wasm-bindgen-macro v0.2.128
+   Compiling convert_case v0.11.0
+    Checking futures-executor v0.3.34
+    Checking futures v0.3.34
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling unicode-xid v0.2.6
+    Checking or_poisoned v0.1.0
+   Compiling paste v1.0.15
+    Checking parking v2.2.1
+    Checking event-listener v5.4.2
+    Checking js-sys v0.3.105
+   Compiling const_format_proc_macros v0.2.34
+   Compiling proc-macro-utils v0.10.0
+   Compiling slotmap v1.1.1
+    Checking throw_error v0.3.1
+   Compiling konst_macro_rules v0.2.19
+   Compiling konst v0.2.20
+    Checking event-listener-strategy v0.5.4
+   Compiling reactive_graph v0.2.14
+   Compiling server_fn_macro v0.8.10
+   Compiling derive-where v1.7.0
+    Checking wasm-bindgen-futures v0.4.78
+    Checking web-sys v0.3.105
+    Checking send_wrapper v0.6.0
+   Compiling camino v1.2.6
+    Checking any_spawner v0.3.0
+    Checking async-lock v3.4.2
+   Compiling const_format v0.2.36
+    Checking hydration_context v0.3.1
+   Compiling syn_derive v0.2.0
+   Compiling thiserror v1.0.69
+   Compiling xxhash-rust v0.8.18
+    Checking guardian v1.3.0
+    Checking either v1.18.0
+    Checking rustc-hash v2.1.3
+    Checking itertools v0.14.0
+   Compiling winapi-util v0.1.11
+   Compiling manyhow-macros v0.11.4
+   Compiling quote-use-macros v0.8.4
+   Compiling reactive_stores_macro v0.4.3
+   Compiling tachys v0.2.18
+   Compiling pin-project-internal v1.1.13
+   Compiling thiserror-impl v1.0.69
+   Compiling prettyplease v0.2.37
+    Checking winnow v1.0.4
+   Compiling yansi v1.0.1
+    Checking toml_parser v1.1.3+spec-1.1.0
+    Checking pin-project v1.1.13
+    Checking reactive_stores v0.4.3
+   Compiling quote-use v0.8.4
+   Compiling manyhow v0.11.4
+   Compiling same-file v1.0.6
+    Checking gloo-utils v0.2.0
+    Checking either_of v0.1.9
+    Checking oco_ref v0.2.1
+   Compiling server_fn v0.8.13
+    Checking toml_datetime v1.1.1+spec-1.1.0
+    Checking serde_spanned v1.1.1
+   Compiling async-trait v0.1.92
+    Checking aho-corasick v1.1.5
+    Checking drain_filter_polyfill v0.1.3
+    Checking html-escape v0.2.15
+    Checking regex-syntax v0.8.11
+   Compiling interpolator v0.5.0
+    Checking const_str_slice_concat v0.1.0
+   Compiling collection_literals v1.0.3
+    Checking next_tuple v0.1.0
+    Checking erased v0.1.2
+    Checking regex-automata v0.4.18
+   Compiling attribute-derive-macro v0.10.5
+    Checking convert_case v0.6.0
+    Checking toml v1.1.6+spec-1.1.0
+   Compiling rstml v0.12.1
+    Checking gloo-net v0.6.0
+   Compiling walkdir v2.5.0
+   Compiling server_fn_macro_default v0.8.5
+    Checking wasm-streams v0.5.0
+    Checking serde_qs v0.15.0
+   Compiling leptos_macro v0.8.17
+   Compiling typed-builder-macro v0.23.2
+    Checking pathdiff v0.2.3
+   Compiling base16 v0.2.1
+    Checking const-str v1.1.0
+    Checking typed-builder v0.23.2
+   Compiling leptos_hot_reload v0.8.6
+   Compiling wasm_split_macros v0.2.2
+    Checking config v0.15.26
+   Compiling attribute-derive v0.10.5
+    Checking regex v1.13.1
+   Compiling convert_case_extras v0.2.0
+    Checking codee v0.3.5
+   Compiling leptos v0.8.15
+    Checking async-once-cell v0.5.4
+    Checking wasm_split_helpers v0.2.3
+    Checking leptos_server v0.8.7
+    Checking leptos_config v0.8.10
+    Checking leptos_dom v0.8.8
+    Checking peachsh-ui v0.1.0 (E:\code\nhc-b-process-lifetime\NoManCode\rust-app\crates\ui)
+error[E0618]: expected function, found `process_lifetime::Settled`
+   --> src\process_lifetime_tests.rs:279:22
+    |
+249 | async fn result(task: tokio::task::JoinHandle<Outcome>) -> Outcome {
+    | ------------------------------------------------------------------ this function of the same name is available here, but it's shadowed by the local binding
+...
+266 |     let Outcome::Settled(result) = result(task).await else {
+    |                          ------ `result` has type `process_lifetime::Settled`
+...
+279 |     assert!(matches!(result(task).await, Outcome::NotStarted { .. }));
+    |                      ^^^^^^------
+    |                      |
+    |                      call expression requires function
+
+For more information about this error, try `rustc --explain E0618`.
+error: could not compile `peachsh` (lib test) due to 1 previous error

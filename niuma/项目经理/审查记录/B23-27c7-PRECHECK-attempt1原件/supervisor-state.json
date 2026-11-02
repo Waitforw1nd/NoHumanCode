@@ -1,0 +1,14 @@
+{
+  "name": "01-check",
+  "command": "cargo check --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target\"",
+  "start_utc": "2026-11-02T03:35:44.8570801Z",
+  "end_utc": null,
+  "state": "suspended",
+  "pid": 80468,
+  "creation_filetime": 134380641448650099,
+  "creation_error": 0,
+  "exit_code": null,
+  "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\01-check.stdout",
+  "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\01-check.stderr",
+  "timeout_seconds": 1200
+}

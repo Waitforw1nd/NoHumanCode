@@ -1,0 +1,22 @@
+{
+  "state": "stopped",
+  "reason": "Exception: E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-prepared\\supervisor.ps1:148\r\nLine |\r\n 148 |          if($code -ne 0){throw \"step $($c.name) failed exit $code\"}\r\n     |                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | step 01-check failed exit 101\r\n\r\n",
+  "at_utc": "2026-11-02T03:37:25.1889167Z",
+  "attempt": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1",
+  "current": {
+    "name": "01-check",
+    "command": "cargo check --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target\"",
+    "start_utc": "2026-11-02T03:35:44.8570801Z",
+    "end_utc": "2026-11-02T03:37:23.5253071Z",
+    "state": "exited",
+    "pid": 80468,
+    "creation_filetime": 134380641448650099,
+    "creation_error": 0,
+    "exit_code": 101,
+    "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\01-check.stdout",
+    "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\01-check.stderr",
+    "timeout_seconds": 1200,
+    "elapsed_ms": 98665
+  },
+  "instruction": "Gate remains; manager must resolve before restart."
+}

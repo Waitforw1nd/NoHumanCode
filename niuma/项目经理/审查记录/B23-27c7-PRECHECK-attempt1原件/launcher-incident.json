@@ -1,0 +1,19 @@
+{
+  "state": "stopped",
+  "expected_head": "27c7f60176c394a51339680092166c0dbce25b4d",
+  "attempt": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1",
+  "target": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target",
+  "pid": 9304,
+  "creation_filetime": 134380641191041516,
+  "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\supervisor.stdout",
+  "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\supervisor.stderr",
+  "started_utc": "2026-11-02T03:35:18.6505476Z",
+  "command": "\"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" -NoProfile -File \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-prepared\\supervisor.ps1\" -AttemptDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\" -TargetDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target\"",
+  "flags": "CREATE_SUSPENDED | CREATE_NO_WINDOW",
+  "timeout_seconds": 2700,
+  "creation_error": 0,
+  "exit_code": 1,
+  "signal_utc": "2026-11-02T03:37:25.6247656Z",
+  "reason": "Exception: E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-prepared\\launch.ps1:92\r\nLine |\r\n  92 |      if($code -ne 0){throw \"supervisor exit $code\"}\r\n     |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | supervisor exit 1\r\n\r\n",
+  "ended_utc": "2026-11-02T03:37:25.6931578Z"
+}

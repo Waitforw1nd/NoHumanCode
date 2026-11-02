@@ -1,0 +1,7 @@
+{
+  "state": "failed",
+  "exit_code": 1,
+  "started_utc": "2026-11-02T03:35:19.7007189Z",
+  "ended_utc": "2026-11-02T03:37:25.5859076Z",
+  "reason": "Exception: E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-prepared\\supervisor.ps1:148\r\nLine |\r\n 148 |          if($code -ne 0){throw \"step $($c.name) failed exit $code\"}\r\n     |                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | step 01-check failed exit 101\r\n\r\n"
+}

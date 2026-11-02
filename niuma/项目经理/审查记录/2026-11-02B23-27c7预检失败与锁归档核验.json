@@ -1,0 +1,56 @@
+{
+  "at_utc": "2026-11-02T03:44:33.359799+00:00",
+  "candidate": "27c7f60176c394a51339680092166c0dbce25b4d",
+  "product_tree": "012665bb46ee4afffb446dc74e3d7761320434cd",
+  "rust_tree": "afa0765e16c10b70f56175597a09908fef8db6b9",
+  "check": {
+    "name": "01-check",
+    "command": "cargo check --workspace --all-targets --offline --locked --target-dir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target\"",
+    "start_utc": "2026-11-02T03:35:44.8570801Z",
+    "end_utc": "2026-11-02T03:37:23.5253071Z",
+    "state": "exited",
+    "pid": 80468,
+    "creation_filetime": 134380641448650099,
+    "creation_error": 0,
+    "exit_code": 101,
+    "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\01-check.stdout",
+    "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\01-check.stderr",
+    "timeout_seconds": 1200,
+    "elapsed_ms": 98665
+  },
+  "supervisor": {
+    "state": "exited",
+    "expected_head": "27c7f60176c394a51339680092166c0dbce25b4d",
+    "attempt": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1",
+    "target": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target",
+    "pid": 9304,
+    "creation_filetime": 134380641191041516,
+    "stdout": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\supervisor.stdout",
+    "stderr": "E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\supervisor.stderr",
+    "started_utc": "2026-11-02T03:35:18.6505476Z",
+    "command": "\"C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe\" -NoProfile -File \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-prepared\\supervisor.ps1\" -AttemptDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\" -TargetDir \"E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-precheck-27c7f601-attempt1\\target\"",
+    "flags": "CREATE_SUSPENDED | CREATE_NO_WINDOW",
+    "timeout_seconds": 2700,
+    "creation_error": 0,
+    "exit_code": 1,
+    "signal_utc": "2026-11-02T03:37:25.6247656Z"
+  },
+  "source_snapshots": {
+    "count": 4,
+    "files_each": 196,
+    "all_equal": true
+  },
+  "clippy": "not_executed",
+  "tests": "not_executed",
+  "gate_before_sha256": "8b49909f99848df64757b3b56087d566dea013b8fa687a2d26b05afc38b3a96b",
+  "gate_disposition": "manager moved exact gate into raw evidence directory; source absent; archived SHA256 equals original; no new attempt authorized",
+  "raw_manifest_sha256": "59dd1ab92e74565d43e5f8091bed4efc8d07474f52655723ee2161432516e687",
+  "limitations": [
+    "Cargo原直接进程和supervisor终态，不是任意后代树证明",
+    "未执行组件行为测试",
+    "正常编译错误，不是unknown终态"
+  ],
+  "next": "原B最小修复并固定新候选/准备包；经理审后签新窗口",
+  "gate_retired_at_utc": "2026-11-02T03:45:22.663068+00:00",
+  "gate_archive": "B23-27c7-PRECHECK-attempt1原件/gate-retired.raw.json"
+}
