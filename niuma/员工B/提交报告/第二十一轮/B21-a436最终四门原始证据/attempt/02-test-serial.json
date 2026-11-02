@@ -1,0 +1,15 @@
+{
+  "name": "02-test-serial",
+  "command": "cargo test --workspace --offline --locked --target-dir \"E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\" -- --test-threads=1",
+  "start_utc": "2026-11-01T23:49:41.8126728Z",
+  "end_utc": "2026-11-02T00:00:34.1440261Z",
+  "state": "passed",
+  "pid": 83644,
+  "creation_filetime": 134380505818144473,
+  "creation_error": 0,
+  "exit_code": 0,
+  "stdout": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-final4-a436-attempt1\\02-test-serial.stdout",
+  "stderr": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-final4-a436-attempt1\\02-test-serial.stderr",
+  "timeout_seconds": 1200,
+  "elapsed_ms": 652324
+}

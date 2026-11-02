@@ -1,0 +1,24 @@
+{
+  "checked_utc": "2026-11-01T23:55:16.542991+00:00",
+  "author": "项目经理",
+  "scope": "预演合并树；未改工作树/index、未整合产品",
+  "main_head": "87e1a7bca01ff38eeb3644790057025f33a758c7",
+  "b_head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+  "prospective_tree": "fad20f750f744ac9c64160a7562609439df2a70a",
+  "prospective_product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+  "prospective_rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+  "equals_b_product": true,
+  "changed_paths": [
+    "NoManCode/rust-app/Cargo.toml",
+    "NoManCode/rust-app/examples/wasm_worker_process_probe.rs",
+    "NoManCode/rust-app/src/lib.rs",
+    "NoManCode/rust-app/src/wasm_worker_process.rs",
+    "NoManCode/rust-app/src/wasm_worker_process_tests.rs",
+    "NoManCode/rust-app/tests/support/wasm_worker_process/DirectProcess.cs",
+    "NoManCode/rust-app/tests/support/wasm_worker_process/prepare-probes.ps1",
+    "NoManCode/rust-app/tests/support/wasm_worker_process/prepare-w05.ps1",
+    "NoManCode/rust-app/tests/support/wasm_worker_process/run-controlled.ps1"
+  ],
+  "conflicts": false,
+  "remaining": "B最终四门仍运行；全部证据核后才能实际合并"
+}

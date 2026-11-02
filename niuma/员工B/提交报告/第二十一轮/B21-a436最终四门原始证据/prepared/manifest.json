@@ -1,0 +1,23 @@
+{
+  "candidate_head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+  "product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+  "rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+  "scope": "final four gates only",
+  "files": [
+    {
+      "path": "GateProcess.cs",
+      "bytes": 3909,
+      "sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "path": "launch.ps1",
+      "bytes": 7142,
+      "sha256": "f4833ab7ed23f0cf0eb37770b4ea226a8538deb705fce46509350e2f69035d18"
+    },
+    {
+      "path": "supervisor.ps1",
+      "bytes": 10911,
+      "sha256": "9880bf15a2f0cf376c75333a1e9e11446841a414ccd780c7186676d8b00b3ba7"
+    }
+  ]
+}

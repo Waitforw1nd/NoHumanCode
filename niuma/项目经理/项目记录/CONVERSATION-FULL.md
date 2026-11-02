@@ -1,3 +1,7 @@
+## 2026-11-02 W2组件验收与整合准备（摘要记录）
+
+更新人：项目经理。a436当前完整21矩阵及check/Clippy/debug Host build/workspace test/fmt/UI wasm全部真实0，workspace显式单线程64块849/0/25；最终四门45原件463452字节双hash与10份192源码快照核零差异。W2按原Windows受控WASM组件契约通过，允许经理普通merge固定a436；尚未实际整合。预演只改9授权路径、双tree与受测相同。B保持候选和原现场，C继续完整U静态、D冻结。下一第一操作复核后实际整合W2，再继续U/生产绑定/W3；V1和三版全目标未完成，41继承行原字节完整。
+
 ## 2026-11-02 a436矩阵核收与四门签窗（摘要记录）
 
 更新人：项目经理。a436完整21矩阵各1/0，原supervisor81924退出0，192源码前后/当前相同、1200固定与每例EXE零差异，230原件903588字节双hash核零差异。已签B Lorentz原树final4-a436-attempt1唯一窗口：debug Host build、workspace显式单线程test、fmt、UI wasm；同候选check/Clippy已通过无需重复。C Euclid继续完整U静态，新增反馈Git普通拒绝不可全部变永久unknown、核recover/controller绑定；D冻结。下一第一操作核四门实际终态和完整证据，再做W2最终审查。主线W1-ID01/schema17未改、W2/U未合、41继承行完整，三版后续未完成。

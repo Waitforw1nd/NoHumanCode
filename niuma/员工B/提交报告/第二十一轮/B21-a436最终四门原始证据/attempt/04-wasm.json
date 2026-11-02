@@ -1,0 +1,15 @@
+{
+  "name": "04-wasm",
+  "command": "cargo check -p peachsh-ui --target wasm32-unknown-unknown --offline --locked --target-dir \"E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target\"",
+  "start_utc": "2026-11-02T00:00:37.1271581Z",
+  "end_utc": "2026-11-02T00:01:08.1530533Z",
+  "state": "passed",
+  "pid": 52764,
+  "creation_filetime": 134380512371288528,
+  "creation_error": 0,
+  "exit_code": 0,
+  "stdout": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-final4-a436-attempt1\\04-wasm.stdout",
+  "stderr": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-final4-a436-attempt1\\04-wasm.stderr",
+  "timeout_seconds": 1200,
+  "elapsed_ms": 31024
+}

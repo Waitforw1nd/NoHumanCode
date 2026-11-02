@@ -1,0 +1,72 @@
+{
+  "checked_utc": "2026-11-02T00:04:45.277372+00:00",
+  "author": "项目经理",
+  "scope": "a436当前最终四门实际核验；check/Clippy及21矩阵另存",
+  "source": "../nhc-b-wasm-worker-process/NoManCode/rust-app/.local/b21-w2-final4-a436-attempt1",
+  "head": "a4366b56cc88644336d45f961313f294b05ea5ec",
+  "product_tree": "4935f1aa104de548c97a26043cb0d5e442e24dea",
+  "rust_tree": "bfea730396003f4aa675cc25dcfaa1c6b39f1e14",
+  "outer": {
+    "state": "completed",
+    "pid": 80576,
+    "creation_filetime": 134380505567753055,
+    "started_utc": "2026-11-01T23:49:16.3078148Z",
+    "signal_utc": "2026-11-02T00:01:08.9610075Z",
+    "exit_code": 0
+  },
+  "steps": [
+    {
+      "name": "01-build-host",
+      "command": "cargo build --offline --locked --target-dir \"${B_TARGET}\" --bin peachsh",
+      "start_utc": "2026-11-01T23:49:18.7209829Z",
+      "end_utc": "2026-11-01T23:49:41.0042805Z",
+      "pid": 83420,
+      "creation_filetime": 134380505587320053,
+      "exit_code": 0,
+      "elapsed_ms": 22281
+    },
+    {
+      "name": "02-test-serial",
+      "command": "cargo test --workspace --offline --locked --target-dir \"${B_TARGET}\" -- --test-threads=1",
+      "start_utc": "2026-11-01T23:49:41.8126728Z",
+      "end_utc": "2026-11-02T00:00:34.1440261Z",
+      "pid": 83644,
+      "creation_filetime": 134380505818144473,
+      "exit_code": 0,
+      "elapsed_ms": 652324
+    },
+    {
+      "name": "03-fmt",
+      "command": "cargo fmt --all -- --check",
+      "start_utc": "2026-11-02T00:00:34.8763348Z",
+      "end_utc": "2026-11-02T00:00:36.4376761Z",
+      "pid": 75172,
+      "creation_filetime": 134380512348781143,
+      "exit_code": 0,
+      "elapsed_ms": 1560
+    },
+    {
+      "name": "04-wasm",
+      "command": "cargo check -p peachsh-ui --target wasm32-unknown-unknown --offline --locked --target-dir \"${B_TARGET}\"",
+      "start_utc": "2026-11-02T00:00:37.1271581Z",
+      "end_utc": "2026-11-02T00:01:08.1530533Z",
+      "pid": 52764,
+      "creation_filetime": 134380512371288528,
+      "exit_code": 0,
+      "elapsed_ms": 31024
+    }
+  ],
+  "test_blocks": 64,
+  "passed": 849,
+  "failed": 0,
+  "ignored": 25,
+  "test_threads": 1,
+  "source_files": 192,
+  "source_snapshots": 10,
+  "source_hash_mismatches": 0,
+  "independent_host_sha256": "c891c9f09ed0e2842268fe2b7de9695ac5b76dbdb56cae6c3dc8479f85ccbebb",
+  "independent_host_bytes": 29979648,
+  "mutable_target_final_hash": "4e6d8dd555b848cd0f1b0518adea8a68df7256ee0a95b0238195fd5d9efd546c",
+  "mutable_target_note": "与独立Host副本不同；测试/构建可改写target，不能将target当固定件",
+  "both_gates_absent": true
+}
