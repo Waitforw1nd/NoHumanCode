@@ -1,0 +1,37 @@
+{
+  "utc": "2026-11-02T13:57:14.461361+00:00",
+  "reason": "用户暂停后明确继续，复用原B/C同一ID",
+  "original_threads": [
+    {
+      "role": "B",
+      "id": "01a19a31-0789-70c0-8b7f-d363a6f247d9",
+      "previous_turn": "01a19a6b-8ccb-76e1-976c-c349504f0bf0",
+      "before_resume": "multi_agent not_found; app notLoaded/latestTurn interrupted",
+      "new_turn": "01a19c8a-fea2-7753-8110-ab156c66e88c",
+      "context_utc": "2026-11-02T13:55:23.272Z",
+      "actual_model": "gpt-6.1-terra",
+      "effort": "high"
+    },
+    {
+      "role": "C",
+      "id": "01a19a31-08b3-7463-bc73-7ef7ffa5e14a",
+      "previous_turn": "01a19a5e-14a0-7840-8668-e8fb7c5378e8",
+      "before_resume": "multi_agent not_found; app notLoaded/latestTurn interrupted",
+      "new_turn": "01a19c8b-0092-7342-bb71-b6be3f3e4154",
+      "context_utc": "2026-11-02T13:55:22.304Z",
+      "actual_model": "gpt-6.1-terra",
+      "effort": "high"
+    }
+  ],
+  "route": "existing thread continuation with explicit model/thinking, no new thread or employee",
+  "main_head_before": "cff0ea8be936827eebd3986f70dbedccfcdeb1bf",
+  "b_head": "98cec2e441adcb7cd0476c81db075c8f1ce4659e",
+  "b_product": "85020d9c3c34e9f498fc9f4e4b5f855b087c5f4e",
+  "b_rust": "951cff6854e0a8bc0b7cc48d559b735c60256c21",
+  "b_state": "clean/index empty; attempt3 absent; common gate absent; no compiler processes observed",
+  "prepared_manifest": "c32080b4df76cfc3a711ee024ab0d72034602f7d8e536962d566bf90cdd0af73",
+  "c_head": "a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac",
+  "c_state": "33 tracked paths 4139+/640- plus new tests/execution_authority.rs; index empty; preserve all",
+  "inherited_manager_41": "baseline tail hashes equal; index residual 10/10/10/11 retained",
+  "scope": "既有B第三预检可在其只读回执/实际模型核实后继续；C只读回执后交还原静态写权，D冻结。后续矩阵另审；完整目标未完成。"
+}
