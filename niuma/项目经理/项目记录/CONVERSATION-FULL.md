@@ -1,3 +1,7 @@
+## 2026-11-02 Shell后代风险与B23分工（摘要记录）
+
+更新人：项目经理。B22只读12源码快照核零差异，确认Shell direct child/限长reader结束可能过早结算域票；C已知Git同源缺口且未另建launcher。已建B新树../nhc-b-process-lifetime、branch codex/b/process-lifetime，基线3dc44827/产品4935f1aa/Rustbfea7303 clean；唯一原B Lorentz转B23实现共用进程寿命组件/测试，原a436树和W2证据冻结。C Euclid继续原a799在途，唯一Shell/Git/ExecutionTicket接线，并补双真实Host、--check和四epoch/恢复强杀矩阵；lib/Cargo新注册阶段归B，D冻结。当前无新动态授权，下一第一操作核B实际API/对象归属后冻结C适配，继续完整U静态候选。主线W2/schema17不变，41继承行保持，U/W3/V1及三版仍未完成。
+
 ## 2026-11-02 W2整合与B局部独立审查（摘要记录）
 
 更新人：项目经理。主线普通merge5538b10b整合已验收a436 W2组件，仅9授权路径，产品4935f1aa/Rust bfea7303精确等于受测候选，schema17保持。当前21矩阵与六门禁全部0、workspace显式单线程849/0/25；原件/工件/192源码证据已归档。四经理文件整合前后完整原字节及41继承行保持。C Euclid原U/schema18/Engine/在途唯一实现继续，B Lorentz第二十二轮只读辅助Provider/工具持权审查、无产品写权，D冻结。下一第一操作发B只读任务并核C完整静态候选与反馈；生产配对/绑定/W3、原生开放项及三大版本仍未完成，重型当前空闲但不跑未审草稿。
