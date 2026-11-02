@@ -1,0 +1,38 @@
+{
+  "captured_utc": "2026-11-02T03:34:39.078386+00:00",
+  "kind": "prepared input copies; not execution evidence",
+  "files": [
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-27c7f601-prepared/GateProcess.cs",
+      "copy": "niuma/项目经理/审查记录/B23-27c7-PRECHECK准备包/GateProcess.cs",
+      "bytes": 3909,
+      "source_sha256_before": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42",
+      "source_sha256_after": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42",
+      "copy_sha256": "367781c7113c3a27bb0e44c831a3efa32e4d45a249f1fdd3b30f20381663dd42"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-27c7f601-prepared/launch.ps1",
+      "copy": "niuma/项目经理/审查记录/B23-27c7-PRECHECK准备包/launch.ps1",
+      "bytes": 9954,
+      "source_sha256_before": "63868d13bb9b84e31457e5b453b6f345ecc844da2f0d97a339ddb6b783f4f84a",
+      "source_sha256_after": "63868d13bb9b84e31457e5b453b6f345ecc844da2f0d97a339ddb6b783f4f84a",
+      "copy_sha256": "63868d13bb9b84e31457e5b453b6f345ecc844da2f0d97a339ddb6b783f4f84a"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-27c7f601-prepared/supervisor.ps1",
+      "copy": "niuma/项目经理/审查记录/B23-27c7-PRECHECK准备包/supervisor.ps1",
+      "bytes": 12486,
+      "source_sha256_before": "e4ec1635f4fcb39b2e54ef019c71a167d51660b959add9da52be3501f561aaf3",
+      "source_sha256_after": "e4ec1635f4fcb39b2e54ef019c71a167d51660b959add9da52be3501f561aaf3",
+      "copy_sha256": "e4ec1635f4fcb39b2e54ef019c71a167d51660b959add9da52be3501f561aaf3"
+    },
+    {
+      "source": "../nhc-b-process-lifetime/NoManCode/rust-app/.local/b23-precheck-27c7f601-prepared/manifest.json",
+      "copy": "niuma/项目经理/审查记录/B23-27c7-PRECHECK准备包/manifest.json",
+      "bytes": 723,
+      "source_sha256_before": "9f9d6fdcd521844592eadf5f210bc76b80534377694a32fe0197652f01203e4d",
+      "source_sha256_after": "9f9d6fdcd521844592eadf5f210bc76b80534377694a32fe0197652f01203e4d",
+      "copy_sha256": "9f9d6fdcd521844592eadf5f210bc76b80534377694a32fe0197652f01203e4d"
+    }
+  ]
+}
