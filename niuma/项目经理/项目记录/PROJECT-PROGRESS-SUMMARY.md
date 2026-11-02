@@ -1,3 +1,7 @@
+## 2026-11-02 原员工复用与静审交付
+
+原B/C经close previous running及wait not_found后resume同一ID，返回interrupted并已发原任务接续；没有重复写者。最近可核实际模型为02:33 Terra/high，新02:37轮次回执/实际配置待核。B进程signal与exit-code分类、argv/env兼容测试及完整runner继续，C恢复/commit_turn/Git diff接线继续。经理本轮报告与验收台账已同步，未运行新候选；41行及所有代码证据保持，W2组件/schema17以外核心/三版后续仍未完成。
+
 ## 2026-11-02 终态证明与执行者检查点
 
 B当前代码在原process已signal后因exit-code读取失败重新视为未退出，经理已交分离实际寿命与业务值、补故障正负控；四个state_tests及holder原线程句柄占槽仅静态可见。连续只读进度查询未返回，已停止观察cell；02:33 UTC给原B/C interrupt检查点后继续指令，未确认终态、未换人。保留原树全部草稿和41行，无动态窗口或新通过结论；W2组件已合/schema17，U/W3与三版后续继续。

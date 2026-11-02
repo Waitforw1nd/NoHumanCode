@@ -76,5 +76,39 @@
     "C_submission": "01a19a1a-796f-7a10-be89-fcbca5c0cf39",
     "instruction": "original same-role/tree check-in then continue static work; no replacement writer or heavy window",
     "acknowledged": false
+  },
+  "same_agent_reuse_followup": {
+    "observed_by_utc": "2026-11-02T02:37:19Z",
+    "B": {
+      "id": "01a19957-1fd8-7fd1-acda-8a7f0b683100",
+      "close_previous_status": "running",
+      "after_close_wait": "not_found",
+      "resume_status": "interrupted",
+      "continuation_submission": "01a19a1d-b4e6-7251-a8ce-ae2643a1db3b"
+    },
+    "C": {
+      "id": "01a19956-8d40-7700-970e-836a91f60edb",
+      "close_previous_status": "running",
+      "after_close_wait": "not_found",
+      "resume_status": "interrupted",
+      "continuation_submission": "01a19a1e-4b82-7020-98c1-ffe6bd5f66bf"
+    },
+    "new_agents_spawned": false,
+    "actual_model_last_verified": {
+      "B": {
+        "utc": "2026-11-02T02:33:08.725Z",
+        "model": "gpt-6.1-terra",
+        "effort": "high",
+        "turn": "01a19a1a-7929-7ad2-a2d4-86348eabb59b"
+      },
+      "C": {
+        "utc": "2026-11-02T02:33:08.858Z",
+        "model": "gpt-6.1-terra",
+        "effort": "high",
+        "turn": "01a19a1a-796f-7a10-be89-fcbca5c0cf39"
+      }
+    },
+    "post_0237_actual_turn_and_work_ack": "not yet verified",
+    "heavy_window": false
   }
 }

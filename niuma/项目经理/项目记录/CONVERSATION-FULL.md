@@ -1,3 +1,7 @@
+## 2026-11-02 原B/C关闭后复用（摘要记录）
+
+经理分别关闭原B/C，工具返回previous running，随后wait not_found；再resume同一ID返回interrupted，并发完整原树接续指令，未spawn新员工。实际日志核02:33轮次Terra/high，02:37接续后的新轮和工作回执仍待验证。静审补B真实参数/环境回执要求，C原返工继续；主线源码与所有index清洁、员工草稿和经理继承41行保留，未开动态、未冒称候选通过。
+
 ## 2026-11-02 原员工检查点与exit-code分类（摘要记录）
 
 经理提交64a65db6七份既有审查文档，继承41行完整留在工作区。继续核B实际state_tests、holder线程原句柄延迟回收，定位signal后读取exit-code失败不能抹掉终态事实并交B补分类及测试。app只读read/wait连续未返回，仅终止观察；multi_agent等待无终态。02:33 UTC对原B/C发送interrupt要求明确检查点后继续原树静态工作，未起重复员工、无重型窗口，当前回执待收。
