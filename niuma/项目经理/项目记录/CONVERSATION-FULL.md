@@ -1,3 +1,7 @@
+## 2026-11-02 case16只读PSS诊断固定并放行
+
+经理核v2包a75eb01a，仅原B在新诊断attempt编译/运行一次句柄元数据与原对象副本查询，系统KernelBase动态解析经审接受；只运行至QUERY_COMPLETE，副本release仍待实际证据审定。原矩阵26580、case16与两gate不动，15pass/16unknown/4未跑不变。C继续剩余旧fixture及入口映射，守卫消费顺序修订/t9同步及三条agent原域迁移均仅静态。主线未合半成品；下一步收实际诊断结果并决定副本与事故收束。
+
 ## 2026-11-02 B23矩阵第16例unknown，原对象停窗保留
 
 98ce矩阵前15例有原handle signal/exit0及逐例passed；第16 breakaway控制夹具报清理回执复合条件unknown，4个state未启动。经理核74份停窗快照、196×3源及固定二进制一致，exec26580/原case与两层监督仍保留，两个gate未释放。B组件未验收，C不能合依赖或开测试。原B继续静态准备PSS+DuplicateHandle同一原对象只读诊断，待审后执行，禁止按PID猜终态或直接重跑。
