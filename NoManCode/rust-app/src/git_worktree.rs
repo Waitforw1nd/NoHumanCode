@@ -288,9 +288,42 @@ async fn run(command: Command, limit: usize, deadline: Instant, mutating: bool) 
         spec.test_hooks = Some(hooks.clone());
         hooks
     };
-    let outcome = crate::execution_authority::run_process(spec)
-        .await
-        .map_err(|_| GitWorktreeError::Unavailable)?;
+    #[cfg(test)]
+    let sequence = crate::worktree_diagnostics::next_command();
+    #[cfg(test)]
+    crate::worktree_diagnostics::record(
+        "git_spawn_begin",
+        sequence,
+        if mutating { "mutating" } else { "read" },
+        None,
+        None,
+    );
+    let pending = crate::execution_authority::run_process(spec).await;
+    #[cfg(test)]
+    match &pending {
+        Ok(Outcome::Settled(result)) => crate::worktree_diagnostics::record(
+            "git_wait_end",
+            sequence,
+            if result.reason == CompletionReason::Exited {
+                "ok"
+            } else {
+                "cancel_or_limit"
+            },
+            Some(result.identity.pid),
+            Some(result.exit_code as i32),
+        ),
+        Ok(Outcome::Unknown) => {
+            crate::worktree_diagnostics::record("git_wait_end", sequence, "unknown", None, None)
+        }
+        Ok(Outcome::NotStarted { .. }) | Err(_) => crate::worktree_diagnostics::record(
+            "git_spawn_error",
+            sequence,
+            "not_started",
+            None,
+            None,
+        ),
+    }
+    let outcome = pending.map_err(|_| GitWorktreeError::Unavailable)?;
     #[cfg(all(test, windows))]
     if command
         .as_std()
@@ -1745,6 +1778,9 @@ mod tests {
             paths.extend(std::env::split_paths(&std::env::var_os("PATH").unwrap()));
             let mut child = Command::new(std::env::current_exe().unwrap());
             child
+                .current_dir(std::env::current_dir().unwrap())
+                .env_clear()
+                .envs(std::env::vars_os())
                 .args([
                     "--exact",
                     "git_worktree::tests::w05_isolated_environment_helper",
@@ -1788,6 +1824,9 @@ mod tests {
             assert!(!f._temp.path().join("injected-index").exists());
             let mut drive_child = Command::new(std::env::current_exe().unwrap());
             drive_child
+                .current_dir(std::env::current_dir().unwrap())
+                .env_clear()
+                .envs(std::env::vars_os())
                 .args([
                     "--exact",
                     "git_worktree::tests::w05_isolated_environment_helper",
@@ -2469,15 +2508,25 @@ mod tests {
                     );
                 }
                 if mode == "smudge" || mode == "process" || mode == "include" {
-                    let mut positive = Command::new("git");
+                    // This positive control intentionally enables the filter.
+                    // Resolve the executable and supply its environment before
+                    // handing it to the same native collector as production.
+                    let executable = std::env::split_paths(&std::env::var_os("PATH").unwrap())
+                        .filter(|path| path.is_absolute())
+                        .filter_map(|path| path.join("git.exe").canonicalize().ok())
+                        .find(|path| path.is_file() && !within(path, &f.source))
+                        .expect("trusted Git positive control executable");
+                    let mut positive = Command::new(executable);
                     positive
+                        .env_clear()
+                        .envs(std::env::vars_os())
                         .current_dir(&f.source)
                         .args(["cat-file", "--filters", "HEAD:a.txt"])
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped())
                         .stdin(Stdio::null())
                         .kill_on_drop(true);
-                    let _ = run(
+                    let observed = run(
                         positive,
                         8192,
                         Instant::now() + Duration::from_secs(3),
@@ -2486,7 +2535,8 @@ mod tests {
                     .await;
                     assert!(
                         marker.exists(),
-                        "Git filter {mode} positive control must launch script"
+                        "Git filter {mode} positive control must launch script: {:?}",
+                        observed.as_ref().err()
                     );
                     std::fs::remove_file(&marker).unwrap();
                 }
