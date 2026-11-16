@@ -489,19 +489,44 @@ pub struct WorkerSuccess {
 pub(crate) struct TrustedWorker {
     path: PathBuf,
     digest: [u8; 32],
+    #[cfg(windows)]
+    image: Option<Arc<platform::Image>>,
 }
 
 impl TrustedWorker {
     /// The caller is the trusted installation boundary, never a plugin request.
     #[allow(dead_code)] // The authenticated installation boundary is connected later.
     pub(crate) fn from_host_install(path: PathBuf, digest: [u8; 32]) -> Self {
-        Self { path, digest }
+        Self {
+            path,
+            digest,
+            #[cfg(windows)]
+            image: None,
+        }
+    }
+
+    pub(crate) fn pin_host_install(path: PathBuf, digest: [u8; 32]) -> Result<Self, WorkerError> {
+        #[cfg(windows)]
+        {
+            let image = Arc::new(platform::Image::pin(&path, &digest)?);
+            Ok(Self {
+                path,
+                digest,
+                image: Some(image),
+            })
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (path, digest);
+            Err(WorkerError::Unsupported)
+        }
     }
 }
 
 #[derive(Clone)]
 pub struct WorkerService {
     worker: Arc<TrustedWorker>,
+    store: Option<Arc<crate::store::Store>>,
 }
 
 impl WorkerService {
@@ -509,7 +534,14 @@ impl WorkerService {
     pub(crate) fn from_trusted(worker: TrustedWorker) -> Self {
         Self {
             worker: Arc::new(worker),
+            store: None,
         }
+    }
+
+    pub(crate) fn bind_store(&mut self, store: &Arc<crate::store::Store>) -> anyhow::Result<()> {
+        anyhow::ensure!(self.store.is_none(), "worker is already bound");
+        self.store = Some(store.clone());
+        Ok(())
     }
 
     /// Execute one policy request using the fixed worker; no executable is
@@ -554,22 +586,49 @@ impl WorkerService {
             input,
             module,
         };
+        let (operation, domain_lease) = match &self.store {
+            Some(store) => {
+                let operation = crate::execution_authority::current()
+                    .ok_or(WorkerError::IsolationUnavailable("domain_operation", None))?;
+                let lease = store
+                    .execution_generation(&operation)
+                    .map_err(|_| WorkerError::IsolationUnavailable("domain_generation", None))?;
+                (Some(operation), Some(lease))
+            }
+            #[cfg(test)]
+            None => (None, None),
+            #[cfg(not(test))]
+            None => return Err(WorkerError::IsolationUnavailable("domain_unbound", None)),
+        };
+        let result_body = operation.as_ref().map(|op| op.hold_body());
+        let domain_lease = Arc::new(DomainCompletion(Mutex::new(DomainCompletionState {
+            lease: domain_lease,
+            platform_finished: false,
+            result_finished: false,
+        })));
+        let _result_guard = ResultCompletion(domain_lease.clone(), result_body);
         let gate = Arc::new(Gate::new(cancel.clone()));
         let mut cancellation = CancelOnDrop(Some(gate.clone()));
         let (tx, mut rx) = oneshot::channel();
         let worker = self.worker.clone();
         let gate_for_thread = gate.clone();
-        std::thread::Builder::new()
+        let lease_for_thread = domain_lease.clone();
+        let started = std::thread::Builder::new()
             .name("nhc-wasm-worker-supervision".into())
             .spawn(move || {
+                let _operation = operation;
                 let result = platform::run(&worker, request, deadline, &gate_for_thread);
                 record_stage("supervisor_platform_returned", None);
                 // The slot is released only when the platform has returned after
                 // confirmed cleanup. Pending kernel calls retain this thread.
                 drop(lease);
+                lease_for_thread.finish_platform();
                 let _ = tx.send(result);
-            })
-            .map_err(|_| WorkerError::IsolationUnavailable("supervisor_thread", None))?;
+            });
+        if started.is_err() {
+            domain_lease.finish_platform();
+            return Err(WorkerError::IsolationUnavailable("supervisor_thread", None));
+        }
 
         let mut received_completion = false;
         let result = tokio::select! {
@@ -602,12 +661,96 @@ impl WorkerService {
             gate.stop();
             if !finish_cleanup_wait(&mut rx, received_completion).await {
                 record_stage("cleanup_unknown", None);
+                domain_lease.seal_unknown();
                 cancellation.0 = None;
                 return Err(WorkerError::CleanupUnknown);
             }
         }
+        if matches!(result, Err(WorkerError::CleanupUnknown)) {
+            domain_lease.seal_unknown();
+        }
         cancellation.0 = None;
         result
+    }
+}
+
+struct DomainCompletionState {
+    lease: Option<Box<dyn crate::process_lifetime::DomainLease>>,
+    platform_finished: bool,
+    result_finished: bool,
+}
+struct DomainCompletion(Mutex<DomainCompletionState>);
+impl DomainCompletion {
+    fn seal_unknown(&self) {
+        let mut state = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(lease) = state.lease.as_mut() {
+            lease.seal_unknown();
+        }
+    }
+    fn finish(&self, platform: bool) {
+        let lease = {
+            let mut state = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            if platform {
+                state.platform_finished = true;
+            } else {
+                state.result_finished = true;
+            }
+            if state.platform_finished && state.result_finished {
+                state.lease.take()
+            } else {
+                None
+            }
+        };
+        if let Some(lease) = lease {
+            lease.settle();
+        }
+    }
+    fn finish_platform(&self) {
+        self.finish(true);
+    }
+}
+struct ResultCompletion(
+    Arc<DomainCompletion>,
+    Option<crate::execution_authority::ExecutionOperation>,
+);
+impl Drop for ResultCompletion {
+    fn drop(&mut self) {
+        self.0.finish(false);
+        // Keep the operation body until after the generation is settled.
+        drop(self.1.take());
+    }
+}
+
+#[cfg(test)]
+mod domain_completion_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct Lease(Arc<AtomicUsize>);
+    impl crate::process_lifetime::DomainLease for Lease {
+        fn seal_unknown(&mut self) {
+            self.0.fetch_or(1, Ordering::SeqCst);
+        }
+        fn settle(self: Box<Self>) {
+            self.0.fetch_or(2, Ordering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn result_and_platform_must_both_finish_and_unknown_is_sticky() {
+        for platform_first in [true, false] {
+            let flags = Arc::new(AtomicUsize::new(0));
+            let completion = DomainCompletion(Mutex::new(DomainCompletionState {
+                lease: Some(Box::new(Lease(flags.clone()))),
+                platform_finished: false,
+                result_finished: false,
+            }));
+            completion.finish(platform_first);
+            assert_eq!(flags.load(Ordering::SeqCst), 0);
+            completion.seal_unknown();
+            completion.finish(!platform_first);
+            assert_eq!(flags.load(Ordering::SeqCst), 3);
+        }
     }
 }
 
@@ -938,14 +1081,14 @@ mod platform {
         )
     }
 
-    struct Image {
+    pub(super) struct Image {
         file: File,
         _parents: Vec<File>,
         path: PathBuf,
         identity: BY_HANDLE_FILE_INFORMATION,
     }
     impl Image {
-        fn pin(path: &Path, digest: &[u8; 32]) -> Result<Self, WorkerError> {
+        pub(super) fn pin(path: &Path, digest: &[u8; 32]) -> Result<Self, WorkerError> {
             if !path.is_absolute() {
                 return Err(WorkerError::IsolationUnavailable("image_absolute", None));
             }
@@ -3441,7 +3584,10 @@ mod platform {
         );
         protocol::write_request(&mut frame, &request).map_err(|_| WorkerError::InvalidRequest)?;
         ensure_open(gate, deadline)?;
-        let image = Image::pin(&worker.path, &worker.digest)?;
+        let image = match &worker.image {
+            Some(image) => image.clone(),
+            None => Arc::new(Image::pin(&worker.path, &worker.digest)?),
+        };
         ensure_open(gate, deadline)?;
         let user_sid = current_user_sid()?;
         let Pipe {
