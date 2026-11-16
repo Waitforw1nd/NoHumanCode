@@ -102,6 +102,12 @@ impl Case {
             });
         std::fs::create_dir_all(&base)?;
         let base = base.canonicalize()?;
+        // Keep an ordinary drive path for PowerShell and Git's sh alias parser.
+        let base = PathBuf::from(
+            base.to_string_lossy()
+                .trim_start_matches("\\\\?\\")
+                .to_string(),
+        );
         ensure!(
             base.to_string_lossy()
                 .replace("\\\\?\\", "")
