@@ -454,6 +454,110 @@ async fn unknown_terminal_child() {
     }
 }
 
+#[tokio::test]
+async fn task_worker_ticket_cannot_update_another_task_in_same_domain() {
+    use crate::domain::{Route, Run, SessionKind, Task, TaskSpec};
+    let (dir, store, _engine) = setup();
+    let task = |id: &str| Task {
+        id: id.into(),
+        run_id: "worker-run".into(),
+        spec: TaskSpec {
+            name: id.into(),
+            role: "worker".into(),
+            route_id: "route".into(),
+            prompt: "prompt".into(),
+            depends_on: vec![],
+            write_scopes: vec![],
+            tools: false,
+            allow_commands: false,
+            max_rounds: 1,
+        },
+        route: Route {
+            id: "route".into(),
+            name: "route".into(),
+            base_url: "http://127.0.0.1:1/v1".into(),
+            model: "fixture".into(),
+            max_tokens: 64,
+            parallel_limit: 1,
+            key_env: None,
+        },
+        workspace: dir.path().to_string_lossy().into_owned(),
+        status: "running".into(),
+        output: String::new(),
+        error: None,
+        messages: vec![],
+        usage: serde_json::Value::Null,
+        created_at: 1,
+        updated_at: 1,
+    };
+    let a = task("worker-a");
+    let b = task("worker-b");
+    let seed = store.execution_operation(CancellationToken::new()).unwrap();
+    seed.run(async {
+        store
+            .create_run(&Run {
+                id: "worker-run".into(),
+                title: "fixture".into(),
+                kind: SessionKind::Team,
+                created_at: 1,
+                tasks: vec![a.clone(), b.clone()],
+            })
+            .unwrap();
+    })
+    .await;
+    let op_a = store.execution_operation(CancellationToken::new()).unwrap();
+    let op_b = store.execution_operation(CancellationToken::new()).unwrap();
+    op_a.bind_task(&a.id).unwrap();
+    op_b.bind_task(&b.id).unwrap();
+    let before = serde_json::to_value(store.task(&b.id).unwrap()).unwrap();
+    let events = serde_json::to_value(store.events("worker-run", 0).unwrap()).unwrap();
+    let mut changed_b = b.clone();
+    changed_b.output = "worker-b-result".into();
+    op_a.hold_body()
+        .run(async {
+            assert!(store.save_task(&changed_b).is_err());
+            assert!(
+                store
+                    .event(&b.id, "delta", serde_json::json!({"text":"wrong-worker"}))
+                    .is_err()
+            );
+        })
+        .await;
+    assert_eq!(
+        serde_json::to_value(store.task(&b.id).unwrap()).unwrap(),
+        before
+    );
+    assert_eq!(
+        serde_json::to_value(store.events("worker-run", 0).unwrap()).unwrap(),
+        events
+    );
+    op_b.run(async {
+        store.save_task(&changed_b).unwrap();
+        store
+            .event(&b.id, "delta", serde_json::json!({"text":"right-worker-b"}))
+            .unwrap();
+    })
+    .await;
+    op_a.run(async {
+        store
+            .event(&a.id, "delta", serde_json::json!({"text":"right-worker-a"}))
+            .unwrap();
+    })
+    .await;
+    assert_eq!(store.task(&b.id).unwrap().output, "worker-b-result");
+    let events = store.events("worker-run", 0).unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| e.task_id == b.id && e.data["text"] == "right-worker-b")
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| e.task_id == a.id && e.data["text"] == "right-worker-a")
+    );
+}
+
 #[test]
 fn unknown_terminal_uses_original_scope_and_preserves_durable_content() {
     use std::{process::Command, time::Duration};
@@ -1264,6 +1368,46 @@ fn network_receipt_is_bound_to_its_original_operation() {
     );
 }
 
+#[tokio::test]
+async fn worktree_receipt_rejects_other_operation_and_accepts_original() {
+    use crate::worktree_management::{WorktreeCause, WorktreeState, tests::Fixture};
+    use std::time::Duration;
+    let fixture = Fixture::new();
+    let engine = Engine::new(fixture.store.clone(), 2).unwrap();
+    let (_, receipt, _, original) = fixture.claim().await;
+    let other = fixture
+        .store
+        .execution_operation(CancellationToken::new())
+        .unwrap();
+    let before = serde_json::to_value(&receipt).unwrap();
+    let rejected = other.test_sync(|| {
+        fixture.store.finish_worktree(
+            &receipt,
+            None,
+            Some((WorktreeState::Rejected, WorktreeCause::Conflict)),
+        )
+    });
+    assert!(rejected.is_err());
+    let stored = fixture
+        .store
+        .worktree_receipt(&fixture.project.id, &receipt.operation_id)
+        .unwrap();
+    assert_eq!(serde_json::to_value(&stored).unwrap(), before);
+    let completed = original
+        .test_sync(|| {
+            fixture.store.finish_worktree(
+                &receipt,
+                None,
+                Some((WorktreeState::Rejected, WorktreeCause::Conflict)),
+            )
+        })
+        .unwrap();
+    assert_eq!(completed.state, WorktreeState::Rejected);
+    drop(other);
+    drop(original);
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn network_before_send_authority_child() {
     use crate::{
@@ -1754,4 +1898,210 @@ async fn restart_and_http_security() {
     let s = String::from_utf8(b.to_vec()).unwrap();
     assert!(!s.contains("fake-key-a"));
     assert!(!s.contains("fake-key-b"));
+}
+
+mod lifecycle_http_regression {
+    use super::*;
+    use crate::{
+        approval::{ApprovalStatus, ExecutionState},
+        domain::{Route, Run, SessionKind, Task, TaskSpec},
+        server::{self, App},
+    };
+    use axum::{
+        Router,
+        body::{Body, to_bytes},
+        http::{Request as HttpRequest, StatusCode, header},
+    };
+    use serde_json::{Value, json};
+    use std::{path::PathBuf, time::Duration};
+    use tower::ServiceExt;
+    const TOKEN: &str = "synthetic-lifecycle-token";
+    const HOST: &str = "127.0.0.1:18327";
+    fn evidence_root() -> PathBuf {
+        let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".local/lifecycle-compat");
+        std::fs::create_dir_all(&base).unwrap();
+        let base = base.canonicalize().unwrap();
+        assert!(
+            base.to_string_lossy()
+                .trim_start_matches(r"\\?\")
+                .to_ascii_lowercase()
+                .starts_with("e:\\"),
+            "fixture output must remain on E"
+        );
+        // Retain evidence, also on an assertion failure; no auto-delete of a scene.
+        tempfile::tempdir_in(base).unwrap().keep()
+    }
+
+    async fn lifecycle_http_fixture() -> (Arc<Engine>, Task, String) {
+        let root = evidence_root();
+        let store = Arc::new(Store::open(&root.join("compat.sqlite3")).unwrap());
+        let args = json!({"path":"note.txt","content":"never execute"});
+        let task = Task {
+            id: "compat-task".into(),
+            run_id: "compat-run".into(),
+            spec: TaskSpec {
+                name: "compat".into(),
+                role: "worker".into(),
+                route_id: "route".into(),
+                prompt: "compatibility".into(),
+                depends_on: vec![],
+                write_scopes: vec!["*".into()],
+                tools: true,
+                allow_commands: false,
+                max_rounds: 1,
+            },
+            route: Route {
+                id: "route".into(),
+                name: "fixture".into(),
+                base_url: "https://example.invalid/v1".into(),
+                model: "fixture".into(),
+                max_tokens: 128,
+                parallel_limit: 1,
+                key_env: None,
+            },
+            workspace: root.to_string_lossy().into_owned(),
+            status: "running".into(),
+            output: String::new(),
+            error: None,
+            messages: vec![
+                json!({"role":"user","content":"compatibility"}),
+                json!({
+                    "role":"assistant", "tool_calls":[{"id":"compat-call","type":"function",
+                        "function":{"name":"write_file","arguments":args.to_string()}}]
+                }),
+            ],
+            usage: Value::Null,
+            created_at: 1,
+            updated_at: 1,
+        };
+        let engine = Engine::new(store.clone(), 1).unwrap();
+        let operation = store.execution_operation(CancellationToken::new()).unwrap();
+        operation.bind_task(&task.id).unwrap();
+        let approval_id = operation
+            .run(async {
+                store
+                    .create_run(&Run {
+                        id: task.run_id.clone(),
+                        title: "compat".into(),
+                        kind: SessionKind::Team,
+                        created_at: 1,
+                        tasks: vec![task.clone()],
+                    })
+                    .unwrap();
+                let approval = engine
+                    .store
+                    .ensure_approval(&task, "compat-call", "write_file", &args)
+                    .unwrap()
+                    .0;
+                approval.id
+            })
+            .await;
+        (engine, task, approval_id)
+    }
+
+    fn lifecycle_http_router(engine: Arc<Engine>) -> Router {
+        server::router(App {
+            engine,
+            token: TOKEN.into(),
+            origin: format!("http://{HOST}"),
+        })
+    }
+
+    async fn lifecycle_http_request(
+        app: Router,
+        path: &str,
+        token: bool,
+        body: Value,
+    ) -> (StatusCode, Value) {
+        let mut request = HttpRequest::builder()
+            .method("POST")
+            .uri(path)
+            .header(header::HOST, HOST)
+            .header(header::CONTENT_TYPE, "application/json");
+        if token {
+            request = request.header("x-peachsh-token", TOKEN);
+        }
+        let response = tokio::time::timeout(
+            Duration::from_secs(5),
+            app.oneshot(request.body(Body::from(body.to_string())).unwrap()),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+        let status = response.status();
+        let bytes = to_bytes(response.into_body(), 1_048_576).await.unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    #[tokio::test]
+    async fn http_cancel_keeps_auth_and_repeated_receipt_without_reexecuting_approval() {
+        let (engine, task, approval_id) = lifecycle_http_fixture().await;
+        let app = lifecycle_http_router(engine.clone());
+        let path = format!("/api/tasks/{}/cancel", task.id);
+        let before = serde_json::to_value(engine.store.events(&task.run_id, 0).unwrap()).unwrap();
+        let (status, body) = lifecycle_http_request(app.clone(), &path, false, json!({})).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(body["retryable"], false);
+        assert_eq!(
+            engine.store.approval(&approval_id).unwrap().status,
+            ApprovalStatus::Pending
+        );
+        assert_eq!(
+            serde_json::to_value(engine.store.events(&task.run_id, 0).unwrap()).unwrap(),
+            before
+        );
+
+        assert_eq!(
+            lifecycle_http_request(app.clone(), &path, true, json!({})).await,
+            (StatusCode::OK, json!({"ok":true}))
+        );
+        let approval = engine.store.approval(&approval_id).unwrap();
+        assert_eq!(approval.status, ApprovalStatus::Cancelled);
+        assert_eq!(approval.execution_state, ExecutionState::Cancelled);
+        let once = serde_json::to_value(engine.store.events(&task.run_id, 0).unwrap()).unwrap();
+        assert_eq!(
+            lifecycle_http_request(app, &path, true, json!({})).await,
+            (StatusCode::OK, json!({"ok":true}))
+        );
+        assert_eq!(
+            serde_json::to_value(engine.store.events(&task.run_id, 0).unwrap()).unwrap(),
+            once
+        );
+        assert!(!PathBuf::from(&task.workspace).join("note.txt").exists());
+        assert!(engine.shutdown(Duration::from_secs(2)).await.settled());
+    }
+
+    #[tokio::test]
+    async fn http_shutdown_rejects_resume_without_changing_task_or_queued_input() {
+        let (engine, task, _) = lifecycle_http_fixture().await;
+        engine.request_shutdown();
+        let before_task = serde_json::to_value(engine.store.task(&task.id).unwrap()).unwrap();
+        let before_events =
+            serde_json::to_value(engine.store.events(&task.run_id, 0).unwrap()).unwrap();
+        // Pending resume input is persisted in the event stream; comparing every
+        // event also proves rejection did not enqueue a hidden follow-up input.
+        let (status, body) = lifecycle_http_request(
+            lifecycle_http_router(engine.clone()),
+            &format!("/api/tasks/{}/resume", task.id),
+            true,
+            json!({"message":"do not queue after shutdown"}),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["code"], "request_failed");
+        assert_eq!(body["retryable"], false);
+        assert_eq!(body["error"], body["message"]);
+        assert!(body["message"].as_str().unwrap().contains("Host 正在关闭"));
+        assert_eq!(
+            serde_json::to_value(engine.store.task(&task.id).unwrap()).unwrap(),
+            before_task
+        );
+        assert_eq!(
+            serde_json::to_value(engine.store.events(&task.run_id, 0).unwrap()).unwrap(),
+            before_events
+        );
+        assert!(engine.shutdown(Duration::from_secs(2)).await.settled());
+    }
 }
