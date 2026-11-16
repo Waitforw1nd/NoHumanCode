@@ -39,3 +39,21 @@ Store固定审查结论在 `Store共享开库只读复核.md`，绑定 `62ae726f
 单文件rustfmt（edition2024、skip_children）与git diff --check通过；比较cfg(test)模块前源码，生产部分相同。源码依赖经理整合的B execution_authority接口，本A树未单独编译。原进程控制路径只编辑未执行，full-1失败现场未改。
 
 经理下一固定窗口须验证全部11项及既有通过正控；本提交不声称11项动态通过、不升级旧23/23为25例矩阵通过。旧case16 unknown保持，A生命周期组件本轮稳定未改。
+
+## 48eeaa3a 最后固定只读审查
+
+经理已合A `22e525af3a2dfe7f16bd7cce140f911c50ceeba8`，要求A补审B最终 `48eeaa3a662a095d18685130c913428e000a7392`。A固定读取该提交及 `a2685f9c..48eeaa3a` 差异，核对完整调用位置，而非使用B后续变动HEAD。**原dropped-caller取消归属阻断在48eeaa3a静态闭合，本差异未见新增阻断；动态以经理full-2固定结果为准。**
+
+|边界|固定源码结论|
+|---|---|
+|移交时机|唯一生产调用为Engine::spawn_worktree_worker。成功commit claim至hold_body取得Worker取消责任及spawn之间没有await；重放分支不启动worker，也不移交责任|
+|同原票|take_worker_cancellation修改同一个OperationScope的cancellation_owner；没有创建新operation、controller或token。current/hold_body只增加原body计数|
+|caller Drop|ExecutionOperation::drop只在自身角色等于当前owner时取消；移交后Caller角色不匹配Worker，不取消已接手worker。未移交的调用者仍保留原Drop取消行为|
+|worker持有终点|额外_body绑定在实际后台future内，跨越inherit(work)、work内部finish_worktree、Unknown/Claimed归类、sender.send和失败检查。正常返回、错误或future被丢弃均走同一guard析构|
+|真实停止|Worker guard Drop会取消原child token；Host request_shutdown仍取消原shutdown_requested父token，移交不替换token、不断开父取消传播|
+|票据释放|仍须bodies=0且active generation为空才释放整项in_flight；进程未收束时由原generation继续保票。移交没有修改seal_unknown、late settle或sticky unknown|
+|新增状态测试|worktree_handoff_keeps_original_ticket_and_parent_cancellation保留caller Drop不取消、原票计数为1、第二controller拒绝、父取消可达、worker Drop取消及最后票归零。48ee仅将持权Engine绑定改为_engine，未提前drop或删除断言|
+
+已对 fixed delta 执行diff-check，通过；A未运行Cargo、真实子进程或测试。Store62ae726f独立静审结论继续有效，不因本次取消修复升级动态声明。
+
+full-2开窗source-before记录HEAD `4b00c481486aa17dd0fc7e0056c334cc64f6c092`、产品tree `ff49de8748250ece88324c20e1b63f8dc996729b`、Rust tree `a092d0e2923d9224850a6dc5f06167d87fef9e47`；只读比较该集成的engine.rs/execution_authority.rs与48eeaa3a无差异。经理告知Agent定向44/0/0，这不替代worktree或组件矩阵证据。本报告提交时integrated-full-2仍在运行；组件25例待全套通过后由经理精确构建固定矩阵。集成源码未改。
