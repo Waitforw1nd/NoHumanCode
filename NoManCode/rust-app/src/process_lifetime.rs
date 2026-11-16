@@ -94,6 +94,7 @@ pub(crate) struct TestHooks {
     pub fail_membership: AtomicBool,
     pub fail_job_query: AtomicBool,
     pub fail_exit_code: AtomicBool,
+    pub exit_code_failed: AtomicBool,
     pub fail_termination: AtomicBool,
     pub hold_created: AtomicBool,
     pub created_held: AtomicBool,
@@ -238,7 +239,7 @@ struct Capacity {
     limit: NonZeroUsize,
     in_flight: usize,
     #[cfg(windows)]
-    completed_threads: Vec<std::os::windows::io::OwnedHandle>,
+    completed_threads: Vec<Arc<std::os::windows::io::OwnedHandle>>,
 }
 
 impl Capacity {
@@ -269,7 +270,7 @@ impl Capacity {
 struct Slot {
     capacity: Arc<Mutex<Capacity>>,
     #[cfg(windows)]
-    holder_thread: Option<std::os::windows::io::OwnedHandle>,
+    holder_thread: Option<Arc<std::os::windows::io::OwnedHandle>>,
     released: bool,
 }
 impl Slot {
@@ -305,8 +306,9 @@ impl Slot {
         {
             return Err(std::io::Error::last_os_error());
         }
-        self.holder_thread =
-            Some(unsafe { std::os::windows::io::OwnedHandle::from_raw_handle(original) });
+        self.holder_thread = Some(Arc::new(unsafe {
+            std::os::windows::io::OwnedHandle::from_raw_handle(original)
+        }));
         Ok(())
     }
 }
@@ -478,8 +480,8 @@ impl Supervisor {
                     });
                 }
             };
-            let thread = std::os::windows::io::OwnedHandle::from(thread);
-            if let Err(error) = start_tx.send(thread) {
+            let thread = Arc::new(std::os::windows::io::OwnedHandle::from(thread));
+            if let Err(error) = start_tx.send(Arc::clone(&thread)) {
                 // The receiver did not start target work. Preserve its original
                 // thread handle until signal even on this handoff failure.
                 let (_, mut slot, send) = pending
@@ -495,6 +497,7 @@ impl Supervisor {
                 let _ = send.send(());
             }
             Ok(Operation {
+                holder_thread: Some(thread),
                 receive,
                 lease: cell,
                 cancelled,
@@ -508,6 +511,8 @@ impl Supervisor {
 }
 
 pub(crate) struct Operation {
+    #[cfg(windows)]
+    holder_thread: Option<Arc<std::os::windows::io::OwnedHandle>>,
     receive: tokio::sync::oneshot::Receiver<()>,
     lease: Arc<LeaseCell>,
     cancelled: Arc<AtomicBool>,
@@ -556,7 +561,7 @@ impl Operation {
         let outcome = match result {
             Ok(Ok(())) => self.lease.take_outcome(),
             _ => {
-                self.request_cancel();
+                self.cancel();
                 if self.lease.decide_unknown() {
                     Outcome::Unknown
                 } else {
@@ -564,6 +569,31 @@ impl Operation {
                 }
             }
         };
+        #[cfg(windows)]
+        if !matches!(outcome, Outcome::Unknown) {
+            // A known result is published before the watchdog joins and the
+            // holder exits. Await that original thread within the same budget
+            // so a sequential Git command can immediately reuse capacity=1.
+            // Unknown must stay prompt: its holder can remain alive indefinitely.
+            use std::os::windows::io::AsRawHandle;
+            use windows_sys::Win32::{
+                Foundation::WAIT_TIMEOUT, System::Threading::WaitForSingleObject,
+            };
+            if let Some(thread) = &self.holder_thread {
+                loop {
+                    let started = (*self.cancel_at.lock().unwrap_or_else(|e| e.into_inner()))
+                        .unwrap_or(self.deadline)
+                        .min(self.deadline);
+                    let until = started.checked_add(self.cleanup_budget).unwrap_or(started);
+                    if unsafe { WaitForSingleObject(thread.as_raw_handle(), 0) } != WAIT_TIMEOUT
+                        || Instant::now() >= until
+                    {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(1)).await;
+                }
+            }
+        }
         self.done = true;
         outcome
     }
@@ -582,7 +612,7 @@ impl Drop for Operation {
         // Drop requests stop; the independent holder and watchdog keep the
         // lease until cleanup is proven or unknown is actually decided.
         if !self.done {
-            self.request_cancel();
+            self.cancel();
         }
     }
 }
@@ -1435,6 +1465,10 @@ mod platform {
                                 .as_ref()
                                 .is_some_and(|h| h.fail_exit_code.load(Ordering::Acquire));
                         if !exit_code_ok {
+                            #[cfg(test)]
+                            if let Some(hooks) = &spec.test_hooks {
+                                hooks.exit_code_failed.store(true, Ordering::Release);
+                            }
                             unknown(lease, signal);
                             exit_code_unavailable = true;
                             reason.get_or_insert(CompletionReason::Cancelled);
@@ -1899,7 +1933,7 @@ mod state_tests {
             let _ = exit_rx.recv();
         });
         start_tx
-            .send(std::os::windows::io::OwnedHandle::from(thread))
+            .send(Arc::new(std::os::windows::io::OwnedHandle::from(thread)))
             .unwrap();
         dropped_rx.recv_timeout(Duration::from_secs(2)).unwrap();
         let still_full = supervisor.reserve().is_none();
@@ -1921,6 +1955,7 @@ mod state_tests {
         let cancel_at = Arc::new(Mutex::new(None));
         let (_send, receive) = tokio::sync::oneshot::channel();
         let operation = Operation {
+            holder_thread: None,
             receive,
             lease: Arc::clone(&cell),
             cancelled: Arc::clone(&cancelled),
