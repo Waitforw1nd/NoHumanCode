@@ -17,6 +17,89 @@ fn setup() -> (tempfile::TempDir, Arc<Store>, Arc<Engine>) {
     (dir, store, engine)
 }
 
+#[tokio::test]
+async fn standalone_project_session_agent_inserts_require_matching_active_operation() {
+    use crate::domain::{Agent, Project, Session};
+    use peachsh_protocol::{AgentId, ProjectId, SessionId, SessionKind};
+    let (_dir, store, _engine) = setup();
+    let (_foreign_dir, foreign, _foreign_engine) = setup();
+    let project = Project {
+        id: ProjectId("u18-project".into()),
+        name: "project".into(),
+        root_path: "C:/workspace".into(),
+        created_at: 1,
+        updated_at: 1,
+    };
+    let session = Session {
+        id: SessionId("u18-session".into()),
+        project_id: project.id.clone(),
+        kind: SessionKind::Team,
+        title: "session".into(),
+        legacy_run_id: "u18-run".into(),
+        created_at: 1,
+        updated_at: 1,
+    };
+    let agent = Agent {
+        id: AgentId("u18-agent".into()),
+        session_id: session.id.clone(),
+        display_name: "agent".into(),
+        role: "worker".into(),
+        created_at: 1,
+    };
+    let op = store.execution_operation(CancellationToken::new()).unwrap();
+    op.run(async {
+        store.insert_project(&project).unwrap();
+        store.insert_session(&session).unwrap();
+        store.insert_agent(&agent).unwrap();
+    })
+    .await;
+    let mut next_project = project.clone();
+    next_project.id = ProjectId("u18-project-2".into());
+    let mut next_session = session.clone();
+    next_session.id = SessionId("u18-session-2".into());
+    next_session.legacy_run_id = "u18-run-2".into();
+    let mut next_agent = agent.clone();
+    next_agent.id = AgentId("u18-agent-2".into());
+    let counts = || {
+        let db = store.db.lock().unwrap();
+        ["projects", "sessions", "agents"].map(|table| {
+            db.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| {
+                r.get::<_, i64>(0)
+            })
+            .unwrap()
+        })
+    };
+    assert_eq!(counts(), [1, 1, 1]);
+    assert!(store.insert_project(&next_project).is_err());
+    assert!(store.insert_session(&next_session).is_err());
+    assert!(store.insert_agent(&next_agent).is_err());
+    assert_eq!(counts(), [1, 1, 1]);
+    let foreign_op = foreign
+        .execution_operation(CancellationToken::new())
+        .unwrap();
+    foreign_op
+        .run(async {
+            assert!(store.insert_project(&next_project).is_err());
+            assert!(store.insert_session(&next_session).is_err());
+            assert!(store.insert_agent(&next_agent).is_err());
+        })
+        .await;
+    assert_eq!(counts(), [1, 1, 1]);
+    let closed_op = store.execution_operation(CancellationToken::new()).unwrap();
+    store.authority.close();
+    closed_op
+        .run(async {
+            assert!(store.insert_project(&next_project).is_err());
+            assert!(store.insert_session(&next_session).is_err());
+            assert!(store.insert_agent(&next_agent).is_err());
+        })
+        .await;
+    assert_eq!(counts(), [1, 1, 1]);
+    assert_eq!(store.project(&project.id).unwrap(), project);
+    assert_eq!(store.session(&session.id).unwrap(), session);
+    assert_eq!(store.agent(&agent.id).unwrap(), agent);
+}
+
 #[test]
 fn real_old_body_blocks_new_epoch_after_controller_drop_until_settled() {
     let dir = tempfile::tempdir().unwrap();
