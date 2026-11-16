@@ -17,3 +17,5 @@ E 审查澄清：结果侧完成指 `WorkerService::call` 内的 gate.accept 与
 D→E 固定复核 `75b06911`：子夹具确认实际运行一项，混搭读取独立 worker 并记录输入路径与 SHA256；外层复用 lifecycle gate，unknown 标记停止后续执行，直接进程退出不冒称后代收束。两项待修：C 所有 `tests/support/owned_child.rs` 的 output 先接受已退出状态，首次观察若已过 deadline 仍可误判按时完成；E 的外层 exact ignored 测试仅凭 Cargo 退出码，零项运行也可能通过，应核真实一项通过。已分别通知 C、E；未动态执行，结论待其返工固定后复核。
 
 复核 C 修复 `bf1bda27`：`OwnedChild::output` 在观察前后核截止，迟到观察进入 unknown 并持有原 Child；覆盖上述截止边界。为静态核查，尚待组合测试；E 的外层零项防假通过仍待固定。
+
+复核 E 修复 `6eee1e1e`：外层 runner 要求恰好一条 1 passed/0 failed 汇总，已知成功但不满足时返回非零并由 run_attempt 留证失败，覆盖零项、多项与多汇总。此为静态检查；E 报告两项纯 mock 通过，经理尚需组合执行。
