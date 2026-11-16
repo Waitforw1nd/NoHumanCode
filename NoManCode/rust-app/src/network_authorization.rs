@@ -296,7 +296,7 @@ use crate::{
     store::Store,
     workspace_changes::digest,
 };
-use anyhow::Result as AnyResult;
+use anyhow::{Context, Result as AnyResult};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::json;
 
