@@ -12,7 +12,7 @@ mod component;
 #[path = "../src/process_lifetime.rs"]
 mod process_lifetime;
 
-use anyhow::{Result, ensure};
+use anyhow::{Context, Result, ensure};
 use fixture::{Case, until};
 use host::Host;
 use peachsh::{
@@ -165,7 +165,7 @@ async fn host_shutdown_cancels_real_shell_before_reporting_settled() -> Result<(
 
 #[tokio::test]
 async fn ordinary_shell_and_git_failures_release_and_path_commands_work() -> Result<()> {
-    let case = Case::new("ordinary-failure-")?;
+    let case = Case::new("ordinary-failure-with space-")?;
     let host = Host::new(&case).await?;
     let (task, approval) = host.shell("exit 23", 10).await?;
     let done = host.finished(&task).await?;
@@ -186,17 +186,43 @@ async fn ordinary_shell_and_git_failures_release_and_path_commands_work() -> Res
     // process probe alone cannot catch CreateProcessW's search-path regression.
     let command = "$ErrorActionPreference='Stop'; git init --quiet; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; [IO.File]::WriteAllText((Join-Path $PWD 'file.txt'), 'before'); git add -- file.txt; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; git -c user.name=Lifecycle -c user.email=lifecycle@example.invalid -c core.hooksPath= commit --quiet -m fixture; if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}; [IO.File]::WriteAllText((Join-Path $PWD 'file.txt'), 'after'); exit 0";
     let (git_task, approval) = host.shell(command, 20).await?;
-    host.finished(&git_task).await?;
+    let setup = host.finished(&git_task).await?;
     ensure!(
         host.engine.store.approval(&approval.id)?.execution_state == ExecutionState::Finished,
         "Git setup not settled"
     );
+    let outputs: Vec<_> = setup
+        .messages
+        .iter()
+        .filter(|message| message["role"] == "tool")
+        .collect();
+    ensure!(
+        outputs.len() == 1,
+        "Git setup must have exactly one tool result: task_status={}, outputs={outputs:?}",
+        setup.status,
+    );
+    let output = outputs[0]["content"]
+        .as_str()
+        .with_context(|| format!("Git setup tool content is not text: {outputs:?}"))?;
+    let output: serde_json::Value = serde_json::from_str(output)
+        .with_context(|| format!("Git setup tool output is not JSON: {output}"))?;
+    ensure!(
+        output["exit_code"].as_i64() == Some(0),
+        "Git setup failed: task_status={}, tool_output={output}",
+        setup.status,
+    );
     let diff = host.engine.git_diff(&git_task.id, request()).await?;
-    ensure!(diff.status == GitDiffStatus::Text, "real Git diff not text");
+    ensure!(
+        diff.status == GitDiffStatus::Text,
+        "real Git diff not text: status={:?}, patch={:?}",
+        diff.status,
+        diff.patch,
+    );
     let patch = diff.patch.unwrap_or_default();
     ensure!(
         patch.contains("-before") && patch.contains("+after"),
-        "Git PATH positive control missing actual diff"
+        "Git PATH positive control missing actual diff: status={:?}, patch={patch:?}",
+        diff.status,
     );
     host.success().await?;
     host.close().await

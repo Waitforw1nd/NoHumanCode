@@ -135,7 +135,17 @@ async fn component_eof_keeps_lease_until_original_descendant_exits() -> Result<(
             && hooks.0.stdout_eof_joined.load(Ordering::Acquire)
             && hooks.0.stderr_eof_joined.load(Ordering::Acquire))
     })
-    .await?;
+    .await
+    .with_context(|| {
+        format!(
+            "EOF observation: parent_exited={:?}, descendant_exited={:?}, stdout_eof_joined={}, stderr_eof_joined={}, parent_stdio={:?}",
+            case.parent_exited(),
+            case.descendant_exited(),
+            hooks.0.stdout_eof_joined.load(Ordering::Acquire),
+            hooks.0.stderr_eof_joined.load(Ordering::Acquire),
+            std::fs::read_to_string(case.root.join("parent-stdio-non-inheritable.json")),
+        )
+    })?;
     ensure!(
         !case.descendant_exited()?,
         "original descendant not alive at real EOF"
