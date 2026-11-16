@@ -117,6 +117,12 @@ impl Store {
         let op = crate::execution_authority::current().context("execution operation required")?;
         self.execution_settlement_fence_for(tx, &op)
     }
+    /// Validate an already-unknown original operation for narrowly scoped
+    /// conservative unknown records, never for a successful result or claim.
+    pub(crate) fn execution_unknown_fence(&self, tx: &rusqlite::Transaction<'_>) -> Result<()> {
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        self.authority.unknown_terminal_fence(tx, &op)
+    }
     pub(crate) fn execution_generation(
         &self,
         op: &crate::execution_authority::ExecutionOperation,
