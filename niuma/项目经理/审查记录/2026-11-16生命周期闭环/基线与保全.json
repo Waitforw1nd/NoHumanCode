@@ -1,0 +1,818 @@
+{
+  "captured_utc": "2026-11-16T08:22:41.600912+00:00",
+  "trees": [
+    {
+      "name": "main",
+      "head": "668c6b89dda33260f900de38463cd71677e4ab3c",
+      "files": [
+        {
+          "path": "niuma/员工B/个人身份认知.md",
+          "sha256": "b46831bb5f28142099f085353831f5452d69882322c93d65ca503eebd9038c78",
+          "bytes": 236074
+        },
+        {
+          "path": "niuma/员工B/提交报告/第二十一轮/B21-attempt2与W04诊断证据/发布复核.json",
+          "sha256": "4b2f08a8ff2b25a711163eb9d8edc275a005c6913891588cfe6a5dd541a839a1",
+          "bytes": 85
+        },
+        {
+          "path": "niuma/员工B/提交报告/第二十三轮/NEXT-21U-B23-98ce返工与预检外围.md",
+          "sha256": "add557a12adc50231b0c83e29912308327599030eb164410a4facf33f6b5adf6",
+          "bytes": 2385
+        },
+        {
+          "path": "niuma/员工B/提交报告/第二十三轮/NEXT-21U-B23-case16-PSS原对象诊断静态草案.md",
+          "sha256": "af78e1827f6bd19fe01ccfcea0bbaff26f322802ef8158a7b57c4c5148eac6fe",
+          "bytes": 3904
+        },
+        {
+          "path": "niuma/员工B/提交报告/第二十三轮/NEXT-21U进程寿命API与持有契约.md",
+          "sha256": "40c28e43fd862459a38851e5f6a545accbd70f6789964634b3d0305307b6ecb8",
+          "bytes": 3709
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19-R01-R02静态返工.md",
+          "sha256": "2fe152a544bdd7dd821e3413ce27ddc4abface71d25c3f649b7a8698e96e1769",
+          "bytes": 3712
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19独立测试模块接线.md",
+          "sha256": "44c0f86b4fadefa7155015ce7d1b53099b246530f6fe70a13c6d5409b75b6dd5",
+          "bytes": 2147
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19组件attempt1.md",
+          "sha256": "e368d1412598987d085cc192804d8e58b60095928304e010872c8e5a522b82b2",
+          "bytes": 3976
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19组件attempt2.md",
+          "sha256": "011d65870fda0cd8630a5242f987669591b5565c5d7940c1dd79448e2760623f",
+          "bytes": 4237
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/2026-10-31NEXT-19静态候选.md",
+          "sha256": "f7e5eacd9426f83cc689b51406cbfe7b701780a83cf513fbf7a702347216e3c2",
+          "bytes": 6277
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/01-check.json",
+          "sha256": "f035f4972f556a0e4c5ff857b8c61d98026daaf4aa4f634e9cb054f0adae4978",
+          "bytes": 354
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/01-check.log",
+          "sha256": "d408d98cb27902b1eb63ba407cc5a4511b46553b5dd8877028b475333f1e4676",
+          "bytes": 5563
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/02-build-cli.json",
+          "sha256": "2c06f4f1a50a403f6cfc566309658b90fe41456485d84033661478473926508d",
+          "bytes": 362
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/02-build-cli.log",
+          "sha256": "42f724858d37b91ddc2305abe323c6b8ce8a749e31564d3bfe5632a94f80485f",
+          "bytes": 4849
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/03-test.json",
+          "sha256": "2847ed8270171e14a2bba54bfb56e8fe5e1bf72a35f3a4d5fc97dd10d8752675",
+          "bytes": 370
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/03-test.log",
+          "sha256": "c2e2f5609a2e3a7a40fbec6e651f5f869351af25dbeeb9f7d24297eb828e437c",
+          "bytes": 48566
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/cli-binary.json",
+          "sha256": "a92c97d4fc90d4be460ba869ed94e8fce1ecf0fa79ea953f002746b3c317d0d2",
+          "bytes": 272
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/inventory.py",
+          "sha256": "c9662fcc2eda21a22144db54d3855e88a86da14f0f63ea868a45477c38f66228",
+          "bytes": 1349
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/manifest.json",
+          "sha256": "3969f738268253a1d920a19ae4974016dfa5af847b274e9c285d314e53a13220",
+          "bytes": 7993
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/postflight.json",
+          "sha256": "db215fada594bb068bf6d5c72ebce0d0126cbdccde4633bdaac12db1ece341b2",
+          "bytes": 308
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/preflight.json",
+          "sha256": "bab58a357181e4be2cf399725448480993fc0894405ab0bdcef0a5ae70e0adde",
+          "bytes": 797
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/retained-evidence-inventory.json",
+          "sha256": "1ec280726b12ba41ba008ec26bbb5098e57ac2e51655745d0a9d1a8960b0b9aa",
+          "bytes": 360985
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/run.ps1",
+          "sha256": "44629cd43181ea401d283fbd476ec21bd4d1c453d0000d8d8c0aa79467298210",
+          "bytes": 5767
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/source-after.json",
+          "sha256": "45583fbfec45af16a894a7eff03fb5758f64eabeac9490a5cd88bd951ae71e6e",
+          "bytes": 23496
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据11e1882b-attempt1/source-before.json",
+          "sha256": "45583fbfec45af16a894a7eff03fb5758f64eabeac9490a5cd88bd951ae71e6e",
+          "bytes": 23496
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/01-check.json",
+          "sha256": "6917fdb83adb022a235281741403a14013efe56c439e0893b431c2d554c92356",
+          "bytes": 354
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/01-check.log",
+          "sha256": "42c8e12b93f9adb3f72a89f5cf69aabf286600795b614494667275ddaf3d7e64",
+          "bytes": 61
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/02-build-cli.json",
+          "sha256": "cf0b12c21df531bbb0b778a15dff933863e6e67f0cec6b302db183aeed404b0f",
+          "bytes": 362
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/02-build-cli.log",
+          "sha256": "42c8e12b93f9adb3f72a89f5cf69aabf286600795b614494667275ddaf3d7e64",
+          "bytes": 61
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/03-test.json",
+          "sha256": "ead71efadd35c360563ce59a464ecb4f65fef1ec5b8bd6de7598ef3e756bcf37",
+          "bytes": 368
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/03-test.log",
+          "sha256": "6bdcc81876a1591c42d8aa40e7f3981f11c7b54bc902bd5ca67e340eb27d95d6",
+          "bytes": 47731
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/04-clippy.json",
+          "sha256": "f1a9f40643c6d997d787329ccce5c3341afbaf8d63129995ef1213a096a6b5de",
+          "bytes": 370
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/04-clippy.log",
+          "sha256": "d88b82f3c02593b4962d992f2fb11ba749c068169b0205d8633a46a416f89053",
+          "bytes": 248
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/05-fmt.json",
+          "sha256": "12257d94eb38c866365137145ee2bce025a66373c6fc6e4244ccfd89eee6964e",
+          "bytes": 344
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/05-fmt.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/cli-binary.json",
+          "sha256": "0bc0c0eb8f8235fbb00e541774b314ba3c06c4ffa5d86ae726cc08e8da6d5267",
+          "bytes": 272
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/inventory.py",
+          "sha256": "c9662fcc2eda21a22144db54d3855e88a86da14f0f63ea868a45477c38f66228",
+          "bytes": 1349
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/manifest.json",
+          "sha256": "54994c9b99c85ba23bd0084a94131a263c16b8b9d354a90e8aedc07a5c1ff3bb",
+          "bytes": 10584
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/postflight.json",
+          "sha256": "856a395760510a75df213827e6a50ff6954acdca03cedae3824c818ebdadaa1b",
+          "bytes": 306
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/preflight.json",
+          "sha256": "2fe93edd39980735e2e95f94e6e1ab962ca638322301b66ca2ae62c16bf71dca",
+          "bytes": 797
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/retained-evidence-before.json",
+          "sha256": "faa97c6191113e43cd311f87cd5ac3e9f524377395e57e8c9c13e82d105af75d",
+          "bytes": 26557
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/retained-evidence-delta.json",
+          "sha256": "b8550de3fc2f76867c76fce1b80d114e963969804700599c0e5977b5e1376a38",
+          "bytes": 175882
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/retained-evidence-inventory.json",
+          "sha256": "da86f4fed0123c7856044305a203e70a1ed22a8ddcaf00a84917b8350263108e",
+          "bytes": 387382
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/run.ps1",
+          "sha256": "114656d6da28408803058e97e1c0e92b7572aad272f11d713fb34f064f1da4e7",
+          "bytes": 5767
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/source-after.json",
+          "sha256": "0edd04b57d86b696c3b68134876d74068b3ba0123dc45508c86a7bd80d2cb1a0",
+          "bytes": 23496
+        },
+        {
+          "path": "niuma/员工B/提交报告/第十八轮/NEXT-19组件证据aac917d4-attempt2/source-before.json",
+          "sha256": "0edd04b57d86b696c3b68134876d74068b3ba0123dc45508c86a7bd80d2cb1a0",
+          "bytes": 23496
+        },
+        {
+          "path": "niuma/员工C/个人身份认知.md",
+          "sha256": "075ad169469fffbde2eb147323f0aa76229f1d9f904c1bfc0def669a4f102a2f",
+          "bytes": 246824
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02agent原域恢复夹具静态迁移.md",
+          "sha256": "5fe90957fe1761f2e6383510f94b53f2935f315409146b4c90c82a8c2954ebc1",
+          "bytes": 3245
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02二次接续工具结果与流式恢复静态增量.md",
+          "sha256": "1dc1eb174bf8af962b03d170a607c43bad563d717b41c28a593a22104a1f007d",
+          "bytes": 3214
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02共同进程寿命接线规划.md",
+          "sha256": "e1c9d591be421fc225e40250ed9c84962309feb2adc5fb29de9b86911371e0c3",
+          "bytes": 6403
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02原句柄顺序与源快照静态增量.md",
+          "sha256": "8e7f3930cf5a2f4d52bbe5a4b5ff4ead46b926ac80f990acaeec31984352dea6",
+          "bytes": 3095
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02同角色接续恢复与提交静态检查点.md",
+          "sha256": "a5dbf1afff66133f4896cde27b39f7fb09258e9d3d893e9be4eaf36e5cce41e1",
+          "bytes": 2413
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02工具结果强杀夹具原域接续.md",
+          "sha256": "1a8e11189b7aed339902f126891d84085ab258017ef8bd8ba0b8fff3ae3af47c",
+          "bytes": 1844
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02恢复旧夹具继续检查点.md",
+          "sha256": "c40e1d69f9d9c9a82e5db6fc8cd6b5a97ed58d546452b36d1b69e440a5b58969",
+          "bytes": 2050
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02接续兼容与入口映射增量.md",
+          "sha256": "25792812a1f520e854e65d5cb5f272242855020299c37d6117b8ca5e9a193385",
+          "bytes": 3577
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02监督与取消统一静态候选.md",
+          "sha256": "7a462fb1f2a2e40e34c93525d7a23dc4682b97ef525864ee00d37e1c715b06e7",
+          "bytes": 3582
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02窗口粘性未知与精确用例静态增量.md",
+          "sha256": "8fcf4f2c5bbd47aed33a75481d03ce27a15ee9ab5a103cd9368805646e3a210a",
+          "bytes": 2773
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02迁移故障断言静态增量.md",
+          "sha256": "cbfe31d0fb7b9fec0dc8231a3af84c966f78a3006d41f94817aab409db9674d7",
+          "bytes": 1357
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/2026-11-02预算与工作树旧夹具静态增量.md",
+          "sha256": "0e835aa13eb98b4adaa807190131cfa9784c565f33975dcef3eba5fba7d80204",
+          "bytes": 2978
+        },
+        {
+          "path": "niuma/员工C/提交报告/第三十五轮/NEXT-21U统一执行权实施进度.md",
+          "sha256": "b5dd1684962c8b5e9de179afa28973f3b5b0e0958fa527759fded645f9b6cad3",
+          "bytes": 62593
+        },
+        {
+          "path": "niuma/员工D/个人身份认知.md",
+          "sha256": "8b1e00d8629bc1f7bf831660695af9fe93fa99711a498e9135c911a4b455d0d7",
+          "bytes": 144644
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19-R03已提交HostDenied重启静态候选.md",
+          "sha256": "4c09670fe55788d0b92edc0a1a0dbf0994fd87fbfe8451ed07817c46ada54bcb",
+          "bytes": 2665
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19T04审查增量静态候选.md",
+          "sha256": "dc80e7ed7eb31817a6211dda195c8674bfda9ce65026730d1d5ea2ac746c5809",
+          "bytes": 1892
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19完整独立测试静态候选.md",
+          "sha256": "0e240c230a7e534576b1cd14e23725389a3b23e610f775d82b14974829d6c52a",
+          "bytes": 8358
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十七轮/2026-10-31NEXT-19组件前置夹具适配.md",
+          "sha256": "3f812823d1ed24c88ed73ac236a71cc15cba134baf573e2b2bc12f9ef26f0384",
+          "bytes": 1895
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/freeze-manifest.json",
+          "sha256": "30d90153ebb3ba2073146f2e2d1988fdeb2fb47a815508aa7b932557e9571e09",
+          "bytes": 705
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/baseline.json",
+          "sha256": "57255596dd8019772fe6a57b624ee74b5dcc6d515593fa2ec64e3ed29cc3148f",
+          "bytes": 528
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/candidate.diff",
+          "sha256": "0f11f5751a9171764632b35f7ffb1024e89266110d7e9fa0cb3ef78e8d7e9e0e",
+          "bytes": 27721
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/candidate.json",
+          "sha256": "db9b8e9a1e5915be6b68d5873a26c90eb507e277259bdfd7d0d5deeaeb0133ae",
+          "bytes": 738
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/commit-message.txt",
+          "sha256": "edb5a050ff72a51142c0b745b3497756629dfa32146598caa0b4957f81e33be6",
+          "bytes": 642
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/commit.log",
+          "sha256": "cc215da1235ad657f79147c980d6e92f00db89a9a1429d83c0564534713b18db",
+          "bytes": 157
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/committed.diff",
+          "sha256": "a4386fb75774753db80f42fd64cf6ce1906952e59732281be5780a2732fe007b",
+          "bytes": 28638
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/diff-check.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/final-source-freeze.json",
+          "sha256": "2a14d4aef0372c4cd481c37e070b7ebdadd5c6770d6d24590e57f5127a0110a1",
+          "bytes": 1213
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/fixture-command.ps1.txt",
+          "sha256": "c0fa3c9a568306cb8433ac8d39b4ad7089fd44d6d5de863fe9f8dda2cb5652bf",
+          "bytes": 618
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/handoff-to-candidate.diff",
+          "sha256": "1bf24036dd108afc11b4f88087adaee0795994e9bb09573f5ccf08d1b84f394f",
+          "bytes": 27147
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/powershell-static-parse.json",
+          "sha256": "05106a439147800be7082b80bb93679ed011ead98c85fb1969d8b215ebd721de",
+          "bytes": 194
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/rustfmt-after.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/rustfmt-before.log",
+          "sha256": "12b53feda502a1ddd5399e89fc1a8229b885a3f9eefb60060d1bd82e9fbcac8b",
+          "bytes": 28028
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/rustfmt-final.json",
+          "sha256": "038fec3b664dcb2d6f59c2463fd5f75919972cbdbc3ed9fc3a9f7c5d55b69511",
+          "bytes": 326
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/rustfmt-final.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/rustfmt-format.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/rustfmt-runs.json",
+          "sha256": "832aa83546d5775da8fcc9b2747305606c27aadb5921ee0b7925f427bc07c6a1",
+          "bytes": 1082
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/source-anchors.json",
+          "sha256": "3267d6c270253125528b1b50fc399bc2ea824f947600b06ba4132164c8d2e69e",
+          "bytes": 474
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/source-freeze.json",
+          "sha256": "23407830e61d3f28cef8bfeb358cbec64edb3d737d45efb4d0ae0b17ac5f1751",
+          "bytes": 1127
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/staged-diff-check.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/staging.json",
+          "sha256": "29e3fcb96fb221706471a6e09e34806f9c5578fe310b169c5caa0b003367acf4",
+          "bytes": 317
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/static-audit-attempt2.json",
+          "sha256": "41002241b7391434f642697728160b201c2cdd39b8ef0ed94ae10d9a399c8f11",
+          "bytes": 2104
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/static-audit-run.log",
+          "sha256": "3d5da486b849c19a7883784525ab14b5935d5ba274d358af20fae7f460252840",
+          "bytes": 576
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/static-audit-run2.log",
+          "sha256": "41002241b7391434f642697728160b201c2cdd39b8ef0ed94ae10d9a399c8f11",
+          "bytes": 2104
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/static-audit-v2.py",
+          "sha256": "8e67bdb94e17fcd23928d47ea70e02f3701a62fafdec330bde5cb93dcd3111bb",
+          "bytes": 5804
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/static-audit.py",
+          "sha256": "5e4373c944258d4d9dce3f03efb6657e32ac19c16077485ce8522b5d6529d15a",
+          "bytes": 5709
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/static-exit-codes.json",
+          "sha256": "fa98ab84a06cbb44b958dbad76b388641756d0af4d841256d255ab09dc8eb407",
+          "bytes": 178
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/logs/tool-observations.json",
+          "sha256": "3037c48c1c0bf1221ad3dc9c8c20e30d94f87a8433c82a403f9bd4747e1fbdaf",
+          "bytes": 1604
+        },
+        {
+          "path": "niuma/员工D/提交报告/第十三轮/NEXT-15证据0.4/manifest.json",
+          "sha256": "28ed97e6c52ef9b99e8da763e905e7d0a477eaf1b801fe1af72329a055065fee",
+          "bytes": 14782
+        },
+        {
+          "path": "niuma/项目经理/个人身份认知.md",
+          "sha256": "6135e9546614d9022b8c6fe245cd00225bf1f0507a94d74c9a3222fc97d6429e",
+          "bytes": 311158
+        },
+        {
+          "path": "niuma/项目经理/任务/2026-09-29NEXT-15-D补充06静态交付反馈-用户转交.md",
+          "sha256": "b93df92f7ace3ddac0d6726b06911735ec2615dd58944dca8ce4609b696e6968",
+          "bytes": 3196
+        },
+        {
+          "path": "niuma/项目经理/审查记录/2026-09-29NEXT-15-D71e928接续实核.json",
+          "sha256": "c8241b978af1159c3d284794e1ee7f3dbd5e2a64812aefe5e4c54bd92fff1b3a",
+          "bytes": 3282
+        },
+        {
+          "path": "niuma/项目经理/审查记录/2026-09-29NEXT-15-D补充06静态证据核验0.4.json",
+          "sha256": "330941ec1910f53ffafc3e2f93e7fe473e0355269137475399824283fd264562",
+          "bytes": 22892
+        },
+        {
+          "path": "niuma/项目经理/审查记录/2026-09-29NEXT-15全员换窗基线核验.json",
+          "sha256": "dde66634b94c9d0b093775738386716679c901e6b71a75f53e6a2eb60dd781e6",
+          "bytes": 3396
+        },
+        {
+          "path": "niuma/项目经理/审查记录/2026-09-29NEXT-15接任管理自检.md",
+          "sha256": "b072b6cd74e19dffc7019779f12c5009c8207bd59e6514ce678f76ff87df4030",
+          "bytes": 1587
+        },
+        {
+          "path": "niuma/项目经理/审查记录/2026-09-29NEXT-15新窗口回执增量核验.json",
+          "sha256": "27128b3212fd00bbef2ece9af59d361f75b6d0a7e48719de03cdd1bf0d2128c4",
+          "bytes": 4221
+        },
+        {
+          "path": "niuma/项目经理/审查记录/2026-09-29NEXT-15新经理接任复核.json",
+          "sha256": "1f773b439acc395dbc61b08674c15336069f0fbcb3b7fa59695ea7588ce7f3c9",
+          "bytes": 6547
+        },
+        {
+          "path": "niuma/项目经理/审查记录/NEXT-15全员换窗证据/D原始停点回执.json",
+          "sha256": "8945c4dfbb856307c635bc8c509fdd368ca26e4d10858c246defa979809b04a9",
+          "bytes": 2332
+        },
+        {
+          "path": "niuma/项目经理/当前任务板.md",
+          "sha256": "d2e7fa49fa9b782dbd8c6c8b0ca3cffb0f1d54d4d063289a6ed570205f0626fb",
+          "bytes": 282487
+        },
+        {
+          "path": "niuma/项目经理/提交报告/2026-09-29NEXT-15新经理接任与手动串行接续.md",
+          "sha256": "6c17528d953d145e11523bdd3cb4fb63cab84a36ca583b1ebbf6a9a564a5bec2",
+          "bytes": 5551
+        },
+        {
+          "path": "niuma/项目经理/项目记录/CONVERSATION-FULL.md",
+          "sha256": "c47a5099266d4682ae13fedbcd0c757dc9c36a1c4a20352f83dd7784c0a5e78c",
+          "bytes": 431688
+        },
+        {
+          "path": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+          "sha256": "02966e32a5bbf4566d78852e189bd1dc82cb84b46cdbf278a4b9db21913f7db5",
+          "bytes": 329243
+        },
+        {
+          "path": "niuma/项目经理/项目记录/历史交接/2026-09-29全员换窗前根交接.md",
+          "sha256": "aebb1ce498cb2c2a61bf978729053186ba5b4f6bf03f416df0891885294f4047",
+          "bytes": 2271
+        },
+        {
+          "path": "niuma/项目经理/项目记录/历史交接/2026-09-29全员换窗前经理提示词.md",
+          "sha256": "c0b0db53e1ad0b3dc3c9ae93a3dd2c4d5443c88ea4b529dc6ae33ad4e708075f",
+          "bytes": 5910
+        }
+      ],
+      "status_entries": 47
+    },
+    {
+      "name": "old-b",
+      "head": "98cec2e441adcb7cd0476c81db075c8f1ce4659e",
+      "files": [],
+      "status_entries": 0
+    },
+    {
+      "name": "old-c",
+      "head": "a799abc1eb10c7ee42bbcc39e227ff3bfb4d56ac",
+      "files": [
+        {
+          "path": "NoManCode/rust-app/src/agent_runtime_tests.rs",
+          "sha256": "f17c9dcfad158b97adecccc53ee0c5448cd19553d24bc477bcbbd9341f663b3b",
+          "bytes": 156354
+        },
+        {
+          "path": "NoManCode/rust-app/src/budget.rs",
+          "sha256": "1a5b68ebd850e5c5dc08da06364e2b9f5cfd1d1592ad56b69a6e9edf337412da",
+          "bytes": 68543
+        },
+        {
+          "path": "NoManCode/rust-app/src/engine.rs",
+          "sha256": "c721394216a78f66e47b3425ccecc4c3e63f725d12e8f2ceb866cce6f2987027",
+          "bytes": 279243
+        },
+        {
+          "path": "NoManCode/rust-app/src/execution_authority.rs",
+          "sha256": "a96e88d1ad9687076d10dce421b035a711c26cc58c5076de0d2e8df16725dd11",
+          "bytes": 120269
+        },
+        {
+          "path": "NoManCode/rust-app/src/git_diff.rs",
+          "sha256": "bc165d1bc3b320fc5b9722870f72acb467bead26bde0f8d3f2e8ea0a8eebeebf",
+          "bytes": 20677
+        },
+        {
+          "path": "NoManCode/rust-app/src/git_worktree.rs",
+          "sha256": "52bd3059669f673ce592bd5b2d2ef8cdbb9a8a418f6cfb73ddf65d22bd935c6c",
+          "bytes": 93107
+        },
+        {
+          "path": "NoManCode/rust-app/src/host_configuration_crash_tests.rs",
+          "sha256": "dbcfad6f756bf3bf92baab1502f2fb12998a50faae86ecb36c21896f7a320a3b",
+          "bytes": 28864
+        },
+        {
+          "path": "NoManCode/rust-app/src/host_services.rs",
+          "sha256": "78c41312abf797e71c44f2dd48e28e4d0f321793d581e113d70cdea2a0ad0dbb",
+          "bytes": 40692
+        },
+        {
+          "path": "NoManCode/rust-app/src/main.rs",
+          "sha256": "9d918e526e69b9b2f134ebe77b4ef36453e8eaca4cddacb5aec84d5e1a8bffb9",
+          "bytes": 6019
+        },
+        {
+          "path": "NoManCode/rust-app/src/network_authorization.rs",
+          "sha256": "1014a733c581073a2c1daee6acfc2c84ccacd1f65bc33f1b1bba0e4de3dc56fe",
+          "bytes": 51821
+        },
+        {
+          "path": "NoManCode/rust-app/src/plugin_management.rs",
+          "sha256": "3410fbf5a28c777efab5181d0d8cb153647981472f4619bc4df0d7d8e73ac30e",
+          "bytes": 42708
+        },
+        {
+          "path": "NoManCode/rust-app/src/process_test_fixture.rs",
+          "sha256": "0fd6ec2340b975b0b5fe1bf9e23a1bc69f78ff5b3b0f4890e48cd839835692d5",
+          "bytes": 53614
+        },
+        {
+          "path": "NoManCode/rust-app/src/provider.rs",
+          "sha256": "57222efbaa6a79c757b5970039826a3a58da72fb7d0213aa8b4f262d0c9318d5",
+          "bytes": 42636
+        },
+        {
+          "path": "NoManCode/rust-app/src/provider_runtime_tests.rs",
+          "sha256": "ded1a21b5404e792ccda27092817688746fb82fec4e518a3eb9c65a268a731f6",
+          "bytes": 68462
+        },
+        {
+          "path": "NoManCode/rust-app/src/provider_transport.rs",
+          "sha256": "6758ad80a5c314289234b49edc07f6a541d9faadbbeecd4598ec00795645b0b7",
+          "bytes": 33718
+        },
+        {
+          "path": "NoManCode/rust-app/src/restore_http_tests.rs",
+          "sha256": "e5779add93291c7d6d9c0a979fae186a18f0bfd7dbe59fb12f61bb9c1bd483ca",
+          "bytes": 19593
+        },
+        {
+          "path": "NoManCode/rust-app/src/server.rs",
+          "sha256": "531646e731a6fe9326647828e8de4e8d11253665475ec3b0f28db3432e6ef40d",
+          "bytes": 183060
+        },
+        {
+          "path": "NoManCode/rust-app/src/store.rs",
+          "sha256": "67fe55325df12ff7efd19a2bb6afdaf218711d5faeb55015afe8581b67a86b13",
+          "bytes": 244017
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_application_tests.rs",
+          "sha256": "e340dba712674162396a10bf8bc2939fc1ab4a68fb91f52bdb806dc9ba4b3286",
+          "bytes": 4955
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_call_application.rs",
+          "sha256": "fed4baab75337ccfd37995170fc3d8230ea8427cc6856497c6b8068e15f2059b",
+          "bytes": 23884
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_result_tests.rs",
+          "sha256": "aa5b212d9ac1de78238cda5cf25038249d99a293002e91288ab03139e4e4cb68",
+          "bytes": 44073
+        },
+        {
+          "path": "NoManCode/rust-app/src/tool_runtime.rs",
+          "sha256": "1a7751410126654fac29d52fde7625450aa8a54a85e5becb8304a72562968849",
+          "bytes": 97052
+        },
+        {
+          "path": "NoManCode/rust-app/src/workspace.rs",
+          "sha256": "243c303069fb378b00df6b7ef63070044a863dde656dd91ea9c0ea1063c7e5cf",
+          "bytes": 18634
+        },
+        {
+          "path": "NoManCode/rust-app/src/worktree_management.rs",
+          "sha256": "0d579959b7f27898c8453ba2dd47fe2d4ea49fbd2f7e9c9a636437aa351a49b9",
+          "bytes": 104727
+        },
+        {
+          "path": "NoManCode/rust-app/tests/approval_gate.rs",
+          "sha256": "19e486d38ba49e06ef2987a9c6aa919383e482711c1d457a70e28d69339db8a5",
+          "bytes": 81635
+        },
+        {
+          "path": "NoManCode/rust-app/tests/approval_http.rs",
+          "sha256": "24e9cf458d604ba71da9cd1b1f9e2f4ac1d519c83a77a4ea56c6a219808e8396",
+          "bytes": 88106
+        },
+        {
+          "path": "NoManCode/rust-app/tests/checkpoint.rs",
+          "sha256": "6db2ab9db6a7c260287e5863c22c29729c415dbedde9eb4c6807943e004e8818",
+          "bytes": 51679
+        },
+        {
+          "path": "NoManCode/rust-app/tests/execution_authority.rs",
+          "sha256": "0ad432625ac3f5c5285e4887c3872588bbbc4a34fe031209ab40559e0078cd47",
+          "bytes": 5743
+        },
+        {
+          "path": "NoManCode/rust-app/tests/final_acceptance.rs",
+          "sha256": "4574fb67085077bc8adf5f62b8442b2059e77779abd915add1f9bb516ab5f281",
+          "bytes": 13862
+        },
+        {
+          "path": "NoManCode/rust-app/tests/host_configuration.rs",
+          "sha256": "d80b1e6e6c4dff23d9fa1bc7efc167a3cc49fc828732fdff3fa9f3fe27923658",
+          "bytes": 40156
+        },
+        {
+          "path": "NoManCode/rust-app/tests/host_configuration_schema.rs",
+          "sha256": "47ad11a72ba5b6fe474ad568a7782ac927e1888f6bd1df284ef4580d6f69296c",
+          "bytes": 10381
+        },
+        {
+          "path": "NoManCode/rust-app/tests/host_configuration_security.rs",
+          "sha256": "f382c609ca6582ecde22b82ba9c65a4a5e17ed9c487368a10f40da449152cbd1",
+          "bytes": 50154
+        },
+        {
+          "path": "NoManCode/rust-app/tests/network_authorization.rs",
+          "sha256": "4bfe4316f348673d488d2b7c4a9e7067c570bc796e26527e51bd7fb393bdf712",
+          "bytes": 34484
+        },
+        {
+          "path": "NoManCode/rust-app/tests/project_context.rs",
+          "sha256": "352ce9531c039a8e3edfff81ee2d8d923c2870545e309e68c8f6663dd80cf141",
+          "bytes": 24151
+        },
+        {
+          "path": "NoManCode/rust-app/tests/project_migration.rs",
+          "sha256": "354f3471e5c1ef0fc48408c3d8605fe5664df653c6f6a54e60fafe51402c6ff7",
+          "bytes": 10033
+        },
+        {
+          "path": "NoManCode/rust-app/tests/runtime.rs",
+          "sha256": "8706d1b63871ccec5fba0004cbfd4f118c7cc797bcf636982a92e783eb41d942",
+          "bytes": 35856
+        },
+        {
+          "path": "NoManCode/rust-app/tests/runtime_management_schema.rs",
+          "sha256": "ee7279491ba7cce7e6e5cde94230ed85aa1afbe52332ec71aa08dc48e43596be",
+          "bytes": 17775
+        },
+        {
+          "path": "NoManCode/rust-app/tests/session_turns.rs",
+          "sha256": "e3839b46d656aa47f20555ad5d2793323934bb58e8e89bf19fc770d0e7aa7c58",
+          "bytes": 70542
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/execution_authority/C35-exact-cases.md",
+          "sha256": "4d298de20fd1dc3b899219db870e9559d469e083148821e1c16a8564e576f03d",
+          "bytes": 7622
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/execution_authority/DirectProcess.cs",
+          "sha256": "61ad2ffbb64ac2cc11aea6945fe0f1c9dd5c8bbe69e23e79e618a65bce33ced2",
+          "bytes": 4648
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/execution_authority/run-c35-exact.ps1",
+          "sha256": "b2033d1c08469b5149191f30a45f889e79f89a065441c5144f64ec0b7ce73a57",
+          "bytes": 8310
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/project_fixture.rs",
+          "sha256": "13945fb02a583329a1c1752ee3a0beefea9fc347dda20f30513690b0aab87ba1",
+          "bytes": 2546
+        },
+        {
+          "path": "NoManCode/rust-app/tests/support/schema_fixture.rs",
+          "sha256": "1f2d3e5904deb02e1d491f4c35d54e2c0ee80471fd45dedc89916da3bfcf9c36",
+          "bytes": 2888
+        },
+        {
+          "path": "NoManCode/rust-app/tests/tool_result_crash.rs",
+          "sha256": "e009144b676c1f12740d1038fc35e1dae1584d94c3d9955240e263d9acd0df7c",
+          "bytes": 17950
+        },
+        {
+          "path": "NoManCode/rust-app/tests/turn_http.rs",
+          "sha256": "7a371d76314bdae2be76ae0c51af57f542e650616cd5c9daa1ecadb216163af2",
+          "bytes": 98705
+        },
+        {
+          "path": "NoManCode/rust-app/tests/workspace_changes.rs",
+          "sha256": "e59ff6145917cd5d859dee2b21d10233852ea5613eb1b09b27774b1e0ec9e482",
+          "bytes": 49443
+        },
+        {
+          "path": "NoManCode/rust-app/tests/workspace_crash.rs",
+          "sha256": "f05794990f53c2431df56833281e9984ecec9908373e80ad3c708ad893c56eac",
+          "bytes": 31646
+        }
+      ],
+      "status_entries": 47
+    }
+  ],
+  "evidence_check": {
+    "published_files": 47,
+    "mismatches": 0,
+    "meaning": "Historical evidence hashes only; no new product test run"
+  },
+  "product_tree": "51a9e1af007d051bdd754887f0e3cc4f0922f5f5",
+  "rust_tree": "2227e3e6956fc4368c694969f373609349a75ee8",
+  "preservation_root": ".local/continuation-20261116/baseline-preservation"
+}
