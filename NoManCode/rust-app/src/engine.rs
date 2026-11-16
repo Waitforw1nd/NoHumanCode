@@ -882,6 +882,25 @@ impl ShutdownReport {
     }
 }
 impl Engine {
+    #[cfg(feature = "integration-test-support")]
+    pub async fn with_integration_test_operation<F: std::future::Future>(
+        &self,
+        work: F,
+    ) -> Result<F::Output> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        Ok(operation.run(work).await)
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn test_worker_operation(
+        &self,
+    ) -> Result<crate::execution_authority::ExecutionOperation> {
+        self.store
+            .execution_operation(self.shutdown_requested.clone())
+    }
+
     /// Bind the verified packaged worker to this Engine's data-domain owner.
     /// Installation is one-shot even when no worker was packaged.
     pub fn install_packaged_worker(
