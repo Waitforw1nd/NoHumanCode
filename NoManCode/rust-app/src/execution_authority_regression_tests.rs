@@ -207,7 +207,14 @@ fn unknown_owner_child() {
 async fn durable_epoch_and_phase_are_checked_before_process_or_generation() {
     use crate::process_lifetime::Outcome;
     use std::time::{Duration, Instant};
-    for case in ["active", "cancelled", "epoch", "phase"] {
+    let case_override = std::env::var("NHC_U18_GENERATION_CASE").ok();
+    let cases: &[&str] = match case_override.as_deref() {
+        None => &["active", "cancelled"],
+        Some("epoch") => &["epoch"],
+        Some("phase") => &["phase"],
+        Some(_) => panic!("unknown generation test case"),
+    };
+    for &case in cases {
         let (dir, store, engine) = setup();
         let cancel = CancellationToken::new();
         let op = store.execution_operation(cancel.clone()).unwrap();
@@ -277,6 +284,28 @@ async fn durable_epoch_and_phase_are_checked_before_process_or_generation() {
                 "{case} must reject the shared file/worker generation entry"
             );
         }
+    }
+}
+
+#[test]
+fn generation_rejects_changed_durable_state_in_isolated_original_children() {
+    use std::{process::Command, time::Duration};
+    for case in ["epoch", "phase"] {
+        let root = tempfile::Builder::new()
+            .prefix("u18-generation-")
+            .tempdir()
+            .unwrap()
+            .keep();
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command.args(["--exact", "execution_authority_regression_tests::durable_epoch_and_phase_are_checked_before_process_or_generation", "--nocapture"])
+            .env("NHC_U18_GENERATION_CASE", case);
+        let output =
+            owned_child::OwnedChild::spawn(&mut command, &root).output(Duration::from_secs(30));
+        assert!(
+            output.status.success(),
+            "{case} child failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
 
