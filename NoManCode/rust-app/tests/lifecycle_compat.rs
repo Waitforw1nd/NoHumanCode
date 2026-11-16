@@ -6,7 +6,7 @@ use axum::{
     Json, Router,
     body::{Body, to_bytes},
     extract::{Request, State},
-    http::{StatusCode, header},
+    http::{Request as HttpRequest, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -114,7 +114,7 @@ fn router(engine: Arc<Engine>) -> Router {
 }
 
 async fn request(app: Router, path: &str, token: bool, body: Value) -> (StatusCode, Value) {
-    let mut request = Request::builder()
+    let mut request = HttpRequest::builder()
         .method("POST")
         .uri(path)
         .header(header::HOST, HOST)
