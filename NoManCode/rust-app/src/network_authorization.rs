@@ -912,6 +912,7 @@ impl Store {
         (|| -> AnyResult<_> {
             let mut db = self.db.lock().map_err(|_| failure(NetworkErrorKind::Internal))?;
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.execution_fence(&tx)?;
             if let Some(expected) = revision {
                 let desired = crate::plugin_management::desired_for_tx(&tx, "builtin.provider-xpeach")?;
                 if !desired.enabled || desired.revision != expected {
@@ -985,7 +986,7 @@ impl Store {
                 crate::engine::runtime_barrier::block(path, "runtime_provider_admit_before_commit");
                 crate::engine::crash_probe::block(path, "runtime_provider_admit_before_commit", "builtin.provider-xpeach");
             }
-            tx.commit()?;
+            self.commit_execution_tx(tx)?;
             #[cfg(test)]
             if let Some(path) = &runtime_probe_path {
                 crate::engine::runtime_barrier::block(path, "runtime_provider_admit_after_commit");
@@ -1116,6 +1117,7 @@ impl Store {
         let saved = (|| -> AnyResult<()> {
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.execution_settlement_fence(&tx)?;
             let old = receipt(&tx, &value.call_id)?;
             let managed = crate::budget::finish_tx(&tx, &value, observed)?;
             if let Some(record) = managed {
@@ -1126,7 +1128,7 @@ impl Store {
             if old.state == CallState::Claimed {
                 save_receipt(&tx, &value)?;
             }
-            tx.commit()?;
+            self.commit_execution_tx(tx)?;
             Ok(())
         })();
         if let Err(error) = saved {

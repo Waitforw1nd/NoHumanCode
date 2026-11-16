@@ -643,6 +643,8 @@ impl crate::store::Store {
     ) -> Result<(WorktreeReceipt, bool)> {
         let mut db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)
+            .map_err(|_| WorktreeError::Unavailable)?;
         if let Some(prior) = replay_tx(&tx, request)? {
             return Ok((prior, true));
         }
@@ -741,7 +743,8 @@ impl crate::store::Store {
                 params![member.0, receipt.operation_id],
             )?;
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)
+            .map_err(|_| WorktreeError::Unavailable)?;
         Ok((receipt, false))
     }
     pub(crate) fn finish_worktree(
@@ -752,6 +755,8 @@ impl crate::store::Store {
     ) -> Result<WorktreeReceipt> {
         let mut db = self.db.lock().map_err(|_| WorktreeError::Corrupt)?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)
+            .map_err(|_| WorktreeError::Unavailable)?;
         let mut receipt = read_receipt(&tx, &prior.source_project_id, &prior.operation_id)?;
         if receipt.state != WorktreeState::Claimed || receipt.revision != prior.revision {
             return Ok(receipt);
@@ -828,7 +833,8 @@ impl crate::store::Store {
                 [&receipt.operation_id],
             )?;
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)
+            .map_err(|_| WorktreeError::Unavailable)?;
         Ok(receipt)
     }
 }

@@ -56,6 +56,33 @@ pub(crate) mod restore_probe {
     pub(crate) type Hook = (String, std::sync::Arc<dyn Fn(Event) + Send + Sync>);
 }
 
+// An abandoned or unconfirmed network claim must keep the original domain
+// sealed even if the waiting future is dropped after response headers.
+struct NetworkClaimGuard(Option<crate::execution_authority::ExecutionOperation>);
+impl NetworkClaimGuard {
+    fn new() -> Result<Self> {
+        Ok(Self(Some(
+            crate::execution_authority::current().context("network claim has no operation")?,
+        )))
+    }
+    fn observe<T>(&mut self, result: &std::result::Result<NetworkResponse<T>, NetworkError>) {
+        if result
+            .as_ref()
+            .err()
+            .is_none_or(|e| e.dispatch_state != DispatchState::Unknown)
+        {
+            self.0.take();
+        }
+    }
+}
+impl Drop for NetworkClaimGuard {
+    fn drop(&mut self) {
+        if let Some(operation) = &self.0 {
+            operation.seal_unknown();
+        }
+    }
+}
+
 struct NetworkSlot {
     permit: Option<tokio::sync::OwnedSemaphorePermit>,
     notify: Arc<tokio::sync::Notify>,
@@ -346,6 +373,19 @@ impl Engine {
         project: &ProjectId,
         id: &str,
     ) -> std::result::Result<NetworkResponse<Vec<String>>, NetworkError> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())
+            .map_err(safe_error)?;
+        operation
+            .run(self.project_route_models_in_domain(project, id))
+            .await
+    }
+    async fn project_route_models_in_domain(
+        &self,
+        project: &ProjectId,
+        id: &str,
+    ) -> std::result::Result<NetworkResponse<Vec<String>>, NetworkError> {
         let subject = NetworkSubject {
             kind: NetworkSubjectKind::Route,
             id: id.into(),
@@ -361,10 +401,13 @@ impl Engine {
                     .network_admit(&subject, NetworkPurpose::Models, None)?;
             (route, permit, receipt)
         };
-        self.store.finish_network(
+        let mut claim = NetworkClaimGuard::new().map_err(safe_error)?;
+        let result = self.store.finish_network(
             receipt,
             provider::models(&self.client, permit, &route).await,
-        )
+        );
+        claim.observe(&result);
+        result
     }
     pub async fn route_check(
         &self,
@@ -374,6 +417,19 @@ impl Engine {
         self.project_route_check(&project, id).await
     }
     pub async fn project_route_check(
+        &self,
+        project: &ProjectId,
+        id: &str,
+    ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())
+            .map_err(safe_error)?;
+        operation
+            .run(self.project_route_check_in_domain(project, id))
+            .await
+    }
+    async fn project_route_check_in_domain(
         &self,
         project: &ProjectId,
         id: &str,
@@ -399,10 +455,13 @@ impl Engine {
                     .network_admit(&subject, NetworkPurpose::Models, None)?;
             (route, permit, receipt)
         };
+        let mut claim = NetworkClaimGuard::new().map_err(safe_error)?;
         let models = self.store.finish_network(
             receipt,
             provider::models(&self.client, permit, &route).await,
-        )?;
+        );
+        claim.observe(&models);
+        let models = models?;
         if !models.result.contains(&route.model) {
             return Err(NetworkError {
                 kind: NetworkErrorKind::Upstream,
@@ -444,18 +503,18 @@ impl Engine {
             e.calls.splice(0..0, models.calls.clone());
             e
         })?;
-        let completion = self
-            .store
-            .finish_completion(
-                receipt,
-                lease
-                    .execute(&self.client, permit, &route, &mut |_| Ok(()))
-                    .await,
-            )
-            .map_err(|mut e| {
-                e.calls.splice(0..0, models.calls.clone());
-                e
-            })?;
+        let mut claim = NetworkClaimGuard::new().map_err(safe_error)?;
+        let completion = self.store.finish_completion(
+            receipt,
+            lease
+                .execute(&self.client, permit, &route, &mut |_| Ok(()))
+                .await,
+        );
+        claim.observe(&completion);
+        let completion = completion.map_err(|mut e| {
+            e.calls.splice(0..0, models.calls.clone());
+            e
+        })?;
         let (message, usage) = completion.result;
         let correct = message["content"]
             .as_str()
@@ -468,6 +527,15 @@ impl Engine {
         })
     }
     pub async fn account_balance(
+        &self,
+    ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())
+            .map_err(safe_error)?;
+        operation.run(self.account_balance_in_domain()).await
+    }
+    async fn account_balance_in_domain(
         &self,
     ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
         let _slot = self.acquire_network_slot().await?;
@@ -491,10 +559,13 @@ impl Engine {
             )?;
             (account, permit, receipt)
         };
-        self.store.finish_network(
+        let mut claim = NetworkClaimGuard::new().map_err(safe_error)?;
+        let result = self.store.finish_network(
             receipt,
             provider::balance(&self.client, permit, &account).await,
-        )
+        );
+        claim.observe(&result);
+        result
     }
     pub async fn bind_account(
         &self,
@@ -767,6 +838,7 @@ pub struct Engine {
     key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
     shutdown_requested: CancellationToken,
     shutdown_persistence_started: AtomicBool,
+    shutdown_operation: Mutex<Option<crate::execution_authority::ExecutionOperation>>,
     shutdown_tasks: Mutex<std::collections::HashSet<String>>,
     background: Mutex<tokio::task::JoinSet<Result<()>>>,
     background_failed: AtomicBool,
@@ -775,6 +847,7 @@ pub struct Engine {
     tool_calls: crate::tool_call_application::ToolCallApplication,
     provider_runtime: Arc<crate::provider_runtime::ProviderRuntime>,
     agent_runtime: Arc<crate::agent_runtime::AgentRuntime>,
+    packaged_worker: Mutex<Option<Option<crate::worker_bootstrap::WorkerService>>>,
     #[cfg(test)]
     agent_before_save: Mutex<Option<AgentBeforeSaveProbe>>,
     #[cfg(test)]
@@ -805,8 +878,26 @@ impl ShutdownReport {
     }
 }
 impl Engine {
+    /// Bind the verified packaged worker to this Engine's data-domain owner.
+    /// Installation is one-shot even when no worker was packaged.
+    pub fn install_packaged_worker(
+        &self,
+        mut worker: Option<crate::worker_bootstrap::WorkerService>,
+    ) -> Result<()> {
+        let mut installed = self
+            .packaged_worker
+            .lock()
+            .map_err(|_| anyhow::anyhow!("worker binding poisoned"))?;
+        ensure!(installed.is_none(), "packaged worker already installed");
+        if let Some(service) = worker.as_mut() {
+            service.bind_store(&self.store)?;
+        }
+        *installed = Some(worker);
+        Ok(())
+    }
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
         let recovery = host_services::RecoveryService::new(store.clone())?;
+        recovery.recover()?;
         Self::new_with_recovery(store, max_concurrency, recovery)
     }
     pub fn new_recovered(store: Arc<Store>, max_concurrency: usize) -> Result<(Arc<Self>, usize)> {
@@ -903,6 +994,7 @@ impl Engine {
         agent_runtime: crate::agent_runtime::AgentRuntime,
     ) -> Result<Arc<Self>> {
         let recovery = host_services::RecoveryService::new(store.clone())?;
+        recovery.recover()?;
         Self::assemble_with_recovery(
             store,
             max_concurrency,
@@ -936,7 +1028,6 @@ impl Engine {
     ) -> Result<Arc<Self>> {
         debug_assert!(composition.recovery.owns(&composition.store));
         ensure!(max_concurrency > 0, "max concurrency must be nonzero");
-        composition.recovery.activate();
         composition
             .store
             .authority
@@ -974,6 +1065,7 @@ impl Engine {
             key_slots: Mutex::new(HashMap::new()),
             shutdown_requested,
             shutdown_persistence_started: AtomicBool::new(false),
+            shutdown_operation: Mutex::new(None),
             shutdown_tasks: Mutex::new(std::collections::HashSet::new()),
             background: Mutex::new(tokio::task::JoinSet::new()),
             background_failed: AtomicBool::new(false),
@@ -982,6 +1074,7 @@ impl Engine {
             tool_calls,
             provider_runtime,
             agent_runtime,
+            packaged_worker: Mutex::new(None),
             #[cfg(test)]
             agent_before_save: Mutex::new(None),
             #[cfg(test)]
@@ -1360,8 +1453,13 @@ impl Engine {
         key: &str,
     ) -> Result<crate::plugin_management::PluginMutationResult> {
         use crate::plugin_management::{PluginMutationResult, PluginStatus};
+        let op = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
         self.with_plugin_control(id, |control| {
-            let (receipt, replayed) = self.store.set_plugin_desired(id, &request, key)?;
+            let (receipt, replayed) = self
+                .store
+                .set_plugin_desired_with_operation(&op, id, &request, key)?;
             if !replayed {
                 #[cfg(test)]
                 if let Some(probe) = self.plugin_commit_probe.lock().unwrap().clone() {
@@ -1547,22 +1645,36 @@ impl Engine {
         Ok(())
     }
     pub async fn start(self: &Arc<Self>, request: RunRequest) -> Result<Run> {
-        let _gate = self.gate.lock().await;
-        self.start_locked(request, None)
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(async {
+                let _gate = self.gate.lock().await;
+                self.start_locked(request, None)
+            })
+            .await
     }
     pub async fn start_idempotent(self: &Arc<Self>, request: RunRequest, key: &str) -> Result<Run> {
-        let _gate = self.gate.lock().await;
-        let request_hash = request_fingerprint(&request)?;
-        if let Some(replay) = self.store.idempotency_replay(key, &request_hash)? {
-            return match replay {
-                IdempotencyReplay::Turn(turn) => {
-                    let session = self.store.session(&turn.session_id)?;
-                    self.store.run(&session.legacy_run_id)
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(async {
+                let _gate = self.gate.lock().await;
+                let request_hash = request_fingerprint(&request)?;
+                if let Some(replay) = self.store.idempotency_replay(key, &request_hash)? {
+                    return match replay {
+                        IdempotencyReplay::Turn(turn) => {
+                            let session = self.store.session(&turn.session_id)?;
+                            self.store.run(&session.legacy_run_id)
+                        }
+                        IdempotencyReplay::LegacyRun(run) => Ok(run),
+                    };
                 }
-                IdempotencyReplay::LegacyRun(run) => Ok(run),
-            };
-        }
-        self.start_locked(request, Some((key, request_hash)))
+                self.start_locked(request, Some((key, request_hash)))
+            })
+            .await
     }
     fn start_locked(
         self: &Arc<Self>,
@@ -1574,32 +1686,39 @@ impl Engine {
         self.start_project_locked(request, idempotency, project, revision)
     }
     pub async fn start_in_project(self: &Arc<Self>, command: StartInProject) -> Result<Run> {
-        let _gate = self.gate.lock().await;
-        secrets::validate_idempotency_key(&command.idempotency_key)
-            .map_err(|_| ProjectError::Invalid)?;
-        let hash = crate::workspace_changes::digest(&serde_json::to_vec(&(
-            "start-project-v1",
-            &command.project_id,
-            command.expected_config_revision,
-            &command.request,
-        ))?);
-        if let Some(replay) = self
+        let operation = self
             .store
-            .idempotency_replay(&command.idempotency_key, &hash)?
-        {
-            return match replay {
-                IdempotencyReplay::Turn(turn) => self
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(async {
+                let _gate = self.gate.lock().await;
+                secrets::validate_idempotency_key(&command.idempotency_key)
+                    .map_err(|_| ProjectError::Invalid)?;
+                let hash = crate::workspace_changes::digest(&serde_json::to_vec(&(
+                    "start-project-v1",
+                    &command.project_id,
+                    command.expected_config_revision,
+                    &command.request,
+                ))?);
+                if let Some(replay) = self
                     .store
-                    .run(&self.store.session(&turn.session_id)?.legacy_run_id),
-                IdempotencyReplay::LegacyRun(run) => Ok(run),
-            };
-        }
-        self.start_project_locked(
-            command.request,
-            Some((&command.idempotency_key, hash)),
-            command.project_id,
-            command.expected_config_revision,
-        )
+                    .idempotency_replay(&command.idempotency_key, &hash)?
+                {
+                    return match replay {
+                        IdempotencyReplay::Turn(turn) => self
+                            .store
+                            .run(&self.store.session(&turn.session_id)?.legacy_run_id),
+                        IdempotencyReplay::LegacyRun(run) => Ok(run),
+                    };
+                }
+                self.start_project_locked(
+                    command.request,
+                    Some((&command.idempotency_key, hash)),
+                    command.project_id,
+                    command.expected_config_revision,
+                )
+            })
+            .await
     }
     fn start_project_locked(
         self: &Arc<Self>,
@@ -1751,6 +1870,11 @@ impl Engine {
             updated_at: created,
         };
         let key = idempotency.as_ref().map(|(key, _)| *key);
+        let workers: Vec<_> = run
+            .tasks
+            .iter()
+            .map(|_| self.reserve_task_worker())
+            .collect::<Result<_>>()?;
         let committed = self.store.commit_turn_bundle_in_project(
             TurnBundle {
                 project: &project,
@@ -1767,8 +1891,8 @@ impl Engine {
             let session = self.store.session(&committed.session_id)?;
             return self.store.run(&session.legacy_run_id);
         }
-        for task in &run.tasks {
-            self.launch(task.clone());
+        for (task, worker) in run.tasks.iter().zip(workers) {
+            self.launch(task.clone(), worker);
         }
         Ok(run)
     }
@@ -1782,8 +1906,15 @@ impl Engine {
         self: &Arc<Self>,
         command: SendChatTurn,
     ) -> Result<ChatTurnReceipt> {
-        let _gate = self.gate.lock().await;
-        self.send_chat_turn_locked(command)
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(async {
+                let _gate = self.gate.lock().await;
+                self.send_chat_turn_locked(command)
+            })
+            .await
     }
 
     fn send_chat_turn_locked(self: &Arc<Self>, command: SendChatTurn) -> Result<ChatTurnReceipt> {
@@ -1915,6 +2046,7 @@ impl Engine {
             created_at: created,
             updated_at: created,
         };
+        let worker = self.reserve_task_worker()?;
         let receipt = self.store.append_chat_turn_authorized(
             &turn,
             &task,
@@ -1923,24 +2055,49 @@ impl Engine {
             &command.expected_last_turn_id,
         )?;
         if !receipt.replayed {
-            self.launch(legacy);
+            self.launch(legacy, worker);
         }
         Ok(receipt)
     }
 
-    fn launch(self: &Arc<Self>, task: Task) {
-        self.spawn_task_worker(task, |engine, mut task, token| async move {
+    fn reserve_task_worker(
+        &self,
+    ) -> Result<(
+        CancellationToken,
+        crate::execution_authority::ExecutionOperation,
+    )> {
+        let token = self.shutdown_requested.child_token();
+        let operation = self.store.execution_operation(token.clone())?;
+        Ok((token, operation))
+    }
+    fn launch(
+        self: &Arc<Self>,
+        task: Task,
+        worker: (
+            CancellationToken,
+            crate::execution_authority::ExecutionOperation,
+        ),
+    ) {
+        self.spawn_task_worker(task, worker, |engine, mut task, token| async move {
             let result = engine.run_task(&mut task, &token).await;
             (task, result)
         });
     }
 
-    fn spawn_task_worker<F, Fut>(self: &Arc<Self>, task: Task, run: F)
-    where
+    fn spawn_task_worker<F, Fut>(
+        self: &Arc<Self>,
+        task: Task,
+        worker: (
+            CancellationToken,
+            crate::execution_authority::ExecutionOperation,
+        ),
+        run: F,
+    ) where
         F: FnOnce(Arc<Self>, Task, CancellationToken) -> Fut + Send + 'static,
         Fut: std::future::Future<Output = (Task, Result<()>)> + Send + 'static,
     {
-        let token = self.shutdown_requested.child_token();
+        let (token, operation) = worker;
+        let operation = operation.take_worker_cancellation();
         self.active.lock().unwrap().insert(
             task.id.clone(),
             Active {
@@ -1955,12 +2112,9 @@ impl Engine {
         );
         let engine = self.clone();
         self.spawn_background(async move {
-            let operation = engine.store.execution_operation(token.clone());
-            let body = operation.as_ref().ok().map(|operation| operation.hold_body());
-            let (mut task, result) = match operation {
-                Ok(operation) => operation.run(run(engine.clone(), task, token.clone())).await,
-                Err(error) => (task, Err(error)),
-            };
+            let body = Some(operation.hold_body());
+            let (mut task, result) = operation.run(run(engine.clone(), task, token.clone())).await;
+            crate::execution_authority::inherit(body, async {
             // Saving a failed Task is not evidence that its external effect ended.
             // Keep typed unknown errors and durable unresolved claims independently
             // of the terminal snapshot's success (and of ordinary business errors).
@@ -2022,8 +2176,8 @@ impl Engine {
                 }
             }
             engine.active.lock().unwrap().remove(&task.id);
-            drop(body);
             saved
+            }).await
         });
     }
     async fn run_task(&self, task: &mut Task, cancel: &CancellationToken) -> Result<()> {
@@ -2144,6 +2298,7 @@ impl Engine {
                         )
                     })?
             };
+            let mut claim = NetworkClaimGuard::new()?;
             let mut emit = |delta: &str| {
                 if !delta.is_empty() {
                     self.store.completion_delta(&task.id, delta)?;
@@ -2160,6 +2315,7 @@ impl Engine {
             );
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
             let result = self.store.finish_completion(receipt, result);
+            claim.observe(&result);
             task.output.push_str(&text);
             let (message, usage) = result?.result;
             if let crate::provider_usage::UsageObservation::Valid(usage) =
@@ -2325,7 +2481,11 @@ impl Engine {
         acknowledge_command_network: bool,
     ) -> Result<approval::ApprovalRecord> {
         self.ensure_accepting()?;
+        let op = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
         self.tool_calls.decide_approval_with_network_ack(
+            &op,
             approval_id,
             approved,
             decided_by,
@@ -2365,95 +2525,108 @@ impl Engine {
     }
 
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
-        let _gate = self.gate.lock().await;
-        ensure!(
-            !message.trim().is_empty() && message.len() <= 100_000,
-            "跟进消息为空或过长"
-        );
-        ensure!(
-            !self.active.lock().unwrap().contains_key(id),
-            "成员仍在运行"
-        );
-        ensure!(
-            !self.shutdown_requested.is_cancelled(),
-            "Host 正在关闭，拒绝新工作"
-        );
-        let mut task = self.store.task(id)?;
-        approval::validate_call_history(&task.messages)?;
-        // Verify all finished evidence too, including already answered calls.
-        for record in self.store.approvals_for_task(id)? {
-            if matches!(
-                record.execution_state,
-                approval::ExecutionState::Unknown | approval::ExecutionState::Claimed
-            ) {
-                return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
-            }
-        }
-        // Reading durable unknown evidence preserves the existing public error
-        // without admitting any work. All effects still require the domain gate.
-        self.ensure_accepting()?;
-        self.store.network_preflight(
-            &self.task_route_subject(&task)?,
-            &[NetworkPurpose::Completion],
-            Some(&task),
-        )?;
-        self.scope_conflicts(std::slice::from_ref(&task))?;
-        self.store.check_resume_unsealed(&task.id)?;
-        // Complete interrupted tool-call groups before adding a new user message.
-        let answered: std::collections::HashSet<String> = task
-            .messages
-            .iter()
-            .filter_map(|m| m["tool_call_id"].as_str().map(String::from))
-            .collect();
-        let pending: Vec<String> = task
-            .messages
-            .iter()
-            .filter_map(|m| m["tool_calls"].as_array())
-            .flatten()
-            .filter_map(|c| c["id"].as_str())
-            .filter(|id| !answered.contains(*id))
-            .map(String::from)
-            .collect();
-        for id in pending {
-            match self.store.approval_by_tool_call(&task.id, &id)? {
-                None => {}
-                Some(record)
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(async {
+                let _gate = self.gate.lock().await;
+                ensure!(
+                    !message.trim().is_empty() && message.len() <= 100_000,
+                    "跟进消息为空或过长"
+                );
+                ensure!(
+                    !self.active.lock().unwrap().contains_key(id),
+                    "成员仍在运行"
+                );
+                ensure!(
+                    !self.shutdown_requested.is_cancelled(),
+                    "Host 正在关闭，拒绝新工作"
+                );
+                let mut task = self.store.task(id)?;
+                approval::validate_call_history(&task.messages)?;
+                // Verify all finished evidence too, including already answered calls.
+                for record in self.store.approvals_for_task(id)? {
                     if matches!(
-                        record.status,
-                        ApprovalStatus::Denied | ApprovalStatus::Cancelled
-                    ) || record.execution_state == approval::ExecutionState::Cancelled =>
-                {
-                    // Reconcile every result in original call order after launch.
+                        record.execution_state,
+                        approval::ExecutionState::Unknown | approval::ExecutionState::Claimed
+                    ) {
+                        return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
+                    }
                 }
-                Some(_) => {
-                    let call = crate::tool_call_application::unanswered_tool_calls(&task.messages)
-                        .into_iter()
-                        .find(|c| c["id"] == id)
-                        .context("审批调用缺失")?;
-                    let name = call["function"]["name"].as_str().context("审批工具缺失")?;
-                    let args = serde_json::from_str(
-                        call["function"]["arguments"]
-                            .as_str()
-                            .context("审批参数缺失")?,
-                    )
-                    .map_err(|_| approval::ApprovalError::BindingConflict { id: id.clone() })?;
-                    self.store.ensure_approval(&task, &id, name, &args)?;
+                // Reading durable unknown evidence preserves the existing public error
+                // without admitting any work. All effects still require the domain gate.
+                self.ensure_accepting()?;
+                self.store.network_preflight(
+                    &self.task_route_subject(&task)?,
+                    &[NetworkPurpose::Completion],
+                    Some(&task),
+                )?;
+                self.scope_conflicts(std::slice::from_ref(&task))?;
+                self.store.check_resume_unsealed(&task.id)?;
+                // Complete interrupted tool-call groups before adding a new user message.
+                let answered: std::collections::HashSet<String> = task
+                    .messages
+                    .iter()
+                    .filter_map(|m| m["tool_call_id"].as_str().map(String::from))
+                    .collect();
+                let pending: Vec<String> = task
+                    .messages
+                    .iter()
+                    .filter_map(|m| m["tool_calls"].as_array())
+                    .flatten()
+                    .filter_map(|c| c["id"].as_str())
+                    .filter(|id| !answered.contains(*id))
+                    .map(String::from)
+                    .collect();
+                for id in pending {
+                    match self.store.approval_by_tool_call(&task.id, &id)? {
+                        None => {}
+                        Some(record)
+                            if matches!(
+                                record.status,
+                                ApprovalStatus::Denied | ApprovalStatus::Cancelled
+                            ) || record.execution_state
+                                == approval::ExecutionState::Cancelled =>
+                        {
+                            // Reconcile every result in original call order after launch.
+                        }
+                        Some(_) => {
+                            let call =
+                                crate::tool_call_application::unanswered_tool_calls(&task.messages)
+                                    .into_iter()
+                                    .find(|c| c["id"] == id)
+                                    .context("审批调用缺失")?;
+                            let name = call["function"]["name"].as_str().context("审批工具缺失")?;
+                            let args = serde_json::from_str(
+                                call["function"]["arguments"]
+                                    .as_str()
+                                    .context("审批参数缺失")?,
+                            )
+                            .map_err(|_| {
+                                approval::ApprovalError::BindingConflict { id: id.clone() }
+                            })?;
+                            self.store.ensure_approval(&task, &id, name, &args)?;
+                        }
+                    }
                 }
-            }
-        }
-        task.status = "queued".into();
-        task.error = None;
-        task.output.push_str("\n\n—— 继续 ——\n");
-        task.updated_at = now();
-        self.store.resume_task_with_pending_input(&task, message)?;
-        self.launch(task.clone());
-        Ok(task)
+                task.status = "queued".into();
+                task.error = None;
+                task.output.push_str("\n\n—— 继续 ——\n");
+                task.updated_at = now();
+                let worker = self.reserve_task_worker()?;
+                self.store.resume_task_with_pending_input(&task, message)?;
+                self.launch(task.clone(), worker);
+                Ok(task)
+            })
+            .await
     }
     pub fn cancel(&self, id: &str) -> Result<()> {
         if let Some(active) = self.active.lock().unwrap().get(id) {
             active.cancel.cancel();
         }
-        self.store.cancel_pending_approvals(id)?;
+        let op = self.store.execution_operation(CancellationToken::new())?;
+        self.store.cancel_pending_approvals_for(id, &op)?;
         Ok(())
     }
     pub fn changes(&self, id: &str) -> Result<Vec<WorkspaceChange>> {
@@ -2466,6 +2639,7 @@ impl Engine {
         self.composition.review_recovery.restore(id).await
     }
     pub fn cancel_all(&self) {
+        let operation = self.store.execution_operation(CancellationToken::new());
         let ids: Vec<_> = {
             let active = self.active.lock().unwrap();
             active
@@ -2477,7 +2651,9 @@ impl Engine {
                 .collect()
         };
         for id in ids {
-            if self.store.cancel_pending_approvals(&id).is_err() {
+            if operation.as_ref().map_or(true, |op| {
+                self.store.cancel_pending_approvals_for(&id, op).is_err()
+            }) {
                 self.background_failed.store(true, Ordering::Release);
                 eprintln!("🍑sh: 任务 {id} 的取消持久化失败；取消信号已发送");
             }
@@ -2543,6 +2719,15 @@ impl Engine {
     }
 
     pub fn request_shutdown(&self) {
+        {
+            let mut slot = self.shutdown_operation.lock().unwrap();
+            if slot.is_none() && !self.shutdown_requested.is_cancelled() {
+                match self.store.execution_operation(CancellationToken::new()) {
+                    Ok(op) => *slot = Some(op),
+                    Err(_) => self.background_failed.store(true, Ordering::Release),
+                }
+            }
+        }
         self.store.authority.close();
         let active = self.active.lock().unwrap();
         self.shutdown_tasks
@@ -2577,11 +2762,13 @@ impl Engine {
                 .cloned()
                 .collect();
             let store = self.store.clone();
+            let op = self.shutdown_operation.lock().unwrap().take();
             self.spawn_background(async move {
                 tokio::task::spawn_blocking(move || {
+                    let op = op.context("shutdown operation unavailable")?;
                     let mut failed = false;
                     for id in ids {
-                        failed |= store.cancel_pending_approvals(&id).is_err();
+                        failed |= store.cancel_pending_approvals_for(&id, &op).is_err();
                     }
                     ensure!(!failed, "关闭时取消持久化失败；结果未知");
                     Ok(())
@@ -7446,18 +7633,22 @@ mod audit_shutdown_tests {
             let (_root, engine, task) = fixture();
             // Use the same admission, JoinSet wrapper, final snapshot and active
             // removal as launch(), with a synthetic execution outcome only.
-            engine.spawn_task_worker(task, move |_, task, _| async move {
-                let error = match kind {
-                    0 => anyhow::Error::new(crate::command_execution::CommandOutcomeUnknown)
-                        .context("command collector"),
-                    1 => anyhow::Error::new(approval::ApprovalError::UnknownResult {
-                        id: "synthetic-claim".into(),
-                    })
-                    .context("tool execution"),
-                    _ => anyhow::anyhow!("ordinary provider failure"),
-                };
-                (task, Err(error))
-            });
+            engine.spawn_task_worker(
+                task,
+                engine.reserve_task_worker().unwrap(),
+                move |_, task, _| async move {
+                    let error = match kind {
+                        0 => anyhow::Error::new(crate::command_execution::CommandOutcomeUnknown)
+                            .context("command collector"),
+                        1 => anyhow::Error::new(approval::ApprovalError::UnknownResult {
+                            id: "synthetic-claim".into(),
+                        })
+                        .context("tool execution"),
+                        _ => anyhow::anyhow!("ordinary provider failure"),
+                    };
+                    (task, Err(error))
+                },
+            );
             wait_for_task_worker(&engine).await;
             let saved = engine.store.task("shutdown-task").unwrap();
             assert_eq!(saved.status, "failed");
@@ -7498,12 +7689,16 @@ mod audit_shutdown_tests {
                 rusqlite::params![record.id, state.as_str()],
             ).unwrap();
             task = engine.store.task(&task.id).unwrap();
-            engine.spawn_task_worker(task, |_, task, _| async move {
-                (
-                    task,
-                    Err(anyhow::anyhow!("post-execution bookkeeping failed")),
-                )
-            });
+            engine.spawn_task_worker(
+                task,
+                engine.reserve_task_worker().unwrap(),
+                |_, task, _| async move {
+                    (
+                        task,
+                        Err(anyhow::anyhow!("post-execution bookkeeping failed")),
+                    )
+                },
+            );
             wait_for_task_worker(&engine).await;
             assert_eq!(engine.store.task("shutdown-task").unwrap().status, "failed");
             let report = engine.shutdown(Duration::from_secs(1)).await;

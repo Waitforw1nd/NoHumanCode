@@ -340,9 +340,16 @@ impl ReviewRecovery {
     }
 
     pub(crate) async fn restore(&self, id: &str) -> Result<RestoreReceipt> {
-        let _gate = self.workspace.gate.lock().await;
-        self.workspace.ensure_accepting()?;
-        self.restore_locked(id)
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        operation
+            .run(async {
+                let _gate = self.workspace.gate.lock().await;
+                self.workspace.ensure_accepting()?;
+                self.restore_locked(id)
+            })
+            .await
     }
 
     fn restore_locked(&self, id: &str) -> Result<RestoreReceipt> {
@@ -721,6 +728,19 @@ impl ReviewRecovery {
         task_id: &str,
         key: &str,
     ) -> Result<crate::checkpoint::CheckpointCreated> {
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        operation
+            .run(self.create_checkpoint_in_domain(task_id, key))
+            .await
+    }
+
+    async fn create_checkpoint_in_domain(
+        &self,
+        task_id: &str,
+        key: &str,
+    ) -> Result<crate::checkpoint::CheckpointCreated> {
         use crate::checkpoint::{CheckpointCreated, CheckpointEntry, CheckpointError, Manifest};
         secrets::validate_idempotency_key(key).map_err(|_| CheckpointError::Invalid)?;
         let _gate = self.workspace.gate.lock().await;
@@ -852,12 +872,19 @@ impl ReviewRecovery {
     }
 
     pub(crate) async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<RestoreReceipt> {
-        let _gate = self.workspace.gate.lock().await;
-        self.workspace.ensure_accepting()?;
-        let (checkpoint, _) = self.store.checkpoint_record(checkpoint_id)?;
-        #[cfg(test)]
-        crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
-        self.restore_locked(&checkpoint.task_id)
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        operation
+            .run(async {
+                let _gate = self.workspace.gate.lock().await;
+                self.workspace.ensure_accepting()?;
+                let (checkpoint, _) = self.store.checkpoint_record(checkpoint_id)?;
+                #[cfg(test)]
+                crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
+                self.restore_locked(&checkpoint.task_id)
+            })
+            .await
     }
 }
 
@@ -940,13 +967,14 @@ impl ApprovalService {
     }
     pub(crate) fn decide(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         approved: bool,
         by: &str,
         ack: bool,
     ) -> Result<approval::ApprovalRecord> {
         self.store
-            .decide_approval_with_network_ack(id, approved, by, ack)
+            .decide_approval_with_network_ack_for(id, approved, by, ack, op)
     }
     pub(crate) fn ensure(
         &self,
@@ -1013,9 +1041,6 @@ impl RecoveryService {
     pub(crate) fn new(store: Arc<Store>) -> Result<Self> {
         let controller = store.authority.claim()?;
         Ok(Self { store, controller })
-    }
-    pub(crate) fn activate(&self) {
-        self.controller.activate();
     }
     pub(crate) fn owns(&self, store: &Arc<Store>) -> bool {
         Arc::ptr_eq(&self.store, store)

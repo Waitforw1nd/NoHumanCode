@@ -78,12 +78,14 @@ impl ToolCallApplication {
     }
     pub(crate) fn decide_approval_with_network_ack(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         approval_id: &str,
         approved: bool,
         decided_by: Option<&str>,
         acknowledge_command_network: bool,
     ) -> Result<approval::ApprovalRecord> {
         let record = self.approval.decide(
+            op,
             approval_id,
             approved,
             decided_by.unwrap_or("user"),
