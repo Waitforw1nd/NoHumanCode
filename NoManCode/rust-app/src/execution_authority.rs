@@ -810,10 +810,19 @@ mod lifecycle_tests {
         time::{Duration, Instant},
     };
 
+    struct ReaderRelease(Arc<TestHooks>);
+    impl Drop for ReaderRelease {
+        fn drop(&mut self) {
+            // Also run on any early assertion/fixture error. The independent
+            // holder can then drain and retain its real objects as necessary.
+            self.0.release_stdout_reader.store(true, Ordering::SeqCst);
+        }
+    }
+
     async fn native_git_case(mode: &str) -> Result<()> {
         let mut case = Case::new(&format!("native-git-{mode}-"))?;
         let host = Host::new(&case).await?;
-        let (task, _) = host.shell("git init --quiet; git config user.name lifecycle; git config user.email lifecycle@example.invalid; [IO.File]::WriteAllText((Join-Path $PWD 'a.txt'), \"old`n\"); git add a.txt; git commit --quiet -m fixture; [IO.File]::WriteAllText((Join-Path $PWD 'a.txt'), \"new`n\")", 20).await?;
+        let (task, _) = host.shell(r#"git init --quiet; git config user.name lifecycle; git config user.email lifecycle@example.invalid; [IO.File]::WriteAllText((Join-Path $PWD 'a.txt'), "old`n"); git add a.txt; git commit --quiet -m fixture; [IO.File]::WriteAllText((Join-Path $PWD 'a.txt'), "new`n")"#, 20).await?;
         host.finished(&task).await?;
         let request = || GitDiffRequest {
             path: "a.txt".into(),
@@ -835,6 +844,7 @@ mod lifecycle_tests {
         hooks
             .hold_stdout_reader
             .store(mode == "unknown", Ordering::SeqCst);
+        let _reader_release = ReaderRelease(hooks.clone());
         let mut spec = ProcessSpec::new(
             program,
             case.root.clone(),
