@@ -1,0 +1,15 @@
+{
+  "state": "passed-closed",
+  "closed_utc": "2026-11-16T10:15:11.330684+00:00",
+  "candidate": {
+    "head": "0fb205851748fdf25abdf35ca0911a0b24527fd4",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "gate_sha256": "3391cbd3e8e3c45d0920ab312cdddef4620c3a77c882259633444252e4e2a1ec",
+  "original_session": 1465,
+  "original_supervisor_exit": 0,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Original exec1465 completed exit0. All fifteen exact steps completed with no terminal-unknown marker. Full Rust and explicit lifecycle tests retained their original-object/Job/readers and bounded fixture cleanup assertions; deliberate preparation-failure fixture paths completed successfully. CLI cl08 uses original OwnedChild cleanup and passed. Read-only post-run inventory found no image or attempt-fixture command-line candidates; this inventory is supplementary, not a universal descendant or remote-effect proof. The earlier external1 idle Host incident was separately closed by two verified held object handles and independently reviewed. No historical unknown is reclassified."
+}

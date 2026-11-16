@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "test"
+  ],
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "build.ps1",
+    "-Action",
+    "test"
+  ],
+  "ended_utc": "2026-11-16T10:13:26.801802+00:00",
+  "exit_code": 0,
+  "log": "12-test.log",
+  "log_bytes": 131070,
+  "log_sha256": "a6ac6c6366d4d6755398ac1f90f6454d7caf88f5a0ef88154589c03bf1f4c1c2",
+  "name": "test",
+  "started_utc": "2026-11-16T09:57:52.405154+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

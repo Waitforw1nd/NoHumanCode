@@ -1,0 +1,43 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+   Compiling peachsh v0.2.0 (E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 3.83s
+     Running tests\host_configuration_security.rs (E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle-target\debug\deps\host_configuration_security-64d6c52104a2f8bd.exe)
+
+running 7 tests
+test configuration_preserves_nonempty_unknown_budget_old_task_and_grants ... D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-nonempty-budget-b07d69ea-93e3-4b7a-8e15-05448c2f319a
+ok
+test environment_host_child ... ok
+test i04_environment_namespace_dpapi_and_http_in_isolated_process ... D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-environment-parent-5618b220-67af-451c-ae7c-b4f1866d6194
+ok
+test i04_legacy_keep_and_detached_prompt_preserve_namespace ... D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-legacy-and-prompt-f92c3d3e-d2a7-488e-b092-30269c064125
+ok
+test i04_rejected_pipe_inputs_make_no_put_or_db_change ... D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-invalid-input-585abed5-9c0c-4946-ad30-8675a80bb9cc
+ok
+test i08_lookup_404_during_received_put_does_not_resolve_unknown ... D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-inflight-404-5718e73e-feb5-4176-ba8f-47aea39abe7e
+ok
+test i08_real_commits_then_hostile_responses_are_unknown_without_retries ... D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-0-true-cde1c3ee-f0cf-4634-80fd-2e839022f667
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-0-false-b2b60177-b422-4cf0-90c8-6bffabd7e36e
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-1-true-3c481dda-8c93-414a-b0c0-f5a82d9816dc
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-1-false-5b2c9a67-0b82-405c-b865-50540c3e3412
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-2-true-fa1b48fe-e8f3-4238-abaa-44024b0f70b3
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-2-false-df6dc03f-af87-40d1-8622-ee8ce5a88c39
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-3-true-b41fd60d-3317-428a-af3b-72b42b137bea
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-3-false-9dbc7f26-2d8a-4f90-ad8e-7942ac9c6be3
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-4-true-8eaa82b1-8a16-46b5-8f74-3b17c2465e37
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-4-false-8014029d-c436-4f71-a940-cccf47137d10
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-5-true-2a4d7eb0-87df-46ad-88a4-5315bdc984f9
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-5-false-d68611e8-1335-4109-86e6-17c44865cb61
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-6-true-8da16857-6a6b-4b64-bc99-8755fa741008
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-6-false-4a0b5227-5855-47f1-9ba7-6837d681e1bd
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-7-true-d829c9cd-011d-4764-9b1d-182fd67f6faa
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-7-false-72a942f9-419b-411a-acdf-5e3c123db285
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-8-true-d7d93721-70f4-4ebe-a6c5-39dd99402fb7
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-8-false-f908206a-6514-4994-802d-2539a017525a
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-9-true-ed830d42-501b-4ea3-9217-1c38d97bd013
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-9-false-055a34ff-6df7-4085-bf49-03523a54e215
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-10-true-c024a88b-27d4-44e3-83fd-ef7ceeebf56b
+D security retained fixture: E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-full-3\tmp\nhc-security-hostile-10-false-6c788bff-edf4-4214-896b-2e447d2cdf05
+ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.62s
+

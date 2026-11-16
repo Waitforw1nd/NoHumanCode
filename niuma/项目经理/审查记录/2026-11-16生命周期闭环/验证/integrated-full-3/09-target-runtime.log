@@ -1,0 +1,19 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+   Compiling peachsh v0.2.0 (E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 3.48s
+     Running tests\runtime.rs (E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle-target\debug\deps\runtime-bb00057cd71dd80d.exe)
+
+running 10 tests
+test conflicts_cancel_and_configuration_lock ... ok
+test dependency_order_summary_and_cycle_rejection ... ok
+test explicit_session_kind_survives_arbitrary_member_names ... ok
+test http_run_exposes_domain_and_session_events_with_conflict_replay ... ok
+test multiple_keys_limits_identity_and_resume ... ok
+test replace_existing_file_preserves_hardlink_and_command_permission ... ok
+test restart_and_http_security ... ok
+test schema_v1_migrates_to_current_version ... ok
+test tool_execution_and_path_rejection ... ok
+test wasm_plugin_runs_through_agent_tool_boundary ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s
+

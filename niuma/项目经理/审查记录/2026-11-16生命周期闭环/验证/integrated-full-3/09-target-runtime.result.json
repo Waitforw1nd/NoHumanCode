@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "runtime"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "runtime",
+    "--",
+    "--test-threads=1"
+  ],
+  "ended_utc": "2026-11-16T09:57:23.716848+00:00",
+  "exit_code": 0,
+  "log": "09-target-runtime.log",
+  "log_bytes": 1153,
+  "log_sha256": "73ee6219f673c2ffedb50052268e599ed0b93171517e42e33c85137cdd060728",
+  "name": "target-runtime",
+  "started_utc": "2026-11-16T09:57:15.949680+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}
