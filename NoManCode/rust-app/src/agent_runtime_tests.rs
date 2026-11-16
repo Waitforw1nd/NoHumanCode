@@ -27,15 +27,11 @@ use std::{
 
 const SECRET: &str = "nhc-agent-callback-sentinel";
 
-// Raw crash evidence remains untouched. A copied schema-18 database cannot
-// inherit its original file identity; make an explicit schema-17 test fixture
-// and exercise the production migration on each disposable working copy.
-fn prepare_schema17_snapshot(path: &std::path::Path) {
-    let db = rusqlite::Connection::open(path).unwrap();
+fn assert_schema18(store: &Store) {
+    let db = store.db.lock().unwrap();
     let version: u32 = db
         .pragma_query_value(None, "user_version", |row| row.get(0))
         .unwrap();
-    assert_eq!(version, 18);
     let marker: i64 = db
         .query_row(
             "SELECT count(*) FROM schema_migrations WHERE id='execution-owner-v18'",
@@ -43,8 +39,7 @@ fn prepare_schema17_snapshot(path: &std::path::Path) {
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(marker, 1);
-    db.execute_batch("BEGIN IMMEDIATE; DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=17; COMMIT;").unwrap();
+    assert_eq!((version, marker), (18, 1));
 }
 
 fn hidden_test_command() -> std::process::Command {
@@ -3370,7 +3365,11 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             if path.exists() {
                 let bytes = std::fs::read(path).unwrap();
                 for folder in ["proof-raw", "proof-query", "proof-recovery"] {
-                    std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                    crate::worktree_diagnostics::atomic_write(
+                        &root.join(folder).join(name),
+                        &bytes,
+                    )
+                    .unwrap();
                 }
                 assert_eq!(
                     std::fs::read(root.join("proof-raw").join(name)).unwrap(),
@@ -3382,8 +3381,8 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             }
         }
         std::fs::write(root.join("proof-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"proof-call","phase":"before_commit","cancelled":cancelled,"kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
-        prepare_schema17_snapshot(&root.join("proof-query/agent.db"));
-        let query = Store::open(&root.join("proof-query/agent.db")).unwrap();
+        let query = Store::open(&root.join("agent.db")).unwrap();
+        assert_schema18(&query);
         let persisted = query.task(&id).unwrap();
         assert!(
             !serde_json::to_string(&persisted)
@@ -3422,8 +3421,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             }
         );
         drop(query);
-        prepare_schema17_snapshot(&root.join("proof-recovery/agent.db"));
-        let recovery_store = Arc::new(Store::open(&root.join("proof-recovery/agent.db")).unwrap());
+        let recovery_store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
         recovery_store.recover().unwrap();
         let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
             mode: Mode::All,
@@ -3485,7 +3483,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
         drop(engine);
         drop(recovery_store);
-        let reopened = Store::open(&root.join("proof-recovery/agent.db")).unwrap();
+        let reopened = Store::open(&root.join("agent.db")).unwrap();
         reopened.recover().unwrap();
         let reopened_events = reopened.events(&done.run_id, 0).unwrap();
         let reopened_results: Vec<_> = reopened_events
@@ -3641,7 +3639,8 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         if path.exists() {
             let bytes = std::fs::read(path).unwrap();
             for folder in ["legacy-raw", "legacy-query", "legacy-recovery"] {
-                std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                crate::worktree_diagnostics::atomic_write(&root.join(folder).join(name), &bytes)
+                    .unwrap();
             }
             assert_eq!(
                 std::fs::read(root.join("legacy-raw").join(name)).unwrap(),
@@ -3653,8 +3652,8 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         }
     }
     std::fs::write(root.join("legacy-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"legacy-kill","phase":"agent_after_assistant_save","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
-    prepare_schema17_snapshot(&root.join("legacy-query/agent.db"));
-    let query = Store::open(&root.join("legacy-query/agent.db")).unwrap();
+    let query = Store::open(&root.join("agent.db")).unwrap();
+    assert_schema18(&query);
     let task = query.task(&id).unwrap();
     assert!(
         !task
@@ -3672,8 +3671,7 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     );
     let original_event = serde_json::to_value(results[0]).unwrap();
     drop(query);
-    prepare_schema17_snapshot(&root.join("legacy-recovery/agent.db"));
-    let recovery = Arc::new(Store::open(&root.join("legacy-recovery/agent.db")).unwrap());
+    let recovery = Arc::new(Store::open(&root.join("agent.db")).unwrap());
     recovery.recover().unwrap();
     let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
         mode: Mode::All,
@@ -3728,7 +3726,7 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     drop(engine);
     drop(recovery);
-    let reopened = Store::open(&root.join("legacy-recovery/agent.db")).unwrap();
+    let reopened = Store::open(&root.join("agent.db")).unwrap();
     reopened.recover().unwrap();
     assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
     let events = reopened.events(&task.run_id, 0).unwrap();
@@ -4092,7 +4090,8 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
                 "host-denied-query",
                 "host-denied-recovery",
             ] {
-                std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                crate::worktree_diagnostics::atomic_write(&root.join(folder).join(name), &bytes)
+                    .unwrap();
             }
             assert_eq!(
                 std::fs::read(root.join("host-denied-raw").join(name)).unwrap(),
@@ -4105,8 +4104,8 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     }
     std::fs::write(root.join("host-denied-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"host-kill","phase":"after_commit","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
 
-    prepare_schema17_snapshot(&root.join("host-denied-query/agent.db"));
-    let query = Store::open(&root.join("host-denied-query/agent.db")).unwrap();
+    let query = Store::open(&root.join("agent.db")).unwrap();
+    assert_schema18(&query);
     let at_kill = query.task(&id).unwrap();
     assert_eq!(at_kill.status, "running");
     let (session, agent, turn, projected_status): (String, String, String, String) = query
@@ -4168,8 +4167,7 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     let original_answer: Value = (*answers[0]).clone();
     drop(query);
 
-    prepare_schema17_snapshot(&root.join("host-denied-recovery/agent.db"));
-    let recovery = Arc::new(Store::open(&root.join("host-denied-recovery/agent.db")).unwrap());
+    let recovery = Arc::new(Store::open(&root.join("agent.db")).unwrap());
     recovery.recover().unwrap();
     assert_eq!(recovery.task(&id).unwrap().status, "interrupted");
     let engine = Engine::new(recovery.clone(), 2).unwrap();
@@ -4211,7 +4209,7 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     drop(engine);
     drop(recovery);
-    let reopened = Store::open(&root.join("host-denied-recovery/agent.db")).unwrap();
+    let reopened = Store::open(&root.join("agent.db")).unwrap();
     reopened.recover().unwrap();
     assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
     let events = reopened.events(&at_kill.run_id, 0).unwrap();
