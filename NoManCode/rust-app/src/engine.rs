@@ -5210,6 +5210,7 @@ mod workspace_phase_tests {
                     let before = n10_rows(&store.db.lock().unwrap());
                     assert!(store.recover().is_err());
                     assert_eq!(n10_rows(&store.db.lock().unwrap()), before);
+                    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
                     drop(engine);
                     store.recover().unwrap();
                     let agent = crate::agent_runtime::AgentRuntime::with_strategy_for_test(
