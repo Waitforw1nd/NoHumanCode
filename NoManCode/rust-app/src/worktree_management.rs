@@ -888,7 +888,7 @@ impl crate::store::Store {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::{domain::*, engine::Engine, project_config::*, store::Store};
     use std::{
@@ -974,13 +974,13 @@ mod tests {
         );
         String::from_utf8(out.stdout).unwrap()
     }
-    struct Fixture {
+    pub(crate) struct Fixture {
         _temp: tempfile::TempDir,
         source: PathBuf,
         parent: PathBuf,
         db: PathBuf,
-        store: Arc<Store>,
-        project: Project,
+        pub(crate) store: Arc<Store>,
+        pub(crate) project: Project,
         head: String,
     }
     impl Fixture {
@@ -1049,7 +1049,7 @@ mod tests {
                 head,
             }
         }
-        fn new() -> Self {
+        pub(crate) fn new() -> Self {
             let temp = tempfile::tempdir().unwrap();
             let source = temp.path().join("source");
             let parent = temp.path().join("targets");
@@ -1131,7 +1131,7 @@ mod tests {
                 })
                 .await
         }
-        async fn claim(
+        pub(crate) async fn claim(
             &self,
         ) -> (
             CreateWorktree,
