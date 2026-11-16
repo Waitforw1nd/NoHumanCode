@@ -156,6 +156,27 @@ impl Drop for OwnedChild {
         let _ = self.kill_wait();
     }
 }
+fn observe_before_deadline<T>(
+    child: &mut OwnedChild,
+    deadline: tokio::time::Instant,
+    observe: impl FnOnce(&mut OwnedChild) -> T,
+) -> T {
+    if tokio::time::Instant::now() >= deadline {
+        child.retain_unknown("agent fixture observation deadline");
+    }
+    let observed = observe(child);
+    if tokio::time::Instant::now() >= deadline {
+        child.retain_unknown("agent fixture observation completed late");
+    }
+    observed
+}
+async fn provider_barrier_before_deadline(child: &mut OwnedChild, notify: &tokio::sync::Notify) {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    let observed = tokio::time::timeout_at(deadline, notify.notified()).await;
+    if observed.is_err() || tokio::time::Instant::now() >= deadline {
+        child.retain_unknown("agent provider barrier deadline");
+    }
+}
 fn read_task_identity(path: &std::path::Path) -> anyhow::Result<Option<String>> {
     let id = match std::fs::read_to_string(path) {
         Ok(id) => id,
@@ -459,7 +480,8 @@ async fn child_parent_decision(engine: &Engine, root: &std::path::Path, id: &str
     .expect("child approval/decision barrier timed out");
 }
 async fn parent_approval(child: &mut OwnedChild, root: &std::path::Path) -> Value {
-    let result = tokio::time::timeout(Duration::from_secs(10), async {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    let result = tokio::time::timeout_at(deadline, async {
         loop {
             assert!(
                 child.observe().is_none(),
@@ -474,6 +496,9 @@ async fn parent_approval(child: &mut OwnedChild, root: &std::path::Path) -> Valu
         }
     })
     .await;
+    if tokio::time::Instant::now() >= deadline {
+        child.retain_unknown("parent approval observation completed late");
+    }
     match result {
         Ok(value) => value,
         Err(_) => child.retain_unknown("parent approval observation deadline"),
@@ -1531,7 +1556,9 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
             .unwrap());
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         let task_id = loop {
-            if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
+            if let Some(id) = observe_before_deadline(&mut child, deadline, |child| {
+                ready_task_identity(child, &root.join("armed"))
+            }) {
                 break id;
             }
             if let Some(s) = child.observe() {
@@ -1545,7 +1572,8 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
         f.mock.hold.store(false, Ordering::SeqCst);
         f.mock.release.notify_one();
         loop {
-            if root.join("crash-signal").exists() {
+            if observe_before_deadline(&mut child, deadline, |_| root.join("crash-signal").exists())
+            {
                 break;
             }
             if let Some(s) = child.observe() {
@@ -2204,7 +2232,9 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     );
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let task_id = loop {
-        if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
+        if let Some(id) = observe_before_deadline(&mut child, deadline, |child| {
+            ready_task_identity(child, &root.join("armed"))
+        }) {
             break id;
         }
         if let Some(s) = child.observe() {
@@ -2221,7 +2251,7 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     assert_eq!(publication["approval"]["task_id"], task_id);
     crate::worktree_diagnostics::atomic_write(&root.join("parent-decision"), b"approve").unwrap();
     loop {
-        if root.join("crash-signal").exists() {
+        if observe_before_deadline(&mut child, deadline, |_| root.join("crash-signal").exists()) {
             break;
         }
         if let Some(s) = child.observe() {
@@ -3357,7 +3387,9 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         let pid = child.id();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         let id = loop {
-            if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
+            if let Some(id) = observe_before_deadline(&mut child, deadline, |child| {
+                ready_task_identity(child, &root.join("armed"))
+            }) {
                 break id;
             }
             if let Some(status) = child.observe() {
@@ -3368,12 +3400,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         };
-        if tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
-            .await
-            .is_err()
-        {
-            child.retain_unknown("agent provider barrier deadline");
-        }
+        provider_barrier_before_deadline(&mut child, &f.mock.arrived).await;
         f.mock.hold.store(false, Ordering::SeqCst);
         f.mock.release.notify_one();
         let publication = parent_approval(&mut child, root).await;
@@ -3391,7 +3418,9 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         )
         .unwrap();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
-        while !root.join("proof-signal").is_file() {
+        while !observe_before_deadline(&mut child, deadline, |_| {
+            root.join("proof-signal").is_file()
+        }) {
             if let Some(status) = child.observe() {
                 panic!("proof child {pid} exited before probe: {status}");
             }
@@ -3647,7 +3676,9 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     let pid = child.id();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let id = loop {
-        if let Some(id) = ready_task_identity(&mut child, &root.join("legacy-armed")) {
+        if let Some(id) = observe_before_deadline(&mut child, deadline, |child| {
+            ready_task_identity(child, &root.join("legacy-armed"))
+        }) {
             break id;
         }
         if let Some(status) = child.observe() {
@@ -3658,16 +3689,13 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
-    if tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
-        .await
-        .is_err()
-    {
-        child.retain_unknown("agent provider barrier deadline");
-    }
+    provider_barrier_before_deadline(&mut child, &f.mock.arrived).await;
     f.mock.hold.store(false, Ordering::SeqCst);
     f.mock.release.notify_one();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
-    while !root.join("legacy-signal").is_file() {
+    while !observe_before_deadline(&mut child, deadline, |_| {
+        root.join("legacy-signal").is_file()
+    }) {
         if let Some(status) = child.observe() {
             panic!("legacy child {pid} exited before signal: {status}");
         }
@@ -4088,7 +4116,9 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     let pid = child.id();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     let id = loop {
-        if let Some(id) = ready_task_identity(&mut child, &root.join("host-denied-armed")) {
+        if let Some(id) = observe_before_deadline(&mut child, deadline, |child| {
+            ready_task_identity(child, &root.join("host-denied-armed"))
+        }) {
             break id;
         }
         if let Some(status) = child.observe() {
@@ -4099,16 +4129,13 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
-    if tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
-        .await
-        .is_err()
-    {
-        child.retain_unknown("agent provider barrier deadline");
-    }
+    provider_barrier_before_deadline(&mut child, &f.mock.arrived).await;
     f.mock.hold.store(false, Ordering::SeqCst);
     f.mock.release.notify_one();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
-    while !root.join("host-denied-signal").is_file() {
+    while !observe_before_deadline(&mut child, deadline, |_| {
+        root.join("host-denied-signal").is_file()
+    }) {
         if let Some(status) = child.observe() {
             panic!("HostDenied child {pid} exited before result commit: {status}");
         }
