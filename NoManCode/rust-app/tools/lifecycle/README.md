@@ -40,6 +40,8 @@ Output must be outside NoManCode; the runner creates the ignored Rust cwd `targe
 directory solely for legacy `tempdir_in("target")` fixtures. Environment enforces
 offline, locked commands, jobs=2, dev/test debug=0, incremental=0, test threads=1,
 TMP=TEMP on E, and no automatic rustup installation.
+`RUST_TEST_NOCAPTURE=1` makes an unknown marker observable during a stalled test;
+the manager must retain raw logs as test output is intentionally not suppressed.
 
 The global exclusive-create gate is `<git-common-dir>/nhc-heavy-window.lock`.
 Every attempt, successful or failed, **retains this gate**. Before the next attempt,
