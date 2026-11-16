@@ -1,0 +1,10 @@
+{
+  "closed_utc": "2026-11-16T08:11:56.9323846Z",
+  "owner": "parent integration",
+  "active_compiler_and_product_test_processes": 0,
+  "scope": "Observed compiler names and integration target executables; not a proof of every descendant process tree",
+  "lock_archive": "shared-git/nhc-heavy-window.audit-20261116-complete.lock",
+  "lock_sha256": "33D456B6477A27ECAAA0911451E3A85E920B203B83F2A1EDF98FCF22DDE0EF7E",
+  "historical_unknown": "unchanged",
+  "product_tree": "51a9e1af007d051bdd754887f0e3cc4f0922f5f5"
+}

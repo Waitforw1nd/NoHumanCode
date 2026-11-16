@@ -1,0 +1,16 @@
+   Compiling peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 6.36s
+     Running tests\worktree_http.rs (target\debug\deps\worktree_http-1dced705004efa15.exe)
+
+running 2 tests
+WORKTREE_TIMING key=tree-create elapsed_ms=1 phase=before_claim
+WORKTREE_TIMING key=tree-create elapsed_ms=1301 phase=Claimed/revision=1
+WORKTREE_TIMING key=tree-create elapsed_ms=4457 response=Ok(200) phase=Succeeded/revision=2 accepted_within_6s=true
+test w01_w02_worktree_project_has_independent_authorization_and_original_session_root ... ok
+WORKTREE_TIMING key=good elapsed_ms=0 phase=before_claim
+WORKTREE_TIMING key=good elapsed_ms=1401 phase=Claimed/revision=1
+WORKTREE_TIMING key=good elapsed_ms=4494 response=Ok(200) phase=Succeeded/revision=2 accepted_within_6s=true
+test w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.71s
+

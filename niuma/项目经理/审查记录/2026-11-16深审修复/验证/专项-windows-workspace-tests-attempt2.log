@@ -1,0 +1,15 @@
+   Compiling peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 25.92s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-e2aa2d6365223fa4.exe)
+
+running 7 tests
+test workspace::tests::file_boundaries ... ok
+test workspace::tests::search_reports_project_matches ... ok
+test workspace::tests::windows_alias_below_declared_long_scope_remains_writable ... ok
+test workspace::tests::windows_alias_only_scope_cannot_authorize_another_namespace ... ok
+test workspace::tests::windows_allowed_aliases_preserve_existing_and_missing_targets ... ok
+test workspace::tests::windows_short_directories_cannot_hide_protected_ancestors ... ok
+test workspace::tests::windows_short_names_cannot_hide_protected_files ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 413 filtered out; finished in 0.10s
+

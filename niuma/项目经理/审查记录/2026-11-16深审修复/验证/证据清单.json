@@ -1,0 +1,462 @@
+{
+  "candidate": "c7df9b1e07300e302511e9f4f4bd871cdb5bb09d",
+  "product_tree": "51a9e1af007d051bdd754887f0e3cc4f0922f5f5",
+  "rust_tree": "2227e3e6956fc4368c694969f373609349a75ee8",
+  "started_utc": "2026-11-16T07:58:10.2749841Z",
+  "ended_utc": "2026-11-16T08:08:39.9689526Z",
+  "test_threads": 1,
+  "rust_test_result_totals": {
+    "passed": 881,
+    "failed": 0,
+    "ignored": 25,
+    "result_blocks": 64
+  },
+  "web_assertion_groups": 6,
+  "build_mock_scenarios": 13,
+  "previous_attempts": [
+    "final-attempt1"
+  ],
+  "normalization": "Only the integration worktree prefix is made repository-relative; source bytes remain untouched.",
+  "acceptance_check": {
+    "verified_utc": "2026-11-16T08:12:04.626710+00:00",
+    "current_head": "b9bdef098c3edf3b2436c2c50da6f9515281e298",
+    "product_inputs_clean": true,
+    "current_and_tested_trees_match": true,
+    "recorded_gate_and_intermediate_hashes_match": true,
+    "runner_note": "Attempt2 used run-gates-active-attempt2.ps1. Final publication independently rechecked clean inputs, tested/current trees, and every recorded log hash; run-gates.ps1 contains the later final-manifest ordering fix."
+  },
+  "gates": [
+    {
+      "name": "check",
+      "command": "cargo check --workspace --all-targets --locked",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T07:58:10.2795385Z",
+      "ended_utc": "2026-11-16T07:58:11.4514178Z",
+      "sha256": "692C4505362018B7D230BF64B6524D4E2A2258BEE0B791794F0F5D72446DEB63",
+      "bytes": 407
+    },
+    {
+      "name": "debug-bins",
+      "command": "cargo build --bins --locked",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T07:58:11.4753061Z",
+      "ended_utc": "2026-11-16T07:58:17.3004093Z",
+      "sha256": "2CBD545FE29F2951DB0B5345666B69DBE60801149EAC8B649C00718AABE0CC55",
+      "bytes": 150
+    },
+    {
+      "name": "test",
+      "command": "pwsh -NoProfile -File build.ps1 -Action test",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T07:58:17.3030775Z",
+      "ended_utc": "2026-11-16T08:07:41.5899985Z",
+      "sha256": "452BB899B2B3C86113069DBF83E886267F88C80AF55D757973F67D6D5AB15725",
+      "bytes": 90880
+    },
+    {
+      "name": "fmt",
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T08:07:41.5921869Z",
+      "ended_utc": "2026-11-16T08:07:43.2170819Z",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "name": "clippy",
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T08:07:43.2206207Z",
+      "ended_utc": "2026-11-16T08:08:09.0849813Z",
+      "sha256": "7DE6B40764B8F76E0A70A1796074DE8DCD9E8AA41821ADE5EC9E785F95533B59",
+      "bytes": 624
+    },
+    {
+      "name": "wasm-check",
+      "command": "cargo check -p peachsh-ui --target wasm32-unknown-unknown --locked",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T08:08:09.0882535Z",
+      "ended_utc": "2026-11-16T08:08:39.9181390Z",
+      "sha256": "659E6A45441C5BDFAF4F85B7952A813AAAD5BD9D418A4A036CDD33B4D14781B4",
+      "bytes": 4568
+    }
+  ],
+  "files": [
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/baseline-check-attempt2.log",
+      "published": "专项-baseline-check-attempt2.log",
+      "source_sha256": "24cf03479ca7977db6bda7a9637532ede194834a186499ed64f06811787408d2",
+      "source_bytes": 9766,
+      "published_sha256": "5d9925013a379a24117f2e334579503942342fa47a3dd3799f4c2621f982bab3",
+      "published_bytes": 9751
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/baseline-check.log",
+      "published": "专项-baseline-check.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published_bytes": 0
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/build-script-tests.log",
+      "published": "专项-build-script-tests.log",
+      "source_sha256": "45af668ef777571f44ff5ee881518f6783ba59e8ef6394e4e30351033890e894",
+      "source_bytes": 507,
+      "published_sha256": "badc26ab3e62a5f433d94f992b4d9613b021d76a507ae7e6d07a60a03b054804",
+      "published_bytes": 502
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/checkpoint-tests.log",
+      "published": "专项-checkpoint-tests.log",
+      "source_sha256": "161b01176638ca1597fa7552bfe17fc328b2e809343e2e769546afa59a5025b1",
+      "source_bytes": 431,
+      "published_sha256": "50e3e66ee9ca066121d7eaaeb4216b8084968340f5070a4797374f3f5f6895f5",
+      "published_bytes": 426
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/combined-check.log",
+      "published": "专项-combined-check.log",
+      "source_sha256": "a16daec86399d06bb10135e23e786389365f315e3e14595e4de30b1b7fdbfaee",
+      "source_bytes": 407,
+      "published_sha256": "9c103ee09b6c7e43d27e8567faaefe2fea9fca6a0673221fce129220b678ae6d",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/host-lock-tests.log",
+      "published": "专项-host-lock-tests.log",
+      "source_sha256": "0de7a7bd4becbd9419c25ceac40db6c0aac09110b6edd1b1640a2fe292d384e5",
+      "source_bytes": 543,
+      "published_sha256": "01ea5a6a08119415a5d0c62630559ee70dc5394e782b5434373fa64f45af29bb",
+      "published_bytes": 538
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/pipe-precheck.log",
+      "published": "专项-pipe-precheck.log",
+      "source_sha256": "87b16d85592e217d9badae4ca5184cb99fc4875a94d81366756f56f310dbb986",
+      "source_bytes": 318,
+      "published_sha256": "87b16d85592e217d9badae4ca5184cb99fc4875a94d81366756f56f310dbb986",
+      "published_bytes": 318
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/pipe-reader-tests.log",
+      "published": "专项-pipe-reader-tests.log",
+      "source_sha256": "4e141939d495cf2138a5f04629d505576e0e846e37bea41f543ed81cfde1bbec",
+      "source_bytes": 533,
+      "published_sha256": "4e141939d495cf2138a5f04629d505576e0e846e37bea41f543ed81cfde1bbec",
+      "published_bytes": 533
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/pipe-shell-test.log",
+      "published": "专项-pipe-shell-test.log",
+      "source_sha256": "dcd6d8d6da0e039a9fa7b0d66e81c273f9118b1723aa8d915e5933fcada339da",
+      "source_bytes": 560,
+      "published_sha256": "dcd6d8d6da0e039a9fa7b0d66e81c273f9118b1723aa8d915e5933fcada339da",
+      "published_bytes": 560
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/recovery-check.log",
+      "published": "专项-recovery-check.log",
+      "source_sha256": "0c401781b7d209d4d1d4cc784c2d28553e52daf639021b5470ee53bc0bd3554b",
+      "source_bytes": 407,
+      "published_sha256": "9295fe40cbc9652ea9af5bd736866d50f6819e3ac1622fba580aed02f6b44810",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/recovery-tests-attempt2.log",
+      "published": "专项-recovery-tests-attempt2.log",
+      "source_sha256": "7cefdf2b42d3a9b4ebe8337a9ec70ecd3c4a2c94f64b0775b014c2f6371d322d",
+      "source_bytes": 1304,
+      "published_sha256": "d36e09e2aa6c24deb92e0fae09d7eeb7d8e2b0b187e4dcd4da0b0e638b20722e",
+      "published_bytes": 1299
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/recovery-tests.log",
+      "published": "专项-recovery-tests.log",
+      "source_sha256": "79ee475012f787f2e05db04709f7d36bae640d53eee4393bbef9bdb7e1bd2841",
+      "source_bytes": 894,
+      "published_sha256": "2cdfb0e29579464f61473bac86e13135f66ec05fe503b5191c4998c058feca08",
+      "published_bytes": 889
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/safe-delta-test.log",
+      "published": "专项-safe-delta-test.log",
+      "source_sha256": "56e884b8e8f189fdad2197e2a3c1e64b57c75b6d5afa676f1a6549b343632d98",
+      "source_bytes": 360,
+      "published_sha256": "56e884b8e8f189fdad2197e2a3c1e64b57c75b6d5afa676f1a6549b343632d98",
+      "published_bytes": 360
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/security-check.log",
+      "published": "专项-security-check.log",
+      "source_sha256": "04706e1235820396f80750c9167f661d47a27a94f69c03975290fd5d80ccb964",
+      "source_bytes": 407,
+      "published_sha256": "48e9ef99eeb9bc9367d8a436eab1ee41dc8a62aafc98c3b795e0c6ec076baaa2",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/security-final-check.log",
+      "published": "专项-security-final-check.log",
+      "source_sha256": "cdfd23383fa98dda0051307ddfc2c2d9edd5fe01720a5d1f662f7c9baa70a827",
+      "source_bytes": 318,
+      "published_sha256": "cdfd23383fa98dda0051307ddfc2c2d9edd5fe01720a5d1f662f7c9baa70a827",
+      "published_bytes": 318
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/security-tests-attempt2.log",
+      "published": "专项-security-tests-attempt2.log",
+      "source_sha256": "625b9001cd4f1de10ebdb58e1ea33da84cb7705177be70f2ee6b2d57dda30bb0",
+      "source_bytes": 1198,
+      "published_sha256": "b8adcfdbce4c24d551b8fd363d7d167f7c6dd61d9810d0ac00a00daab08534db",
+      "published_bytes": 1193
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/security-tests-final.log",
+      "published": "专项-security-tests-final.log",
+      "source_sha256": "2ebcdfc9d08eb43e085aa88b243cb9811bd55eb419920df5c3571d9a779627e6",
+      "source_bytes": 1416,
+      "published_sha256": "a9e0a0c21fde5354d8a693afeef9a98e285d511d11b9c459863a56617d0542f7",
+      "published_bytes": 1411
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/security-tests.log",
+      "published": "专项-security-tests.log",
+      "source_sha256": "01fbd9415ed526f3dddb61d90875ca3c2aae937e10a6e0a40287d09ebbe182b3",
+      "source_bytes": 876,
+      "published_sha256": "472265947a33fbc1350963dfb6ad71738ff5bfd412d0dd7517f88f94c8623255",
+      "published_bytes": 871
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/stream-projection-check.log",
+      "published": "专项-stream-projection-check.log",
+      "source_sha256": "6fd354b26cf755fd0c4c2bba260dd68e6bcac151d90317646c5f06680562b600",
+      "source_bytes": 407,
+      "published_sha256": "76371293a3537355ca5c441ad8c1d521f8fe76411770fb24723c111ae6050573",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/windows-build-check.log",
+      "published": "专项-windows-build-check.log",
+      "source_sha256": "480e72b3e4005f267afdf47fa52b69f7cc6ee28bd5b4ec97471c83e99666271c",
+      "source_bytes": 407,
+      "published_sha256": "062c731b4bece1f29cb32e8112991f8f3775ec024f0e59ee3066a619bb940b5b",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/windows-check-attempt2.log",
+      "published": "专项-windows-check-attempt2.log",
+      "source_sha256": "92d052b6eca9b36ab862254579dbd5b3be8c5af88938defd04d3dd41255283f8",
+      "source_bytes": 407,
+      "published_sha256": "246953c127b9320f7e94f902344727a313090cb08da78dc2b010f788591baae1",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/windows-workspace-tests-attempt2.log",
+      "published": "专项-windows-workspace-tests-attempt2.log",
+      "source_sha256": "191cbff0cf74bc242e2d4f0f69fe0a85a7e9d43d536bfe55f0db3d15e0c48e06",
+      "source_bytes": 905,
+      "published_sha256": "712ef86e5553972a3bf7067c5994c903698012e98e8d4d243175671ba4ecec85",
+      "published_bytes": 900
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/windows-workspace-tests.log",
+      "published": "专项-windows-workspace-tests.log",
+      "source_sha256": "526976ab68b2d8d1b2d66d626c04a33fdb3723566090ec253db6497ef33ea673",
+      "source_bytes": 6743,
+      "published_sha256": "937ad8745f2c450e48c13aa4692c6ee6844e46355021b56072d8a4d74882a39e",
+      "published_bytes": 6733
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-precheck.log",
+      "published": "专项-worktree-http-precheck.log",
+      "source_sha256": "065d782442eb6867dc1760d2ee9e53a58b6688979564d51e7ded93eb9f81a1b0",
+      "source_bytes": 318,
+      "published_sha256": "065d782442eb6867dc1760d2ee9e53a58b6688979564d51e7ded93eb9f81a1b0",
+      "published_bytes": 318
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-reproduce.log",
+      "published": "专项-worktree-http-reproduce.log",
+      "source_sha256": "df7bbbf0b2e03e8a1d102ab15dae888d42d0e95d16ed1da2b3c7f515dae416a7",
+      "source_bytes": 541,
+      "published_sha256": "0c936785de982fe0d6a75b70d21f059ddc62b41098f4eb2fb8f0338bca892c75",
+      "published_bytes": 536
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-timing-precheck.log",
+      "published": "专项-worktree-http-timing-precheck.log",
+      "source_sha256": "e4fe01f917b6a75f102761b7f43635e8b14e9dbcdeb0bea0ff6e0dbfc98c2ebe",
+      "source_bytes": 318,
+      "published_sha256": "e4fe01f917b6a75f102761b7f43635e8b14e9dbcdeb0bea0ff6e0dbfc98c2ebe",
+      "published_bytes": 318
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-timing-repeat1.log",
+      "published": "专项-worktree-http-timing-repeat1.log",
+      "source_sha256": "d0da9cc381c1be0c8ab16843f2834341c785d2e4fe990e2136ee2e621fd7ac16",
+      "source_bytes": 1329,
+      "published_sha256": "d0da9cc381c1be0c8ab16843f2834341c785d2e4fe990e2136ee2e621fd7ac16",
+      "published_bytes": 1329
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-timing-repeat2.log",
+      "published": "专项-worktree-http-timing-repeat2.log",
+      "source_sha256": "f3591971d780c50f1822a5d254c844970de975485698446ff60088addf271b65",
+      "source_bytes": 1378,
+      "published_sha256": "f3591971d780c50f1822a5d254c844970de975485698446ff60088addf271b65",
+      "published_bytes": 1378
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-timing-repeat3.log",
+      "published": "专项-worktree-http-timing-repeat3.log",
+      "source_sha256": "56575392e5712d375320f1d62fd9e6183a5930c820bcb4b501b1cf9a87e82440",
+      "source_bytes": 1329,
+      "published_sha256": "56575392e5712d375320f1d62fd9e6183a5930c820bcb4b501b1cf9a87e82440",
+      "published_bytes": 1329
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-timing.log",
+      "published": "专项-worktree-http-timing.log",
+      "source_sha256": "51f4c7dc9529c4ca4885e51137072973fffabf8ba5f646adc0a098a8668fbb14",
+      "source_bytes": 1031,
+      "published_sha256": "85ffc3e9cb91865d6a6adc5bab3dc6f495a7438e925f5799ea9729b9f6313ff0",
+      "published_bytes": 1026
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/worktree-http-workspace-binary.log",
+      "published": "专项-worktree-http-workspace-binary.log",
+      "source_sha256": "cf2ecfaa67c6720867b02574e857a2c4f50a6d850a855d4cc4f0b8dc11806594",
+      "source_bytes": 808,
+      "published_sha256": "cf2ecfaa67c6720867b02574e857a2c4f50a6d850a855d4cc4f0b8dc11806594",
+      "published_bytes": 808
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/check.log",
+      "published": "最终-check.log",
+      "source_sha256": "692c4505362018b7d230bf64b6524d4e2a2258bee0b791794f0f5d72446deb63",
+      "source_bytes": 407,
+      "published_sha256": "736d5a0cdb01c78b1d192d3d9b8382b2efec137d433ffd865298ddb53e40f62a",
+      "published_bytes": 402
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/clippy.log",
+      "published": "最终-clippy.log",
+      "source_sha256": "7de6b40764b8f76e0a70a1796074de8dcd9e8aa41821ade5ec9e785f95533b59",
+      "source_bytes": 624,
+      "published_sha256": "7b811629946c03c4e8f48f7f10caf7cacee5efd5816605792b73caccb9e8834f",
+      "published_bytes": 609
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/debug-bins.log",
+      "published": "最终-debug-bins.log",
+      "source_sha256": "2cbd545fe29f2951db0b5345666b69dbe60801149eac8b649c00718aabe0cc55",
+      "source_bytes": 150,
+      "published_sha256": "f6236eccb6c16bf43a038a74ad3a482fe8c53435476b4b4d3fb93b0b58a19021",
+      "published_bytes": 145
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/fmt.log",
+      "published": "最终-fmt.log",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_bytes": 0,
+      "published_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "published_bytes": 0
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/test.log",
+      "published": "最终-test.log",
+      "source_sha256": "452bb899b2b3c86113069dbf83e886267f88c80af55d757973f67d6d5ab15725",
+      "source_bytes": 90880,
+      "published_sha256": "f00f6055fe14873e17054e77c0806b1e3b19a3ba68705faae454c03c9ae939b7",
+      "published_bytes": 90875
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/wasm-check.log",
+      "published": "最终-wasm-check.log",
+      "source_sha256": "659e6a45441c5bdfaf4f85b7952a813aaad5bd9d418a4a036cdd33b4d14781b4",
+      "source_bytes": 4568,
+      "published_sha256": "bcc7cbec1b159639d00bc19d76d2b67e037f0288d306269a3a2c0f6071393141",
+      "published_bytes": 4558
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt1/check.log",
+      "published": "final-attempt1-check.log",
+      "source_sha256": "60af579909f422e54b45621c40bd5db73fe786a3a661789b67f6f0100011f86a",
+      "source_bytes": 803,
+      "published_sha256": "660e9dad3f43624ff72014e1cf356ed2c007a6f6e19cd6ddb917f4fe6cf25021",
+      "published_bytes": 788
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt1/debug-bins.log",
+      "published": "final-attempt1-debug-bins.log",
+      "source_sha256": "341a3f2a2f8071b6b852112c30a6e41ba92afd90b90082c274c59d2487f0919a",
+      "source_bytes": 269,
+      "published_sha256": "74882f41659e46f2c3c6cb50d2e42e154fef1f94c9923d370ba531ae81b3faab",
+      "published_bytes": 264
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt1/manifest.json",
+      "published": "final-attempt1-manifest.json",
+      "source_sha256": "323ae1bb9591422832acec753381427bf74f37aac919eb0ad8efa3bd1864e956",
+      "source_bytes": 1406,
+      "published_sha256": "323ae1bb9591422832acec753381427bf74f37aac919eb0ad8efa3bd1864e956",
+      "published_bytes": 1406
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt1/test.log",
+      "published": "final-attempt1-test.log",
+      "source_sha256": "c989d0886c9461c3074ce3a0b2a5af3edfee037735fe32a59521965434712208",
+      "source_bytes": 93536,
+      "published_sha256": "b3fd8db517faafed559b9571e5f265c3ed80a1631773d0ef3e7625c02f13e7b7",
+      "published_bytes": 93521
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/intermediate-results.json",
+      "published": "中途验证.json",
+      "source_sha256": "6c6b901e90e684bd1040cab61a43e97869670627ef1090f3c9f46d1ec512f286",
+      "source_bytes": 3469,
+      "published_sha256": "6c6b901e90e684bd1040cab61a43e97869670627ef1090f3c9f46d1ec512f286",
+      "published_bytes": 3469
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/final-attempt2/manifest.json",
+      "published": "最终门禁.json",
+      "source_sha256": "3227725a9a729bfd972a40db37d48b6896768b98d8e9952c5bce99ca88459ea1",
+      "source_bytes": 2592,
+      "published_sha256": "3227725a9a729bfd972a40db37d48b6896768b98d8e9952c5bce99ca88459ea1",
+      "published_bytes": 2592
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/window-closed.json",
+      "published": "窗口收尾.json",
+      "source_sha256": "6ed7fb8640fb3e1168035068ecc6d7f7bfdba47ae7a8b165ff773df995490d98",
+      "source_bytes": 526,
+      "published_sha256": "6ed7fb8640fb3e1168035068ecc6d7f7bfdba47ae7a8b165ff773df995490d98",
+      "published_bytes": 526
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/run-gates-active-attempt2.ps1",
+      "published": "run-gates-active-attempt2.ps1",
+      "source_sha256": "7d6c8d5978517ff8fa66bf719b5c18340a9198c824e06fa9b38e158e35c3445a",
+      "source_bytes": 4077,
+      "published_sha256": "7d6c8d5978517ff8fa66bf719b5c18340a9198c824e06fa9b38e158e35c3445a",
+      "published_bytes": 4077
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/run-gates.ps1",
+      "published": "run-gates.ps1",
+      "source_sha256": "463464312f81bc8842080c8eeefc62bdce33dba92350090d826d583494496957",
+      "source_bytes": 4123,
+      "published_sha256": "463464312f81bc8842080c8eeefc62bdce33dba92350090d826d583494496957",
+      "published_bytes": 4123
+    },
+    {
+      "source": "../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/publish_evidence.py",
+      "published": "publish_evidence.py",
+      "source_sha256": "dd97ee9b5028add235aec503d7284eae74dda1856f9244c39f748feba11beafb",
+      "source_bytes": 5953,
+      "published_sha256": "dd97ee9b5028add235aec503d7284eae74dda1856f9244c39f748feba11beafb",
+      "published_bytes": 5953
+    }
+  ]
+}

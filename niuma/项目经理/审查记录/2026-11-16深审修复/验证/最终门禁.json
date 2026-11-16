@@ -1,0 +1,69 @@
+{
+  "head": "c7df9b1e07300e302511e9f4f4bd871cdb5bb09d",
+  "product_tree": "51a9e1af007d051bdd754887f0e3cc4f0922f5f5",
+  "rust_tree": "2227e3e6956fc4368c694969f373609349a75ee8",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+  "started_utc": "2026-11-16T07:58:10.2749841Z",
+  "test_threads": 1,
+  "worktree_timing": false,
+  "offline": true,
+  "gates": [
+    {
+      "name": "check",
+      "command": "cargo check --workspace --all-targets --locked",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T07:58:10.2795385Z",
+      "ended_utc": "2026-11-16T07:58:11.4514178Z",
+      "sha256": "692C4505362018B7D230BF64B6524D4E2A2258BEE0B791794F0F5D72446DEB63",
+      "bytes": 407
+    },
+    {
+      "name": "debug-bins",
+      "command": "cargo build --bins --locked",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T07:58:11.4753061Z",
+      "ended_utc": "2026-11-16T07:58:17.3004093Z",
+      "sha256": "2CBD545FE29F2951DB0B5345666B69DBE60801149EAC8B649C00718AABE0CC55",
+      "bytes": 150
+    },
+    {
+      "name": "test",
+      "command": "pwsh -NoProfile -File build.ps1 -Action test",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T07:58:17.3030775Z",
+      "ended_utc": "2026-11-16T08:07:41.5899985Z",
+      "sha256": "452BB899B2B3C86113069DBF83E886267F88C80AF55D757973F67D6D5AB15725",
+      "bytes": 90880
+    },
+    {
+      "name": "fmt",
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T08:07:41.5921869Z",
+      "ended_utc": "2026-11-16T08:07:43.2170819Z",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "name": "clippy",
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T08:07:43.2206207Z",
+      "ended_utc": "2026-11-16T08:08:09.0849813Z",
+      "sha256": "7DE6B40764B8F76E0A70A1796074DE8DCD9E8AA41821ADE5EC9E785F95533B59",
+      "bytes": 624
+    },
+    {
+      "name": "wasm-check",
+      "command": "cargo check -p peachsh-ui --target wasm32-unknown-unknown --locked",
+      "exit_code": 0,
+      "started_utc": "2026-11-16T08:08:09.0882535Z",
+      "ended_utc": "2026-11-16T08:08:39.9181390Z",
+      "sha256": "659E6A45441C5BDFAF4F85B7952A813AAAD5BD9D418A4A036CDD33B4D14781B4",
+      "bytes": 4568
+    }
+  ],
+  "final_product_tree": "51a9e1af007d051bdd754887f0e3cc4f0922f5f5",
+  "ended_utc": "2026-11-16T08:08:39.9689526Z"
+}

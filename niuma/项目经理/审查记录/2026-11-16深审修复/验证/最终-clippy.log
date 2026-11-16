@@ -1,0 +1,6 @@
+    Checking peachsh-protocol v0.1.0 (../nhc-audit-20261116-integration\NoManCode\rust-app\crates\protocol)
+    Checking peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
+    Checking peachsh-ui v0.1.0 (../nhc-audit-20261116-integration\NoManCode\rust-app\crates\ui)
+    Finished `dev` profile [unoptimized] target(s) in 24.91s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`

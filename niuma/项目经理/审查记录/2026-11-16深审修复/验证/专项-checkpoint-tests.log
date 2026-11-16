@@ -1,0 +1,9 @@
+   Compiling peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 17.56s
+     Running tests\checkpoint.rs (target\debug\deps\checkpoint-9a90a9931d40353f.exe)
+
+running 1 test
+test audit_reversed_clock_keeps_three_writes_and_checkpoint_causal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.25s
+

@@ -1,0 +1,13 @@
+   Compiling peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 26.36s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-e2aa2d6365223fa4.exe)
+
+running 5 tests
+test provider_runtime_tests::stream_redaction_codec_errors_and_future_cancel_never_flush_raw_tail ... ok
+test provider_runtime_tests::stream_redaction_replacement_codec_reaches_store_and_sse_safely ... ok
+test secrets::stream_redaction_tests::stream_redaction_all_splits_match_complete_policy ... ok
+test secrets::stream_redaction_tests::stream_redaction_long_plain_text_is_streamed_and_state_is_bounded ... ok
+test secrets::stream_redaction_tests::stream_redaction_only_clean_finish_releases_undecided_text ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 413 filtered out; finished in 0.44s
+

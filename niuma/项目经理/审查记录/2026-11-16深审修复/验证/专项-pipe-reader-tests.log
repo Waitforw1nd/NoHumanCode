@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-e2aa2d6365223fa4.exe)
+
+running 3 tests
+test command_execution::tests::output_reader_drains_beyond_limit_and_keeps_only_prefix ... ok
+test command_execution::tests::output_reader_reports_errors_after_capture_limit ... ok
+test command_execution::tests::output_reader_waits_for_real_eof_after_limit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 410 filtered out; finished in 0.06s
+

@@ -1,0 +1,16 @@
+
+running 2 tests
+test w01_w02_worktree_project_has_independent_authorization_and_original_session_root ... ok
+
+thread 'w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects' (69120) panicked at tests\worktree_http.rs:690:14:
+called `Result::unwrap()` on an `Err` value: reqwest::Error { kind: Request, url: "http://127.0.0.1:63808/api/projects/7ce50bf5-6b58-4566-91df-79646c0f0f14/worktrees", source: TimedOut }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects ... FAILED
+
+failures:
+
+failures:
+    w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.68s
+

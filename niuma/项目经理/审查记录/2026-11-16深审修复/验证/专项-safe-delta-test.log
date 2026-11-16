@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized] target(s) in 0.27s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-e2aa2d6365223fa4.exe)
+
+running 1 test
+test store::tests::audit_completion_delta_preserves_context_and_public_event_redaction ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 432 filtered out; finished in 0.09s
+

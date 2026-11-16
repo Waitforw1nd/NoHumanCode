@@ -1,0 +1,23 @@
+
+running 2 tests
+WORKTREE_TIMING key=tree-create elapsed_ms=0 phase=before_claim
+WORKTREE_TIMING key=tree-create elapsed_ms=1402 phase=Claimed/revision=1
+WORKTREE_TIMING key=tree-create elapsed_ms=6001 six_second_boundary phase=Claimed/revision=1
+WORKTREE_TIMING key=tree-create elapsed_ms=6170 response=Ok(200) phase=Succeeded/revision=2 accepted_within_6s=false
+
+thread 'w01_w02_worktree_project_has_independent_authorization_and_original_session_root' (70364) panicked at tests\worktree_http.rs:105:9:
+original six-second creation deadline exceeded (6.1701831s); late response observed for diagnosis only
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test w01_w02_worktree_project_has_independent_authorization_and_original_session_root ... FAILED
+WORKTREE_TIMING key=good elapsed_ms=0 phase=before_claim
+WORKTREE_TIMING key=good elapsed_ms=2005 phase=Claimed/revision=1
+WORKTREE_TIMING key=good elapsed_ms=5211 response=Ok(200) phase=Succeeded/revision=2 accepted_within_6s=true
+test w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects ... ok
+
+failures:
+
+failures:
+    w01_w02_worktree_project_has_independent_authorization_and_original_session_root
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.44s
+

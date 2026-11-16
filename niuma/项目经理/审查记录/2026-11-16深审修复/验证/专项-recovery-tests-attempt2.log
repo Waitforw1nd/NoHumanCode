@@ -1,0 +1,17 @@
+   Compiling peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 28.76s
+     Running unittests src\lib.rs (target\debug\deps\peachsh-e2aa2d6365223fa4.exe)
+
+running 9 tests
+test engine::audit_shutdown_tests::cancellation_survives_persistence_failure_and_waits_for_original_worker ... ok
+test engine::audit_shutdown_tests::durable_unresolved_approval_survives_untyped_worker_failure ... ok
+test engine::audit_shutdown_tests::saved_terminal_task_does_not_erase_worker_unknown ... ok
+test engine::audit_shutdown_tests::successful_worktree_worker_reply_preserves_unknown_state ... ok
+test engine::audit_shutdown_tests::timeout_retains_worker_and_late_join_can_be_observed ... ok
+test engine::workspace_phase_tests::audit_legacy_checkpoint_order_remains_readable_without_rewrite ... ok
+test engine::workspace_phase_tests::audit_legacy_same_path_checkpoint_reads_but_refuses_different_restore ... ok
+test engine::workspace_phase_tests::audit_resume_pending_survives_reopen_and_consumption_rolls_back ... ok
+test engine::workspace_phase_tests::audit_shutdown_deadline_covers_gate_and_rejects_queued_start_resume ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 423 filtered out; finished in 1.31s
+
