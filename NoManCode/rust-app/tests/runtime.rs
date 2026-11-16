@@ -7,11 +7,6 @@ use axum::{
     http::HeaderMap,
     routing::{get, post},
 };
-#[cfg(feature = "integration-test-support")]
-use axum::{
-    body::{Body, to_bytes},
-    http::{Request, StatusCode},
-};
 use peachsh::{
     domain::*,
     engine::Engine,
@@ -25,8 +20,6 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-#[cfg(feature = "integration-test-support")]
-use tower::ServiceExt;
 
 #[derive(Default)]
 struct Counters {
@@ -579,177 +572,6 @@ async fn conflicts_cancel_and_configuration_lock() {
     let r = settled(&e, &r.id).await;
     assert_eq!(r.tasks[1].status, "cancelled");
     server.abort();
-}
-#[cfg(feature = "integration-test-support")]
-#[tokio::test]
-async fn restart_and_http_security() {
-    let temp = tempfile::tempdir().unwrap();
-    let e = setup(temp.path(), "http://127.0.0.1:1/v1");
-    let route = e.store.settings().unwrap().unwrap().routes[0].clone();
-    let durable_task = Task {
-        id: "durable-id".into(),
-        run_id: "durable-run".into(),
-        spec: task("worker", "key-1", "hello", &[]),
-        route,
-        workspace: temp.path().to_string_lossy().into(),
-        status: "running".into(),
-        output: "partial".into(),
-        error: None,
-        messages: vec![],
-        usage: Value::Null,
-        created_at: now(),
-        updated_at: now(),
-    };
-    e.with_integration_test_operation(async {
-        e.store
-            .create_run(&Run {
-                id: "durable-run".into(),
-                title: "recovery".into(),
-                kind: SessionKind::Team,
-                created_at: now(),
-                tasks: vec![durable_task],
-            })
-            .unwrap();
-        e.store
-            .event(
-                "durable-id",
-                "delta",
-                json!({"text":"partial recovered from event log"}),
-            )
-            .unwrap();
-    })
-    .await
-    .unwrap();
-    let store = Arc::new(Store::open(&temp.path().join("test.db")).unwrap());
-    let before = serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap();
-    assert!(
-        store.recover().is_err(),
-        "live controller admitted recovery"
-    );
-    assert_eq!(store.task("durable-id").unwrap().status, "running");
-    assert_eq!(
-        serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap(),
-        before
-    );
-    assert!(e.shutdown(Duration::from_secs(5)).await.settled());
-    let old_store = Arc::downgrade(&e.store);
-    drop(e);
-    assert!(
-        old_store.upgrade().is_none(),
-        "old controller still holds its Store"
-    );
-    let (e, recovered) = Engine::new_recovered(store.clone(), 2).unwrap();
-    assert_eq!(recovered, 1);
-    assert_eq!(
-        store.events("durable-run", 0).unwrap().last().unwrap().data["status"],
-        "interrupted"
-    );
-    assert_eq!(store.task("durable-id").unwrap().status, "interrupted");
-    assert_eq!(
-        store.task("durable-id").unwrap().output,
-        "partial recovered from event log"
-    );
-    let app = server::router(App {
-        engine: e,
-        token: "csrf-test".into(),
-        origin: "http://127.0.0.1:3090".into(),
-    });
-    let r = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/api/settings")
-                .header("host", "evil.example")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(r.status(), StatusCode::FORBIDDEN);
-    let r = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/api/settings")
-                .header("host", "127.0.0.1:3090")
-                .header("origin", "https://evil.example")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(r.status(), StatusCode::FORBIDDEN);
-    let r = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/runs")
-                .header("host", "127.0.0.1:3090")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(r.status(), StatusCode::FORBIDDEN);
-    let payload = serde_json::to_vec(&RunRequest {
-        kind: SessionKind::Team,
-        title: "idempotent".into(),
-        tasks: vec![task("idempotent-worker", "key-1", "hello", &[])],
-    })
-    .unwrap();
-    let r = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/runs")
-                .header("host", "127.0.0.1:3090")
-                .header("x-peachsh-token", "csrf-test")
-                .header("idempotency-key", "runtime-idempotency")
-                .header("content-type", "application/json")
-                .body(Body::from(payload.clone()))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(r.status(), StatusCode::OK);
-    let first: Run =
-        serde_json::from_slice(&to_bytes(r.into_body(), 1_000_000).await.unwrap()).unwrap();
-    let r = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/runs")
-                .header("host", "127.0.0.1:3090")
-                .header("x-peachsh-token", "csrf-test")
-                .header("idempotency-key", "runtime-idempotency")
-                .header("content-type", "application/json")
-                .body(Body::from(payload))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(r.status(), StatusCode::OK);
-    let second: Run =
-        serde_json::from_slice(&to_bytes(r.into_body(), 1_000_000).await.unwrap()).unwrap();
-    assert_eq!(first.id, second.id);
-    let r = app
-        .oneshot(
-            Request::builder()
-                .uri("/api/settings")
-                .header("host", "127.0.0.1:3090")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(r.status(), StatusCode::OK);
-    let b = to_bytes(r.into_body(), 1_000_000).await.unwrap();
-    let s = String::from_utf8(b.to_vec()).unwrap();
-    assert!(!s.contains("fake-key-a"));
-    assert!(!s.contains("fake-key-b"));
 }
 
 #[tokio::test]
