@@ -27,6 +27,21 @@ use std::{
 
 const SECRET: &str = "nhc-agent-callback-sentinel";
 
+fn assert_schema18(store: &Store) {
+    let db = store.db.lock().unwrap();
+    let version: u32 = db
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .unwrap();
+    let marker: i64 = db
+        .query_row(
+            "SELECT count(*) FROM schema_migrations WHERE id='execution-owner-v18'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!((version, marker), (18, 1));
+}
+
 fn hidden_test_command() -> std::process::Command {
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
     command.arg("--test-threads=1");
@@ -366,13 +381,22 @@ async fn child_parent_decision(engine: &Engine, root: &std::path::Path, id: &str
                 engine.decide_approval(&approval.id, true, None).unwrap();
             }
             "deny" => {
-                engine
-                    .store
-                    .decide_approval(&approval.id, false, "proof-test")
-                    .unwrap();
+                crate::execution_authority::test_with_active_store_sync(&engine.store, || {
+                    engine
+                        .store
+                        .decide_approval(&approval.id, false, "proof-test")
+                })
+                .unwrap()
+                .unwrap();
             }
             "cancel" => {
-                assert_eq!(engine.store.cancel_pending_approvals(id).unwrap().len(), 1);
+                let cancelled =
+                    crate::execution_authority::test_with_active_store_sync(&engine.store, || {
+                        engine.store.cancel_pending_approvals(id)
+                    })
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(cancelled.len(), 1);
             }
             _ => panic!("invalid parent decision"),
         }
@@ -2424,7 +2448,11 @@ fn n18_cross_store_disable_blocks_new_agent_lease_preserves_old_lease() {
     let first_store = Arc::new(Store::open(&path).unwrap());
     let second = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
     let runtime = AgentRuntime::builtin().unwrap();
-    let old = runtime.acquire_persisted(&first_store).unwrap();
+    let old = crate::execution_authority::test_with_active_store_sync(&first_store, || {
+        runtime.acquire_persisted(&first_store)
+    })
+    .unwrap()
+    .unwrap();
     assert_eq!(runtime.status().unwrap().in_flight, 1);
     second
         .set_runtime_enabled(
@@ -2436,7 +2464,12 @@ fn n18_cross_store_disable_blocks_new_agent_lease_preserves_old_lease() {
             "agent-off",
         )
         .unwrap();
-    assert!(runtime.acquire_persisted(&first_store).is_err());
+    assert!(
+        crate::execution_authority::test_with_active_store_sync(&first_store, || runtime
+            .acquire_persisted(&first_store))
+        .unwrap()
+        .is_err()
+    );
     assert_eq!(runtime.status().unwrap().in_flight, 1);
     assert!(matches!(
         old.decide(StrategyInput::BeforeCompletion { tools: &[] }, &[], 0, 1),
@@ -2444,7 +2477,12 @@ fn n18_cross_store_disable_blocks_new_agent_lease_preserves_old_lease() {
     ));
     drop(old);
     assert_eq!(runtime.status().unwrap().in_flight, 0);
-    assert!(runtime.acquire_persisted(&first_store).is_err());
+    assert!(
+        crate::execution_authority::test_with_active_store_sync(&first_store, || runtime
+            .acquire_persisted(&first_store))
+        .unwrap()
+        .is_err()
+    );
 }
 #[test]
 fn n18_committed_replay_precedes_busy_during_agent_stop() {
@@ -2545,7 +2583,12 @@ fn n18_agent_admission_and_remote_disable_have_a_transaction_order() {
         if admission_first {
             let r = runtime.clone();
             let s = store.clone();
-            let admit = std::thread::spawn(move || r.acquire_persisted(&s));
+            let admit = std::thread::spawn(move || {
+                crate::execution_authority::test_with_active_store_sync(&s, || {
+                    r.acquire_persisted(&s)
+                })
+                .unwrap()
+            });
             let arrived = barrier.wait_arrived(Duration::from_secs(5));
             if !arrived {
                 barrier.release();
@@ -2569,7 +2612,12 @@ fn n18_agent_admission_and_remote_disable_have_a_transaction_order() {
             let lease = admit.join().unwrap().unwrap();
             disable.join().unwrap().unwrap();
             assert_eq!(runtime.status().unwrap().in_flight, 1);
-            assert!(runtime.acquire_persisted(&store).is_err());
+            assert!(
+                crate::execution_authority::test_with_active_store_sync(&store, || runtime
+                    .acquire_persisted(&store))
+                .unwrap()
+                .is_err()
+            );
             drop(lease);
         } else {
             let disable = std::thread::spawn(move || {
@@ -2592,7 +2640,10 @@ fn n18_agent_admission_and_remote_disable_have_a_transaction_order() {
             let s = store.clone();
             let admit = std::thread::spawn(move || {
                 started_tx.send(()).unwrap();
-                r.acquire_persisted(&s)
+                crate::execution_authority::test_with_active_store_sync(&s, || {
+                    r.acquire_persisted(&s)
+                })
+                .unwrap()
             });
             let started = started_rx.recv_timeout(Duration::from_secs(5));
             barrier.release();
@@ -3029,9 +3080,11 @@ async fn n19_cross_store_denial_without_notification_preserves_group_order() {
         })
         .await
         .unwrap();
-        other
-            .decide_approval(&pending.id, false, "cross-store")
-            .unwrap();
+        crate::execution_authority::test_with_active_store_sync(&other, || {
+            other.decide_approval(&pending.id, false, "cross-store")
+        })
+        .unwrap()
+        .unwrap();
     }
     let task = settled(&f.engine, &id).await;
     assert_eq!(task.status, "completed");
@@ -3312,7 +3365,11 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             if path.exists() {
                 let bytes = std::fs::read(path).unwrap();
                 for folder in ["proof-raw", "proof-query", "proof-recovery"] {
-                    std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                    crate::worktree_diagnostics::atomic_write(
+                        &root.join(folder).join(name),
+                        &bytes,
+                    )
+                    .unwrap();
                 }
                 assert_eq!(
                     std::fs::read(root.join("proof-raw").join(name)).unwrap(),
@@ -3324,7 +3381,8 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             }
         }
         std::fs::write(root.join("proof-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"proof-call","phase":"before_commit","cancelled":cancelled,"kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
-        let query = Store::open(&root.join("proof-query/agent.db")).unwrap();
+        let query = Store::open(&root.join("agent.db")).unwrap();
+        assert_schema18(&query);
         let persisted = query.task(&id).unwrap();
         assert!(
             !serde_json::to_string(&persisted)
@@ -3363,7 +3421,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             }
         );
         drop(query);
-        let recovery_store = Arc::new(Store::open(&root.join("proof-recovery/agent.db")).unwrap());
+        let recovery_store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
         recovery_store.recover().unwrap();
         let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
             mode: Mode::All,
@@ -3425,7 +3483,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
         drop(engine);
         drop(recovery_store);
-        let reopened = Store::open(&root.join("proof-recovery/agent.db")).unwrap();
+        let reopened = Store::open(&root.join("agent.db")).unwrap();
         reopened.recover().unwrap();
         let reopened_events = reopened.events(&done.run_id, 0).unwrap();
         let reopened_results: Vec<_> = reopened_events
@@ -3581,7 +3639,8 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         if path.exists() {
             let bytes = std::fs::read(path).unwrap();
             for folder in ["legacy-raw", "legacy-query", "legacy-recovery"] {
-                std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                crate::worktree_diagnostics::atomic_write(&root.join(folder).join(name), &bytes)
+                    .unwrap();
             }
             assert_eq!(
                 std::fs::read(root.join("legacy-raw").join(name)).unwrap(),
@@ -3593,7 +3652,8 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         }
     }
     std::fs::write(root.join("legacy-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"legacy-kill","phase":"agent_after_assistant_save","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
-    let query = Store::open(&root.join("legacy-query/agent.db")).unwrap();
+    let query = Store::open(&root.join("agent.db")).unwrap();
+    assert_schema18(&query);
     let task = query.task(&id).unwrap();
     assert!(
         !task
@@ -3611,7 +3671,7 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     );
     let original_event = serde_json::to_value(results[0]).unwrap();
     drop(query);
-    let recovery = Arc::new(Store::open(&root.join("legacy-recovery/agent.db")).unwrap());
+    let recovery = Arc::new(Store::open(&root.join("agent.db")).unwrap());
     recovery.recover().unwrap();
     let runtime = AgentRuntime::with_strategy_for_test(Arc::new(Strategy {
         mode: Mode::All,
@@ -3666,7 +3726,7 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     drop(engine);
     drop(recovery);
-    let reopened = Store::open(&root.join("legacy-recovery/agent.db")).unwrap();
+    let reopened = Store::open(&root.join("agent.db")).unwrap();
     reopened.recover().unwrap();
     assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
     let events = reopened.events(&task.run_id, 0).unwrap();
@@ -3692,6 +3752,12 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
 async fn n19_admitted_read_finishes_after_real_engine_cancellation() {
     use crate::{tool_call_application::ToolCallApplication, tool_runtime::ToolRuntime};
     let f = fixture(Mode::All, vec![json!({"content":"not used"})]).await;
+    let operation = f
+        .engine
+        .store
+        .execution_operation(tokio_util::sync::CancellationToken::new())
+        .unwrap();
+    operation.run(async {
     f.mock.hold.store(true, Ordering::SeqCst);
     let run = f.engine.start(request(2)).await.unwrap();
     let id = run.tasks[0].id.clone();
@@ -3753,6 +3819,7 @@ async fn n19_admitted_read_finishes_after_real_engine_cancellation() {
     );
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
     assert!(f.engine.store.approvals_for_task(&id).unwrap().is_empty());
+    }).await;
 }
 
 #[tokio::test]
@@ -4023,7 +4090,8 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
                 "host-denied-query",
                 "host-denied-recovery",
             ] {
-                std::fs::write(root.join(folder).join(name), &bytes).unwrap();
+                crate::worktree_diagnostics::atomic_write(&root.join(folder).join(name), &bytes)
+                    .unwrap();
             }
             assert_eq!(
                 std::fs::read(root.join("host-denied-raw").join(name)).unwrap(),
@@ -4036,7 +4104,8 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     }
     std::fs::write(root.join("host-denied-process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"task":id,"call":"host-kill","phase":"after_commit","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":files.clone()})).unwrap()).unwrap();
 
-    let query = Store::open(&root.join("host-denied-query/agent.db")).unwrap();
+    let query = Store::open(&root.join("agent.db")).unwrap();
+    assert_schema18(&query);
     let at_kill = query.task(&id).unwrap();
     assert_eq!(at_kill.status, "running");
     let (session, agent, turn, projected_status): (String, String, String, String) = query
@@ -4098,7 +4167,7 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     let original_answer: Value = (*answers[0]).clone();
     drop(query);
 
-    let recovery = Arc::new(Store::open(&root.join("host-denied-recovery/agent.db")).unwrap());
+    let recovery = Arc::new(Store::open(&root.join("agent.db")).unwrap());
     recovery.recover().unwrap();
     assert_eq!(recovery.task(&id).unwrap().status, "interrupted");
     let engine = Engine::new(recovery.clone(), 2).unwrap();
@@ -4140,7 +4209,7 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     drop(engine);
     drop(recovery);
-    let reopened = Store::open(&root.join("host-denied-recovery/agent.db")).unwrap();
+    let reopened = Store::open(&root.join("agent.db")).unwrap();
     reopened.recover().unwrap();
     assert_eq!(reopened.task(&id).unwrap().messages, done.messages);
     let events = reopened.events(&at_kill.run_id, 0).unwrap();
