@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-16",
+  "baseline_head": "30898299afa58b825e5272af799f8f084f2dc44f",
+  "product_tree": "51a9e1af007d051bdd754887f0e3cc4f0922f5f5",
+  "rust_tree": "2227e3e6956fc4368c694969f373609349a75ee8",
+  "product_changes": false,
+  "new_agents_started": false,
+  "build_or_test_rerun": false,
+  "published_evidence_files_rehashed": 47,
+  "latest_verified_test_result": {
+    "passed": 881,
+    "failed": 0,
+    "ignored": 25
+  },
+  "original_prompt": {
+    "archive": "niuma/项目经理/项目记录/历史交接/2026-11-16经理启动提示词更新前.md",
+    "sha256": "4fa60ce00e9c4f4631fee45389c39f0bbb8abc4a4b2747373d99d4dfc7c03dbb",
+    "bytes": 4371
+  },
+  "updated_prompt_sha256": "1a400588a07d81081ae91c4aa10eefaf961af4f3b1687b8eac149165b674fee9",
+  "remaining_priority": [
+    "process lifecycle and collector cancellation",
+    "unified execution authority and schema18",
+    "W3 trusted artifacts and production binding",
+    "Desktop and later product stages"
+  ]
+}
