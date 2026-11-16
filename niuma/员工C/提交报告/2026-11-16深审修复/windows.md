@@ -193,3 +193,43 @@ C 的持续排空补丁只保留各流前 65,536 字节，但继续读取真实 
 门禁更新：前节“首轮排除继承管道测试”和 exact allowlist 是当时的静态建议，已由主线程最新决定替代。主线程仍串行执行固定组合的标准非 ignored 门禁，不因未复现的假设风险禁用现有测试；ignored W2/live 继续不运行。若实际出现挂起或无法证明退出，记录现场和 unknown，不强判通过。本次 docs 提交不运行这些门禁。
 
 下一步：等待 B 提交修订候选及相应验证证据，再按 W16-X01/W16-X02 逐项只读复核。C 不新增产品写入、进程树实现或真实进程测试。
+
+## 2026-11-16 B 修订复核：W16-X01 / W16-X02 限定范围关闭
+
+结论：**APPROVED（仅本轮 W16-X01 与 W16-X02 的关闭报告传播、实例锁寿命范围）**。两项原发现的代码路径已闭合，本次复核未发现该范围内的新具体阻断。此结论结合 C 的只读静态复核和父线程提供、C 已读取的专项测试日志，不扩展为完整进程树或其他在途改动验收。
+
+### 版本绑定与整合核对
+
+- 生产修订：`e1b0f2b858fae85bb43f6f7ae31a55cd82d095ee`，`fix(shutdown): retain unknown outcomes and lock through process exit`。
+- 后续测试夹具修订：`e56173280f1f91087cd6364e0beb4e4379001226`，在创建任务时设定不可变工具范围；未改变这两项生产接线。
+- 只读核对 integration HEAD `ae6702406bf6a4065363c74b42c0a6c047ce73d9`，确认包含 e1b0f2b8。其 `main.rs` blob 与该候选一致；`engine.rs` 相对该候选仅有上述测试夹具调整，生产修订保留。核对时 integration 产品工作区无未提交修改。
+- B recovery 树已有另外的未提交修改，本次读取指定 Git 提交，不将这些后续草稿纳入通过范围。以下源码行号均绑定 e1b0f2b8，路径相对受审仓库根。
+
+### W16-X01：unknown 与终态保存结果独立传播
+
+`NoManCode/rust-app/src/engine.rs:1897` 的真实 launch 调用共用 `spawn_task_worker`；1928–1950 行在保存终态前检查两类证据：错误链里的 `CommandOutcomeUnknown` / `ApprovalError::UnknownResult`，以及持久化审批的 `Claimed` / `Unknown`。任一成立即置独立 `external_outcome_unknown`；查询审批本身失败则置 `background_failed`，不会因查询失败而误报 settled。1971 行终态保存成功不清除这些标记。普通业务错误且没有未决审批时不会仅因失败文本而置外部 unknown。
+
+持久化取消不会擦除该证据：`NoManCode/rust-app/src/store.rs:2127` 及 2139 行只取消 `NotStarted` 审批，保留 `Claimed` / `Unknown`。工具层 `NoManCode/rust-app/src/tool_call_application.rs:441` 的既有包装错误仍被新的类型检查识别。
+
+Worktree 的真实入口 `engine.rs:1223` 改用 `spawn_worktree_worker`；2462–2471 行在发送成功 receipt 前检查 `Unknown` / `Claimed` 并置同一独立标记，不再只靠 `Result::is_err()`。返回 Err 仍沿原 worker failure 汇总。`engine.rs:800` 的 settled 条件明确要求该标记为 false；2540 和 2558 行在两类 shutdown 返回路径均包含该字段。检索确认标记仅初始化为 false，运行期没有清除路径。
+
+限定关闭：本轮发现的“执行/清理 unknown 被终态持久化成功或 Ok(receipt) 覆盖，进而 falsely settled”已修复。标记为 unknown 不是声称资源仍活，也不是自动清理或重试许可。
+
+### W16-X02：error/unknown 退出持有原实例锁
+
+`NoManCode/rust-app/src/main.rs:46` 在 runtime 之前声明外层锁 owner；123 行由 run 把成功加锁的原 File 交给该 owner。53 行通过 `teardown_runtime` 持有原锁执行 runtime teardown，68–69 行在等待结束或超时后返回同一锁句柄。
+
+若 run 返回 Err（包括 195–202 行关闭 unknown，以及后续 HTTP/signal 错误），54–58 行在 main 的最终退出路径使用 `mem::forget(instance_lock)`，保留文件句柄供进程终止时由 OS 释放；因此 runtime 超时后以及 Rust 输出返回错误期间也不会提前释放该锁。成功路径在 runtime teardown 后正常释放。
+
+限定关闭：原发现的“run 返回时先放锁、随后旧 runtime 仍工作”的窗口已关闭，error/unknown 分支的持有范围延伸至进程退出。此设计只在 main 最终退出分支保留句柄，未推广为长期运行服务的泄漏式资源管理。
+
+### 父线程实际验证与本人检查边界
+
+父线程明确反馈相关 check 通过；C 未自行运行该 check。C 已只读核实父线程生成的两个日志末尾：
+
+- `../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/recovery-tests-attempt2.log`：lib `audit_` 组合 **9 passed、0 failed**。其中覆盖共用生产 worker wrapper 下 typed unknown 与终态保存成功、普通错误正控、持久化未决审批、Unknown worktree receipt，以及原关闭等待/取消场景；9 项总数还包含本轮其他审计测试，不能将全部数量归为本两项发现。
+- `../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/host-lock-tests.log`：main 锁测试 **2 passed、0 failed**，覆盖 runtime drain 期间持锁及 teardown 超时后原锁仍由 owner 保留。测试使用有界合成 blocking worker 和实际文件锁，没有创建产品子进程；进程最终退出分支的 mem::forget 所有权由静态路径复核确认。
+
+上述 Cargo 编译与测试均由父线程执行，本人仅阅读日志、Git 提交/差异和源码，没有重复运行 Cargo、产品或真实进程测试。先前 E 盘 workspace **7/7** 仍是主线程实测反馈，首次 **2 通过、3 失败**记录与日志继续保留。
+
+本轮剩余边界不扩展：本次通过不证明完整后代进程树结束，不改变 collector 取消接线及底层 I/O 的既有边界，不接入旧未验收 B23，不改判历史 unknown。后续新增代码或不同版本需另绑定证据；本次只追加报告并作普通 docs 提交。
