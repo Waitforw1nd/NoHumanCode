@@ -9,6 +9,16 @@ use std::{
 };
 
 struct OwnedChild(Child);
+fn hidden_test_command() -> Command {
+    let mut command = Command::new(std::env::current_exe().unwrap());
+    command.arg("--test-threads=1");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    command
+}
 impl Drop for OwnedChild {
     fn drop(&mut self) {
         if !matches!(self.0.try_wait(), Ok(Some(_))) {
@@ -30,7 +40,7 @@ fn wait(child: &mut Child) -> std::process::ExitStatus {
 fn spawn(root: &Path, phase: &str, suffix: &str) -> OwnedChild {
     let stdout = std::fs::File::create(root.join(format!("{suffix}.stdout.log"))).unwrap();
     let stderr = std::fs::File::create(root.join(format!("{suffix}.stderr.log"))).unwrap();
-    let child = Command::new(std::env::current_exe().unwrap())
+    let child = hidden_test_command()
         .args([
             "--exact",
             "runtime_management_crash_tests::migration_kill_and_two_fresh_process_reopens",
@@ -109,7 +119,9 @@ fn migration_kill_and_two_fresh_process_reopens() {
                 "runtime17_after_commit" => "runtime17_after_commit",
                 _ => panic!("unexpected phase"),
             };
-            let db = Connection::open(&path).unwrap();
+            // The pre-migration connection must use the same canonical spelling
+            // as Domain::connection without running Store's migration early.
+            let db = Connection::open(path.canonicalize().unwrap()).unwrap();
             let db_key: String = db
                 .query_row(
                     "SELECT file FROM pragma_database_list WHERE name='main'",
@@ -119,8 +131,8 @@ fn migration_kill_and_two_fresh_process_reopens() {
                 .unwrap();
             drop(db);
             crash_probe::arm(db_key, phase, root.join("phase.signal"));
-            let _ = Store::open(&path);
-            panic!("migration probe did not block");
+            let result = Store::open(&path).map(|_| ());
+            panic!("migration probe did not block: {result:?}");
         }
         assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
         let db = Connection::open(&path).unwrap();
@@ -245,7 +257,7 @@ fn intent_kill_and_two_fresh_process_reopens() {
                 "runtime_intent_after_commit" => "runtime_intent_after_commit",
                 _ => panic!("unexpected phase"),
             };
-            let db = Connection::open(&path).unwrap();
+            let db = engine.store.db.lock().unwrap();
             let db_key: String = db
                 .query_row(
                     "SELECT file FROM pragma_database_list WHERE name='main'",
@@ -255,7 +267,7 @@ fn intent_kill_and_two_fresh_process_reopens() {
                 .unwrap();
             drop(db);
             crash_probe::arm(db_key, phase, root.join("intent.signal"));
-            let _ = engine.set_runtime_enabled(
+            let result = engine.set_runtime_enabled(
                 id,
                 SetPluginEnabled {
                     enabled: false,
@@ -263,7 +275,7 @@ fn intent_kill_and_two_fresh_process_reopens() {
                 },
                 "intent-key",
             );
-            panic!("intent probe did not block");
+            panic!("intent probe did not block: {result:?}");
         }
         let committed = std::env::var("NHC_INTENT18_COMMITTED").unwrap() == "1";
         let current = serde_json::to_value(engine.runtime_component_status(id).unwrap()).unwrap();
@@ -309,7 +321,7 @@ fn intent_kill_and_two_fresh_process_reopens() {
                     std::fs::File::create(root.join(format!("{suffix}.stdout.log"))).unwrap();
                 let stderr =
                     std::fs::File::create(root.join(format!("{suffix}.stderr.log"))).unwrap();
-                let child = Command::new(std::env::current_exe().unwrap())
+                let child = hidden_test_command()
                     .args([
                         "--exact",
                         "runtime_management_crash_tests::intent_kill_and_two_fresh_process_reopens",

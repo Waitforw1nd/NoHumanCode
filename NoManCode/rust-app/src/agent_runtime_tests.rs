@@ -27,6 +27,17 @@ use std::{
 
 const SECRET: &str = "nhc-agent-callback-sentinel";
 
+fn hidden_test_command() -> std::process::Command {
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command.arg("--test-threads=1");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    command
+}
+
 fn bounded_child(test_name: &str, env_name: &str) -> std::process::Output {
     bounded_child_with_value(test_name, env_name, "1")
 }
@@ -35,8 +46,8 @@ fn bounded_child_with_value(
     env_name: &str,
     env_value: &str,
 ) -> std::process::Output {
-    use std::process::{Command, Stdio};
-    let mut child = Command::new(std::env::current_exe().unwrap())
+    use std::process::Stdio;
+    let mut child = hidden_test_command()
         .args(["--exact", test_name, "--nocapture"])
         .env(env_name, env_value)
         .stdout(Stdio::piped())
@@ -291,11 +302,101 @@ fn group(calls: Vec<Value>) -> Value {
 }
 struct Fixture {
     dir: tempfile::TempDir,
-    engine: Arc<Engine>,
+    engine: FixtureEngine,
     project: ProjectId,
     mock: Mock,
     trace: Arc<Trace>,
     server: tokio::task::JoinHandle<()>,
+}
+struct FixtureEngine(Option<Arc<Engine>>);
+impl std::ops::Deref for FixtureEngine {
+    type Target = Arc<Engine>;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("parent controller already released")
+    }
+}
+impl Fixture {
+    async fn release_parent_controller(&mut self) {
+        let engine = self.engine.0.take().expect("parent controller exists");
+        let report = engine.shutdown(Duration::from_secs(5)).await;
+        assert!(report.settled(), "parent fixture not settled: {report:?}");
+        let store = Arc::downgrade(&engine.store);
+        drop(engine);
+        assert!(
+            store.upgrade().is_none(),
+            "parent Store still retains domain"
+        );
+    }
+}
+
+// The child owns the only controller. Parent decisions cross an explicit file
+// barrier instead of opening a second writable Store while the child is live.
+async fn child_parent_decision(engine: &Engine, root: &std::path::Path, id: &str) {
+    tokio::time::timeout(Duration::from_secs(15), async {
+        let approval = loop {
+            if let Some(approval) = engine
+                .store
+                .pending_approvals_for_task(id)
+                .unwrap()
+                .into_iter()
+                .next()
+            {
+                break approval;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        };
+        crate::worktree_diagnostics::atomic_write(
+            &root.join("approval-ready.json"),
+            &serde_json::to_vec(
+                &json!({"approval":approval,"task":engine.store.task(id).unwrap()}),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let decision = loop {
+            match std::fs::read_to_string(root.join("parent-decision")) {
+                Ok(value) => break value,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => panic!("read parent decision: {error}"),
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        };
+        match decision.as_str() {
+            "approve" => {
+                engine.decide_approval(&approval.id, true, None).unwrap();
+            }
+            "deny" => {
+                engine
+                    .store
+                    .decide_approval(&approval.id, false, "proof-test")
+                    .unwrap();
+            }
+            "cancel" => {
+                assert_eq!(engine.store.cancel_pending_approvals(id).unwrap().len(), 1);
+            }
+            _ => panic!("invalid parent decision"),
+        }
+    })
+    .await
+    .expect("child approval/decision barrier timed out");
+}
+async fn parent_approval(child: &mut OwnedChild, root: &std::path::Path) -> Value {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            assert!(
+                child.try_wait().unwrap().is_none(),
+                "child exited before approval publication"
+            );
+            match std::fs::read(root.join("approval-ready.json")) {
+                Ok(bytes) => return serde_json::from_slice(&bytes).unwrap(),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => panic!("read child approval: {error}"),
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("parent approval observation timed out")
 }
 struct FixtureCodec {
     messages: Arc<Mutex<VecDeque<Value>>>,
@@ -465,7 +566,7 @@ async fn fixture_with_runtimes(
         .unwrap();
     Fixture {
         dir,
-        engine,
+        engine: FixtureEngine(Some(engine)),
         project: project.id,
         mock,
         trace,
@@ -1223,7 +1324,7 @@ async fn a04_present_non_array_tool_calls_fails_after_settlement_without_finish(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
     if let Ok(root) = std::env::var("NHC_A17_CHILD_ROOT") {
         let root = std::path::PathBuf::from(root);
         let phase = match std::env::var("NHC_A17_PHASE").unwrap().as_str() {
@@ -1250,6 +1351,9 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
         let task_id = run.tasks[0].id.clone();
         crate::engine::crash_probe::arm(task_id.clone(), phase, root.join("crash-signal"));
         crate::worktree_diagnostics::atomic_write(&root.join("armed"), task_id.as_bytes()).unwrap();
+        if phase == "write_pre_fs" {
+            child_parent_decision(&engine, &root, &task_id).await;
+        }
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -1325,13 +1429,14 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
         };
         let mut f = fixture(Mode::All, vec![group(calls), json!({"content":"done"})]).await;
         f.dir.disable_cleanup(true);
+        f.release_parent_controller().await;
         let root = f.dir.path();
         eprintln!(
             "a10-fixture {}",
             json!({"phase":phase,"directory":root.to_string_lossy()})
         );
         f.mock.hold.store(true, Ordering::SeqCst);
-        let mut child = OwnedChild(Command::new(std::env::current_exe().unwrap())
+        let mut child = OwnedChild(hidden_test_command()
             .args([
                 "--exact",
                 "agent_runtime_tests::a10_real_kill_recover_resume_never_replays_prior_tool_group",
@@ -1385,7 +1490,7 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
         preserve_a10(root, &format!("{phase}-killed"));
         let mut previous = None;
         for round in 1..=2 {
-            let mut recovery=OwnedChild(Command::new(std::env::current_exe().unwrap()).args(["--exact","agent_runtime_tests::a10_real_kill_recover_resume_never_replays_prior_tool_group","--nocapture"]).env("NHC_A17_RECOVER_ROOT",root).env("NHC_A17_RECOVER_TASK",&task_id).env("NHC_A17_RECOVER_RUN",round.to_string()).stdout(Stdio::from(std::fs::File::create(root.join(format!("recovery-{round}.stdout.log"))).unwrap())).stderr(Stdio::from(std::fs::File::create(root.join(format!("recovery-{round}.stderr.log"))).unwrap())).spawn().unwrap());
+            let mut recovery=OwnedChild(hidden_test_command().args(["--exact","agent_runtime_tests::a10_real_kill_recover_resume_never_replays_prior_tool_group","--nocapture"]).env("NHC_A17_RECOVER_ROOT",root).env("NHC_A17_RECOVER_TASK",&task_id).env("NHC_A17_RECOVER_RUN",round.to_string()).stdout(Stdio::from(std::fs::File::create(root.join(format!("recovery-{round}.stdout.log"))).unwrap())).stderr(Stdio::from(std::fs::File::create(root.join(format!("recovery-{round}.stderr.log"))).unwrap())).spawn().unwrap());
             let recovery_pid = recovery.id();
             let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
             loop {
@@ -1983,7 +2088,7 @@ fn a07_runtime_final_drop_and_failed_binding_cannot_escape_guard() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() {
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
     let mut f = fixture(
         Mode::All,
         vec![group(vec![call(
@@ -1995,6 +2100,7 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     )
     .await;
     f.dir.disable_cleanup(true);
+    f.release_parent_controller().await;
     let root = f.dir.path();
     eprintln!(
         "a10-fixture {}",
@@ -2002,7 +2108,7 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     );
     f.mock.hold.store(true, Ordering::SeqCst);
     let mut child = OwnedChild(
-        Command::new(std::env::current_exe().unwrap())
+        hidden_test_command()
             .args([
                 "--exact",
                 "agent_runtime_tests::a10_real_kill_recover_resume_never_replays_prior_tool_group",
@@ -2036,28 +2142,9 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     };
     f.mock.hold.store(false, Ordering::SeqCst);
     f.mock.release.notify_one();
-    let approval = loop {
-        if let Some(a) = f
-            .engine
-            .store
-            .pending_approvals_for_task(&task_id)
-            .unwrap()
-            .into_iter()
-            .next()
-        {
-            break a;
-        }
-        if let Some(s) = child.try_wait().unwrap() {
-            panic!("unknown child exited before approval: {s}");
-        }
-        if tokio::time::Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("approval timeout");
-        }
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    };
-    f.engine.decide_approval(&approval.id, true, None).unwrap();
+    let publication = parent_approval(&mut child, root).await;
+    assert_eq!(publication["approval"]["task_id"], task_id);
+    crate::worktree_diagnostics::atomic_write(&root.join("parent-decision"), b"approve").unwrap();
     loop {
         if root.join("crash-signal").exists() {
             break;
@@ -2083,7 +2170,7 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
     preserve_a10(root, "write_pre_fs-killed");
     for round in 1..=2 {
         let label = format!("unknown-{round}");
-        let mut recovery = OwnedChild(Command::new(std::env::current_exe().unwrap())
+        let mut recovery = OwnedChild(hidden_test_command()
             .args([
                 "--exact",
                 "agent_runtime_tests::a10_real_kill_recover_resume_never_replays_prior_tool_group",
@@ -2437,7 +2524,8 @@ fn n18_agent_admission_and_remote_disable_have_a_transaction_order() {
         let path = dir.path().join("agent-runtime.db");
         let store = Arc::new(Store::open(&path).unwrap());
         let other = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-        let db = rusqlite::Connection::open(&path).unwrap();
+        // Match the canonical path used by production admission/intent hooks.
+        let db = store.db.lock().unwrap();
         let key: String = db
             .query_row(
                 "SELECT file FROM pragma_database_list WHERE name='main'",
@@ -3092,7 +3180,7 @@ async fn n19_legacy_read_event_is_reconciled_on_real_resume_then_new_turn() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn n19_redacted_decision_process_kill_reconciles_once() {
     use sha2::{Digest, Sha256};
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
     if let Ok(root) = std::env::var("NHC_N19_PROOF_CHILD") {
         let root = std::path::PathBuf::from(root);
         let store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
@@ -3121,6 +3209,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             root.join("proof-signal"),
         );
         crate::worktree_diagnostics::atomic_write(&root.join("armed"), task.id.as_bytes()).unwrap();
+        child_parent_decision(&engine, &root, &task.id).await;
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
@@ -3141,10 +3230,11 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         )
         .await;
         f.dir.disable_cleanup(true);
+        f.release_parent_controller().await;
         let root = f.dir.path();
         f.mock.hold.store(true, Ordering::SeqCst);
         let mut child = OwnedChild(
-            Command::new(std::env::current_exe().unwrap())
+            hidden_test_command()
                 .args([
                     "--exact",
                     "agent_runtime_tests::n19_redacted_decision_process_kill_reconciles_once",
@@ -3180,39 +3270,20 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             .unwrap();
         f.mock.hold.store(false, Ordering::SeqCst);
         f.mock.release.notify_one();
-        let approval = tokio::time::timeout(Duration::from_secs(10), async {
-            loop {
-                if let Some(a) = f
-                    .engine
-                    .store
-                    .pending_approvals_for_task(&id)
-                    .unwrap()
-                    .into_iter()
-                    .next()
-                {
-                    break a;
-                }
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .unwrap();
+        let publication = parent_approval(&mut child, root).await;
+        let approval: crate::approval::ApprovalRecord =
+            serde_json::from_value(publication["approval"].clone()).unwrap();
+        assert_eq!(approval.task_id, id);
         assert!(
-            !serde_json::to_string(&f.engine.store.task(&id).unwrap())
+            !serde_json::to_string(&publication["task"])
                 .unwrap()
                 .contains("sk-abc")
         );
-        if cancelled {
-            assert_eq!(
-                f.engine.store.cancel_pending_approvals(&id).unwrap().len(),
-                1
-            );
-        } else {
-            f.engine
-                .store
-                .decide_approval(&approval.id, false, "proof-test")
-                .unwrap();
-        }
+        crate::worktree_diagnostics::atomic_write(
+            &root.join("parent-decision"),
+            if cancelled { b"cancel" } else { b"deny" },
+        )
+        .unwrap();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         while !root.join("proof-signal").is_file() {
             if let Some(status) = child.try_wait().unwrap() {
@@ -3351,6 +3422,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             "completed"
         );
         assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+        assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
         drop(engine);
         drop(recovery_store);
         let reopened = Store::open(&root.join("proof-recovery/agent.db")).unwrap();
@@ -3402,7 +3474,7 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     use sha2::{Digest, Sha256};
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
     if let Ok(root) = std::env::var("NHC_N19_LEGACY_CHILD") {
         let root = std::path::PathBuf::from(root);
         let store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
@@ -3443,10 +3515,11 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
     )
     .await;
     f.dir.disable_cleanup(true);
+    f.release_parent_controller().await;
     let root = f.dir.path();
     f.mock.hold.store(true, Ordering::SeqCst);
     let mut child = OwnedChild(
-        Command::new(std::env::current_exe().unwrap())
+        hidden_test_command()
             .args([
                 "--exact",
                 "agent_runtime_tests::n19_legacy_read_event_child_kill_then_reconcile_and_new_turn",
@@ -3590,6 +3663,7 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         "completed"
     );
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     drop(engine);
     drop(recovery);
     let reopened = Store::open(&root.join("legacy-recovery/agent.db")).unwrap();
@@ -3835,7 +3909,7 @@ async fn n19_unknown_result_commit_failure_resumes_by_rechecking_host_policy() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     use sha2::{Digest, Sha256};
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
     if let Ok(root) = std::env::var("NHC_N19_HOST_DENIED_CHILD") {
         let root = std::path::PathBuf::from(root);
         let store = Arc::new(Store::open(&root.join("agent.db")).unwrap());
@@ -3883,9 +3957,10 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
     )
     .await;
     f.dir.disable_cleanup(true);
+    f.release_parent_controller().await;
     let root = f.dir.path();
     f.mock.hold.store(true, Ordering::SeqCst);
-    let mut child = OwnedChild(Command::new(std::env::current_exe().unwrap())
+    let mut child = OwnedChild(hidden_test_command()
         .args(["--exact", "agent_runtime_tests::n19_builtin_host_denied_after_commit_kill_recover_and_new_turn", "--nocapture"])
         .env("NHC_N19_HOST_DENIED_CHILD", root)
         .stdout(Stdio::from(std::fs::File::create(root.join("host-denied-child.stdout.log")).unwrap()))
@@ -4062,6 +4137,7 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
         "completed"
     );
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 3);
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     drop(engine);
     drop(recovery);
     let reopened = Store::open(&root.join("host-denied-recovery/agent.db")).unwrap();
