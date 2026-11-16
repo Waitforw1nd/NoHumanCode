@@ -37,3 +37,15 @@ A发现旧组件Known通知早于watchdog/holder退出，容量1时下一顺序G
 顺带核对94305558的shutdown汇总使用域in_flight/unknown与既有background状态组合；未将Epoch/SQL成功或协作者future Drop当进程完成证明。本轮不扩展schema18/全入口fence审查，也不把静态闭合称完整U通过。
 
 经理已说明94305558与A25清单/C65d32c36进入新固定集成定向窗口，A没有启动或重复任何重型检查。本复核无新增返工请求；后续若动态失败，以经理固定日志驱动最小修复。
+
+## shell cwd 固定 bc291abe 追加复核
+
+受经理后续指令，只读复核 `bc291abe04afc2bc4c5156b4a09b373ea2547690` 及其父提交差异；不改产品、不运行Cargo或真实测试。结论：**本次shell cwd差异未见静态阻断，实际修复效果待经理full-1。**
+
+`command_execution::execute` 仍先canonicalize任务workspace；绝对PATH条目中的可信pwsh解析、workspace内exe排除仍对原canonical root执行。新增 `shell_cwd` 仅转换传给ProcessSpec的cwd拼写：接受Disk/VerbatimDisk前缀及RootDir，逐个保留Normal OsStr组件重建本地drive绝对路径，再要求新路径canonicalize等于原root。转换/核对失败发生在run_process取得generation并submit之前，不会把已启动进程误归未启动。没有拼接/改写命令文本，也没有更改输出JSON、取消链、Supervisor或数据域owner。
+
+拒绝UNC/设备路径的范围与既有 `workspace_identity::validate_path` 支持的本地Disk/VerbatimDisk根相符；canonical二次核对避免普通Win32拼写落到不同路径。该比较不是新增的原目录handle pin或全文件系统竞态保证，不能将它扩称为沙箱。长路径、特殊名称及非Windows行为没有在本轮静审中执行验证，转换失败按启动前普通错误保留。
+
+新增 `shell_pwd_join_path_preserves_dotnet_paths_with_spaces` 使用带空格目录，沿测试包装创建真实Store/Engine operation，实际命令保留 `$PWD`、`Join-Path` 及.NET写文件，断言exit0、stderr为空、PWD无provider/verbatim前缀、canonical仍为原根且文件内容正确；在解包结果前仍用原observer检查退出。删除的仅是无人调用的 `Probe::capture_process` 包装，`ProcessObservation::capture` 与 `s06_original_handle_rejects_live_and_query_failure_accepts_exit` 的原handle正反例仍保留，supervised observer仍核pid/creation。
+
+同提交的 `execution_authority` 测试增量把Git脚本字符串改为raw literal，保留PowerShell引号和换行转义；`ReaderRelease` 在错误返回或展开时也只打开故障reader的测试释放门，原组件继续负责真实排空、join与容量释放，不把释放请求当已收束。A按固定差异执行diff-check通过并已向B同步。经理已将本提交与C69226513合入full-1，后续full与组件25例窗口串行归经理；旧23/23不能覆盖此候选。
