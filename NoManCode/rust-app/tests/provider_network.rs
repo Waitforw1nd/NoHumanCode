@@ -179,6 +179,112 @@ fn not_sent(error: NetworkError, kind: NetworkErrorKind) {
 }
 
 #[tokio::test]
+async fn dropping_models_future_after_partial_body_seals_real_claim() {
+    use std::time::Duration;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let (sent_tx, sent_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        for attempt in 0..2 {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            loop {
+                let mut bytes = [0; 2048];
+                let count = socket.read(&mut bytes).await.unwrap();
+                assert_ne!(count, 0, "request closed before headers");
+                request.extend_from_slice(&bytes[..count]);
+                if request.windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            if attempt == 0 {
+                let body = b"{\"data\":[{\"id\":\"m\"}]}";
+                socket
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            body.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+                socket.write_all(body).await.unwrap();
+            } else {
+                socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n{\"data\":[").await.unwrap();
+                sent_tx.send(()).unwrap();
+                let _ = release_rx.await;
+                break;
+            }
+        }
+    });
+    let dir = tempfile::tempdir_in("target").unwrap();
+    let engine = engine(dir.path(), &base, "fixture-key").await;
+    authorize(
+        &engine,
+        subject(&engine),
+        vec![NetworkPurpose::Models],
+        "body-drop",
+    )
+    .await;
+    let positive = engine.route_models("route").await.unwrap();
+    assert_eq!(positive.calls.len(), 1);
+    assert_eq!(positive.calls[0].state, CallState::Finished);
+    let running = {
+        let engine = engine.clone();
+        tokio::spawn(async move { engine.route_models("route").await })
+    };
+    tokio::time::timeout(Duration::from_secs(10), sent_rx)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        !running.is_finished(),
+        "partial response body must still be outstanding"
+    );
+    let db = rusqlite::Connection::open(dir.path().join("test.db")).unwrap();
+    let claimed: String = db
+        .query_row(
+            "SELECT id FROM network_calls WHERE state='claimed'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        engine.network_call(&claimed).unwrap().state,
+        CallState::Claimed
+    );
+    assert!(engine.store.execution_admission_status().unwrap().1 > 0);
+    assert!(Engine::new(Arc::new(engine.store.open_shared().unwrap()), 1).is_err());
+    running.abort();
+    assert!(running.await.unwrap_err().is_cancelled());
+    let (open, _, unknown) = engine.store.execution_admission_status().unwrap();
+    assert!(!open && unknown > 0, "abandoned body must seal the domain");
+    assert_eq!(
+        engine.network_call(&claimed).unwrap().state,
+        CallState::Claimed
+    );
+    assert!(engine.route_models("route").await.is_err());
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
+    let report = engine.shutdown(Duration::from_secs(5)).await;
+    assert!(
+        !report.settled(),
+        "unknown external outcome cannot be reported settled"
+    );
+    let _ = release_tx.send(());
+    tokio::time::timeout(Duration::from_secs(5), server)
+        .await
+        .unwrap()
+        .unwrap();
+}
+
+#[tokio::test]
 async fn management_requires_whole_check_scope_and_persists_real_calls() {
     let endpoint = Endpoint::start(None).await;
     let dir = tempfile::tempdir_in("target").unwrap();

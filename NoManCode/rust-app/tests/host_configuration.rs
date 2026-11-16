@@ -339,7 +339,7 @@ async fn real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved
     drop(store);
     // A controlled, nonempty schema15 fixture, not a claim about an old binary.
     schema_fixture::restore_two_plugin_schema(&db);
-    db.execute_batch("DROP TABLE host_config_requests; DROP TABLE host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; PRAGMA user_version=15").unwrap();
+    db.execute_batch("DROP TABLE host_config_requests; DROP TABLE host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=15").unwrap();
     let legacy = rows(&db);
     for _ in 0..2 {
         let reopened = Store::open(&dir.path().join("host.db")).unwrap();
@@ -348,9 +348,11 @@ async fn real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved
         let mut migrated = rows(&db);
         migrated.remove("host_config_state");
         migrated.remove("host_config_requests");
+        migrated.remove("execution_owner");
         migrated.get_mut("schema_migrations").unwrap().retain(|r| {
             r[1] != Value::Text("host-route-configuration-v1".into())
                 && r[1] != Value::Text("builtin-runtime-management-v1".into())
+                && r[1] != Value::Text("execution-owner-v18".into())
         });
         migrated.get_mut("plugin_desired").unwrap().retain(|r| {
             r[1] == Value::Text("builtin.files".into())

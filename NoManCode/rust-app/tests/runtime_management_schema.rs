@@ -13,7 +13,7 @@ fn historical16(path: &Path) {
     drop(Store::open(path).unwrap());
     let db = Connection::open(path).unwrap();
     schema_fixture::restore_two_plugin_schema(&db);
-    db.execute_batch("PRAGMA user_version=16;
+    db.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=16;
         UPDATE plugin_desired SET rowid=31,enabled=0,revision=7,updated_at=-12 WHERE plugin_id='builtin.files';
         UPDATE plugin_desired SET rowid=42,enabled=1,revision=3,updated_at=14 WHERE plugin_id='builtin.shell';
         INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,6,7,-12),(72,'old-shell','builtin.shell',1,2,3,14);
@@ -46,7 +46,7 @@ fn migration_keeps_old_rows_and_receipts_and_opaque_secret() {
     );
     let secrets = rows(&db, "SELECT rowid,* FROM secrets ORDER BY rowid");
     for _ in 0..2 {
-        assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
+        assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 18);
         assert_eq!(
             rows(
                 &db,
@@ -203,7 +203,7 @@ fn migration_failure_at_marker_is_atomic() {
     );
     db.execute_batch("DROP TRIGGER fail_runtime_marker")
         .unwrap();
-    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
+    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 18);
     assert_eq!(
         rows(
             &db,
@@ -254,6 +254,7 @@ fn historical_versions_12_through_16_upgrade_to_17() {
                 .unwrap();
             db.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM saved_desired; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM saved_requests; DROP TABLE temp.saved_desired; DROP TABLE temp.saved_requests; DELETE FROM schema_migrations WHERE id='builtin-shell-management-v1'; COMMIT;").unwrap();
         }
+        db.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; ").unwrap();
         db.pragma_update(None, "user_version", version).unwrap();
         drop(db);
         for _ in 0..2 {
@@ -399,7 +400,7 @@ fn maximum_historical_revision_is_preserved() {
         [i64::MAX],
     )
     .unwrap();
-    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
+    assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 18);
     assert_eq!(
         db.query_row(
             "SELECT revision FROM plugin_desired WHERE plugin_id='builtin.files'",

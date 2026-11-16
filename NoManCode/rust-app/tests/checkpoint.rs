@@ -21,6 +21,58 @@ use std::{
 type Script = Arc<Mutex<VecDeque<Value>>>;
 
 #[tokio::test]
+async fn shutdown_rejects_new_checkpoint_without_changing_records_or_files() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "initial").unwrap();
+    let (base, server) = scripted_server(vec![
+        write_delta("u18-first", "src/a.txt", "first"),
+        json!({"content":"done"}),
+        write_delta("u18-second", "src/a.txt", "second"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let first = write_once(&engine).await;
+    let checkpoint = engine
+        .create_checkpoint(&first, "u18-positive")
+        .await
+        .unwrap()
+        .checkpoint;
+    let second = write_once(&engine).await;
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    let before: i64 = db
+        .query_row("SELECT count(*) FROM checkpoints", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(before, 1);
+    let file_before = std::fs::read(temp.path().join("src/a.txt")).unwrap();
+    assert_eq!(file_before, b"second");
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+    assert!(
+        engine
+            .create_checkpoint(&second, "u18-closed")
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM checkpoints", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        before
+    );
+    assert_eq!(
+        engine.checkpoint(&checkpoint.checkpoint_id).unwrap(),
+        checkpoint
+    );
+    assert_eq!(
+        std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+        file_before
+    );
+    server.abort();
+    let _ = server.await;
+}
+
+#[tokio::test]
 async fn audit_reversed_clock_keeps_three_writes_and_checkpoint_causal() {
     use sha2::Digest;
     let temp = tempfile::tempdir().unwrap();
@@ -735,10 +787,11 @@ fn k05_schema_6_7_8_migration_preserves_rows_and_rejects_fake_constraints() {
         if version < 7 {
             db.execute_batch("DROP TABLE approvals; DELETE FROM schema_migrations WHERE id='tool-call-approval-repository';").unwrap();
         }
+        db.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; ").unwrap();
         db.pragma_update(None, "user_version", version).unwrap();
         drop(db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 17);
+        assert_eq!(store.schema_version().unwrap(), 18);
         drop(store);
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
@@ -829,7 +882,7 @@ fn expected_after_worktree_migration(
 }
 
 fn all_schema10_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
-    let mut q=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_migrations','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys','plugin_desired','plugin_management_requests') ORDER BY name").unwrap();
+    let mut q=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('execution_owner','schema_migrations','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys','plugin_desired','plugin_management_requests') ORDER BY name").unwrap();
     let names = q
         .query_map([], |r| r.get::<_, String>(0))
         .unwrap()
@@ -854,7 +907,7 @@ fn all_schema10_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::V
 }
 
 fn business_rows(db: &Connection) -> Vec<(String, Vec<Vec<rusqlite::types::Value>>)> {
-    let mut names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('checkpoints','schema_migrations','sqlite_sequence','network_subjects','network_authorizations','network_confirmations','task_network_bindings','network_calls','command_network_ack','network_events','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys','plugin_desired','plugin_management_requests') ORDER BY name").unwrap();
+    let mut names=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('execution_owner','checkpoints','schema_migrations','sqlite_sequence','network_subjects','network_authorizations','network_confirmations','task_network_bindings','network_calls','command_network_ack','network_events','project_configs','project_root_bindings','project_selection','task_project_bindings','project_registration_keys','plugin_desired','plugin_management_requests') ORDER BY name").unwrap();
     names
         .query_map([], |r| r.get::<_, String>(0))
         .unwrap()
@@ -893,7 +946,7 @@ async fn k05_real_schema8_migration_preserves_every_business_value_and_ciphertex
     let db = Connection::open(&path).unwrap();
     network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
-    db.execute_batch("DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=8;").unwrap();
+    db.execute_batch("DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=8;").unwrap();
     let old_rows = business_rows(&db);
     let before_blob: Vec<u8> = db
         .query_row("SELECT before_blob FROM workspace_changes", [], |r| {
@@ -1124,6 +1177,7 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
     let db = Connection::open(&path).unwrap();
     network_fixture::drop_network_schema(&db);
     db.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
+    db.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; ").unwrap();
     db.pragma_update(None, "user_version", 9).unwrap();
     let before = business_rows(&db);
     let checkpoints: Vec<Vec<rusqlite::types::Value>> = {
@@ -1137,7 +1191,7 @@ async fn schema9_to10_preserves_real_checkpoint_v2_ciphertext_and_restore_rows()
     };
     drop(db);
     let store = Store::open(&path).unwrap();
-    assert_eq!(store.schema_version().unwrap(), 17);
+    assert_eq!(store.schema_version().unwrap(), 18);
     assert_eq!(store.network_calls_for_task(&task).unwrap().len(), 0);
     drop(store);
     drop(Store::open(&path).unwrap());
@@ -1199,6 +1253,7 @@ async fn completed_restore_replays_after_legacy_migration_and_original_root_is_o
     let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
     network_fixture::project_fixture::drop_project_schema(&raw);
     raw.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
+    raw.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; ").unwrap();
     raw.pragma_update(None, "user_version", 10).unwrap();
     let all_before = all_schema10_rows(&raw);
     for table in [
@@ -1267,7 +1322,7 @@ async fn completed_restore_replays_after_legacy_migration_and_original_root_is_o
         all_schema10_rows(&raw),
         expected_after_worktree_migration(all_before)
     );
-    assert_eq!(engine.store.schema_version().unwrap(), 17);
+    assert_eq!(engine.store.schema_version().unwrap(), 18);
 }
 
 #[tokio::test]
@@ -1288,6 +1343,7 @@ async fn schema10_unbound_checkpoint_is_history_only_and_cannot_restore() {
     let raw = Connection::open(temp.path().join("workspace.db")).unwrap();
     network_fixture::project_fixture::drop_project_schema(&raw);
     raw.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
+    raw.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; ").unwrap();
     raw.pragma_update(None, "user_version", 10).unwrap();
     let before = business_rows(&raw);
     drop(raw);
