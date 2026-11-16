@@ -109,18 +109,26 @@ impl Engine {
     pub fn enable_builtin_agent(
         &self,
     ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
+        let _operation = self
+            .lifecycle_ticket()
+            .map_err(|_| crate::agent_runtime::AgentError::Internal)?;
         self.agent_runtime.enable_persisted(&self.store)
     }
     pub fn disable_builtin_agent(
         &self,
     ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
+        let _operation = self
+            .lifecycle_ticket()
+            .map_err(|_| crate::agent_runtime::AgentError::Internal)?;
         self.agent_runtime.disable()
     }
     /// In-memory control; the next process starts with the builtin enabled.
     pub fn disable_builtin_provider(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.provider_runtime.disable()
     }
     pub fn enable_builtin_provider(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.provider_runtime.enable_persisted(&self.store)
     }
     pub fn builtin_provider_status(
@@ -1506,17 +1514,21 @@ impl Engine {
     }
     /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_files(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.disable_builtin_files()
     }
 
     pub fn unload_builtin_files(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.unload_builtin_files()
     }
     /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_shell(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.disable_builtin_shell()
     }
     pub fn unload_builtin_shell(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.unload_builtin_shell()
     }
     pub fn key(&self, route: &Route) -> Result<String> {
@@ -2538,8 +2550,12 @@ impl Engine {
         key: &str,
         cancel: &CancellationToken,
     ) -> Result<()> {
-        self.tool_calls
-            .execute_or_wait(task, call, name, args, key, cancel)
+        let operation = self.store.execution_operation(cancel.clone())?;
+        operation
+            .run(
+                self.tool_calls
+                    .execute_or_wait(task, call, name, args, key, cancel),
+            )
             .await
     }
     #[cfg(test)]
@@ -2554,8 +2570,19 @@ impl Engine {
         approval_id: Option<&str>,
         lease: crate::tool_runtime::ToolLease,
     ) -> Result<()> {
-        self.tool_calls
-            .perform_tool(task, tool_call_id, name, args, key, approval_id, lease)
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(self.tool_calls.perform_tool(
+                task,
+                tool_call_id,
+                name,
+                args,
+                key,
+                approval_id,
+                lease,
+            ))
             .await
     }
 
@@ -2693,6 +2720,23 @@ impl Engine {
                 eprintln!("🍑sh: 任务 {id} 的取消持久化失败；取消信号已发送");
             }
         }
+    }
+
+    fn lifecycle_ticket(&self) -> Result<crate::execution_authority::ExecutionOperation> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        {
+            let mut db = self
+                .store
+                .db
+                .lock()
+                .map_err(|_| anyhow::anyhow!("store lock poisoned"))?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.store.execution_fence_for(&tx, &operation)?;
+            self.store.commit_execution_tx(tx)?;
+        }
+        Ok(operation)
     }
 
     fn ensure_accepting(&self) -> Result<()> {
