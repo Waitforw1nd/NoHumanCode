@@ -151,7 +151,7 @@ report = {"reviewer": "D read-only; no Cargo/process execution", "checked_utc": 
                      "No PID snapshot is used as process-tree cleanup proof; common gate closure is manager-owned.",
                      "Frozen original binaries are authoritative; target output paths can be rebuilt later.",
                      "Historical unknown incidents remain unchanged."]}
-with out.open("x", encoding="utf-8") as stream:
+with out.open("x", encoding="utf-8", newline="\n") as stream:
     json.dump(report, stream, ensure_ascii=False, indent=2)
     stream.write("\n")
 print(json.dumps({k: report[k] for k in ["matrix_records", "publication_records", "build_records", "source_file_count", "passed_checks", "failed_checks", "bridge_observed_head", "bridge_all_equal"]}, ensure_ascii=False))

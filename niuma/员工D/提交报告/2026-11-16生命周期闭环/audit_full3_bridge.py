@@ -66,7 +66,7 @@ report = {"mode": "read-only; no Cargo or real process tests", "full3_source_bef
           "scope": "Component matrix source-equivalence bridge only; full3 run is not yet accepted."}
 report["passed"] = (report["bridge_all_equal"] and report["a_files_equal_full3"] and report["scanner_body_byte_unchanged"]
                     and all(r["equal"] for r in incident_records) and report["incident_identity_equal"])
-with out.open("x", encoding="utf-8") as stream:
+with out.open("x", encoding="utf-8", newline="\n") as stream:
     json.dump(report, stream, ensure_ascii=False, indent=2)
     stream.write("\n")
 print(json.dumps({k: report[k] for k in ("full3_candidate", "bridge_all_equal", "a_files_equal_full3", "scanner_body_byte_unchanged", "incident_target_exit_codes", "passed")}, ensure_ascii=False))
