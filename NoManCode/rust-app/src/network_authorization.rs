@@ -987,6 +987,7 @@ impl Store {
                 crate::engine::runtime_barrier::block(path, "runtime_provider_admit_before_commit");
                 crate::engine::crash_probe::block(path, "runtime_provider_admit_before_commit", "builtin.provider-xpeach");
             }
+            operation.bind_network_call(&id)?;
             self.commit_execution_tx(tx)?;
             #[cfg(test)]
             if let Some(path) = &runtime_probe_path {
@@ -1117,10 +1118,13 @@ impl Store {
             );
         }
         let saved = (|| -> AnyResult<()> {
+            let operation =
+                crate::execution_authority::current().context("network operation required")?;
+            // Reject a receipt from another original operation before sealing
+            // this scope; verify again under the transaction before writing.
+            operation.verify_network_call(&value.call_id)?;
             if transport_unknown {
-                crate::execution_authority::current()
-                    .context("network operation required")?
-                    .seal_unknown();
+                operation.seal_unknown();
             }
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -1129,6 +1133,7 @@ impl Store {
             } else {
                 self.execution_settlement_fence(&tx)?;
             }
+            operation.verify_network_call(&value.call_id)?;
             let old = receipt(&tx, &value.call_id)?;
             if transport_unknown {
                 let mut original = value.clone();

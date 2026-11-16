@@ -549,7 +549,6 @@ impl ReviewRecovery {
                     !crash_probe::take_restore_failure(id, &change.path),
                     "injected restore path failure"
                 );
-                action_started = true;
                 restore_observe!(
                     self,
                     id,
@@ -589,12 +588,17 @@ impl ReviewRecovery {
                     FileAction,
                     (|| -> Result<()> {
                         match change.kind {
-                            ChangeKind::Created => std::fs::remove_file(&target)?,
+                            ChangeKind::Created => {
+                                effect.validate(&self.store)?;
+                                action_started = true;
+                                std::fs::remove_file(&target)?;
+                            }
                             ChangeKind::Modified => {
-                                self.workspace.atomic_replace(
-                                    &target,
-                                    original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?,
-                                )?;
+                                let bytes =
+                                    original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?;
+                                effect.validate(&self.store)?;
+                                action_started = true;
+                                self.workspace.atomic_replace(&target, bytes)?;
                             }
                         }
                         Ok(())

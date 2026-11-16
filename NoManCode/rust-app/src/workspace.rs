@@ -19,6 +19,17 @@ impl FileEffectGuard {
             generation: Some(generation),
         })
     }
+    pub(crate) fn validate(&self, store: &crate::store::Store) -> Result<()> {
+        let operation = self.operation.as_ref().context("file operation missing")?;
+        ensure!(self.generation.is_some(), "file generation missing");
+        let mut db = store
+            .db
+            .lock()
+            .map_err(|_| anyhow::anyhow!("store lock poisoned"))?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        store.execution_settlement_fence_for(&tx, operation)?;
+        store.commit_execution_tx(tx)
+    }
     pub(crate) fn settle(mut self) {
         if let Some(generation) = self.generation.take() {
             generation.settle();
@@ -273,7 +284,7 @@ pub fn definitions(task: &Task) -> Vec<Value> {
     tools.push(definition("run_wasm","Run a pre-installed JSON-only WASM plugin. It has no host imports, filesystem, network, clock or secrets.",json!({"plugin":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},"input":{"type":"object"}}),&["plugin","input"]));
     tools
 }
-tokio::task_local! { static WRITE_AUTHORITY: (); }
+tokio::task_local! { static WRITE_AUTHORITY: (std::sync::Arc<FileEffectGuard>, std::sync::Arc<crate::store::Store>); }
 
 #[derive(Debug)]
 pub(crate) struct WriteNotStarted;
@@ -295,8 +306,17 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
 }
 
 // Only the host's claimed, generation-held tool path installs this scope.
-pub(crate) async fn with_write_authority<F: std::future::Future>(work: F) -> F::Output {
-    WRITE_AUTHORITY.scope((), work).await
+pub(crate) async fn with_write_authority<F: std::future::Future>(
+    effect: std::sync::Arc<FileEffectGuard>,
+    store: std::sync::Arc<crate::store::Store>,
+    work: F,
+) -> F::Output {
+    WRITE_AUTHORITY.scope((effect, store), work).await
+}
+fn validate_write_authority() -> Result<()> {
+    WRITE_AUTHORITY
+        .try_with(|(effect, store)| effect.validate(store))
+        .context("write authority missing")?
 }
 
 pub(crate) async fn execute_builtin(task: &Task, name: &str, args: &Value) -> Result<Value> {
@@ -441,8 +461,10 @@ async fn execute_inner(task: &Task, name: &str, args: &Value) -> Result<Value> {
             .map_err(|_| WriteNotStarted)?;
             // Avoid replacing a hard link that could mutate a file outside the project.
             let parent = path.parent().context("文件没有父目录")?;
+            validate_write_authority().map_err(|_| WriteNotStarted)?;
             std::fs::create_dir_all(parent)?;
             resolve(root, relative, true, &task.spec.write_scopes)?;
+            validate_write_authority()?;
             atomic_replace(&path, content.as_bytes())?;
             Ok(json!({"written":relative,"bytes":content.len()}))
         }
