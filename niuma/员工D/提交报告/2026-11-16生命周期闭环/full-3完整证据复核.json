@@ -1,0 +1,3753 @@
+{
+  "checked_utc": "2026-11-16T10:14:18.707143+00:00",
+  "candidate": {
+    "head": "0fb205851748fdf25abdf35ca0911a0b24527fd4",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "scope": "Fixed full-3 complete evidence; targeted repeats and nested child results excluded from full-suite totals; component25 separately source-bound",
+  "recorded_status": "passed",
+  "runner_exit_code": 0,
+  "planned_count": 15,
+  "completed_count": 15,
+  "checks": {
+    "candidate": true,
+    "complete_plan": true,
+    "execution_length_consistent": true,
+    "options": true,
+    "source_equal": true,
+    "clean": true,
+    "source_digest": true,
+    "artifact_set": true,
+    "artifact_hashes": true,
+    "git_trees": true,
+    "no_cleanup_overclaim": true,
+    "manifest_artifact_completeness": true,
+    "unique_artifact_paths": true,
+    "success_exit_consistency": true,
+    "environment_limits": true,
+    "output_paths_e_only": true,
+    "01-check_records": true,
+    "01-check_exit": true,
+    "01-check_log": true,
+    "01-check_serial": true,
+    "02-debug-bins_records": true,
+    "02-debug-bins_exit": true,
+    "02-debug-bins_log": true,
+    "02-debug-bins_serial": true,
+    "03-target-approval_gate_records": true,
+    "03-target-approval_gate_exit": true,
+    "03-target-approval_gate_log": true,
+    "03-target-approval_gate_serial": true,
+    "03-target-approval_gate_outer_declared_counts": true,
+    "03-target-approval_gate_test_summaries": true,
+    "04-target-approval_http_records": true,
+    "04-target-approval_http_exit": true,
+    "04-target-approval_http_log": true,
+    "04-target-approval_http_serial": true,
+    "04-target-approval_http_outer_declared_counts": true,
+    "04-target-approval_http_test_summaries": true,
+    "05-target-cli_records": true,
+    "05-target-cli_exit": true,
+    "05-target-cli_log": true,
+    "05-target-cli_serial": true,
+    "05-target-cli_outer_declared_counts": true,
+    "05-target-cli_test_summaries": true,
+    "06-target-host_configuration_records": true,
+    "06-target-host_configuration_exit": true,
+    "06-target-host_configuration_log": true,
+    "06-target-host_configuration_serial": true,
+    "06-target-host_configuration_outer_declared_counts": true,
+    "06-target-host_configuration_test_summaries": true,
+    "07-target-host_configuration_security_records": true,
+    "07-target-host_configuration_security_exit": true,
+    "07-target-host_configuration_security_log": true,
+    "07-target-host_configuration_security_serial": true,
+    "07-target-host_configuration_security_outer_declared_counts": true,
+    "07-target-host_configuration_security_test_summaries": true,
+    "08-target-network_authorization_records": true,
+    "08-target-network_authorization_exit": true,
+    "08-target-network_authorization_log": true,
+    "08-target-network_authorization_serial": true,
+    "08-target-network_authorization_outer_declared_counts": true,
+    "08-target-network_authorization_test_summaries": true,
+    "09-target-runtime_records": true,
+    "09-target-runtime_exit": true,
+    "09-target-runtime_log": true,
+    "09-target-runtime_serial": true,
+    "09-target-runtime_outer_declared_counts": true,
+    "09-target-runtime_test_summaries": true,
+    "10-target-session_turns_records": true,
+    "10-target-session_turns_exit": true,
+    "10-target-session_turns_log": true,
+    "10-target-session_turns_serial": true,
+    "10-target-session_turns_outer_declared_counts": true,
+    "10-target-session_turns_test_summaries": true,
+    "11-target-turn_http_records": true,
+    "11-target-turn_http_exit": true,
+    "11-target-turn_http_log": true,
+    "11-target-turn_http_serial": true,
+    "11-target-turn_http_outer_declared_counts": true,
+    "11-target-turn_http_test_summaries": true,
+    "12-test_records": true,
+    "12-test_exit": true,
+    "12-test_log": true,
+    "12-test_serial": true,
+    "12-test_outer_declared_counts": true,
+    "12-test_test_summaries": true,
+    "12-test_web_six": true,
+    "13-fmt_records": true,
+    "13-fmt_exit": true,
+    "13-fmt_log": true,
+    "13-fmt_serial": true,
+    "14-clippy_records": true,
+    "14-clippy_exit": true,
+    "14-clippy_log": true,
+    "14-clippy_serial": true,
+    "15-wasm-check_records": true,
+    "15-wasm-check_exit": true,
+    "15-wasm-check_log": true,
+    "15-wasm-check_serial": true,
+    "final_time": true,
+    "manifest_stable_during_audit": true
+  },
+  "mismatches": [],
+  "steps": [
+    {
+      "name": "check",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "160508419d02b6532553e3633ce6b942c74ca06537c89d0f76940735810e940e",
+      "bytes": 582,
+      "rust_summaries": [],
+      "top_level_summaries": [],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {},
+      "web_pass": []
+    },
+    {
+      "name": "debug-bins",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "2e8a3736e3355539314fa1aed44e025b031c3ac4843e7a2b9e8c951b18f761ca",
+      "bytes": 327,
+      "rust_summaries": [],
+      "top_level_summaries": [],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {},
+      "web_pass": []
+    },
+    {
+      "name": "target-approval_gate",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "1854f39cb61c87a8d98fd3e2941f5c702d25c73e0c7115bca6e083ff0fc884cc",
+      "bytes": 2852,
+      "rust_summaries": [
+        {
+          "line": 43,
+          "section": "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-0bb9da458c2dffb9.exe)",
+          "status": "ok",
+          "passed": 35,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 43,
+          "section": "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-0bb9da458c2dffb9.exe)",
+          "status": "ok",
+          "passed": 35,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-0bb9da458c2dffb9.exe)": 35
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-approval_http",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "ed316450f36078c562c70470ff1a25e43a1710de50b139b04a09616128c30d94",
+      "bytes": 1742,
+      "rust_summaries": [
+        {
+          "line": 24,
+          "section": "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-76f952ca4d92569e.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 24,
+          "section": "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-76f952ca4d92569e.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-76f952ca4d92569e.exe)": 16
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-cli",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "6fd6e3acd988044424764933a68e58d419fb219264c02e0ca04b89296d58d406",
+      "bytes": 1303,
+      "rust_summaries": [
+        {
+          "line": 19,
+          "section": "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-bdbee7d15a588598.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 19,
+          "section": "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-bdbee7d15a588598.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-bdbee7d15a588598.exe)": 11
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-host_configuration",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "e7886e97ff97d75a9b7db2306f3cf0142271b3e57883b14721afdbc8b4fece04",
+      "bytes": 1982,
+      "rust_summaries": [
+        {
+          "line": 26,
+          "section": "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-9ddfd30a0b014e23.exe)",
+          "status": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 26,
+          "section": "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-9ddfd30a0b014e23.exe)",
+          "status": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-9ddfd30a0b014e23.exe)": 18
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-host_configuration_security",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "675b3e5d3f291ec42f270f8139ca37aa902e6d0a08159d0b1372dd7d962a51cd",
+      "bytes": 5859,
+      "rust_summaries": [
+        {
+          "line": 42,
+          "section": "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-64d6c52104a2f8bd.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 42,
+          "section": "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-64d6c52104a2f8bd.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-64d6c52104a2f8bd.exe)": 7
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-network_authorization",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "931d293a7a05e2965c2552020c422e1edb10e0119b3f5e7826285f98e1f6f11e",
+      "bytes": 1972,
+      "rust_summaries": [
+        {
+          "line": 24,
+          "section": "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-ed7127ddca4e39ba.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 24,
+          "section": "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-ed7127ddca4e39ba.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-ed7127ddca4e39ba.exe)": 16
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-runtime",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "73ee6219f673c2ffedb50052268e599ed0b93171517e42e33c85137cdd060728",
+      "bytes": 1153,
+      "rust_summaries": [
+        {
+          "line": 18,
+          "section": "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-bb00057cd71dd80d.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 18,
+          "section": "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-bb00057cd71dd80d.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-bb00057cd71dd80d.exe)": 10
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-session_turns",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "711a3b886fa4973095397c44a6ff2bd13ba65e0ca8d8ebdd8a05895bb9d9de37",
+      "bytes": 1728,
+      "rust_summaries": [
+        {
+          "line": 27,
+          "section": "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-34ce6832b85090f6.exe)",
+          "status": "ok",
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 27,
+          "section": "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-34ce6832b85090f6.exe)",
+          "status": "ok",
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-34ce6832b85090f6.exe)": 19
+      },
+      "web_pass": []
+    },
+    {
+      "name": "target-turn_http",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "b162f6e53fa2641aa9939b8cc5056373805684d70488e7406eca71e0340eb347",
+      "bytes": 1334,
+      "rust_summaries": [
+        {
+          "line": 26,
+          "section": "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-962eac21f9a8804c.exe)",
+          "status": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 26,
+          "section": "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-962eac21f9a8804c.exe)",
+          "status": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-962eac21f9a8804c.exe)": 17
+      },
+      "web_pass": []
+    },
+    {
+      "name": "test",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "a6ac6c6366d4d6755398ac1f90f6454d7caf88f5a0ef88154589c03bf1f4c1c2",
+      "bytes": 131070,
+      "rust_summaries": [
+        {
+          "line": 658,
+          "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-29ee768203ad8f27.exe)",
+          "status": "ok",
+          "passed": 437,
+          "failed": 0,
+          "ignored": 44,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 666,
+          "section": "Running unittests src\\main.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-eaeb6a3bf4788dc0.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 672,
+          "section": "Running unittests src\\bin\\peachsh-wasm-worker.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_wasm_worker-1578f8c4775fc2f8.exe)",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 682,
+          "section": "Running tests\\agent_runtime_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\agent_runtime_cli-99f5319225df9475.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 723,
+          "section": "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-d41069fd53dcbf63.exe)",
+          "status": "ok",
+          "passed": 35,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 745,
+          "section": "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-ae5334c0aa47b817.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 755,
+          "section": "Running tests\\assessment_adversarial.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\assessment_adversarial-f13f9be424538b5f.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 764,
+          "section": "Running tests\\budget.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget-30ac63b192092c0f.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 780,
+          "section": "Running tests\\budget_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_cli-41a5d58eb2f76b1b.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 791,
+          "section": "Running tests\\budget_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_http-ce7ef8a015890073.exe)",
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 813,
+          "section": "Running tests\\checkpoint.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint-5b17f153d05e48ea.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 822,
+          "section": "Running tests\\checkpoint_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint_http-a69eb387bb00f7cd.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 839,
+          "section": "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-536bf296c13ee958.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 854,
+          "section": "Running tests\\cli_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli_workflow-dd05b535b1ef5d25.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 861,
+          "section": "Running tests\\composition_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_cli-99629bb0a327d15f.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 868,
+          "section": "Running tests\\composition_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_http-e26e3cf5417adf1d.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 905,
+          "section": "Running tests\\execution_authority_lifecycle.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\execution_authority_lifecycle-2ef09564812f2bbf.exe)",
+          "status": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 920,
+          "section": "Running tests\\final_acceptance.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\final_acceptance-b293acbbabc08b50.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 930,
+          "section": "Running tests\\first_user_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\first_user_workflow-9730c841545a7b2c.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 938,
+          "section": "Running tests\\git_diff.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\git_diff-050b67653841a95f.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 962,
+          "section": "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-43caa4770ce1e7c8.exe)",
+          "status": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 974,
+          "section": "Running tests\\host_configuration_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_cli-1f5111521945da0c.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 983,
+          "section": "Running tests\\host_configuration_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_http-aced9deaa72b8331.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 995,
+          "section": "Running tests\\host_configuration_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_schema-720df519eae65060.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1035,
+          "section": "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-4427aa5a806a92eb.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1067,
+          "section": "Running tests\\host_initialization_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_initialization_workflow-9ee13ca622ca2211.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1084,
+          "section": "Running tests\\http_contract.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\http_contract-6785746873510844.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1094,
+          "section": "Running tests\\lifecycle_compat.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\lifecycle_compat-77dbde5134e8eae1.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1101,
+          "section": "Running tests\\live.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\live-2f8011b26aceb36d.exe)",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1123,
+          "section": "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-b3088dca36e58cff.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1136,
+          "section": "Running tests\\network_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_cli-5f43623a9e136188.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1147,
+          "section": "Running tests\\network_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_http-2d98d2752040c524.exe)",
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1170,
+          "section": "Running tests\\plugin_catalog.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_catalog-6114799b770aee42.exe)",
+          "status": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1186,
+          "section": "Running tests\\plugin_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_cli-c133d47c6f239841.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1226,
+          "section": "Running tests\\plugin_host.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_host-b2341f2a583f8031.exe)",
+          "status": "ok",
+          "passed": 24,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1245,
+          "section": "Running tests\\plugin_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_http-4ba471be8f7c0e57.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1255,
+          "section": "Running tests\\plugin_management.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_management-046dcd64da3a43d1.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1265,
+          "section": "Running tests\\project_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_cli-cb6396d6ed98ce6d.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1278,
+          "section": "Running tests\\project_context.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_context-75f4f7c27fa6f2e0.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1290,
+          "section": "Running tests\\project_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_http-a94148fcf851417f.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1299,
+          "section": "Running tests\\project_migration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_migration-b9062902e54aaa97.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1309,
+          "section": "Running tests\\provider_network.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_network-c2c59f5960f18376.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1322,
+          "section": "Running tests\\provider_usage.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_usage-16c1b47013373316.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1334,
+          "section": "Running tests\\review_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\review_cli-957ddd9f2e10d575.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1350,
+          "section": "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-dcd8b946b2792c36.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1364,
+          "section": "Running tests\\runtime_management_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_cli-ac51fa2cbf9f01b8.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1378,
+          "section": "Running tests\\runtime_management_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_schema-09671ca41c60c70e.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1401,
+          "section": "Running tests\\runtime_management_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_workflow-dc07c0d3e0fef802.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1426,
+          "section": "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-16021cf16c6cb9f4.exe)",
+          "status": "ok",
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1436,
+          "section": "Running tests\\tool_call_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_call_workflow-65fb9643d68a3c6c.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1444,
+          "section": "Running tests\\tool_result_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_result_crash-215ac22af2380080.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1454,
+          "section": "Running tests\\tool_runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_runtime-ecfed8cca07feb8c.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1471,
+          "section": "Running tests\\tool_session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_session_turns-2a683faf04b67a6b.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1495,
+          "section": "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-b2546e5c4a2dc824.exe)",
+          "status": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1509,
+          "section": "Running tests\\wasm_worker_core.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\wasm_worker_core-670acaaa34701d0e.exe)",
+          "status": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1537,
+          "section": "Running tests\\workspace_changes.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_changes-365cb3c3ed55b852.exe)",
+          "status": "ok",
+          "passed": 21,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1557,
+          "section": "Running tests\\workspace_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_crash-628bea4224684bd9.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1565,
+          "section": "Running tests\\workspace_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_http-f540d02c0b1e46d2.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1580,
+          "section": "Running tests\\workspace_identity.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_identity-c86cc9877d9d0035.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1594,
+          "section": "Running tests\\worktree_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_cli-b4a5704e7ee6ddd1.exe)",
+          "status": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1602,
+          "section": "Running tests\\worktree_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_http-e0a2f2f259019bb2.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1613,
+          "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)",
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1619,
+          "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1625,
+          "section": "Doc-tests peachsh",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1631,
+          "section": "Doc-tests peachsh_protocol",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1637,
+          "section": "Doc-tests peachsh_ui",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "top_level_summaries": [
+        {
+          "line": 658,
+          "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-29ee768203ad8f27.exe)",
+          "status": "ok",
+          "passed": 437,
+          "failed": 0,
+          "ignored": 44,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 666,
+          "section": "Running unittests src\\main.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-eaeb6a3bf4788dc0.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 672,
+          "section": "Running unittests src\\bin\\peachsh-wasm-worker.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_wasm_worker-1578f8c4775fc2f8.exe)",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 682,
+          "section": "Running tests\\agent_runtime_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\agent_runtime_cli-99f5319225df9475.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 723,
+          "section": "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-d41069fd53dcbf63.exe)",
+          "status": "ok",
+          "passed": 35,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 745,
+          "section": "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-ae5334c0aa47b817.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 755,
+          "section": "Running tests\\assessment_adversarial.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\assessment_adversarial-f13f9be424538b5f.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 764,
+          "section": "Running tests\\budget.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget-30ac63b192092c0f.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 780,
+          "section": "Running tests\\budget_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_cli-41a5d58eb2f76b1b.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 791,
+          "section": "Running tests\\budget_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_http-ce7ef8a015890073.exe)",
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 813,
+          "section": "Running tests\\checkpoint.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint-5b17f153d05e48ea.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 822,
+          "section": "Running tests\\checkpoint_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint_http-a69eb387bb00f7cd.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 839,
+          "section": "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-536bf296c13ee958.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 854,
+          "section": "Running tests\\cli_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli_workflow-dd05b535b1ef5d25.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 861,
+          "section": "Running tests\\composition_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_cli-99629bb0a327d15f.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 868,
+          "section": "Running tests\\composition_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_http-e26e3cf5417adf1d.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 905,
+          "section": "Running tests\\execution_authority_lifecycle.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\execution_authority_lifecycle-2ef09564812f2bbf.exe)",
+          "status": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 920,
+          "section": "Running tests\\final_acceptance.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\final_acceptance-b293acbbabc08b50.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 930,
+          "section": "Running tests\\first_user_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\first_user_workflow-9730c841545a7b2c.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 938,
+          "section": "Running tests\\git_diff.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\git_diff-050b67653841a95f.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 962,
+          "section": "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-43caa4770ce1e7c8.exe)",
+          "status": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 974,
+          "section": "Running tests\\host_configuration_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_cli-1f5111521945da0c.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 983,
+          "section": "Running tests\\host_configuration_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_http-aced9deaa72b8331.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 995,
+          "section": "Running tests\\host_configuration_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_schema-720df519eae65060.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1035,
+          "section": "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-4427aa5a806a92eb.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1067,
+          "section": "Running tests\\host_initialization_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_initialization_workflow-9ee13ca622ca2211.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1084,
+          "section": "Running tests\\http_contract.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\http_contract-6785746873510844.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1094,
+          "section": "Running tests\\lifecycle_compat.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\lifecycle_compat-77dbde5134e8eae1.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1101,
+          "section": "Running tests\\live.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\live-2f8011b26aceb36d.exe)",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1123,
+          "section": "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-b3088dca36e58cff.exe)",
+          "status": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1136,
+          "section": "Running tests\\network_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_cli-5f43623a9e136188.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1147,
+          "section": "Running tests\\network_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_http-2d98d2752040c524.exe)",
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1170,
+          "section": "Running tests\\plugin_catalog.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_catalog-6114799b770aee42.exe)",
+          "status": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1186,
+          "section": "Running tests\\plugin_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_cli-c133d47c6f239841.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1226,
+          "section": "Running tests\\plugin_host.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_host-b2341f2a583f8031.exe)",
+          "status": "ok",
+          "passed": 24,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1245,
+          "section": "Running tests\\plugin_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_http-4ba471be8f7c0e57.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1255,
+          "section": "Running tests\\plugin_management.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_management-046dcd64da3a43d1.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1265,
+          "section": "Running tests\\project_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_cli-cb6396d6ed98ce6d.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1278,
+          "section": "Running tests\\project_context.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_context-75f4f7c27fa6f2e0.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1290,
+          "section": "Running tests\\project_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_http-a94148fcf851417f.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1299,
+          "section": "Running tests\\project_migration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_migration-b9062902e54aaa97.exe)",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1309,
+          "section": "Running tests\\provider_network.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_network-c2c59f5960f18376.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1322,
+          "section": "Running tests\\provider_usage.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_usage-16c1b47013373316.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1334,
+          "section": "Running tests\\review_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\review_cli-957ddd9f2e10d575.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1350,
+          "section": "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-dcd8b946b2792c36.exe)",
+          "status": "ok",
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1364,
+          "section": "Running tests\\runtime_management_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_cli-ac51fa2cbf9f01b8.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1378,
+          "section": "Running tests\\runtime_management_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_schema-09671ca41c60c70e.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1401,
+          "section": "Running tests\\runtime_management_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_workflow-dc07c0d3e0fef802.exe)",
+          "status": "ok",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1426,
+          "section": "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-16021cf16c6cb9f4.exe)",
+          "status": "ok",
+          "passed": 19,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1436,
+          "section": "Running tests\\tool_call_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_call_workflow-65fb9643d68a3c6c.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1444,
+          "section": "Running tests\\tool_result_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_result_crash-215ac22af2380080.exe)",
+          "status": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1454,
+          "section": "Running tests\\tool_runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_runtime-ecfed8cca07feb8c.exe)",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1471,
+          "section": "Running tests\\tool_session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_session_turns-2a683faf04b67a6b.exe)",
+          "status": "ok",
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1495,
+          "section": "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-b2546e5c4a2dc824.exe)",
+          "status": "ok",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1509,
+          "section": "Running tests\\wasm_worker_core.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\wasm_worker_core-670acaaa34701d0e.exe)",
+          "status": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1537,
+          "section": "Running tests\\workspace_changes.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_changes-365cb3c3ed55b852.exe)",
+          "status": "ok",
+          "passed": 21,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1557,
+          "section": "Running tests\\workspace_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_crash-628bea4224684bd9.exe)",
+          "status": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1565,
+          "section": "Running tests\\workspace_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_http-f540d02c0b1e46d2.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1580,
+          "section": "Running tests\\workspace_identity.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_identity-c86cc9877d9d0035.exe)",
+          "status": "ok",
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1594,
+          "section": "Running tests\\worktree_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_cli-b4a5704e7ee6ddd1.exe)",
+          "status": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1602,
+          "section": "Running tests\\worktree_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_http-e0a2f2f259019bb2.exe)",
+          "status": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1613,
+          "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)",
+          "status": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1619,
+          "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1625,
+          "section": "Doc-tests peachsh",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1631,
+          "section": "Doc-tests peachsh_protocol",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        },
+        {
+          "line": 1637,
+          "section": "Doc-tests peachsh_ui",
+          "status": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered": 0
+        }
+      ],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 915,
+        "failed": 0,
+        "ignored": 45,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {
+        "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-29ee768203ad8f27.exe)": 481,
+        "Running unittests src\\main.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-eaeb6a3bf4788dc0.exe)": 2,
+        "Running unittests src\\bin\\peachsh-wasm-worker.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_wasm_worker-1578f8c4775fc2f8.exe)": 0,
+        "Running tests\\agent_runtime_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\agent_runtime_cli-99f5319225df9475.exe)": 2,
+        "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-d41069fd53dcbf63.exe)": 35,
+        "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-ae5334c0aa47b817.exe)": 16,
+        "Running tests\\assessment_adversarial.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\assessment_adversarial-f13f9be424538b5f.exe)": 4,
+        "Running tests\\budget.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget-30ac63b192092c0f.exe)": 3,
+        "Running tests\\budget_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_cli-41a5d58eb2f76b1b.exe)": 10,
+        "Running tests\\budget_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_http-ce7ef8a015890073.exe)": 5,
+        "Running tests\\checkpoint.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint-5b17f153d05e48ea.exe)": 16,
+        "Running tests\\checkpoint_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint_http-a69eb387bb00f7cd.exe)": 3,
+        "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-536bf296c13ee958.exe)": 11,
+        "Running tests\\cli_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli_workflow-dd05b535b1ef5d25.exe)": 9,
+        "Running tests\\composition_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_cli-99629bb0a327d15f.exe)": 1,
+        "Running tests\\composition_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_http-e26e3cf5417adf1d.exe)": 1,
+        "Running tests\\execution_authority_lifecycle.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\execution_authority_lifecycle-2ef09564812f2bbf.exe)": 18,
+        "Running tests\\final_acceptance.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\final_acceptance-b293acbbabc08b50.exe)": 9,
+        "Running tests\\first_user_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\first_user_workflow-9730c841545a7b2c.exe)": 1,
+        "Running tests\\git_diff.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\git_diff-050b67653841a95f.exe)": 1,
+        "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-43caa4770ce1e7c8.exe)": 18,
+        "Running tests\\host_configuration_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_cli-1f5111521945da0c.exe)": 6,
+        "Running tests\\host_configuration_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_http-aced9deaa72b8331.exe)": 3,
+        "Running tests\\host_configuration_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_schema-720df519eae65060.exe)": 6,
+        "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-4427aa5a806a92eb.exe)": 7,
+        "Running tests\\host_initialization_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_initialization_workflow-9ee13ca622ca2211.exe)": 3,
+        "Running tests\\http_contract.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\http_contract-6785746873510844.exe)": 11,
+        "Running tests\\lifecycle_compat.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\lifecycle_compat-77dbde5134e8eae1.exe)": 4,
+        "Running tests\\live.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\live-2f8011b26aceb36d.exe)": 1,
+        "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-b3088dca36e58cff.exe)": 16,
+        "Running tests\\network_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_cli-5f43623a9e136188.exe)": 7,
+        "Running tests\\network_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_http-2d98d2752040c524.exe)": 5,
+        "Running tests\\plugin_catalog.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_catalog-6114799b770aee42.exe)": 17,
+        "Running tests\\plugin_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_cli-c133d47c6f239841.exe)": 10,
+        "Running tests\\plugin_host.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_host-b2341f2a583f8031.exe)": 24,
+        "Running tests\\plugin_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_http-4ba471be8f7c0e57.exe)": 9,
+        "Running tests\\plugin_management.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_management-046dcd64da3a43d1.exe)": 4,
+        "Running tests\\project_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_cli-cb6396d6ed98ce6d.exe)": 4,
+        "Running tests\\project_context.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_context-75f4f7c27fa6f2e0.exe)": 7,
+        "Running tests\\project_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_http-a94148fcf851417f.exe)": 6,
+        "Running tests\\project_migration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_migration-b9062902e54aaa97.exe)": 3,
+        "Running tests\\provider_network.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_network-c2c59f5960f18376.exe)": 4,
+        "Running tests\\provider_usage.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_usage-16c1b47013373316.exe)": 7,
+        "Running tests\\review_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\review_cli-957ddd9f2e10d575.exe)": 6,
+        "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-dcd8b946b2792c36.exe)": 10,
+        "Running tests\\runtime_management_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_cli-ac51fa2cbf9f01b8.exe)": 6,
+        "Running tests\\runtime_management_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_schema-09671ca41c60c70e.exe)": 7,
+        "Running tests\\runtime_management_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_workflow-dc07c0d3e0fef802.exe)": 7,
+        "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-16021cf16c6cb9f4.exe)": 19,
+        "Running tests\\tool_call_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_call_workflow-65fb9643d68a3c6c.exe)": 1,
+        "Running tests\\tool_result_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_result_crash-215ac22af2380080.exe)": 1,
+        "Running tests\\tool_runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_runtime-ecfed8cca07feb8c.exe)": 4,
+        "Running tests\\tool_session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_session_turns-2a683faf04b67a6b.exe)": 11,
+        "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-b2546e5c4a2dc824.exe)": 17,
+        "Running tests\\wasm_worker_core.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\wasm_worker_core-670acaaa34701d0e.exe)": 8,
+        "Running tests\\workspace_changes.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_changes-365cb3c3ed55b852.exe)": 21,
+        "Running tests\\workspace_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_crash-628bea4224684bd9.exe)": 6,
+        "Running tests\\workspace_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_http-f540d02c0b1e46d2.exe)": 2,
+        "Running tests\\workspace_identity.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_identity-c86cc9877d9d0035.exe)": 9,
+        "Running tests\\worktree_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_cli-b4a5704e7ee6ddd1.exe)": 8,
+        "Running tests\\worktree_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_http-e0a2f2f259019bb2.exe)": 2,
+        "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)": 5,
+        "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)": 0,
+        "Doc-tests peachsh": 0,
+        "Doc-tests peachsh_protocol": 0,
+        "Doc-tests peachsh_ui": 0
+      },
+      "web_pass": [
+        "PASS project draft remains A after selecting B; conflict preserves text/key and never auto-retries",
+        "PASS selection CAS conflict is not refreshed or resent",
+        "PASS config PUT is nested, tools boolean, stale configuration draft retained",
+        "PASS follow-up uses original Session new Turn and latest task mapping despite current B",
+        "PASS uncertain Session send retains original key/body; changed text cannot silently resend",
+        "PASS navigation to another Session blocks unknown pending send without discarding the snapshot"
+      ]
+    },
+    {
+      "name": "fmt",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "b814b64e464df769258ec75fbda9ea3805547d98a2cbec70a95c35107b28fb46",
+      "bytes": 175,
+      "rust_summaries": [],
+      "top_level_summaries": [],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {},
+      "web_pass": []
+    },
+    {
+      "name": "clippy",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "17856cc7427bf454507509e8759c97d901943a3447d2f638917f863b4fe18229",
+      "bytes": 583,
+      "rust_summaries": [],
+      "top_level_summaries": [],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {},
+      "web_pass": []
+    },
+    {
+      "name": "wasm-check",
+      "exit_code": 0,
+      "terminal_unknown": false,
+      "sha256": "01741adf0592488766f6a6105d434fbed4530ffd6e0831c95e6973da11af6c0e",
+      "bytes": 490,
+      "rust_summaries": [],
+      "top_level_summaries": [],
+      "nested_summaries_excluded": [],
+      "top_level_totals": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      "declared_counts": {},
+      "web_pass": []
+    }
+  ],
+  "files": [
+    {
+      "path": "01-check.direct-exit.json",
+      "sha256": "6ef4942fcbf2f733553f8f9113d9939cd7ef014221ef2759f7a5e101d1d47bea",
+      "bytes": 159
+    },
+    {
+      "path": "01-check.log",
+      "sha256": "160508419d02b6532553e3633ce6b942c74ca06537c89d0f76940735810e940e",
+      "bytes": 582
+    },
+    {
+      "path": "01-check.result.json",
+      "sha256": "9bf26873744363f1a3411c3f3602754622ad6267c83aee18df4375afa037c890",
+      "bytes": 598
+    },
+    {
+      "path": "01-check.started.json",
+      "sha256": "6161f3cf5eeac1dcd32ac2f6535cd77943158b2f2694b62f8ce1a913e67c769f",
+      "bytes": 366
+    },
+    {
+      "path": "02-debug-bins.direct-exit.json",
+      "sha256": "4f2963d09c16f7930e43cfff1627a99addec190d8a3e811feb6b21102b6f7623",
+      "bytes": 159
+    },
+    {
+      "path": "02-debug-bins.log",
+      "sha256": "2e8a3736e3355539314fa1aed44e025b031c3ac4843e7a2b9e8c951b18f761ca",
+      "bytes": 327
+    },
+    {
+      "path": "02-debug-bins.result.json",
+      "sha256": "0966139fe04c3e52b5841f5bd72568a1a53e73e38b363d725ccafebb0f82e38b",
+      "bytes": 587
+    },
+    {
+      "path": "02-debug-bins.started.json",
+      "sha256": "0f19d60f562747acbc4d9db96735a138f21bf5011e8c8f5e49dc348d4a939cf7",
+      "bytes": 350
+    },
+    {
+      "path": "03-target-approval_gate.direct-exit.json",
+      "sha256": "5d8b49f717d3060b0df28671a9e684252c790d9478a509c02ef876f4bfbe4191",
+      "bytes": 159
+    },
+    {
+      "path": "03-target-approval_gate.log",
+      "sha256": "1854f39cb61c87a8d98fd3e2941f5c702d25c73e0c7115bca6e083ff0fc884cc",
+      "bytes": 2852
+    },
+    {
+      "path": "03-target-approval_gate.result.json",
+      "sha256": "65a7ad988207b2514b8223d9924e7ef7e839613329643156195e781b05cea5bd",
+      "bytes": 700
+    },
+    {
+      "path": "03-target-approval_gate.started.json",
+      "sha256": "1b7f223e970f7f70d0903b73007a1f2c159525e33528dbb2b5b794b12c9ce2a5",
+      "bytes": 452
+    },
+    {
+      "path": "04-target-approval_http.direct-exit.json",
+      "sha256": "2f8f2db7666328f878360ead2d930e1b015ce5cb53db79a799980fef668c409b",
+      "bytes": 159
+    },
+    {
+      "path": "04-target-approval_http.log",
+      "sha256": "ed316450f36078c562c70470ff1a25e43a1710de50b139b04a09616128c30d94",
+      "bytes": 1742
+    },
+    {
+      "path": "04-target-approval_http.result.json",
+      "sha256": "5c69534a459b7c9d11fe3846f25dced13be3e7b05c42bcf5f81bb1c3570e3653",
+      "bytes": 700
+    },
+    {
+      "path": "04-target-approval_http.started.json",
+      "sha256": "c3eec2a7615430c736faf30138d3325a7f2efdb45e6383e7a333781bcde228f9",
+      "bytes": 452
+    },
+    {
+      "path": "05-target-cli.direct-exit.json",
+      "sha256": "1db0dcfae6f1ba1d151e005259154723185c7c8ab460406fab6e7e9872b79aa0",
+      "bytes": 159
+    },
+    {
+      "path": "05-target-cli.log",
+      "sha256": "6fd6e3acd988044424764933a68e58d419fb219264c02e0ca04b89296d58d406",
+      "bytes": 1303
+    },
+    {
+      "path": "05-target-cli.result.json",
+      "sha256": "559c12adc4d4d89de4d56cd60e26d9ac356eddf66c2452ac11b31037b2f18ba5",
+      "bytes": 660
+    },
+    {
+      "path": "05-target-cli.started.json",
+      "sha256": "55edbb4e228fccb01baee5c17e81447bdd5b2ec2c4d10ffc7c12a51ca4906a79",
+      "bytes": 422
+    },
+    {
+      "path": "06-target-host_configuration.direct-exit.json",
+      "sha256": "a50e80b5aa8020267ef729f8793310ef0dd52f28ddd60c1152dd7fef16109122",
+      "bytes": 159
+    },
+    {
+      "path": "06-target-host_configuration.log",
+      "sha256": "e7886e97ff97d75a9b7db2306f3cf0142271b3e57883b14721afdbc8b4fece04",
+      "bytes": 1982
+    },
+    {
+      "path": "06-target-host_configuration.result.json",
+      "sha256": "392abf79596b8fed68919d67a1ca29259dd52296d0c5a071f84287f989ac7f0e",
+      "bytes": 720
+    },
+    {
+      "path": "06-target-host_configuration.started.json",
+      "sha256": "a8c9252643cf08c7ffcfdb239883ab023621f51aae4263e9eecada1180ec3e38",
+      "bytes": 467
+    },
+    {
+      "path": "07-target-host_configuration_security.direct-exit.json",
+      "sha256": "ca66b5bbf10fdb8da474077fe0406b201f7bcfd7418b3ba988a660312eda8a53",
+      "bytes": 159
+    },
+    {
+      "path": "07-target-host_configuration_security.log",
+      "sha256": "675b3e5d3f291ec42f270f8139ca37aa902e6d0a08159d0b1372dd7d962a51cd",
+      "bytes": 5859
+    },
+    {
+      "path": "07-target-host_configuration_security.result.json",
+      "sha256": "148af117a4ef8105e57b7c2756adb46a89b5ddcace253f7552d0ffc5d4b22fb2",
+      "bytes": 756
+    },
+    {
+      "path": "07-target-host_configuration_security.started.json",
+      "sha256": "136b1483650addddd906bfe8fe28bfc6156e4017469ae8faae94f6fea29eb0c0",
+      "bytes": 494
+    },
+    {
+      "path": "08-target-network_authorization.direct-exit.json",
+      "sha256": "ad1d2605157cf41ea65784650c526331a9fbd9a620365161499217c33e3f7cd4",
+      "bytes": 159
+    },
+    {
+      "path": "08-target-network_authorization.log",
+      "sha256": "931d293a7a05e2965c2552020c422e1edb10e0119b3f5e7826285f98e1f6f11e",
+      "bytes": 1972
+    },
+    {
+      "path": "08-target-network_authorization.result.json",
+      "sha256": "34ed742d0e98fc62a9131797299937cf9547a4d0177636246c6f083fdc35d7b6",
+      "bytes": 732
+    },
+    {
+      "path": "08-target-network_authorization.started.json",
+      "sha256": "8cb8c0bdb7bf1399391efcd04a0af0ee450a05fb023bf04a50b38f3cffe2979d",
+      "bytes": 476
+    },
+    {
+      "path": "09-target-runtime.direct-exit.json",
+      "sha256": "4fbb2c15cc70f5e1f49e162a83ae253db22530b975c4a7c395ca57f8625e1ec9",
+      "bytes": 159
+    },
+    {
+      "path": "09-target-runtime.log",
+      "sha256": "73ee6219f673c2ffedb50052268e599ed0b93171517e42e33c85137cdd060728",
+      "bytes": 1153
+    },
+    {
+      "path": "09-target-runtime.result.json",
+      "sha256": "0c04852b29d40214711c12fc76b4d4ed18410ef511c8080658b389f918956e29",
+      "bytes": 676
+    },
+    {
+      "path": "09-target-runtime.started.json",
+      "sha256": "53d14e9716c30829b080bc8bfbd75d3becafbe3ee4c7b0978cad2f5a68da78c3",
+      "bytes": 434
+    },
+    {
+      "path": "10-target-session_turns.direct-exit.json",
+      "sha256": "e4561b1b44056820392c32b891b7e186046da28ddfcad804f6f54be1fa88a08e",
+      "bytes": 159
+    },
+    {
+      "path": "10-target-session_turns.log",
+      "sha256": "711a3b886fa4973095397c44a6ff2bd13ba65e0ca8d8ebdd8a05895bb9d9de37",
+      "bytes": 1728
+    },
+    {
+      "path": "10-target-session_turns.result.json",
+      "sha256": "5db8d64bde37b9cb468df4034ab34e2fbedabc9dbe8f168ff7b6697a59f93710",
+      "bytes": 700
+    },
+    {
+      "path": "10-target-session_turns.started.json",
+      "sha256": "4a095701b4ab867c8e2bc80d67df035cdd61e2dbaad98eacf7b270acd2977663",
+      "bytes": 452
+    },
+    {
+      "path": "11-target-turn_http.direct-exit.json",
+      "sha256": "315cf8fc6849e38915cb5b3a6af44db07c767727f6883bad932b76cf893e5a9a",
+      "bytes": 159
+    },
+    {
+      "path": "11-target-turn_http.log",
+      "sha256": "b162f6e53fa2641aa9939b8cc5056373805684d70488e7406eca71e0340eb347",
+      "bytes": 1334
+    },
+    {
+      "path": "11-target-turn_http.result.json",
+      "sha256": "d8a89b187242b8e0c38eaea86fcd9aaa51c84afc86c8a06f00d3a3942a7e9980",
+      "bytes": 684
+    },
+    {
+      "path": "11-target-turn_http.started.json",
+      "sha256": "b012fc4cc349713d04fe853217d30dedac9e920f0e50a4620f53fe42cbd88089",
+      "bytes": 440
+    },
+    {
+      "path": "12-test.direct-exit.json",
+      "sha256": "8fe0d2615259a36a646e272de585d2c8e1e58cdc6e1830f75128384e0a75f065",
+      "bytes": 159
+    },
+    {
+      "path": "12-test.log",
+      "sha256": "a6ac6c6366d4d6755398ac1f90f6454d7caf88f5a0ef88154589c03bf1f4c1c2",
+      "bytes": 131070
+    },
+    {
+      "path": "12-test.result.json",
+      "sha256": "95d05f8d4d347040f18c78e757f164fbd5aa1544047e8fbf38aca3a7dabd9ef5",
+      "bytes": 586
+    },
+    {
+      "path": "12-test.started.json",
+      "sha256": "8324db79f0cd6b5ccb8fe815473d61521574a02a2ec7a0bb591783cd98d7009b",
+      "bytes": 352
+    },
+    {
+      "path": "13-fmt.direct-exit.json",
+      "sha256": "544ae7ba67ddbeb8c1c69b0fb76e544cbf9a9edfb4e4c92738926c8b3f5689d7",
+      "bytes": 159
+    },
+    {
+      "path": "13-fmt.log",
+      "sha256": "b814b64e464df769258ec75fbda9ea3805547d98a2cbec70a95c35107b28fb46",
+      "bytes": 175
+    },
+    {
+      "path": "13-fmt.result.json",
+      "sha256": "8df3d40fe144477bc0df5ae6468a2061b388fa1e0fec82112ab9e445bcc86578",
+      "bytes": 555
+    },
+    {
+      "path": "13-fmt.started.json",
+      "sha256": "cc5adbd9d43e93e9c6ab31922b0056350f8d45a3f0738fe6ab05e2976df517c5",
+      "bytes": 325
+    },
+    {
+      "path": "14-clippy.direct-exit.json",
+      "sha256": "54149d646e8a91a9beecda6daca9e6689a99209f56746728cbde78d49e1001f1",
+      "bytes": 159
+    },
+    {
+      "path": "14-clippy.log",
+      "sha256": "17856cc7427bf454507509e8759c97d901943a3447d2f638917f863b4fe18229",
+      "bytes": 583
+    },
+    {
+      "path": "14-clippy.result.json",
+      "sha256": "e8f16384622c181a2375626985b21456939431682a5468b8f2c281f47fbc2d7b",
+      "bytes": 638
+    },
+    {
+      "path": "14-clippy.started.json",
+      "sha256": "fabefb0531aa77b8b49c921f1704229c9c3df6d0de28744b746edace76efe605",
+      "bytes": 405
+    },
+    {
+      "path": "15-wasm-check.direct-exit.json",
+      "sha256": "13de44debae43d2adf13f8d69228cf6c13b6ee3ae342dbac18e40bc040b51252",
+      "bytes": 159
+    },
+    {
+      "path": "15-wasm-check.log",
+      "sha256": "01741adf0592488766f6a6105d434fbed4530ffd6e0831c95e6973da11af6c0e",
+      "bytes": 490
+    },
+    {
+      "path": "15-wasm-check.result.json",
+      "sha256": "8366da0664ad72b9c660c48ca6607e91933590a7fb678ea9598fb40af9d306ae",
+      "bytes": 647
+    },
+    {
+      "path": "15-wasm-check.started.json",
+      "sha256": "2491908b395423ec8d4a6d694d048f6a837818cedda730507ed17d7d4bfab238",
+      "bytes": 410
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "041f92f57c806f6733bd24df29ed392d04add47bbd233045ad1770ac9d357640",
+      "bytes": 30387
+    },
+    {
+      "path": "source-after.json",
+      "sha256": "a9da8478ab33b16f55ab53621d4049759ffc5fae6f4bc9e0dcd7c1fd6846c2d5",
+      "bytes": 39687
+    },
+    {
+      "path": "source-before.json",
+      "sha256": "a9da8478ab33b16f55ab53621d4049759ffc5fae6f4bc9e0dcd7c1fd6846c2d5",
+      "bytes": 39687
+    }
+  ],
+  "full_suite": {
+    "name": "test",
+    "exit_code": 0,
+    "terminal_unknown": false,
+    "sha256": "a6ac6c6366d4d6755398ac1f90f6454d7caf88f5a0ef88154589c03bf1f4c1c2",
+    "bytes": 131070,
+    "rust_summaries": [
+      {
+        "line": 658,
+        "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-29ee768203ad8f27.exe)",
+        "status": "ok",
+        "passed": 437,
+        "failed": 0,
+        "ignored": 44,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 666,
+        "section": "Running unittests src\\main.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-eaeb6a3bf4788dc0.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 672,
+        "section": "Running unittests src\\bin\\peachsh-wasm-worker.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_wasm_worker-1578f8c4775fc2f8.exe)",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 682,
+        "section": "Running tests\\agent_runtime_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\agent_runtime_cli-99f5319225df9475.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 723,
+        "section": "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-d41069fd53dcbf63.exe)",
+        "status": "ok",
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 745,
+        "section": "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-ae5334c0aa47b817.exe)",
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 755,
+        "section": "Running tests\\assessment_adversarial.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\assessment_adversarial-f13f9be424538b5f.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 764,
+        "section": "Running tests\\budget.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget-30ac63b192092c0f.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 780,
+        "section": "Running tests\\budget_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_cli-41a5d58eb2f76b1b.exe)",
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 791,
+        "section": "Running tests\\budget_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_http-ce7ef8a015890073.exe)",
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 813,
+        "section": "Running tests\\checkpoint.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint-5b17f153d05e48ea.exe)",
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 822,
+        "section": "Running tests\\checkpoint_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint_http-a69eb387bb00f7cd.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 839,
+        "section": "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-536bf296c13ee958.exe)",
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 854,
+        "section": "Running tests\\cli_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli_workflow-dd05b535b1ef5d25.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 861,
+        "section": "Running tests\\composition_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_cli-99629bb0a327d15f.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 868,
+        "section": "Running tests\\composition_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_http-e26e3cf5417adf1d.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 905,
+        "section": "Running tests\\execution_authority_lifecycle.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\execution_authority_lifecycle-2ef09564812f2bbf.exe)",
+        "status": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 920,
+        "section": "Running tests\\final_acceptance.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\final_acceptance-b293acbbabc08b50.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 930,
+        "section": "Running tests\\first_user_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\first_user_workflow-9730c841545a7b2c.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 938,
+        "section": "Running tests\\git_diff.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\git_diff-050b67653841a95f.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 962,
+        "section": "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-43caa4770ce1e7c8.exe)",
+        "status": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 974,
+        "section": "Running tests\\host_configuration_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_cli-1f5111521945da0c.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 983,
+        "section": "Running tests\\host_configuration_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_http-aced9deaa72b8331.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 995,
+        "section": "Running tests\\host_configuration_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_schema-720df519eae65060.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1035,
+        "section": "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-4427aa5a806a92eb.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1067,
+        "section": "Running tests\\host_initialization_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_initialization_workflow-9ee13ca622ca2211.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1084,
+        "section": "Running tests\\http_contract.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\http_contract-6785746873510844.exe)",
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1094,
+        "section": "Running tests\\lifecycle_compat.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\lifecycle_compat-77dbde5134e8eae1.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1101,
+        "section": "Running tests\\live.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\live-2f8011b26aceb36d.exe)",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 1,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1123,
+        "section": "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-b3088dca36e58cff.exe)",
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1136,
+        "section": "Running tests\\network_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_cli-5f43623a9e136188.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1147,
+        "section": "Running tests\\network_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_http-2d98d2752040c524.exe)",
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1170,
+        "section": "Running tests\\plugin_catalog.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_catalog-6114799b770aee42.exe)",
+        "status": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1186,
+        "section": "Running tests\\plugin_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_cli-c133d47c6f239841.exe)",
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1226,
+        "section": "Running tests\\plugin_host.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_host-b2341f2a583f8031.exe)",
+        "status": "ok",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1245,
+        "section": "Running tests\\plugin_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_http-4ba471be8f7c0e57.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1255,
+        "section": "Running tests\\plugin_management.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_management-046dcd64da3a43d1.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1265,
+        "section": "Running tests\\project_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_cli-cb6396d6ed98ce6d.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1278,
+        "section": "Running tests\\project_context.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_context-75f4f7c27fa6f2e0.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1290,
+        "section": "Running tests\\project_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_http-a94148fcf851417f.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1299,
+        "section": "Running tests\\project_migration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_migration-b9062902e54aaa97.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1309,
+        "section": "Running tests\\provider_network.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_network-c2c59f5960f18376.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1322,
+        "section": "Running tests\\provider_usage.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_usage-16c1b47013373316.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1334,
+        "section": "Running tests\\review_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\review_cli-957ddd9f2e10d575.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1350,
+        "section": "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-dcd8b946b2792c36.exe)",
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1364,
+        "section": "Running tests\\runtime_management_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_cli-ac51fa2cbf9f01b8.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1378,
+        "section": "Running tests\\runtime_management_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_schema-09671ca41c60c70e.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1401,
+        "section": "Running tests\\runtime_management_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_workflow-dc07c0d3e0fef802.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1426,
+        "section": "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-16021cf16c6cb9f4.exe)",
+        "status": "ok",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1436,
+        "section": "Running tests\\tool_call_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_call_workflow-65fb9643d68a3c6c.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1444,
+        "section": "Running tests\\tool_result_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_result_crash-215ac22af2380080.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1454,
+        "section": "Running tests\\tool_runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_runtime-ecfed8cca07feb8c.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1471,
+        "section": "Running tests\\tool_session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_session_turns-2a683faf04b67a6b.exe)",
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1495,
+        "section": "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-b2546e5c4a2dc824.exe)",
+        "status": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1509,
+        "section": "Running tests\\wasm_worker_core.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\wasm_worker_core-670acaaa34701d0e.exe)",
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1537,
+        "section": "Running tests\\workspace_changes.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_changes-365cb3c3ed55b852.exe)",
+        "status": "ok",
+        "passed": 21,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1557,
+        "section": "Running tests\\workspace_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_crash-628bea4224684bd9.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1565,
+        "section": "Running tests\\workspace_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_http-f540d02c0b1e46d2.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1580,
+        "section": "Running tests\\workspace_identity.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_identity-c86cc9877d9d0035.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1594,
+        "section": "Running tests\\worktree_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_cli-b4a5704e7ee6ddd1.exe)",
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1602,
+        "section": "Running tests\\worktree_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_http-e0a2f2f259019bb2.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1613,
+        "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)",
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1619,
+        "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1625,
+        "section": "Doc-tests peachsh",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1631,
+        "section": "Doc-tests peachsh_protocol",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1637,
+        "section": "Doc-tests peachsh_ui",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "top_level_summaries": [
+      {
+        "line": 658,
+        "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-29ee768203ad8f27.exe)",
+        "status": "ok",
+        "passed": 437,
+        "failed": 0,
+        "ignored": 44,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 666,
+        "section": "Running unittests src\\main.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-eaeb6a3bf4788dc0.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 672,
+        "section": "Running unittests src\\bin\\peachsh-wasm-worker.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_wasm_worker-1578f8c4775fc2f8.exe)",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 682,
+        "section": "Running tests\\agent_runtime_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\agent_runtime_cli-99f5319225df9475.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 723,
+        "section": "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-d41069fd53dcbf63.exe)",
+        "status": "ok",
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 745,
+        "section": "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-ae5334c0aa47b817.exe)",
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 755,
+        "section": "Running tests\\assessment_adversarial.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\assessment_adversarial-f13f9be424538b5f.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 764,
+        "section": "Running tests\\budget.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget-30ac63b192092c0f.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 780,
+        "section": "Running tests\\budget_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_cli-41a5d58eb2f76b1b.exe)",
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 791,
+        "section": "Running tests\\budget_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_http-ce7ef8a015890073.exe)",
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 813,
+        "section": "Running tests\\checkpoint.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint-5b17f153d05e48ea.exe)",
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 822,
+        "section": "Running tests\\checkpoint_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint_http-a69eb387bb00f7cd.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 839,
+        "section": "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-536bf296c13ee958.exe)",
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 854,
+        "section": "Running tests\\cli_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli_workflow-dd05b535b1ef5d25.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 861,
+        "section": "Running tests\\composition_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_cli-99629bb0a327d15f.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 868,
+        "section": "Running tests\\composition_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_http-e26e3cf5417adf1d.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 905,
+        "section": "Running tests\\execution_authority_lifecycle.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\execution_authority_lifecycle-2ef09564812f2bbf.exe)",
+        "status": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 920,
+        "section": "Running tests\\final_acceptance.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\final_acceptance-b293acbbabc08b50.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 930,
+        "section": "Running tests\\first_user_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\first_user_workflow-9730c841545a7b2c.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 938,
+        "section": "Running tests\\git_diff.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\git_diff-050b67653841a95f.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 962,
+        "section": "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-43caa4770ce1e7c8.exe)",
+        "status": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 974,
+        "section": "Running tests\\host_configuration_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_cli-1f5111521945da0c.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 983,
+        "section": "Running tests\\host_configuration_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_http-aced9deaa72b8331.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 995,
+        "section": "Running tests\\host_configuration_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_schema-720df519eae65060.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1035,
+        "section": "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-4427aa5a806a92eb.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1067,
+        "section": "Running tests\\host_initialization_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_initialization_workflow-9ee13ca622ca2211.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1084,
+        "section": "Running tests\\http_contract.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\http_contract-6785746873510844.exe)",
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1094,
+        "section": "Running tests\\lifecycle_compat.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\lifecycle_compat-77dbde5134e8eae1.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1101,
+        "section": "Running tests\\live.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\live-2f8011b26aceb36d.exe)",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 1,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1123,
+        "section": "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-b3088dca36e58cff.exe)",
+        "status": "ok",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1136,
+        "section": "Running tests\\network_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_cli-5f43623a9e136188.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1147,
+        "section": "Running tests\\network_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_http-2d98d2752040c524.exe)",
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1170,
+        "section": "Running tests\\plugin_catalog.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_catalog-6114799b770aee42.exe)",
+        "status": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1186,
+        "section": "Running tests\\plugin_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_cli-c133d47c6f239841.exe)",
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1226,
+        "section": "Running tests\\plugin_host.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_host-b2341f2a583f8031.exe)",
+        "status": "ok",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1245,
+        "section": "Running tests\\plugin_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_http-4ba471be8f7c0e57.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1255,
+        "section": "Running tests\\plugin_management.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_management-046dcd64da3a43d1.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1265,
+        "section": "Running tests\\project_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_cli-cb6396d6ed98ce6d.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1278,
+        "section": "Running tests\\project_context.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_context-75f4f7c27fa6f2e0.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1290,
+        "section": "Running tests\\project_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_http-a94148fcf851417f.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1299,
+        "section": "Running tests\\project_migration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_migration-b9062902e54aaa97.exe)",
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1309,
+        "section": "Running tests\\provider_network.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_network-c2c59f5960f18376.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1322,
+        "section": "Running tests\\provider_usage.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_usage-16c1b47013373316.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1334,
+        "section": "Running tests\\review_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\review_cli-957ddd9f2e10d575.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1350,
+        "section": "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-dcd8b946b2792c36.exe)",
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1364,
+        "section": "Running tests\\runtime_management_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_cli-ac51fa2cbf9f01b8.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1378,
+        "section": "Running tests\\runtime_management_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_schema-09671ca41c60c70e.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1401,
+        "section": "Running tests\\runtime_management_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_workflow-dc07c0d3e0fef802.exe)",
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1426,
+        "section": "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-16021cf16c6cb9f4.exe)",
+        "status": "ok",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1436,
+        "section": "Running tests\\tool_call_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_call_workflow-65fb9643d68a3c6c.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1444,
+        "section": "Running tests\\tool_result_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_result_crash-215ac22af2380080.exe)",
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1454,
+        "section": "Running tests\\tool_runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_runtime-ecfed8cca07feb8c.exe)",
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1471,
+        "section": "Running tests\\tool_session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_session_turns-2a683faf04b67a6b.exe)",
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1495,
+        "section": "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-b2546e5c4a2dc824.exe)",
+        "status": "ok",
+        "passed": 17,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1509,
+        "section": "Running tests\\wasm_worker_core.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\wasm_worker_core-670acaaa34701d0e.exe)",
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1537,
+        "section": "Running tests\\workspace_changes.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_changes-365cb3c3ed55b852.exe)",
+        "status": "ok",
+        "passed": 21,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1557,
+        "section": "Running tests\\workspace_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_crash-628bea4224684bd9.exe)",
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1565,
+        "section": "Running tests\\workspace_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_http-f540d02c0b1e46d2.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1580,
+        "section": "Running tests\\workspace_identity.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_identity-c86cc9877d9d0035.exe)",
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1594,
+        "section": "Running tests\\worktree_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_cli-b4a5704e7ee6ddd1.exe)",
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1602,
+        "section": "Running tests\\worktree_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_http-e0a2f2f259019bb2.exe)",
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1613,
+        "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)",
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1619,
+        "section": "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1625,
+        "section": "Doc-tests peachsh",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1631,
+        "section": "Doc-tests peachsh_protocol",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "line": 1637,
+        "section": "Doc-tests peachsh_ui",
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "nested_summaries_excluded": [],
+    "top_level_totals": {
+      "passed": 915,
+      "failed": 0,
+      "ignored": 45,
+      "measured": 0,
+      "filtered": 0
+    },
+    "declared_counts": {
+      "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-29ee768203ad8f27.exe)": 481,
+      "Running unittests src\\main.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-eaeb6a3bf4788dc0.exe)": 2,
+      "Running unittests src\\bin\\peachsh-wasm-worker.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_wasm_worker-1578f8c4775fc2f8.exe)": 0,
+      "Running tests\\agent_runtime_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\agent_runtime_cli-99f5319225df9475.exe)": 2,
+      "Running tests\\approval_gate.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_gate-d41069fd53dcbf63.exe)": 35,
+      "Running tests\\approval_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\approval_http-ae5334c0aa47b817.exe)": 16,
+      "Running tests\\assessment_adversarial.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\assessment_adversarial-f13f9be424538b5f.exe)": 4,
+      "Running tests\\budget.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget-30ac63b192092c0f.exe)": 3,
+      "Running tests\\budget_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_cli-41a5d58eb2f76b1b.exe)": 10,
+      "Running tests\\budget_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\budget_http-ce7ef8a015890073.exe)": 5,
+      "Running tests\\checkpoint.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint-5b17f153d05e48ea.exe)": 16,
+      "Running tests\\checkpoint_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\checkpoint_http-a69eb387bb00f7cd.exe)": 3,
+      "Running tests\\cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli-536bf296c13ee958.exe)": 11,
+      "Running tests\\cli_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\cli_workflow-dd05b535b1ef5d25.exe)": 9,
+      "Running tests\\composition_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_cli-99629bb0a327d15f.exe)": 1,
+      "Running tests\\composition_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\composition_http-e26e3cf5417adf1d.exe)": 1,
+      "Running tests\\execution_authority_lifecycle.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\execution_authority_lifecycle-2ef09564812f2bbf.exe)": 18,
+      "Running tests\\final_acceptance.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\final_acceptance-b293acbbabc08b50.exe)": 9,
+      "Running tests\\first_user_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\first_user_workflow-9730c841545a7b2c.exe)": 1,
+      "Running tests\\git_diff.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\git_diff-050b67653841a95f.exe)": 1,
+      "Running tests\\host_configuration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration-43caa4770ce1e7c8.exe)": 18,
+      "Running tests\\host_configuration_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_cli-1f5111521945da0c.exe)": 6,
+      "Running tests\\host_configuration_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_http-aced9deaa72b8331.exe)": 3,
+      "Running tests\\host_configuration_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_schema-720df519eae65060.exe)": 6,
+      "Running tests\\host_configuration_security.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_configuration_security-4427aa5a806a92eb.exe)": 7,
+      "Running tests\\host_initialization_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\host_initialization_workflow-9ee13ca622ca2211.exe)": 3,
+      "Running tests\\http_contract.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\http_contract-6785746873510844.exe)": 11,
+      "Running tests\\lifecycle_compat.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\lifecycle_compat-77dbde5134e8eae1.exe)": 4,
+      "Running tests\\live.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\live-2f8011b26aceb36d.exe)": 1,
+      "Running tests\\network_authorization.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_authorization-b3088dca36e58cff.exe)": 16,
+      "Running tests\\network_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_cli-5f43623a9e136188.exe)": 7,
+      "Running tests\\network_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\network_http-2d98d2752040c524.exe)": 5,
+      "Running tests\\plugin_catalog.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_catalog-6114799b770aee42.exe)": 17,
+      "Running tests\\plugin_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_cli-c133d47c6f239841.exe)": 10,
+      "Running tests\\plugin_host.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_host-b2341f2a583f8031.exe)": 24,
+      "Running tests\\plugin_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_http-4ba471be8f7c0e57.exe)": 9,
+      "Running tests\\plugin_management.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\plugin_management-046dcd64da3a43d1.exe)": 4,
+      "Running tests\\project_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_cli-cb6396d6ed98ce6d.exe)": 4,
+      "Running tests\\project_context.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_context-75f4f7c27fa6f2e0.exe)": 7,
+      "Running tests\\project_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_http-a94148fcf851417f.exe)": 6,
+      "Running tests\\project_migration.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\project_migration-b9062902e54aaa97.exe)": 3,
+      "Running tests\\provider_network.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_network-c2c59f5960f18376.exe)": 4,
+      "Running tests\\provider_usage.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\provider_usage-16c1b47013373316.exe)": 7,
+      "Running tests\\review_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\review_cli-957ddd9f2e10d575.exe)": 6,
+      "Running tests\\runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime-dcd8b946b2792c36.exe)": 10,
+      "Running tests\\runtime_management_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_cli-ac51fa2cbf9f01b8.exe)": 6,
+      "Running tests\\runtime_management_schema.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_schema-09671ca41c60c70e.exe)": 7,
+      "Running tests\\runtime_management_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\runtime_management_workflow-dc07c0d3e0fef802.exe)": 7,
+      "Running tests\\session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\session_turns-16021cf16c6cb9f4.exe)": 19,
+      "Running tests\\tool_call_workflow.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_call_workflow-65fb9643d68a3c6c.exe)": 1,
+      "Running tests\\tool_result_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_result_crash-215ac22af2380080.exe)": 1,
+      "Running tests\\tool_runtime.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_runtime-ecfed8cca07feb8c.exe)": 4,
+      "Running tests\\tool_session_turns.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\tool_session_turns-2a683faf04b67a6b.exe)": 11,
+      "Running tests\\turn_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\turn_http-b2546e5c4a2dc824.exe)": 17,
+      "Running tests\\wasm_worker_core.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\wasm_worker_core-670acaaa34701d0e.exe)": 8,
+      "Running tests\\workspace_changes.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_changes-365cb3c3ed55b852.exe)": 21,
+      "Running tests\\workspace_crash.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_crash-628bea4224684bd9.exe)": 6,
+      "Running tests\\workspace_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_http-f540d02c0b1e46d2.exe)": 2,
+      "Running tests\\workspace_identity.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\workspace_identity-c86cc9877d9d0035.exe)": 9,
+      "Running tests\\worktree_cli.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_cli-b4a5704e7ee6ddd1.exe)": 8,
+      "Running tests\\worktree_http.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\worktree_http-e0a2f2f259019bb2.exe)": 2,
+      "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_protocol-2b9873fc9281da35.exe)": 5,
+      "Running unittests src\\lib.rs (E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh_ui-4ed1c77431e40834.exe)": 0,
+      "Doc-tests peachsh": 0,
+      "Doc-tests peachsh_protocol": 0,
+      "Doc-tests peachsh_ui": 0
+    },
+    "web_pass": [
+      "PASS project draft remains A after selecting B; conflict preserves text/key and never auto-retries",
+      "PASS selection CAS conflict is not refreshed or resent",
+      "PASS config PUT is nested, tools boolean, stale configuration draft retained",
+      "PASS follow-up uses original Session new Turn and latest task mapping despite current B",
+      "PASS uncertain Session send retains original key/body; changed text cannot silently resend",
+      "PASS navigation to another Session blocks unknown pending send without discarding the snapshot"
+    ]
+  },
+  "targeted_totals": {
+    "passed": 149,
+    "failed": 0,
+    "ignored": 0
+  },
+  "manifest_sha256": "041f92f57c806f6733bd24df29ed392d04add47bbd233045ad1770ac9d357640",
+  "extra_files_not_in_manifest": []
+}
