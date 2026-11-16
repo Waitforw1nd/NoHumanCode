@@ -144,6 +144,7 @@ impl Store {
             .lock()
             .map_err(|_| PluginManagementError::Internal)?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         ensure_plugin_enabled_tx(&tx, id)?;
         #[cfg(test)]
         let probe_path: String = tx.query_row(
@@ -155,7 +156,7 @@ impl Store {
         crate::engine::runtime_barrier::block(&probe_path, "runtime_agent_admit_before_commit");
         #[cfg(test)]
         crate::engine::crash_probe::block(&probe_path, "runtime_agent_admit_before_commit", id);
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         #[cfg(test)]
         crate::engine::runtime_barrier::block(&probe_path, "runtime_agent_admit_after_commit");
         #[cfg(test)]
@@ -163,8 +164,9 @@ impl Store {
         Ok(())
     }
     // Caller holds the runtime management lock. Never calls runtime from Store.
-    pub(crate) fn set_plugin_desired(
+    pub(crate) fn set_plugin_desired_with_operation(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         request: &SetPluginEnabled,
         key: &str,
@@ -180,6 +182,7 @@ impl Store {
             .lock()
             .map_err(|_| PluginManagementError::Internal)?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence_for(&tx, op)?;
         let prior: Option<PluginMutationReceipt> = tx.query_row(
             "SELECT plugin_id,enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key=?1",
             [key], |r| Ok(PluginMutationReceipt { plugin_id:r.get(0)?, enabled:r.get(1)?, previous_revision:r.get(2)?, revision:r.get(3)?, committed_at:r.get(4)? }),
@@ -191,7 +194,7 @@ impl Store {
             {
                 return Err(PluginManagementError::IdempotencyConflict.into());
             }
-            tx.commit()?;
+            self.commit_execution_tx(tx)?;
             return Ok((receipt, true));
         }
         let current = desired_for_tx(&tx, id)?;
@@ -210,12 +213,13 @@ impl Store {
             params![receipt.enabled, receipt.revision, receipt.committed_at, id],
         )?;
         tx.execute("INSERT INTO plugin_management_requests(key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (?1,?2,?3,?4,?5,?6)", params![key, id, receipt.enabled, receipt.previous_revision, receipt.revision, receipt.committed_at])?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok((receipt, false))
     }
     // Called with the corresponding runtime lock held; replay precedes local rejection.
-    pub(crate) fn set_runtime_desired(
+    pub(crate) fn set_runtime_desired_with_operation(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         request: &SetPluginEnabled,
         key: &str,
@@ -235,6 +239,7 @@ impl Store {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(|_| E::Internal)?;
+        self.execution_fence_for(&tx, op).map_err(|_| E::Internal)?;
         let prior: Option<PluginMutationReceipt> = tx.query_row(
             "SELECT plugin_id,enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key=?1", [key],
             |r| Ok(PluginMutationReceipt {plugin_id:r.get(0)?,enabled:r.get(1)?,previous_revision:r.get(2)?,revision:r.get(3)?,committed_at:r.get(4)?})
@@ -246,7 +251,7 @@ impl Store {
             {
                 return Err(E::IdempotencyConflict);
             }
-            tx.commit().map_err(|_| E::Internal)?;
+            self.commit_execution_tx(tx).map_err(|_| E::Internal)?;
             return Ok((receipt, true));
         }
         if let Some(rejection) = reject {
@@ -298,13 +303,14 @@ impl Store {
             )
             .map_err(|_| E::Internal)?;
         }
-        let committed = tx.commit();
+        let committed = self.commit_execution_tx(tx);
         #[cfg(test)]
         if injected
             && matches!(
                 &committed,
-                Err(rusqlite::Error::SqliteFailure(code, _))
-                    if code.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY
+                Err(error) if matches!(error.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::SqliteFailure(code, _))
+                        if code.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY)
             )
         {
             crate::engine::runtime_barrier::mark_intent_commit_failure_observed(&probe_path);
@@ -315,6 +321,33 @@ impl Store {
         #[cfg(test)]
         crate::engine::crash_probe::block(&probe_path, "runtime_intent_after_commit", id);
         Ok((receipt, false))
+    }
+    #[cfg(test)]
+    pub(crate) fn set_plugin_desired(
+        &self,
+        id: &str,
+        request: &SetPluginEnabled,
+        key: &str,
+    ) -> Result<(PluginMutationReceipt, bool)> {
+        let op = self.execution_operation(tokio_util::sync::CancellationToken::new())?;
+        self.set_plugin_desired_with_operation(&op, id, request, key)
+    }
+    #[cfg(test)]
+    pub(crate) fn set_runtime_desired(
+        &self,
+        id: &str,
+        request: &SetPluginEnabled,
+        key: &str,
+        reject: Option<crate::runtime_management::RuntimeManagementError>,
+    ) -> std::result::Result<
+        (PluginMutationReceipt, bool),
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::RuntimeManagementError as E;
+        let op = self
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .map_err(|_| E::Internal)?;
+        self.set_runtime_desired_with_operation(&op, id, request, key, reject)
     }
     pub(crate) fn validate_files_read(&self, task: &crate::domain::Task) -> Result<()> {
         let db = self

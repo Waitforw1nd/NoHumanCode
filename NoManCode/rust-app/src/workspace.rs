@@ -367,7 +367,11 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
             let plugin = args["plugin"].as_str().context("缺少 plugin")?.to_owned();
             let input = args.get("input").cloned().unwrap_or(Value::Null);
             let plugin_dir = root.join(".peachsh").join("plugins");
+            // A blocking closure can outlive its async waiter. Keep the original
+            // operation body until the closure itself has returned.
+            let body = crate::execution_authority::current();
             let report = tokio::task::spawn_blocking(move || {
+                let _body = body;
                 let plugin = wasm::load(&plugin_dir, &plugin)?;
                 wasm::run(&plugin, &input)
             })

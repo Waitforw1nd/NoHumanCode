@@ -940,13 +940,14 @@ impl ApprovalService {
     }
     pub(crate) fn decide(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         approved: bool,
         by: &str,
         ack: bool,
     ) -> Result<approval::ApprovalRecord> {
         self.store
-            .decide_approval_with_network_ack(id, approved, by, ack)
+            .decide_approval_with_network_ack_for(id, approved, by, ack, op)
     }
     pub(crate) fn ensure(
         &self,
@@ -1013,9 +1014,6 @@ impl RecoveryService {
     pub(crate) fn new(store: Arc<Store>) -> Result<Self> {
         let controller = store.authority.claim()?;
         Ok(Self { store, controller })
-    }
-    pub(crate) fn activate(&self) {
-        self.controller.activate();
     }
     pub(crate) fn owns(&self, store: &Arc<Store>) -> bool {
         Arc::ptr_eq(&self.store, store)
