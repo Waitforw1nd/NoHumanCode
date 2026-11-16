@@ -1126,14 +1126,16 @@ mod tests {
         async fn claim(&self) -> (CreateWorktree, WorktreeReceipt, PersistedWorktreePlan) {
             let request = self.request();
             let plan = self.plan(&request).await;
-            let receipt = self
-                .store
-                .claim_worktree(
-                    &request,
-                    &self.store.worktree_inventory().unwrap(),
-                    std::slice::from_ref(&self.project.id),
-                    &plan,
-                )
+            let receipt =
+                crate::execution_authority::test_with_active_store_sync(&self.store, || {
+                    self.store.claim_worktree(
+                        &request,
+                        &self.store.worktree_inventory().unwrap(),
+                        std::slice::from_ref(&self.project.id),
+                        &plan,
+                    )
+                })
+                .unwrap()
                 .unwrap()
                 .0;
             (request, receipt, plan)
@@ -1240,8 +1242,8 @@ mod tests {
             let expected = if state == WorktreeState::Claimed {
                 receipt.clone()
             } else {
-                f.store
-                    .finish_worktree(
+                crate::execution_authority::test_with_active_store_sync(&f.store, || {
+                    f.store.finish_worktree(
                         &receipt,
                         None,
                         Some((
@@ -1253,7 +1255,9 @@ mod tests {
                             },
                         )),
                     )
-                    .unwrap()
+                })
+                .unwrap()
+                .unwrap()
             };
             std::fs::write(f.source.join("dirty"), "dirty").unwrap();
             assert_eq!(
@@ -1325,7 +1329,10 @@ mod tests {
                 let barrier = barrier.clone();
                 std::thread::spawn(move || {
                     barrier.wait();
-                    store.claim_worktree(&request, &inventory, &[member], &plan)
+                    crate::execution_authority::test_with_active_store_sync(&store, || {
+                        store.claim_worktree(&request, &inventory, &[member], &plan)
+                    })
+                    .unwrap()
                 })
             })
             .collect();
@@ -1387,15 +1394,16 @@ mod tests {
                 )
                 .unwrap();
             }
-            let err = f
-                .store
-                .claim_worktree(
+            let err = crate::execution_authority::test_with_active_store_sync(&f.store, || {
+                f.store.claim_worktree(
                     &request,
                     &inventory,
                     std::slice::from_ref(&f.project.id),
                     &plan,
                 )
-                .unwrap_err();
+            })
+            .unwrap()
+            .unwrap_err();
             assert_eq!(
                 err.downcast_ref::<WorktreeError>(),
                 Some(&WorktreeError::Busy),
@@ -1413,14 +1421,16 @@ mod tests {
             .unwrap();
         }
         assert!(
-            f.store
-                .claim_worktree(
+            crate::execution_authority::test_with_active_store_sync(&f.store, || {
+                f.store.claim_worktree(
                     &request,
                     &inventory,
                     std::slice::from_ref(&f.project.id),
-                    &plan
+                    &plan,
                 )
-                .is_ok()
+            })
+            .unwrap()
+            .is_ok()
         );
     }
     #[tokio::test]
@@ -2114,14 +2124,16 @@ mod tests {
                 let barrier = barrier.clone();
                 std::thread::spawn(move || {
                     barrier.wait();
-                    store
-                        .claim_worktree(
+                    crate::execution_authority::test_with_active_store_sync(&store, || {
+                        store.claim_worktree(
                             &request,
                             &inventory,
                             std::slice::from_ref(&request.source_project_id),
                             &plan,
                         )
-                        .unwrap()
+                    })
+                    .unwrap()
+                    .unwrap()
                 })
             })
             .collect();
@@ -2148,20 +2160,26 @@ mod tests {
             let store = f.store.clone();
             let claimed = std::thread::spawn(move || {
                 b.wait();
-                store.claim_worktree(
-                    &request,
-                    &inventory,
-                    std::slice::from_ref(&request.source_project_id),
-                    &plan,
-                )
+                crate::execution_authority::test_with_active_store_sync(&store, || {
+                    store.claim_worktree(
+                        &request,
+                        &inventory,
+                        std::slice::from_ref(&request.source_project_id),
+                        &plan,
+                    )
+                })
+                .unwrap()
             });
             let registered = std::thread::spawn(move || {
                 barrier.wait();
-                other.register_project(RegisterProject {
-                    name: "Concurrent".into(),
-                    root_path: root.to_string_lossy().into(),
-                    idempotency_key: id(),
+                crate::execution_authority::test_with_active_store_sync(&other, || {
+                    other.register_project(RegisterProject {
+                        name: "Concurrent".into(),
+                        root_path: root.to_string_lossy().into(),
+                        idempotency_key: id(),
+                    })
                 })
+                .unwrap()
             });
             match (claimed.join().unwrap(), registered.join().unwrap()) {
                 (Ok(_), Err(error)) => {
@@ -2194,11 +2212,13 @@ mod tests {
         let plan = f.plan(&request).await;
         let inventory = f.store.worktree_inventory().unwrap();
         let members = vec![f.project.id.clone(), sibling.clone()];
-        let receipt = f
-            .store
-            .claim_worktree(&request, &inventory, &members, &plan)
-            .unwrap()
-            .0;
+        let receipt = crate::execution_authority::test_with_active_store_sync(&f.store, || {
+            f.store
+                .claim_worktree(&request, &inventory, &members, &plan)
+        })
+        .unwrap()
+        .unwrap()
+        .0;
         assert_eq!(f.count("worktree_project_reservations"), 2);
         assert_eq!(
             engine

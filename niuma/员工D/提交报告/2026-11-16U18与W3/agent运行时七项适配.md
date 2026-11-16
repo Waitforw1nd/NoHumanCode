@@ -9,3 +9,7 @@
 ## 经理审查后更正
 
 上文对 crash 后工作副本降为 schema17 的方案不被接受，已移除；不能以其结果代替 schema18 原域崩溃恢复。三个 crash 用例在 child kill/wait 后先逐文件原子保存未经改动的 raw/query/recovery 证据副本并登记哈希；后续查询、recover、Engine、重开均使用原 `agent.db` 路径和实际文件身份，Store 生产校验身份，断言 schema18 和 marker。raw 持续做原字节/hash 复核；原 operation scope 修正保留。无测试执行。
+
+## 原 Child 收束修正
+
+根据 C 只读审查，本文件 OwnedChild 在观测失败、超时或 kill 后迟到时报告 NHC_TERMINAL_UNKNOWN 并保留原对象；正常故意 kill 使用同一 Child 的有界 kill/try_wait，Drop 也不忽略不确定结果。三个 crash 的 barrier 截止改为保留原 Child，原数据留存逻辑不变；bounded helper 使用文件输出以免管道等待掩盖终止。此为静态候选，未执行真实进程。
