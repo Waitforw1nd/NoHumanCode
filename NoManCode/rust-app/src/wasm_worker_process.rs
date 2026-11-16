@@ -617,12 +617,15 @@ impl WorkerService {
             .name("nhc-wasm-worker-supervision".into())
             .spawn(move || {
                 let _operation = operation;
+                let mut guard = SupervisorCompletion {
+                    slot: Some(lease),
+                    domain: lease_for_thread,
+                };
                 let result = platform::run(&worker, request, deadline, &gate_for_thread);
                 record_stage("supervisor_platform_returned", None);
                 // The slot is released only when the platform has returned after
                 // confirmed cleanup. Pending kernel calls retain this thread.
-                drop(lease);
-                lease_for_thread.finish_platform();
+                guard.finish();
                 let _ = tx.send(result);
             });
         if started.is_err() {
@@ -651,9 +654,9 @@ impl WorkerService {
                             Err(WorkerError::Deadline)
                         }
                     },
+                    Err(_) => Err(WorkerError::CleanupUnknown),
                     Ok(_) if cancel.is_cancelled() => Err(WorkerError::Cancelled),
                     Ok(Err(error)) => Err(error),
-                    Err(_) => Err(WorkerError::CleanupUnknown),
                 }
             },
         };
@@ -678,6 +681,29 @@ struct DomainCompletionState {
     lease: Option<Box<dyn crate::process_lifetime::DomainLease>>,
     platform_finished: bool,
     result_finished: bool,
+}
+
+// An unwinding supervisor has not proved process/Job/I/O cleanup. Keep the
+// original slot and generation alive and close the same data domain even if
+// the waiting future was already dropped.
+struct SupervisorCompletion {
+    slot: Option<SlotLease>,
+    domain: Arc<DomainCompletion>,
+}
+impl SupervisorCompletion {
+    fn finish(&mut self) {
+        self.domain.finish_platform();
+        drop(self.slot.take());
+    }
+}
+impl Drop for SupervisorCompletion {
+    fn drop(&mut self) {
+        if let Some(slot) = self.slot.take() {
+            self.domain.seal_unknown();
+            std::mem::forget(slot);
+            std::mem::forget(self.domain.clone());
+        }
+    }
 }
 struct DomainCompletion(Mutex<DomainCompletionState>);
 impl DomainCompletion {
