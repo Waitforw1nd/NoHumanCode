@@ -1003,7 +1003,7 @@ mod lifecycle_tests {
             let root = tempfile::tempdir().unwrap();
             let store =
                 Arc::new(crate::store::Store::open(&root.path().join("handoff.db")).unwrap());
-            let engine = Engine::new(store.clone(), 1).unwrap();
+            let _engine = Engine::new(store.clone(), 1).unwrap();
             let shutdown = CancellationToken::new();
             let original = store.execution_operation(shutdown.clone()).unwrap();
             let cancelled = original.scope.cancel.clone();
