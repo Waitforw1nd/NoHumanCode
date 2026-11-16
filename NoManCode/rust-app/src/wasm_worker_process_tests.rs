@@ -354,6 +354,83 @@ mod fault_matrix {
         assert_eq!(store.execution_admission_status().unwrap(), (true, 0, 0));
     }
 
+    async fn bound_shutdown_case(phase: &'static str, running: bool) {
+        let (store, engine, mut service) = bound_host();
+        if running {
+            service = fault_service("no-read").0;
+            service.bind_store(&store).unwrap();
+        }
+        // This operation is created with the Engine's real shutdown token;
+        // call's distinct token stays uncancelled throughout the experiment.
+        let op = engine.test_worker_operation().unwrap();
+        let independent = CancellationToken::new();
+        let call_cancel = independent.clone();
+        let hook = test_hooks::arm(phase);
+        test_observer::arm(false);
+        let task = tokio::spawn(op.run(async move {
+            let module = if running { near_limit(wasm()) } else { wasm() };
+            service
+                .call(manifest(), before(), module, call_cancel)
+                .await
+        }));
+        assert!(wait_until(test_hooks::reached, Duration::from_secs(4)).await);
+        assert_eq!(store.execution_admission_status().unwrap(), (true, 1, 0));
+        engine.request_shutdown();
+        test_hooks::mark("w07_host_shutdown_requested");
+        assert!(!independent.is_cancelled());
+        let (open, in_flight, _) = store.execution_admission_status().unwrap();
+        assert!(!open && in_flight > 0);
+        assert!(!test_hooks::slot_free());
+        assert!(crate::engine::Engine::new(store.clone(), 1).is_err());
+        test_hooks::release();
+        let result = tokio::time::timeout(Duration::from_secs(8), task)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(
+            matches!(result, Err(WorkerError::Cancelled)),
+            "{phase}: {result:?}"
+        );
+        assert!(wait_until(test_hooks::slot_free, Duration::from_secs(8)).await);
+        assert!(test_hooks::completed_without_timeout());
+        drop(hook);
+        let (pid, handle) = test_observer::take().expect("original process observer");
+        assert_eq!(
+            unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) },
+            WAIT_OBJECT_0
+        );
+        let log = read_log(&PathBuf::from(
+            std::env::var_os("NHC_W2_STAGE_LOG").unwrap(),
+        ));
+        assert_reaped(&log, pid);
+        let after = log
+            .split_once("phase=w07_host_shutdown_requested")
+            .unwrap()
+            .1;
+        if running {
+            assert!(contains_pid(&log, "resumed", pid));
+            assert!(contains_pid(&log, "submit_returned_pending", pid));
+        } else {
+            assert!(!after.contains("phase=resume_ticket_granted"));
+            assert!(!contains_pid(&log, "resumed", pid));
+        }
+        assert!(!independent.is_cancelled());
+        assert!(engine.shutdown(Duration::from_secs(8)).await.settled());
+        assert_eq!(store.execution_admission_status().unwrap().1, 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires fixed real worker and isolated process observation"]
+    async fn w07_bound_shutdown_before_resume_retains_ticket() {
+        bound_shutdown_case("resume_before_ticket", false).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires fixed real worker, no-read probe and isolated process observation"]
+    async fn w07_bound_shutdown_running_retains_ticket() {
+        bound_shutdown_case("submit_returned_pending", true).await;
+    }
+
     async fn bound_supervisor_panic(drop_future: bool) {
         let (store, _engine, service) = bound_host();
         let op = store.execution_operation(CancellationToken::new()).unwrap();

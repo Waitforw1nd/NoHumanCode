@@ -590,9 +590,14 @@ impl WorkerService {
             Some(store) => {
                 let operation = crate::execution_authority::current()
                     .ok_or(WorkerError::IsolationUnavailable("domain_operation", None))?;
-                let lease = store
-                    .execution_generation(&operation)
-                    .map_err(|_| WorkerError::IsolationUnavailable("domain_generation", None))?;
+                let operation_cancel = operation.cancellation_token();
+                let lease = store.execution_generation(&operation).map_err(|_| {
+                    if operation_cancel.is_cancelled() || cancel.is_cancelled() {
+                        WorkerError::Cancelled
+                    } else {
+                        WorkerError::IsolationUnavailable("domain_generation", None)
+                    }
+                })?;
                 (Some(operation), Some(lease))
             }
             #[cfg(test)]
@@ -607,7 +612,14 @@ impl WorkerService {
             result_finished: false,
         })));
         let _result_guard = ResultCompletion(domain_lease.clone(), result_body);
-        let gate = Arc::new(Gate::new(cancel.clone()));
+        let operation_cancel = operation
+            .as_ref()
+            .map(|op| op.cancellation_token())
+            .unwrap_or_default();
+        let gate = Arc::new(Gate::with_operation(
+            cancel.clone(),
+            operation_cancel.clone(),
+        ));
         let mut cancellation = CancelOnDrop(Some(gate.clone()));
         let (tx, mut rx) = oneshot::channel();
         let worker = self.worker.clone();
@@ -641,6 +653,7 @@ impl WorkerService {
         let result = tokio::select! {
             biased;
             _ = cancel.cancelled() => Err(WorkerError::Cancelled),
+            _ = operation_cancel.cancelled() => Err(WorkerError::Cancelled),
             _ = tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)) => Err(WorkerError::Deadline),
             received = &mut rx => {
                 received_completion = true;
@@ -652,14 +665,15 @@ impl WorkerService {
                             #[cfg(all(test, windows))]
                             test_hooks::checkpoint("accept_after", Some(success.process_id));
                             Ok(success)
-                        } else if cancel.is_cancelled() {
+                        } else if gate.is_cancelled() {
                             Err(WorkerError::Cancelled)
                         } else {
                             Err(WorkerError::Deadline)
                         }
                     },
                     Err(_) => Err(WorkerError::CleanupUnknown),
-                    Ok(_) if cancel.is_cancelled() => Err(WorkerError::Cancelled),
+                    Ok(Err(WorkerError::CleanupUnknown)) => Err(WorkerError::CleanupUnknown),
+                    Ok(_) if gate.is_cancelled() => Err(WorkerError::Cancelled),
                     Ok(Err(error)) => Err(error),
                 }
             },
@@ -808,14 +822,23 @@ struct Gate {
     state: AtomicU8,
     admission: Mutex<()>,
     cancel: CancellationToken,
+    operation_cancel: CancellationToken,
 }
 impl Gate {
+    #[cfg(test)]
     fn new(cancel: CancellationToken) -> Self {
+        Self::with_operation(cancel, CancellationToken::new())
+    }
+    fn with_operation(cancel: CancellationToken, operation_cancel: CancellationToken) -> Self {
         Self {
             state: AtomicU8::new(0),
             admission: Mutex::new(()),
             cancel,
+            operation_cancel,
         }
+    }
+    fn is_cancelled(&self) -> bool {
+        self.cancel.is_cancelled() || self.operation_cancel.is_cancelled()
     }
     fn stop(&self) {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
@@ -825,13 +848,11 @@ impl Gate {
     }
     #[cfg(windows)]
     fn stopped(&self, deadline: Instant) -> bool {
-        self.cancel.is_cancelled()
-            || self.state.load(Ordering::Acquire) == 1
-            || Instant::now() >= deadline
+        self.is_cancelled() || self.state.load(Ordering::Acquire) == 1 || Instant::now() >= deadline
     }
     fn accept(&self, deadline: Instant) -> bool {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if self.cancel.is_cancelled() || Instant::now() >= deadline {
+        if self.is_cancelled() || Instant::now() >= deadline {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -844,7 +865,7 @@ impl Gate {
     #[cfg(windows)]
     fn authorize(&self, deadline: Instant) -> bool {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if self.cancel.is_cancelled() || Instant::now() >= deadline {
+        if self.is_cancelled() || Instant::now() >= deadline {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -855,7 +876,7 @@ impl Gate {
     #[cfg(windows)]
     fn reject_cpu(&self, deadline: Instant, error: WorkerError) -> WorkerError {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if self.cancel.is_cancelled() {
+        if self.is_cancelled() {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -890,6 +911,24 @@ impl Drop for CancelOnDrop {
 #[cfg(test)]
 mod gate_tests {
     use super::*;
+
+    #[test]
+    fn caller_and_operation_cancellation_each_close_gate() {
+        for operation in [false, true] {
+            let caller = CancellationToken::new();
+            let original = CancellationToken::new();
+            let gate = Gate::with_operation(caller.clone(), original.clone());
+            if operation {
+                original.cancel();
+                assert!(!caller.is_cancelled());
+            } else {
+                caller.cancel();
+                assert!(!original.is_cancelled());
+            }
+            assert!(gate.is_cancelled());
+            assert!(!gate.accept(Instant::now() + Duration::from_secs(1)));
+        }
+    }
     use std::sync::Barrier;
 
     #[tokio::test]
