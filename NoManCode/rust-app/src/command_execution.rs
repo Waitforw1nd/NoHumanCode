@@ -74,6 +74,43 @@ impl Drop for ReaderTask {
 
 const OUTPUT_LIMIT: usize = 65_536;
 
+/// PowerShell exposes a verbatim cwd as a provider-qualified `$PWD`, which
+/// breaks Join-Path arguments passed to .NET file APIs. Only the launch spelling
+/// changes; authority and executable checks continue to use the canonical root.
+#[cfg(windows)]
+fn shell_cwd(root: &std::path::Path) -> Result<std::path::PathBuf> {
+    use std::path::{Component, PathBuf, Prefix};
+    let mut components = root.components();
+    let drive = match components.next() {
+        Some(Component::Prefix(prefix)) => match prefix.kind() {
+            Prefix::Disk(drive) | Prefix::VerbatimDisk(drive) => drive,
+            _ => bail!("命令工作区必须是本地 drive 路径"),
+        },
+        _ => bail!("命令工作区必须是绝对路径"),
+    };
+    ensure!(
+        matches!(components.next(), Some(Component::RootDir)),
+        "命令工作区必须是绝对路径"
+    );
+    let mut cwd = PathBuf::from(format!("{}:\\", char::from(drive)));
+    for component in components {
+        let Component::Normal(name) = component else {
+            bail!("命令工作区包含非标准路径组件");
+        };
+        cwd.push(name);
+    }
+    ensure!(
+        cwd.canonicalize().context("命令启动目录不可用")? == root,
+        "命令启动目录与真实工作区不一致"
+    );
+    Ok(cwd)
+}
+
+#[cfg(not(windows))]
+fn shell_cwd(root: &std::path::Path) -> Result<std::path::PathBuf> {
+    Ok(root.to_path_buf())
+}
+
 /// The retention bound is not an EOF: keep the pipe open and drain the rest.
 /// Completion still requires the real EOF (or the caller's cleanup deadline).
 #[cfg(test)]
@@ -120,7 +157,7 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
         .collect();
     let mut spec = ProcessSpec::new(
         executable,
-        root,
+        shell_cwd(&root)?,
         environment,
         (OUTPUT_LIMIT, OUTPUT_LIMIT),
         OverflowPolicy::TruncateAndDrain,
@@ -392,6 +429,44 @@ mod tests {
         );
     }
 
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn shell_pwd_join_path_preserves_dotnet_paths_with_spaces() {
+        let root = tempfile::Builder::new()
+            .prefix("shell cwd with spaces ")
+            .tempdir()
+            .unwrap();
+        let canonical = root.path().canonicalize().unwrap();
+        let probe = Arc::new(Probe {
+            case: "ordinary-shell-cwd",
+            ..Probe::default()
+        });
+        let result = PROBE
+            .scope(
+                probe.clone(),
+                execute(
+                    &task(&canonical),
+                    &json!({
+                        "command": "$ErrorActionPreference = 'Stop'; [IO.File]::WriteAllText((Join-Path $PWD 'file with spaces.txt'), 'written'); [Console]::Out.Write($PWD.Path)",
+                        "timeout_seconds": 10
+                    }),
+                ),
+            )
+            .await;
+        original_exit(&probe).unwrap();
+        let result = result.unwrap();
+        assert_eq!(result["exit_code"], 0, "{result}");
+        assert_eq!(result["stderr"], "");
+        let pwd = result["stdout"].as_str().unwrap();
+        assert!(!pwd.contains("::"), "provider-qualified cwd: {pwd}");
+        assert!(!pwd.starts_with(r"\\?\"), "verbatim cwd: {pwd}");
+        assert_eq!(std::path::Path::new(pwd).canonicalize().unwrap(), canonical);
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("file with spaces.txt")).unwrap(),
+            "written"
+        );
+    }
+
     #[derive(Default)]
     pub(super) struct Probe {
         pub case: &'static str,
@@ -560,23 +635,6 @@ mod tests {
                 "original stderr reader not joined"
             );
             assert!(hooks.stderr_eof_joined.load(Ordering::SeqCst));
-            *self.original.lock().unwrap() = Some(captured);
-        }
-
-        pub(super) fn capture_process(&self, child: &tokio::process::Child) {
-            use std::io::Write;
-            // Retain failures for the test assertion; never interrupt product cleanup.
-            let captured = ProcessObservation::capture(child).map_err(|error| format!("{error:#}"));
-            let _ = writeln!(
-                std::io::stderr().lock(),
-                "s06-process {}",
-                json!({
-                    "case":self.case, "phase":"capture-original-child",
-                    "pid":child.id(), "created":captured.as_ref().ok().map(|p| p.created),
-                    "probe_error":captured.as_ref().err(), "reader_error":self.reader_error,
-                    "cleanup_unknown":self.cleanup_unknown, "wait_error":self.wait_error
-                })
-            );
             *self.original.lock().unwrap() = Some(captured);
         }
     }
