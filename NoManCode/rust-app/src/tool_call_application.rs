@@ -447,7 +447,7 @@ impl ToolCallApplication {
         }
         let file_effect = if name == "write_file" {
             match crate::workspace::FileEffectGuard::begin(&self.store) {
-                Ok(effect) => Some(effect),
+                Ok(effect) => Some(std::sync::Arc::new(effect)),
                 Err(error) => {
                     // Admission closed before the write began. Settle the
                     // already prepared claim with the original operation.
@@ -473,7 +473,12 @@ impl ToolCallApplication {
             None
         };
         let execution = if file_effect.is_some() {
-            crate::workspace::with_write_authority(lease.execute(task, args)).await
+            crate::workspace::with_write_authority(
+                file_effect.as_ref().unwrap().clone(),
+                self.store.clone(),
+                lease.execute(task, args),
+            )
+            .await
         } else {
             lease.execute(task, args).await
         };
@@ -536,7 +541,9 @@ impl ToolCallApplication {
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
             task.updated_at = now();
             if let Some(effect) = file_effect {
-                effect.settle();
+                std::sync::Arc::try_unwrap(effect)
+                    .map_err(|_| anyhow::anyhow!("file authority still in use"))?
+                    .settle();
             }
             Ok(())
         } else {
