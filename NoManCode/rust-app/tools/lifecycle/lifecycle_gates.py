@@ -337,6 +337,9 @@ def run_attempt(repo, out, gate_path, expected, steps, environment, options,
             except Exception as capture_error:
                 write_new(out / "source-after-error.json", {"error": str(capture_error)})
     manifest["ended_utc"] = utc()
+    if manifest["status"] != "passed" and code == 0:
+        code = 1
+    manifest["runner_exit_code"] = code
     manifest["gate_retained"] = True
     if out.is_dir():
         manifest["artifacts"] = [

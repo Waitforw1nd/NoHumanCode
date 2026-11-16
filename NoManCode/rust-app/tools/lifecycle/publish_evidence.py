@@ -16,7 +16,7 @@ def verify(attempt, current):
     # Read once and hash/copy these same byte snapshots, avoiding re-read drift.
     blobs = {p.name: p.read_bytes() for p in sorted(attempt.iterdir()) if p.is_file()}
     manifest = json.loads(blobs["manifest.json"])
-    if manifest["version"] != 1 or manifest["status"] != "passed" or not manifest["inputs_verified"]:
+    if manifest["version"] != 1 or manifest["status"] != "passed" or not manifest["inputs_verified"] or manifest["runner_exit_code"] != 0:
         raise ValueError("Attempt is not a completed passing gate")
     if manifest["process_tree_cleanup"] != "not_proven_by_this_runner" or not manifest["gate_retained"]:
         raise ValueError("Unsupported process cleanup claim")
