@@ -851,7 +851,7 @@ pub struct Engine {
     tool_calls: crate::tool_call_application::ToolCallApplication,
     provider_runtime: Arc<crate::provider_runtime::ProviderRuntime>,
     agent_runtime: Arc<crate::agent_runtime::AgentRuntime>,
-    packaged_worker: Mutex<Option<Option<crate::worker_bootstrap::WorkerService>>>,
+    packaged_worker: Mutex<Option<Option<crate::wasm_worker_process::WorkerService>>>,
     #[cfg(test)]
     agent_before_save: Mutex<Option<AgentBeforeSaveProbe>>,
     #[cfg(test)]
@@ -886,7 +886,7 @@ impl Engine {
     /// Installation is one-shot even when no worker was packaged.
     pub fn install_packaged_worker(
         &self,
-        mut worker: Option<crate::worker_bootstrap::WorkerService>,
+        mut worker: Option<crate::wasm_worker_process::WorkerService>,
     ) -> Result<()> {
         let mut installed = self
             .packaged_worker
