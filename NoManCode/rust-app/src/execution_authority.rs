@@ -22,6 +22,7 @@ pub(crate) struct ExecutionAuthority {
     domain: platform::Domain,
     pub(crate) initialization: Mutex<bool>,
     admission: Mutex<Admission>,
+    retained_unknown: std::sync::atomic::AtomicBool,
     pub(crate) supervisor: Supervisor,
 }
 impl ExecutionAuthority {
@@ -68,6 +69,8 @@ impl ExecutionAuthority {
                 state.controller = false;
                 state.open = false;
                 state.unknown = state.unknown.saturating_add(1);
+                drop(state);
+                self.retain_unknown_owner();
                 return Err(error);
             }
         };
@@ -98,7 +101,7 @@ impl ExecutionAuthority {
         self.domain.identity_key()
     }
     pub(crate) fn fence(
-        &self,
+        self: &Arc<Self>,
         tx: &rusqlite::Transaction<'_>,
         op: &ExecutionOperation,
         settlement: bool,
@@ -106,7 +109,7 @@ impl ExecutionAuthority {
         // Ordinary caller rejection must not poison another domain or turn a
         // clean cancellation into an unknown resource outcome.
         ensure!(
-            std::ptr::eq(self, op.scope.authority.as_ref()),
+            Arc::ptr_eq(self, &op.scope.authority),
             "cross-domain operation"
         );
         {
@@ -149,10 +152,22 @@ impl ExecutionAuthority {
         }
         result
     }
-    pub(crate) fn seal_unknown(&self) {
+    // Keep the original owner and its OS locks alive until process exit when
+    // an outcome cannot be confirmed. This does not settle the original I/O.
+    fn retain_unknown_owner(self: &Arc<Self>) {
+        if !self
+            .retained_unknown
+            .swap(true, std::sync::atomic::Ordering::AcqRel)
+        {
+            std::mem::forget(self.clone());
+        }
+    }
+    pub(crate) fn seal_unknown(self: &Arc<Self>) {
         let mut state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
         state.open = false;
         state.unknown = state.unknown.saturating_add(1);
+        drop(state);
+        self.retain_unknown_owner();
     }
     pub(crate) fn close(&self) {
         self.admission
@@ -295,6 +310,7 @@ impl ExecutionOperation {
             state.unknown = true;
             admission.open = false;
             admission.unknown = admission.unknown.saturating_add(1);
+            self.scope.authority.retain_unknown_owner();
         }
     }
     pub(crate) fn generation_for(
@@ -414,6 +430,7 @@ impl DomainLease for Generation {
             admission.open = false;
             admission.unknown = admission.unknown.saturating_add(1);
             state.unknown = true;
+            self.scope.authority.retain_unknown_owner();
         }
     }
     fn settle(self: Box<Self>) {
@@ -866,6 +883,7 @@ mod platform {
             },
             initialization: Mutex::new(false),
             admission: Mutex::new(Admission::default()),
+            retained_unknown: std::sync::atomic::AtomicBool::new(false),
             supervisor: Supervisor::new(NonZeroUsize::new(1).unwrap()),
         });
         owner.domain.verify()?;

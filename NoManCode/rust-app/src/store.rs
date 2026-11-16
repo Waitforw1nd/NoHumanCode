@@ -1232,7 +1232,13 @@ impl Store {
         secrets::validate_persisted_id("project_id", &project.id.0)?;
         secrets::safe_metadata_text("project_name", &project.name)?;
         secrets::safe_metadata_path("project_path", &project.root_path)?;
-        repository::Repository::new(&self.db.lock().unwrap()).insert_project(project)
+        {
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.execution_fence(&tx)?;
+            repository::Repository::new(&tx).insert_project(project)?;
+            self.commit_execution_tx(tx)
+        }
     }
 
     pub fn project(&self, id: &ProjectId) -> Result<Project> {
@@ -1247,7 +1253,13 @@ impl Store {
         secrets::validate_persisted_id("session_id", &session.id.0)?;
         secrets::validate_persisted_id("legacy_run_id", &session.legacy_run_id)?;
         secrets::safe_metadata_text("session_title", &session.title)?;
-        repository::Repository::new(&self.db.lock().unwrap()).insert_session(session)
+        {
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.execution_fence(&tx)?;
+            repository::Repository::new(&tx).insert_session(session)?;
+            self.commit_execution_tx(tx)
+        }
     }
 
     pub fn session(&self, id: &SessionId) -> Result<Session> {
@@ -1259,7 +1271,13 @@ impl Store {
         secrets::validate_persisted_id("agent_session_id", &agent.session_id.0)?;
         secrets::safe_metadata_text("agent_display_name", &agent.display_name)?;
         secrets::safe_metadata_text("agent_role", &agent.role)?;
-        repository::Repository::new(&self.db.lock().unwrap()).insert_agent(agent)
+        {
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.execution_fence(&tx)?;
+            repository::Repository::new(&tx).insert_agent(agent)?;
+            self.commit_execution_tx(tx)
+        }
     }
 
     pub fn agent(&self, id: &AgentId) -> Result<Agent> {
