@@ -109,6 +109,22 @@ class GateTests(unittest.TestCase):
         self.assertTrue(self.lock.exists())
         self.assertNotEqual((self.out / "source-before.json").read_bytes(), (self.out / "source-after.json").read_bytes())
 
+    def test_change_at_final_snapshot_cannot_return_exit_zero(self):
+        self.options["mode"] = "check"
+        count = 0
+        def capture(_):
+            nonlocal count
+            count += 1
+            value = copy.deepcopy(self.source)
+            if count == 4:
+                value["source_sha256"] = "d" * 64
+            return value
+        code, manifest = self.run_attempt(capture=capture)
+        self.assertEqual(code, 1)
+        self.assertEqual(manifest["runner_exit_code"], 1)
+        self.assertEqual(manifest["status"], "failed")
+        self.assertTrue(self.lock.exists())
+
     def test_attempt_is_never_reused(self):
         self.run_attempt()
         raw = (self.out / "manifest.json").read_bytes()
