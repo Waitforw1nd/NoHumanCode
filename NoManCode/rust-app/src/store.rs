@@ -1110,6 +1110,17 @@ impl Store {
         Ok(())
     }
 
+    /// Only the Host's shared completion StreamRedactor may supply this text.
+    /// Public/untrusted event writes must continue through `event`.
+    pub(crate) fn completion_delta(&self, task_id: &str, safe_text: &str) -> Result<()> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        let event = task_event_envelope(&tx, task_id, "delta", json!({"text":safe_text}))?;
+        repository::Repository::append_completion_delta(&tx, &event)?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn insert_project(&self, project: &Project) -> Result<()> {
         secrets::validate_persisted_id("project_id", &project.id.0)?;
         secrets::safe_metadata_text("project_name", &project.name)?;
@@ -3399,6 +3410,17 @@ pub(crate) fn task_event_tx(
     kind: &str,
     data: Value,
 ) -> Result<()> {
+    let event = task_event_envelope(tx, task_id, kind, secrets::redact_persisted(&data))?;
+    repository::Repository::append_event(tx, &event)?;
+    Ok(())
+}
+
+fn task_event_envelope(
+    tx: &rusqlite::Transaction<'_>,
+    task_id: &str,
+    kind: &str,
+    data: Value,
+) -> Result<Event> {
     let repo = repository::Repository::new(tx);
     let session = repo.session_by_legacy_run_of_task(task_id)?;
     let turn_id: Option<String> = tx
@@ -3414,12 +3436,11 @@ pub(crate) fn task_event_tx(
         turn_id.as_deref(),
         task_id,
         kind,
-        secrets::redact_persisted(&data),
+        data,
         now(),
     );
     event.session_id = event.session_id.filter(|id| !id.is_empty());
-    repository::Repository::append_event(tx, &event)?;
-    Ok(())
+    Ok(event)
 }
 
 fn set_turn_status_tx(
@@ -4313,6 +4334,85 @@ mod tests {
         assert_eq!(store.task(&task.id).unwrap().output, "[redacted]");
         task.output = "unrelated".into();
         assert!(store.save_running_snapshot(&task).is_err());
+    }
+
+    #[test]
+    fn audit_completion_delta_preserves_context_and_public_event_redaction() {
+        for legacy in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let path = temp.path().join("completion-delta.db");
+            let store = Store::open(&path).unwrap();
+            let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+            if legacy {
+                task.run_id = "unmapped-legacy-run".into();
+                store
+                    .create_run(&Run {
+                        id: task.run_id.clone(),
+                        title: "legacy completion".into(),
+                        kind: SessionKind::Chat,
+                        created_at: task.created_at,
+                        tasks: vec![task.clone()],
+                    })
+                    .unwrap();
+            } else {
+                store
+                    .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+                    .unwrap();
+            }
+            // The trusted boundary receives pieces already accepted in the
+            // context of one stream: sk-plain is inside the ordinary word.
+            store.completion_delta(&task.id, "foo").unwrap();
+            store.completion_delta(&task.id, "sk-plain").unwrap();
+            let deltas: Vec<_> = store
+                .events(&task.run_id, 0)
+                .unwrap()
+                .into_iter()
+                .filter(|event| event.kind == "delta")
+                .collect();
+            assert_eq!(deltas.len(), 2);
+            assert_eq!(deltas[0].data["text"], "foo");
+            assert_eq!(deltas[1].data["text"], "sk-plain");
+            task.output = "foosk-plain".into();
+            store.save_running_snapshot(&task).unwrap();
+            assert_eq!(store.task(&task.id).unwrap().output, "foosk-plain");
+
+            store
+                .event(&task.id, "delta", json!({"text":"sk-ordinary-secret"}))
+                .unwrap();
+            let public_event = store
+                .events(&task.run_id, deltas[1].seq)
+                .unwrap()
+                .pop()
+                .unwrap();
+            assert_eq!(public_event.data["text"], "[redacted]");
+            {
+                let mut db = store.db.lock().unwrap();
+                let tx = db.transaction().unwrap();
+                let mut event =
+                    task_event_envelope(&tx, &task.id, "delta", json!({"text":"sk-direct-secret"}))
+                        .unwrap();
+                repository::Repository::append_event(&tx, &event).unwrap();
+                // The trusted path does not bypass kind, shape or relationship checks.
+                event.data["extra"] = json!("not a completion delta");
+                assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
+                event.data = json!({"text":"safe"});
+                event.kind = "resume".into();
+                assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
+                event.kind = "delta".into();
+                event.session_id = Some("nonexistent-session".into());
+                assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
+                tx.commit().unwrap();
+            }
+            drop(store);
+            let reopened = Store::open(&path).unwrap();
+            let events = reopened.events(&task.run_id, deltas[0].seq).unwrap();
+            assert_eq!(events[0].data["text"], "sk-plain");
+            assert_eq!(events.last().unwrap().data["text"], "[redacted]");
+            assert_eq!(
+                events.iter().filter(|event| event.kind == "delta").count(),
+                3
+            );
+        }
     }
 
     #[test]
