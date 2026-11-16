@@ -621,6 +621,10 @@ impl WorkerService {
                     slot: Some(lease),
                     domain: lease_for_thread,
                 };
+                #[cfg(all(test, windows))]
+                if test_hooks::checkpoint("supervisor_injected_panic", None) {
+                    panic!("isolated supervisor panic fixture");
+                }
                 let result = platform::run(&worker, request, deadline, &gate_for_thread);
                 record_stage("supervisor_platform_returned", None);
                 // The slot is released only when the platform has returned after
