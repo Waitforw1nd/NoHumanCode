@@ -91,3 +91,24 @@ pwsh -NoProfile -File NoManCode/rust-app/build.ps1 -Action web-test
 本次交叉审只读取源码与 Git 状态，未编辑 A 文件，未执行 Cargo/rustc、产品、网络请求或新的动态复现。上述结果是可逐步推导的静态反例，不称为实际 Rust 测试失败。经理已确认收到并转交 A 修复和补行为回归；其“安全 5 专项通过、Windows 7 通过”是经理提供的独立验证状态，本报告不将其扩展为这些反例已关闭。
 
 复审待办：A 修订 Token 模式继续追踪 field、压缩长字段分隔符和空值裁决后，重新检查与完整规范化的等价性；跨 completion 状态丢失由经理另行发现并交 A/B 协调，不冒称 D 的发现，也不由本次静态阅读提前关闭。
+
+## A/B 修订算法复审：消息与事件同链问题（2026-11-16）
+
+经理追加只读复审后，已看到 A 的未提交修订：分隔符压缩后再限制字段长度、Token 模式继续跟踪字段、QuotedStart 延迟空值裁决；B 的 recovery 树在 Engine 中跨 completion 共用单一 redactor，调用 A 的 `execute_with_redactor` 原始 decoder 边界。先前三个最小反例的值泄漏/空引号即时替换在静态控制流中已有对应修正，但不据此宣称最终组合动态通过。以下两项来自当时仍在修改的工作区快照，行号仅作该次定位，不冒充固定最终提交。
+
+### D-XA-04 / P1：安全流式输出之外仍保存跨轮原始 assistant 消息
+
+- 入口：security 树 `NoManCode/rust-app/src/provider_runtime.rs:663` 返回 decoder 原始 output；recovery 树 `NoManCode/rust-app/src/engine.rs:2172` 将原始 message 加入 candidate.messages；`domain.rs:539` 的持久策略逐个字符串脱敏。
+- 反例：与 A 新增跨轮测试相同，第一 completion 的 content 为 `password=` 并返回合法只读工具组，第二 completion 的 content 为 `opaque123`。单一流式状态正确生成 `password=[redacted]`，但第二条 assistant message 本身没有字段前缀，独立完整文本策略保留 `opaque123`，因此凭据仍存在持久 Task/messages 中。
+- 当时新增跨轮测试检查 task.output、事件和 SSE，没有断言所有持久 messages 均不含该值。单轮 `sk-password=opaque123` 的 `[redacted]=[redacted]` 流式投影与 `sk-password=[redacted]` 完整消息投影不一致，也是双文本来源的具体表现。
+- 建议验证：replacement codec 的全 Task/messages 秘密断言；有 delta、仅 finish 输出、无 delta 但有最终 content 三类均保留合法非敏感文本，并核对最后 pending tail 的归属。
+
+### D-XA-05 / P2：逐事件再次脱敏制造不存在的 token 边界
+
+- 入口：security 树 `NoManCode/rust-app/src/provider_runtime.rs:635` 发送 stateful 过滤结果；`NoManCode/rust-app/src/store.rs:1023` 又对每片 data 单独调用 `redact_persisted`。
+- 反例：同一 completion 两次 emit `foo`、`sk-plain`，最终 content 为 `foosk-plain`。根据既有 token 边界规则，紧接 ASCII 字母的 `sk-` 不是匹配；有状态过滤正确保留原文。但第二事件再次独立过滤时以 `sk-` 开头，变为 `[redacted]`。SSE 拼接为 `foo[redacted]`，而 task.output/message 为 `foosk-plain`。
+- 这是现有可识别策略下的普通文本负控，不要求识别任意未知凭据。建议验证同一 completion 内不同分片边界、跨 completion 的相邻普通文本，以及最终 tail 的持久投影一致性。
+
+经理已收到并明确 A/B 分工：A 负责安全 message 投影、无 delta codec fallback 和全 Task 秘密断言；B 负责可信 Host 流式 delta 的内部 Store 入口，避免再次制造边界，并将最终 tail 写入对应 assistant message。此处仅登记派发，不声明修复完成或测试已通过。最终候选待经理交回后再核相应 diff。
+
+本次仍未编辑 A/B 产品文件，未执行 Cargo/rustc、产品、真实进程测试或外部服务调用；所有结论均为静态反例。复审范围停留在上述既有 token/bearer/assignment 策略及消息/事件一致性，不扩展未知凭据识别承诺。
