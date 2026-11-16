@@ -85,3 +85,17 @@ B还需在任务最终成功时，把共享state.finish尾部同时追加到outp
 最终专项仍使用`cargo test --locked --lib stream_redaction -- --test-threads=1 --nocapture`，当前预计选择10项（4项状态机、6项Provider/Engine集成）；不得接受零测试通过。兼容检查保留`cargo test --locked --lib provider_runtime_tests::p03_both_engine_paths_consume_replacement_codec -- --exact --test-threads=1`。父线程需在A最终增量和B可信delta/末轮尾部均整合后运行。
 
 剩余：等待组合编译、上述定向测试及D复审；既有历史数据与未知模式秘密不在此修复范围。重启恢复不持久化未发布的redactor状态，用户可见草稿以已安全发布的事件为边界；跨新的run_task执行恢复未确定状态不在本轮跨completion保证中。
+
+## 主线程实测回报（2026-11-16，产品冻结后）
+
+主线程已审查并整合A后续提交 `f81cec7aa536916f23ed4fb7a69f0fd51eb70c0f`，确认含整个Task防泄漏断言、安全正文重组、Unicode、无emit fallback与普通`foo` / `sk-plain`三投影负控；独立message的保守过滤限制保持上述说明。
+
+主线程随后明确回报：最终10项安全回归实测全部通过，check退出码0。回报的受测标识为：
+
+- HEAD：`89e3bb1d`
+- product：`84e03b3a44024ef2114241a8613b4955746d8fa3`
+- Rust：`13fda626af066d1932ca1fcc56a72585be7bfc8c`
+
+以上是主线程在整合组合上的实测回报，不是A自行运行Cargo所得；A没有复跑或查看原始测试日志。安全专项采用前述stream_redaction筛选，实际数量为10项，覆盖本轮新增反例。本节更新前述“待组合编译/安全专项”状态为已由主线程报告通过，不把早先单候选通过结果混用到新的受测标识。
+
+主线程正开始固定6项门禁，尚未提供其完成结果，本报告不宣称6项门禁或最终总验收已通过。产品修改保持冻结；A本次仅补报告并普通docs提交，等待主线程通知失败才返工。身份同步及最终复核仍由主线程负责。
