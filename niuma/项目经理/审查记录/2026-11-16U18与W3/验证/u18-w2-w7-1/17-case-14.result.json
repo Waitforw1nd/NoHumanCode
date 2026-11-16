@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process::platform::w06_artifact_tests::pin_existing_writable_mapping",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process::platform::w06_artifact_tests::pin_existing_writable_mapping",
+  "ended_utc": "2026-11-16T12:43:27.561361+00:00",
+  "exit_code": 0,
+  "log": "17-case-14.log",
+  "log_bytes": 254,
+  "log_sha256": "c4dbe55aa3e6d0a7ea523d58c75d83adf46039fc730e317b9e73ac6c27832a4c",
+  "name": "case-14",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:26.617987+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

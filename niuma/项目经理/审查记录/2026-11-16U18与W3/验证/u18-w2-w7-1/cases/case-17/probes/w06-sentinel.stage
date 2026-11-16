@@ -1,0 +1,4 @@
+pid=52896 phase=started
+pid=52896 phase=request_eof
+pid=52896 phase=sentinel_result nonce=9741dbb030784e06bb9157d5f35f9bd3 ok=0 error=Some(6)
+pid=52896 phase=sentinel_wait nonce=9741dbb030784e06bb9157d5f35f9bd3

@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process_tests::fault_matrix::w05_host_kill_boundaries",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process_tests::fault_matrix::w05_host_kill_boundaries",
+  "ended_utc": "2026-11-16T12:43:21.483683+00:00",
+  "exit_code": 0,
+  "log": "14-case-11.log",
+  "log_bytes": 1322,
+  "log_sha256": "7e24ff14177c00a42b73100e580f21a3f34610e2e2486d7d560d89c0ce98e354",
+  "name": "case-11",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:18.489027+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

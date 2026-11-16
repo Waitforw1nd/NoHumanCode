@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process::platform::r04_tests::suspended_process_in_real_job_requires_process_fallback",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process::platform::r04_tests::suspended_process_in_real_job_requires_process_fallback",
+  "exit_code": null,
+  "name": "case-21",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:41.656952+00:00",
+  "timeout_seconds": 1800
+}

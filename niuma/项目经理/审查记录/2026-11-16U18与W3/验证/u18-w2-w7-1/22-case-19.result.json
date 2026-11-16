@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process::platform::w06_limit_tests::active_limit_single_factor",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process::platform::w06_limit_tests::active_limit_single_factor",
+  "ended_utc": "2026-11-16T12:43:38.705675+00:00",
+  "exit_code": 0,
+  "log": "22-case-19.log",
+  "log_bytes": 733,
+  "log_sha256": "c4d00124efa340bbb482bb9bedc080a6bfcbc71f64b522bf06c6c8f6b798177c",
+  "name": "case-19",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:37.731618+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

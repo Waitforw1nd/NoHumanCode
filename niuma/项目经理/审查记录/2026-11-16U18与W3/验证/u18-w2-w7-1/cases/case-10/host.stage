@@ -1,0 +1,1553 @@
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(27076)
+phase=resume_ticket_granted pid=Some(27076)
+phase=resume_api_return pid=Some(27076) count=1
+phase=resumed pid=Some(27076)
+phase=cpu_first_user_100ns pid=Some(27076) count=0
+phase=submit_ticket_granted pid=Some(27076)
+phase=stdin_io_settled pid=Some(27076)
+phase=stdout_data pid=Some(27076)
+phase=stdout_bytes pid=Some(27076) count=355
+phase=stdout_eof pid=Some(27076)
+phase=stderr_eof pid=Some(27076)
+phase=process_wait pid=Some(27076) count=0
+phase=job_query pid=Some(27076) count=1
+phase=job_active pid=Some(27076) count=0
+phase=job_user_100ns pid=Some(27076) count=0
+phase=job_extended_query pid=Some(27076) count=1
+phase=job_memory_limit pid=Some(27076) count=134217728
+phase=job_peak_process_memory pid=Some(27076) count=851968
+phase=job_cpu_limit_100ns pid=Some(27076) count=30000000
+phase=cpu_final_user_100ns pid=Some(27076) count=0
+phase=io_complete_reaped pid=Some(27076)
+phase=stderr_io_settled pid=Some(27076)
+phase=stdout_io_settled pid=Some(27076)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(27076)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(33156)
+phase=resume_ticket_granted pid=Some(33156)
+phase=resume_api_return pid=Some(33156) count=1
+phase=resumed pid=Some(33156)
+phase=cpu_first_user_100ns pid=Some(33156) count=0
+phase=submit_ticket_granted pid=Some(33156)
+phase=submit_ticket_granted pid=Some(33156)
+phase=persistent_injected_event_error pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=1
+phase=stderr_io_settled pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=1
+phase=stdout_io_settled pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=1
+phase=stdin_cancel_returned pid=Some(33156)
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cleanup_unknown pid=None
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=cancel_io_return pid=Some(33156) count=0
+phase=stdin_cancel_returned pid=Some(33156)
+phase=stdin_io_settled pid=Some(33156)
+phase=process_wait pid=Some(33156) count=0
+phase=job_query pid=Some(33156) count=1
+phase=job_active pid=Some(33156) count=0
+phase=job_user_100ns pid=Some(33156) count=0
+phase=job_extended_query pid=Some(33156) count=1
+phase=job_memory_limit pid=Some(33156) count=134217728
+phase=job_peak_process_memory pid=Some(33156) count=475136
+phase=job_cpu_limit_100ns pid=Some(33156) count=30000000
+phase=failure_reaped pid=Some(33156)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(33156)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(45500)
+phase=resume_ticket_granted pid=Some(45500)
+phase=resume_api_return pid=Some(45500) count=1
+phase=resumed pid=Some(45500)
+phase=cpu_first_user_100ns pid=Some(45500) count=0
+phase=submit_ticket_granted pid=Some(45500)
+phase=stdin_io_settled pid=Some(45500)
+phase=stdout_data pid=Some(45500)
+phase=stdout_bytes pid=Some(45500) count=355
+phase=stderr_eof pid=Some(45500)
+phase=stdout_eof pid=Some(45500)
+phase=process_wait pid=Some(45500) count=0
+phase=job_query pid=Some(45500) count=1
+phase=job_active pid=Some(45500) count=0
+phase=job_user_100ns pid=Some(45500) count=0
+phase=job_extended_query pid=Some(45500) count=1
+phase=job_memory_limit pid=Some(45500) count=134217728
+phase=job_peak_process_memory pid=Some(45500) count=790528
+phase=job_cpu_limit_100ns pid=Some(45500) count=30000000
+phase=cpu_final_user_100ns pid=Some(45500) count=0
+phase=io_complete_reaped pid=Some(45500)
+phase=stderr_io_settled pid=Some(45500)
+phase=stdout_io_settled pid=Some(45500)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(45500)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(54584)
+phase=resume_ticket_granted pid=Some(54584)
+phase=resume_api_return pid=Some(54584) count=1
+phase=resumed pid=Some(54584)
+phase=cpu_first_user_100ns pid=Some(54584) count=0
+phase=submit_ticket_granted pid=Some(54584)
+phase=persistent_injected_result_error pid=Some(54584)
+phase=stderr_io_settled pid=Some(54584)
+phase=stdout_io_settled pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=stopper_terminate_job_return pid=Some(0) count=1
+phase=stopper_cancel_io_return pid=Some(0) count=0
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cleanup_unknown pid=None
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=cancel_io_return pid=Some(54584) count=0
+phase=stdin_cancel_returned pid=Some(54584)
+phase=stdin_io_settled pid=Some(54584)
+phase=process_wait pid=Some(54584) count=0
+phase=job_query pid=Some(54584) count=1
+phase=job_active pid=Some(54584) count=0
+phase=job_user_100ns pid=Some(54584) count=0
+phase=job_extended_query pid=Some(54584) count=1
+phase=job_memory_limit pid=Some(54584) count=134217728
+phase=job_peak_process_memory pid=Some(54584) count=684032
+phase=job_cpu_limit_100ns pid=Some(54584) count=30000000
+phase=failure_reaped pid=Some(54584)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(54584)
+phase=supervisor_platform_returned pid=None
+phase=supervision_started pid=None
+phase=before_create pid=None
+phase=create_ticket_granted pid=None
+phase=create_flags pid=Some(0) count=525324
+phase=created_suspended pid=Some(62564)
+phase=resume_ticket_granted pid=Some(62564)
+phase=resume_api_return pid=Some(62564) count=1
+phase=resumed pid=Some(62564)
+phase=cpu_first_user_100ns pid=Some(62564) count=0
+phase=submit_ticket_granted pid=Some(62564)
+phase=stdin_io_settled pid=Some(62564)
+phase=stdout_data pid=Some(62564)
+phase=stdout_bytes pid=Some(62564) count=355
+phase=stdout_eof pid=Some(62564)
+phase=stderr_eof pid=Some(62564)
+phase=process_wait pid=Some(62564) count=0
+phase=job_query pid=Some(62564) count=1
+phase=job_active pid=Some(62564) count=0
+phase=job_user_100ns pid=Some(62564) count=0
+phase=job_extended_query pid=Some(62564) count=1
+phase=job_memory_limit pid=Some(62564) count=134217728
+phase=job_peak_process_memory pid=Some(62564) count=786432
+phase=job_cpu_limit_100ns pid=Some(62564) count=30000000
+phase=cpu_final_user_100ns pid=Some(62564) count=0
+phase=io_complete_reaped pid=Some(62564)
+phase=stderr_io_settled pid=Some(62564)
+phase=stdout_io_settled pid=Some(62564)
+phase=stopper_joined pid=None
+phase=run_handles_released pid=Some(62564)
+phase=supervisor_platform_returned pid=None

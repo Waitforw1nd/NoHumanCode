@@ -1,0 +1,14 @@
+
+running 1 test
+test wasm_worker_process_tests::fault_matrix::w05_host_kill_boundaries ... W05 scenario=before helper=56224 worker=None terminate=1 error=None kill_started_ms=482 kill_returned_ms=482
+W05 scenario=before helper_wait=0 helper_wait_start_ms=482 helper_wait_end_ms=483 worker_wait=None worker_wait_start_ms=483 worker_wait_end_ms=483
+W05 scenario=suspended helper=69240 worker=Some((57288, 134393066001876886)) terminate=1 error=None kill_started_ms=765 kill_returned_ms=765
+W05 scenario=suspended helper_wait=0 helper_wait_start_ms=765 helper_wait_end_ms=766 worker_wait=Some(0) worker_wait_start_ms=766 worker_wait_end_ms=787
+W05 scenario=resumed helper=71776 worker=Some((27840, 134393066006560284)) terminate=1 error=None kill_started_ms=315 kill_returned_ms=315
+W05 scenario=resumed helper_wait=0 helper_wait_start_ms=315 helper_wait_end_ms=317 worker_wait=Some(0) worker_wait_start_ms=317 worker_wait_end_ms=317
+W05 scenario=pending helper=17380 worker=Some((33432, 134393066010904235)) terminate=1 error=None kill_started_ms=428 kill_returned_ms=428
+W05 scenario=pending helper_wait=0 helper_wait_start_ms=428 helper_wait_end_ms=432 worker_wait=Some(0) worker_wait_start_ms=432 worker_wait_end_ms=432
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 508 filtered out; finished in 2.02s
+

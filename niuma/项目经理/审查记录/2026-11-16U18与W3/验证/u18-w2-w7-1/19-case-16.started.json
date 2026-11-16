@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process::platform::w06_handle_tests::sentinel_explicit_inheritance_control",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process::platform::w06_handle_tests::sentinel_explicit_inheritance_control",
+  "exit_code": null,
+  "name": "case-16",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:31.472537+00:00",
+  "timeout_seconds": 1800
+}

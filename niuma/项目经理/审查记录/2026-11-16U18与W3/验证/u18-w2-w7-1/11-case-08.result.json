@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process_tests::fault_matrix::w04_cancellation_and_acceptance_boundaries",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process_tests::fault_matrix::w04_cancellation_and_acceptance_boundaries",
+  "ended_utc": "2026-11-16T12:43:07.603354+00:00",
+  "exit_code": 0,
+  "log": "11-case-08.log",
+  "log_bytes": 211,
+  "log_sha256": "54c0910d9c518f803ecd7725bffaca85c188d9ab96539763ffdad739c0fa9aa7",
+  "name": "case-08",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:42:55.156135+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

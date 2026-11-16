@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process_tests::fault_matrix::w02_protocol_fault_matrix",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process_tests::fault_matrix::w02_protocol_fault_matrix",
+  "ended_utc": "2026-11-16T12:41:36.737674+00:00",
+  "exit_code": 0,
+  "log": "05-case-02.log",
+  "log_bytes": 2207,
+  "log_sha256": "3fe2bc2cbe126e0e42befc1e01cc08be5de636b0e926d9679c09f3d7490d6ce0",
+  "name": "case-02",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:41:08.019227+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

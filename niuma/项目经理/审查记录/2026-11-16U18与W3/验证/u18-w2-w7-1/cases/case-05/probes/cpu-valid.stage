@@ -1,0 +1,6 @@
+pid=19892 phase=started
+pid=19892 phase=request_eof
+pid=19892 phase=cpu_valid_reached user_100ns=30937500
+pid=19892 phase=cpu_valid_response_ready
+pid=19892 phase=output_written
+pid=19892 phase=done

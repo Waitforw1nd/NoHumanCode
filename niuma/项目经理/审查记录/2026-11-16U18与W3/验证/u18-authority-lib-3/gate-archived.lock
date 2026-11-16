@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\lifecycle\\u18-authority-lib-3",
+  "candidate": {
+    "head": "6db88e9871a757645652e9f61bc7fd5c00d210f1",
+    "product_tree": "f4176fe17da5ab170334c9e056d4894f7dc7cf93",
+    "rust_tree": "6366b27b26dcaef46bdee48e8b1482a97002dd10"
+  },
+  "nonce": "9d07943eca3e4ad09751178291255277",
+  "pid_diagnostic_only": 42356,
+  "started_utc": "2026-11-16T12:37:01.173582+00:00"
+}

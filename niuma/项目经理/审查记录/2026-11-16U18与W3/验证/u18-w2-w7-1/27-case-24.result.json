@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process_tests::fault_matrix::w07_bound_supervisor_panic_disconnect_seals_domain",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process_tests::fault_matrix::w07_bound_supervisor_panic_disconnect_seals_domain",
+  "ended_utc": "2026-11-16T12:43:50.958219+00:00",
+  "exit_code": 0,
+  "log": "27-case-24.log",
+  "log_bytes": 423,
+  "log_sha256": "bef083bbe114f228fdb3f306dd33cd28a2fdd880000315a2d18a5c73d27a1974",
+  "name": "case-24",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:49.750874+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

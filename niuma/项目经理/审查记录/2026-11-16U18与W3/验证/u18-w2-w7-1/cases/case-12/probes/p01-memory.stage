@@ -1,0 +1,7 @@
+pid=4288 phase=started
+pid=4288 phase=request_eof
+pid=4288 phase=p01_wait
+pid=4288 phase=p01_released
+pid=4288 phase=memory_allocation_start
+pid=4288 phase=memory_allocation_failed count=130023424 error=1455
+pid=4288 phase=memory_allocation_failed

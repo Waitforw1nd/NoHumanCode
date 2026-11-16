@@ -1,0 +1,4 @@
+pid=20560 phase=started
+pid=20560 phase=request_eof
+pid=20560 phase=job_control_wait
+pid=20560 phase=job_wait nonce=3f9ae2b6967c41f3a0f65f4542cee688
