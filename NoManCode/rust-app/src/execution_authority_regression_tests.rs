@@ -204,6 +204,166 @@ fn unknown_owner_child() {
 }
 
 #[tokio::test]
+async fn unknown_terminal_child() {
+    use crate::domain::{Route, Run, SessionKind, Task, TaskSpec};
+    let Ok(case) = std::env::var("NHC_U18_TERMINAL_CASE") else {
+        return;
+    };
+    let (dir, store, _engine) = setup();
+    let task = Task {
+        id: "u18-terminal".into(),
+        run_id: "u18-terminal-run".into(),
+        spec: TaskSpec {
+            name: "worker".into(),
+            role: "worker".into(),
+            route_id: "route".into(),
+            prompt: "prompt".into(),
+            depends_on: vec![],
+            write_scopes: vec![],
+            tools: false,
+            allow_commands: false,
+            max_rounds: 1,
+        },
+        route: Route {
+            id: "route".into(),
+            name: "route".into(),
+            base_url: "http://127.0.0.1:1/v1".into(),
+            model: "fixture".into(),
+            max_tokens: 64,
+            parallel_limit: 1,
+            key_env: None,
+        },
+        workspace: dir.path().to_string_lossy().into_owned(),
+        status: "running".into(),
+        output: "durable output".into(),
+        error: None,
+        messages: vec![serde_json::json!({"role":"user","content":"durable message"})],
+        usage: serde_json::Value::Null,
+        created_at: 1,
+        updated_at: 1,
+    };
+    let seed = store.execution_operation(CancellationToken::new()).unwrap();
+    seed.run(async {
+        store
+            .create_run(&Run {
+                id: task.run_id.clone(),
+                title: "fixture".into(),
+                kind: SessionKind::Team,
+                created_at: 1,
+                tasks: vec![task.clone()],
+            })
+            .unwrap();
+    })
+    .await;
+    let other = store.execution_operation(CancellationToken::new()).unwrap();
+    let local = store.execution_operation(CancellationToken::new()).unwrap();
+    let (_other_dir, other_store, _other_engine) = setup();
+    let foreign = other_store
+        .execution_operation(CancellationToken::new())
+        .unwrap();
+    if case == "cross" {
+        foreign.seal_unknown();
+    } else {
+        local.seal_unknown();
+    }
+    if case == "closed" {
+        store.authority.close();
+    }
+    if case == "epoch" {
+        store
+            .db
+            .lock()
+            .unwrap()
+            .execute("UPDATE execution_owner SET epoch=epoch+1 WHERE id=1", [])
+            .unwrap();
+    }
+    if case == "normal" {
+        // An independently admitted operation may still settle its own result.
+        other
+            .run(async {
+                let mut db = store.db.lock().unwrap();
+                let tx = db
+                    .transaction_with_behavior(TransactionBehavior::Immediate)
+                    .unwrap();
+                store.execution_settlement_fence(&tx).unwrap();
+                tx.execute(
+                    "INSERT INTO config(id,value) VALUES('other-settled','yes')",
+                    [],
+                )
+                .unwrap();
+                tx.commit().unwrap();
+            })
+            .await;
+        let mut forged = task.clone();
+        forged.status = "completed".into();
+        forged.output = "untrusted success".into();
+        let scope = local.hold_body();
+        scope
+            .run(async {
+                assert!(store.save_unknown_terminal(&forged).is_err());
+            })
+            .await;
+        assert_eq!(
+            serde_json::to_value(store.task(&task.id).unwrap()).unwrap(),
+            serde_json::to_value(&task).unwrap()
+        );
+        forged.status = "failed".into();
+        forged
+            .messages
+            .push(serde_json::json!({"role":"tool","content":"untrusted result"}));
+        local
+            .run(async {
+                store.save_unknown_terminal(&forged).unwrap();
+            })
+            .await;
+        let saved = store.task(&task.id).unwrap();
+        assert_eq!(saved.status, "failed");
+        assert_eq!(saved.output, task.output);
+        assert_eq!(saved.messages, task.messages);
+        assert!(saved.error.is_some());
+    } else {
+        let mut rejected = task.clone();
+        rejected.status = "failed".into();
+        let op = if case == "cross" { foreign } else { local };
+        op.run(async {
+            assert!(store.save_unknown_terminal(&rejected).is_err());
+        })
+        .await;
+        assert_eq!(
+            serde_json::to_value(store.task(&task.id).unwrap()).unwrap(),
+            serde_json::to_value(&task).unwrap()
+        );
+    }
+}
+
+#[test]
+fn unknown_terminal_uses_original_scope_and_preserves_durable_content() {
+    use std::{process::Command, time::Duration};
+    for case in ["normal", "cross", "closed", "epoch"] {
+        let root = tempfile::Builder::new()
+            .prefix("u18-terminal-")
+            .tempdir()
+            .unwrap()
+            .keep();
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "execution_authority_regression_tests::unknown_terminal_child",
+                "--nocapture",
+            ])
+            .env("NHC_U18_TERMINAL_CASE", case);
+        let output =
+            owned_child::OwnedChild::spawn(&mut command, &root).output(Duration::from_secs(30));
+        assert!(
+            output.status.success(),
+            "{case} child failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+#[tokio::test]
 async fn durable_epoch_and_phase_are_checked_before_process_or_generation() {
     use crate::process_lifetime::Outcome;
     use std::time::{Duration, Instant};

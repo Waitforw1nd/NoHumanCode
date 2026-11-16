@@ -575,6 +575,7 @@ async fn conflicts_cancel_and_configuration_lock() {
     assert_eq!(r.tasks[1].status, "cancelled");
     server.abort();
 }
+#[cfg(feature = "integration-test-support")]
 #[tokio::test]
 async fn restart_and_http_security() {
     let temp = tempfile::tempdir().unwrap();
@@ -594,22 +595,26 @@ async fn restart_and_http_security() {
         created_at: now(),
         updated_at: now(),
     };
-    e.store
-        .create_run(&Run {
-            id: "durable-run".into(),
-            title: "recovery".into(),
-            kind: SessionKind::Team,
-            created_at: now(),
-            tasks: vec![durable_task],
-        })
-        .unwrap();
-    e.store
-        .event(
-            "durable-id",
-            "delta",
-            json!({"text":"partial recovered from event log"}),
-        )
-        .unwrap();
+    e.with_integration_test_operation(async {
+        e.store
+            .create_run(&Run {
+                id: "durable-run".into(),
+                title: "recovery".into(),
+                kind: SessionKind::Team,
+                created_at: now(),
+                tasks: vec![durable_task],
+            })
+            .unwrap();
+        e.store
+            .event(
+                "durable-id",
+                "delta",
+                json!({"text":"partial recovered from event log"}),
+            )
+            .unwrap();
+    })
+    .await
+    .unwrap();
     let store = Arc::new(Store::open(&temp.path().join("test.db")).unwrap());
     let before = serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap();
     assert!(
