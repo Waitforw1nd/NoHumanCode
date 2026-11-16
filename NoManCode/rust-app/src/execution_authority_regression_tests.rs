@@ -101,6 +101,68 @@ fn unknown_owner_survives_dropping_every_external_reference() {
     assert_eq!(after, before);
 }
 
+#[test]
+fn unknown_owner_child() {
+    let Some(root) = std::env::var_os("NHC_U18_UNKNOWN_ROOT") else {
+        return;
+    };
+    let root = std::path::PathBuf::from(root);
+    let store = Arc::new(Store::open(&root.join("unknown.db")).unwrap());
+    let engine = Engine::new(store.clone(), 1).unwrap();
+    let op = store.execution_operation(CancellationToken::new()).unwrap();
+    op.seal_unknown();
+    drop(op);
+    drop(engine);
+    drop(store);
+    std::fs::write(root.join("unknown-ready"), b"ready").unwrap();
+    loop {
+        std::thread::park_timeout(std::time::Duration::from_secs(60));
+    }
+}
+
+#[tokio::test]
+async fn unknown_owner_retains_os_exclusion_until_original_child_is_waited() {
+    use std::{
+        process::Command,
+        time::{Duration, Instant},
+    };
+    let root = tempfile::Builder::new()
+        .prefix("u18-unknown-")
+        .tempdir()
+        .unwrap()
+        .keep();
+    let path = root.join("unknown.db");
+    drop(Store::open(&path).unwrap());
+    let mut command = Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            "execution_authority_regression_tests::unknown_owner_child",
+            "--nocapture",
+        ])
+        .env("NHC_U18_UNKNOWN_ROOT", &root);
+    let mut child = owned_child::OwnedChild::spawn(&mut command, &root.join("evidence"));
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while !root.join("unknown-ready").exists() {
+        assert!(
+            Instant::now() < deadline,
+            "original child never reached the unknown barrier"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(
+        Store::open(&path).is_err(),
+        "live unknown owner must retain the original domain lock"
+    );
+    assert!(!child.kill_wait().success());
+    drop(child);
+    // The injected case owns no real external effect. Successful recovery here
+    // says nothing about unresolved effects in a genuine host crash.
+    let store = Arc::new(Store::open(&path).unwrap());
+    let engine = Engine::new_recovered(store, 1).unwrap().0;
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+}
+
 fn value(store: &Store) -> Option<String> {
     use rusqlite::OptionalExtension;
     store
