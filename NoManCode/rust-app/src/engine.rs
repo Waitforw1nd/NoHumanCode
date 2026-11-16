@@ -4380,59 +4380,116 @@ pub(crate) mod workspace_phase_tests {
 
     #[tokio::test]
     async fn n12_spawned_typed_unknown_keeps_claim_and_stops_provider() {
-        let temp = tempfile::tempdir().unwrap();
-        let (engine, id, calls) = shell_engine(
-            temp.path(),
-            "Start-Sleep -Seconds 9; [IO.File]::WriteAllText('shell-marker.txt','unexpected')",
-            true,
-            true,
-        )
-        .await;
-        let pending = n10_pending(&engine, &id).await;
-        let _fault = crate::command_execution::unknown_after_spawn_once(&id);
-        engine
-            .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+        const TEST: &str = "engine::workspace_phase_tests::n12_spawned_typed_unknown_keeps_claim_and_stops_provider";
+        if let Some(root) = std::env::var_os("NHC_TYPED_UNKNOWN_CHILD") {
+            let root = std::path::PathBuf::from(root);
+            let (engine, id, calls) = shell_engine(
+                &root,
+                "Start-Sleep -Seconds 9; [IO.File]::WriteAllText('shell-marker.txt','unexpected')",
+                true,
+                true,
+            )
+            .await;
+            let pending = n10_pending(&engine, &id).await;
+            let _fault = crate::command_execution::unknown_after_spawn_once(&id);
+            engine
+                .decide_approval_with_network_ack(&pending.id, true, Some("test"), true)
+                .unwrap();
+            n10_idle(&engine).await;
+            let record = engine.store.approval(&pending.id).unwrap();
+            assert_eq!(record.status, ApprovalStatus::Approved);
+            assert_eq!(
+                record.command_network_ack,
+                approval::CommandNetworkAck::Acknowledged
+            );
+            assert_eq!(record.execution_state, approval::ExecutionState::Claimed);
+            let task = engine.store.task(&id).unwrap();
+            assert_eq!(task.status, "failed");
+            assert!(!task.messages.iter().any(|m| m["role"] == "tool"));
+            let events = engine.store.events(&task.run_id, 0).unwrap();
+            assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
+            assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 0);
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+            assert_eq!(
+                engine
+                    .plugin_status("builtin.shell")
+                    .unwrap()
+                    .runtime
+                    .in_flight,
+                0
+            );
+            assert!(matches!(
+                engine
+                    .resume(&id, "must not retry")
+                    .await
+                    .unwrap_err()
+                    .downcast_ref::<approval::ApprovalError>(),
+                Some(approval::ApprovalError::UnknownResult { .. })
+            ));
+            let before = n10_business_rows(&engine.store.db.lock().unwrap());
+            assert!(
+                engine
+                    .set_plugin_enabled(
+                        "builtin.shell",
+                        crate::plugin_management::SetPluginEnabled {
+                            enabled: false,
+                            expected_revision: 0
+                        },
+                        "unknown-off"
+                    )
+                    .is_err()
+            );
+            assert_eq!(n10_business_rows(&engine.store.db.lock().unwrap()), before);
+            std::fs::write(
+                root.join("typed-unknown.json"),
+                serde_json::to_vec(&json!({
+                    "task_id": id, "approval_id": pending.id, "calls": calls.load(Ordering::SeqCst)
+                }))
+                .unwrap(),
+            )
             .unwrap();
-        n10_idle(&engine).await;
-        let record = engine.store.approval(&pending.id).unwrap();
-        assert_eq!(record.status, ApprovalStatus::Approved);
-        assert_eq!(
-            record.command_network_ack,
-            approval::CommandNetworkAck::Acknowledged
-        );
-        assert_eq!(record.execution_state, approval::ExecutionState::Claimed);
-        let task = engine.store.task(&id).unwrap();
-        assert_eq!(task.status, "failed");
-        assert!(!task.messages.iter().any(|m| m["role"] == "tool"));
-        let events = engine.store.events(&task.run_id, 0).unwrap();
-        assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
-        assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 0);
-        assert_eq!(calls.load(Ordering::SeqCst), 1);
-        assert_eq!(
-            engine
-                .plugin_status("builtin.shell")
-                .unwrap()
-                .runtime
-                .in_flight,
-            0
-        );
-        assert!(matches!(
-            engine
-                .resume(&id, "must not retry")
-                .await
-                .unwrap_err()
-                .downcast_ref::<approval::ApprovalError>(),
-            Some(approval::ApprovalError::UnknownResult { .. })
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let log = std::fs::File::create(temp.path().join("typed-unknown-child.log")).unwrap();
+        let mut child = ChildGuard(Some(
+            Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", TEST, "--nocapture"])
+                .env("NHC_TYPED_UNKNOWN_CHILD", temp.path())
+                .stdout(Stdio::from(log.try_clone().unwrap()))
+                .stderr(Stdio::from(log))
+                .spawn()
+                .unwrap(),
         ));
-        let before = n10_business_rows(&engine.store.db.lock().unwrap());
-        shell_set(&engine, false, 0, "unknown-off");
-        shell_set(&engine, true, 1, "unknown-on");
-        assert_eq!(n10_business_rows(&engine.store.db.lock().unwrap()), before);
-        drop(engine);
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let status = loop {
+            if let Some(status) = child.0.as_mut().unwrap().try_wait().unwrap() {
+                break status;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "typed unknown child did not exit"
+            );
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        };
+        assert!(
+            status.success(),
+            "typed unknown child failed: {}",
+            std::fs::read_to_string(temp.path().join("typed-unknown-child.log")).unwrap()
+        );
+        let payload: Value =
+            serde_json::from_slice(&std::fs::read(temp.path().join("typed-unknown.json")).unwrap())
+                .unwrap();
+        assert_eq!(payload["calls"], 1);
+        let id = payload["task_id"].as_str().unwrap();
+        let approval_id = payload["approval_id"].as_str().unwrap();
+        let observer = rusqlite::Connection::open(temp.path().join("shell.db")).unwrap();
+        let before = n10_business_rows(&observer);
+        drop(observer);
         let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
         assert!(store.recover().unwrap() > 0);
         assert_eq!(
-            store.approval(&pending.id).unwrap().execution_state,
+            store.approval(approval_id).unwrap().execution_state,
             approval::ExecutionState::Unknown
         );
         let after = n10_business_rows(&store.db.lock().unwrap());
@@ -4449,9 +4506,11 @@ pub(crate) mod workspace_phase_tests {
             n10_epoch(&restarted.store.db.lock().unwrap()),
             epoch_after_recovery + 1
         );
+        shell_set(&restarted, false, 0, "unknown-off");
+        shell_set(&restarted, true, 1, "unknown-on");
         assert!(matches!(
             restarted
-                .resume(&id, "still must not retry")
+                .resume(id, "still must not retry")
                 .await
                 .unwrap_err()
                 .downcast_ref::<approval::ApprovalError>(),
@@ -4461,10 +4520,10 @@ pub(crate) mod workspace_phase_tests {
             n10_business_rows(&restarted.store.db.lock().unwrap()),
             after
         );
-        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(payload["calls"], 1);
         assert!(!temp.path().join("shell-marker.txt").exists());
         eprintln!(
-            "S06: task-scoped test injection after real spawn; typed unknown preserved claim, not a claim of actual OS cleanup failure"
+            "S06: task-scoped injection after real spawn; typed unknown preserved claim, not proof of actual OS cleanup failure"
         );
     }
     #[test]
