@@ -533,6 +533,9 @@ impl AgentRuntime {
         crate::runtime_management::RuntimeManagementError,
     > {
         use crate::runtime_management::{RuntimeManagementError as E, RuntimeMutationResult};
+        let op = store
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .map_err(|_| E::Internal)?;
         let (receipt, replayed, start, stop) = {
             let mut s = self.inner.state.lock().map_err(|_| E::Internal)?;
             let needs_start = request.enabled && (!s.active || !s.admission_open);
@@ -547,7 +550,8 @@ impl AgentRuntime {
                 } else {
                     None
                 };
-            let (receipt, replayed) = store.set_runtime_desired(PROVIDER, &request, key, reject)?;
+            let (receipt, replayed) =
+                store.set_runtime_desired_with_operation(&op, PROVIDER, &request, key, reject)?;
             let mut start = None;
             let mut stop = None;
             if !replayed {

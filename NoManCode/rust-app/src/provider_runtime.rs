@@ -504,6 +504,9 @@ impl ProviderRuntime {
         crate::runtime_management::RuntimeManagementError,
     > {
         use crate::runtime_management::{RuntimeManagementError as E, RuntimeMutationResult};
+        let op = store
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .map_err(|_| E::Internal)?;
         let (receipt, replayed, host) = {
             let mut state = self.state.lock().map_err(|_| E::Internal)?;
             let active = state
@@ -524,7 +527,8 @@ impl ProviderRuntime {
             } else {
                 None
             };
-            let (receipt, replayed) = store.set_runtime_desired(PROVIDER, &request, key, reject)?;
+            let (receipt, replayed) =
+                store.set_runtime_desired_with_operation(&op, PROVIDER, &request, key, reject)?;
             let host = if !replayed && changing {
                 state.admission_open = false;
                 if let Some(next) = state.generation.checked_add(1) {
@@ -652,11 +656,10 @@ impl CompletionLease {
                 let chunk = chunk.map_err(|_| TransportError::Unknown)?;
                 account_response_bytes(&mut size, chunk.len())
                     .map_err(|_| TransportError::Unknown)?;
-                guarded(|| self.decoder.feed(&chunk, &mut filtered_emit))
-                    .map_err(|_| TransportError::Unknown)?
-                    .map_err(|_| TransportError::Unknown)?;
-                if guarded(|| self.decoder.is_done()).map_err(|_| TransportError::Unknown)? {
-                    break;
+                if !guarded(|| self.decoder.is_done()).map_err(|_| TransportError::Unknown)? {
+                    guarded(|| self.decoder.feed(&chunk, &mut filtered_emit))
+                        .map_err(|_| TransportError::Unknown)?
+                        .map_err(|_| TransportError::Unknown)?;
                 }
             }
             // Move out of a Drop type without unsafe or retaining the decoder after completion.

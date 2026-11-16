@@ -14,7 +14,7 @@ pub fn client() -> Result<ProviderClient> {
     Ok(ProviderClient::new()?)
 }
 pub(crate) async fn json_response(
-    response: reqwest::Response,
+    response: crate::provider_transport::ProviderResponse,
 ) -> std::result::Result<(Value, u16), TransportError> {
     let status = response.status();
     let mut bytes = Vec::new();
@@ -267,13 +267,17 @@ pub async fn complete(
             let safe = redactor.push(text);
             if safe.is_empty() { Ok(()) } else { emit(&safe) }
         };
+        let mut response_size = 0usize;
         while let Some(chunk) = bytes.next().await {
             let chunk = chunk.map_err(|_| TransportError::Unknown)?;
-            decoder
-                .feed(&chunk, &mut filtered_emit)
-                .map_err(|_| TransportError::Unknown)?;
-            if decoder.done {
-                break;
+            response_size = response_size
+                .checked_add(chunk.len())
+                .filter(|size| *size <= RESPONSE_LIMIT)
+                .ok_or(TransportError::Unknown)?;
+            if !decoder.done {
+                decoder
+                    .feed(&chunk, &mut filtered_emit)
+                    .map_err(|_| TransportError::Unknown)?;
             }
         }
         let usage = decoder.usage.clone();

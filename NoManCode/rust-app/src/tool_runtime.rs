@@ -47,7 +47,7 @@ impl ToolServiceV1 for WorkspaceService {
             .find(|definition| definition["function"]["name"] == self.0)
     }
     fn execute<'a>(&'a self, task: &'a Task, args: &'a Value) -> ToolFuture<'a> {
-        Box::pin(workspace::execute(task, self.0, args))
+        Box::pin(workspace::execute_builtin(task, self.0, args))
     }
 }
 fn key(name: &str) -> InterfaceKey {
@@ -996,6 +996,26 @@ mod tests {
         assert_eq!(hits.load(Ordering::SeqCst), 0);
         assert_eq!(status(&runtime).in_flight, 0);
         assert_eq!(status(&runtime).effects_count, 0);
+    }
+    #[tokio::test]
+    async fn public_workspace_cannot_write_without_host_claim() {
+        let root = tempfile::tempdir().unwrap();
+        let task = task(root.path().to_str().unwrap());
+        assert!(
+            workspace::execute(
+                &task,
+                "write_file",
+                &json!({"path":"denied.txt","content":"no"})
+            )
+            .await
+            .is_err()
+        );
+        assert!(!root.path().join("denied.txt").exists());
+        assert!(
+            workspace::execute(&task, "run_wasm", &json!({"plugin":"fixture"}))
+                .await
+                .is_err()
+        );
     }
     #[tokio::test]
     async fn builtin_executes_existing_file_implementation_and_preserves_path_checks() {
