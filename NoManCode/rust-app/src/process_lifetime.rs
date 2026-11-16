@@ -82,6 +82,10 @@ impl ProcessSpec {
 #[cfg(all(test, windows))]
 #[derive(Default)]
 pub(crate) struct TestHooks {
+    /// Duplicate of the exact CreateProcess result, never reopened by PID.
+    /// Observer duplication failure does not alter production cleanup.
+    pub process_handle: Mutex<Option<std::os::windows::io::OwnedHandle>>,
+    pub process_handle_error: Mutex<Option<i32>>,
     pub fail_stdout_reader: AtomicBool,
     pub hold_stdout_reader: AtomicBool,
     pub stdout_reader_held: AtomicBool,
@@ -1203,6 +1207,28 @@ mod platform {
         }
         evidence.process = Some(unsafe { OwnedHandle::from_raw_handle(info.hProcess) });
         evidence.thread = Some(unsafe { OwnedHandle::from_raw_handle(info.hThread) });
+        #[cfg(test)]
+        if let Some(hooks) = &spec.test_hooks {
+            match std::os::windows::io::AsHandle::as_handle(
+                evidence.process.as_ref().expect("original process"),
+            )
+            .try_clone_to_owned()
+            {
+                Ok(handle) => {
+                    *hooks
+                        .process_handle
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner()) = Some(handle)
+                }
+                Err(error) => {
+                    *hooks
+                        .process_handle_error
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner()) =
+                        Some(error.raw_os_error().unwrap_or(-1))
+                }
+            }
+        }
         #[cfg(test)]
         if let Some(hooks) = &spec.test_hooks
             && hooks.hold_created.load(Ordering::Acquire)
