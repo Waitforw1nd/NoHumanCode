@@ -132,3 +132,23 @@ cargo test --offline --locked --lib audit_completion_delta -- --test-threads=1
 另核得既有 `worktree_diagnostics.rs` 的单项目调用预算为 claim 前 27 次读取、claim 后 58 次读取和 1 次变更；生产单读取期限 10 秒、变更 30 秒、清理 5 秒。6 秒 HTTP 总期限并非这些生产期限的合计，但目前不能只据此认定超时原因或直接调高测试期限。
 
 经理扩写授权仅 `tests/worktree_http.rs`。新增诊断候选 `04ff7b609cdc79570749c6a5ca2711a0e85285a2`：默认路径保持原客户端期限；显式设置 `NHC_WORKTREE_HTTP_TIMING=1` 才以只读 lookup 观察 before_claim/claimed/终态变化、6 秒时状态及同一个原请求最终状态与耗时。60 秒仅为诊断观察上限，迟于 6 秒响应仍明确失败，不重发创建，不删除或放松原业务断言。本人 rustfmt/check、diff check 退出 0，未 Cargo；该诊断尚待经理在原 workspace 特性组合执行。产品实现继续冻结，正式期限修复须以阶段/耗时证据为依据，不能把诊断候选冒称已修复超时。
+
+### 取证完成后的测试期限修复
+
+上述诊断候选随后由经理在原 workspace 特性组合执行。首次两项通过，claim 分别约 1301/1401ms、响应约 4457/4494ms，见 `worktree-http-timing.log`。经理再直接运行已编译的同一 timing 二进制三次，均复现一个跨 6 秒的失败；同一个原请求随后全部返回 HTTP 200 / Succeeded / revision=2，没有重发：
+
+| 经理诊断轮次 | claim 观察时间 | 原请求返回时间 | 旧 6 秒诊断断言 |
+| --- | --- | --- | --- |
+| repeat1 | 1402ms | 6170ms | 失败 |
+| repeat2 | 1901ms | 6354ms | 失败 |
+| repeat3 | 2401ms | 6466ms | 失败 |
+
+对应原日志为 integration `.local/audit-20261116/worktree-http-timing-repeat1.log`、`worktree-http-timing-repeat2.log`、`worktree-http-timing-repeat3.log`；另一个创建请求均约 4.7–5.2 秒完成。原完整门禁和未启用 timing 的两个超时没有获得终态回执，仍保留原失败，不用后续诊断成功倒改其结果。
+
+引入历史和契约核对：6 秒从首版 `674f4e33ba504866833fcd79946721a1c5ceef34` 起位于通用 `client()`，与 project/network/budget HTTP 夹具同形；[NEXT-13 契约](../../../项目经理/任务/2026-09-27NEXT-13独立Git工作树契约.md) 的业务验收没有“创建必须六秒完成”的性能 SLA，明确的是单读取 10 秒、mutation/pipe 30 秒及额外 cleanup 5 秒。CLI 对发送后超时的 unknown/原 key 手动查询语义本轮不变。
+
+经理据上述可复现的健康推进与迟到成功证据，明确批准两条合法创建集成请求使用 60 秒上限，以覆盖既有 mutation/cleanup 和预检裕量；这只是功能测试的有界等待预算，不是声明整个产品创建总期限恰为 60 秒，也不是放宽业务、安全、幂等验收。
+
+最小提交 **`e8bf4729fb0762046bee51d6949551292b60a7a9`** 仅修改 `tests/worktree_http.rs`：两条初始合法 create 请求使用每请求 60 秒 timeout；普通 HTTP 请求继续 6 秒；可选 timing 在跨旧 6 秒时记录，但不再将这个诊断阈值当通过条件。原 receipt 状态/身份、源 HEAD/index/内容、独立授权、原 Session 根、零多余 Provider 调用、幂等/只读无数据库漂移和 CLI 断言全部保留。Engine/JoinSet/生产期限没有更改。
+
+本人只运行该测试文件的 rustfmt/check 与 diff check，退出 0；未 Cargo。新候选已交经理启动最终全套，报告此时不预记其通过。
