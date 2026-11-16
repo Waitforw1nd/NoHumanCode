@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\lifecycle\\integrated-static-2",
+  "candidate": {
+    "head": "9eaf71425d26d0da25b093e852a702262bcaa164",
+    "product_tree": "37319fbee48ed5037ba140a325c467b06db58072",
+    "rust_tree": "927dc61d107caa9996c6a8628ab055ffa2c57362"
+  },
+  "nonce": "4016fd6c1a124387930ea03b9f3e30be",
+  "pid_diagnostic_only": 40304,
+  "started_utc": "2026-11-16T09:11:39.433211+00:00"
+}

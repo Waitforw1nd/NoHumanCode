@@ -1,0 +1,181 @@
+{
+  "reviewer": "D read-only",
+  "checked_utc": "2026-11-16T09:19:05.906960+00:00",
+  "source_attempt": "../nhc-lifecycle-20261116-integration/.local/lifecycle/integrated-static-2",
+  "candidate": {
+    "head": "9eaf71425d26d0da25b093e852a702262bcaa164",
+    "product_tree": "37319fbee48ed5037ba140a325c467b06db58072",
+    "rust_tree": "927dc61d107caa9996c6a8628ab055ffa2c57362"
+  },
+  "steps": [
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "direct_exit_code": 0,
+      "sha256": "cb9e33f2d3f88f0d3188fed4557da224933e24c6c8f2bbc6c83beb0edea3fbf3",
+      "bytes": 805
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "direct_exit_code": 0,
+      "sha256": "b814b64e464df769258ec75fbda9ea3805547d98a2cbec70a95c35107b28fb46",
+      "bytes": 175
+    },
+    {
+      "name": "wasm-check",
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "peachsh-ui",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--offline",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "direct_exit_code": 0,
+      "sha256": "6307f9583eb3b419a66d6b69aca74fb34d2d348a8ee6d08aee720be663a9a789",
+      "bytes": 712
+    }
+  ],
+  "checks": {
+    "custom_order": true,
+    "three_steps": true,
+    "passed_record": true,
+    "source_equal": true,
+    "clean_input": true,
+    "source_list_hash": true,
+    "candidate": true,
+    "git_trees": true,
+    "artifact_set": true,
+    "artifact_hashes": true,
+    "01-clippy_command": true,
+    "01-clippy_records": true,
+    "01-clippy_exits": true,
+    "01-clippy_log": true,
+    "01-clippy_serial": true,
+    "02-fmt_command": true,
+    "02-fmt_records": true,
+    "02-fmt_exits": true,
+    "02-fmt_log": true,
+    "02-fmt_serial": true,
+    "03-wasm-check_command": true,
+    "03-wasm-check_records": true,
+    "03-wasm-check_exits": true,
+    "03-wasm-check_log": true,
+    "03-wasm-check_serial": true,
+    "final_time": true,
+    "no_cleanup_overclaim": true,
+    "manager_archived_gate_hash": true,
+    "manager_session_exit": true
+  },
+  "mismatches": [],
+  "archive": [
+    {
+      "file": "01-clippy.direct-exit.json",
+      "sha256": "bb2c730be44f10cb0a01cb745aaf373caa2cd34dd6b491378f5c59f188d7e582",
+      "bytes": 159
+    },
+    {
+      "file": "01-clippy.log",
+      "sha256": "cb9e33f2d3f88f0d3188fed4557da224933e24c6c8f2bbc6c83beb0edea3fbf3",
+      "bytes": 805
+    },
+    {
+      "file": "01-clippy.result.json",
+      "sha256": "1da265aec702fbc7ecf10477315be1f0f439f7afe2b7c6e7c17efff769b529b4",
+      "bytes": 638
+    },
+    {
+      "file": "01-clippy.started.json",
+      "sha256": "0f7eef9631c3123346beb4e8055607b87e1d3a7569936a4b173f7fe7fd4ad441",
+      "bytes": 405
+    },
+    {
+      "file": "02-fmt.direct-exit.json",
+      "sha256": "195dbd4076b8583676b0e9c8c1030a174698b1e6ac46c79cbfeb9656fedb7cea",
+      "bytes": 159
+    },
+    {
+      "file": "02-fmt.log",
+      "sha256": "b814b64e464df769258ec75fbda9ea3805547d98a2cbec70a95c35107b28fb46",
+      "bytes": 175
+    },
+    {
+      "file": "02-fmt.result.json",
+      "sha256": "1e39af89cb0008941313520578a1f16aebe4b696734ba7c2c9ea406a6f821f00",
+      "bytes": 555
+    },
+    {
+      "file": "02-fmt.started.json",
+      "sha256": "fbbe42753e74c38fb7f59d019422969432e82f149cab44e2f3b37dce4a81bedf",
+      "bytes": 325
+    },
+    {
+      "file": "03-wasm-check.direct-exit.json",
+      "sha256": "beecc5711895966482973505a12c40d4b5be1f7a71dd23ee7d6bd38de21e8030",
+      "bytes": 159
+    },
+    {
+      "file": "03-wasm-check.log",
+      "sha256": "6307f9583eb3b419a66d6b69aca74fb34d2d348a8ee6d08aee720be663a9a789",
+      "bytes": 712
+    },
+    {
+      "file": "03-wasm-check.result.json",
+      "sha256": "f3c26edd1f942ce8be4741a7068c0782c629a6dad13d4f616b22311a15a06a32",
+      "bytes": 647
+    },
+    {
+      "file": "03-wasm-check.started.json",
+      "sha256": "e8689f8842ea8ebe4dc27a934b9b65582490e9980501db0b4e2653e9e4b7dd8b",
+      "bytes": 410
+    },
+    {
+      "file": "manager-closure.json",
+      "sha256": "fe1b6266fb9bcfc8eb4d5b482630dfd7931796ee1846c14be1fc84c1c12ef195",
+      "bytes": 486
+    },
+    {
+      "file": "manager-gate-archived.lock",
+      "sha256": "da5cd8e8ea42d493ebed39d4ab410e9bdfabf0672058fa2800f2808bc95232df",
+      "bytes": 392
+    },
+    {
+      "file": "manifest.json",
+      "sha256": "cbae87af1430d81c36dfcfc7956d6930d9817ad15bf01b9fa2f0973c6baf8975",
+      "bytes": 7112
+    },
+    {
+      "file": "source-after.json",
+      "sha256": "5a5583d3f4758250fdedd59815610a18922fe2e4bc0380638545e0f5e4897a04",
+      "bytes": 39504
+    },
+    {
+      "file": "source-before.json",
+      "sha256": "5a5583d3f4758250fdedd59815610a18922fe2e4bc0380638545e0f5e4897a04",
+      "bytes": 39504
+    }
+  ],
+  "scope": "Manual custom static plan review only; no current candidate or full-suite approval; no new process-tree proof"
+}
