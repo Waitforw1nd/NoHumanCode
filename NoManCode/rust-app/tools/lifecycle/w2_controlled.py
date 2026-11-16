@@ -30,7 +30,9 @@ CASES = (
     *(PREFIX + name for name in (
         "w07_bound_same_domain_and_cross_domain", "w07_bound_future_drop_retains_original_domain",
         "w07_bound_supervisor_panic_disconnect_seals_domain",
-        "w07_bound_supervisor_panic_after_future_drop_seals_domain")),
+        "w07_bound_supervisor_panic_after_future_drop_seals_domain",
+        "w07_bound_shutdown_before_resume_retains_ticket",
+        "w07_bound_shutdown_running_retains_ticket")),
 )
 HELPERS = (
     PREFIX + "w05_host_helper",

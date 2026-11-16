@@ -95,7 +95,7 @@ require the manager's exclusive real validation window.
 `tests/support/wasm_worker_process/run-controlled.ps1` entry point. It holds the
 same Git-common-dir `nhc-heavy-window.lock` through both builds, ignored-test
 listing and every selected case. It never calls the old runner or its private
-lock. Use only after integration of D's four W07 tests and the reviewed runner,
+lock. Use only after integration of D's six W07 tests and the reviewed runner,
 under the manager's sole heavy window. For a single case from the repo root:
 
 ```powershell
@@ -106,7 +106,7 @@ python -B NoManCode/rust-app/tools/lifecycle/w2_controlled.py `
 ```
 
 Repeat `--case` for explicitly selected distinct cases, or use `--all` to run
-the 21 W2 cases plus four W07 cases. A partial selection is not full matrix
+the 21 W2 cases plus six W07 cases. A partial selection is not full matrix
 validation. Each run owns a fresh attempt; output/target default to
 `.local/lifecycle-w2/<attempt>` and `.local/lifecycle-w2-target`, respectively.
 All active paths must resolve to E and be outside the product tree. The locked,
