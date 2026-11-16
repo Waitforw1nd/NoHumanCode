@@ -82,6 +82,11 @@ impl ProcessSpec {
 #[cfg(all(test, windows))]
 #[derive(Default)]
 pub(crate) struct TestHooks {
+    /// Duplicate of the exact CreateProcess result, never reopened by PID.
+    /// Observer duplication failure does not alter production cleanup.
+    pub process_handle: Mutex<Option<std::os::windows::io::OwnedHandle>>,
+    pub process_handle_error: Mutex<Option<i32>>,
+    pub process_identity: Mutex<Option<ProcessIdentity>>,
     pub fail_stdout_reader: AtomicBool,
     pub hold_stdout_reader: AtomicBool,
     pub stdout_reader_held: AtomicBool,
@@ -103,6 +108,10 @@ pub(crate) struct TestHooks {
     pub before_reader_join_held: AtomicBool,
     pub release_reader_join: AtomicBool,
     pub stdout_reader_finished: AtomicBool,
+    pub stdout_reader_joined: AtomicBool,
+    pub stderr_reader_joined: AtomicBool,
+    pub stdout_eof_joined: AtomicBool,
+    pub stderr_eof_joined: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -274,7 +283,7 @@ impl Slot {
         self.released = true;
     }
 
-    #[cfg(windows)]
+    #[cfg(all(test, windows))]
     fn attach_current_thread(&mut self) -> std::io::Result<()> {
         use std::os::windows::io::FromRawHandle;
         use windows_sys::Win32::{
@@ -421,24 +430,22 @@ impl Supervisor {
             let worker_cancelled = Arc::clone(&cancelled);
             let worker_cancel_at = Arc::clone(&cancel_at);
             let worker_cell = Arc::clone(&cell);
+            // Transfer the handle returned by thread creation before any OS
+            // target operation. A fallible self-DuplicateHandle used to leave
+            // a permanently occupied slot even for proven unstarted work.
+            let (start_tx, start_rx) = std::sync::mpsc::sync_channel(1);
             let spawn = std::thread::Builder::new()
                 .name("nhc-process-holder".into())
                 .spawn(move || {
+                    let Ok(thread_handle) = start_rx.recv() else {
+                        return;
+                    };
                     let work = worker_pending
                         .lock()
                         .unwrap_or_else(|e| e.into_inner())
                         .take();
                     if let Some((spec, mut slot, send)) = work {
-                        if let Err(error) = slot.attach_current_thread() {
-                            worker_cell.finish(Outcome::NotStarted {
-                                stage: "holder_thread_identity",
-                                os_error: error.raw_os_error(),
-                            });
-                            let _ = send.send(());
-                            // No thread signal handle exists; keep this one
-                            // reservation conservatively occupied.
-                            return;
-                        }
+                        slot.holder_thread = Some(thread_handle);
                         platform::run(
                             spec,
                             worker_cell,
@@ -449,24 +456,43 @@ impl Supervisor {
                         );
                     }
                 });
-            if spawn.is_err() {
-                let (_, mut slot, _) = pending
+            let thread = match spawn {
+                Ok(thread) => thread,
+                Err(_) => {
+                    let (_, mut slot, _) = pending
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .take()
+                        .expect("unstarted work remains");
+                    slot.release_unstarted();
+                    let lease = cell
+                        .0
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .lease
+                        .take()
+                        .expect("unstarted lease remains");
+                    return Err(NotStarted {
+                        reason: "cannot create process holder thread",
+                        lease,
+                    });
+                }
+            };
+            let thread = std::os::windows::io::OwnedHandle::from(thread);
+            if let Err(error) = start_tx.send(thread) {
+                // The receiver did not start target work. Preserve its original
+                // thread handle until signal even on this handoff failure.
+                let (_, mut slot, send) = pending
                     .lock()
                     .unwrap_or_else(|e| e.into_inner())
                     .take()
-                    .expect("unstarted work remains");
-                slot.release_unstarted();
-                let lease = cell
-                    .0
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .lease
-                    .take()
-                    .expect("unstarted lease remains");
-                return Err(NotStarted {
-                    reason: "cannot create process holder thread",
-                    lease,
+                    .expect("unstarted handoff remains");
+                slot.holder_thread = Some(error.0);
+                cell.finish(Outcome::NotStarted {
+                    stage: "holder_thread_handoff",
+                    os_error: None,
                 });
+                let _ = send.send(());
             }
             Ok(Operation {
                 receive,
@@ -1204,6 +1230,28 @@ mod platform {
         evidence.process = Some(unsafe { OwnedHandle::from_raw_handle(info.hProcess) });
         evidence.thread = Some(unsafe { OwnedHandle::from_raw_handle(info.hThread) });
         #[cfg(test)]
+        if let Some(hooks) = &spec.test_hooks {
+            match std::os::windows::io::AsHandle::as_handle(
+                evidence.process.as_ref().expect("original process"),
+            )
+            .try_clone_to_owned()
+            {
+                Ok(handle) => {
+                    *hooks
+                        .process_handle
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner()) = Some(handle)
+                }
+                Err(error) => {
+                    *hooks
+                        .process_handle_error
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner()) =
+                        Some(error.raw_os_error().unwrap_or(-1))
+                }
+            }
+        }
+        #[cfg(test)]
         if let Some(hooks) = &spec.test_hooks
             && hooks.hold_created.load(Ordering::Acquire)
         {
@@ -1236,6 +1284,13 @@ mod platform {
             creation_filetime: ((created_at.dwHighDateTime as u64) << 32)
                 | created_at.dwLowDateTime as u64,
         });
+        #[cfg(test)]
+        if let Some(hooks) = &spec.test_hooks {
+            *hooks
+                .process_identity
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()) = identity;
+        }
         let mut inside = 0;
         let membership_ok =
             unsafe { IsProcessInJob(raw(process), raw(job), &mut inside) } != 0 && inside != 0;
@@ -1411,7 +1466,13 @@ mod platform {
             if out.as_ref().is_some_and(JoinHandle::is_finished) {
                 out_done = true;
                 match out.take().expect("stdout reader").join() {
-                    Ok(Ok(v)) => out_value = Some(v),
+                    Ok(Ok(v)) => {
+                        out_value = Some(v);
+                        #[cfg(test)]
+                        if let Some(hooks) = &spec.test_hooks {
+                            hooks.stdout_eof_joined.store(true, Ordering::Release);
+                        }
+                    }
                     _ => {
                         unknown(lease, signal);
                         io_failed = true;
@@ -1423,17 +1484,31 @@ mod platform {
                         must_stop_direct = true;
                     }
                 }
+                #[cfg(test)]
+                if let Some(hooks) = &spec.test_hooks {
+                    hooks.stdout_reader_joined.store(true, Ordering::Release);
+                }
             }
             if err.as_ref().is_some_and(JoinHandle::is_finished) {
                 err_done = true;
                 match err.take().expect("stderr reader").join() {
-                    Ok(Ok(v)) => err_value = Some(v),
+                    Ok(Ok(v)) => {
+                        err_value = Some(v);
+                        #[cfg(test)]
+                        if let Some(hooks) = &spec.test_hooks {
+                            hooks.stderr_eof_joined.store(true, Ordering::Release);
+                        }
+                    }
                     _ => {
                         unknown(lease, signal);
                         io_failed = true;
                         reason.get_or_insert(CompletionReason::Cancelled);
                         must_stop_direct = true;
                     }
+                }
+                #[cfg(test)]
+                if let Some(hooks) = &spec.test_hooks {
+                    hooks.stderr_reader_joined.store(true, Ordering::Release);
                 }
             }
             let observed = accounting(job);
@@ -1808,6 +1883,33 @@ mod state_tests {
         assert!(supervisor.reserve().is_none());
         one.release_unstarted();
         two.release_unstarted();
+    }
+
+    #[test]
+    fn original_holder_handle_keeps_slot_until_actual_thread_exit() {
+        let supervisor = Supervisor::new(NonZeroUsize::new(1).unwrap());
+        let mut slot = supervisor.reserve().unwrap();
+        let (start_tx, start_rx) = mpsc::sync_channel(1);
+        let (dropped_tx, dropped_rx) = mpsc::channel();
+        let (exit_tx, exit_rx) = mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            slot.holder_thread = Some(start_rx.recv().unwrap());
+            drop(slot);
+            let _ = dropped_tx.send(());
+            let _ = exit_rx.recv();
+        });
+        start_tx
+            .send(std::os::windows::io::OwnedHandle::from(thread))
+            .unwrap();
+        dropped_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let still_full = supervisor.reserve().is_none();
+        exit_tx.send(()).unwrap();
+        let until = Instant::now() + Duration::from_secs(2);
+        while supervisor.active_count() != 0 && Instant::now() < until {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(still_full, "returning the slot is not a thread exit proof");
+        assert_eq!(supervisor.active_count(), 0);
     }
 
     #[test]
