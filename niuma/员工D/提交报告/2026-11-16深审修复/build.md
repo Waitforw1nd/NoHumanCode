@@ -62,3 +62,32 @@ pwsh -NoProfile -File NoManCode/rust-app/build.ps1 -Action web-test
 本轮没有执行 Cargo/rustc、真实 release、产品或真实进程矩阵，没有访问 Provider。真实 Cargo artifact 到发布复制仍需未来单独发布窗口验证；mock 不代替编译。用户本轮未要求 release 编译，所以不以此阻塞可审阅候选。没有验证其他 target 平台运行能力，Windows triple 场景只证明不会遗漏 triple 子目录。
 
 主线程负责更新继承改动中的身份与环境文档旧限制；本树未越权改动这些文件。历史 unknown 不因本轮脚本测试改判。
+
+## A 安全候选交叉审查（2026-11-16）
+
+按经理追加任务，只读审查 `../nhc-audit-20261116-security` 的 `secrets.rs`、`provider_runtime.rs`、`provider.rs` 差异及相关 Store/Engine 调用链。首次针对未提交实现阅读，随后在 A 提交 `7c657ce37e82744933d1dd2141a1fc34a542d4a3` 再核，以下代码位置与问题仍存在。行号以该候选为准；路径均以该树仓库根为基准。
+
+### D-XA-01 / P1：token 抢先消费敏感赋值字段
+
+- 入口：`NoManCode/rust-app/src/secrets.rs:473`，第 478–480 行输出 `[redacted]`、清空 field 并进入 Token 模式。
+- 反例：completion codec 依次 emit `"sk-"`、`"password"`、`"="`、`"opaque123"`，正常完成时返回拼接后的 assistant content。
+- 静态推导：流式输出为 `[redacted]=opaque123`。原完整文本策略在 `secrets.rs:232` 先判断 assignment，`sk-password` 经 `normalize_field` 变为敏感的 `sk_password`，应得到 `sk-password=[redacted]`。字段身份先被消费后，实际值未脱敏；单次 emit 完整文本也会出现同类问题。Store 的逐事件策略无法从 `[redacted]` 还原字段身份。
+- 建议验证：真实替换 codec → Engine → Store → SSE 链路检查所有事件均不含 `opaque123`，并检查最终 output/message；同时覆盖 token 字段名和普通 token 两类，避免修复破坏既有 token 脱敏。
+
+### D-XA-02 / P1：原始字段截断丢失规范化身份
+
+- 入口：`NoManCode/rust-app/src/secrets.rs:503`，field 超过 128 字节时删除最前字符；识别使用剩余原始字符串。
+- 反例：三个 emit 分片依次为 `"api" + "_".repeat(128)`、`"key="`、`"opaque123"`。
+- 静态推导：完整字段规范化为 `api_key`，属于敏感赋值；截断后只剩下划线与 `key`，规范化为被 `sensitive_assignment_field` 明确排除的通用 `key`，第三片值原样输出。`store.rs:1023` 对事件分别脱敏，三个事件均缺完整赋值，无法补救。最终消息完整脱敏也不能撤回已写入或发送的事件。
+- 建议验证：超过上限的 `_`、`-`、`.` 连续/混合分隔符，camelCase/全大写缩写、Unicode 断点及普通非敏感字段负控。候选“压缩分隔符后保留有界字段状态”需与完整 `normalize_field` 的边界和大小写规则等价，不能只证明缓冲长度有界。
+
+### D-XA-03 / P2：空引号值使事件和最终消息不一致
+
+- 入口：`NoManCode/rust-app/src/secrets.rs:548`，第 550 行在看到开引号时立即输出占位符。
+- 反例：两个 emit 分片依次为 `password="` 与 `"`，最终 assistant content 为 `password=""`。
+- 静态推导：流式结果为 `password="[redacted]"`；完整策略 `secrets.rs:366` 因值为空不替换，因此保存的 assistant message 为 `password=""`。Engine 由流式回调累加 output（`engine.rs:2026`），而最终 message 按完整文本策略保存，三者不一致。单引号空值也应覆盖。
+- 建议验证：延后空值/非空值裁决，新增空引号、跨片闭引号及错误/取消时未闭合引号回归，断言事件拼接、task.output、最终 assistant content 一致。
+
+本次交叉审只读取源码与 Git 状态，未编辑 A 文件，未执行 Cargo/rustc、产品、网络请求或新的动态复现。上述结果是可逐步推导的静态反例，不称为实际 Rust 测试失败。经理已确认收到并转交 A 修复和补行为回归；其“安全 5 专项通过、Windows 7 通过”是经理提供的独立验证状态，本报告不将其扩展为这些反例已关闭。
+
+复审待办：A 修订 Token 模式继续追踪 field、压缩长字段分隔符和空值裁决后，重新检查与完整规范化的等价性；跨 completion 状态丢失由经理另行发现并交 A/B 协调，不冒称 D 的发现，也不由本次静态阅读提前关闭。
