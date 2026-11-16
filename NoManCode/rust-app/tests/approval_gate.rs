@@ -1194,7 +1194,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     let conn = db(temp.path());
     network_fixture::drop_network_schema(&conn);
     conn.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
-    conn.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DROP TABLE approvals; DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
+    conn.execute_batch("DROP TABLE workspace_restore_outcomes; DROP TABLE workspace_restores; DROP TABLE workspace_changes; DROP TABLE approvals; DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=6;").unwrap();
     let old: String = conn
         .query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r.get(0))
         .unwrap();
@@ -1216,7 +1216,7 @@ fn ap19_schema6_preservation_atomic_migration_and_forged_constraints() {
     );
     conn.execute_batch("DROP TRIGGER migration_fault;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 17);
+    assert_eq!(s.schema_version().unwrap(), 18);
     assert_eq!(s.task("a").unwrap().id, t.id);
     assert_eq!(
         conn.query_row("SELECT value FROM tasks WHERE id='a'", [], |r| r
@@ -1478,9 +1478,9 @@ fn ap19_constraints_enforced_and_partial_ddl_retry() {
     drop(s);
     network_fixture::drop_network_schema(&conn);
     conn.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
-    conn.execute_batch("DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; PRAGMA user_version=6;").unwrap();
+    conn.execute_batch("DELETE FROM schema_migrations WHERE id IN ('tool-call-approval-repository','workspace-change-repository'); DROP TABLE checkpoints; DELETE FROM schema_migrations WHERE id='task-before-checkpoint-repository'; DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=6;").unwrap();
     let s = Store::open(&path).unwrap();
-    assert_eq!(s.schema_version().unwrap(), 17);
+    assert_eq!(s.schema_version().unwrap(), 18);
     assert_eq!(s.approval(&record.id).unwrap(), record);
     drop(s);
     conn.execute_batch("DROP INDEX approvals_task_call_unique; CREATE INDEX approvals_task_call_unique ON approvals(task_id,tool_call_id);").unwrap();
@@ -1863,6 +1863,7 @@ fn schema10_unbound_pending_approval_can_deny_or_cancel_but_not_approve() {
         let raw = Connection::open(&path).unwrap();
         network_fixture::project_fixture::drop_project_schema(&raw);
         raw.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS plugin_management_requests; DROP TABLE IF EXISTS plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1');").unwrap();
+        raw.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; ").unwrap();
         raw.pragma_update(None, "user_version", 10).unwrap();
         drop(raw);
         let store = Store::open(&path).unwrap();
