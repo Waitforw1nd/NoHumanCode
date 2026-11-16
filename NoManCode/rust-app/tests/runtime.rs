@@ -3,10 +3,14 @@
 mod network_fixture;
 use axum::{
     Json, Router,
-    body::{Body, to_bytes},
     extract::State,
-    http::{HeaderMap, Request, StatusCode},
+    http::HeaderMap,
     routing::{get, post},
+};
+#[cfg(feature = "integration-test-support")]
+use axum::{
+    body::{Body, to_bytes},
+    http::{Request, StatusCode},
 };
 use peachsh::{
     domain::*,
@@ -21,6 +25,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+#[cfg(feature = "integration-test-support")]
 use tower::ServiceExt;
 
 #[derive(Default)]

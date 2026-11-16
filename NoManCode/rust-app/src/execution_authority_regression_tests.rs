@@ -269,15 +269,15 @@ async fn unknown_terminal_child() {
     if case == "closed" {
         store.authority.close();
     }
-    if case == "epoch" {
-        store
-            .db
-            .lock()
-            .unwrap()
-            .execute("UPDATE execution_owner SET epoch=epoch+1 WHERE id=1", [])
-            .unwrap();
+    if case == "epoch" || case == "phase" {
+        let change = if case == "epoch" {
+            "UPDATE execution_owner SET epoch=epoch+1 WHERE id=1"
+        } else {
+            "UPDATE execution_owner SET phase='recovering' WHERE id=1"
+        };
+        store.db.lock().unwrap().execute(change, []).unwrap();
     }
-    if case == "normal" {
+    if case == "normal" || case == "closed" {
         // An independently admitted operation may still settle its own result.
         other
             .run(async {
@@ -321,6 +321,7 @@ async fn unknown_terminal_child() {
         assert_eq!(saved.output, task.output);
         assert_eq!(saved.messages, task.messages);
         assert!(saved.error.is_some());
+        assert!(!store.execution_admission_status().unwrap().0);
     } else {
         let mut rejected = task.clone();
         rejected.status = "failed".into();
@@ -339,7 +340,7 @@ async fn unknown_terminal_child() {
 #[test]
 fn unknown_terminal_uses_original_scope_and_preserves_durable_content() {
     use std::{process::Command, time::Duration};
-    for case in ["normal", "cross", "closed", "epoch"] {
+    for case in ["normal", "cross", "closed", "epoch", "phase"] {
         let root = tempfile::Builder::new()
             .prefix("u18-terminal-")
             .tempdir()
@@ -767,9 +768,10 @@ async fn claimed_body_can_settle_after_close_or_cancel() {
         drop(op);
         drop(body);
         assert_eq!(value(&store).as_deref(), Some("settled"));
+        assert_eq!(store.execution_admission_status().unwrap().2, 0);
+        assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
         let (_, in_flight, unknown) = store.execution_admission_status().unwrap();
         assert_eq!((in_flight, unknown), (0, 0));
-        assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     }
 }
 
