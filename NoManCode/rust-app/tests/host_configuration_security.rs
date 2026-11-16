@@ -41,6 +41,7 @@ use tokio::{
     sync::Notify,
     task::JoinHandle,
 };
+use tokio_util::sync::CancellationToken;
 
 const BIN: &str = env!("CARGO_BIN_EXE_peachsh");
 const ENV_CHILD: &str = "NHC_D_SECURITY_ENV_CHILD";
@@ -156,10 +157,12 @@ struct Host {
     store: Arc<Store>,
     engine: Arc<Engine>,
     puts: Arc<AtomicUsize>,
+    stopping: CancellationToken,
     task: JoinHandle<()>,
 }
 impl Drop for Host {
     fn drop(&mut self) {
+        self.stopping.cancel();
         self.task.abort();
     }
 }
@@ -188,8 +191,13 @@ impl Host {
                 next.run(request).await
             }
         }));
+        let stopping = CancellationToken::new();
+        let stopped = stopping.clone();
         let task = tokio::spawn(async move {
-            axum::serve(listener, app).await.unwrap();
+            axum::serve(listener, app)
+                .with_graceful_shutdown(stopped.cancelled_owned())
+                .await
+                .unwrap();
         });
         let boot: Value = client()
             .get(format!("{origin}/api/bootstrap"))
@@ -206,12 +214,24 @@ impl Host {
             store,
             engine,
             puts,
+            stopping,
             task,
         }
     }
     async fn stop(mut self) {
-        self.task.abort();
-        let _ = (&mut self.task).await;
+        // Aborting only the accept task can leave connection tasks owning the Router.
+        self.stopping.cancel();
+        tokio::time::timeout(Duration::from_secs(10), &mut self.task)
+            .await
+            .expect("Host connections did not finish")
+            .expect("Host server failed");
+        let report = self.engine.shutdown(Duration::from_secs(5)).await;
+        assert!(report.settled(), "{report:?}");
+        let engine = Arc::downgrade(&self.engine);
+        let store = Arc::downgrade(&self.store);
+        drop(self);
+        assert!(engine.upgrade().is_none(), "Host still owns the Engine");
+        assert!(store.upgrade().is_none(), "Host still owns the Store");
     }
     fn revision(&self) -> u64 {
         self.store.host_config().unwrap().revision
@@ -724,6 +744,12 @@ fn wire(status: u16, body: &[u8]) -> Vec<u8> {
     out
 }
 impl Relay {
+    async fn stop(mut self) {
+        self.task.abort();
+        if let Err(error) = (&mut self.task).await {
+            assert!(error.is_cancelled(), "relay failed: {error}");
+        }
+    }
     async fn start(host: &Host, reply: Reply) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
@@ -940,7 +966,7 @@ async fn i08_real_commits_then_hostile_responses_are_unknown_without_retries() {
             assert!(replayed.receipt == original.receipt);
             assert!(rows(&root) == before);
             assert_eq!(probe.state.calls.load(Ordering::SeqCst), 0);
-            drop(relay);
+            relay.stop().await;
             host.stop().await;
             scan_persisted(&root, &forbidden);
         }
@@ -1004,7 +1030,7 @@ async fn i08_lookup_404_during_received_put_does_not_resolve_unknown() {
     assert_eq!(host.revision(), 1);
     assert!(host.store.host_config_operation("inflight-key").is_ok());
     assert_eq!(probe.state.calls.load(Ordering::SeqCst), 0);
-    drop(relay);
+    relay.stop().await;
     host.stop().await;
     scan_persisted(&root, &forbidden);
 }
@@ -1176,7 +1202,7 @@ async fn configuration_preserves_nonempty_unknown_budget_old_task_and_grants() {
     let host = Host::start(&root).await;
     let old = synthetic();
     let rotated = synthetic();
-    let forbidden = vec![old.clone(), rotated.clone(), host.token.clone()];
+    let mut forbidden = vec![old.clone(), rotated.clone(), host.token.clone()];
     let (status, _) = host
         .put(
             ROUTE,
@@ -1242,7 +1268,13 @@ async fn configuration_preserves_nonempty_unknown_budget_old_task_and_grants() {
         .unwrap();
     pending.abort();
     assert!(pending.await.unwrap_err().is_cancelled());
-    host.store.recover().unwrap();
+    let before_recovery = rows(&root);
+    assert!(host.store.recover().is_err());
+    assert!(rows(&root) == before_recovery);
+    host.stop().await;
+    // A new Host recovers the original database after all old owners are gone.
+    let host = Host::start(&root).await;
+    forbidden.push(host.token.clone());
     probe.state.release.notify_one();
     let budget = host.store.budget_status(&p1).unwrap();
     assert_eq!(budget.unresolved_count, 1);
