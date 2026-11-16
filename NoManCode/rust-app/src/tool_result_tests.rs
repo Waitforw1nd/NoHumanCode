@@ -118,6 +118,10 @@ fn fixture_calls(path: &Path, calls: Vec<Value>) -> (Store, Task) {
     store
         .commit_turn(&turn, &[projected], None, &[task.clone()])
         .unwrap();
+    crate::execution_authority::current()
+        .unwrap()
+        .bind_task(&task.id)
+        .unwrap();
     (store, task)
 }
 
@@ -310,6 +314,10 @@ fn t05_result_commit_child() {
     let store = Store::open(&path).unwrap();
     crate::execution_authority::test_with_store_sync(&store, || {
         let task = store.task("task").unwrap();
+        crate::execution_authority::current()
+            .unwrap()
+            .bind_task(&task.id)
+            .unwrap();
         let database: String = store
             .db
             .lock()
