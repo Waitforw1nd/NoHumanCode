@@ -3,7 +3,6 @@ use crate::{secrets, workspace};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{path::Path, process::Stdio, time::Duration};
-use tokio::io::{AsyncRead, AsyncReadExt};
 
 const SIDE_LIMIT: usize = 256 * 1024;
 const PATCH_LIMIT: usize = 512 * 1024;
@@ -49,6 +48,7 @@ pub struct GitDiff {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GitDiffError {
+    OutcomeUnknown,
     InvalidPath,
     Unavailable,
     Unsupported,
@@ -58,6 +58,7 @@ pub enum GitDiffError {
 impl std::fmt::Display for GitDiffError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
+            Self::OutcomeUnknown => "Local Git review outcome is unknown",
             Self::InvalidPath => "Invalid Git review path",
             Self::Unavailable => "Local Git review is unavailable",
             Self::Unsupported => "Git review does not support this entry",
@@ -147,50 +148,28 @@ pub fn transport_fixture_command(root: &Path) -> Result<tokio::process::Command,
     git_command(root)
 }
 
-async fn bounded_read(
-    reader: impl AsyncRead + Unpin,
-    limit: usize,
-) -> Result<Vec<u8>, GitDiffError> {
-    let mut bytes = Vec::new();
-    reader
-        .take(limit as u64 + 1)
-        .read_to_end(&mut bytes)
-        .await
-        .map_err(|_| GitDiffError::Unavailable)?;
-    if bytes.len() > limit {
-        return Err(GitDiffError::Unavailable);
-    }
-    Ok(bytes)
-}
-
 pub(crate) async fn run_command(
-    mut command: tokio::process::Command,
+    command: tokio::process::Command,
     limit: usize,
     timeout: Duration,
 ) -> Result<GitOutput, GitDiffError> {
-    let mut child = command.spawn().map_err(|_| GitDiffError::Unavailable)?;
-    let stdout = child.stdout.take().ok_or(GitDiffError::Internal)?;
-    let stderr = child.stderr.take().ok_or(GitDiffError::Internal)?;
-    let result = tokio::time::timeout(timeout, async {
-        let (bytes, _, status) = tokio::try_join!(
-            bounded_read(stdout, limit),
-            bounded_read(stderr, 8192),
-            async { child.wait().await.map_err(|_| GitDiffError::Unavailable) }
-        )?;
-        Ok::<GitOutput, GitDiffError>(GitOutput {
-            code: status.code(),
-            bytes,
-        })
-    })
-    .await;
-    match result {
-        Ok(Ok(output)) => Ok(output),
-        _ => {
-            // Both timeout and output overflow must terminate AND reap the child.
-            let _ = child.start_kill();
-            let _ = child.wait().await;
-            Err(GitDiffError::Unavailable)
-        }
+    use crate::process_lifetime::{CompletionReason, Outcome};
+    let spec = crate::execution_authority::command_spec(
+        &command,
+        limit,
+        std::time::Instant::now() + timeout,
+    )
+    .map_err(|_| GitDiffError::Unavailable)?;
+    match crate::execution_authority::run_process(spec)
+        .await
+        .map_err(|_| GitDiffError::Unavailable)?
+    {
+        Outcome::Settled(result) if result.reason == CompletionReason::Exited => Ok(GitOutput {
+            code: Some(result.exit_code as i32),
+            bytes: result.stdout.bytes,
+        }),
+        Outcome::Unknown => Err(GitDiffError::OutcomeUnknown),
+        _ => Err(GitDiffError::Unavailable),
     }
 }
 
@@ -515,6 +494,8 @@ fn review(
     Ok((S::Text, Some(patch), changed))
 }
 
+/// Requires an active Engine data-domain operation. Library callers should
+/// use `Engine::git_diff`; a bare path cannot authorize process execution.
 pub async fn read_git_diff(root: &Path, request: GitDiffRequest) -> Result<GitDiff, GitDiffError> {
     read_with_barrier(root, request, || async {}).await
 }
