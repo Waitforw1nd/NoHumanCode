@@ -86,6 +86,7 @@ pub(crate) struct TestHooks {
     /// Observer duplication failure does not alter production cleanup.
     pub process_handle: Mutex<Option<std::os::windows::io::OwnedHandle>>,
     pub process_handle_error: Mutex<Option<i32>>,
+    pub process_identity: Mutex<Option<ProcessIdentity>>,
     pub fail_stdout_reader: AtomicBool,
     pub hold_stdout_reader: AtomicBool,
     pub stdout_reader_held: AtomicBool,
@@ -1283,6 +1284,13 @@ mod platform {
             creation_filetime: ((created_at.dwHighDateTime as u64) << 32)
                 | created_at.dwLowDateTime as u64,
         });
+        #[cfg(test)]
+        if let Some(hooks) = &spec.test_hooks {
+            *hooks
+                .process_identity
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()) = identity;
+        }
         let mut inside = 0;
         let membership_ok =
             unsafe { IsProcessInJob(raw(process), raw(job), &mut inside) } != 0 && inside != 0;
