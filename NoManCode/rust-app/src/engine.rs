@@ -2069,14 +2069,19 @@ impl Engine {
                     })?
             };
             let mut emit = |delta: &str| {
-                let safe = output_redactor.push(delta);
-                if !safe.is_empty() {
-                    self.store.event(&task.id, "delta", json!({"text":safe}))?;
-                    text.push_str(&safe);
+                if !delta.is_empty() {
+                    self.store.event(&task.id, "delta", json!({"text":delta}))?;
+                    text.push_str(delta);
                 }
                 Ok(())
             };
-            let call = lease.execute(&self.client, permit, &task.route, &mut emit);
+            let call = lease.execute_with_redactor(
+                &self.client,
+                permit,
+                &task.route,
+                &mut emit,
+                &mut output_redactor,
+            );
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
             let result = self.store.finish_completion(receipt, result);
             task.output.push_str(&text);
