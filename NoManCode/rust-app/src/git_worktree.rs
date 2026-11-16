@@ -1616,7 +1616,7 @@ mod tests {
         #[cfg(windows)]
         {
             let alias = f._temp.path().join("junction");
-            let output = Synctest_command().args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
+            let output = SyncCommand::new("pwsh.exe").args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
             assert!(
                 output.status.success(),
                 "{}",

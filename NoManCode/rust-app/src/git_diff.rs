@@ -3,6 +3,7 @@ use crate::{secrets, workspace};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{path::Path, process::Stdio, time::Duration};
+use tokio::io::AsyncReadExt;
 
 const SIDE_LIMIT: usize = 256 * 1024;
 const PATCH_LIMIT: usize = 512 * 1024;
@@ -70,8 +71,8 @@ impl std::fmt::Display for GitDiffError {
 impl std::error::Error for GitDiffError {}
 
 pub(crate) struct GitOutput {
-    code: Option<i32>,
-    bytes: Vec<u8>,
+    pub(crate) code: Option<i32>,
+    pub(crate) bytes: Vec<u8>,
 }
 
 /// Whitelist the OS runtime environment. In particular, do not inherit *any*
@@ -548,22 +549,14 @@ where
     barrier().await;
     // Re-resolve paths even for staged queries: a new link is never accepted.
     workspace::resolve(&root, &path, false, &[]).map_err(|_| GitDiffError::Conflict)?;
-    validate_root(&root, &path)
-        .await
-        .map_err(|_| GitDiffError::Conflict)?;
-    if head(&root).await.map_err(|_| GitDiffError::Conflict)? != base_oid
-        || index_entry(&root, &path)
-            .await
-            .map_err(|_| GitDiffError::Conflict)?
-            != index
+    validate_root(&root, &path).await.map_err(review_conflict)?;
+    if head(&root).await.map_err(review_conflict)? != base_oid
+        || index_entry(&root, &path).await.map_err(review_conflict)? != index
     {
         return Err(GitDiffError::Conflict);
     }
     if let Some(original) = working
-        && work(&root, &path)
-            .await
-            .map_err(|_| GitDiffError::Conflict)?
-            != original
+        && work(&root, &path).await.map_err(review_conflict)? != original
     {
         return Err(GitDiffError::Conflict);
     }
@@ -589,4 +582,12 @@ where
         result.redacted = false;
     }
     Ok(result)
+}
+
+fn review_conflict(error: GitDiffError) -> GitDiffError {
+    if error == GitDiffError::OutcomeUnknown {
+        error
+    } else {
+        GitDiffError::Conflict
+    }
 }

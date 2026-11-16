@@ -145,6 +145,18 @@ pub(crate) struct ExecutionOperation {
 }
 tokio::task_local! { static CURRENT: Arc<OperationScope>; }
 impl ExecutionOperation {
+    pub(crate) fn hold_body(&self) -> Self {
+        let mut state = self.scope.state.lock().unwrap_or_else(|p| p.into_inner());
+        state.bodies = state
+            .bodies
+            .checked_add(1)
+            .expect("operation body count exhausted");
+        Self {
+            scope: self.scope.clone(),
+            cancel_on_drop: false,
+        }
+    }
+
     pub(crate) async fn run<F: Future>(self, work: F) -> F::Output {
         CURRENT.scope(self.scope.clone(), work).await
     }
@@ -262,6 +274,8 @@ pub(crate) async fn inherit<F: Future>(scope: Option<ExecutionOperation>, work: 
     }
 }
 pub(crate) async fn run_process(spec: ProcessSpec) -> Result<Outcome> {
+    #[cfg(all(test, windows))]
+    let spec = process_override::take(spec);
     let scope = current().context("process execution requires a live data-domain operation")?;
     let lease = scope.scope.generation()?;
     let operation = match scope.scope.authority.supervisor.submit(spec, lease) {
@@ -748,4 +762,238 @@ where
 {
     let scope = current();
     tokio::spawn(inherit(scope, work))
+}
+
+#[cfg(all(test, windows))]
+mod process_override {
+    use super::*;
+    use std::{collections::HashMap, path::PathBuf, sync::OnceLock};
+    fn overrides() -> &'static Mutex<HashMap<PathBuf, ProcessSpec>> {
+        static VALUES: OnceLock<Mutex<HashMap<PathBuf, ProcessSpec>>> = OnceLock::new();
+        VALUES.get_or_init(Default::default)
+    }
+    pub(crate) struct Guard(PathBuf);
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            overrides().lock().unwrap().remove(&self.0);
+        }
+    }
+    pub(super) fn once(root: &Path, spec: ProcessSpec) -> Guard {
+        let path = root.canonicalize().unwrap();
+        assert!(
+            overrides()
+                .lock()
+                .unwrap()
+                .insert(path.clone(), spec)
+                .is_none()
+        );
+        Guard(path)
+    }
+    pub(super) fn take(spec: ProcessSpec) -> ProcessSpec {
+        let Ok(root) = spec.cwd.canonicalize() else {
+            return spec;
+        };
+        overrides().lock().unwrap().remove(&root).unwrap_or(spec)
+    }
+}
+#[cfg(all(test, windows))]
+mod lifecycle_tests {
+    use super::*;
+    use crate::git_diff::{GitDiffError, GitDiffRequest, GitDiffStatus, GitDiffView};
+    use crate::process_lifetime::{OverflowPolicy, TestHooks};
+    use crate::{
+        fixture::{Case, until},
+        lifecycle_host::Host,
+    };
+    use std::{
+        sync::atomic::Ordering,
+        time::{Duration, Instant},
+    };
+
+    async fn native_git_case(mode: &str) -> Result<()> {
+        let mut case = Case::new(&format!("native-git-{mode}-"))?;
+        let host = Host::new(&case).await?;
+        let (task, _) = host.shell("git init --quiet; git config user.name lifecycle; git config user.email lifecycle@example.invalid; [IO.File]::WriteAllText((Join-Path $PWD 'a.txt'), \"old`n\"); git add a.txt; git commit --quiet -m fixture; [IO.File]::WriteAllText((Join-Path $PWD 'a.txt'), \"new`n\")", 20).await?;
+        host.finished(&task).await?;
+        let request = || GitDiffRequest {
+            path: "a.txt".into(),
+            view: GitDiffView::Head,
+        };
+        assert_eq!(
+            host.engine.git_diff(&task.id, request()).await?.status,
+            GitDiffStatus::Text
+        );
+        let program = std::env::var_os("PATH")
+            .and_then(|paths| {
+                std::env::split_paths(&paths)
+                    .filter(|path| path.is_absolute())
+                    .filter_map(|path| path.join("pwsh.exe").canonicalize().ok())
+                    .find(|path| path.is_file() && !path.starts_with(&case.root))
+            })
+            .context("trusted pwsh fixture")?;
+        let hooks = Arc::new(TestHooks::default());
+        hooks
+            .hold_stdout_reader
+            .store(mode == "unknown", Ordering::SeqCst);
+        let mut spec = ProcessSpec::new(
+            program,
+            case.root.clone(),
+            std::env::vars_os().collect(),
+            (65_536, 65_536),
+            OverflowPolicy::TruncateAndDrain,
+            Instant::now() + Duration::from_secs(10),
+            Duration::from_secs(5),
+        );
+        spec.args = vec![
+            "-NoProfile".into(),
+            "-NonInteractive".into(),
+            "-Command".into(),
+            case.command(false, false)?.into(),
+        ];
+        spec.test_hooks = Some(hooks.clone());
+        let _hook = process_override::once(&case.root, spec);
+        let engine = host.engine.clone();
+        let id = task.id.clone();
+        let request_value = request();
+        let pending = tokio::spawn(async move { engine.git_diff(&id, request_value).await });
+        case.observe().await?;
+        until(|| case.parent_exited()).await?;
+        ensure!(
+            !case.descendant_exited()?,
+            "original descendant must remain live after parent/EOF"
+        );
+        let status = host.engine.store.execution_admission_status()?;
+        ensure!(
+            status.0 && status.1 > 0 && status.2 == 0,
+            "native Git lost its domain ticket"
+        );
+        ensure!(
+            Engine::new(host.engine.store.clone(), 1).is_err(),
+            "second controller entered while Git alive"
+        );
+        ensure!(
+            !pending.is_finished(),
+            "native Git returned before descendant settled"
+        );
+        if mode == "shutdown" {
+            host.engine.request_shutdown();
+        } else {
+            case.release()?;
+        }
+        if mode == "unknown" {
+            until(|| Ok(hooks.stdout_reader_held.load(Ordering::SeqCst))).await?;
+        }
+        let wait = if mode == "shutdown" {
+            Duration::from_secs(8)
+        } else {
+            Duration::from_secs(18)
+        };
+        let result = tokio::time::timeout(wait, pending).await??;
+        // The deliberately substituted transport output is not valid Git data.
+        // This is an error-path probe through the actual Engine/Git collector.
+        ensure!(
+            result.is_err(),
+            "substituted transport unexpectedly parsed as Git"
+        );
+        if mode == "unknown" {
+            ensure!(
+                result.unwrap_err().downcast_ref::<GitDiffError>()
+                    == Some(&GitDiffError::OutcomeUnknown),
+                "typed Git unknown missing"
+            );
+            let status = host.engine.store.execution_admission_status()?;
+            ensure!(
+                !status.0 && status.1 > 0 && status.2 > 0,
+                "unknown did not seal/retain original ticket"
+            );
+            ensure!(
+                host.engine.start(Host::request()).await.is_err(),
+                "unknown admitted new work"
+            );
+            hooks.release_stdout_reader.store(true, Ordering::SeqCst);
+        }
+        case.prove_exited().await?;
+        until(|| Ok(host.engine.store.execution_admission_status()?.1 == 0)).await?;
+        ensure!(
+            hooks.stdout_reader_joined.load(Ordering::SeqCst)
+                && hooks.stderr_reader_joined.load(Ordering::SeqCst),
+            "real readers not joined"
+        );
+        let store = host.engine.store.clone();
+        if mode == "normal" {
+            ensure!(
+                store.execution_admission_status()?.0,
+                "ordinary Git parse error sealed domain"
+            );
+            assert_eq!(
+                host.engine.git_diff(&task.id, request()).await?.status,
+                GitDiffStatus::Text
+            );
+            host.close().await?;
+        } else if mode == "shutdown" {
+            ensure!(
+                host.engine.shutdown(Duration::from_secs(5)).await.settled(),
+                "settled native Git shutdown reported unknown"
+            );
+        } else {
+            let status = store.execution_admission_status()?;
+            ensure!(
+                !status.0 && status.2 > 0,
+                "late cleanup reopened the same owner"
+            );
+            ensure!(
+                !host.engine.shutdown(Duration::from_secs(5)).await.settled(),
+                "shutdown erased Git unknown"
+            );
+        }
+        assert!(host.database.exists());
+        drop(host);
+        if mode != "unknown" {
+            drop(crate::engine::Engine::new(store, 1)?);
+        }
+        Ok(())
+    }
+    use crate::engine::Engine;
+    #[tokio::test]
+    async fn native_git_descendant_retains_ticket_then_normal_git_succeeds() -> Result<()> {
+        native_git_case("normal").await
+    }
+    #[tokio::test]
+    async fn native_git_shutdown_cancels_collector_and_settles_ticket() -> Result<()> {
+        native_git_case("shutdown").await
+    }
+    #[tokio::test]
+    async fn native_git_unknown_seals_admission_until_and_after_reader_join() -> Result<()> {
+        native_git_case("unknown").await
+    }
+
+    #[test]
+    fn original_ticket_covers_detached_body_between_generations() {
+        let root = tempfile::tempdir().unwrap();
+        let store =
+            Arc::new(crate::store::Store::open(&root.path().join("peachsh.sqlite3")).unwrap());
+        let engine = Engine::new(store.clone(), 1).unwrap();
+        let original = store.execution_operation(CancellationToken::new()).unwrap();
+        let body = original.hold_body();
+        drop(original);
+        assert_eq!(store.execution_admission_status().unwrap().1, 1);
+        drop(engine);
+        assert!(Engine::new(store.clone(), 1).is_err());
+        let old_lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(root.path().join("instance.lock"))
+            .unwrap();
+        assert!(old_lock.try_lock().is_err());
+        drop(body);
+        assert_eq!(store.execution_admission_status().unwrap().1, 0);
+        drop(Engine::new(store.clone(), 1).unwrap());
+        drop(store);
+        old_lock.try_lock().unwrap();
+    }
+}
+
+#[cfg(all(test, windows))]
+pub(crate) fn test_process_once(root: &Path, spec: ProcessSpec) -> process_override::Guard {
+    process_override::once(root, spec)
 }
