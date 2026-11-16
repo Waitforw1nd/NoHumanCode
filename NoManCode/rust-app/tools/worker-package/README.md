@@ -96,7 +96,7 @@ directory, prints its location, copies artifacts into isolated case directories,
 and uses isolated data and workspace paths. The gate runner checks source IDs,
 requires a passing test, and retains its gate and evidence. Each original child
 is owned by `tests/support/owned_child.rs`, with no window, file-backed logs and
-a 30-second deadline; ordinary failure/unwind invokes its exact-child kill/wait
+a 30-second observation deadline; ordinary failure/unwind invokes its exact-child kill/wait
 guard. Timeout or uncertain observation writes unknown evidence, emits
 `NHC_TERMINAL_UNKNOWN` and retains that original Child indefinitely. Do not kill
 the test or supervisor, start another step, unlock, remove the fixture or infer
@@ -104,6 +104,10 @@ descendant cleanup from direct exit; the manager reconciles the same objects and
 gate. An outer deadline likewise stops admission while the original supervisor
 retains the Cargo process. Neither direct exit nor this test proves descendant
 cleanup. Protocol and public `run_wasm` execution remain separate gates.
+
+Cross-review found that the baseline shared `owned_child` accepts a direct exit
+first observed after the deadline as success. C's fix `bf1bda27` must be
+integrated and verified before treating the deadline as strictly enforced.
 
 The non-ignored independent bootstrap case can be selected through the existing
 `run-gates.ps1 -Mode targeted -TestTarget worker_package_bootstrap -Filter

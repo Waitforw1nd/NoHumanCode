@@ -13,6 +13,14 @@ spec.loader.exec_module(runner)
 
 
 class RunnerTests(unittest.TestCase):
+    def test_summary_requires_exactly_one_passing_test(self):
+        self.assertTrue(runner.exactly_one_passed(b"test result: ok. 1 passed; 0 failed; 0 ignored\n"))
+        for raw in (b"test result: ok. 0 passed; 0 failed; 1 ignored\n",
+                    b"test result: ok. 2 passed; 0 failed; 0 ignored\n",
+                    b"test result: ok. 1 passed; 0 failed;\ntest result: ok. 1 passed; 0 failed;\n",
+                    b"test result: FAILED. 0 passed; 1 failed;\n"):
+            self.assertFalse(runner.exactly_one_passed(raw))
+
     def test_real_pair_plan_uses_gate_and_exact_ignored_test(self):
         root = runner.REPO / ".local/worker-package-mocks"
         root.mkdir(parents=True, exist_ok=True)

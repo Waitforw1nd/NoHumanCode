@@ -6,7 +6,12 @@ import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lifecycle"))
-from lifecycle_gates import ENVIRONMENT, REPO, RUST_REL, e_path, execute, git_text, run_attempt
+from lifecycle_gates import ENVIRONMENT, REPO, ExecutionResult, e_path, execute, git_text, run_attempt
+
+
+def exactly_one_passed(raw):
+    summaries = re.findall(rb"(?m)^test result: ok\. (\d+) passed; (\d+) failed;[^\r\n]*", raw)
+    return summaries == [(b"1", b"0")]
 
 
 def main():
@@ -47,7 +52,10 @@ def main():
     def invoke(argv, cwd, environment, timeout, log):
         target.mkdir(parents=True, exist_ok=True)
         (out / "tmp").mkdir()
-        return execute(argv, cwd, environment, timeout, log)
+        result = execute(argv, cwd, environment, timeout, log)
+        if not result.terminal_unknown and result.exit_code == 0 and not exactly_one_passed(log.read_bytes()):
+            return ExecutionResult(1, False, "expected exactly one passing test")
+        return result
 
     code, report = run_attempt(repo, out, common / "nhc-heavy-window.lock", expected, steps, env,
                                {"kind": "real-worker-pair-check"}, invoke=invoke)
