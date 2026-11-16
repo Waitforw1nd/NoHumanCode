@@ -2156,6 +2156,9 @@ impl Engine {
                             cause.downcast_ref::<approval::ApprovalError>(),
                             Some(approval::ApprovalError::UnknownResult { .. })
                         )
+                        || cause.downcast_ref::<NetworkError>().is_some_and(|error| {
+                            error.dispatch_state == DispatchState::Unknown
+                        })
                 })
             });
             let claim_unknown = match engine.store.approvals_for_task(&task.id) {
