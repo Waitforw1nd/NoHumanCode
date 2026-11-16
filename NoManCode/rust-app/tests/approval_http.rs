@@ -1632,60 +1632,108 @@ async fn ah11_real_busy_decision_is_retryable_and_corruption_is_not() {
     .await;
 }
 
-#[tokio::test]
-async fn ah14_unknown_is_visible_and_decision_remains_conflict() {
-    let h = live_harness(vec![vec![tool_call(
-        "command",
-        "run_command",
-        json!({"command":"exit 0"}),
-    )]])
-    .await;
-    let started = start_live(&h, true).await;
-    let approval = pending(&h, &started.id).await;
-    let task = h.engine.store.task(&started.id).unwrap();
-    let id = approval.id;
-    // Synchronous approve/claim/recover occurs before this current-thread runtime can resume its waiting worker.
-    h.engine
-        .store
-        .decide_approval_with_network_ack(&id, true, "user", true)
+#[test]
+fn ah14_unknown_is_visible_and_decision_remains_conflict() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
         .unwrap();
-    h.engine
-        .store
-        .claim_approval(
-            &task,
+    let (h, task, id) = runtime.block_on(async {
+        let h = live_harness(vec![vec![tool_call(
             "command",
             "run_command",
-            &json!({"command":"exit 0"}),
-        )
-        .unwrap();
-    h.engine.store.recover().unwrap();
-    let body: Value = client()
-        .get(format!("{}/api/approvals/{id}", h.origin))
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-    assert_eq!(body["execution_state"], "unknown");
-    error(
-        client()
-            .post(format!("{}/api/approvals/{id}/decision", h.origin))
-            .header("x-peachsh-token", &h.token)
-            .json(&json!({"decision":"approve"}))
+            json!({"command":"exit 0"}),
+        )]])
+        .await;
+        let started = start_live(&h, true).await;
+        let approval = pending(&h, &started.id).await;
+        let task = h.engine.store.task(&started.id).unwrap();
+        let id = approval.id;
+        // No yield after the durable claim: the old worker cannot execute it before runtime teardown.
+        h.engine
+            .store
+            .decide_approval_with_network_ack(&id, true, "user", true)
+            .unwrap();
+        h.engine
+            .store
+            .claim_approval(
+                &task,
+                "command",
+                "run_command",
+                &json!({"command":"exit 0"}),
+            )
+            .unwrap();
+        (h, task, id)
+    });
+    let Harness {
+        _dir,
+        db_path,
+        engine,
+        _server,
+        provider_calls,
+        ..
+    } = h;
+    let observer = engine.store.clone();
+    let old_engine = Arc::downgrade(&engine);
+    drop(engine);
+    drop(_server); // Runtime teardown below cancels and joins the owned router task.
+    runtime.shutdown_timeout(Duration::from_secs(2));
+    await_http_runtime_stopped(&observer, _dir.path());
+    assert!(
+        old_engine.upgrade().is_none(),
+        "old HTTP Engine still alive"
+    );
+    assert_eq!(
+        observer.approval(&id).unwrap().execution_state,
+        ExecutionState::Claimed
+    );
+    drop(observer);
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    runtime.block_on(async {
+        let (engine, _) =
+            Engine::new_recovered(Arc::new(Store::open(&db_path).unwrap()), 2).unwrap();
+        let (origin, token, _server) = serve_http_engine(engine.clone()).await;
+        let h = Harness {
+            _dir,
+            db_path,
+            engine,
+            origin,
+            token,
+            provider_calls,
+            _server,
+        };
+        let body: Value = client()
+            .get(format!("{}/api/approvals/{id}", h.origin))
             .send()
             .await
-            .unwrap(),
-        StatusCode::CONFLICT,
-        "工具执行结果未知",
-        false,
-    )
-    .await;
-    assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
-    assert_eq!(
-        h.engine.store.approval(&id).unwrap().execution_state,
-        ExecutionState::Unknown
-    );
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(body["execution_state"], "unknown");
+        error(
+            client()
+                .post(format!("{}/api/approvals/{id}/decision", h.origin))
+                .header("x-peachsh-token", &h.token)
+                .json(&json!({"decision":"approve"}))
+                .send()
+                .await
+                .unwrap(),
+            StatusCode::CONFLICT,
+            "工具执行结果未知",
+            false,
+        )
+        .await;
+        assert_eq!(event_count(&h, &task, "approval.resolved"), 1);
+        assert_eq!(
+            h.engine.store.approval(&id).unwrap().execution_state,
+            ExecutionState::Unknown
+        );
+        assert!(h.engine.shutdown(Duration::from_secs(5)).await.settled());
+        h._server.abort();
+        assert!(h._server.await.unwrap_err().is_cancelled());
+    });
+    runtime.shutdown_timeout(Duration::from_secs(2));
 }
 
 #[tokio::test]
@@ -1760,8 +1808,7 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
         let (base, calls, _provider) = provider_server_at(vec![vec![]], address).await;
         let store = Arc::new(Store::open(&db_path).unwrap());
         configure_live(&store, temp.path(), &base);
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         let (origin, token, _http) = serve_http_engine(engine.clone()).await;
         let response = client()
             .post(format!("{origin}/api/approvals/{}/decision", approval.id))
@@ -1804,8 +1851,7 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let store = Arc::new(Store::open(&db_path).unwrap());
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         assert_eq!(
             engine.store.approval(&approval.id).unwrap().execution_state,
             ExecutionState::Finished
@@ -1843,12 +1889,38 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
     runtime.shutdown_timeout(Duration::from_secs(2));
 }
 
+// A runtime drop requests collector cancellation; it does not prove cleanup.
+// Keep the original Store observer until its real domain tickets have settled.
+fn await_http_runtime_stopped(store: &Store, root: &Path) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(12);
+    loop {
+        let status = store.execution_admission_status();
+        if matches!(status, Ok((false, 0, 0))) {
+            return;
+        }
+        if !matches!(status, Ok((_, _, 0))) || std::time::Instant::now() >= deadline {
+            let _ = std::fs::write(
+                root.join("http-restart-unknown.json"),
+                json!({"admission":format!("{status:?}")}).to_string(),
+            );
+            eprintln!(
+                "NHC_TERMINAL_UNKNOWN: original HTTP Store/holder retained at {}: {status:?}",
+                root.display()
+            );
+            loop {
+                std::thread::park_timeout(Duration::from_secs(1));
+            }
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 #[test]
 fn ah06_real_command_side_effect_then_shutdown_recovers_unknown() {
     let temp = tempfile::tempdir().unwrap();
     let db_path = temp.path().join("approval-http.db");
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (task, approval) = runtime.block_on(async {
+    let (task, approval, observer, old_engine) = runtime.block_on(async {
         let (base, _calls, _provider) = provider_server(vec![vec![tool_call(
             "command",
             "run_command",
@@ -1881,15 +1953,24 @@ fn ah06_real_command_side_effect_then_shutdown_recovers_unknown() {
                 tokio::task::yield_now().await;
             }
         }).await.expect("real side effect before result commit");
-        (task, approval)
+        (task, approval, engine.store.clone(), Arc::downgrade(&engine))
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
+    await_http_runtime_stopped(&observer, temp.path());
+    assert!(
+        old_engine.upgrade().is_none(),
+        "old Engine still retains controller"
+    );
+    assert_eq!(
+        observer.approval(&approval.id).unwrap().execution_state,
+        ExecutionState::Claimed
+    );
+    drop(observer);
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let store = Arc::new(Store::open(&db_path).unwrap());
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         let (origin, token, _http) = serve_http_engine(engine.clone()).await;
         let response = client()
             .get(format!("{origin}/api/approvals/{}", approval.id))
@@ -1988,8 +2069,7 @@ fn ah06_denied_http_decision_survives_real_runtime_restart_without_execution() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let store = Arc::new(Store::open(&db_path).unwrap());
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         let record = engine.store.approval(&approval.id).unwrap();
         assert_eq!(record.status, ApprovalStatus::Denied);
         assert_eq!(record.execution_state, ExecutionState::NotStarted);
@@ -2204,8 +2284,7 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
             let (base, calls, _provider) = provider_server_at(vec![vec![], vec![]], address).await;
             let store = Arc::new(Store::open(&db_path).unwrap());
             configure_live(&store, temp.path(), &base);
-            let engine = Engine::new(store, 2).unwrap();
-            engine.store.recover().unwrap();
+            let (engine, _) = Engine::new_recovered(store, 2).unwrap();
             let (origin, token, _http) = serve_http_engine(engine.clone()).await;
             let response = client()
                 .get(format!("{origin}/api/approvals/{}", approval.id))

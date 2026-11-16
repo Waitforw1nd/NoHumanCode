@@ -1982,8 +1982,15 @@ async fn n11_same_key_concurrency() {
     let before = snapshot(&second.h.db_path);
     let store = Arc::new(Store::open(&second.h.db_path).unwrap());
     network_fixture::authorize_routes(&store);
-    let engine = Engine::new(store, 2).unwrap();
-    let (origin, _http) = serve(engine, &second.h.token).await;
+    let denied = match Engine::new(store.clone(), 2) {
+        Ok(_) => panic!("a second controller must not be admitted"),
+        Err(error) => error,
+    };
+    assert_eq!(
+        denied.to_string(),
+        "data domain controller is busy or unknown"
+    );
+    let (origin, _http) = serve(second.h.engine.clone(), &second.h.token).await;
     let peer = Harness {
         _dir: tempfile::tempdir().unwrap(),
         db_path: second.h.db_path.clone(),
@@ -2044,9 +2051,8 @@ async fn n11_same_key_concurrency() {
         }
     }
     assert_eq!((created, replayed), (1, 1));
-    // The winner may run on the peer engine; its writes land in the shared
-    // database, so observe the persisted delta and settled row there before
-    // reading the background call counter.
+    // Both real HTTP listeners share the only controller. Observe the persisted
+    // result before checking exactly one provider dispatch.
     let legacy = winner_legacy.expect("one request must create");
     wait_delta(&second.h.db_path, &legacy, "reply").await;
     let done = wait_task(&second.h.engine, &legacy).await;
@@ -2062,6 +2068,86 @@ async fn n11_same_key_concurrency() {
     ] {
         assert_grew_only(&before, &after, name, 1);
     }
+
+    // Independent Store transactions still race on a new idempotency key.
+    // This storage-only leg does not replace either real HTTP request above.
+    let previous = store
+        .latest_committed_turn(&second.chat.session.id)
+        .unwrap()
+        .unwrap();
+    let mut next = previous.clone();
+    next.id = TurnId(id());
+    next.status = LifecycleStatus::Queued;
+    next.idempotency_key = Some("two-store-key".into());
+    next.request_hash = expected_hash(
+        &second,
+        &previous.id.0,
+        "two Store transactions",
+        "two-store-key",
+    );
+    next.created_at = now();
+    next.updated_at = next.created_at;
+    let mut next_task = store.turn_tasks(&previous.id).unwrap().remove(0);
+    let mut legacy_task = store.task(&next_task.legacy_task_id).unwrap();
+    legacy_task.spec.prompt = "two Store transactions".into();
+    // This fixture has only completed text replies and no restore facts.
+    // The persisted predecessor already contains its complete continuation.
+    legacy_task.id = id();
+    legacy_task
+        .messages
+        .push(json!({"role":"user","content":"two Store transactions"}));
+    legacy_task.status = "queued".into();
+    legacy_task.output.clear();
+    legacy_task.error = None;
+    legacy_task.usage = Value::Null;
+    legacy_task.created_at = next.created_at;
+    legacy_task.updated_at = next.updated_at;
+    next_task.id = TaskId(id());
+    next_task.turn_id = next.id.clone();
+    next_task.legacy_task_id = legacy_task.id.clone();
+    next_task.status = LifecycleStatus::Queued;
+    next_task.created_at = next.created_at;
+    next_task.updated_at = next.updated_at;
+    let before_transactions = snapshot(&second.h.db_path);
+    let calls_before = second.h.probe.calls.load(Ordering::SeqCst);
+    let start = Arc::new(std::sync::Barrier::new(2));
+    let jobs: Vec<_> = [second.h.engine.store.clone(), store]
+        .into_iter()
+        .map(|connection| {
+            let (turn, task, legacy, previous, start) = (
+                next.clone(),
+                next_task.clone(),
+                legacy_task.clone(),
+                previous.id.clone(),
+                start.clone(),
+            );
+            std::thread::spawn(move || {
+                start.wait();
+                connection
+                    .append_chat_turn(&turn, &task, &legacy, "two-store-key", &previous)
+                    .unwrap()
+            })
+        })
+        .collect();
+    let receipts: Vec<_> = jobs.into_iter().map(|job| job.join().unwrap()).collect();
+    assert_eq!(receipts.iter().filter(|r| r.replayed).count(), 1);
+    assert_eq!(receipts.iter().filter(|r| !r.replayed).count(), 1);
+    assert!(
+        receipts
+            .iter()
+            .all(|r| r.turn.id == next.id && r.task.id == next_task.id)
+    );
+    let after_transactions = snapshot(&second.h.db_path);
+    for name in [
+        "turns",
+        "turn_tasks",
+        "tasks",
+        "idempotency_records",
+        "idempotency",
+    ] {
+        assert_grew_only(&before_transactions, &after_transactions, name, 1);
+    }
+    assert_eq!(second.h.probe.calls.load(Ordering::SeqCst), calls_before);
 }
 
 #[tokio::test]
