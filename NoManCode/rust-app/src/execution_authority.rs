@@ -201,9 +201,6 @@ impl ExecutionAuthority {
 }
 pub(crate) struct ExecutionController(Arc<ExecutionAuthority>, std::sync::atomic::AtomicBool);
 impl ExecutionController {
-    pub(crate) fn activate(&self) {
-        self.1.store(true, std::sync::atomic::Ordering::Release);
-    }
     pub(crate) fn recovery_fence(&self, tx: &rusqlite::Transaction<'_>) -> Result<()> {
         ensure!(self.can_recover(), "controller already activated");
         let epoch = {
