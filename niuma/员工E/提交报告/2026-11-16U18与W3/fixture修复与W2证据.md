@@ -9,3 +9,5 @@ E 只读确认 B 工作树三个接管文件无未提交变化；E 普通合入 
 经理提供 W2/W7 27/27、W3 pair 和 Host 矩阵通过；E 只读复查 W2 integration 原件 `.local/lifecycle/u18-w2-w7-1/`：`manifest.json` passed、30 步和 27 份 case.json，27 个 `*-case-*.log` 各有一项通过，20 份主 `cases/case-*/host.stage`、四份 `cases/case-11/w05/{before,suspended,resumed,pending}-host.stage`；另有不叫 host.stage 的 stage 文件，整个 `cases/` 均需原样留存。未出现 creation-handle unknown 标记。没有主 host.stage 的 7 例包括 W05 及六项 artifact/handle/limit 测试，不应按文件缺失推断失败或清理完成。
 
 特别保留 W05 的 `14-case-11.log`、`cases/case-11/case.json`、整个 `cases/case-11/w05/` 及 `.local/lifecycle/window-closures/u18-w2-w7-1/`。日志记载四个 helper 的原 wait 和三个已创建 worker 的 wait；这些是该测试保存的证据，经理需结合各 case 的原 process/Job/I/O 证据与窗口闭合记录裁决，不能仅从测试进程退出推断全部后代收束。E 不发布、不移动或删除证据。
+
+组合 `375b85d9619f2ff33780c33563327aeec78f3e9a` 全量窗口启动后，E 只读核对：plugin fixture controller 恢复后持有至并发写结束；provider fixture 在目标线程之前取原域 operation 并以 `test_sync` 进入；runtime COMMIT 测试使用原同 owner 重试，与组合的确认 rollback 分支一致。未发现须立即修正的 E 范围问题；这是静态结论，全量未结束，不构成验证通过。
