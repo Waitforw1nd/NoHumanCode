@@ -77,8 +77,12 @@ impl NetworkClaimGuard {
 }
 impl Drop for NetworkClaimGuard {
     fn drop(&mut self) {
-        if let Some(operation) = &self.0 {
+        if let Some(operation) = self.0.take() {
             operation.seal_unknown();
+            // A dropped response future does not prove that the underlying
+            // transport has stopped. Retain this exact body and its domain
+            // owner until process exit; unknown is deliberately not retried.
+            std::mem::forget(operation);
         }
     }
 }
@@ -847,7 +851,7 @@ pub struct Engine {
     tool_calls: crate::tool_call_application::ToolCallApplication,
     provider_runtime: Arc<crate::provider_runtime::ProviderRuntime>,
     agent_runtime: Arc<crate::agent_runtime::AgentRuntime>,
-    packaged_worker: Mutex<Option<Option<crate::worker_bootstrap::WorkerService>>>,
+    packaged_worker: Mutex<Option<Option<crate::wasm_worker_process::WorkerService>>>,
     #[cfg(test)]
     agent_before_save: Mutex<Option<AgentBeforeSaveProbe>>,
     #[cfg(test)]
@@ -882,7 +886,7 @@ impl Engine {
     /// Installation is one-shot even when no worker was packaged.
     pub fn install_packaged_worker(
         &self,
-        mut worker: Option<crate::worker_bootstrap::WorkerService>,
+        mut worker: Option<crate::wasm_worker_process::WorkerService>,
     ) -> Result<()> {
         let mut installed = self
             .packaged_worker
@@ -1088,6 +1092,11 @@ impl Engine {
             #[cfg(test)]
             shell_claim_probe,
         }))
+    }
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn workspace_gate_for_test(&self) -> Arc<AsyncMutex<()>> {
+        self.gate.clone()
     }
     #[cfg(test)]
     pub(crate) fn set_restore_probe(
@@ -2861,7 +2870,7 @@ fn validate_new_tool_group(previous: &[Value], calls: &[Value]) -> Result<()> {
 }
 
 #[cfg(test)]
-mod workspace_phase_tests {
+pub(crate) mod workspace_phase_tests {
     fn authorize_fixture(store: &crate::store::Store) {
         super::configure_fixture_project(store);
         for route in store.settings().unwrap().unwrap().routes {
@@ -5634,7 +5643,7 @@ mod workspace_phase_tests {
         );
         String::from_utf8(out.stdout).unwrap()
     }
-    async fn n13_completed_fixture(root: &Path) -> (Arc<Engine>, String) {
+    pub(crate) async fn n13_completed_fixture(root: &Path) -> (Arc<Engine>, String) {
         let source = root.join("source");
         std::fs::create_dir(&source).unwrap();
         let (engine, task) =

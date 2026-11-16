@@ -521,6 +521,8 @@ impl ReviewRecovery {
         }
         let receipt = self.store.claim_restore(id, &changes)?;
         anyhow::ensure!(receipt.status == RestoreStatus::Claimed, "恢复领取状态损坏");
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(id, "restore_claim_committed");
         let restore_id = receipt
             .restore_id
             .as_deref()
