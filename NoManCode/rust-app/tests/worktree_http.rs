@@ -4,10 +4,11 @@ use axum::{
     routing::{get, post},
 };
 use peachsh::{
-    domain::{Route, Settings},
+    domain::{ProjectId, Route, Settings},
     engine::Engine,
     server::{self, App},
     store::Store,
+    worktree_management::WorktreeError,
 };
 use serde_json::{Value, json};
 use std::{
@@ -41,6 +42,73 @@ fn client() -> reqwest::Client {
         .unwrap()
 }
 impl Host {
+    /// Opt-in diagnosis only: keep the six-second acceptance bound, but observe
+    /// the original request to completion instead of losing it at that bound.
+    /// A late response still fails. No second create request is sent.
+    async fn observed_worktree_create(
+        &self,
+        request: reqwest::RequestBuilder,
+        source: &str,
+        key: &str,
+    ) -> reqwest::Response {
+        if std::env::var("NHC_WORKTREE_HTTP_TIMING").as_deref() != Ok("1") {
+            return request.send().await.unwrap();
+        }
+        let source = ProjectId(source.to_owned());
+        let start = tokio::time::Instant::now();
+        let acceptance = Duration::from_secs(6);
+        // Observation cap only, not a new success deadline. It covers the
+        // existing 30s mutation plus 5s cleanup and normal preparation time.
+        let pending = request.timeout(Duration::from_secs(60)).send();
+        tokio::pin!(pending);
+        let boundary = tokio::time::sleep_until(start + acceptance);
+        tokio::pin!(boundary);
+        let mut samples = tokio::time::interval(Duration::from_millis(100));
+        samples.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let mut last_phase = String::new();
+        let mut crossed = false;
+        let phase = || match self.engine.lookup_project_worktree(&source, key) {
+            Ok(receipt) => format!("{:?}/revision={}", receipt.state, receipt.revision),
+            Err(error)
+                if error.downcast_ref::<WorktreeError>() == Some(&WorktreeError::NotFound) =>
+            {
+                "before_claim".into()
+            }
+            Err(error) => format!("lookup_error={error}"),
+        };
+        let result = loop {
+            tokio::select! {
+                result = &mut pending => break result,
+                _ = &mut boundary, if !crossed => {
+                    crossed = true;
+                    eprintln!("WORKTREE_TIMING key={key} elapsed_ms={} six_second_boundary phase={}", start.elapsed().as_millis(), phase());
+                },
+                _ = samples.tick() => {
+                    let current = phase();
+                    if current != last_phase {
+                        eprintln!("WORKTREE_TIMING key={key} elapsed_ms={} phase={current}", start.elapsed().as_millis());
+                        last_phase = current;
+                    }
+                },
+            }
+        };
+        let elapsed = start.elapsed();
+        eprintln!(
+            "WORKTREE_TIMING key={key} elapsed_ms={} response={:?} phase={} accepted_within_6s={}",
+            elapsed.as_millis(),
+            result.as_ref().map(reqwest::Response::status),
+            phase(),
+            !crossed && elapsed <= acceptance,
+        );
+        let response =
+            result.expect("diagnostic observation failed; original request was not retried");
+        assert!(
+            !crossed && elapsed <= acceptance,
+            "original six-second creation deadline exceeded ({elapsed:?}); late response observed for diagnosis only"
+        );
+        response
+    }
+
     async fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
         let calls = Arc::new(AtomicUsize::new(0));
@@ -343,12 +411,14 @@ async fn w01_w02_worktree_project_has_independent_authorization_and_original_ses
     let calls = h.calls.load(Ordering::SeqCst);
     let endpoint = format!("/api/projects/{source_id}/worktrees");
     let receipt = body(
-        h.request(reqwest::Method::POST, &endpoint)
-            .header("Idempotency-Key", "tree-create")
-            .json(&create_body(&h, &head, 2))
-            .send()
-            .await
-            .unwrap(),
+        h.observed_worktree_create(
+            h.request(reqwest::Method::POST, &endpoint)
+                .header("Idempotency-Key", "tree-create")
+                .json(&create_body(&h, &head, 2)),
+            source_id,
+            "tree-create",
+        )
+        .await,
         200,
     )
     .await;
@@ -682,12 +752,14 @@ async fn w09_http_strict_dtos_auth_and_cross_source_lookup_have_no_side_effects(
     assert_eq!(rows(&db), before);
     assert_eq!(h.calls.load(Ordering::SeqCst), 0);
     let receipt = body(
-        h.request(reqwest::Method::POST, &endpoint)
-            .header("Idempotency-Key", "good")
-            .json(&valid)
-            .send()
-            .await
-            .unwrap(),
+        h.observed_worktree_create(
+            h.request(reqwest::Method::POST, &endpoint)
+                .header("Idempotency-Key", "good")
+                .json(&valid),
+            id,
+            "good",
+        )
+        .await,
         200,
     )
     .await;
