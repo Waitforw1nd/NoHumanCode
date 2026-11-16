@@ -317,6 +317,45 @@ async fn claimed_body_can_settle_after_close_or_cancel() {
     }
 }
 
+#[tokio::test]
+async fn checkpoint_waiting_at_gate_cannot_claim_after_shutdown() {
+    use std::{task::Poll, time::Duration};
+    let (_dir, store, engine) = setup();
+    let gate = engine.workspace_gate_for_test();
+    let held = gate.lock().await;
+    let mut create = Box::pin(engine.create_checkpoint("not-a-task", "u18-gate"));
+    assert!(matches!(
+        futures_util::poll!(create.as_mut()),
+        Poll::Pending
+    ));
+    assert_eq!(
+        store.execution_admission_status().unwrap().1,
+        1,
+        "pending request must retain its original operation"
+    );
+    let before: i64 = store
+        .db
+        .lock()
+        .unwrap()
+        .query_row("SELECT count(*) FROM checkpoints", [], |r| r.get(0))
+        .unwrap();
+    engine.request_shutdown();
+    drop(held);
+    assert!(create.as_mut().await.is_err());
+    drop(create);
+    assert_eq!(
+        store
+            .db
+            .lock()
+            .unwrap()
+            .query_row("SELECT count(*) FROM checkpoints", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        before
+    );
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+}
+
 fn store_positive_and_insert(
     store: &Store,
     tx: &rusqlite::Transaction<'_>,
