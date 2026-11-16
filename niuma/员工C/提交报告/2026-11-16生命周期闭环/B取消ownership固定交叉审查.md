@@ -1,0 +1,41 @@
+# C：B 取消 ownership 固定交叉审查
+
+2026-11-16；仅只读产品源码，报告写C独立树。集成full-2冻结期间未修改integration、B核心或Cargo，未执行编译、测试或真实进程。
+
+固定审查对象：f00910fb1f24d146777dcc14fd6dc572d1867ae7、a2685f9cf524ccf17960277e5d981107648725f5、5bd6ea9f7e06e36b1764cf1560a8dfee079044d1；复核修正48eeaa3a662a095d18685130c913428e000a7392及5a9e57a5076b6132c050297b43a0d2f81048963d。
+
+结论：上述修正纳入后，未发现剩余静态阻断。取消权移交复用同一OperationScope、整项票、Generation和Host取消token；没有新owner或平行调度器。此结论不是动态验收，也不宣称schema18/full U完成。
+
+## 取消权与持票顺序
+
+|情形|固定源码依据与结论|
+|---|---|
+|claim前调用者被drop|ExecutionOperation初始取消角色Caller；其Drop仍取消原scope child token。未取消既有行为。|
+|claim后调用者被drop|Engine::create_project_worktree_in_domain在claim成功且非replay后，到spawn_worktree_worker没有await；后者同步current计入body，并以hold_body().take_worker_cancellation在同一scope状态锁下将取消角色变为Worker。原Caller Drop只减自己的body计数，不再cancel。不存在通过新token隐藏旧取消。|
+|Host shutdown与handoff交错|外层create_project_worktree以self.shutdown_requested签发operation，内部仍是该token.child_token。handoff仅更改取消角色，不重建token。request_shutdown先关准入再取消原shutdown_requested；无论发生在handoff之前或之后，都到达原collector wait_with_cancel，下一Generation也检查原token。|
+|worker正常完成|worker_future内完成Git结果处理、finish_worktree及必要unknown后备登记后才返回。spawn_worktree_worker的_body仍存活，覆盖external_outcome_unknown标志、sender.send和持久化失败汇总，然后才drop。调用者停止等待不取消或跳过这些步骤。|
+|worker异常退出/Drop|Worker角色的Drop请求原token取消；仅当bodies=0且active generation为空才减整项票。worker消失不是进程/Job/I/O结束证明。若仍有真实Generation，A持有的同scope lease继续阻止释放。|
+|unknown迟到收束|Generation::seal_unknown先关门并设置sticky unknown；settle只清active generation并尝试资源结算，不清unknown。shutdown汇总仍包含票数、后台失败及sticky unknown，不能因最后body drop改判settled。|
+|worker返回Err后调用者补记unknown|receiver得到错误后的finish_worktree仍处于原外层operation.run内；若调用者已drop，则后台失败由spawn_background/JoinSet汇总，不能把发送失败视作成功持久化。|
+
+生产handoff只有spawn_worktree_worker一处调用，claim非replay路径使用一次；未发现重复移交同一scope触发断言的生产路径。scope状态仍采用operation→admission锁顺序，未发现新增反向加锁。取消角色变化与Caller Drop使用同一状态锁；当前执行任务不会在无await的claim→spawn区间被普通future取消拆开。
+
+## typed unknown、测试scope和Git进度
+
+- f00910fb的Engine::resume仍先拒Host shutdown，随后只读Task和审批；Claimed/Unknown返回原ApprovalError::UnknownResult。ensure_accepting仍位于network_preflight、ensure_approval、resume_task_with_pending_input和launch之前，没有允许unknown域创建新工作。
+- a2685f9c的f04测试仅包入真实test_scope：实际Store、Engine及ExecutionOperation。原write内容、兼容Shell exit0/marker、disable/draining/计数、错误路径和任务绑定断言保留。该组件测试不替代Engine审批或schema18事务fence证明。
+- Git run中的git_wait_end来自Supervisor的实际Outcome::Settled；Exited才写detail=ok，并记录真实identity.pid与exit_code。Progress监视器仍要求原命令顺序、15/27/86阶段数量、57号mutation位置，以及15/42号exit1和其余exit0。Unknown、NotStarted和失败分支不会满足成功进度断言；非零read的detail=ok不等于业务成功，monitor另查准确exit。
+- filter正控仍以实际脚本marker证明启动；新增受信绝对exe、cwd/env使其经过新collector。isolated helper exact字符串与实际函数名相符。补“running 1 test”输出断言可增强未来改名诊断，当前不是阻断。
+
+## 两项发现及修正
+
+1. 5bd6ea9f新测试的engine仅用于保活但未引用，影响Clippy -D warnings；48eeaa3a改为_engine，保留词法作用域内的controller持有，已核源码。
+2. f00910fb的r01取消分支原来仅等active为空后drop/recover，active.remove发生在drop(body)及worker Engine Arc释放之前，有busy竞态；5a9e57a5补有界shutdown(5秒).await.settled，再drop/recover，原“活controller拒恢复且数据库不变”断言保留，已核源码。
+
+## 验证边界与当前状态
+
+取消权单元测试worktree_handoff_keeps_original_ticket_and_parent_cancellation覆盖同票计数、等待者drop、父token取消及worker drop；其中父取消使用独立CancellationToken，不能单独当作真实Engine shutdown集成证明。生产Host接线经本次源码追踪，真实行为仍由经理窗口确认。
+
+经理回执：integrated-agent-1精确44 passed/0 failed/0 ignored，真实恢复与decision屏障通过，证据已发布且原gate归档。这是经理执行结果，C未执行；该结果也不自动等同本报告所有B路径均已动态覆盖。经理当前合A22e525af/D b2d02e3e启动integrated-full-2，本报告不推断其尚未回报的结果。
+
+本轮C状态：只读交叉审已完成、无剩余静态阻断；报告独立提交供经理合并。后续优先辅助full-2实际失败定位；全U兼容映射仍待当前回归窗口之后继续，旧C35草稿未修改。
