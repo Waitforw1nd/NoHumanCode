@@ -134,7 +134,7 @@ fn migration_kill_and_two_fresh_process_reopens() {
             let result = Store::open(&path).map(|_| ());
             panic!("migration probe did not block: {result:?}");
         }
-        assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 17);
+        assert_eq!(Store::open(&path).unwrap().schema_version().unwrap(), 18);
         let db = Connection::open(&path).unwrap();
         assert_eq!(db.query_row("SELECT rowid FROM plugin_desired WHERE plugin_id='builtin.files' AND enabled=0 AND revision=7 AND updated_at=-12",[],|r|r.get::<_,i64>(0)).unwrap(),31);
         assert_eq!(db.query_row("SELECT rowid FROM plugin_management_requests WHERE key='old-files' AND committed_at=-12",[],|r|r.get::<_,i64>(0)).unwrap(),71);
@@ -183,6 +183,7 @@ fn migration_kill_and_two_fresh_process_reopens() {
         drop(Store::open(&path).unwrap());
         let db = Connection::open(&path).unwrap();
         schema_fixture::restore_two_plugin_schema(&db);
+        db.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18';").unwrap();
         db.execute_batch("PRAGMA user_version=16; UPDATE plugin_desired SET rowid=31,enabled=0,revision=7,updated_at=-12 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,6,7,-12); INSERT INTO secrets(rowid,id,value) VALUES(97,'opaque-next18',X'0001FFFE');").unwrap();
         let old_ddl: Vec<String> = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name IN ('plugin_desired','plugin_management_requests') ORDER BY name").unwrap().query_map([], |r| r.get(0)).unwrap().collect::<rusqlite::Result<_>>().unwrap();
         drop(db);
