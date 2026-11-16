@@ -107,6 +107,10 @@ pub(crate) struct TestHooks {
     pub before_reader_join_held: AtomicBool,
     pub release_reader_join: AtomicBool,
     pub stdout_reader_finished: AtomicBool,
+    pub stdout_reader_joined: AtomicBool,
+    pub stderr_reader_joined: AtomicBool,
+    pub stdout_eof_joined: AtomicBool,
+    pub stderr_eof_joined: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -1454,7 +1458,13 @@ mod platform {
             if out.as_ref().is_some_and(JoinHandle::is_finished) {
                 out_done = true;
                 match out.take().expect("stdout reader").join() {
-                    Ok(Ok(v)) => out_value = Some(v),
+                    Ok(Ok(v)) => {
+                        out_value = Some(v);
+                        #[cfg(test)]
+                        if let Some(hooks) = &spec.test_hooks {
+                            hooks.stdout_eof_joined.store(true, Ordering::Release);
+                        }
+                    }
                     _ => {
                         unknown(lease, signal);
                         io_failed = true;
@@ -1466,17 +1476,31 @@ mod platform {
                         must_stop_direct = true;
                     }
                 }
+                #[cfg(test)]
+                if let Some(hooks) = &spec.test_hooks {
+                    hooks.stdout_reader_joined.store(true, Ordering::Release);
+                }
             }
             if err.as_ref().is_some_and(JoinHandle::is_finished) {
                 err_done = true;
                 match err.take().expect("stderr reader").join() {
-                    Ok(Ok(v)) => err_value = Some(v),
+                    Ok(Ok(v)) => {
+                        err_value = Some(v);
+                        #[cfg(test)]
+                        if let Some(hooks) = &spec.test_hooks {
+                            hooks.stderr_eof_joined.store(true, Ordering::Release);
+                        }
+                    }
                     _ => {
                         unknown(lease, signal);
                         io_failed = true;
                         reason.get_or_insert(CompletionReason::Cancelled);
                         must_stop_direct = true;
                     }
+                }
+                #[cfg(test)]
+                if let Some(hooks) = &spec.test_hooks {
+                    hooks.stderr_reader_joined.store(true, Ordering::Release);
                 }
             }
             let observed = accounting(job);
