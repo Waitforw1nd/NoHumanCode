@@ -1955,7 +1955,9 @@ impl Engine {
         );
         let engine = self.clone();
         self.spawn_background(async move {
-            let (mut task, result) = match engine.store.execution_operation(token.clone()) {
+            let operation = engine.store.execution_operation(token.clone());
+            let body = operation.as_ref().ok().map(|operation| operation.hold_body());
+            let (mut task, result) = match operation {
                 Ok(operation) => operation.run(run(engine.clone(), task, token.clone())).await,
                 Err(error) => (task, Err(error)),
             };
@@ -2020,6 +2022,7 @@ impl Engine {
                 }
             }
             engine.active.lock().unwrap().remove(&task.id);
+            drop(body);
             saved
         });
     }
@@ -2476,11 +2479,11 @@ impl Engine {
     }
 
     fn ensure_accepting(&self) -> Result<()> {
-        self.store.authority.check()?;
         ensure!(
             !self.shutdown_requested.is_cancelled(),
             "Host 正在关闭，拒绝新工作"
         );
+        self.store.authority.check()?;
         Ok(())
     }
 
@@ -2506,7 +2509,9 @@ impl Engine {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let engine = self.clone();
         let scope = crate::execution_authority::current();
+        let body = scope.as_ref().map(|scope| scope.hold_body());
         self.spawn_background(async move {
+            let _body = body;
             let result = crate::execution_authority::inherit(scope, work).await;
             if result.as_ref().is_ok_and(|receipt| {
                 matches!(
@@ -2585,9 +2590,15 @@ impl Engine {
             .is_err()
         {
             return ShutdownReport {
-                remaining_workers: self.background.lock().unwrap().len(),
+                remaining_workers: self
+                    .background
+                    .lock()
+                    .unwrap()
+                    .len()
+                    .max(self.store.authority.status().1),
                 persistence_or_worker_failure: self.background_failed.load(Ordering::Acquire),
-                external_outcome_unknown: self.external_outcome_unknown.load(Ordering::Acquire),
+                external_outcome_unknown: self.external_outcome_unknown.load(Ordering::Acquire)
+                    || self.store.authority.status().2 != 0,
                 timed_out: true,
             };
         }
@@ -2599,13 +2610,14 @@ impl Engine {
                         self.background_failed.store(true, Ordering::Release);
                     }
                 }
-                workers.len()
+                workers.len().max(self.store.authority.status().1)
             };
             if remaining == 0 || tokio::time::Instant::now() >= deadline {
                 return ShutdownReport {
                     remaining_workers: remaining,
                     persistence_or_worker_failure: self.background_failed.load(Ordering::Acquire),
-                    external_outcome_unknown: self.external_outcome_unknown.load(Ordering::Acquire),
+                    external_outcome_unknown: self.external_outcome_unknown.load(Ordering::Acquire)
+                        || self.store.authority.status().2 != 0,
                     timed_out: remaining != 0,
                 };
             }

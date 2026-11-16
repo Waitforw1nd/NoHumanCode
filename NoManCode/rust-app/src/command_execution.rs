@@ -147,15 +147,6 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
         hooks
             .hold_stdout_reader
             .store(probe.as_ref().is_some_and(|p| p.cleanup_unknown), SeqCst);
-        // Reader/exit-query faults are reached promptly and still exercise the
-        // actual failure branches; cleanup_unknown retains a real stuck reader.
-        if probe
-            .as_ref()
-            .is_some_and(|p| p.wait_error || p.cleanup_unknown)
-        {
-            spec.deadline = std::time::Instant::now() + Duration::from_millis(100);
-            spec.cleanup_budget = Duration::from_millis(100);
-        }
         spec.test_hooks = Some(hooks.clone());
         hooks
     };
@@ -515,7 +506,6 @@ mod tests {
     #[cfg(windows)]
     impl Probe {
         pub(super) fn capture_supervised(&self, hooks: &crate::process_lifetime::TestHooks) {
-            use std::os::windows::io::AsRawHandle;
             let captured = hooks
                 .process_handle
                 .lock()
@@ -523,13 +513,40 @@ mod tests {
                 .take()
                 .context("supervisor original process handle missing")
                 .and_then(|handle| {
-                    let pid = unsafe { GetProcessId(handle.as_raw_handle()) };
-                    self.pid.store(pid, Ordering::SeqCst);
-                    ProcessObservation::from_handle(handle, pid)
+                    let expected = hooks
+                        .process_identity
+                        .lock()
+                        .unwrap()
+                        .context("creator process identity missing")?;
+                    self.pid.store(expected.pid, Ordering::SeqCst);
+                    let observation = ProcessObservation::from_handle(handle, expected.pid)?;
+                    ensure!(
+                        observation.created == expected.creation_filetime,
+                        "original process creation identity mismatch"
+                    );
+                    Ok(observation)
                 })
                 .map_err(|error| format!("{error:#}"));
             self.parent_waited
                 .store(hooks.root_signaled.load(Ordering::SeqCst), Ordering::SeqCst);
+            if self.reader_error {
+                assert!(
+                    hooks.stdout_failed_joined.load(Ordering::SeqCst),
+                    "reader failure branch missing"
+                );
+            }
+            if self.cleanup_unknown {
+                assert!(
+                    hooks.stdout_reader_held.load(Ordering::SeqCst),
+                    "cleanup obstruction branch missing"
+                );
+            }
+            if self.wait_error {
+                assert!(
+                    hooks.exit_code_failed.load(Ordering::SeqCst),
+                    "exit query failure branch missing"
+                );
+            }
             assert!(
                 hooks.job_empty.load(Ordering::SeqCst),
                 "original Job not empty"

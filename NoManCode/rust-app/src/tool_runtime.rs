@@ -788,7 +788,9 @@ impl ToolLease {
             let (send, receive) = tokio::sync::oneshot::channel();
             // The worker, not the caller waiting on its channel, owns the lease.
             let scope = crate::execution_authority::current();
+            let body = scope.as_ref().map(|scope| scope.hold_body());
             tokio::spawn(async move {
+                let _body = body;
                 let result =
                     crate::execution_authority::inherit(scope, self.service.execute(&task, &args))
                         .await;
