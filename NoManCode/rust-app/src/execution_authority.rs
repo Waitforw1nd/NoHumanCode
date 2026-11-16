@@ -1394,7 +1394,11 @@ mod lifecycle_tests {
             hooks.release_stdout_reader.store(true, Ordering::SeqCst);
         }
         case.prove_exited().await?;
-        until(|| Ok(host.engine.store.execution_admission_status()?.1 == 0)).await?;
+        let remaining_before_shutdown = usize::from(mode == "shutdown");
+        until(
+            || Ok(host.engine.store.execution_admission_status()?.1 == remaining_before_shutdown),
+        )
+        .await?;
         ensure!(
             hooks.stdout_reader_joined.load(Ordering::SeqCst)
                 && hooks.stderr_reader_joined.load(Ordering::SeqCst),
@@ -1415,6 +1419,11 @@ mod lifecycle_tests {
             ensure!(
                 host.engine.shutdown(Duration::from_secs(5)).await.settled(),
                 "settled native Git shutdown reported unknown"
+            );
+            let status = store.execution_admission_status()?;
+            ensure!(
+                !status.0 && status.1 == 0 && status.2 == 0,
+                "shutdown ticket or unknown remains"
             );
         } else {
             let status = store.execution_admission_status()?;
