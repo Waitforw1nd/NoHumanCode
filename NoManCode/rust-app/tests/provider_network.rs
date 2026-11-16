@@ -277,6 +277,39 @@ async fn dropping_models_future_after_partial_body_seals_real_claim() {
         !report.settled(),
         "unknown external outcome cannot be reported settled"
     );
+    let owner_before: (i64, String) = db
+        .query_row(
+            "SELECT epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    let old_store = Arc::downgrade(&engine.store);
+    drop(engine);
+    assert!(
+        old_store.upgrade().is_none(),
+        "old Engine/Store must actually be dropped"
+    );
+    let reopened = Arc::new(Store::open(&dir.path().join("test.db")).unwrap());
+    assert!(
+        Engine::new(reopened, 1).is_err(),
+        "unknown original operation must block a new controller after Store and Engine drop"
+    );
+    assert_eq!(
+        db.query_row(
+            "SELECT epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+        )
+        .unwrap(),
+        owner_before
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
     let _ = release_tx.send(());
     tokio::time::timeout(Duration::from_secs(5), server)
         .await

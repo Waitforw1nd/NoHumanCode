@@ -64,6 +64,7 @@ async fn host_restart_keeps_legacy_result_without_automatic_tool_execution() {
     let db = root.join("data/peachsh.sqlite3");
     let store = Store::open(&db).unwrap();
     fresh_settings(&store, &root.join("workspace")).unwrap();
+    drop(store);
     let task = Task {
         id: "task".into(),
         run_id: "run".into(),
@@ -99,22 +100,23 @@ async fn host_restart_keeps_legacy_result_without_automatic_tool_execution() {
         created_at: 1,
         updated_at: 1,
     };
-    store
-        .create_run(&Run {
-            id: "run".into(),
-            title: "restart".into(),
-            kind: SessionKind::Team,
-            created_at: 1,
-            tasks: vec![task],
-        })
-        .unwrap();
-    store
-        .event(
-            "task",
-            "tool_result",
-            json!({"name":"read_file","tool_call_id":"read","result":{"content":"legacy"}}),
-        )
-        .unwrap();
+    // Reconstruct a schema-17 historical record with no live Store or
+    // controller. This seed is not a test of authorized production writes.
+    let raw = rusqlite::Connection::open(&db).unwrap();
+    raw.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; PRAGMA user_version=17;").unwrap();
+    raw.execute(
+        "INSERT INTO runs(id,title,kind,created_at) VALUES('run','restart','team',1)",
+        [],
+    )
+    .unwrap();
+    raw.execute(
+        "INSERT INTO tasks(id,run_id,value) VALUES('task','run',?1)",
+        [serde_json::to_string(&task).unwrap()],
+    )
+    .unwrap();
+    raw.execute("INSERT INTO events(seq,task_id,kind,data,at,schema_version,cursor,session_id,turn_id) VALUES(1,'task','tool_result',?1,1,1,'1',NULL,NULL)", [json!({"name":"read_file","tool_call_id":"read","result":{"content":"legacy"}}).to_string()]).unwrap();
+    drop(raw);
+    let store = Store::open(&db).unwrap();
     let initial: Vec<_> = store
         .events("run", 0)
         .unwrap()
@@ -171,7 +173,9 @@ async fn host_restart_keeps_legacy_result_without_automatic_tool_execution() {
         }
     }
     std::fs::write(root.join("host-process.json"),serde_json::to_vec_pretty(&json!({"pid":pid,"kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":manifest.clone()})).unwrap()).unwrap();
-    let query = Store::open(&root.join("query/peachsh.sqlite3")).unwrap();
+    // Schema 18 binds the database to its actual file identity. Keep the
+    // forensic copies untouched and query/recover the original file.
+    let query = Store::open(&db).unwrap();
     let facts: Vec<_> = query
         .events("run", 0)
         .unwrap()
@@ -189,7 +193,7 @@ async fn host_restart_keeps_legacy_result_without_automatic_tool_execution() {
             .any(|m| m["role"] == "tool")
     );
     drop(query);
-    let mut second = host(&root.join("recovery"), port, "second-host").await;
+    let mut second = host(&root, port, "second-host").await;
     let cli = Command::new(BIN)
         .args([
             "--port",
@@ -207,7 +211,7 @@ async fn host_restart_keeps_legacy_result_without_automatic_tool_execution() {
     assert_eq!(body["tasks"][0]["status"], "interrupted");
     second.kill().await.unwrap();
     assert!(!second.wait().await.unwrap().success());
-    let recovered = Store::open(&root.join("recovery/data/peachsh.sqlite3")).unwrap();
+    let recovered = Store::open(&db).unwrap();
     let facts: Vec<_> = recovered
         .events("run", 0)
         .unwrap()

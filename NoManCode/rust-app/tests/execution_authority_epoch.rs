@@ -1,6 +1,7 @@
 #![cfg(windows)]
 //! Schema 17 upgrade and original-child crash regression. Run serially in the
 //! manager's real-process window; the child never owns external work.
+#[allow(dead_code)]
 #[path = "support/owned_child.rs"]
 mod owned_child;
 
