@@ -9,6 +9,10 @@ use std::{
     sync::{Arc, Barrier},
 };
 
+#[allow(dead_code)]
+#[path = "../tests/support/owned_child.rs"]
+mod owned_child;
+
 pub(super) fn fixture(path: &Path) -> (Store, Task) {
     fixture_with_content(path, "x")
 }
@@ -147,45 +151,50 @@ fn t03_statement_and_actual_commit_failures_roll_back_every_projection() {
         ),
     ] {
         let dir = tempfile::tempdir().unwrap();
-        let (store, task) = fixture(&dir.path().join("test.db"));
-        let before = snapshot(&store);
-        let original = task.messages.clone();
-        store.db.lock().unwrap().execute_batch(sql).unwrap();
-        let error = store
-            .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
-            .unwrap_err();
-        let expected = match case {
-            "task" => "task failure",
-            "projection" => "projection failure",
-            "event" => "event failure",
-            "commit" => "FOREIGN KEY constraint failed",
-            _ => unreachable!(),
-        };
-        assert!(format!("{error:#}").contains(expected), "{case}: {error:#}");
-        let sqlite = error.downcast_ref::<rusqlite::Error>().unwrap();
-        let rusqlite::Error::SqliteFailure(code, _) = sqlite else {
-            panic!("{case}: {sqlite}");
-        };
-        assert_eq!(
-            code.extended_code,
+        let path = dir.path().join("test.db");
+        let owner = Store::open(&path).unwrap();
+        crate::execution_authority::test_with_store_sync(&owner, || {
+            let (store, task) = fixture(&path);
+            let before = snapshot(&store);
+            let original = task.messages.clone();
+            store.db.lock().unwrap().execute_batch(sql).unwrap();
+            let error = store
+                .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
+                .unwrap_err();
+            let expected = match case {
+                "task" => "task failure",
+                "projection" => "projection failure",
+                "event" => "event failure",
+                "commit" => "FOREIGN KEY constraint failed",
+                _ => unreachable!(),
+            };
+            assert!(format!("{error:#}").contains(expected), "{case}: {error:#}");
+            let sqlite = error.downcast_ref::<rusqlite::Error>().unwrap();
+            let rusqlite::Error::SqliteFailure(code, _) = sqlite else {
+                panic!("{case}: {sqlite}");
+            };
+            assert_eq!(
+                code.extended_code,
+                if case == "commit" {
+                    rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY
+                } else {
+                    rusqlite::ffi::SQLITE_CONSTRAINT_TRIGGER
+                },
+                "{case}"
+            );
+            assert_eq!(snapshot(&store), before, "{case}");
+            assert_eq!(task.messages, original, "{case}");
             if case == "commit" {
-                rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY
-            } else {
-                rusqlite::ffi::SQLITE_CONSTRAINT_TRIGGER
-            },
-            "{case}"
-        );
-        assert_eq!(snapshot(&store), before, "{case}");
-        assert_eq!(task.messages, original, "{case}");
-        if case == "commit" {
-            let count: i64 = store
-                .db
-                .lock()
-                .unwrap()
-                .query_row("SELECT count(*) FROM injected_child", [], |r| r.get(0))
-                .unwrap();
-            assert_eq!(count, 0);
-        }
+                let count: i64 = store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .query_row("SELECT count(*) FROM injected_child", [], |r| r.get(0))
+                    .unwrap();
+                assert_eq!(count, 0);
+            }
+        })
+        .unwrap();
     }
 }
 
@@ -193,80 +202,98 @@ fn t03_statement_and_actual_commit_failures_roll_back_every_projection() {
 fn t04_two_stores_compete_and_replay_only_one_authoritative_result() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("test.db");
-    let (first, task) = fixture(&path);
-    let second = Store::open(&path).unwrap();
-    let barrier = Arc::new(Barrier::new(3));
-    let handles: Vec<_> = [first, second]
-        .into_iter()
-        .map(|store| {
-            let barrier = barrier.clone();
-            let task = task.clone();
-            std::thread::spawn(move || {
-                barrier.wait();
-                store
-                    .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
-                    .unwrap()
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
+        let (first, task) = fixture(&path);
+        let second = Store::open(&path).unwrap();
+        let barrier = Arc::new(Barrier::new(3));
+        let handles: Vec<_> = [first, second]
+            .into_iter()
+            .map(|store| {
+                let barrier = barrier.clone();
+                let task = task.clone();
+                let op = crate::execution_authority::current().unwrap();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    op.test_sync(|| {
+                        store
+                            .commit_tool_result(
+                                &task,
+                                "call",
+                                "write_file",
+                                DENIED,
+                                Origin::AgentDenied,
+                            )
+                            .unwrap()
+                    })
+                })
             })
-        })
-        .collect();
-    barrier.wait();
-    let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
-    assert_eq!(
-        results
-            .iter()
-            .filter(|r| r.1 == CommitDisposition::Inserted)
-            .count(),
-        1
-    );
-    assert_eq!(
-        results
-            .iter()
-            .filter(|r| r.1 == CommitDisposition::Replayed)
-            .count(),
-        1
-    );
-    assert_eq!(results[0].0.messages, results[1].0.messages);
-    let store = Store::open(&path).unwrap();
-    let before = snapshot(&store);
-    assert_eq!(before.3, 1);
-    for (name, content, origin) in [
-        ("write_file", "different", Origin::AgentDenied),
-        ("write_file", DENIED, Origin::InterruptedWithoutClaim),
-        ("run_command", DENIED, Origin::AgentDenied),
-    ] {
+            .collect();
+        barrier.wait();
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        assert_eq!(
+            results
+                .iter()
+                .filter(|r| r.1 == CommitDisposition::Inserted)
+                .count(),
+            1
+        );
+        assert_eq!(
+            results
+                .iter()
+                .filter(|r| r.1 == CommitDisposition::Replayed)
+                .count(),
+            1
+        );
+        assert_eq!(results[0].0.messages, results[1].0.messages);
+        let store = Store::open(&path).unwrap();
+        let before = snapshot(&store);
+        assert_eq!(before.3, 1);
+        for (name, content, origin) in [
+            ("write_file", "different", Origin::AgentDenied),
+            ("write_file", DENIED, Origin::InterruptedWithoutClaim),
+            ("run_command", DENIED, Origin::AgentDenied),
+        ] {
+            assert!(
+                store
+                    .commit_tool_result(&task, "call", name, content, origin)
+                    .is_err()
+            );
+            assert_eq!(snapshot(&store), before);
+        }
+        let mut wrong = task.clone();
+        wrong.run_id = "other".into();
         assert!(
             store
-                .commit_tool_result(&task, "call", name, content, origin)
+                .commit_tool_result(&wrong, "call", "write_file", DENIED, Origin::AgentDenied)
                 .is_err()
         );
         assert_eq!(snapshot(&store), before);
-    }
-    let mut wrong = task.clone();
-    wrong.run_id = "other".into();
-    assert!(
-        store
-            .commit_tool_result(&wrong, "call", "write_file", DENIED, Origin::AgentDenied)
-            .is_err()
-    );
-    assert_eq!(snapshot(&store), before);
+    })
+    .unwrap();
 }
 
 #[test]
 fn t12_reserved_fields_are_rejected_even_when_null() {
     let dir = tempfile::tempdir().unwrap();
-    let (store, task) = fixture(&dir.path().join("test.db"));
-    let before = snapshot(&store);
-    let count = store.events(&task.run_id, 0).unwrap().len();
-    for (kind, value) in [
-        ("tool_result", json!({"origin":null})),
-        ("tool_result", json!({"origin_version":null})),
-        ("approval.requested", json!({"evidence_version":null})),
-        ("approval.requested", json!({"safe_call_digest":null})),
-    ] {
-        assert!(store.event(&task.id, kind, value).is_err());
-        assert_eq!(snapshot(&store), before);
-        assert_eq!(store.events(&task.run_id, 0).unwrap().len(), count);
-    }
+    let path = dir.path().join("test.db");
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
+        let (store, task) = fixture(&path);
+        let before = snapshot(&store);
+        let count = store.events(&task.run_id, 0).unwrap().len();
+        for (kind, value) in [
+            ("tool_result", json!({"origin":null})),
+            ("tool_result", json!({"origin_version":null})),
+            ("approval.requested", json!({"evidence_version":null})),
+            ("approval.requested", json!({"safe_call_digest":null})),
+        ] {
+            assert!(store.event(&task.id, kind, value).is_err());
+            assert_eq!(snapshot(&store), before);
+            assert_eq!(store.events(&task.run_id, 0).unwrap().len(), count);
+        }
+    })
+    .unwrap();
 }
 
 #[test]
@@ -281,75 +308,69 @@ fn t05_result_commit_child() {
     };
     let path = std::path::PathBuf::from(root).join("test.db");
     let store = Store::open(&path).unwrap();
-    let task = store.task("task").unwrap();
-    let database: String = store
-        .db
-        .lock()
-        .unwrap()
-        .query_row(
-            "SELECT file FROM pragma_database_list WHERE name='main'",
-            [],
-            |r| r.get(0),
-        )
-        .unwrap();
-    crate::tool_results::crash_probe::arm(
-        database,
-        task.id.clone(),
-        "call".into(),
-        phase,
-        path.parent().unwrap().join("signal"),
-    );
-    store
-        .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
-        .unwrap();
-    panic!("probe did not stop child");
+    crate::execution_authority::test_with_store_sync(&store, || {
+        let task = store.task("task").unwrap();
+        let database: String = store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT file FROM pragma_database_list WHERE name='main'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        crate::tool_results::crash_probe::arm(
+            database,
+            task.id.clone(),
+            "call".into(),
+            phase,
+            path.parent().unwrap().join("signal"),
+        );
+        store
+            .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
+            .unwrap();
+        panic!("probe did not stop child");
+    })
+    .unwrap();
 }
 
 #[test]
 fn t05_kill_before_and_after_commit_preserves_atomic_facts() {
     use sha2::{Digest, Sha256};
     use std::{
-        process::{Command, Stdio},
+        process::Command,
         time::{Duration, Instant},
     };
-    struct ChildGuard(std::process::Child);
-    impl Drop for ChildGuard {
-        fn drop(&mut self) {
-            if !matches!(self.0.try_wait(), Ok(Some(_))) {
-                let _ = self.0.kill();
-                let _ = self.0.wait();
-            }
-        }
-    }
     for phase in ["before_commit", "after_commit"] {
         let root = tempfile::Builder::new()
             .prefix("nhc-t05-")
             .tempdir()
             .unwrap()
             .keep();
-        let (store, _) = fixture(&root.join("test.db"));
-        let initial = snapshot(&store);
-        drop(store);
-        let stdout = std::fs::File::create(root.join("child-stdout.log")).unwrap();
-        let stderr = std::fs::File::create(root.join("child-stderr.log")).unwrap();
-        let mut child = ChildGuard(
-            Command::new(std::env::current_exe().unwrap())
-                .args([
-                    "--exact",
-                    "tool_result_tests::t05_result_commit_child",
-                    "--nocapture",
-                ])
-                .env("NHC_T05_CHILD_ROOT", &root)
-                .env("NHC_T05_CHILD_PHASE", phase)
-                .stdout(Stdio::from(stdout))
-                .stderr(Stdio::from(stderr))
-                .spawn()
-                .unwrap(),
-        );
-        let pid = child.0.id();
+        let path = root.join("test.db");
+        let owner = Store::open(&path).unwrap();
+        crate::execution_authority::test_with_store_sync(&owner, || {
+            let _ = fixture(&path);
+        })
+        .unwrap();
+        owner.recover().unwrap();
+        let initial = snapshot(&owner);
+        drop(owner);
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "tool_result_tests::t05_result_commit_child",
+                "--nocapture",
+            ])
+            .env("NHC_T05_CHILD_ROOT", &root)
+            .env("NHC_T05_CHILD_PHASE", phase);
+        let mut child = owned_child::OwnedChild::spawn(&mut command, &root.join("child-evidence"));
+        let pid = child.id();
         let deadline = Instant::now() + Duration::from_secs(15);
         while !root.join("signal").is_file() {
-            if let Some(status) = child.0.try_wait().unwrap() {
+            if let Some(status) = child.try_wait().unwrap() {
                 panic!("child {pid} exited early: {status}");
             }
             if Instant::now() >= deadline {
@@ -361,10 +382,10 @@ fn t05_kill_before_and_after_commit_preserves_atomic_facts() {
             std::fs::read_to_string(root.join("signal")).unwrap(),
             format!("task\ncall\n{phase}\n")
         );
-        assert!(child.0.try_wait().unwrap().is_none());
-        child.0.kill().unwrap();
-        let status = child.0.wait().unwrap();
+        assert!(child.try_wait().unwrap().is_none());
+        let status = child.kill_wait();
         assert!(!status.success());
+        drop(child);
         let mut manifest = vec![];
         for folder in ["raw", "query", "recovery"] {
             std::fs::create_dir(root.join(folder)).unwrap();
@@ -385,7 +406,7 @@ fn t05_kill_before_and_after_commit_preserves_atomic_facts() {
             }
         }
         std::fs::write(root.join("process.json"), serde_json::to_vec_pretty(&json!({"pid":pid,"phase":phase,"task":"task","call":"call","kill":"ok","wait":format!("{status:?}"),"reaped":true,"files":manifest})).unwrap()).unwrap();
-        let query = Store::open(&root.join("query/test.db")).unwrap();
+        let query = Store::open(&path).unwrap();
         let observed = snapshot(&query);
         assert_eq!(observed.3, if phase == "after_commit" { 1 } else { 0 });
         let messages = query.task("task").unwrap().messages;
@@ -437,7 +458,7 @@ fn t05_kill_before_and_after_commit_preserves_atomic_facts() {
         }
         drop(query);
         for _ in 0..2 {
-            let recovery = Store::open(&root.join("recovery/test.db")).unwrap();
+            let recovery = Store::open(&path).unwrap();
             recovery.recover().unwrap();
             assert_eq!(snapshot(&recovery).3, observed.3);
             assert_eq!(recovery.task("task").unwrap().messages, messages);
@@ -478,7 +499,10 @@ fn t07_safe_approval_proof_corruption_and_legacy_boundaries() {
         } else {
             "sk-abc"
         };
-        let (store, task) = fixture_with_content(&dir.path().join("proof.db"), content);
+        let path = dir.path().join("proof.db");
+        let owner = Store::open(&path).unwrap();
+        crate::execution_authority::test_with_store_sync(&owner, || {
+        let (store, task) = fixture_with_content(&path, content);
         let args = json!({"path":"a","content":content});
         let (approval, created) = store
             .ensure_approval(&task, "call", "write_file", &args)
@@ -564,13 +588,17 @@ fn t07_safe_approval_proof_corruption_and_legacy_boundaries() {
                 "{case}"
             );
         }
+        }).unwrap();
     }
 }
 
 #[test]
 fn t03_approval_request_and_safe_proof_share_a_transaction() {
     let dir = tempfile::tempdir().unwrap();
-    let (store, task) = fixture_with_content(&dir.path().join("approval.db"), "sk-abc");
+    let path = dir.path().join("approval.db");
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
+    let (store, task) = fixture_with_content(&path, "sk-abc");
     let before = snapshot(&store);
     let events_before = store.events(&task.run_id, 0).unwrap().len();
     store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_request BEFORE INSERT ON events WHEN NEW.kind='approval.requested' BEGIN SELECT RAISE(ABORT,'proof insert failed'); END;").unwrap();
@@ -612,13 +640,17 @@ fn t03_approval_request_and_safe_proof_share_a_transaction() {
         64
     );
     assert!(!requests[0].data.to_string().contains("sk-abc"));
+    }).unwrap();
 }
 
 #[test]
 fn t07_duplicate_safe_proof_is_not_accepted() {
     use crate::approval::{self, ApprovalStatus};
     let dir = tempfile::tempdir().unwrap();
-    let (store, task) = fixture_with_content(&dir.path().join("duplicate.db"), "sk-abc");
+    let path = dir.path().join("duplicate.db");
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
+    let (store, task) = fixture_with_content(&path, "sk-abc");
     let args = json!({"path":"a","content":"sk-abc"});
     let (approval, _) = store
         .ensure_approval(&task, "call", "write_file", &args)
@@ -641,6 +673,7 @@ fn t07_duplicate_safe_proof_is_not_accepted() {
     );
     assert_eq!(snapshot(&store), before);
     assert_eq!(store.events(&task.run_id, 0).unwrap().len(), count);
+    }).unwrap();
 }
 
 #[test]
@@ -655,83 +688,87 @@ fn t07_legacy_read_orphans_need_unique_matching_scope_and_no_v1_fields() {
         "v1",
     ] {
         let dir = tempfile::tempdir().unwrap();
-        let (store, task) = fixture_call(
-            &dir.path().join("legacy.db"),
-            "read_file",
-            json!({"path":"a"}),
-        );
-        let mut data = json!({"name":"read_file","result":{"text":"ordinary 文本🙂"}});
-        match case {
-            "with_id" => data["tool_call_id"] = json!("call"),
-            "wrong_name" => data["name"] = json!("list_files"),
-            "wrong_id" => data["tool_call_id"] = json!("other"),
-            "v1" => data["origin_version"] = json!(2),
-            _ => {}
-        }
-        if case == "v1" {
-            store
-                .event(
-                    &task.id,
-                    "tool_result",
-                    json!({"name":"read_file","result":{"text":"ordinary 文本🙂"}}),
-                )
-                .unwrap();
-            store
-                .db
-                .lock()
-                .unwrap()
-                .execute(
-                    "UPDATE events SET data=?1 WHERE kind='tool_result'",
-                    [data.to_string()],
-                )
-                .unwrap();
-        } else {
-            store.event(&task.id, "tool_result", data.clone()).unwrap();
-        }
-        if case == "duplicate" {
-            store.event(&task.id, "tool_result", data).unwrap();
-        }
-        if case == "wrong_scope" {
-            store
-                .db
-                .lock()
-                .unwrap()
-                .execute(
-                    "UPDATE events SET turn_id=NULL WHERE kind='tool_result'",
-                    [],
-                )
-                .unwrap();
-        }
-        let before = snapshot(&store);
-        let original: Vec<_> = store
-            .events(&task.run_id, 0)
-            .unwrap()
-            .into_iter()
-            .filter(|e| e.kind == "tool_result")
-            .map(|e| e.data)
-            .collect();
-        let result = store.recover_legacy_read_result(&task, "call", "read_file");
-        if matches!(case, "no_id" | "with_id") {
-            let recovered = result.unwrap().unwrap();
-            let message = recovered.messages.last().unwrap();
-            assert_eq!(message["tool_call_id"], "call");
-            assert_eq!(
-                serde_json::from_str::<Value>(message["content"].as_str().unwrap()).unwrap(),
-                json!({"text":"ordinary 文本🙂"})
+        let owner = Store::open(&dir.path().join("legacy.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&owner, || {
+            let (store, task) = fixture_call(
+                &dir.path().join("legacy.db"),
+                "read_file",
+                json!({"path":"a"}),
             );
-            assert_eq!(snapshot(&store).3, 1);
-        } else {
-            assert!(result.is_err(), "{case}");
-            assert_eq!(snapshot(&store), before, "{case}");
-        }
-        let after: Vec<_> = store
-            .events(&task.run_id, 0)
-            .unwrap()
-            .into_iter()
-            .filter(|e| e.kind == "tool_result")
-            .map(|e| e.data)
-            .collect();
-        assert_eq!(after, original, "{case}");
+            let mut data = json!({"name":"read_file","result":{"text":"ordinary 文本🙂"}});
+            match case {
+                "with_id" => data["tool_call_id"] = json!("call"),
+                "wrong_name" => data["name"] = json!("list_files"),
+                "wrong_id" => data["tool_call_id"] = json!("other"),
+                "v1" => data["origin_version"] = json!(2),
+                _ => {}
+            }
+            if case == "v1" {
+                store
+                    .event(
+                        &task.id,
+                        "tool_result",
+                        json!({"name":"read_file","result":{"text":"ordinary 文本🙂"}}),
+                    )
+                    .unwrap();
+                store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .execute(
+                        "UPDATE events SET data=?1 WHERE kind='tool_result'",
+                        [data.to_string()],
+                    )
+                    .unwrap();
+            } else {
+                store.event(&task.id, "tool_result", data.clone()).unwrap();
+            }
+            if case == "duplicate" {
+                store.event(&task.id, "tool_result", data).unwrap();
+            }
+            if case == "wrong_scope" {
+                store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .execute(
+                        "UPDATE events SET turn_id=NULL WHERE kind='tool_result'",
+                        [],
+                    )
+                    .unwrap();
+            }
+            let before = snapshot(&store);
+            let original: Vec<_> = store
+                .events(&task.run_id, 0)
+                .unwrap()
+                .into_iter()
+                .filter(|e| e.kind == "tool_result")
+                .map(|e| e.data)
+                .collect();
+            let result = store.recover_legacy_read_result(&task, "call", "read_file");
+            if matches!(case, "no_id" | "with_id") {
+                let recovered = result.unwrap().unwrap();
+                let message = recovered.messages.last().unwrap();
+                assert_eq!(message["tool_call_id"], "call");
+                assert_eq!(
+                    serde_json::from_str::<Value>(message["content"].as_str().unwrap()).unwrap(),
+                    json!({"text":"ordinary 文本🙂"})
+                );
+                assert_eq!(snapshot(&store).3, 1);
+            } else {
+                assert!(result.is_err(), "{case}");
+                assert_eq!(snapshot(&store), before, "{case}");
+            }
+            let after: Vec<_> = store
+                .events(&task.run_id, 0)
+                .unwrap()
+                .into_iter()
+                .filter(|e| e.kind == "tool_result")
+                .map(|e| e.data)
+                .collect();
+            assert_eq!(after, original, "{case}");
+        })
+        .unwrap();
     }
 }
 
@@ -739,6 +776,8 @@ fn t07_legacy_read_orphans_need_unique_matching_scope_and_no_v1_fields() {
 fn t04_group_order_and_stale_prefix_reject_without_writes() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("group.db");
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
     let calls = ["first", "second"].into_iter().map(|id| json!({"id":id,"type":"function","function":{"name":"write_file","arguments":"{\"path\":\"a\",\"content\":\"x\"}"}})).collect();
     let (store, task) = fixture_calls(&path, calls);
     let before = snapshot(&store);
@@ -764,61 +803,71 @@ fn t04_group_order_and_stale_prefix_reject_without_writes() {
     assert_eq!(snapshot(&store).3, 2);
     assert_eq!(second.messages[2]["tool_call_id"], "first");
     assert_eq!(second.messages[3]["tool_call_id"], "second");
+    }).unwrap();
 }
 
 #[test]
 fn t09_cancelled_state_survives_late_result_and_other_store_stale_save() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("cancel.db");
-    let (store, task) = fixture(&path);
-    let other = Store::open(&path).unwrap();
-    let mut cancelled = task.clone();
-    cancelled.status = "cancelled".into();
-    cancelled.error = Some("cancelled by user".into());
-    store.save_task(&cancelled).unwrap();
-    let (result, _) = other
-        .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
-        .unwrap();
-    assert_eq!(result.status, "cancelled");
-    assert_eq!(result.error, cancelled.error);
-    assert_eq!(result.messages.len(), task.messages.len() + 1);
-    store.save_task(&cancelled).unwrap();
-    let authoritative = other.task(&task.id).unwrap();
-    assert_eq!(authoritative.status, "cancelled");
-    assert_eq!(authoritative.error, cancelled.error);
-    assert_eq!(authoritative.messages, result.messages);
-    assert_eq!(snapshot(&other).3, 1);
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
+        let (store, task) = fixture(&path);
+        let other = Store::open(&path).unwrap();
+        let mut cancelled = task.clone();
+        cancelled.status = "cancelled".into();
+        cancelled.error = Some("cancelled by user".into());
+        store.save_task(&cancelled).unwrap();
+        let (result, _) = other
+            .commit_tool_result(&task, "call", "write_file", DENIED, Origin::AgentDenied)
+            .unwrap();
+        assert_eq!(result.status, "cancelled");
+        assert_eq!(result.error, cancelled.error);
+        assert_eq!(result.messages.len(), task.messages.len() + 1);
+        store.save_task(&cancelled).unwrap();
+        let authoritative = other.task(&task.id).unwrap();
+        assert_eq!(authoritative.status, "cancelled");
+        assert_eq!(authoritative.error, cancelled.error);
+        assert_eq!(authoritative.messages, result.messages);
+        assert_eq!(snapshot(&other).3, 1);
+    })
+    .unwrap();
 }
 
 #[test]
 fn t12_read_result_json_unicode_and_secret_redaction_are_consistent() {
     let dir = tempfile::tempdir().unwrap();
-    let (store, task) = fixture_call(
-        &dir.path().join("unicode.db"),
-        "read_file",
-        json!({"path":"a"}),
-    );
-    let raw = json!({"z":"普通🙂","a":"Bearer sk-abc"}).to_string();
-    let (result, disposition) = store
-        .commit_tool_result(&task, "call", "read_file", &raw, Origin::ReadCompleted)
-        .unwrap();
-    assert_eq!(disposition, CommitDisposition::Inserted);
-    let message: Value =
-        serde_json::from_str(result.messages.last().unwrap()["content"].as_str().unwrap()).unwrap();
-    let events = store.events(&task.run_id, 0).unwrap();
-    let event = events.iter().find(|e| e.kind == "tool_result").unwrap();
-    assert_eq!(event.data["result"], message);
-    assert_eq!(event.data["origin"], "read_completed");
-    assert_eq!(message["z"], "普通🙂");
-    assert!(!message.to_string().contains("sk-abc"));
-    let before = snapshot(&store);
-    let alternate = r#"{ "z": "普通🙂", "a": "Bearer sk-abc" }"#;
-    let (replay, disposition) = store
-        .commit_tool_result(&task, "call", "read_file", alternate, Origin::ReadCompleted)
-        .unwrap();
-    assert_eq!(disposition, CommitDisposition::Replayed);
-    assert_eq!(replay.messages, result.messages);
-    assert_eq!(snapshot(&store), before);
+    let owner = Store::open(&dir.path().join("unicode.db")).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
+        let (store, task) = fixture_call(
+            &dir.path().join("unicode.db"),
+            "read_file",
+            json!({"path":"a"}),
+        );
+        let raw = json!({"z":"普通🙂","a":"Bearer sk-abc"}).to_string();
+        let (result, disposition) = store
+            .commit_tool_result(&task, "call", "read_file", &raw, Origin::ReadCompleted)
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Inserted);
+        let message: Value =
+            serde_json::from_str(result.messages.last().unwrap()["content"].as_str().unwrap())
+                .unwrap();
+        let events = store.events(&task.run_id, 0).unwrap();
+        let event = events.iter().find(|e| e.kind == "tool_result").unwrap();
+        assert_eq!(event.data["result"], message);
+        assert_eq!(event.data["origin"], "read_completed");
+        assert_eq!(message["z"], "普通🙂");
+        assert!(!message.to_string().contains("sk-abc"));
+        let before = snapshot(&store);
+        let alternate = r#"{ "z": "普通🙂", "a": "Bearer sk-abc" }"#;
+        let (replay, disposition) = store
+            .commit_tool_result(&task, "call", "read_file", alternate, Origin::ReadCompleted)
+            .unwrap();
+        assert_eq!(disposition, CommitDisposition::Replayed);
+        assert_eq!(replay.messages, result.messages);
+        assert_eq!(snapshot(&store), before);
+    })
+    .unwrap();
 }
 
 fn stored_task_json(store: &Store) -> (String, Value) {
@@ -840,6 +889,8 @@ fn task_arguments(task: &Task) -> &str {
 fn p01_sensitive_argument_object_survives_real_task_persistence_and_reopen() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("parameter-object.db");
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
     // This is a persistence fixture, not a claim about executable write_file schema.
     let args = json!({"text":"Bearer n19fixturetoken", "nested":{"API_KEY":"n19nestedfixture", "label":"普通🙂 \"quoted\" \\ path"}, "items":[true, 17, null, {"enabled":false}], "ratio":1.5});
     let (store, _) = fixture_call(&path, "persistence_fixture", args);
@@ -880,6 +931,7 @@ fn p01_sensitive_argument_object_survives_real_task_persistence_and_reopen() {
     drop(reopened);
     let again = Store::open(&path).unwrap();
     assert_eq!(task_arguments(&again.task("task").unwrap()), first);
+    }).unwrap();
 }
 
 #[test]
@@ -892,6 +944,8 @@ fn p02_safe_legacy_raw_and_invalid_arguments_remain_unmodified() {
     ] {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(format!("{case}.db"));
+        let owner = Store::open(&path).unwrap();
+        crate::execution_authority::test_with_store_sync(&owner, || {
         let call = json!({"id":"call","type":"function","function":{"name":"legacy_fixture","arguments":raw}});
         let (store, _) = fixture_calls(&path, vec![call]);
         let task = store.task("task").unwrap();
@@ -920,12 +974,15 @@ fn p02_safe_legacy_raw_and_invalid_arguments_remain_unmodified() {
             persisted["messages"][1]["tool_calls"][0]["function"]["arguments"].as_str(),
             Some(raw)
         );
+        }).unwrap();
     }
 }
 
 #[test]
 fn t07_no_id_duplicate_result_cannot_be_attributed_to_the_next_call() {
     let dir = tempfile::tempdir().unwrap();
+    let owner = Store::open(&dir.path().join("ambiguous.db")).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
     let calls = ["first", "second"].into_iter().map(|id| json!({"id":id,"type":"function","function":{"name":"read_file","arguments":"{\"path\":\"a\"}"}})).collect();
     let (store, mut task) = fixture_calls(&dir.path().join("ambiguous.db"), calls);
     let data = json!({"name":"read_file","result":{"content":"same"}});
@@ -956,6 +1013,7 @@ fn t07_no_id_duplicate_result_cannot_be_attributed_to_the_next_call() {
         .map(|e| (e.seq, e.data))
         .collect();
     assert_eq!(after, original);
+    }).unwrap();
 }
 
 #[test]
@@ -963,6 +1021,8 @@ fn t04_read_conflict_and_authoritative_replay_after_other_store_append() {
     use crate::tool_results::ToolResultError;
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("read-race.db");
+    let owner = Store::open(&path).unwrap();
+    crate::execution_authority::test_with_store_sync(&owner, || {
     let calls = ["read-a", "read-b"].into_iter().map(|id| json!({"id":id,"type":"function","function":{"name":"read_file","arguments":"{\"path\":\"a\"}"}})).collect();
     let (store, original) = fixture_calls(&path, calls);
     let other = Store::open(&path).unwrap();
@@ -1050,4 +1110,5 @@ fn t04_read_conflict_and_authoritative_replay_after_other_store_append() {
         serde_json::to_value(store.events(&original.run_id, 0).unwrap()).unwrap(),
         events_b
     );
+    }).unwrap();
 }

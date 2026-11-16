@@ -814,6 +814,78 @@ async fn checkpoint_waiting_at_gate_cannot_claim_after_shutdown() {
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
 }
 
+#[test]
+fn confirmed_commit_rollback_keeps_owner_open_for_new_operation() {
+    let (_dir, store, _engine) = setup();
+    {
+        let db = store.db.lock().unwrap();
+        db.execute_batch("CREATE TABLE u18_parent(id INTEGER PRIMARY KEY); CREATE TABLE u18_child(parent_id INTEGER REFERENCES u18_parent(id) DEFERRABLE INITIALLY DEFERRED);").unwrap();
+    }
+    let op = store.execution_operation(CancellationToken::new()).unwrap();
+    {
+        let mut db = store.db.lock().unwrap();
+        let tx = db
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .unwrap();
+        store.execution_fence_for(&tx, &op).unwrap();
+        tx.execute("INSERT INTO u18_child VALUES(42)", []).unwrap();
+        tx.execute(
+            "INSERT INTO config(id,value) VALUES('u18-rollback','must-rollback')",
+            [],
+        )
+        .unwrap();
+        assert!(store.commit_execution_tx(tx).is_err());
+        assert!(
+            db.is_autocommit(),
+            "failed COMMIT must have a confirmed rollback"
+        );
+        assert_eq!(
+            db.query_row("SELECT count(*) FROM u18_child", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM config WHERE id='u18-rollback'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+    }
+    drop(op);
+    let (open, _, unknown) = store.execution_admission_status().unwrap();
+    assert!(open);
+    assert_eq!(unknown, 0);
+    let next = store.execution_operation(CancellationToken::new()).unwrap();
+    let mut db = store.db.lock().unwrap();
+    let tx = db
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
+    store.execution_fence_for(&tx, &next).unwrap();
+    tx.execute(
+        "INSERT INTO config(id,value) VALUES('u18-rollback','next-operation')",
+        [],
+    )
+    .unwrap();
+    store.commit_execution_tx(tx).unwrap();
+    drop(db);
+    assert_eq!(
+        store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT value FROM config WHERE id='u18-rollback'",
+                [],
+                |r| r.get::<_, String>(0)
+            )
+            .unwrap(),
+        "next-operation"
+    );
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn claimed_restore_finishes_after_shutdown_cutoff() {
     use std::time::Duration;
@@ -859,6 +931,126 @@ async fn claimed_restore_finishes_after_shutdown_cutoff() {
     assert_eq!(std::fs::read(&file).unwrap(), b"before-a");
     assert_eq!(engine.latest_restore(&task).unwrap().unwrap(), receipt);
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn restore_content_change_before_first_action_settles_without_unknown_owner() {
+    use std::time::Duration;
+    let root = tempfile::tempdir().unwrap();
+    let (engine, task) =
+        crate::engine::workspace_phase_tests::n13_completed_fixture(root.path()).await;
+    let file = root.path().join("source/src/a.txt");
+    let barrier = crate::engine::runtime_barrier::arm(task.clone(), "restore_claim_committed");
+    struct ReleaseBarrier(Arc<crate::engine::runtime_barrier::Barrier>);
+    impl Drop for ReleaseBarrier {
+        fn drop(&mut self) {
+            self.0.release();
+        }
+    }
+    let _release_on_failure = ReleaseBarrier(barrier.clone());
+    let worker = {
+        let engine = engine.clone();
+        let task = task.clone();
+        tokio::spawn(async move { engine.restore(&task).await })
+    };
+    assert!(
+        barrier.wait_arrived(Duration::from_secs(10)),
+        "actual restore claim was not committed"
+    );
+    std::fs::write(&file, b"changed after claim").unwrap();
+    barrier.release();
+    let result = tokio::time::timeout(Duration::from_secs(10), worker)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(result.is_err());
+    assert_eq!(std::fs::read(&file).unwrap(), b"changed after claim");
+    let receipt = engine.latest_restore(&task).unwrap().unwrap();
+    assert_eq!(
+        receipt.status,
+        crate::workspace_changes::RestoreStatus::Unknown
+    );
+    let (_, in_flight, unknown) = engine.store.execution_admission_status().unwrap();
+    assert_eq!((in_flight, unknown), (0, 0));
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn restore_epoch_or_phase_child() {
+    use std::time::Duration;
+    let Ok(case) = std::env::var("NHC_U18_RESTORE_CASE") else {
+        return;
+    };
+    let root = tempfile::tempdir().unwrap();
+    let (engine, task) =
+        crate::engine::workspace_phase_tests::n13_completed_fixture(root.path()).await;
+    let file = root.path().join("source/src/a.txt");
+    let before = std::fs::read(&file).unwrap();
+    let barrier = crate::engine::runtime_barrier::arm(task.clone(), "restore_claim_committed");
+    struct ReleaseBarrier(Arc<crate::engine::runtime_barrier::Barrier>);
+    impl Drop for ReleaseBarrier {
+        fn drop(&mut self) {
+            self.0.release();
+        }
+    }
+    let _release_on_failure = ReleaseBarrier(barrier.clone());
+    let worker = {
+        let engine = engine.clone();
+        let task = task.clone();
+        tokio::spawn(async move { engine.restore(&task).await })
+    };
+    assert!(
+        barrier.wait_arrived(Duration::from_secs(10)),
+        "actual restore claim was not committed"
+    );
+    let sql = match case.as_str() {
+        "epoch" => "UPDATE execution_owner SET epoch=epoch+1 WHERE id=1",
+        "phase" => "UPDATE execution_owner SET phase='recovering' WHERE id=1",
+        _ => panic!("invalid case"),
+    };
+    engine.store.db.lock().unwrap().execute(sql, []).unwrap();
+    barrier.release();
+    assert!(
+        tokio::time::timeout(Duration::from_secs(10), worker)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_err()
+    );
+    assert_eq!(std::fs::read(&file).unwrap(), before);
+    assert!(!engine.store.execution_admission_status().unwrap().0);
+    assert!(engine.store.execution_admission_status().unwrap().2 > 0);
+    assert_eq!(
+        engine.latest_restore(&task).unwrap().unwrap().status,
+        crate::workspace_changes::RestoreStatus::Claimed
+    );
+}
+
+#[test]
+fn restore_rechecks_durable_authority_before_file_action() {
+    use std::{process::Command, time::Duration};
+    for case in ["epoch", "phase"] {
+        let root = tempfile::Builder::new()
+            .prefix("u18-restore-")
+            .tempdir()
+            .unwrap()
+            .keep();
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "execution_authority_regression_tests::restore_epoch_or_phase_child",
+                "--nocapture",
+            ])
+            .env("NHC_U18_RESTORE_CASE", case);
+        let output =
+            owned_child::OwnedChild::spawn(&mut command, &root).output(Duration::from_secs(40));
+        assert!(
+            output.status.success(),
+            "{case} child failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 fn store_positive_and_insert(
