@@ -4194,7 +4194,7 @@ impl Store {
         use crate::checkpoint::{Checkpoint, CheckpointCreated, CheckpointError};
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        self.execution_settlement_fence(&tx)?;
+        self.execution_fence(&tx)?;
         if let Some((id, old_key)) = tx
             .query_row(
                 "SELECT id,creation_key FROM checkpoints WHERE task_id=?1",
