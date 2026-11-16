@@ -770,6 +770,7 @@ pub struct Engine {
     shutdown_tasks: Mutex<std::collections::HashSet<String>>,
     background: Mutex<tokio::task::JoinSet<Result<()>>>,
     background_failed: AtomicBool,
+    external_outcome_unknown: AtomicBool,
     tool_runtime: Arc<ToolRuntime>,
     tool_calls: crate::tool_call_application::ToolCallApplication,
     provider_runtime: Arc<crate::provider_runtime::ProviderRuntime>,
@@ -792,11 +793,15 @@ pub struct Engine {
 pub struct ShutdownReport {
     pub remaining_workers: usize,
     pub persistence_or_worker_failure: bool,
+    pub external_outcome_unknown: bool,
     pub timed_out: bool,
 }
 impl ShutdownReport {
     pub fn settled(&self) -> bool {
-        self.remaining_workers == 0 && !self.persistence_or_worker_failure && !self.timed_out
+        self.remaining_workers == 0
+            && !self.persistence_or_worker_failure
+            && !self.external_outcome_unknown
+            && !self.timed_out
     }
 }
 impl Engine {
@@ -965,6 +970,7 @@ impl Engine {
             shutdown_tasks: Mutex::new(std::collections::HashSet::new()),
             background: Mutex::new(tokio::task::JoinSet::new()),
             background_failed: AtomicBool::new(false),
+            external_outcome_unknown: AtomicBool::new(false),
             tool_runtime,
             tool_calls,
             provider_runtime,
@@ -1214,14 +1220,7 @@ impl Engine {
         };
         #[cfg(test)]
         let worker_future = crate::worktree_diagnostics::scope(diagnostic_case, worker_future);
-        let (sender, worker) = tokio::sync::oneshot::channel();
-        self.spawn_background(async move {
-            let result = worker_future.await;
-            let failed = result.is_err();
-            let _ = sender.send(result);
-            ensure!(!failed, "worktree 后台结果未持久确认");
-            Ok(())
-        });
+        let worker = self.spawn_worktree_worker(worker_future);
         drop(admission);
         #[cfg(test)]
         crate::worktree_diagnostics::event("worker_spawned");
@@ -1896,6 +1895,17 @@ impl Engine {
     }
 
     fn launch(self: &Arc<Self>, task: Task) {
+        self.spawn_task_worker(task, |engine, mut task, token| async move {
+            let result = engine.run_task(&mut task, &token).await;
+            (task, result)
+        });
+    }
+
+    fn spawn_task_worker<F, Fut>(self: &Arc<Self>, task: Task, run: F)
+    where
+        F: FnOnce(Arc<Self>, Task, CancellationToken) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = (Task, Result<()>)> + Send + 'static,
+    {
         let token = self.shutdown_requested.child_token();
         self.active.lock().unwrap().insert(
             task.id.clone(),
@@ -1911,8 +1921,34 @@ impl Engine {
         );
         let engine = self.clone();
         self.spawn_background(async move {
-            let mut task = task;
-            let result = engine.run_task(&mut task, &token).await;
+            let (mut task, result) = run(engine.clone(), task, token.clone()).await;
+            // Saving a failed Task is not evidence that its external effect ended.
+            // Keep typed unknown errors and durable unresolved claims independently
+            // of the terminal snapshot's success (and of ordinary business errors).
+            let typed_unknown = result.as_ref().err().is_some_and(|error| {
+                error.chain().any(|cause| {
+                    cause.is::<crate::command_execution::CommandOutcomeUnknown>()
+                        || matches!(
+                            cause.downcast_ref::<approval::ApprovalError>(),
+                            Some(approval::ApprovalError::UnknownResult { .. })
+                        )
+                })
+            });
+            let claim_unknown = match engine.store.approvals_for_task(&task.id) {
+                Ok(records) => records.iter().any(|record| {
+                    matches!(
+                        record.execution_state,
+                        approval::ExecutionState::Claimed | approval::ExecutionState::Unknown
+                    )
+                }),
+                Err(_) => {
+                    engine.background_failed.store(true, Ordering::Release);
+                    false
+                }
+            };
+            if typed_unknown || claim_unknown {
+                engine.external_outcome_unknown.store(true, Ordering::Release);
+            }
             match result {
                 Ok(()) => {
                     task.status = "completed".into();
@@ -2413,6 +2449,35 @@ impl Engine {
         workers.spawn(work);
     }
 
+    fn spawn_worktree_worker(
+        self: &Arc<Self>,
+        work: impl std::future::Future<Output = Result<crate::worktree_management::WorktreeReceipt>>
+        + Send
+        + 'static,
+    ) -> tokio::sync::oneshot::Receiver<Result<crate::worktree_management::WorktreeReceipt>> {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let engine = self.clone();
+        self.spawn_background(async move {
+            let result = work.await;
+            if result.as_ref().is_ok_and(|receipt| {
+                matches!(
+                    receipt.state,
+                    crate::worktree_management::WorktreeState::Unknown
+                        | crate::worktree_management::WorktreeState::Claimed
+                )
+            }) {
+                engine
+                    .external_outcome_unknown
+                    .store(true, Ordering::Release);
+            }
+            let failed = result.is_err();
+            let _ = sender.send(result);
+            ensure!(!failed, "worktree 后台结果未持久确认");
+            Ok(())
+        });
+        receiver
+    }
+
     pub fn request_shutdown(&self) {
         let active = self.active.lock().unwrap();
         self.shutdown_tasks
@@ -2472,6 +2537,7 @@ impl Engine {
             return ShutdownReport {
                 remaining_workers: self.background.lock().unwrap().len(),
                 persistence_or_worker_failure: self.background_failed.load(Ordering::Acquire),
+                external_outcome_unknown: self.external_outcome_unknown.load(Ordering::Acquire),
                 timed_out: true,
             };
         }
@@ -2489,6 +2555,7 @@ impl Engine {
                 return ShutdownReport {
                     remaining_workers: remaining,
                     persistence_or_worker_failure: self.background_failed.load(Ordering::Acquire),
+                    external_outcome_unknown: self.external_outcome_unknown.load(Ordering::Acquire),
                     timed_out: remaining != 0,
                 };
             }
@@ -7111,6 +7178,10 @@ mod audit_shutdown_tests {
     use std::time::Duration;
 
     fn fixture() -> (tempfile::TempDir, Arc<Engine>, Task) {
+        fixture_with_tools(false)
+    }
+
+    fn fixture_with_tools(tools: bool) -> (tempfile::TempDir, Arc<Engine>, Task) {
         let root = tempfile::tempdir().unwrap();
         let store = Arc::new(Store::open(&root.path().join("shutdown.db")).unwrap());
         let task = Task {
@@ -7122,8 +7193,8 @@ mod audit_shutdown_tests {
                 route_id: "route".into(),
                 prompt: "work".into(),
                 depends_on: vec![],
-                write_scopes: vec![],
-                tools: false,
+                write_scopes: if tools { vec!["*".into()] } else { vec![] },
+                tools,
                 allow_commands: false,
                 max_rounds: 1,
             },
@@ -7238,5 +7309,142 @@ mod audit_shutdown_tests {
         release.send(()).unwrap();
         let second = engine.shutdown(Duration::from_secs(1)).await;
         assert!(second.settled());
+    }
+
+    async fn wait_for_task_worker(engine: &Engine) {
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while !engine.active.lock().unwrap().is_empty() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn saved_terminal_task_does_not_erase_worker_unknown() {
+        for kind in 0..3 {
+            let (_root, engine, task) = fixture();
+            // Use the same admission, JoinSet wrapper, final snapshot and active
+            // removal as launch(), with a synthetic execution outcome only.
+            engine.spawn_task_worker(task, move |_, task, _| async move {
+                let error = match kind {
+                    0 => anyhow::Error::new(crate::command_execution::CommandOutcomeUnknown)
+                        .context("command collector"),
+                    1 => anyhow::Error::new(approval::ApprovalError::UnknownResult {
+                        id: "synthetic-claim".into(),
+                    })
+                    .context("tool execution"),
+                    _ => anyhow::anyhow!("ordinary provider failure"),
+                };
+                (task, Err(error))
+            });
+            wait_for_task_worker(&engine).await;
+            let saved = engine.store.task("shutdown-task").unwrap();
+            assert_eq!(saved.status, "failed");
+            assert!(saved.error.is_some());
+            let report = engine.shutdown(Duration::from_secs(1)).await;
+            assert_eq!(report.remaining_workers, 0);
+            assert!(!report.persistence_or_worker_failure);
+            assert!(!report.timed_out);
+            assert_eq!(report.external_outcome_unknown, kind != 2);
+            assert_eq!(report.settled(), kind == 2);
+            assert_eq!(engine.store.task("shutdown-task").unwrap().status, "failed");
+        }
+    }
+
+    #[tokio::test]
+    async fn durable_unresolved_approval_survives_untyped_worker_failure() {
+        for state in [
+            approval::ExecutionState::Claimed,
+            approval::ExecutionState::Unknown,
+        ] {
+            let (_root, engine, mut task) = fixture_with_tools(true);
+            let args = json!({"path":"effect.txt","content":"synthetic"});
+            task.messages.push(json!({
+                "role":"assistant", "content":null,
+                "tool_calls":[{"id":"audit-call","type":"function","function":{
+                    "name":"write_file","arguments":args.to_string()
+                }}]
+            }));
+            engine.store.save_task(&task).unwrap();
+            let (record, _) = engine
+                .store
+                .ensure_approval(&task, "audit-call", "write_file", &args)
+                .unwrap();
+            // Model a durable claim left behind by an untyped post-execution
+            // failure; do not launch a shell or perform the synthetic write.
+            engine.store.db.lock().unwrap().execute(
+                "UPDATE approvals SET status='approved',execution_state=?2,decided_at=1,decided_by='audit' WHERE id=?1",
+                rusqlite::params![record.id, state.as_str()],
+            ).unwrap();
+            task = engine.store.task(&task.id).unwrap();
+            engine.spawn_task_worker(task, |_, task, _| async move {
+                (
+                    task,
+                    Err(anyhow::anyhow!("post-execution bookkeeping failed")),
+                )
+            });
+            wait_for_task_worker(&engine).await;
+            assert_eq!(engine.store.task("shutdown-task").unwrap().status, "failed");
+            let report = engine.shutdown(Duration::from_secs(1)).await;
+            assert_eq!(report.remaining_workers, 0);
+            assert!(!report.persistence_or_worker_failure);
+            assert!(report.external_outcome_unknown);
+            assert!(!report.settled());
+            assert_eq!(
+                engine.store.approval(&record.id).unwrap().execution_state,
+                state
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn successful_worktree_worker_reply_preserves_unknown_state() {
+        use crate::worktree_management::{WorktreeCause, WorktreeReceipt, WorktreeState};
+        for state in [WorktreeState::Unknown, WorktreeState::Rejected] {
+            let (root, engine, _) = fixture();
+            let operation_id = id();
+            let receipt = WorktreeReceipt {
+                schema_version: 1,
+                source_project_id: ProjectId(id()),
+                name: "synthetic worker".into(),
+                parent_path: root.path().to_string_lossy().into_owned(),
+                target_path: root
+                    .path()
+                    .join(format!("nhc-{operation_id}"))
+                    .to_string_lossy()
+                    .into_owned(),
+                branch: format!("codex/workspace/{operation_id}"),
+                operation_id,
+                expected_config_revision: 1,
+                expected_head: "a".repeat(40),
+                request_digest: "b".repeat(64),
+                revision: 2,
+                state,
+                project_id: None,
+                cause: Some(if state == WorktreeState::Unknown {
+                    WorktreeCause::ProcessOutcomeUnknown
+                } else {
+                    WorktreeCause::Conflict
+                }),
+                created_at: 1,
+                updated_at: 2,
+            };
+            receipt.validate().unwrap();
+            let expected = receipt.clone();
+            // Exercise the production worker wrapper's Ok(receipt) branch.
+            let worker = engine.spawn_worktree_worker(async move { Ok(receipt) });
+            assert_eq!(worker.await.unwrap().unwrap(), expected);
+            let report = engine.shutdown(Duration::from_secs(1)).await;
+            assert_eq!(report.remaining_workers, 0);
+            assert!(!report.persistence_or_worker_failure);
+            assert!(!report.timed_out);
+            assert_eq!(
+                report.external_outcome_unknown,
+                state == WorktreeState::Unknown
+            );
+            assert_eq!(report.settled(), state == WorktreeState::Rejected);
+        }
     }
 }
