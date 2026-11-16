@@ -15,3 +15,5 @@ E 审查澄清：结果侧完成指 `WorkerService::call` 内的 gate.accept 与
 对 E 已提交 `26ada6ff` 及其当时未提交的监督修订做只读初审：缺摘要、格式、文件缺失、错 hash、混搭、存活 pin 和释放后替换有对应夹具；真实 pair 的失败原因检查避免把任意启动失败当通过。构建从冻结 worker 工件计算摘要并注入 Host，pair.json 不作为认证来源，记录明确不证明完整可复现环境。E 的测试子进程监督只证明直接 child，后代回收仍依赖外层 lifecycle 窗口，不据此声称通过；最终 E SHA 与真实执行待经理核验。
 
 D→E 固定复核 `75b06911`：子夹具确认实际运行一项，混搭读取独立 worker 并记录输入路径与 SHA256；外层复用 lifecycle gate，unknown 标记停止后续执行，直接进程退出不冒称后代收束。两项待修：C 所有 `tests/support/owned_child.rs` 的 output 先接受已退出状态，首次观察若已过 deadline 仍可误判按时完成；E 的外层 exact ignored 测试仅凭 Cargo 退出码，零项运行也可能通过，应核真实一项通过。已分别通知 C、E；未动态执行，结论待其返工固定后复核。
+
+复核 C 修复 `bf1bda27`：`OwnedChild::output` 在观察前后核截止，迟到观察进入 unknown 并持有原 Child；覆盖上述截止边界。为静态核查，尚待组合测试；E 的外层零项防假通过仍待固定。
