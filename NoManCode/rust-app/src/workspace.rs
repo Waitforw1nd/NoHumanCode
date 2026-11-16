@@ -19,6 +19,17 @@ impl FileEffectGuard {
             generation: Some(generation),
         })
     }
+    pub(crate) fn validate(&self, store: &crate::store::Store) -> Result<()> {
+        let operation = self.operation.as_ref().context("file operation missing")?;
+        ensure!(self.generation.is_some(), "file generation missing");
+        let mut db = store
+            .db
+            .lock()
+            .map_err(|_| anyhow::anyhow!("store lock poisoned"))?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        store.execution_settlement_fence_for(&tx, operation)?;
+        store.commit_execution_tx(tx)
+    }
     pub(crate) fn settle(mut self) {
         if let Some(generation) = self.generation.take() {
             generation.settle();
