@@ -1,6 +1,11 @@
-param([ValidateSet('test','live','build','check','refresh','fmt','clippy','wasm-check')][string]$Action = 'build')
+param([ValidateSet('test','web-test','live','build','check','refresh','fmt','clippy','wasm-check')][string]$Action = 'build')
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
 Set-Location -LiteralPath $PSScriptRoot
+if ($Action -eq 'web-test') {
+    & node (Join-Path $PSScriptRoot 'tests/project-web.mjs')
+    exit $LASTEXITCODE
+}
 $taskCandidates = @($env:VCToolsInstallDir)
 $taskVsRoots = @($env:VSINSTALLDIR)
 $taskVswhere = Get-Command 'vswhere.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -72,8 +77,16 @@ $env:INCLUDE = "$taskMsvc\include;$taskSdkRoot\Include\$($taskSdk.Name)\ucrt;$ta
 $env:CC_x86_64_pc_windows_msvc = Join-Path $taskBin 'cl.exe'
 $env:AR_x86_64_pc_windows_msvc = Join-Path $taskBin 'lib.exe'
 switch ($Action) {
-    'build' { & cargo build --release --locked }
-    'test' { & cargo test --workspace --locked }
+    'build' {
+        # Cargo resolves CARGO_TARGET_DIR and build.target (including target triples).
+        # Select from this invocation, never from an assumed or previous target path.
+        $taskBuildMessages = @(& cargo build --release --locked --message-format=json-render-diagnostics)
+    }
+    'test' {
+        & cargo test --workspace --locked
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & node (Join-Path $PSScriptRoot 'tests/project-web.mjs')
+    }
     'live' { & cargo test --locked --test live -- --ignored --nocapture }
     'check' { & cargo check --workspace --locked }
     'refresh' { & cargo check --workspace }
@@ -83,8 +96,31 @@ switch ($Action) {
 }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($Action -eq 'build') {
+    $taskHostSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'src/main.rs'))
+    $taskExecutables = @($taskBuildMessages | ForEach-Object {
+        $taskBuildLine = $_
+        try { $taskMessage = $taskBuildLine | ConvertFrom-Json -ErrorAction Stop } catch { Write-Host $taskBuildLine; return }
+        if ($taskMessage.reason -eq 'compiler-artifact' -and
+            $taskMessage.target.name -eq 'peachsh' -and
+            $taskMessage.target.kind -contains 'bin' -and
+            $taskMessage.profile.test -ne $true -and
+            $taskMessage.target.src_path -and
+            [IO.Path]::GetFullPath($taskMessage.target.src_path) -eq $taskHostSource -and
+            $taskMessage.executable) {
+            [IO.Path]::GetFullPath($taskMessage.executable, $PSScriptRoot)
+        }
+    } | Select-Object -Unique)
+    if ($taskExecutables.Count -ne 1) { throw "Expected one peachsh Host executable from Cargo; found $($taskExecutables.Count). Nothing published." }
+    $taskExecutable = $taskExecutables[0]
+    if (-not (Test-Path -LiteralPath $taskExecutable -PathType Leaf)) { throw "Cargo Host executable is missing: $taskExecutable. Nothing published." }
     $taskOutput = Join-Path (Split-Path -Parent $PSScriptRoot) 'bin'
     New-Item -ItemType Directory -Path $taskOutput -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'target\release\peachsh.exe') -Destination (Join-Path $taskOutput 'peachsh.exe') -Force
+    $taskStaged = Join-Path $taskOutput ('.peachsh-' + [guid]::NewGuid().ToString('N') + '.exe')
+    try {
+        Copy-Item -LiteralPath $taskExecutable -Destination $taskStaged
+        [IO.File]::Move($taskStaged, (Join-Path $taskOutput 'peachsh.exe'), $true)
+    } finally {
+        if (Test-Path -LiteralPath $taskStaged) { Remove-Item -LiteralPath $taskStaged }
+    }
     Write-Output "Built: $taskOutput\peachsh.exe"
 }

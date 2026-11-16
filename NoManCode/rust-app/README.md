@@ -88,12 +88,16 @@ flowchart LR
 ```powershell
 Set-Location -LiteralPath './NoManCode/rust-app'
 .\build.ps1 -Action test
+.\build.ps1 -Action fmt
 .\build.ps1 -Action clippy
-.\build.ps1 -Action build
 .\build.ps1 -Action wasm-check
 ```
 
-`Cargo.lock` 固定依赖版本。`rust-toolchain.toml` 同时声明 `wasm32-unknown-unknown`；`build.ps1` 识别这台机器已有的 Visual C++ 与 Windows SDK。2026-09-23 在本工程目录核对 Rust stable 为 1.98.1；总根目录默认工具链是 1.82.0，执行前必须进入上述目录。首次缺依赖的构建可能下载 crates。用户运行已编译的 EXE 不需要 Rust 工具链。
+`test` 先执行 `cargo test --workspace --locked`，成功后用 Node 执行实际内嵌网页的 `tests/project-web.mjs`。Cargo 失败时保留其退出码并停止，网页失败时返回 Node 退出码；两者都通过才成功。从 `NoManCode` 执行 `npm test` 或既有 `npm run test:rust` 使用同一门禁。只改网页时可先运行 `build.ps1 -Action web-test` 或 `npm run test:web`，无需 MSVC 或 Cargo。网页测试使用 mock DOM/fetch，覆盖项目绑定、配置冲突和续聊请求身份，不是浏览器渲染验收。常规测试保留 ignored；受控进程矩阵、付费 live 和 UI WASM 编译分别验证。最新 workspace 验收只证明显式单线程；需要同样调度时在测试进程设置 `RUST_TEST_THREADS=1`，不能将其记成默认并发实跑。
+
+需要生成分发 EXE 时单独运行 `build.ps1 -Action build`。脚本读取本次 Cargo 成功构建的 Host artifact，兼容相对/绝对 `CARGO_TARGET_DIR` 及 Cargo 的 target triple 目录，再复制到 `NoManCode/bin/peachsh.exe`。Cargo 失败、Host artifact 缺失/歧义或文件不存在时不替换已有分发文件；复制先写同目录临时文件再替换。其他环境失败也不会退回旧 `target/release`。构建脚本回归可运行 `pwsh -NoProfile -File tests/build-script.ps1`；仅用 mock Cargo/Node 和临时目录，不编译或运行产品，证据保留在本工程 `.local/build-script-tests`。
+
+`Cargo.lock` 固定依赖版本。`rust-toolchain.toml` 声明 `rustfmt`、`clippy` 和 `wasm32-unknown-unknown`；这些组件需要预先可用，工具链声明本身不证明当前环境已经安装。`build.ps1` 发现既有 Visual C++ 与 Windows SDK；发现失败时按实际安装位置设置 `VCToolsInstallDir` 和 `WindowsSdkDir`。2026-09-23 在本工程目录核对 Rust stable 为 1.98.1；总根目录默认工具链是 1.82.0，执行前必须进入上述目录。首次缺依赖的构建可能下载 crates。用户运行已编译的 EXE 不需要 Rust 工具链。
 
 本地测试使用模拟上游覆盖：分 Key 并发与路由、身份恢复、依赖顺序/环检测、文件工具、冲突拒绝、停止、配置锁、崩溃输出恢复、流式 UTF-8 分块/工具调用、截断响应、凭据加密、New API 额度与本机 HTTP 边界。
 

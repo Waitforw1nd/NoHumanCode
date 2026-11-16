@@ -5,6 +5,9 @@
   "description": "🍑sh harness multi-key and multi-model Agent Team overlay",
   "type": "module",
   "scripts": {
+    "test": "pwsh -NoProfile -File rust-app/build.ps1 -Action test",
+    "test:web": "node rust-app/tests/project-web.mjs",
+    "test:build-script": "pwsh -NoProfile -File rust-app/tests/build-script.ps1",
     "test:team": "node tests/test-team-model-routing.mjs && node tests/test-team-membership-guard.mjs && node tests/test-team-swarm-routing.mjs",
     "test:parallel": "node tests/test-openai-parallel.mjs",
     "discover:models": "node tests/discover-peachsh-models.mjs",
