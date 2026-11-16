@@ -1,0 +1,6 @@
+
+running 1 test
+test process_lifetime_tests::token_cancel_unknown_keeps_reader_and_stays_sealed_after_late_cleanup ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 480 filtered out; finished in 0.57s
+

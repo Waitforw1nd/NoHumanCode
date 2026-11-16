@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\manager-fixed-invoke.ps1",
+    "-Stage",
+    "lib"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--lib",
+    "--no-run",
+    "--message-format=json"
+  ],
+  "ended_utc": "2026-11-16T09:46:36.559074+00:00",
+  "exit_code": 0,
+  "log": "01-fixed-lib.log",
+  "log_bytes": 187074,
+  "log_sha256": "d667933a00861f563844b30f3afe5e5ed0a5e8cc450c44af0777995c378d868f",
+  "name": "fixed-lib",
+  "started_utc": "2026-11-16T09:46:02.484385+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 600,
+  "unknown_reason": null
+}

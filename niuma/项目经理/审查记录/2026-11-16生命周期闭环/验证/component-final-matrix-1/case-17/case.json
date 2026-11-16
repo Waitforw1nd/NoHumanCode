@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960321335948,
+  "pid": 61256,
+  "exit_code": 0,
+  "case": "process_lifetime::state_tests::unknown_is_sticky_and_ticket_consumed_once_after_cleanup",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:12.1316696Z",
+  "elapsed_ms": 21
+}

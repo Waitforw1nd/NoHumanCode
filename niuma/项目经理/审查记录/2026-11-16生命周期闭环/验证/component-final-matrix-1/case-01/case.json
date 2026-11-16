@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960142340639,
+  "pid": 49012,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::normal_nonzero_and_prestart_rejection",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:46:54.2059719Z",
+  "elapsed_ms": 573
+}

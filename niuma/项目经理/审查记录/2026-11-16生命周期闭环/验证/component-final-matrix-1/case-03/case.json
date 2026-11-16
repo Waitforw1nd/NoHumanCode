@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960163599774,
+  "pid": 37144,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::timeout_and_cancel_reap_original_tree_without_sealing",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:46:56.3579411Z",
+  "elapsed_ms": 5164
+}

@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960373908977,
+  "pid": 68012,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::known_result_allows_immediate_next_submit_at_capacity_one",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:17.3888994Z",
+  "elapsed_ms": 179
+}

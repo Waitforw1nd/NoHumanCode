@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960358220368,
+  "pid": 43712,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::token_cancel_unknown_keeps_reader_and_stays_sealed_after_late_cleanup",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:15.8200117Z",
+  "elapsed_ms": 595
+}
