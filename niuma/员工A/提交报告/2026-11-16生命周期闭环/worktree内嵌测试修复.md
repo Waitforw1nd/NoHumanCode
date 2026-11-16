@@ -1,0 +1,41 @@
+# worktree_management 内嵌测试修复
+
+日期：2026-11-16。经理依据用户授权转交唯一写权：A仅修改 `NoManCode/rust-app/src/worktree_management.rs` 的内嵌tests及本轮报告；B停止写该文件。生产逻辑、旧断言及Cargo配置不变，A未运行Cargo或真实进程。
+
+## full-1失败与修改
+
+固定full-1日志尾部列出的11项worktree_management失败全部逐项核对。8项首先停在Fixture::plan的真实git_worktree::prepare，却没有execution scope。本提交让plan从同一fixture Store取得真实execution_operation并run prepare；相应用例在准备前持有唯一Engine，已有Engine的用例复用原controller。没有另开临时数据域或合成票据。
+
+两个Store并发claim用例与registration/claim竞争用例继续使用独立Store/SQLite事务及真实线程barrier，维持同一controller，不新增第二Engine；原唯一赢家、Busy/Conflict、单operation/reservation及没有落盘worktree断言不变。
+
+`n13_all_terminal_replays_and_recovery_keep_unknown_reserved` 在活controller时先验证recover拒绝且原receipt不变，再drop Engine执行原恢复及幂等恢复。三种terminal/claimed分支、Unknown保留reservation、无新target/branch断言均保留。
+
+`n13_real_process_three_durable_stops_kill_wait_recover_without_repeat` 将父fixture拆成路径、项目身份与保全目录，在启动真实child前drop父Store。child存活时额外证明父Store::open被拒；仅通过SQLITE_OPEN_READ_ONLY连接读取child实际提交的receipt，并在kill前关闭observer。原ContainedChild kill/wait、三耐久边界、stage与UUID检查保留；真实退出后才重新取得Store owner并recover。第二次恢复增加活controller拒绝且receipt不变，drop Engine后执行原幂等恢复。分支/HEAD/index/worktree列表、项目与reservation计数、无network/tasks/runs和无重复执行断言均保留。
+
+|full-1失败用例（统一前缀n13_）|最小处置/依赖|
+|---|---|
+|all_terminal_replays_and_recovery_keep_unknown_reserved|真实prepare scope；活controller拒绝recover，释放后恢复|
+|cancelled_task_unresolved_restore_or_write_blocks_claim|真实prepare scope；原禁止claim矩阵保留|
+|diagnose_offline_source_and_other_project_are_observations_not_errors|准备前建立原controller；离线观测断言保留|
+|dropped_caller_owned_worker_still_registers_once|A保留原断言；B a2685f9c恢复新collector丢失的诊断命令记录，另见下述静态阻断|
+|origin_saved_admin_relationship_and_online_identity_are_enforced|依赖B62ae726f恢复worktree持久校验；A不放宽原拒绝断言|
+|persisted_request_plan_members_and_receipt_corruption_rejected_without_repair|真实prepare scope，并依赖B62ae726f；原不修复/字节不变断言保留|
+|real_process_three_durable_stops_kill_wait_recover_without_repeat|父Store释放、活child只读观察、真实kill/wait后恢复|
+|registration_inventory_and_claim_race_has_no_unreserved_new_member|真实prepare scope；原独立事务竞争保留|
+|removed_sibling_reservation_is_detected_and_source_scopes_do_not_leak|使用已存在controller的真实scope，依赖B62ae726f持久校验|
+|same_database_two_store_claim_race_has_one_winner|唯一controller下真实scope与两个Store竞争|
+|same_key_two_store_race_replays_one_operation|唯一controller下真实scope与原重放竞争断言|
+
+## B对接和阻断
+
+Store固定审查结论在 `Store共享开库只读复核.md`，绑定 `62ae726fb43bcd323ffe5b90254d690dcd2a4533`，静态闭合，动态budget四损坏case未验证。
+
+原dropped-caller诊断现场只有git_construct/git_return，缺新collector的git_spawn_begin/git_wait_end，导致Supervisor在control phase看到计数0。A通知B后固定审查 `a2685f9cf524ccf17960277e5d981107648725f5`：在真实run_process前分配序号，真实Settled记录identity/exit，Unknown及未启动分别记录失败；没有改变Supervisor固定序列/数量约束。
+
+另一个静态阻断已直接报告B：create_project_worktree的外层ExecutionOperation在caller abort时cancel同一scope；后台worker只有hold_body，下一Git generation仍可能被拒，不能满足原“caller丢弃后真实worker继续登记一次”断言。A未修改断言或伪造独立工作。提交前经理已确认B `5bd6ea9f7e06e36b1764cf1560a8dfee079044d1` 增加同原票的worker取消责任移交，由C独立审查，B另修测试unused warning；A先固定本夹具供整合验证。
+
+## 静态检查与后续
+
+单文件rustfmt（edition2024、skip_children）与git diff --check通过；比较cfg(test)模块前源码，生产部分相同。源码依赖经理整合的B execution_authority接口，本A树未单独编译。原进程控制路径只编辑未执行，full-1失败现场未改。
+
+经理下一固定窗口须验证全部11项及既有通过正控；本提交不声称11项动态通过、不升级旧23/23为25例矩阵通过。旧case16 unknown保持，A生命周期组件本轮稳定未改。

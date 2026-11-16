@@ -1098,16 +1098,24 @@ mod tests {
         async fn plan(&self, request: &CreateWorktree) -> PersistedWorktreePlan {
             let root = RootIdentity::capture(&self.source).unwrap();
             let context = crate::git_worktree::GitContext::new(vec![root.clone()]).unwrap();
-            crate::git_worktree::prepare(
-                &context,
-                &root,
-                &RootIdentity::capture(Path::new(&request.parent_path)).unwrap(),
-                &id(),
-                &request.expected_head,
-            )
-            .await
-            .unwrap()
-            .into_persisted_plan()
+            // Preparation launches real Git processes under this fixture's
+            // existing controller, not a separate test data domain.
+            self.store
+                .execution_operation(tokio_util::sync::CancellationToken::new())
+                .unwrap()
+                .run(async {
+                    crate::git_worktree::prepare(
+                        &context,
+                        &root,
+                        &RootIdentity::capture(Path::new(&request.parent_path)).unwrap(),
+                        &id(),
+                        &request.expected_head,
+                    )
+                    .await
+                    .unwrap()
+                    .into_persisted_plan()
+                })
+                .await
         }
         async fn claim(&self) -> (CreateWorktree, WorktreeReceipt, PersistedWorktreePlan) {
             let request = self.request();
@@ -1221,6 +1229,7 @@ mod tests {
             WorktreeState::Claimed,
         ] {
             let f = Fixture::new();
+            let engine = Engine::new(f.store.clone(), 2).unwrap();
             let (request, receipt, plan) = f.claim().await;
             let expected = if state == WorktreeState::Claimed {
                 receipt.clone()
@@ -1240,7 +1249,6 @@ mod tests {
                     )
                     .unwrap()
             };
-            let engine = Engine::new(f.store.clone(), 2).unwrap();
             std::fs::write(f.source.join("dirty"), "dirty").unwrap();
             assert_eq!(
                 engine
@@ -1260,6 +1268,17 @@ mod tests {
                 }
             );
             let reopened = Store::open(&f.db).unwrap();
+            assert!(
+                reopened.recover().is_err(),
+                "live controller admitted recovery"
+            );
+            assert_eq!(
+                reopened
+                    .worktree_receipt(&f.project.id, &receipt.operation_id)
+                    .unwrap(),
+                expected
+            );
+            drop(engine);
             reopened.recover().unwrap();
             let recovered = reopened
                 .worktree_receipt(&f.project.id, &receipt.operation_id)
@@ -1284,6 +1303,7 @@ mod tests {
     #[tokio::test]
     async fn n13_same_database_two_store_claim_race_has_one_winner() {
         let f = Fixture::new();
+        let _engine = Engine::new(f.store.clone(), 2).unwrap();
         let first = f.request();
         let second = f.request();
         let a = f.plan(&first).await;
@@ -1320,6 +1340,7 @@ mod tests {
     #[tokio::test]
     async fn n13_cancelled_task_unresolved_restore_or_write_blocks_claim() {
         let f = Fixture::new();
+        let _engine = Engine::new(f.store.clone(), 2).unwrap();
         let request = f.request();
         let plan = f.plan(&request).await;
         let inventory = f.store.worktree_inventory().unwrap();
@@ -1407,6 +1428,7 @@ mod tests {
             "UPDATE worktree_operations SET receipt=json_set(receipt,'$.cause','interrupted')",
         ] {
             let f = Fixture::new();
+            let _engine = Engine::new(f.store.clone(), 2).unwrap();
             let (_, _, _) = f.claim().await;
             f.store.db.lock().unwrap().execute_batch(sql).unwrap();
             let before = std::fs::read(&f.db).unwrap();
@@ -1756,8 +1778,8 @@ mod tests {
                     idempotency_key: id(),
                 })
                 .unwrap();
-            let (_, receipt, _) = f.claim().await;
             let engine = Engine::new(f.store.clone(), 2).unwrap();
+            let (_, receipt, _) = f.claim().await;
             let path = if source_offline {
                 &f.source
             } else {
@@ -1792,20 +1814,19 @@ mod tests {
     }
     #[test]
     fn n13_real_process_three_durable_stops_kill_wait_recover_without_repeat() {
-        struct RetainOnFailure(Option<Fixture>);
+        struct RetainOnFailure(Option<tempfile::TempDir>);
         impl std::ops::Deref for RetainOnFailure {
-            type Target = Fixture;
-            fn deref(&self) -> &Fixture {
+            type Target = tempfile::TempDir;
+            fn deref(&self) -> &tempfile::TempDir {
                 self.0.as_ref().unwrap()
             }
         }
         impl Drop for RetainOnFailure {
             fn drop(&mut self) {
                 if std::thread::panicking()
-                    && let Some(fixture) = self.0.take()
+                    && let Some(temp) = self.0.take()
                 {
-                    let Fixture { _temp, .. } = fixture;
-                    eprintln!("N13 retained process fixture={}", _temp.keep().display());
+                    eprintln!("N13 retained process fixture={}", temp.keep().display());
                 }
             }
         }
@@ -1849,39 +1870,51 @@ mod tests {
             panic!("child returned without stopping");
         }
         for phase in ["claim", "created", "registered"] {
-            let f = RetainOnFailure(Some(Fixture::new()));
-            let request = f.request();
+            let fixture = Fixture::new();
+            let request = fixture.request();
+            let Fixture {
+                _temp,
+                source,
+                db,
+                store,
+                project,
+                ..
+            } = fixture;
+            let retained = RetainOnFailure(Some(_temp));
+            // Transfer ownership to the real child. The parent keeps paths and
+            // observations, never a second Store or controller while it lives.
+            drop(store);
             std::fs::write(
-                f._temp.path().join("request.json"),
+                retained.path().join("request.json"),
                 serde_json::to_vec(&request).unwrap(),
             )
             .unwrap();
-            let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
-            let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
-            let output = std::fs::File::create(f._temp.path().join("child.log")).unwrap();
+            let old_head = raw(&source, &["rev-parse", "HEAD"]);
+            let old_index = std::fs::read(source.join(".git/index")).unwrap();
+            let output = std::fs::File::create(retained.path().join("child.log")).unwrap();
             let mut command = std::process::Command::new(std::env::current_exe().unwrap());
             command
                 .args(["--exact", TEST, "--nocapture"])
-                .env("NHC_WORKTREE_B_CHILD", f._temp.path())
+                .env("NHC_WORKTREE_B_CHILD", retained.path())
                 .env("NHC_WORKTREE_B_PHASE", phase)
                 .stdout(output.try_clone().unwrap())
                 .stderr(output);
-            let mut child = N13Child::spawn(&mut command, f._temp.path(), phase);
+            let mut child = N13Child::spawn(&mut command, retained.path(), phase);
             let mut supervisor = crate::worktree_diagnostics::Supervisor::new(
-                f._temp.path().join("worktree-diagnostics.jsonl"),
+                retained.path().join("worktree-diagnostics.jsonl"),
             );
             loop {
                 if let Some(status) = child.child().try_wait().unwrap() {
                     panic!(
                         "{phase} child exited {status}: {}",
-                        std::fs::read_to_string(f._temp.path().join("child.log")).unwrap()
+                        std::fs::read_to_string(retained.path().join("child.log")).unwrap()
                     );
                 }
                 if let Err(error) = supervisor.poll() {
                     let status = child.kill_wait();
                     panic!("{phase} supervision failed: {error:#}; child wait={status:?}");
                 }
-                if let Ok(operation) = std::fs::read_to_string(f._temp.path().join("ready")) {
+                if let Ok(operation) = std::fs::read_to_string(retained.path().join("ready")) {
                     supervisor.poll().unwrap();
                     let expected_stage = match phase {
                         "claim" => 8,
@@ -1899,8 +1932,18 @@ mod tests {
                 }
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
-            let operation = std::fs::read_to_string(f._temp.path().join("ready")).unwrap();
-            let stopped = f.store.worktree_receipt(&f.project.id, &operation).unwrap();
+            let operation = std::fs::read_to_string(retained.path().join("ready")).unwrap();
+            assert!(
+                Store::open(&db).is_err(),
+                "live child lost domain ownership"
+            );
+            // Read the child's committed receipt without acquiring a Host owner
+            // or running initialization/recovery against its live data domain.
+            let observer =
+                Connection::open_with_flags(&db, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                    .unwrap();
+            let stopped = read_receipt(&observer, &project.id, &operation).unwrap();
+            drop(observer);
             assert_eq!(
                 stopped.state,
                 if phase == "registered" {
@@ -1916,13 +1959,19 @@ mod tests {
                 "N13 actual kill+wait phase={phase} child={} exit={status} operation={operation}",
                 pid
             );
-            let refs = raw(&f.source, &["show-ref"]);
-            let list = raw(&f.source, &["worktree", "list", "--porcelain"]);
-            let reopened = Arc::new(Store::open(&f.db).unwrap());
+            let refs = raw(&source, &["show-ref"]);
+            let list = raw(&source, &["worktree", "list", "--porcelain"]);
+            let reopened = Arc::new(Store::open(&db).unwrap());
             reopened.recover().unwrap();
-            let recovered = reopened
-                .worktree_receipt(&f.project.id, &operation)
-                .unwrap();
+            let recovered = reopened.worktree_receipt(&project.id, &operation).unwrap();
+            let count = |table: &str| -> i64 {
+                reopened
+                    .db
+                    .lock()
+                    .unwrap()
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                    .unwrap()
+            };
             assert_eq!(
                 recovered.state,
                 if phase == "registered" {
@@ -1931,12 +1980,9 @@ mod tests {
                     WorktreeState::Unknown
                 }
             );
+            assert_eq!(count("projects"), if phase == "registered" { 2 } else { 1 });
             assert_eq!(
-                f.count("projects"),
-                if phase == "registered" { 2 } else { 1 }
-            );
-            assert_eq!(
-                f.count("worktree_project_reservations"),
+                count("worktree_project_reservations"),
                 if phase == "registered" { 0 } else { 1 }
             );
             let engine = Engine::new(reopened.clone(), 2).unwrap();
@@ -1947,7 +1993,7 @@ mod tests {
                 );
                 for _ in 0..2 {
                     let result = engine
-                        .inspect_project_worktree(&f.project.id, &operation)
+                        .inspect_project_worktree(&project.id, &operation)
                         .await
                         .unwrap();
                     assert_eq!(result.receipt, recovered);
@@ -1961,26 +2007,30 @@ mod tests {
                     );
                 }
             });
+            assert!(
+                reopened.recover().is_err(),
+                "live controller admitted recovery"
+            );
+            assert_eq!(
+                reopened.worktree_receipt(&project.id, &operation).unwrap(),
+                recovered
+            );
+            drop(engine);
             reopened.recover().unwrap();
             assert_eq!(
-                reopened
-                    .worktree_receipt(&f.project.id, &operation)
-                    .unwrap(),
+                reopened.worktree_receipt(&project.id, &operation).unwrap(),
                 recovered
             );
             assert_eq!(
-                f.count("worktree_project_reservations"),
+                count("worktree_project_reservations"),
                 if phase == "registered" { 0 } else { 1 }
             );
-            assert_eq!(raw(&f.source, &["show-ref"]), refs);
-            assert_eq!(raw(&f.source, &["worktree", "list", "--porcelain"]), list);
-            assert_eq!(raw(&f.source, &["rev-parse", "HEAD"]), old_head);
-            assert_eq!(
-                std::fs::read(f.source.join(".git/index")).unwrap(),
-                old_index
-            );
+            assert_eq!(raw(&source, &["show-ref"]), refs);
+            assert_eq!(raw(&source, &["worktree", "list", "--porcelain"]), list);
+            assert_eq!(raw(&source, &["rev-parse", "HEAD"]), old_head);
+            assert_eq!(std::fs::read(source.join(".git/index")).unwrap(), old_index);
             for table in ["network_calls", "tasks", "runs"] {
-                assert_eq!(f.count(table), 0);
+                assert_eq!(count(table), 0);
             }
         }
     }
@@ -2043,6 +2093,7 @@ mod tests {
     #[tokio::test]
     async fn n13_same_key_two_store_race_replays_one_operation() {
         let f = Fixture::new();
+        let _engine = Engine::new(f.store.clone(), 2).unwrap();
         let request = f.request();
         let first = f.plan(&request).await;
         let second = f.plan(&request).await;
@@ -2079,6 +2130,7 @@ mod tests {
     async fn n13_registration_inventory_and_claim_race_has_no_unreserved_new_member() {
         for _ in 0..3 {
             let f = Fixture::new();
+            let _engine = Engine::new(f.store.clone(), 2).unwrap();
             let request = f.request();
             let plan = f.plan(&request).await;
             let inventory = f.store.worktree_inventory().unwrap();
