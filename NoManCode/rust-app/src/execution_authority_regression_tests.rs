@@ -6,6 +6,107 @@ use rusqlite::TransactionBehavior;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
+fn runtime_security_task(name: &str) -> crate::domain::TaskSpec {
+    crate::domain::TaskSpec {
+        name: name.into(),
+        role: format!("role-{name}"),
+        route_id: "key-1".into(),
+        prompt: "hello".into(),
+        depends_on: vec![],
+        write_scopes: vec![],
+        tools: false,
+        allow_commands: false,
+        max_rounds: 4,
+    }
+}
+
+fn runtime_security_fixture(dir: &std::path::Path) -> Arc<Engine> {
+    use crate::{
+        domain::{Route, Settings},
+        network_authorization::{
+            ConfirmRequest, NetworkPurpose, NetworkSubject, NetworkSubjectKind,
+        },
+        project_config::{ConfigureProject, ProjectConfig, RegisterProject, SelectProject},
+    };
+    let store = Arc::new(Store::open(&dir.join("test.db")).unwrap());
+    let routes = (1..=3)
+        .map(|n| Route {
+            id: format!("key-{n}"),
+            name: format!("Key {n}"),
+            base_url: "http://127.0.0.1:1/v1".into(),
+            model: if n == 2 { "model-b" } else { "model-a" }.into(),
+            max_tokens: 128,
+            parallel_limit: 1,
+            key_env: None,
+        })
+        .collect();
+    store
+        .save_settings(&Settings {
+            workspace: dir.to_string_lossy().into(),
+            max_concurrency: 2,
+            routes,
+            newapi: None,
+        })
+        .unwrap();
+    for n in 1..=3 {
+        store
+            .put_secret(
+                &format!("key-{n}"),
+                if n == 2 { "fake-key-b" } else { "fake-key-a" },
+            )
+            .unwrap();
+    }
+    let selection = store.current_project().unwrap();
+    let project = store
+        .register_project(RegisterProject {
+            name: "fixture".into(),
+            root_path: dir.to_string_lossy().into(),
+            idempotency_key: uuid::Uuid::new_v4().to_string(),
+        })
+        .unwrap();
+    store
+        .select_project(SelectProject {
+            project_id: project.id.clone(),
+            expected_revision: selection.revision,
+        })
+        .unwrap();
+    let before = store.project_config(&project.id).unwrap();
+    store
+        .configure_project(ConfigureProject {
+            project_id: project.id.clone(),
+            expected_revision: before.revision,
+            config: ProjectConfig {
+                allowed_route_ids: vec!["key-1".into(), "key-2".into(), "key-3".into()],
+                default_route_id: Some("key-1".into()),
+                tools: true,
+                write_scopes: vec!["*".into()],
+                allow_commands: true,
+            },
+        })
+        .unwrap();
+    for n in 1..=3 {
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: format!("key-{n}"),
+            project_id: Some(project.id.clone()),
+        };
+        let preview = store.network_preview(subject.clone()).unwrap();
+        store
+            .network_confirm(
+                subject,
+                ConfirmRequest {
+                    config_revision: preview.config_revision,
+                    credential_revision: preview.credential_revision,
+                    binding_digest: preview.binding_digest,
+                    purposes: vec![NetworkPurpose::Models, NetworkPurpose::Completion],
+                },
+                &uuid::Uuid::new_v4().to_string(),
+            )
+            .unwrap();
+    }
+    Engine::new(store, 2).unwrap()
+}
+
 #[allow(dead_code)]
 #[path = "../tests/support/owned_child.rs"]
 mod owned_child;
@@ -242,6 +343,8 @@ async fn unknown_terminal_child() {
         created_at: 1,
         updated_at: 1,
     };
+    let mut other_task = task.clone();
+    other_task.id = "u18-other-task".into();
     let seed = store.execution_operation(CancellationToken::new()).unwrap();
     seed.run(async {
         store
@@ -250,7 +353,7 @@ async fn unknown_terminal_child() {
                 title: "fixture".into(),
                 kind: SessionKind::Team,
                 created_at: 1,
-                tasks: vec![task.clone()],
+                tasks: vec![task.clone(), other_task.clone()],
             })
             .unwrap();
     })
@@ -261,6 +364,8 @@ async fn unknown_terminal_child() {
     let foreign = other_store
         .execution_operation(CancellationToken::new())
         .unwrap();
+    local.bind_task(&task.id).unwrap();
+    foreign.bind_task(&task.id).unwrap();
     if case == "cross" {
         foreign.seal_unknown();
     } else {
@@ -295,6 +400,18 @@ async fn unknown_terminal_child() {
             })
             .await;
         let mut forged = task.clone();
+        let mut wrong_task = other_task.clone();
+        wrong_task.status = "failed".into();
+        local
+            .hold_body()
+            .run(async {
+                assert!(store.save_unknown_terminal(&wrong_task).is_err());
+            })
+            .await;
+        assert_eq!(
+            serde_json::to_value(store.task(&other_task.id).unwrap()).unwrap(),
+            serde_json::to_value(&other_task).unwrap()
+        );
         forged.status = "completed".into();
         forged.output = "untrusted success".into();
         let scope = local.hold_body();
@@ -1026,6 +1143,127 @@ async fn restore_epoch_or_phase_child() {
     );
 }
 
+#[tokio::test]
+async fn network_cross_operation_receipt_child() {
+    use crate::network_authorization::{
+        CallState, NetworkPurpose, NetworkSubject, NetworkSubjectKind,
+    };
+    use crate::provider_transport::TransportError;
+    let Ok(_) = std::env::var("NHC_U18_RECEIPT_CHILD") else {
+        return;
+    };
+    let root = tempfile::tempdir().unwrap();
+    let (engine, _) =
+        crate::engine::workspace_phase_tests::n13_completed_fixture(root.path()).await;
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: "route".into(),
+        project_id: engine.current_project().unwrap().project_id,
+    };
+    let first = engine
+        .store
+        .execution_operation(CancellationToken::new())
+        .unwrap();
+    let second = engine
+        .store
+        .execution_operation(CancellationToken::new())
+        .unwrap();
+    let (first_permit, first_receipt) = first
+        .hold_body()
+        .run(async {
+            engine
+                .store
+                .network_admit(&subject, NetworkPurpose::Completion, None)
+                .unwrap()
+        })
+        .await;
+    let (second_permit, second_receipt) = second
+        .hold_body()
+        .run(async {
+            engine
+                .store
+                .network_admit(&subject, NetworkPurpose::Completion, None)
+                .unwrap()
+        })
+        .await;
+    let before = engine.store.network_call(&second_receipt.call_id).unwrap();
+    assert_eq!(before.state, CallState::Claimed);
+    first.seal_unknown();
+    let result = first
+        .hold_body()
+        .run(async {
+            engine
+                .store
+                .finish_network::<()>(second_receipt.clone(), Err(TransportError::Unknown))
+        })
+        .await;
+    assert!(result.is_err());
+    assert_eq!(
+        engine.store.network_call(&second_receipt.call_id).unwrap(),
+        before
+    );
+    let result = first
+        .hold_body()
+        .run(async {
+            engine
+                .store
+                .finish_network::<()>(first_receipt.clone(), Err(TransportError::Unknown))
+        })
+        .await;
+    assert!(result.is_err());
+    assert_eq!(
+        engine
+            .store
+            .network_call(&first_receipt.call_id)
+            .unwrap()
+            .state,
+        CallState::Unknown
+    );
+    let result = second
+        .hold_body()
+        .run(async {
+            engine
+                .store
+                .finish_network::<()>(second_receipt.clone(), Err(TransportError::Invalid))
+        })
+        .await;
+    assert!(result.is_err());
+    assert_eq!(
+        engine
+            .store
+            .network_call(&second_receipt.call_id)
+            .unwrap()
+            .state,
+        CallState::NotSent
+    );
+    drop((first_permit, second_permit));
+}
+
+#[test]
+fn network_receipt_is_bound_to_its_original_operation() {
+    use std::{process::Command, time::Duration};
+    let root = tempfile::Builder::new()
+        .prefix("u18-receipt-")
+        .tempdir()
+        .unwrap()
+        .keep();
+    let mut command = Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            "execution_authority_regression_tests::network_cross_operation_receipt_child",
+            "--nocapture",
+        ])
+        .env("NHC_U18_RECEIPT_CHILD", "1");
+    let output =
+        owned_child::OwnedChild::spawn(&mut command, &root).output(Duration::from_secs(40));
+    assert!(
+        output.status.success(),
+        "receipt child failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[test]
 fn restore_rechecks_durable_authority_before_file_action() {
     use std::{process::Command, time::Duration};
@@ -1166,4 +1404,188 @@ async fn killed_at_real_epoch_and_recovery_commit_barriers_recovers() {
         assert_eq!(state, (2, "active".to_owned()));
         assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
     }
+}
+
+#[tokio::test]
+async fn restart_and_http_security() {
+    use crate::{
+        domain::*,
+        server::{self, App},
+    };
+    use axum::{
+        body::{Body, to_bytes},
+        http::{Request, StatusCode},
+    };
+    use serde_json::{Value, json};
+    use std::time::Duration;
+    use tower::ServiceExt;
+    let temp = tempfile::tempdir().unwrap();
+    let e = runtime_security_fixture(temp.path());
+    let route = e.store.settings().unwrap().unwrap().routes[0].clone();
+    let durable_task = Task {
+        id: "durable-id".into(),
+        run_id: "durable-run".into(),
+        spec: runtime_security_task("worker"),
+        route,
+        workspace: temp.path().to_string_lossy().into(),
+        status: "running".into(),
+        output: "partial".into(),
+        error: None,
+        messages: vec![],
+        usage: Value::Null,
+        created_at: now(),
+        updated_at: now(),
+    };
+    e.store
+        .execution_operation(CancellationToken::new())
+        .unwrap()
+        .run(async {
+            e.store
+                .create_run(&Run {
+                    id: "durable-run".into(),
+                    title: "recovery".into(),
+                    kind: SessionKind::Team,
+                    created_at: now(),
+                    tasks: vec![durable_task],
+                })
+                .unwrap();
+            e.store
+                .event(
+                    "durable-id",
+                    "delta",
+                    json!({"text":"partial recovered from event log"}),
+                )
+                .unwrap();
+        })
+        .await;
+    let store = Arc::new(Store::open(&temp.path().join("test.db")).unwrap());
+    let before = serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap();
+    assert!(
+        store.recover().is_err(),
+        "live controller admitted recovery"
+    );
+    assert_eq!(store.task("durable-id").unwrap().status, "running");
+    assert_eq!(
+        serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap(),
+        before
+    );
+    assert!(e.shutdown(Duration::from_secs(5)).await.settled());
+    let old_store = Arc::downgrade(&e.store);
+    drop(e);
+    assert!(
+        old_store.upgrade().is_none(),
+        "old controller still holds its Store"
+    );
+    let (e, recovered) = Engine::new_recovered(store.clone(), 2).unwrap();
+    assert_eq!(recovered, 1);
+    assert_eq!(
+        store.events("durable-run", 0).unwrap().last().unwrap().data["status"],
+        "interrupted"
+    );
+    assert_eq!(store.task("durable-id").unwrap().status, "interrupted");
+    assert_eq!(
+        store.task("durable-id").unwrap().output,
+        "partial recovered from event log"
+    );
+    let app = server::router(App {
+        engine: e,
+        token: "csrf-test".into(),
+        origin: "http://127.0.0.1:3090".into(),
+    });
+    let r = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/settings")
+                .header("host", "evil.example")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::FORBIDDEN);
+    let r = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/settings")
+                .header("host", "127.0.0.1:3090")
+                .header("origin", "https://evil.example")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::FORBIDDEN);
+    let r = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/runs")
+                .header("host", "127.0.0.1:3090")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::FORBIDDEN);
+    let payload = serde_json::to_vec(&RunRequest {
+        kind: SessionKind::Team,
+        title: "idempotent".into(),
+        tasks: vec![runtime_security_task("idempotent-worker")],
+    })
+    .unwrap();
+    let r = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/runs")
+                .header("host", "127.0.0.1:3090")
+                .header("x-peachsh-token", "csrf-test")
+                .header("idempotency-key", "runtime-idempotency")
+                .header("content-type", "application/json")
+                .body(Body::from(payload.clone()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::OK);
+    let first: Run =
+        serde_json::from_slice(&to_bytes(r.into_body(), 1_000_000).await.unwrap()).unwrap();
+    let r = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/runs")
+                .header("host", "127.0.0.1:3090")
+                .header("x-peachsh-token", "csrf-test")
+                .header("idempotency-key", "runtime-idempotency")
+                .header("content-type", "application/json")
+                .body(Body::from(payload))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::OK);
+    let second: Run =
+        serde_json::from_slice(&to_bytes(r.into_body(), 1_000_000).await.unwrap()).unwrap();
+    assert_eq!(first.id, second.id);
+    let r = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/settings")
+                .header("host", "127.0.0.1:3090")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::OK);
+    let b = to_bytes(r.into_body(), 1_000_000).await.unwrap();
+    let s = String::from_utf8(b.to_vec()).unwrap();
+    assert!(!s.contains("fake-key-a"));
+    assert!(!s.contains("fake-key-b"));
 }
