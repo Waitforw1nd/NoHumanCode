@@ -643,7 +643,10 @@ mod platform {
                 info(&file)?.nNumberOfLinks == 1,
                 "instance lock aliases are unsupported"
             );
-            file.try_lock().context("data domain instance is busy")?;
+            // Preserve the Host's existing diagnostic at the same legacy lock
+            // acquisition boundary, now owned by the shared domain.
+            file.try_lock()
+                .context("此数据目录已有一个 🍑sh 实例正在运行")?;
             Ok(file)
         };
         let mut initial_lock = None;

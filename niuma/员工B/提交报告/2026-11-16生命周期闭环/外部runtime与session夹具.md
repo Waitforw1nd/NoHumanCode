@@ -8,3 +8,7 @@
 - 真实流式中断段仍销毁原runtime，并在其线程确认旧Store引用消失再join。父方用明确READ_ONLY SQLite观察同run/task的真实delta，不以Store::open意外持域或触发初始化；仍验证原partial文本、interrupted、模型和replay不新增provider请求。
 
 只静核、单文件rustfmt及git diff检查。未Cargo/真实进程；读取external-1时尚未找到这两个target的动态结果，候选等待经理串行验证，不声称通过。
+
+external-1后续实际反馈runtime第二失败：旧允许命令正控绕过Engine直接workspace::execute，没有live domain operation。B以`e5827b5999087995da3e4bd5f9391ca240298cad`将正控改为mock provider真实run_command调用，经Engine.start、真实pending审批及network acknowledgement后执行，核恰一个实际tool result、exit0及原stdout。硬链接原文件/替换文件/backup事件断言保留；未授权反控仍走实际权限检查，并明确匹配“当前任务未授权运行命令”。没有合成票、未开放测试scope。
+
+C只读定位CLI cl08旧中文busy诊断丢失。B以`96e113c3748c5399ad7df300cc8a0bb1e5390cf4`在现execution_authority的同一原instance.lock `file.try_lock`边界恢复基线context“此数据目录已有一个 🍑sh 实例正在运行”，原OS错误链保留；不泛化其他开库错误、不改锁与owner语义。C保留原CLI中文断言并独立修其Child清理，B未写CLI tests。两项增量仅静态验证。

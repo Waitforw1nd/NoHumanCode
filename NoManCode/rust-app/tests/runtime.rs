@@ -58,6 +58,8 @@ async fn chat(
     let last = messages.last().unwrap();
     let chunk = if last["content"] == "write-test" {
         json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-1","type":"function","function":{"name":"write_file","arguments":"{\"path\":\"src/result.txt\",\"content\":\"rust-native-ok\"}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}})
+    } else if last["content"] == "native-command-test" {
+        json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"native-command-1","type":"function","function":{"name":"run_command","arguments":"{\"command\":\"Write-Output 'native-command-ok'\",\"timeout_seconds\":5}"}}]},"finish_reason":"tool_calls"}]})
     } else if last["content"] == "escape-test" {
         json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-escape","type":"function","function":{"name":"write_file","arguments":"{\"path\":\"../outside.txt\",\"content\":\"bad\"}"}}]},"finish_reason":"tool_calls"}]})
     } else {
@@ -153,6 +155,9 @@ async fn settled(engine: &Engine, id: &str) -> Run {
 }
 
 async fn approve_pending_write(engine: &Engine, task_id: &str) {
+    approve_pending_tool(engine, task_id, "write_file").await;
+}
+async fn approve_pending_tool(engine: &Engine, task_id: &str, expected_tool: &str) {
     let approval = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
             let pending = engine.store.pending_approvals_for_task(task_id).unwrap();
@@ -168,8 +173,8 @@ async fn approve_pending_write(engine: &Engine, task_id: &str) {
         }
     })
     .await
-    .expect("known write approval did not become pending");
-    assert_eq!(approval.tool_name, "write_file");
+    .expect("known tool approval did not become pending");
+    assert_eq!(approval.tool_name, expected_tool);
     engine
         .decide_approval_with_network_ack(
             &approval.id,
@@ -825,17 +830,38 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
                 && e.data["change_id"].is_string()
                 && e.data.get("previous").is_none())
     );
-    let mut command_task = r.tasks[0].clone();
+    let command_task = r.tasks[0].clone();
     let args = json!({"command":"Write-Output 'native-command-ok'"});
-    assert!(
-        peachsh::workspace::execute(&command_task, "run_command", &args)
-            .await
-            .is_err()
-    );
-    command_task.spec.allow_commands = true;
-    let result = peachsh::workspace::execute(&command_task, "run_command", &args)
+    let denied = peachsh::workspace::execute(&command_task, "run_command", &args)
+        .await
+        .unwrap_err();
+    assert!(denied.to_string().contains("当前任务未授权运行命令"));
+    let mut allowed = task("command", "key-1", "native-command-test", &["src"]);
+    allowed.allow_commands = true;
+    let run = e
+        .start(RunRequest {
+            kind: SessionKind::Team,
+            title: "approved command positive control".into(),
+            tasks: vec![allowed],
+        })
         .await
         .unwrap();
+    approve_pending_tool(&e, &run.tasks[0].id, "run_command").await;
+    let done = settled(&e, &run.id).await;
+    assert_eq!(done.tasks[0].status, "completed");
+    let results: Vec<_> = done.tasks[0]
+        .messages
+        .iter()
+        .filter(|message| {
+            message["role"] == "tool" && message["tool_call_id"] == "native-command-1"
+        })
+        .collect();
+    assert_eq!(
+        results.len(),
+        1,
+        "approved command must produce one real result"
+    );
+    let result: Value = serde_json::from_str(results[0]["content"].as_str().unwrap()).unwrap();
     assert_eq!(result["exit_code"], 0);
     assert!(
         result["stdout"]
