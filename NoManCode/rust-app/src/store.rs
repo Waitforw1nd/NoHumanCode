@@ -4492,6 +4492,7 @@ mod tests {
         use crate::tool_results::{CommitDisposition, Origin};
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("interrupted.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let (_, _, _, turn, projected, mut task) = sample_graph(&store);
         task.spec.tools = true;
         task.spec.write_scopes = vec!["src".into()];
@@ -4535,6 +4536,7 @@ mod tests {
                 .iter()
                 .any(|event| event.kind == "tool_result" && event.data["result"] == text)
         );
+        }).unwrap();
     }
 
     #[test]
@@ -4556,23 +4558,26 @@ mod tests {
     fn running_output_accepts_token_boundary_when_delta_history_proves_append() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("output.db")).unwrap();
-        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
-        store
-            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
-            .unwrap();
-        store
-            .event(&task.id, "delta", json!({"text":"sk-"}))
-            .unwrap();
-        task.output = "sk-".into();
-        store.save_running_snapshot(&task).unwrap();
-        store
-            .event(&task.id, "delta", json!({"text":"abc"}))
-            .unwrap();
-        task.output.push_str("abc");
-        store.save_running_snapshot(&task).unwrap();
-        assert_eq!(store.task(&task.id).unwrap().output, "[redacted]");
-        task.output = "unrelated".into();
-        assert!(store.save_running_snapshot(&task).is_err());
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+            store
+                .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+                .unwrap();
+            store
+                .event(&task.id, "delta", json!({"text":"sk-"}))
+                .unwrap();
+            task.output = "sk-".into();
+            store.save_running_snapshot(&task).unwrap();
+            store
+                .event(&task.id, "delta", json!({"text":"abc"}))
+                .unwrap();
+            task.output.push_str("abc");
+            store.save_running_snapshot(&task).unwrap();
+            assert_eq!(store.task(&task.id).unwrap().output, "[redacted]");
+            task.output = "unrelated".into();
+            assert!(store.save_running_snapshot(&task).is_err());
+        })
+        .unwrap();
     }
 
     #[test]
@@ -4581,67 +4586,75 @@ mod tests {
             let temp = tempfile::tempdir().unwrap();
             let path = temp.path().join("completion-delta.db");
             let store = Store::open(&path).unwrap();
-            let (_, _, _, turn, projected, mut task) = sample_graph(&store);
-            if legacy {
-                task.run_id = "unmapped-legacy-run".into();
-                store
-                    .create_run(&Run {
-                        id: task.run_id.clone(),
-                        title: "legacy completion".into(),
-                        kind: SessionKind::Chat,
-                        created_at: task.created_at,
-                        tasks: vec![task.clone()],
-                    })
-                    .unwrap();
-            } else {
-                store
-                    .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
-                    .unwrap();
-            }
-            // The trusted boundary receives pieces already accepted in the
-            // context of one stream: sk-plain is inside the ordinary word.
-            store.completion_delta(&task.id, "foo").unwrap();
-            store.completion_delta(&task.id, "sk-plain").unwrap();
-            let deltas: Vec<_> = store
-                .events(&task.run_id, 0)
-                .unwrap()
-                .into_iter()
-                .filter(|event| event.kind == "delta")
-                .collect();
-            assert_eq!(deltas.len(), 2);
-            assert_eq!(deltas[0].data["text"], "foo");
-            assert_eq!(deltas[1].data["text"], "sk-plain");
-            task.output = "foosk-plain".into();
-            store.save_running_snapshot(&task).unwrap();
-            assert_eq!(store.task(&task.id).unwrap().output, "foosk-plain");
-
-            store
-                .event(&task.id, "delta", json!({"text":"sk-ordinary-secret"}))
-                .unwrap();
-            let public_event = store
-                .events(&task.run_id, deltas[1].seq)
-                .unwrap()
-                .pop()
-                .unwrap();
-            assert_eq!(public_event.data["text"], "[redacted]");
-            {
-                let mut db = store.db.lock().unwrap();
-                let tx = db.transaction().unwrap();
-                let mut event =
-                    task_event_envelope(&tx, &task.id, "delta", json!({"text":"sk-direct-secret"}))
+            let (task, deltas) = crate::execution_authority::test_with_store_sync(&store, || {
+                let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+                if legacy {
+                    task.run_id = "unmapped-legacy-run".into();
+                    store
+                        .create_run(&Run {
+                            id: task.run_id.clone(),
+                            title: "legacy completion".into(),
+                            kind: SessionKind::Chat,
+                            created_at: task.created_at,
+                            tasks: vec![task.clone()],
+                        })
                         .unwrap();
-                repository::Repository::append_event(&tx, &event).unwrap();
-                // The trusted path does not bypass kind, shape or relationship checks.
-                event.data["extra"] = json!("not a completion delta");
-                assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
-                event.data = json!({"text":"safe"});
-                event.kind = "resume".into();
-                assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
-                event.kind = "delta".into();
-                event.session_id = Some("nonexistent-session".into());
-                assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
-                tx.commit().unwrap();
-            }
+                } else {
+                    store
+                        .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+                        .unwrap();
+                }
+                // The trusted boundary receives pieces already accepted in the
+                // context of one stream: sk-plain is inside the ordinary word.
+                store.completion_delta(&task.id, "foo").unwrap();
+                store.completion_delta(&task.id, "sk-plain").unwrap();
+                let deltas: Vec<_> = store
+                    .events(&task.run_id, 0)
+                    .unwrap()
+                    .into_iter()
+                    .filter(|event| event.kind == "delta")
+                    .collect();
+                assert_eq!(deltas.len(), 2);
+                assert_eq!(deltas[0].data["text"], "foo");
+                assert_eq!(deltas[1].data["text"], "sk-plain");
+                task.output = "foosk-plain".into();
+                store.save_running_snapshot(&task).unwrap();
+                assert_eq!(store.task(&task.id).unwrap().output, "foosk-plain");
+
+                store
+                    .event(&task.id, "delta", json!({"text":"sk-ordinary-secret"}))
+                    .unwrap();
+                let public_event = store
+                    .events(&task.run_id, deltas[1].seq)
+                    .unwrap()
+                    .pop()
+                    .unwrap();
+                assert_eq!(public_event.data["text"], "[redacted]");
+                {
+                    let mut db = store.db.lock().unwrap();
+                    let tx = db.transaction().unwrap();
+                    let mut event = task_event_envelope(
+                        &tx,
+                        &task.id,
+                        "delta",
+                        json!({"text":"sk-direct-secret"}),
+                    )
+                    .unwrap();
+                    repository::Repository::append_event(&tx, &event).unwrap();
+                    // The trusted path does not bypass kind, shape or relationship checks.
+                    event.data["extra"] = json!("not a completion delta");
+                    assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
+                    event.data = json!({"text":"safe"});
+                    event.kind = "resume".into();
+                    assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
+                    event.kind = "delta".into();
+                    event.session_id = Some("nonexistent-session".into());
+                    assert!(repository::Repository::append_completion_delta(&tx, &event).is_err());
+                    tx.commit().unwrap();
+                }
+                (task, deltas)
+            })
+            .unwrap();
             drop(store);
             let reopened = Store::open(&path).unwrap();
             let events = reopened.events(&task.run_id, deltas[0].seq).unwrap();
@@ -4659,6 +4672,7 @@ mod tests {
         use crate::tool_results::{CommitDisposition, Origin};
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("result.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let (_, _, _, turn, projected, mut task) = sample_graph(&store);
         task.spec.tools = true;
         task.spec.write_scopes = vec![".".into()];
@@ -4725,6 +4739,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 1);
+        }).unwrap();
     }
 
     #[test]
@@ -4733,6 +4748,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("rollback.db");
         let store = Store::open(&path).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let (_, _, _, turn, projected, mut task) = sample_graph(&store);
         task.spec.tools = true;
         task.spec.write_scopes = vec![".".into()];
@@ -4770,57 +4786,61 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 0);
+        }).unwrap();
     }
 
     #[test]
     fn legacy_orphan_read_result_is_recovered_without_another_event() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("legacy-result.db")).unwrap();
-        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
-        task.spec.tools = true;
-        task.messages = vec![
-            json!({"role":"user","content":"hello"}),
-            json!({"role":"assistant","content":null,"tool_calls":[{
-                "id":"read-one","type":"function",
-                "function":{"name":"read_file","arguments":"{\"path\":\"a\"}"}
-            }]}),
-        ];
-        store
-            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
-            .unwrap();
-        store
-            .event(
-                &task.id,
-                "tool_result",
-                json!({"name":"read_file","result":{"content":"text"}}),
-            )
-            .unwrap();
-        let recovered = store
-            .recover_legacy_read_result(&task, "read-one", "read_file")
-            .unwrap()
-            .unwrap();
-        assert_eq!(
-            recovered.messages.last().unwrap()["tool_call_id"],
-            "read-one"
-        );
-        assert_eq!(
-            serde_json::from_str::<Value>(
-                recovered.messages.last().unwrap()["content"]
-                    .as_str()
-                    .unwrap()
-            )
-            .unwrap(),
-            json!({"content":"text"})
-        );
-        let db = store.db.lock().unwrap();
-        let count: i64 = db
-            .query_row(
-                "SELECT COUNT(*) FROM events WHERE task_id=?1 AND kind='tool_result'",
-                [&task.id],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(count, 1);
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+            task.spec.tools = true;
+            task.messages = vec![
+                json!({"role":"user","content":"hello"}),
+                json!({"role":"assistant","content":null,"tool_calls":[{
+                    "id":"read-one","type":"function",
+                    "function":{"name":"read_file","arguments":"{\"path\":\"a\"}"}
+                }]}),
+            ];
+            store
+                .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+                .unwrap();
+            store
+                .event(
+                    &task.id,
+                    "tool_result",
+                    json!({"name":"read_file","result":{"content":"text"}}),
+                )
+                .unwrap();
+            let recovered = store
+                .recover_legacy_read_result(&task, "read-one", "read_file")
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                recovered.messages.last().unwrap()["tool_call_id"],
+                "read-one"
+            );
+            assert_eq!(
+                serde_json::from_str::<Value>(
+                    recovered.messages.last().unwrap()["content"]
+                        .as_str()
+                        .unwrap()
+                )
+                .unwrap(),
+                json!({"content":"text"})
+            );
+            let db = store.db.lock().unwrap();
+            let count: i64 = db
+                .query_row(
+                    "SELECT COUNT(*) FROM events WHERE task_id=?1 AND kind='tool_result'",
+                    [&task.id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1);
+        })
+        .unwrap();
     }
 
     #[test]
@@ -4828,137 +4848,140 @@ mod tests {
         use crate::tool_results::Origin;
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("approval-evidence.db")).unwrap();
-        let (_, _, _, turn, projected, mut task) = sample_graph(&store);
-        task.spec.tools = true;
-        task.spec.write_scopes = vec!["src".into()];
-        let args = json!({"path":"src/a","content":"sk-abc"});
-        task.messages = vec![
-            json!({"role":"user","content":"hello"}),
-            json!({"role":"assistant","content":null,"tool_calls":[{
-                "id":"write-one","type":"function",
-                "function":{"name":"write_file","arguments":args.to_string()}
-            }]}),
-        ];
-        store
-            .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
-            .unwrap();
-        let (record, created) = store
-            .ensure_approval(&task, "write-one", "write_file", &args)
-            .unwrap();
-        assert!(created);
-        assert!(
-            !store
-                .ensure_approval(&task, "write-one", "write_file", &args)
-                .unwrap()
-                .1
-        );
-        store.decide_approval(&record.id, false, "user").unwrap();
-        let reloaded = store.task(&task.id).unwrap();
-        assert!(!serde_json::to_string(&reloaded).unwrap().contains("sk-abc"));
-        let original: String = {
-            let db = store.db.lock().unwrap();
-            db.query_row(
-                "SELECT data FROM events WHERE task_id=?1 AND kind='approval.requested'",
-                [&task.id],
-                |row| row.get(0),
-            )
-            .unwrap()
-        };
-        let mut corrupt: Value = serde_json::from_str(&original).unwrap();
-        corrupt["evidence_version"] = json!(2);
-        {
-            let db = store.db.lock().unwrap();
-            db.execute(
-                "UPDATE events SET data=?2 WHERE task_id=?1 AND kind='approval.requested'",
-                params![task.id, corrupt.to_string()],
-            )
-            .unwrap();
-        }
-        assert!(
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let (_, _, _, turn, projected, mut task) = sample_graph(&store);
+            task.spec.tools = true;
+            task.spec.write_scopes = vec!["src".into()];
+            let args = json!({"path":"src/a","content":"sk-abc"});
+            task.messages = vec![
+                json!({"role":"user","content":"hello"}),
+                json!({"role":"assistant","content":null,"tool_calls":[{
+                    "id":"write-one","type":"function",
+                    "function":{"name":"write_file","arguments":args.to_string()}
+                }]}),
+            ];
             store
+                .commit_turn(&turn, &[projected], Some("idem-a"), &[task.clone()])
+                .unwrap();
+            let (record, created) = store
+                .ensure_approval(&task, "write-one", "write_file", &args)
+                .unwrap();
+            assert!(created);
+            assert!(
+                !store
+                    .ensure_approval(&task, "write-one", "write_file", &args)
+                    .unwrap()
+                    .1
+            );
+            store.decide_approval(&record.id, false, "user").unwrap();
+            let reloaded = store.task(&task.id).unwrap();
+            assert!(!serde_json::to_string(&reloaded).unwrap().contains("sk-abc"));
+            let original: String = {
+                let db = store.db.lock().unwrap();
+                db.query_row(
+                    "SELECT data FROM events WHERE task_id=?1 AND kind='approval.requested'",
+                    [&task.id],
+                    |row| row.get(0),
+                )
+                .unwrap()
+            };
+            let mut corrupt: Value = serde_json::from_str(&original).unwrap();
+            corrupt["evidence_version"] = json!(2);
+            {
+                let db = store.db.lock().unwrap();
+                db.execute(
+                    "UPDATE events SET data=?2 WHERE task_id=?1 AND kind='approval.requested'",
+                    params![task.id, corrupt.to_string()],
+                )
+                .unwrap();
+            }
+            assert!(
+                store
+                    .commit_tool_result(
+                        &reloaded,
+                        "write-one",
+                        "write_file",
+                        &approval::tool_error(approval::ApprovalStatus::Denied),
+                        Origin::ApprovalDenied
+                    )
+                    .is_err()
+            );
+            assert_eq!(store.task(&task.id).unwrap().messages, reloaded.messages);
+            {
+                let db = store.db.lock().unwrap();
+                db.execute(
+                    "UPDATE events SET data=?2 WHERE task_id=?1 AND kind='approval.requested'",
+                    params![task.id, original],
+                )
+                .unwrap();
+            }
+            let (result, _) = store
                 .commit_tool_result(
                     &reloaded,
                     "write-one",
                     "write_file",
                     &approval::tool_error(approval::ApprovalStatus::Denied),
-                    Origin::ApprovalDenied
+                    Origin::ApprovalDenied,
                 )
-                .is_err()
-        );
-        assert_eq!(store.task(&task.id).unwrap().messages, reloaded.messages);
-        {
-            let db = store.db.lock().unwrap();
-            db.execute(
-                "UPDATE events SET data=?2 WHERE task_id=?1 AND kind='approval.requested'",
-                params![task.id, original],
-            )
-            .unwrap();
-        }
-        let (result, _) = store
-            .commit_tool_result(
-                &reloaded,
-                "write-one",
-                "write_file",
-                &approval::tool_error(approval::ApprovalStatus::Denied),
-                Origin::ApprovalDenied,
-            )
-            .unwrap();
-        assert_eq!(result.messages.last().unwrap()["tool_call_id"], "write-one");
-        assert_eq!(
-            result.messages.last().unwrap()["content"],
-            approval::tool_error(approval::ApprovalStatus::Denied)
-        );
-        let (replayed, disposition) = store
-            .commit_tool_result(
-                &reloaded,
-                "write-one",
-                "write_file",
-                &approval::tool_error(approval::ApprovalStatus::Denied),
-                Origin::ApprovalDenied,
-            )
-            .unwrap();
-        assert_eq!(
-            disposition,
-            crate::tool_results::CommitDisposition::Replayed
-        );
-        assert_eq!(replayed.messages, result.messages);
-        let events = store.events(&task.run_id, 0).unwrap();
-        assert!(events.iter().any(|event| event.kind == "tool_result"
-            && event.data["result"] == approval::tool_error(approval::ApprovalStatus::Denied)));
-        let requests: Vec<_> = events
-            .iter()
-            .filter(|event| event.kind == "approval.requested")
-            .collect();
-        assert_eq!(requests.len(), 1);
-        assert_eq!(requests[0].data["evidence_version"], 1);
-        assert!(
-            requests[0].data["safe_call_digest"]
-                .as_str()
-                .is_some_and(|digest| digest.len() == 64)
-        );
-        assert!(
-            !serde_json::to_string(&requests[0].data)
-                .unwrap()
-                .contains("sk-abc")
-        );
-        assert!(
-            store
-                .event(
-                    &task.id,
-                    "approval.requested",
-                    json!({"evidence_version":1})
+                .unwrap();
+            assert_eq!(result.messages.last().unwrap()["tool_call_id"], "write-one");
+            assert_eq!(
+                result.messages.last().unwrap()["content"],
+                approval::tool_error(approval::ApprovalStatus::Denied)
+            );
+            let (replayed, disposition) = store
+                .commit_tool_result(
+                    &reloaded,
+                    "write-one",
+                    "write_file",
+                    &approval::tool_error(approval::ApprovalStatus::Denied),
+                    Origin::ApprovalDenied,
                 )
-                .is_err()
-        );
-        assert!(
-            store
-                .event(
-                    &task.id,
-                    "approval.requested",
-                    json!({"safe_call_digest":null})
-                )
-                .is_err()
-        );
+                .unwrap();
+            assert_eq!(
+                disposition,
+                crate::tool_results::CommitDisposition::Replayed
+            );
+            assert_eq!(replayed.messages, result.messages);
+            let events = store.events(&task.run_id, 0).unwrap();
+            assert!(events.iter().any(|event| event.kind == "tool_result"
+                && event.data["result"] == approval::tool_error(approval::ApprovalStatus::Denied)));
+            let requests: Vec<_> = events
+                .iter()
+                .filter(|event| event.kind == "approval.requested")
+                .collect();
+            assert_eq!(requests.len(), 1);
+            assert_eq!(requests[0].data["evidence_version"], 1);
+            assert!(
+                requests[0].data["safe_call_digest"]
+                    .as_str()
+                    .is_some_and(|digest| digest.len() == 64)
+            );
+            assert!(
+                !serde_json::to_string(&requests[0].data)
+                    .unwrap()
+                    .contains("sk-abc")
+            );
+            assert!(
+                store
+                    .event(
+                        &task.id,
+                        "approval.requested",
+                        json!({"evidence_version":1})
+                    )
+                    .is_err()
+            );
+            assert!(
+                store
+                    .event(
+                        &task.id,
+                        "approval.requested",
+                        json!({"safe_call_digest":null})
+                    )
+                    .is_err()
+            );
+        })
+        .unwrap();
     }
 
     #[test]
@@ -4974,6 +4997,7 @@ mod tests {
         std::fs::write(&target, b"original sentinel").unwrap();
         let path = temp.path().join("r04-reopen.db");
         let store = Store::open(&path).unwrap();
+        let (project, task, binding, record, digest) = crate::execution_authority::test_with_store_sync(&store, || {
         let route = Route {
             id: "route".into(),
             name: "route".into(),
@@ -5139,84 +5163,89 @@ mod tests {
         );
         assert_eq!(approved.args_digest, digest);
         assert_eq!(approved.binding_digest, record.binding_digest);
+            (project, task, binding, record, digest)
+        }).unwrap();
         drop(store);
         let reopened = Store::open(&path).unwrap();
-        reopened.recover().unwrap();
-        let mut saved = reopened.task(&task.id).unwrap();
-        assert_eq!(saved.status, "interrupted");
-        assert_eq!(
-            reopened
-                .task_project_binding(&task.id)
-                .unwrap()
-                .unwrap()
-                .project_id,
-            project.id
-        );
-        assert_eq!(
-            reopened
-                .validate_project_task(&saved, true, true)
-                .unwrap()
-                .permission_digest,
-            binding.permission_digest
-        );
-        let recovered = reopened.approval(&record.id).unwrap();
-        assert_eq!(recovered.status, approval::ApprovalStatus::Approved);
-        assert_eq!(
-            recovered.execution_state,
-            approval::ExecutionState::NotStarted
-        );
-        assert_eq!(recovered.args_digest, digest);
-        assert_eq!(recovered.binding_digest, record.binding_digest);
-        let serialized = serde_json::to_string(&saved).unwrap();
-        assert!(!serialized.contains("mock-approval-secret"));
-        assert!(!serialized.contains("nested-secret"));
-        let safe_args: Value = serde_json::from_str(
-            saved.messages[1]["tool_calls"][0]["function"]["arguments"]
-                .as_str()
-                .unwrap(),
-        )
+        crate::execution_authority::test_with_store_sync(&reopened, || {
+            let mut saved = reopened.task(&task.id).unwrap();
+            assert_eq!(saved.status, "interrupted");
+            assert_eq!(
+                reopened
+                    .task_project_binding(&task.id)
+                    .unwrap()
+                    .unwrap()
+                    .project_id,
+                project.id
+            );
+            assert_eq!(
+                reopened
+                    .validate_project_task(&saved, true, true)
+                    .unwrap()
+                    .permission_digest,
+                binding.permission_digest
+            );
+            let recovered = reopened.approval(&record.id).unwrap();
+            assert_eq!(recovered.status, approval::ApprovalStatus::Approved);
+            assert_eq!(
+                recovered.execution_state,
+                approval::ExecutionState::NotStarted
+            );
+            assert_eq!(recovered.args_digest, digest);
+            assert_eq!(recovered.binding_digest, record.binding_digest);
+            let serialized = serde_json::to_string(&saved).unwrap();
+            assert!(!serialized.contains("mock-approval-secret"));
+            assert!(!serialized.contains("nested-secret"));
+            let safe_args: Value = serde_json::from_str(
+                saved.messages[1]["tool_calls"][0]["function"]["arguments"]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+            assert!(safe_args.is_object());
+            assert_ne!(approval::args_digest(&safe_args).unwrap(), digest);
+            saved.status = "queued".into();
+            saved.error = None;
+            reopened.resume_task(&saved, "continue").unwrap();
+            saved.status = "running".into();
+            reopened.save_task(&saved).unwrap();
+            assert_eq!(reopened.task(&task.id).unwrap().status, "running");
+            reopened.validate_project_task(&saved, true, true).unwrap();
+            let error = reopened
+                .claim_approval(&saved, "r04-call", "write_file", &safe_args)
+                .unwrap_err();
+            assert!(matches!(
+                error.downcast_ref::<approval::ApprovalError>(),
+                Some(approval::ApprovalError::BindingConflict { .. })
+            ));
+            let after = reopened.approval(&record.id).unwrap();
+            assert_eq!(after.status, approval::ApprovalStatus::Approved);
+            assert_eq!(after.execution_state, approval::ExecutionState::NotStarted);
+            assert_eq!(after.args_digest, digest);
+            assert_eq!(after.binding_digest, record.binding_digest);
+            assert!(
+                reopened
+                    .workspace_changes_for_task(&task.id)
+                    .unwrap()
+                    .is_empty()
+            );
+            assert!(
+                !reopened
+                    .events(&task.run_id, 0)
+                    .unwrap()
+                    .iter()
+                    .any(|event| event.kind == "tool_start")
+            );
+            assert_eq!(std::fs::read(&target).unwrap(), b"original sentinel");
+        })
         .unwrap();
-        assert!(safe_args.is_object());
-        assert_ne!(approval::args_digest(&safe_args).unwrap(), digest);
-        saved.status = "queued".into();
-        saved.error = None;
-        reopened.resume_task(&saved, "continue").unwrap();
-        saved.status = "running".into();
-        reopened.save_task(&saved).unwrap();
-        assert_eq!(reopened.task(&task.id).unwrap().status, "running");
-        reopened.validate_project_task(&saved, true, true).unwrap();
-        let error = reopened
-            .claim_approval(&saved, "r04-call", "write_file", &safe_args)
-            .unwrap_err();
-        assert!(matches!(
-            error.downcast_ref::<approval::ApprovalError>(),
-            Some(approval::ApprovalError::BindingConflict { .. })
-        ));
-        let after = reopened.approval(&record.id).unwrap();
-        assert_eq!(after.status, approval::ApprovalStatus::Approved);
-        assert_eq!(after.execution_state, approval::ExecutionState::NotStarted);
-        assert_eq!(after.args_digest, digest);
-        assert_eq!(after.binding_digest, record.binding_digest);
-        assert!(
-            reopened
-                .workspace_changes_for_task(&task.id)
-                .unwrap()
-                .is_empty()
-        );
-        assert!(
-            !reopened
-                .events(&task.run_id, 0)
-                .unwrap()
-                .iter()
-                .any(|event| event.kind == "tool_start")
-        );
-        assert_eq!(std::fs::read(&target).unwrap(), b"original sentinel");
     }
 
     #[test]
     fn r02_public_approval_allows_multiple_pending_calls_in_one_group() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("r02-approvals.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let (_, _, _, turn, projected, mut task) = sample_graph(&store);
         task.spec.tools = true;
         task.spec.write_scopes = vec!["src".into()];
@@ -5244,12 +5273,14 @@ mod tests {
         assert!(!replay.1);
         assert_eq!(replay.0.id, second.0.id);
         assert_eq!(store.approvals_for_task(&task.id).unwrap().len(), 2);
+        }).unwrap();
     }
 
     #[test]
     fn r01_current_approval_rechecks_persisted_messages_in_transaction() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("r01-stale.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let (_, _, _, turn, projected, mut task) = sample_graph(&store);
         task.spec.tools = true;
         task.spec.write_scopes = vec!["src".into()];
@@ -5280,6 +5311,7 @@ mod tests {
             store.task(&task.id).unwrap().messages.last().unwrap()["tool_call_id"],
             "r01-stale"
         );
+        }).unwrap();
     }
 
     fn legacy_schema_5(path: &Path) {
@@ -5492,6 +5524,7 @@ mod tests {
     fn turn_identity_idempotency_and_rollback() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("repo.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let (project, session, agent, turn, task, legacy) = sample_graph(&store);
         store
             .commit_turn(
@@ -5588,19 +5621,24 @@ mod tests {
         assert!(!blob.contains("dpapi"));
         assert!(!blob.contains("bearer "));
         assert!(!encoded.to_string().contains("api_key"));
+        }).unwrap();
     }
 
     #[test]
     fn recover_marks_running_turn_interrupted() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("recover.db")).unwrap();
-        let (_, _, _, mut turn, mut task, mut legacy) = sample_graph(&store);
-        turn.status = LifecycleStatus::Running;
-        task.status = LifecycleStatus::Running;
-        legacy.status = "running".into();
-        store
-            .commit_turn(&turn, &[task], turn.idempotency_key.as_deref(), &[legacy])
-            .unwrap();
+        let turn = crate::execution_authority::test_with_store_sync(&store, || {
+            let (_, _, _, mut turn, mut task, mut legacy) = sample_graph(&store);
+            turn.status = LifecycleStatus::Running;
+            task.status = LifecycleStatus::Running;
+            legacy.status = "running".into();
+            store
+                .commit_turn(&turn, &[task], turn.idempotency_key.as_deref(), &[legacy])
+                .unwrap();
+            turn
+        })
+        .unwrap();
         assert_eq!(store.recover().unwrap(), 2);
         assert_eq!(
             store.turn(&turn.id).unwrap().status,
@@ -5625,129 +5663,133 @@ mod tests {
     fn review_fixes_redact_replay_and_real_legacy_run() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("review.db")).unwrap();
-        let (project, _session, mut agent, turn, mut task, mut legacy) = sample_graph(&store);
-        let session = Session {
-            id: SessionId::from("ses-legacy-different"),
-            project_id: project.id,
-            kind: SessionKind::Chat,
-            title: "chat-session".into(),
-            legacy_run_id: "legacy-run-different".into(),
-            created_at: 10,
-            updated_at: 10,
-        };
-        agent.id = AgentId::from("agt-legacy-different");
-        agent.session_id = session.id.clone();
-        task.session_id = session.id.clone();
-        task.agent_id = agent.id.clone();
-        store.insert_session(&session).unwrap();
-        store.insert_agent(&agent).unwrap();
-        legacy.run_id = session.legacy_run_id.clone();
-        legacy.output = "bearer peach-token".into();
-        legacy.error = Some("token=ntn_accountsecret".into());
-        let mut replay_turn = turn.clone();
-        replay_turn.session_id = session.id.clone();
-        let saved = store
-            .commit_turn(
-                &replay_turn,
-                std::slice::from_ref(&task),
-                replay_turn.idempotency_key.as_deref(),
-                std::slice::from_ref(&legacy),
-            )
-            .unwrap();
-        assert_eq!(saved.id, replay_turn.id);
-        let again = store
-            .commit_turn(
-                &Turn {
-                    id: TurnId::from("trn-new-attempt"),
-                    ..replay_turn.clone()
-                },
-                std::slice::from_ref(&task),
-                replay_turn.idempotency_key.as_deref(),
-                &[],
-            )
-            .unwrap();
-        assert_eq!(again.id, replay_turn.id);
-        assert!(store.turn(&TurnId::from("trn-new-attempt")).is_err());
-        let db = Connection::open(temp.path().join("review.db")).unwrap();
-        let legacy_run: String = db
-            .query_row(
-                "SELECT legacy_run_id FROM idempotency_records WHERE key='idem-a'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        let old_run: String = db
-            .query_row(
-                "SELECT run_id FROM idempotency WHERE key='idem-a'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(legacy_run, "legacy-run-different");
-        assert_eq!(old_run, "legacy-run-different");
-        assert_ne!(legacy_run, session.id.0);
-        let stored: String = db
-            .query_row("SELECT value FROM tasks WHERE id=?1", [&legacy.id], |row| {
-                row.get(0)
-            })
-            .unwrap();
-        assert!(!stored.contains("peach-token"));
-        assert!(!stored.contains("ntn_accountsecret"));
-        store
-            .event(
-                &legacy.id,
-                "delta",
-                json!({"text":"xai-notaskey","api_key":"plain-provider-token"}),
-            )
-            .unwrap();
-        store
-            .event(
-                &legacy.id,
-                "tool_result",
-                json!({"nested":{"authorization":"Bearer peach-token"}}),
-            )
-            .unwrap();
-        store
-            .event(
-                &legacy.id,
-                "error",
-                json!({"message":"secret=sk-live-secret"}),
-            )
-            .unwrap();
-        let raw_events: Vec<String> = {
-            let mut stmt = db
-                .prepare("SELECT data FROM events WHERE task_id=?1")
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let (project, _session, mut agent, turn, mut task, mut legacy) = sample_graph(&store);
+            let session = Session {
+                id: SessionId::from("ses-legacy-different"),
+                project_id: project.id,
+                kind: SessionKind::Chat,
+                title: "chat-session".into(),
+                legacy_run_id: "legacy-run-different".into(),
+                created_at: 10,
+                updated_at: 10,
+            };
+            agent.id = AgentId::from("agt-legacy-different");
+            agent.session_id = session.id.clone();
+            task.session_id = session.id.clone();
+            task.agent_id = agent.id.clone();
+            store.insert_session(&session).unwrap();
+            store.insert_agent(&agent).unwrap();
+            legacy.run_id = session.legacy_run_id.clone();
+            legacy.output = "bearer peach-token".into();
+            legacy.error = Some("token=ntn_accountsecret".into());
+            let mut replay_turn = turn.clone();
+            replay_turn.session_id = session.id.clone();
+            let saved = store
+                .commit_turn(
+                    &replay_turn,
+                    std::slice::from_ref(&task),
+                    replay_turn.idempotency_key.as_deref(),
+                    std::slice::from_ref(&legacy),
+                )
                 .unwrap();
-            stmt.query_map([&legacy.id], |row| row.get(0))
-                .unwrap()
-                .collect::<rusqlite::Result<_>>()
-                .unwrap()
-        };
-        let joined = raw_events.join("\n");
-        assert!(!joined.contains("peach-token"));
-        assert!(!joined.contains("plain-provider-token"));
-        assert!(!joined.contains("xai-notaskey"));
-        assert!(!joined.contains("sk-live-secret"));
-        let err = store.event(&legacy.id, "status", json!({"status":"queued"}));
-        let _ = Event {
-            seq: 9,
-            cursor: "8".into(),
-            ..stamped_event(0, &session.id.0, None, &legacy.id, "status", json!({}), 1)
-        };
-        assert!(err.is_ok());
-        let mut injected =
-            stamped_event(4, &session.id.0, None, &legacy.id, "status", json!({}), 1);
-        injected.seq = 4;
-        injected.cursor = "9".into();
-        let mut db = store.db.lock().unwrap();
-        let tx = db.transaction().unwrap();
-        assert!(repository::Repository::append_event(&tx, &injected).is_err());
+            assert_eq!(saved.id, replay_turn.id);
+            let again = store
+                .commit_turn(
+                    &Turn {
+                        id: TurnId::from("trn-new-attempt"),
+                        ..replay_turn.clone()
+                    },
+                    std::slice::from_ref(&task),
+                    replay_turn.idempotency_key.as_deref(),
+                    &[],
+                )
+                .unwrap();
+            assert_eq!(again.id, replay_turn.id);
+            assert!(store.turn(&TurnId::from("trn-new-attempt")).is_err());
+            let db = Connection::open(temp.path().join("review.db")).unwrap();
+            let legacy_run: String = db
+                .query_row(
+                    "SELECT legacy_run_id FROM idempotency_records WHERE key='idem-a'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let old_run: String = db
+                .query_row(
+                    "SELECT run_id FROM idempotency WHERE key='idem-a'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(legacy_run, "legacy-run-different");
+            assert_eq!(old_run, "legacy-run-different");
+            assert_ne!(legacy_run, session.id.0);
+            let stored: String = db
+                .query_row("SELECT value FROM tasks WHERE id=?1", [&legacy.id], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert!(!stored.contains("peach-token"));
+            assert!(!stored.contains("ntn_accountsecret"));
+            store
+                .event(
+                    &legacy.id,
+                    "delta",
+                    json!({"text":"xai-notaskey","api_key":"plain-provider-token"}),
+                )
+                .unwrap();
+            store
+                .event(
+                    &legacy.id,
+                    "tool_result",
+                    json!({"nested":{"authorization":"Bearer peach-token"}}),
+                )
+                .unwrap();
+            store
+                .event(
+                    &legacy.id,
+                    "error",
+                    json!({"message":"secret=sk-live-secret"}),
+                )
+                .unwrap();
+            let raw_events: Vec<String> = {
+                let mut stmt = db
+                    .prepare("SELECT data FROM events WHERE task_id=?1")
+                    .unwrap();
+                stmt.query_map([&legacy.id], |row| row.get(0))
+                    .unwrap()
+                    .collect::<rusqlite::Result<_>>()
+                    .unwrap()
+            };
+            let joined = raw_events.join("\n");
+            assert!(!joined.contains("peach-token"));
+            assert!(!joined.contains("plain-provider-token"));
+            assert!(!joined.contains("xai-notaskey"));
+            assert!(!joined.contains("sk-live-secret"));
+            let err = store.event(&legacy.id, "status", json!({"status":"queued"}));
+            let _ = Event {
+                seq: 9,
+                cursor: "8".into(),
+                ..stamped_event(0, &session.id.0, None, &legacy.id, "status", json!({}), 1)
+            };
+            assert!(err.is_ok());
+            let mut injected =
+                stamped_event(4, &session.id.0, None, &legacy.id, "status", json!({}), 1);
+            injected.seq = 4;
+            injected.cursor = "9".into();
+            let mut db = store.db.lock().unwrap();
+            let tx = db.transaction().unwrap();
+            assert!(repository::Repository::append_event(&tx, &injected).is_err());
+        })
+        .unwrap();
     }
 
     #[test]
     fn legacy_create_run_redacts_prompt_messages_and_errors() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("legacy-create.db")).unwrap();
+        crate::execution_authority::test_with_store_sync(&store, || {
         let mut legacy = sample_graph(&store).5;
         legacy.spec.prompt = "please use sk-promptsecret".into();
         legacy.messages = vec![
@@ -5779,66 +5821,70 @@ mod tests {
             assert!(!raw.contains(secret), "{secret} leaked through create_run");
         }
         assert!(raw.contains("please use"));
+        }).unwrap();
     }
 
     #[test]
     fn dependencies_are_same_turn_and_acyclic() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("deps.db")).unwrap();
-        let (_project, session, agent, turn, mut first, legacy) = sample_graph(&store);
-        let mut second = first.clone();
-        second.id = TaskId::from("tsk-second");
-        second.legacy_task_id = "legacy-second".into();
-        second.depends_on = vec![first.id.clone()];
-        let mut second_legacy = legacy.clone();
-        second_legacy.id = second.legacy_task_id.clone();
-        first.depends_on.clear();
-        store
-            .commit_turn(
-                &turn,
-                &[first.clone(), second.clone()],
-                turn.idempotency_key.as_deref(),
-                &[legacy.clone(), second_legacy],
-            )
-            .unwrap();
-        assert_eq!(
-            store.task_dependencies(&second.id).unwrap(),
-            vec![first.id.clone()]
-        );
-        let mut cycle = turn.clone();
-        cycle.id = TurnId::from("trn-cycle");
-        cycle.request_hash = "digest-cycle".into();
-        cycle.idempotency_key = Some("idem-cycle".into());
-        let mut a = first.clone();
-        a.turn_id = cycle.id.clone();
-        a.id = TaskId::from("tsk-a");
-        a.legacy_task_id = "legacy-a".into();
-        let mut b = second.clone();
-        b.turn_id = cycle.id.clone();
-        b.id = TaskId::from("tsk-b");
-        b.legacy_task_id = "legacy-b".into();
-        a.depends_on = vec![b.id.clone()];
-        b.depends_on = vec![a.id.clone()];
-        let legacy_a = Task {
-            id: a.legacy_task_id.clone(),
-            ..legacy.clone()
-        };
-        let legacy_b = Task {
-            id: b.legacy_task_id.clone(),
-            ..legacy
-        };
-        assert!(
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let (_project, session, agent, turn, mut first, legacy) = sample_graph(&store);
+            let mut second = first.clone();
+            second.id = TaskId::from("tsk-second");
+            second.legacy_task_id = "legacy-second".into();
+            second.depends_on = vec![first.id.clone()];
+            let mut second_legacy = legacy.clone();
+            second_legacy.id = second.legacy_task_id.clone();
+            first.depends_on.clear();
             store
                 .commit_turn(
-                    &cycle,
-                    &[a.clone(), b.clone()],
-                    cycle.idempotency_key.as_deref(),
-                    &[legacy_a, legacy_b]
+                    &turn,
+                    &[first.clone(), second.clone()],
+                    turn.idempotency_key.as_deref(),
+                    &[legacy.clone(), second_legacy],
                 )
-                .is_err()
-        );
-        assert!(store.task_dependencies(&TaskId::from("tsk-a")).is_err());
-        let _ = (session, agent);
+                .unwrap();
+            assert_eq!(
+                store.task_dependencies(&second.id).unwrap(),
+                vec![first.id.clone()]
+            );
+            let mut cycle = turn.clone();
+            cycle.id = TurnId::from("trn-cycle");
+            cycle.request_hash = "digest-cycle".into();
+            cycle.idempotency_key = Some("idem-cycle".into());
+            let mut a = first.clone();
+            a.turn_id = cycle.id.clone();
+            a.id = TaskId::from("tsk-a");
+            a.legacy_task_id = "legacy-a".into();
+            let mut b = second.clone();
+            b.turn_id = cycle.id.clone();
+            b.id = TaskId::from("tsk-b");
+            b.legacy_task_id = "legacy-b".into();
+            a.depends_on = vec![b.id.clone()];
+            b.depends_on = vec![a.id.clone()];
+            let legacy_a = Task {
+                id: a.legacy_task_id.clone(),
+                ..legacy.clone()
+            };
+            let legacy_b = Task {
+                id: b.legacy_task_id.clone(),
+                ..legacy
+            };
+            assert!(
+                store
+                    .commit_turn(
+                        &cycle,
+                        &[a.clone(), b.clone()],
+                        cycle.idempotency_key.as_deref(),
+                        &[legacy_a, legacy_b]
+                    )
+                    .is_err()
+            );
+            assert!(store.task_dependencies(&TaskId::from("tsk-a")).is_err());
+            let _ = (session, agent);
+        })
+        .unwrap();
     }
 
     #[test]
@@ -5866,122 +5912,138 @@ mod tests {
     fn event_task_must_belong_to_turn_or_session() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("event-owner.db")).unwrap();
-        let (_project, session, _agent, turn, task, legacy) = sample_graph(&store);
-        store
-            .commit_turn(
-                &turn,
-                std::slice::from_ref(&task),
-                turn.idempotency_key.as_deref(),
-                std::slice::from_ref(&legacy),
-            )
-            .unwrap();
-        store
-            .event(&legacy.id, "status", json!({"status":"queued"}))
-            .unwrap();
-        let mut db = store.db.lock().unwrap();
-        let tx = db.transaction().unwrap();
-        let mismatch = stamped_event(
-            0,
-            &session.id.0,
-            Some(&turn.id.0),
-            "missing-task",
-            "status",
-            json!({}),
-            1,
-        );
-        assert!(repository::Repository::append_event(&tx, &mismatch).is_err());
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let (_project, session, _agent, turn, task, legacy) = sample_graph(&store);
+            store
+                .commit_turn(
+                    &turn,
+                    std::slice::from_ref(&task),
+                    turn.idempotency_key.as_deref(),
+                    std::slice::from_ref(&legacy),
+                )
+                .unwrap();
+            store
+                .event(&legacy.id, "status", json!({"status":"queued"}))
+                .unwrap();
+            let mut db = store.db.lock().unwrap();
+            let tx = db.transaction().unwrap();
+            let mismatch = stamped_event(
+                0,
+                &session.id.0,
+                Some(&turn.id.0),
+                "missing-task",
+                "status",
+                json!({}),
+                1,
+            );
+            assert!(repository::Repository::append_event(&tx, &mismatch).is_err());
+        })
+        .unwrap();
     }
 
     #[test]
     fn legacy_idempotency_replay_is_explicit() {
         let temp = tempfile::tempdir().unwrap();
         let store = Store::open(&temp.path().join("replay.db")).unwrap();
-        let legacy = {
-            let (_project, session, _agent, _turn, _task, legacy) = sample_graph(&store);
-            assert_eq!(session.legacy_run_id, legacy.run_id);
-            legacy
-        };
-        store
-            .create_run_with_idempotency(
-                &Run {
-                    id: legacy.run_id.clone(),
-                    title: "legacy replay".into(),
-                    kind: SessionKind::Team,
-                    created_at: 1,
-                    tasks: vec![legacy.clone()],
-                },
-                "legacy-key",
-                "digest-legacy",
+        crate::execution_authority::test_with_store_sync(&store, || {
+            let legacy = {
+                let (_project, session, _agent, _turn, _task, legacy) = sample_graph(&store);
+                assert_eq!(session.legacy_run_id, legacy.run_id);
+                legacy
+            };
+            store
+                .create_run_with_idempotency(
+                    &Run {
+                        id: legacy.run_id.clone(),
+                        title: "legacy replay".into(),
+                        kind: SessionKind::Team,
+                        created_at: 1,
+                        tasks: vec![legacy.clone()],
+                    },
+                    "legacy-key",
+                    "digest-legacy",
+                )
+                .unwrap();
+            match store
+                .idempotency_replay("legacy-key", "digest-legacy")
+                .unwrap()
+            {
+                Some(IdempotencyReplay::LegacyRun(run)) => assert_eq!(run.id, legacy.run_id),
+                other => panic!("expected legacy run, got {other:?}"),
+            }
+            assert!(
+                store
+                    .idempotent_turn("legacy-key", "digest-legacy")
+                    .is_err()
+            );
+            assert!(
+                store
+                    .idempotency_replay("legacy-key", "other-digest")
+                    .is_err()
+            );
+            assert!(store.task_dependencies(&TaskId::from("missing")).is_err());
+            let empty = tempfile::tempdir().unwrap();
+            let empty_store = Store::open(&empty.path().join("empty.db")).unwrap();
+            let (_project, _session, _agent, turn, task, legacy_task) =
+                crate::execution_authority::test_with_store_sync(&empty_store, || {
+                    sample_graph(&empty_store)
+                })
+                .unwrap();
+            crate::execution_authority::test_with_store_sync(&empty_store, || {
+                assert!(
+                    empty_store
+                        .commit_turn(&turn, &[], turn.idempotency_key.as_deref(), &[])
+                        .is_err()
+                );
+            })
+            .unwrap();
+            let legacy_copy = legacy_task.clone();
+            assert!(
+                store
+                    .create_run(&Run {
+                        id: legacy_copy.run_id.clone(),
+                        title: "bearer peach-token".into(),
+                        kind: SessionKind::Team,
+                        created_at: 1,
+                        tasks: vec![]
+                    })
+                    .is_err()
+            );
+            let mut colliding = task.clone();
+            colliding.id = TaskId::from(legacy_copy.id.clone());
+            colliding.legacy_task_id = "legacy-other".into();
+            let other = Turn {
+                id: TurnId::from("trn-collide"),
+                request_hash: "digest-collide".into(),
+                idempotency_key: Some("idem-collide".into()),
+                ..turn
+            };
+            let other_legacy = Task {
+                id: "legacy-other".into(),
+                ..legacy_copy
+            };
+            crate::execution_authority::test_with_store_sync(&empty_store, || {
+                assert!(
+                    empty_store
+                        .commit_turn(&other, &[colliding], Some("idem-collide"), &[other_legacy])
+                        .is_err()
+                );
+            })
+            .unwrap();
+            let db = Connection::open(temp.path().join("replay.db")).unwrap();
+            db.execute(
+                "UPDATE idempotency SET request_hash='other-digest' WHERE key='legacy-key'",
+                [],
             )
             .unwrap();
-        match store
-            .idempotency_replay("legacy-key", "digest-legacy")
-            .unwrap()
-        {
-            Some(IdempotencyReplay::LegacyRun(run)) => assert_eq!(run.id, legacy.run_id),
-            other => panic!("expected legacy run, got {other:?}"),
-        }
-        assert!(
-            store
-                .idempotent_turn("legacy-key", "digest-legacy")
-                .is_err()
-        );
-        assert!(
-            store
-                .idempotency_replay("legacy-key", "other-digest")
-                .is_err()
-        );
-        assert!(store.task_dependencies(&TaskId::from("missing")).is_err());
-        let empty = tempfile::tempdir().unwrap();
-        let empty_store = Store::open(&empty.path().join("empty.db")).unwrap();
-        let (_project, _session, _agent, turn, task, legacy_task) = sample_graph(&empty_store);
-        assert!(
-            empty_store
-                .commit_turn(&turn, &[], turn.idempotency_key.as_deref(), &[])
-                .is_err()
-        );
-        let legacy_copy = legacy_task.clone();
-        assert!(
-            store
-                .create_run(&Run {
-                    id: legacy_copy.run_id.clone(),
-                    title: "bearer peach-token".into(),
-                    kind: SessionKind::Team,
-                    created_at: 1,
-                    tasks: vec![]
-                })
-                .is_err()
-        );
-        let mut colliding = task.clone();
-        colliding.id = TaskId::from(legacy_copy.id.clone());
-        colliding.legacy_task_id = "legacy-other".into();
-        let other = Turn {
-            id: TurnId::from("trn-collide"),
-            request_hash: "digest-collide".into(),
-            idempotency_key: Some("idem-collide".into()),
-            ..turn
-        };
-        let other_legacy = Task {
-            id: "legacy-other".into(),
-            ..legacy_copy
-        };
-        assert!(
-            empty_store
-                .commit_turn(&other, &[colliding], Some("idem-collide"), &[other_legacy])
-                .is_err()
-        );
-        let db = Connection::open(temp.path().join("replay.db")).unwrap();
-        db.execute(
-            "UPDATE idempotency SET request_hash='other-digest' WHERE key='legacy-key'",
-            [],
-        )
+            drop(db);
+            assert!(
+                store
+                    .idempotency_replay("legacy-key", "digest-legacy")
+                    .is_err()
+            );
+            assert_eq!(store.runs().unwrap().len(), 1);
+        })
         .unwrap();
-        drop(db);
-        assert!(
-            store
-                .idempotency_replay("legacy-key", "digest-legacy")
-                .is_err()
-        );
-        assert_eq!(store.runs().unwrap().len(), 1);
     }
 }
