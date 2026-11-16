@@ -117,6 +117,12 @@ impl Store {
         let op = crate::execution_authority::current().context("execution operation required")?;
         self.execution_settlement_fence_for(tx, &op)
     }
+    /// Validate an already-unknown original operation for narrowly scoped
+    /// conservative unknown records, never for a successful result or claim.
+    pub(crate) fn execution_unknown_fence(&self, tx: &rusqlite::Transaction<'_>) -> Result<()> {
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        self.authority.unknown_terminal_fence(tx, &op)
+    }
     pub(crate) fn execution_generation(
         &self,
         op: &crate::execution_authority::ExecutionOperation,
@@ -124,8 +130,14 @@ impl Store {
         op.generation_for(&self.authority)
     }
     pub(crate) fn commit_execution_tx(&self, tx: rusqlite::Transaction<'_>) -> Result<()> {
-        if let Err(error) = tx.commit() {
-            self.authority.seal_unknown();
+        // Keep the transaction object until rollback is confirmed: consuming
+        // Transaction::commit would hide its Drop rollback failure.
+        if let Err(error) = tx.execute_batch("COMMIT") {
+            let rolled_back =
+                !tx.is_autocommit() && tx.execute_batch("ROLLBACK").is_ok() && tx.is_autocommit();
+            if !rolled_back {
+                self.authority.seal_unknown();
+            }
             return Err(error.into());
         }
         Ok(())

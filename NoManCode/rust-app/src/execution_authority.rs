@@ -14,7 +14,6 @@ use tokio_util::sync::CancellationToken;
 struct Admission {
     controller: bool,
     open: bool,
-    closed: bool,
     in_flight: usize,
     unknown: usize,
     epoch: Option<i64>,
@@ -48,7 +47,6 @@ impl ExecutionAuthority {
         );
         state.controller = true;
         state.open = false;
-        state.closed = false;
         drop(state);
         let registration = (|| -> Result<i64> {
             let mut db = self.connection()?;
@@ -181,7 +179,6 @@ impl ExecutionAuthority {
     pub(crate) fn close(&self) {
         let mut state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
         state.open = false;
-        state.closed = true;
     }
     pub(crate) fn unknown_terminal_fence(
         self: &Arc<Self>,
@@ -207,7 +204,6 @@ impl ExecutionAuthority {
                     && !operation.settled
                     && operation.unknown
                     && state.controller
-                    && !state.closed
                     && state.unknown > 0
                     && state.epoch == Some(op.scope.epoch),
                 "unknown terminal operation required"
@@ -347,6 +343,11 @@ enum CancellationOwner {
 }
 tokio::task_local! { static CURRENT: Arc<OperationScope>; }
 impl ExecutionOperation {
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn test_sync<R>(&self, work: impl FnOnce() -> R) -> R {
+        CURRENT.sync_scope(self.scope.clone(), work)
+    }
     pub(crate) fn cancellation_token(&self) -> CancellationToken {
         self.scope.cancel.clone()
     }
@@ -1028,6 +1029,16 @@ mod platform {
             Ok(db)
         }
     }
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) fn test_with_active_store_sync<R>(
+    store: &crate::store::Store,
+    work: impl FnOnce() -> R,
+) -> Result<R> {
+    let operation = store.execution_operation(CancellationToken::new())?;
+    Ok(operation.test_sync(work))
 }
 
 /// Run test fixtures under the same controller/recovery/operation path as production.
