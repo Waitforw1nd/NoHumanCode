@@ -269,6 +269,20 @@ class GateTests(unittest.TestCase):
             result = gates.execute(["mock"], self.root, {}, 10, self.root / "marker.log")
         self.assertEqual(result.reason, "child_terminal_unknown")
 
+    def test_supervisor_observes_unknown_stage_and_keeps_original_process(self):
+        from unittest.mock import Mock
+        stage = self.root / "host.stage"
+        stage.write_bytes(b"phase=created_process_handle_unknown details\n")
+        process = Mock(wait=Mock(return_value=0))
+        with patch.object(gates.subprocess, "Popen", return_value=process) as spawn:
+            result = gates.execute(["mock"], self.root, {}, 10, self.root / "stage.log",
+                                   unknown_files=((stage, b"phase=created_process_handle_unknown "),))
+        self.assertEqual(spawn.call_count, 1)
+        self.assertTrue(result.terminal_unknown)
+        self.assertEqual(result.reason, "child_stage_unknown")
+        self.assertFalse(process.kill.called)
+        self.assertFalse(process.terminate.called)
+
     def test_e_only_resolved_paths(self):
         self.assertEqual(gates.e_path(self.root, "tmp").drive.upper(), "E:")
         with self.assertRaises(ValueError):
