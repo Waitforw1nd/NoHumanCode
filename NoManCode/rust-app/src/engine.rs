@@ -109,18 +109,26 @@ impl Engine {
     pub fn enable_builtin_agent(
         &self,
     ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
+        let _operation = self
+            .lifecycle_ticket()
+            .map_err(|_| crate::agent_runtime::AgentError::Internal)?;
         self.agent_runtime.enable_persisted(&self.store)
     }
     pub fn disable_builtin_agent(
         &self,
     ) -> std::result::Result<(), crate::agent_runtime::AgentError> {
+        let _operation = self
+            .lifecycle_ticket()
+            .map_err(|_| crate::agent_runtime::AgentError::Internal)?;
         self.agent_runtime.disable()
     }
     /// In-memory control; the next process starts with the builtin enabled.
     pub fn disable_builtin_provider(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.provider_runtime.disable()
     }
     pub fn enable_builtin_provider(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.provider_runtime.enable_persisted(&self.store)
     }
     pub fn builtin_provider_status(
@@ -1506,17 +1514,21 @@ impl Engine {
     }
     /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_files(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.disable_builtin_files()
     }
 
     pub fn unload_builtin_files(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.unload_builtin_files()
     }
     /// In-memory component control only. Persistent desired state is unchanged.
     pub fn disable_builtin_shell(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.disable_builtin_shell()
     }
     pub fn unload_builtin_shell(&self) -> Result<()> {
+        let _operation = self.lifecycle_ticket()?;
         self.tool_runtime.unload_builtin_shell()
     }
     pub fn key(&self, route: &Route) -> Result<String> {
@@ -2169,6 +2181,9 @@ impl Engine {
             };
             if typed_unknown || claim_unknown {
                 engine.external_outcome_unknown.store(true, Ordering::Release);
+                if let Some(operation) = crate::execution_authority::current() {
+                    operation.seal_unknown();
+                }
             }
             match result {
                 Ok(()) => {
@@ -2189,7 +2204,11 @@ impl Engine {
                 }
             }
             task.updated_at = now();
-            let saved = engine.store.save_running_snapshot(&task);
+            let saved = if typed_unknown || claim_unknown {
+                engine.store.save_unknown_terminal(&task)
+            } else {
+                engine.store.save_running_snapshot(&task)
+            };
             if let Err(error) = &saved {
                 // A terminal database failure must be visible in the host
                 // logs. Silently treating the in-memory result as durable
@@ -2531,8 +2550,12 @@ impl Engine {
         key: &str,
         cancel: &CancellationToken,
     ) -> Result<()> {
-        self.tool_calls
-            .execute_or_wait(task, call, name, args, key, cancel)
+        let operation = self.store.execution_operation(cancel.clone())?;
+        operation
+            .run(
+                self.tool_calls
+                    .execute_or_wait(task, call, name, args, key, cancel),
+            )
             .await
     }
     #[cfg(test)]
@@ -2547,12 +2570,33 @@ impl Engine {
         approval_id: Option<&str>,
         lease: crate::tool_runtime::ToolLease,
     ) -> Result<()> {
-        self.tool_calls
-            .perform_tool(task, tool_call_id, name, args, key, approval_id, lease)
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(self.tool_calls.perform_tool(
+                task,
+                tool_call_id,
+                name,
+                args,
+                key,
+                approval_id,
+                lease,
+            ))
             .await
     }
 
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
+        // Preserve the durable unresolved-effect diagnosis even when that
+        // effect has already closed admission. This read cannot grant work.
+        for record in self.store.approvals_for_task(id)? {
+            if matches!(
+                record.execution_state,
+                approval::ExecutionState::Unknown | approval::ExecutionState::Claimed
+            ) {
+                return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
+            }
+        }
         let operation = self
             .store
             .execution_operation(self.shutdown_requested.clone())?;
@@ -2688,6 +2732,23 @@ impl Engine {
         }
     }
 
+    fn lifecycle_ticket(&self) -> Result<crate::execution_authority::ExecutionOperation> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        {
+            let mut db = self
+                .store
+                .db
+                .lock()
+                .map_err(|_| anyhow::anyhow!("store lock poisoned"))?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            self.store.execution_fence_for(&tx, &operation)?;
+            self.store.commit_execution_tx(tx)?;
+        }
+        Ok(operation)
+    }
+
     fn ensure_accepting(&self) -> Result<()> {
         ensure!(
             !self.shutdown_requested.is_cancelled(),
@@ -2752,7 +2813,7 @@ impl Engine {
             if slot.is_none() && !self.shutdown_requested.is_cancelled() {
                 match self.store.execution_operation(CancellationToken::new()) {
                     Ok(op) => *slot = Some(op),
-                    Err(_) => self.background_failed.store(true, Ordering::Release),
+                    Err(_) => {} // The gate-protected ID set decides whether a ticket is needed.
                 }
             }
         }
@@ -2791,6 +2852,9 @@ impl Engine {
                 .collect();
             let store = self.store.clone();
             let op = self.shutdown_operation.lock().unwrap().take();
+            if ids.is_empty() {
+                return;
+            }
             self.spawn_background(async move {
                 tokio::task::spawn_blocking(move || {
                     let op = op.context("shutdown operation unavailable")?;
@@ -3130,7 +3194,7 @@ pub(crate) mod workspace_phase_tests {
             drop(old);
             let db = rusqlite::Connection::open(&path).unwrap();
             // Rebuild the actual historical DDL; merely lowering user_version would hide migration bugs.
-            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
+            db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
             {
                 let tx = db.unchecked_transaction().unwrap();
                 crate::repository::apply_schema_12(&tx).unwrap();
@@ -3146,7 +3210,7 @@ pub(crate) mod workspace_phase_tests {
             fn all_rows(
                 db: &rusqlite::Connection,
             ) -> std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>> {
-                let mut rows = n10_rows(db);
+                let mut rows = n10_business_rows(db);
                 for name in [
                     "plugin_desired",
                     "plugin_management_requests",
@@ -3167,7 +3231,7 @@ pub(crate) mod workspace_phase_tests {
             }
             let before = all_rows(&db);
             let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-            assert_eq!(engine.store.schema_version().unwrap(), 17);
+            assert_eq!(engine.store.schema_version().unwrap(), 18);
             assert!(!engine.is_busy());
             let current = engine.plugin_status("builtin.files").unwrap();
             assert_eq!(current.version, "1.2.0");
@@ -3221,10 +3285,12 @@ pub(crate) mod workspace_phase_tests {
                             == rusqlite::types::Value::Text(
                                 crate::repository::RUNTIME_MANAGEMENT_MIGRATION_ID.into(),
                             )
+                        || row[1] == rusqlite::types::Value::Text("execution-owner-v18".into())
                 })
                 .cloned()
                 .collect();
-            assert_eq!(worktree_markers.len(), 4);
+            assert_eq!(worktree_markers.len(), 5);
+            assert_eq!(n10_epoch(&db), 1);
             let shell_rows: Vec<_> = after["plugin_desired"]
                 .iter()
                 .filter(|row| row[1] == rusqlite::types::Value::Text("builtin.shell".into()))
@@ -3380,6 +3446,19 @@ pub(crate) mod workspace_phase_tests {
                 (name, rows)
             })
             .collect()
+    }
+    fn n10_business_rows(
+        db: &rusqlite::Connection,
+    ) -> std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>> {
+        let mut rows = n10_rows(db);
+        rows.remove("execution_owner");
+        rows
+    }
+    fn n10_epoch(db: &rusqlite::Connection) -> i64 {
+        db.query_row("SELECT epoch FROM execution_owner WHERE id=1", [], |r| {
+            r.get(0)
+        })
+        .unwrap()
     }
     #[tokio::test]
     async fn n10_disable_first_preserves_decision_and_refuses_claim_without_side_effects() {
@@ -3560,7 +3639,7 @@ pub(crate) mod workspace_phase_tests {
         drop(engine);
         let path = temp.path().join("phase.db");
         let db = rusqlite::Connection::open(&path).unwrap();
-        db.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
+        db.execute_batch("DROP TABLE IF EXISTS execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
         {
             let tx = db.unchecked_transaction().unwrap();
             crate::repository::verify_current_schema(&tx).unwrap();
@@ -3579,7 +3658,7 @@ pub(crate) mod workspace_phase_tests {
             assert_eq!(tx.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('plugin_desired','plugin_management_requests')", [], |r| r.get::<_,u64>(0)).unwrap(), 0);
             tx.commit().unwrap();
         }
-        let before = n10_rows(&db);
+        let before = n10_business_rows(&db);
         for table in [
             "tasks",
             "approvals",
@@ -3612,10 +3691,10 @@ pub(crate) mod workspace_phase_tests {
             11
         );
         assert_eq!(db.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('plugin_desired','plugin_management_requests')", [], |r| r.get::<_,u64>(0)).unwrap(), 0);
-        assert_eq!(n10_rows(&db), before);
+        assert_eq!(n10_business_rows(&db), before);
         db.execute_batch("DROP TRIGGER fail_plugin_marker").unwrap();
         let migrated = Arc::new(Store::open(&path).unwrap());
-        assert_eq!(migrated.schema_version().unwrap(), 17);
+        assert_eq!(migrated.schema_version().unwrap(), 18);
         assert_eq!(migrated.plugin_desired().unwrap().revision, 0);
         assert!(migrated.plugin_desired().unwrap().enabled);
         let mut before = before;
@@ -3645,11 +3724,13 @@ pub(crate) mod workspace_phase_tests {
         ] {
             assert!(before.insert(name.into(), vec![]).is_none());
         }
-        assert_eq!(n10_rows(&db), before);
+        assert_eq!(n10_business_rows(&db), before);
+        assert_eq!(n10_epoch(&db), 0);
         let reopened = Engine::new(migrated, 2).unwrap();
+        assert_eq!(n10_epoch(&db), 1);
         n10_set(&reopened, false, 0, "off");
         n10_set(&reopened, true, 1, "on");
-        assert_eq!(n10_rows(&db), before);
+        assert_eq!(n10_business_rows(&db), before);
         assert!(!reopened.is_busy());
         let resume = reopened
             .resume(&task_id, "must remain sealed")
@@ -3659,7 +3740,7 @@ pub(crate) mod workspace_phase_tests {
             resume.downcast_ref::<crate::checkpoint::CheckpointError>(),
             Some(&crate::checkpoint::CheckpointError::Conflict)
         );
-        assert_eq!(n10_rows(&db), before);
+        assert_eq!(n10_business_rows(&db), before);
     }
 
     #[test]
@@ -3747,8 +3828,10 @@ pub(crate) mod workspace_phase_tests {
             approval::ExecutionState::Unknown
         );
         assert_eq!(store.task(task_id).unwrap().status, "interrupted");
-        let after_recovery = n10_rows(&db);
+        let after_recovery = n10_business_rows(&db);
+        let epoch_after_recovery = n10_epoch(&db);
         let restarted = Engine::new(store, 2).unwrap();
+        assert_eq!(n10_epoch(&db), epoch_after_recovery + 1);
         let state = restarted.plugin_status("builtin.files").unwrap();
         assert!(!state.desired.enabled && state.converged && !state.runtime.admission_open);
         assert_eq!(state.runtime.effects_count, 0);
@@ -3763,7 +3846,7 @@ pub(crate) mod workspace_phase_tests {
                 .current
                 .converged
         );
-        assert_eq!(n10_rows(&db), after_recovery); // no launch, unknown retry, grant replacement, or old Task writes
+        assert_eq!(n10_business_rows(&db), after_recovery); // no launch, unknown retry, grant replacement, or old Task writes
         assert_eq!(
             std::fs::read(temp.path().join("src/a.txt")).unwrap(),
             b"before-a"
@@ -3779,6 +3862,7 @@ pub(crate) mod workspace_phase_tests {
         restarted.unload_builtin_files().unwrap();
         drop(restarted);
         let enabled_restart = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        assert_eq!(n10_epoch(&db), epoch_after_recovery + 2);
         assert!(
             enabled_restart
                 .plugin_status("builtin.files")
@@ -3786,7 +3870,7 @@ pub(crate) mod workspace_phase_tests {
                 .converged
         );
         assert!(!enabled_restart.is_busy());
-        assert_eq!(n10_rows(&db), after_recovery);
+        assert_eq!(n10_business_rows(&db), after_recovery);
         assert_eq!(
             std::fs::read(temp.path().join("src/a.txt")).unwrap(),
             b"before-a"
@@ -4094,9 +4178,13 @@ pub(crate) mod workspace_phase_tests {
                         .unwrap(),
                 )
                 .unwrap();
-                let error = engine
-                    .store
-                    .claim_approval(&task, "shell-call", "run_command", &args)
+                let error =
+                    crate::execution_authority::test_with_active_store_sync(&engine.store, || {
+                        engine
+                            .store
+                            .claim_approval(&task, "shell-call", "run_command", &args)
+                    })
+                    .unwrap()
                     .unwrap_err();
                 assert_eq!(
                     error.downcast_ref::<crate::plugin_management::PluginManagementError>(),
@@ -4330,10 +4418,10 @@ pub(crate) mod workspace_phase_tests {
                 .downcast_ref::<approval::ApprovalError>(),
             Some(approval::ApprovalError::UnknownResult { .. })
         ));
-        let before = n10_rows(&engine.store.db.lock().unwrap());
+        let before = n10_business_rows(&engine.store.db.lock().unwrap());
         shell_set(&engine, false, 0, "unknown-off");
         shell_set(&engine, true, 1, "unknown-on");
-        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), before);
+        assert_eq!(n10_business_rows(&engine.store.db.lock().unwrap()), before);
         drop(engine);
         let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
         assert!(store.recover().unwrap() > 0);
@@ -4341,7 +4429,8 @@ pub(crate) mod workspace_phase_tests {
             store.approval(&pending.id).unwrap().execution_state,
             approval::ExecutionState::Unknown
         );
-        let after = n10_rows(&store.db.lock().unwrap());
+        let after = n10_business_rows(&store.db.lock().unwrap());
+        let epoch_after_recovery = n10_epoch(&store.db.lock().unwrap());
         for table in [
             "task_network_bindings",
             "network_authorizations",
@@ -4350,6 +4439,10 @@ pub(crate) mod workspace_phase_tests {
             assert_eq!(after[table], before[table]);
         }
         let restarted = Engine::new(store, 2).unwrap();
+        assert_eq!(
+            n10_epoch(&restarted.store.db.lock().unwrap()),
+            epoch_after_recovery + 1
+        );
         assert!(matches!(
             restarted
                 .resume(&id, "still must not retry")
@@ -4358,7 +4451,10 @@ pub(crate) mod workspace_phase_tests {
                 .downcast_ref::<approval::ApprovalError>(),
             Some(approval::ApprovalError::UnknownResult { .. })
         ));
-        assert_eq!(n10_rows(&restarted.store.db.lock().unwrap()), after);
+        assert_eq!(
+            n10_business_rows(&restarted.store.db.lock().unwrap()),
+            after
+        );
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         assert!(!temp.path().join("shell-marker.txt").exists());
         eprintln!(
@@ -4441,7 +4537,7 @@ pub(crate) mod workspace_phase_tests {
             )
             .unwrap();
         assert_eq!(state, "claimed");
-        let before = n10_rows(&observer);
+        let before = n10_business_rows(&observer);
         assert!(!temp.path().join("shell-marker.txt").exists());
         let exit = child.stop();
         assert!(!exit.success());
@@ -4454,7 +4550,8 @@ pub(crate) mod workspace_phase_tests {
             approval::ExecutionState::Unknown
         );
         assert_eq!(store.task(task_id).unwrap().status, "interrupted");
-        let after = n10_rows(&store.db.lock().unwrap());
+        let after = n10_business_rows(&store.db.lock().unwrap());
+        let epoch_after_recovery = n10_epoch(&store.db.lock().unwrap());
         for table in [
             "task_network_bindings",
             "network_authorizations",
@@ -4463,9 +4560,13 @@ pub(crate) mod workspace_phase_tests {
             assert_eq!(after[table], before[table]);
         }
         let engine = Engine::new(store, 2).unwrap();
+        assert_eq!(
+            n10_epoch(&engine.store.db.lock().unwrap()),
+            epoch_after_recovery + 1
+        );
         shell_set(&engine, false, 0, "crash-off");
         shell_set(&engine, true, 1, "crash-on");
-        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), after);
+        assert_eq!(n10_business_rows(&engine.store.db.lock().unwrap()), after);
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             assert!(matches!(
                 engine
@@ -4476,7 +4577,7 @@ pub(crate) mod workspace_phase_tests {
                 Some(approval::ApprovalError::UnknownResult { .. })
             ));
         });
-        assert_eq!(n10_rows(&engine.store.db.lock().unwrap()), after);
+        assert_eq!(n10_business_rows(&engine.store.db.lock().unwrap()), after);
         assert!(!engine.is_busy());
         assert!(!temp.path().join("shell-marker.txt").exists());
         let task = engine.store.task(task_id).unwrap();

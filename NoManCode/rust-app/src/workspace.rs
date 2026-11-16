@@ -6,6 +6,50 @@ use anyhow::{Context, Result, bail, ensure};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
+pub(crate) struct FileEffectGuard {
+    operation: Option<crate::execution_authority::ExecutionOperation>,
+    generation: Option<Box<dyn crate::process_lifetime::DomainLease>>,
+}
+impl FileEffectGuard {
+    pub(crate) fn begin(store: &crate::store::Store) -> Result<Self> {
+        let operation = crate::execution_authority::current().context("file operation required")?;
+        let generation = store.execution_generation(&operation)?;
+        Ok(Self {
+            operation: Some(operation),
+            generation: Some(generation),
+        })
+    }
+    pub(crate) fn validate(&self, store: &crate::store::Store) -> Result<()> {
+        let operation = self.operation.as_ref().context("file operation missing")?;
+        ensure!(self.generation.is_some(), "file generation missing");
+        let mut db = store
+            .db
+            .lock()
+            .map_err(|_| anyhow::anyhow!("store lock poisoned"))?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        store.execution_settlement_fence_for(&tx, operation)?;
+        store.commit_execution_tx(tx)
+    }
+    pub(crate) fn settle(mut self) {
+        if let Some(generation) = self.generation.take() {
+            generation.settle();
+        }
+        self.operation.take();
+    }
+}
+impl Drop for FileEffectGuard {
+    fn drop(&mut self) {
+        if let Some(mut generation) = self.generation.take() {
+            generation.seal_unknown();
+            // No evidence that a partially attempted write completed.
+            std::mem::forget(generation);
+            if let Some(operation) = self.operation.take() {
+                std::mem::forget(operation);
+            }
+        }
+    }
+}
+
 pub(crate) fn read_safe_file(path: &Path) -> Result<Option<Vec<u8>>> {
     let metadata = match std::fs::symlink_metadata(path) {
         Ok(value) => value,
@@ -240,10 +284,56 @@ pub fn definitions(task: &Task) -> Vec<Value> {
     tools.push(definition("run_wasm","Run a pre-installed JSON-only WASM plugin. It has no host imports, filesystem, network, clock or secrets.",json!({"plugin":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},"input":{"type":"object"}}),&["plugin","input"]));
     tools
 }
+tokio::task_local! { static WRITE_AUTHORITY: (); }
+
+#[derive(Debug)]
+pub(crate) struct WriteNotStarted;
+impl std::fmt::Display for WriteNotStarted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("write_file rejected before filesystem effects")
+    }
+}
+impl std::error::Error for WriteNotStarted {}
+
+// The public compatibility entry cannot manufacture a durable write claim.
 pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
-    ensure!(task.spec.tools, "当前任务未启用项目工具");
+    ensure!(
+        name != "write_file",
+        "write_file requires a durable host claim"
+    );
+    ensure!(name != "run_wasm", "run_wasm is not available");
+    execute_inner(task, name, args).await
+}
+
+// Only the host's claimed, generation-held tool path installs this scope.
+pub(crate) async fn with_write_authority<F: std::future::Future>(work: F) -> F::Output {
+    WRITE_AUTHORITY.scope((), work).await
+}
+
+pub(crate) async fn execute_builtin(task: &Task, name: &str, args: &Value) -> Result<Value> {
+    ensure!(name != "run_wasm", "run_wasm is not available");
+    if name == "write_file" {
+        ensure!(
+            WRITE_AUTHORITY.try_with(|_| ()).is_ok(),
+            "write_file requires a durable host claim"
+        );
+    }
+    execute_inner(task, name, args).await
+}
+
+async fn execute_inner(task: &Task, name: &str, args: &Value) -> Result<Value> {
     let root = Path::new(&task.workspace);
-    crate::workspace_identity::verify_directory_policy(root)?;
+    if name == "write_file" {
+        (|| -> Result<()> {
+            ensure!(task.spec.tools, "当前任务未启用项目工具");
+            crate::workspace_identity::verify_directory_policy(root)?;
+            Ok(())
+        })()
+        .map_err(|_| WriteNotStarted)?;
+    } else {
+        ensure!(task.spec.tools, "当前任务未启用项目工具");
+        crate::workspace_identity::verify_directory_policy(root)?;
+    }
     match name {
         "list_files" => {
             let relative = args["path"].as_str().unwrap_or(".");
@@ -351,10 +441,15 @@ pub async fn execute(task: &Task, name: &str, args: &Value) -> Result<Value> {
             Ok(json!({"matches":matches,"limit":max_results}))
         }
         "write_file" => {
-            let relative = args["path"].as_str().context("缺少 path")?;
-            let content = args["content"].as_str().context("缺少 content")?;
-            ensure!(content.len() <= 262_144, "单个文件写入大于 256 KiB");
-            let path = resolve(root, relative, true, &task.spec.write_scopes)?;
+            let (relative, content, path) = (|| -> Result<_> {
+                let relative = args["path"].as_str().context("缺少 path")?;
+                let content = args["content"].as_str().context("缺少 content")?;
+                ensure!(content.len() <= 262_144, "单个文件写入大于 256 KiB");
+                let path = resolve(root, relative, true, &task.spec.write_scopes)?;
+                ensure!(path.parent().is_some(), "文件没有父目录");
+                Ok((relative, content, path))
+            })()
+            .map_err(|_| WriteNotStarted)?;
             // Avoid replacing a hard link that could mutate a file outside the project.
             let parent = path.parent().context("文件没有父目录")?;
             std::fs::create_dir_all(parent)?;

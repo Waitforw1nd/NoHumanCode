@@ -343,6 +343,8 @@ impl ProviderClient {
             builder = builder.json(body);
         }
         let request = builder.build().map_err(|_| TransportError::Invalid)?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&permit.target.endpoint, "network_before_send");
         let _call_id = permit.call_id;
         let (operation, authority) = permit.authority.ok_or(TransportError::Invalid)?;
         let generation = operation
