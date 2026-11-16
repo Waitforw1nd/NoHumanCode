@@ -1760,8 +1760,7 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
         let (base, calls, _provider) = provider_server_at(vec![vec![]], address).await;
         let store = Arc::new(Store::open(&db_path).unwrap());
         configure_live(&store, temp.path(), &base);
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         let (origin, token, _http) = serve_http_engine(engine.clone()).await;
         let response = client()
             .post(format!("{origin}/api/approvals/{}/decision", approval.id))
@@ -1804,8 +1803,7 @@ fn ah05_shutdown_reopen_http_decision_without_worker_then_resume_once() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let store = Arc::new(Store::open(&db_path).unwrap());
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         assert_eq!(
             engine.store.approval(&approval.id).unwrap().execution_state,
             ExecutionState::Finished
@@ -1888,8 +1886,7 @@ fn ah06_real_command_side_effect_then_shutdown_recovers_unknown() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let store = Arc::new(Store::open(&db_path).unwrap());
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         let (origin, token, _http) = serve_http_engine(engine.clone()).await;
         let response = client()
             .get(format!("{origin}/api/approvals/{}", approval.id))
@@ -1988,8 +1985,7 @@ fn ah06_denied_http_decision_survives_real_runtime_restart_without_execution() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let store = Arc::new(Store::open(&db_path).unwrap());
-        let engine = Engine::new(store, 2).unwrap();
-        engine.store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store, 2).unwrap();
         let record = engine.store.approval(&approval.id).unwrap();
         assert_eq!(record.status, ApprovalStatus::Denied);
         assert_eq!(record.execution_state, ExecutionState::NotStarted);
@@ -2204,8 +2200,7 @@ fn n19_redacted_denial_and_cancellation_reconcile_after_runtime_restart() {
             let (base, calls, _provider) = provider_server_at(vec![vec![], vec![]], address).await;
             let store = Arc::new(Store::open(&db_path).unwrap());
             configure_live(&store, temp.path(), &base);
-            let engine = Engine::new(store, 2).unwrap();
-            engine.store.recover().unwrap();
+            let (engine, _) = Engine::new_recovered(store, 2).unwrap();
             let (origin, token, _http) = serve_http_engine(engine.clone()).await;
             let response = client()
                 .get(format!("{origin}/api/approvals/{}", approval.id))
