@@ -89,3 +89,47 @@ python -B NoManCode/rust-app/tools/lifecycle/test_lifecycle_gates.py
 These use an independent temporary mock gate under this tree's `.local`, never the
 real shared gate. Actual Cargo, native process supervision and CLI regressions still
 require the manager's exclusive real validation window.
+# Controlled W2 matrix
+
+`w2_controlled.py` is the manager-only replacement for the old
+`tests/support/wasm_worker_process/run-controlled.ps1` entry point. It holds the
+same Git-common-dir `nhc-heavy-window.lock` through both builds, ignored-test
+listing and every selected case. It never calls the old runner or its private
+lock. Use only after integration of D's four W07 tests and the reviewed runner,
+under the manager's sole heavy window. For a single case from the repo root:
+
+```powershell
+python -B NoManCode/rust-app/tools/lifecycle/w2_controlled.py `
+  --head <full-head> --product-tree <full-product-tree> --rust-tree <full-rust-tree> `
+  --attempt w2-attempt1 --step-timeout-seconds 1800 `
+  --case wasm_worker_process_tests::fault_matrix::w07_bound_same_domain_and_cross_domain
+```
+
+Repeat `--case` for explicitly selected distinct cases, or use `--all` to run
+the 21 W2 cases plus four W07 cases. A partial selection is not full matrix
+validation. Each run owns a fresh attempt; output/target default to
+`.local/lifecycle-w2/<attempt>` and `.local/lifecycle-w2-target`, respectively.
+All active paths must resolve to E and be outside the product tree. The locked,
+offline MSVC target build uses the normal build environment discovery; it
+selects each worker, probe and lib-test from that invocation's Cargo JSON by
+name, kind, source, profile and unique successful build-finished. Independent
+copies and SHA256 records are retained in `fixed/`, `bins-fixed.json`, and
+`lib-fixed.json`.
+
+The ignored listing within the controlled W2 namespace must match the entire
+mapped case and helper set, including for a partial selection.
+Each case starts a separate fixed lib-test with exact ignored filter, private
+worker/probe copies, TMP, stage log and run nonce. Each must report exactly one
+passing test; failures, `not established`, stage creation-handle unknown,
+terminal unknown, or timeout stop later cases. All four W05 helper stage files
+are monitored in addition to the main stage file. `manifest.json`, source
+snapshots, per-step logs/result JSON and each `cases/case-NN` directory remain
+as evidence. A successful direct process exit is not proof that descendants
+have exited. On unknown keep the same supervisor, original process objects,
+gate and all evidence; do not guess PIDs, kill the supervisor, delete the gate,
+or start another run. The manager reconciles all original process/Job/I/O
+objects before any subsequent heavy window. Even successful attempts retain
+the gate for that review.
+
+Pure process-mocked checks: `python -B NoManCode/rust-app/tools/lifecycle/test_w2_controlled.py`
+and `python -B NoManCode/rust-app/tools/lifecycle/test_lifecycle_gates.py`.
