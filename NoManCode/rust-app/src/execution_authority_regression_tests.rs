@@ -56,6 +56,51 @@ fn real_old_body_blocks_new_epoch_after_controller_drop_until_settled() {
     assert_eq!(read_owner(), (before.0 + 1, "active".to_owned()));
 }
 
+#[test]
+fn unknown_owner_survives_dropping_every_external_reference() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("sticky.db");
+    let store = Arc::new(Store::open(&path).unwrap());
+    let engine = Engine::new(store.clone(), 1).unwrap();
+    let op = store.execution_operation(CancellationToken::new()).unwrap();
+    let authority = Arc::downgrade(&store.authority);
+    let old_store = Arc::downgrade(&store);
+    let before: (i64, String) = store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    // Exercise the real unknown transition on the original capability; this
+    // is an injected unknown, not evidence of a particular external failure.
+    op.seal_unknown();
+    drop(op);
+    drop(engine);
+    drop(store);
+    assert!(old_store.upgrade().is_none());
+    assert!(
+        authority.upgrade().is_some(),
+        "unknown must retain the original domain owner"
+    );
+    let reopened = Arc::new(Store::open(&path).unwrap());
+    assert!(Engine::new(reopened.clone(), 1).is_err());
+    let after: (i64, String) = reopened
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(after, before);
+}
+
 fn value(store: &Store) -> Option<String> {
     use rusqlite::OptionalExtension;
     store
