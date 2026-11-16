@@ -49,6 +49,22 @@ fn ensure_resume_unsealed(db: &Connection, task_id: &str) -> Result<()> {
 pub struct Store {
     pub(crate) db: Mutex<Connection>,
 }
+
+fn pending_resume_inputs_tx(db: &Connection, task_id: &str) -> Result<Vec<(i64, String)>> {
+    let mut statement = db.prepare("SELECT e.seq,e.data FROM events e WHERE e.task_id=?1 AND e.kind='resume' AND json_extract(e.data,'$.delivery_version')=1 AND json_extract(e.data,'$.pending')=1 AND NOT EXISTS (SELECT 1 FROM events c WHERE c.task_id=e.task_id AND c.kind='unknown:resume_consumed' AND json_extract(c.data,'$.delivery_version')=1 AND json_extract(c.data,'$.resume_seq')=e.seq) ORDER BY e.seq")?;
+    let rows = statement.query_map([task_id], |r| {
+        Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+    })?;
+    rows.map(|row| {
+        let (seq, raw) = row?;
+        let value: Value = serde_json::from_str(&raw)?;
+        let message = value["message"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("继续输入记录损坏"))?;
+        Ok((seq, message.to_owned()))
+    })
+    .collect()
+}
 pub struct TurnBundle<'a> {
     pub project: &'a Project,
     pub session: &'a Session,
@@ -867,6 +883,14 @@ impl Store {
     }
 
     pub fn resume_task(&self, task: &Task, input: &str) -> Result<()> {
+        self.resume_task_inner(task, input, false)
+    }
+
+    pub(crate) fn resume_task_with_pending_input(&self, task: &Task, input: &str) -> Result<()> {
+        self.resume_task_inner(task, input, true)
+    }
+
+    fn resume_task_inner(&self, task: &Task, input: &str, pending: bool) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         ensure_resume_unsealed(&tx, &task.id)?;
@@ -875,9 +899,58 @@ impl Store {
         crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
         save_task_tx(&tx, task, true)?;
         task_event_tx(&tx, &task.id, "delta", json!({"text": "\n\n—— 继续 ——\n"}))?;
-        task_event_tx(&tx, &task.id, "resume", json!({"message": input}))?;
+        task_event_tx(
+            &tx,
+            &task.id,
+            "resume",
+            json!({"message": input, "delivery_version": 1, "pending": pending}),
+        )?;
         tx.commit()?;
         Ok(())
+    }
+
+    /// Only versioned pending inputs are replayed. Historical resume events do
+    /// not identify whether their message was already delivered and stay inert.
+    #[cfg(test)]
+    pub(crate) fn pending_resume_inputs(&self, task_id: &str) -> Result<Vec<(i64, String)>> {
+        pending_resume_inputs_tx(&self.db.lock().unwrap(), task_id)
+    }
+
+    pub(crate) fn consume_resume_inputs(&self, caller: &Task) -> Result<Task> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let pending = pending_resume_inputs_tx(&tx, &caller.id)?;
+        if pending.is_empty() {
+            return Ok(caller.clone());
+        }
+        let durable = legacy_task_row(&tx, &caller.id)?;
+        anyhow::ensure!(
+            safe_task_value(caller)?["messages"] == safe_task_value(&durable)?["messages"],
+            "继续输入的消息快照已变化"
+        );
+        approval::validate_call_history(&durable.messages)?;
+        anyhow::ensure!(
+            crate::tool_call_application::unanswered_tool_calls(&durable.messages).is_empty(),
+            "工具调用组未闭合，不能追加继续输入"
+        );
+        let mut task = caller.clone();
+        for (_, message) in &pending {
+            task.messages
+                .push(json!({"role":"user", "content":message}));
+        }
+        task.updated_at = now();
+        let protected = protect_running_projection(&tx, &task)?;
+        save_task_tx(&tx, &protected, false)?;
+        for (seq, _) in pending {
+            task_event_tx(
+                &tx,
+                &task.id,
+                "unknown:resume_consumed",
+                json!({"delivery_version":1,"resume_seq":seq}),
+            )?;
+        }
+        tx.commit()?;
+        Ok(protected)
     }
     pub fn task(&self, id: &str) -> Result<Task> {
         let db = self.db.lock().unwrap();
@@ -972,6 +1045,11 @@ impl Store {
         })
     }
     pub fn event(&self, task_id: &str, kind: &str, data: Value) -> Result<()> {
+        anyhow::ensure!(
+            kind != "unknown:resume_consumed"
+                && !(kind == "resume" && data.get("delivery_version").is_some()),
+            "继续输入的消费证据只能由事务生成"
+        );
         anyhow::ensure!(
             kind != "tool_result"
                 || (data.get("origin").is_none() && data.get("origin_version").is_none()),
@@ -1590,7 +1668,7 @@ impl Store {
             return Err(WorkspaceChangeError::Unknown { receipt: None }.into());
         }
         let latest: Option<String> = tx.query_row(
-            "SELECT after_digest FROM workspace_changes WHERE task_id=?1 AND path_key=?2 AND state='finished' ORDER BY created_at DESC, rowid DESC LIMIT 1",
+            "SELECT after_digest FROM workspace_changes WHERE task_id=?1 AND path_key=?2 AND state='finished' ORDER BY rowid DESC LIMIT 1",
             params![task.id, path_key], |row| row.get(0)).optional()?;
         if let Some(expected) = latest {
             let actual = before
@@ -1630,7 +1708,7 @@ impl Store {
 
     pub(crate) fn workspace_changes_for_task(&self, task_id: &str) -> Result<Vec<PreparedChange>> {
         let db = self.db.lock().unwrap();
-        let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY created_at,rowid")?;
+        let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY rowid")?;
         Ok(stmt
             .query_map([task_id], workspace_change_row)?
             .collect::<rusqlite::Result<_>>()?)
@@ -3970,7 +4048,7 @@ impl Store {
 }
 
 fn checkpoint_sources(db: &Connection, task_id: &str) -> Result<Vec<PreparedChange>> {
-    let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY created_at,rowid")?;
+    let mut stmt = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY rowid")?;
     Ok(stmt
         .query_map([task_id], workspace_change_row)?
         .collect::<rusqlite::Result<_>>()?)
@@ -3979,7 +4057,7 @@ fn checkpoint_sources(db: &Connection, task_id: &str) -> Result<Vec<PreparedChan
 fn verify_checkpoint_sources(
     db: &Connection,
     manifest: &crate::checkpoint::Manifest,
-) -> Result<()> {
+) -> Result<Vec<PreparedChange>> {
     use crate::checkpoint::CheckpointError;
     let value: String = db
         .query_row(
@@ -3989,8 +4067,16 @@ fn verify_checkpoint_sources(
         )
         .map_err(|_| CheckpointError::Corrupt)?;
     let task: Task = serde_json::from_str(&value).map_err(|_| CheckpointError::Corrupt)?;
-    let records =
+    let mut records =
         checkpoint_sources(db, &manifest.task_id).map_err(|_| CheckpointError::Corrupt)?;
+    if crate::checkpoint::source_digest(&records)? != manifest.source_digest {
+        // Existing schema17 manifests hashed wall-clock order. Validate those
+        // bytes without rewriting the immutable checkpoint or its digest.
+        let mut statement = db.prepare("SELECT id,task_id,tool_call_id,workspace_digest,binding_digest,write_scopes,path,path_key,kind,before_blob,before_digest,after_digest,state,restore_state FROM workspace_changes WHERE task_id=?1 ORDER BY created_at,rowid")?;
+        records = statement
+            .query_map([&manifest.task_id], workspace_change_row)?
+            .collect::<rusqlite::Result<_>>()?;
+    }
     if task.id != manifest.task_id
         || task.workspace != manifest.workspace
         || task.spec.write_scopes != manifest.write_scopes
@@ -3998,7 +4084,7 @@ fn verify_checkpoint_sources(
     {
         return Err(CheckpointError::Corrupt.into());
     }
-    Ok(())
+    Ok(records)
 }
 
 fn read_checkpoint(
@@ -4022,8 +4108,7 @@ fn read_checkpoint(
     {
         return Err(CheckpointError::Corrupt.into());
     }
-    verify_checkpoint_sources(db, &manifest)?;
-    let records = checkpoint_sources(db, &task_id).map_err(|_| CheckpointError::Corrupt)?;
+    let records = verify_checkpoint_sources(db, &manifest)?;
     let mut expected = std::collections::BTreeMap::new();
     for record in records.iter().filter(|r| r.state == ChangeState::Finished) {
         let after = record

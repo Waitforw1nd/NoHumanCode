@@ -341,12 +341,13 @@ impl ReviewRecovery {
 
     pub(crate) async fn restore(&self, id: &str) -> Result<RestoreReceipt> {
         let _gate = self.workspace.gate.lock().await;
+        self.workspace.ensure_accepting()?;
         self.restore_locked(id)
     }
 
     fn restore_locked(&self, id: &str) -> Result<RestoreReceipt> {
         // The compatibility Task route must not bypass a damaged checkpoint manifest.
-        self.store.checkpoint_for_task(id)?;
+        let checkpoint = self.store.checkpoint_for_task(id)?;
         let task = self.store.task(id).map_err(|error| {
             if error.chain().any(|cause| {
                 matches!(
@@ -452,6 +453,21 @@ impl ReviewRecovery {
             });
         }
         let changes = self.validated_restore_changes(&task, records)?;
+        if let Some((checkpoint, _)) = checkpoint {
+            let entries: Vec<_> = changes
+                .iter()
+                .map(|change| crate::checkpoint::CheckpointEntry {
+                    path: change.path.clone(),
+                    before_digest: change.before_digest.clone(),
+                    after_digest: change.after_digest.clone().unwrap_or_default(),
+                })
+                .collect();
+            if entries != checkpoint.entries {
+                // A legacy wall-clock manifest may describe a different before
+                // image. Never silently restore a different checkpoint.
+                return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
+            }
+        }
         let mut targets = Vec::new();
         let mut originals = Vec::new();
         for change in &changes {
@@ -653,6 +669,7 @@ impl ReviewRecovery {
         request: crate::git_diff::GitDiffRequest,
     ) -> Result<crate::git_diff::GitDiff> {
         let _gate = self.workspace.gate.lock().await;
+        self.workspace.ensure_accepting()?;
         let task = self.store.task(task_id).map_err(|error| {
             if error.chain().any(|cause| {
                 matches!(
@@ -702,6 +719,7 @@ impl ReviewRecovery {
         use crate::checkpoint::{CheckpointCreated, CheckpointEntry, CheckpointError, Manifest};
         secrets::validate_idempotency_key(key).map_err(|_| CheckpointError::Invalid)?;
         let _gate = self.workspace.gate.lock().await;
+        self.workspace.ensure_accepting()?;
         if let Some((checkpoint, old_key)) = self.store.checkpoint_for_task(task_id)? {
             if old_key != key {
                 return Err(CheckpointError::Conflict.into());
@@ -830,6 +848,7 @@ impl ReviewRecovery {
 
     pub(crate) async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<RestoreReceipt> {
         let _gate = self.workspace.gate.lock().await;
+        self.workspace.ensure_accepting()?;
         let (checkpoint, _) = self.store.checkpoint_record(checkpoint_id)?;
         #[cfg(test)]
         crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
@@ -998,12 +1017,20 @@ impl RecoveryService {
 
 pub(crate) struct WorkspaceSafety {
     pub(crate) gate: Arc<AsyncMutex<()>>,
+    pub(crate) stopping: CancellationToken,
 }
 impl WorkspaceSafety {
     pub(crate) const ID: &'static str = "host.workspace";
     pub(crate) const VERSION: &'static str = "1.0.0";
     pub(crate) fn new(gate: Arc<AsyncMutex<()>>) -> Self {
-        Self { gate }
+        Self {
+            gate,
+            stopping: CancellationToken::new(),
+        }
+    }
+    fn ensure_accepting(&self) -> Result<()> {
+        anyhow::ensure!(!self.stopping.is_cancelled(), "Host 正在关闭，拒绝新工作");
+        Ok(())
     }
     pub(crate) fn resolve(
         &self,
