@@ -919,26 +919,87 @@ mod tests {
             })
             .unwrap()
     }
+    struct BudgetAuthority {
+        authority: Arc<crate::execution_authority::ExecutionAuthority>,
+        _controller: crate::execution_authority::ExecutionController,
+        operations:
+            std::collections::HashMap<String, crate::execution_authority::ExecutionOperation>,
+    }
+    thread_local! { static BUDGET_AUTHORITY: std::cell::RefCell<Option<BudgetAuthority>> = const { std::cell::RefCell::new(None) }; }
+    fn release_authority() {
+        BUDGET_AUTHORITY.with(|slot| {
+            slot.borrow_mut().take();
+        });
+    }
+    fn with_authority<R>(store: &Store, work: impl FnOnce(&mut BudgetAuthority) -> R) -> R {
+        BUDGET_AUTHORITY.with(|slot| {
+            let mut slot = slot.borrow_mut();
+            if slot
+                .as_ref()
+                .is_none_or(|v| !Arc::ptr_eq(&v.authority, &store.authority))
+            {
+                slot.take();
+                let controller = store.authority.claim().unwrap();
+                store.recover_with_controller(&controller).unwrap();
+                *slot = Some(BudgetAuthority {
+                    authority: store.authority.clone(),
+                    _controller: controller,
+                    operations: Default::default(),
+                });
+            }
+            work(slot.as_mut().unwrap())
+        })
+    }
+    fn attempt(
+        store: &Store,
+        subject: &NetworkSubject,
+    ) -> Result<CallReceipt, crate::network_authorization::NetworkError> {
+        with_authority(store, |authority| {
+            let op = store
+                .execution_operation(tokio_util::sync::CancellationToken::new())
+                .unwrap();
+            match op.test_sync(|| store.network_admit(subject, NetworkPurpose::Completion, None)) {
+                Ok((_permit, receipt)) => {
+                    authority.operations.insert(receipt.call_id.clone(), op);
+                    Ok(receipt)
+                }
+                Err(error) => Err(error),
+            }
+        })
+    }
     fn claim(store: &Store, subject: &NetworkSubject) -> CallReceipt {
-        store
-            .network_admit(subject, NetworkPurpose::Completion, None)
-            .unwrap()
-            .1
+        attempt(store, subject).unwrap()
     }
     fn usage(n: u64) -> Value {
         json!({"prompt_tokens":n,"completion_tokens":0,"total_tokens":n})
+    }
+    fn finish(
+        store: &Store,
+        call: CallReceipt,
+        result: Result<(Value, Value), TransportError>,
+    ) -> Result<
+        crate::network_authorization::NetworkResponse<(Value, Value)>,
+        crate::network_authorization::NetworkError,
+    > {
+        with_authority(store, |authority| {
+            let op = authority
+                .operations
+                .get(&call.call_id)
+                .expect("original budget call operation");
+            op.test_sync(|| store.finish_completion(call, result))
+        })
     }
     fn complete(
         store: &Store,
         call: CallReceipt,
         n: u64,
     ) -> crate::network_authorization::NetworkResponse<(Value, Value)> {
-        store
-            .finish_completion(
-                call,
-                Ok((json!({"role":"assistant","content":"ok"}), usage(n))),
-            )
-            .unwrap()
+        finish(
+            store,
+            call,
+            Ok((json!({"role":"assistant","content":"ok"}), usage(n))),
+        )
+        .unwrap()
     }
     #[test]
     fn configuration_forward_coverage_cas_and_historical_unknown() {
@@ -962,6 +1023,7 @@ mod tests {
             store.configure_budget(request.clone()).unwrap_err().kind,
             BudgetErrorKind::Busy
         );
+        release_authority();
         store.recover().unwrap();
         assert!(!store.budget_call(project, &old.call_id).unwrap().managed);
         let first = store.configure_budget(request.clone()).unwrap();
@@ -988,11 +1050,7 @@ mod tests {
             BudgetErrorKind::Conflict
         );
         assert_eq!(
-            store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
-                .err()
-                .unwrap()
-                .kind,
+            attempt(&store, &subject).err().unwrap().kind,
             NetworkErrorKind::BudgetExceeded
         );
         assert!(!store.budget_call(project, &old.call_id).unwrap().managed);
@@ -1002,6 +1060,8 @@ mod tests {
         let (dir, store, subject) = fixture();
         configure(&store, &subject, 100, 100);
         let second = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
+        let controller = store.authority.claim().unwrap();
+        store.recover_with_controller(&controller).unwrap();
         let gate = Arc::new(Barrier::new(3));
         let handles: Vec<_> = [store.clone(), second]
             .into_iter()
@@ -1010,8 +1070,11 @@ mod tests {
                 let gate = gate.clone();
                 std::thread::spawn(move || {
                     gate.wait();
-                    s.network_admit(&subject, NetworkPurpose::Completion, None)
-                        .map(|(_, r)| r)
+                    crate::execution_authority::test_with_active_store_sync(&s, || {
+                        s.network_admit(&subject, NetworkPurpose::Completion, None)
+                            .map(|(_, r)| r)
+                    })
+                    .unwrap()
                 })
             })
             .collect();
@@ -1049,9 +1112,7 @@ mod tests {
         let first = complete(&store, call.clone(), 40);
         let again = complete(&store, call.clone(), 40);
         assert_eq!(first.calls, again.calls);
-        let conflict = store
-            .finish_completion(call, Ok((json!({}), usage(41))))
-            .unwrap_err();
+        let conflict = finish(&store, call, Ok((json!({}), usage(41)))).unwrap_err();
         assert_eq!(conflict.kind, NetworkErrorKind::BudgetConflict);
         assert_eq!(conflict.dispatch_state, DispatchState::Finished);
         assert_eq!(conflict.calls, first.calls);
@@ -1064,11 +1125,7 @@ mod tests {
         assert_eq!(status.blocked_reason, Some(BudgetBlockedReason::Overrun));
         configure(&store, &subject, 10000, 1000);
         assert_eq!(
-            store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
-                .err()
-                .unwrap()
-                .kind,
+            attempt(&store, &subject).err().unwrap().kind,
             NetworkErrorKind::BudgetOverrun
         );
     }
@@ -1085,9 +1142,8 @@ mod tests {
             let (_dir, store, subject) = fixture();
             configure(&store, &subject, 1000, 100);
             let call = claim(&store, &subject);
-            let response = store
-                .finish_completion(call.clone(), Ok((json!({"content":label}), data)))
-                .unwrap();
+            let response =
+                finish(&store, call.clone(), Ok((json!({"content":label}), data))).unwrap();
             assert_eq!(response.result.0["content"], label);
             let result = store
                 .budget_call(subject.project_id.as_ref().unwrap(), &call.call_id)
@@ -1099,11 +1155,7 @@ mod tests {
             assert_eq!((status.held_tokens, status.unresolved_count), (100, 1));
             configure(&store, &subject, 10000, 1);
             assert_eq!(
-                store
-                    .network_admit(&subject, NetworkPurpose::Completion, None)
-                    .err()
-                    .unwrap()
-                    .kind,
+                attempt(&store, &subject).err().unwrap().kind,
                 NetworkErrorKind::BudgetUnresolved
             );
         }
@@ -1115,7 +1167,7 @@ mod tests {
             let (_dir, store, subject) = fixture();
             configure(&store, &subject, 1000, 100);
             let call = claim(&store, &subject);
-            assert!(store.finish_completion(call.clone(), Err(error)).is_err());
+            assert!(finish(&store, call.clone(), Err(error)).is_err());
             let status = store
                 .budget_status(subject.project_id.as_ref().unwrap())
                 .unwrap();
@@ -1137,13 +1189,9 @@ mod tests {
         let a = claim(&store, &subject);
         let b = claim(&store, &subject);
         let c = claim(&store, &subject);
-        store
-            .finish_completion(a, Err(TransportError::Unknown))
-            .unwrap_err();
+        finish(&store, a, Err(TransportError::Unknown)).unwrap_err();
         complete(&store, b, 50);
-        let error = store
-            .finish_completion(c, Err(TransportError::Invalid))
-            .unwrap_err();
+        let error = finish(&store, c, Err(TransportError::Invalid)).unwrap_err();
         assert_eq!(error.dispatch_state, DispatchState::NotSent);
         let status = store.budget_status(project).unwrap();
         assert_eq!(
@@ -1162,11 +1210,7 @@ mod tests {
         let project = subject.project_id.as_ref().unwrap();
         configure(&store, &subject, 1000, 100);
         store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_budget_claim BEFORE INSERT ON budget_calls BEGIN SELECT RAISE(ABORT,'fixture'); END").unwrap();
-        assert!(
-            store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
-                .is_err()
-        );
+        assert!(attempt(&store, &subject).is_err());
         assert_eq!(
             store
                 .db
@@ -1185,9 +1229,7 @@ mod tests {
             .unwrap();
         let call = claim(&store, &subject);
         store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_network_finish BEFORE UPDATE ON network_calls BEGIN SELECT RAISE(ABORT,'fixture'); END").unwrap();
-        let error = store
-            .finish_completion(call.clone(), Ok((json!({}), usage(20))))
-            .unwrap_err();
+        let error = finish(&store, call.clone(), Ok((json!({}), usage(20)))).unwrap_err();
         assert_eq!(error.dispatch_state, DispatchState::Unknown);
         let status = store.budget_status(project).unwrap();
         assert_eq!(
@@ -1208,6 +1250,7 @@ mod tests {
             .unwrap()
             .execute_batch("DROP TRIGGER reject_network_finish")
             .unwrap();
+        release_authority();
         store.recover().unwrap();
         let once = store.budget_call(project, &call.call_id).unwrap();
         store.recover().unwrap();
@@ -1249,6 +1292,7 @@ mod tests {
                     .kind,
                 BudgetErrorKind::Corrupt
             );
+            release_authority();
             assert!(store.recover().is_err());
             assert!(Store::open(&dir.path().join("budget.db")).is_err());
             assert!(store.open_shared().is_err());
@@ -1322,10 +1366,7 @@ mod tests {
         assert!(Store::open(&dir.path().join("budget.db")).is_err());
         assert!(store.open_shared().is_err());
         assert!(store.recover().is_err());
-        let rejected = store
-            .network_admit(&subject, NetworkPurpose::Completion, None)
-            .err()
-            .unwrap();
+        let rejected = attempt(&store, &subject).err().unwrap();
         assert_eq!(rejected.kind, NetworkErrorKind::BudgetCorrupt);
         assert_eq!(rejected.dispatch_state, DispatchState::NotSent);
         assert!(rejected.calls.is_empty());
@@ -1384,20 +1425,24 @@ mod tests {
                 _ => "budget-before-finish",
             };
             crate::engine::crash_probe::arm(subject.key().unwrap(), phase, root.join("signal"));
-            let (permit, receipt) = store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
-                .unwrap();
-            let route = store.settings().unwrap().unwrap().routes[0].clone();
-            let result = crate::provider::complete(
-                &crate::provider_transport::ProviderClient::new().unwrap(),
-                permit,
-                &route,
-                &[json!({"role":"user","content":"hello"})],
-                &[],
-                |_| Ok(()),
-            )
-            .await;
-            let _ = store.finish_completion(receipt, result);
+            crate::execution_authority::test_with_store(&store, async {
+                let (permit, receipt) = store
+                    .network_admit(&subject, NetworkPurpose::Completion, None)
+                    .unwrap();
+                let route = store.settings().unwrap().unwrap().routes[0].clone();
+                let result = crate::provider::complete(
+                    &crate::provider_transport::ProviderClient::new().unwrap(),
+                    permit,
+                    &route,
+                    &[json!({"role":"user","content":"hello"})],
+                    &[],
+                    |_| Ok(()),
+                )
+                .await;
+                let _ = store.finish_completion(receipt, result);
+            })
+            .await
+            .unwrap();
             panic!("must block before exit");
         }
         for phase in ["before", "after", "finish"] {
@@ -1583,10 +1628,16 @@ mod tests {
         configure(&store, &b, 100, 100);
         let ca = claim(&store, &a);
         let cb = claim(&store, &b);
-        store
-            .finish_completion(ca, Err(TransportError::Unknown))
-            .unwrap_err();
         complete(&store, cb, 5);
+        assert_eq!(
+            store.budget_status(&p).unwrap().blocked_reason,
+            Some(BudgetBlockedReason::Exceeded)
+        );
+        configure(&store, &b, 200, 100);
+        // Reserve before the other call becomes unknown: existing work may
+        // settle after sealing, but the domain cannot authorize a new claim.
+        let cb = claim(&store, &b);
+        finish(&store, ca, Err(TransportError::Unknown)).unwrap_err();
         assert_eq!(
             store
                 .budget_status(a.project_id.as_ref().unwrap())
@@ -1594,12 +1645,6 @@ mod tests {
                 .blocked_reason,
             Some(BudgetBlockedReason::Unresolved)
         );
-        assert_eq!(
-            store.budget_status(&p).unwrap().blocked_reason,
-            Some(BudgetBlockedReason::Exceeded)
-        );
-        configure(&store, &b, 200, 100);
-        let cb = claim(&store, &b);
         complete(&store, cb, 5);
         assert_eq!(store.budget_status(&p).unwrap().spent_tokens, 10);
         store
@@ -1659,11 +1704,7 @@ mod tests {
         );
         assert_eq!(store.budget_status(p).unwrap().held_tokens, 100);
         assert_eq!(
-            store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
-                .err()
-                .unwrap()
-                .kind,
+            attempt(&store, &subject).err().unwrap().kind,
             NetworkErrorKind::BudgetExceeded
         );
         complete(&store, call, 0);
@@ -1674,11 +1715,7 @@ mod tests {
         configure(&store, &subject, 0, 1);
         assert_eq!(store.budget_status(p).unwrap().available_tokens, Some(0));
         assert_eq!(
-            store
-                .network_admit(&subject, NetworkPurpose::Completion, None)
-                .err()
-                .unwrap()
-                .kind,
+            attempt(&store, &subject).err().unwrap().kind,
             NetworkErrorKind::BudgetExceeded
         );
     }

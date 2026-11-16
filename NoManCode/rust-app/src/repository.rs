@@ -748,6 +748,7 @@ pub(crate) fn verify_initialized_schema(tx: &Transaction<'_>) -> Result<()> {
     verify_schema_14(tx)?;
     verify_schema_15(tx)?;
     verify_schema_16(tx)?;
+    verify_execution_owner_shape(tx)?;
     Ok(())
 }
 
@@ -3062,7 +3063,7 @@ pub(crate) fn runtime17_probe(tx: &Transaction<'_>, phase: &'static str) -> Resu
 pub(crate) fn apply_schema_17(tx: &Transaction<'_>) -> Result<()> {
     let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
     let marker = migration_applied(tx, RUNTIME_MANAGEMENT_MIGRATION_ID)?;
-    if version == 17 {
+    if version >= 17 {
         anyhow::ensure!(marker, "schema 17 marker missing");
         return verify_schema_17(tx);
     }
@@ -3497,6 +3498,7 @@ mod worktree_schema_tests {
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .unwrap();
         restore_legacy_plugin_fixture(&tx).unwrap();
+        tx.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18';").unwrap();
         tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
             UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files';
             INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical-files','builtin.files',0,0,1,17);
@@ -3508,6 +3510,23 @@ mod worktree_schema_tests {
     fn assert_migrated(db: &Connection, before: Rows) {
         let after = rows(db);
         let mut expected = before;
+        let owner = &after["execution_owner"];
+        assert_eq!(owner.len(), 1);
+        assert_eq!(owner[0][0], rusqlite::types::Value::Integer(1));
+        assert_eq!(owner[0][1], rusqlite::types::Value::Integer(1));
+        assert!(
+            matches!(&owner[0][2], rusqlite::types::Value::Text(identity) if identity.len() == 25 && identity.as_bytes()[8] == b':')
+        );
+        assert_eq!(owner[0][3], rusqlite::types::Value::Integer(0));
+        assert_eq!(
+            owner[0][4],
+            rusqlite::types::Value::Text("recovering".into())
+        );
+        assert!(
+            expected
+                .insert("execution_owner".into(), owner.clone())
+                .is_none()
+        );
         assert!(
             expected
                 .insert(
@@ -3542,10 +3561,11 @@ mod worktree_schema_tests {
                     || r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(RUNTIME_MANAGEMENT_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(EXECUTION_OWNER_MIGRATION_ID.into())
             })
             .cloned()
             .collect();
-        assert_eq!(new.len(), 4);
+        assert_eq!(new.len(), 5);
         expected.get_mut("schema_migrations").unwrap().extend(new);
         let runtime_rows: Vec<_> = after["plugin_desired"]
             .iter()
@@ -3581,7 +3601,7 @@ mod worktree_schema_tests {
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            17
+            crate::store::SCHEMA_VERSION
         );
     }
     #[test]
@@ -3589,7 +3609,10 @@ mod worktree_schema_tests {
         let (_dir, path, db) = historical13();
         let before = rows(&db);
         let store = Store::open(&path).unwrap();
-        assert_eq!(store.schema_version().unwrap(), 17);
+        assert_eq!(
+            store.schema_version().unwrap(),
+            crate::store::SCHEMA_VERSION
+        );
         assert_migrated(&db, before);
         let after = rows(&db);
         drop(store);
@@ -3597,6 +3620,13 @@ mod worktree_schema_tests {
             drop(Store::open(&path).unwrap());
             assert_eq!(rows(&db), after);
         }
+        let recovered = Store::open(&path).unwrap();
+        recovered.recover().unwrap();
+        let mut expected_after_recovery = after;
+        let owner = expected_after_recovery.get_mut("execution_owner").unwrap();
+        owner[0][3] = rusqlite::types::Value::Integer(1);
+        owner[0][4] = rusqlite::types::Value::Text("active".into());
+        assert_eq!(rows(&db), expected_after_recovery);
     }
     #[test]
     fn n13_schema_marker_failure_rolls_back_every_new_object() {
@@ -3634,7 +3664,10 @@ mod worktree_schema_tests {
             })
             .collect();
         for handle in handles {
-            assert_eq!(handle.join().unwrap().unwrap(), 17);
+            assert_eq!(
+                handle.join().unwrap().unwrap(),
+                crate::store::SCHEMA_VERSION
+            );
         }
         assert_migrated(&db, before);
     }
@@ -3891,12 +3924,30 @@ mod budget_schema_tests {
         let db = Connection::open(&path).unwrap();
         db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
         restore_legacy_plugin_fixture(&db).unwrap();
+        db.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18';").unwrap();
         db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE budget_calls; DROP TABLE budget_requests; DROP TABLE project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; PRAGMA user_version=14; INSERT INTO config VALUES('sentinel','old exact bytes'); INSERT INTO secrets VALUES('opaque',X'0001FFFE'); UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,0,1,17);").unwrap();
         (dir, path, db)
     }
     fn assert_migrated(db: &Connection, before: Rows) {
         let after = rows(db);
         let mut expected = before;
+        let owner = &after["execution_owner"];
+        assert_eq!(owner.len(), 1);
+        assert_eq!(owner[0][0], rusqlite::types::Value::Integer(1));
+        assert_eq!(owner[0][1], rusqlite::types::Value::Integer(1));
+        assert!(
+            matches!(&owner[0][2], rusqlite::types::Value::Text(identity) if identity.len() == 25 && identity.as_bytes()[8] == b':')
+        );
+        assert_eq!(owner[0][3], rusqlite::types::Value::Integer(0));
+        assert_eq!(
+            owner[0][4],
+            rusqlite::types::Value::Text("recovering".into())
+        );
+        assert!(
+            expected
+                .insert("execution_owner".into(), owner.clone())
+                .is_none()
+        );
         assert!(
             expected
                 .insert(
@@ -3923,10 +3974,11 @@ mod budget_schema_tests {
                 r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
                     || r[1] == rusqlite::types::Value::Text(RUNTIME_MANAGEMENT_MIGRATION_ID.into())
+                    || r[1] == rusqlite::types::Value::Text(EXECUTION_OWNER_MIGRATION_ID.into())
             })
             .cloned()
             .collect();
-        assert_eq!(marker.len(), 3);
+        assert_eq!(marker.len(), 4);
         expected
             .get_mut("schema_migrations")
             .unwrap()
@@ -3965,7 +4017,7 @@ mod budget_schema_tests {
         assert_eq!(
             db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            17
+            crate::store::SCHEMA_VERSION
         );
     }
     #[test]
@@ -3977,6 +4029,13 @@ mod budget_schema_tests {
         let after = rows(&db);
         drop(Store::open(&path).unwrap());
         assert_eq!(rows(&db), after);
+        let recovered = Store::open(&path).unwrap();
+        recovered.recover().unwrap();
+        let mut expected_after_recovery = after;
+        let owner = expected_after_recovery.get_mut("execution_owner").unwrap();
+        owner[0][3] = rusqlite::types::Value::Integer(1);
+        owner[0][4] = rusqlite::types::Value::Text("active".into());
+        assert_eq!(rows(&db), expected_after_recovery);
     }
     #[test]
     fn n14_marker_failure_rolls_back_all_new_objects() {
@@ -4014,7 +4073,7 @@ mod budget_schema_tests {
             .collect();
         gate.wait();
         for h in handles {
-            assert_eq!(h.join().unwrap().unwrap(), 17);
+            assert_eq!(h.join().unwrap().unwrap(), crate::store::SCHEMA_VERSION);
         }
         assert_migrated(&db, before);
     }
@@ -4034,4 +4093,70 @@ mod budget_schema_tests {
             assert_eq!(rows(&db), before);
         }
     }
+}
+
+// Schema 18 adds only the durable fence to the existing schema 17 data.
+pub(crate) const EXECUTION_OWNER_MIGRATION_ID: &str = "execution-owner-v18";
+const EXECUTION_OWNER_DDL: &str = "CREATE TABLE execution_owner (id INTEGER PRIMARY KEY CHECK(id=1), domain_identity TEXT NOT NULL, epoch INTEGER NOT NULL CHECK(typeof(epoch)='integer' AND epoch>=0), phase TEXT NOT NULL CHECK(phase IN ('recovering','active')))";
+
+pub(crate) fn verify_execution_owner_shape(tx: &Transaction<'_>) -> Result<()> {
+    anyhow::ensure!(
+        tx.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))? == 18,
+        "execution schema version mismatch"
+    );
+    anyhow::ensure!(
+        migration_applied(tx, EXECUTION_OWNER_MIGRATION_ID)?,
+        "execution marker missing"
+    );
+    let ddl: String = tx.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='execution_owner'",
+        [],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(
+        ddl == EXECUTION_OWNER_DDL,
+        "execution owner schema mismatch"
+    );
+    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name='execution_owner' AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
+    let count: i64 = tx.query_row("SELECT count(*) FROM execution_owner", [], |r| r.get(0))?;
+    let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND typeof(domain_identity)='text' AND length(domain_identity)>0 AND typeof(epoch)='integer' AND epoch>=0 AND phase IN ('recovering','active'))", [], |r| r.get(0))?;
+    anyhow::ensure!(
+        extras == 0 && count == 1 && valid,
+        "invalid execution owner state"
+    );
+    Ok(())
+}
+pub(crate) fn verify_execution_owner(tx: &Transaction<'_>, identity: &str) -> Result<()> {
+    verify_execution_owner_shape(tx)?;
+    let matches: bool = tx.query_row(
+        "SELECT domain_identity=?1 FROM execution_owner WHERE id=1",
+        [identity],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(matches, "execution domain identity mismatch");
+    Ok(())
+}
+pub(crate) fn apply_schema_18(tx: &Transaction<'_>, identity: &str) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let marker = migration_applied(tx, EXECUTION_OWNER_MIGRATION_ID)?;
+    if version == 18 {
+        anyhow::ensure!(marker, "execution marker missing");
+        return verify_execution_owner(tx, identity);
+    }
+    anyhow::ensure!(
+        version == 17 && !marker,
+        "execution marker/version mismatch"
+    );
+    verify_schema_17(tx)?;
+    tx.execute_batch(EXECUTION_OWNER_DDL)?;
+    tx.execute(
+        "INSERT INTO execution_owner(id,domain_identity,epoch,phase) VALUES(1,?1,0,'recovering')",
+        [identity],
+    )?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        rusqlite::params![EXECUTION_OWNER_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 18)?;
+    verify_execution_owner(tx, identity)
 }
