@@ -1,0 +1,15 @@
+{
+  "state": "failed-closed",
+  "closed_utc": "2026-11-16T09:54:40.776479+00:00",
+  "candidate": {
+    "head": "74f363970a4147bf6859e504b6efef2e15b656dc",
+    "product_tree": "c75dd181cf46747c82decfb918f10137961746f9",
+    "rust_tree": "acb6bf37c694d8a1e61e650b65e3706afdc5603a"
+  },
+  "gate_sha256": "7d2a5fb1ce893e34334f9cdbe134bb2be07f437078a1e1643a47d532defaf248",
+  "original_session": 21780,
+  "original_supervisor_exit": 1,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Check passed; debug bins failed101 because old external1 cl08 fixture Host retained image. Exact object ownership independently reconstructed; incident-cli-host-1 records two held handle terminal observations and exclusive file-open check without byte changes. No new target tests ran."
+}

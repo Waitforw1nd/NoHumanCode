@@ -1,0 +1,7 @@
+{
+  "original_runner_completion_did_not_prove_descendant_cleanup": true,
+  "discovered_fixture": "cl08 idle Host",
+  "identity_and_cleanup_evidence": ".local/lifecycle/incident-cli-host-1",
+  "resolved_by": "verified object handle termination and two handle signal observations",
+  "historical_failure_unchanged": true
+}
