@@ -183,3 +183,27 @@ pwsh -NoProfile -File NoManCode/rust-app/build.ps1 -Action web-test
 runner 第 27 行创建新的 attempt 目录，不带 Force，同名目录存在即拒绝，正常执行不会覆盖旧 attempt；每项命令结束先落 manifest 再遇非零退出，因此当前失败 attempt1 已有完整三项记录。publisher 第 33–36 行会复制其他 `final-attempt*` 目录直接包含的 `.log` / `.json`，第 65 行独立列其名称；只从选定 attempt 汇总结果。该范围不自动包含临时数据库、深层子目录或其他类型工件，报告不能说已发布全部失败现场。原件仅被读取；发布副本作工作树前缀规范化并分别计算 source/published 哈希，旧原件哈希仍应保留。
 
 此次没有执行门禁、Cargo/rustc、产品、进程测试、publisher 或外部服务；Python 仅做现有文件读取、摘要解析和哈希计算。修改仅为 D 本报告补充，普通 docs 提交交经理整合；身份及总验收仍由经理同步。最终六门禁、B 超时诊断和修订后的发布流程仍在进行，不在本报告预写通过。
+
+## 证据脚本修订最终复审（2026-11-16）
+
+结论：`APPROVED（D-EV-01、D-EV-02 原问题的静态修复范围）`。经理修订后两项均已静态闭合，没有这两条路径的明确剩余阻断。前节保留原发现与当时状态，本节更新最终审查结论；不以静态闭合代替真实六门禁或发布执行结果。
+
+### 审查版本
+
+复核工作树为 `../nhc-audit-20261116-integration`，读取时 HEAD `c7df9b1e07300e302511e9f4f4bd871cdb5bb09d`，产品 status 空。以下路径统一位于 `NoManCode/rust-app/.local/audit-20261116/`，行号以本次字节快照为准：
+
+| 文件 | 字节数 | SHA-256 |
+| --- | --- | --- |
+| `run-gates-active-attempt2.ps1` | 4077 | `7d6c8d5978517ff8fa66bf719b5c18340a9198c824e06fa9b38e158e35c3445a` |
+| `run-gates.ps1` | 4123 | `463464312f81bc8842080c8eeefc62bdce33dba92350090d826d583494496957` |
+| `publish_evidence.py` | 5883 | `ba6f6187f087880bd0fe690eeaebbd3397dbb0887880d3cfcf4353a3ec4dbc65` |
+
+旧 active runner 副本与 D 首次审查的 4077-byte runner 哈希一致。经理明确本次已启动的 attempt2 使用该旧版；新版用于后续执行，不改写旧 manifest 冒称旧执行具备新增字段。
+
+### 两项关闭依据
+
+- **D-EV-01**：新版 runner 第 64–69 行先比较 product tree、检查产品 dirty 状态，再设置 `product_inputs_verified`、ended_utc 并写最终 manifest。对本次旧 runner 的兼容验收由 publisher 第 28–34 行及第 91 行独立执行：发布前后均检查产品 clean、当前 product/rust trees 和 manifest 中受测 HEAD 的对应 trees。第 21–23 行要求六项均成功及准确的 gate 顺序；第 101–105 行另记验收时间、当前 HEAD 和旧 runner 说明。不会把独立发布验收伪写为旧 runner 的执行事实。
+- **D-EV-02**：publisher 第 15–18 行 `read_snapshot(path)` 按 Path 缓存首次读取的不可变 bytes。第 20 行主 manifest、第 35–42 行本次/历史 manifest 与其全部 gate 日志、中途清单与其声明日志均通过该入口读取并比较 SHA-256/字节数；第 70 行发布、第 80/88 行测试与 mock 统计复用同一快照，不再在校验后另读原件。本轮 AST 核对唯一直接文件读取是第 17 行 helper 内的 `read_bytes`，原来的校验与复制间换字节路径已闭合。
+- 第 68 行把旧 active runner、新版 runner 和 publisher 自身纳入发布文件清单并分别记录 source/published 哈希。第 83–98 行继续分列 Rust passed/failed/ignored、网页组数和从已核日志解析的 mock 数；历史失败 attempt 仍独立保留，不混入最终通过数量。
+
+本轮仅只读代码/Git、计算三文件哈希并执行 Python AST 与 PowerShell Parser 语法解析：Python 解析成功，runner 解析错误数 0。没有运行 publisher、Cargo/rustc、产品、测试门禁或动态负控，没有改父线程脚本或原 manifest。修改唯一文件为本报告，docs 提交基于 D 的 `9a9bcc7826d18f71cdffcea535b6c8de91b7e27d`。真实门禁、独立验收记录与发布结果继续由经理执行并归档。
