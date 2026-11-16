@@ -27,6 +27,14 @@ impl OwnedChild {
             evidence: evidence.to_owned(),
         }
     }
+    #[allow(dead_code)]
+    pub fn try_wait(&mut self) -> std::io::Result<Option<ExitStatus>> {
+        self.child.try_wait()
+    }
+    #[allow(dead_code)]
+    pub fn id(&self) -> u32 {
+        self.child.id()
+    }
     fn retain(&self, reason: &str) -> ! {
         let _ = fs::write(self.evidence.join("unknown.txt"), reason);
         eprintln!(
