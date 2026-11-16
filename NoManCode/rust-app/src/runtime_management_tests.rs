@@ -306,9 +306,18 @@ fn intent_receipt_insert_failure_rolls_back_without_changing_local_runtime() {
 }
 #[test]
 fn sqlite_intent_commit_failure_rolls_back_before_runtime_changes() {
-    for id in [RuntimeId::ChatAgent, RuntimeId::CompletionProvider] {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("runtime.db");
+    const TEST: &str =
+        "runtime_management_tests::sqlite_intent_commit_failure_rolls_back_before_runtime_changes";
+    if let Some(path) = std::env::var_os("NHC_RUNTIME_COMMIT_FIXTURE_DB") {
+        let id = match std::env::var("NHC_RUNTIME_COMMIT_FIXTURE_ID")
+            .unwrap()
+            .as_str()
+        {
+            "agent" => RuntimeId::ChatAgent,
+            "provider" => RuntimeId::CompletionProvider,
+            _ => panic!("unknown fixture component"),
+        };
+        let path = std::path::PathBuf::from(path);
         let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
         let db = rusqlite::Connection::open(&path).unwrap();
         let db_key = database_key(&engine.store);
@@ -345,7 +354,32 @@ fn sqlite_intent_commit_failure_rolls_back_before_runtime_changes() {
             .unwrap(),
             0
         );
+        assert!(
+            engine
+                .set_runtime_enabled(id, write(false, 0), "commit-failure")
+                .is_err(),
+            "unknown commit must keep admission closed"
+        );
+        return;
+    }
+    for id in [RuntimeId::ChatAgent, RuntimeId::CompletionProvider] {
+        let dir = tempfile::tempdir().unwrap().keep();
+        let path = dir.join("runtime.db");
+        let name = match id {
+            RuntimeId::ChatAgent => "agent",
+            RuntimeId::CompletionProvider => "provider",
+        };
+        let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+        command
+            .args(["--exact", TEST, "--nocapture"])
+            .env("NHC_RUNTIME_COMMIT_FIXTURE_DB", &path)
+            .env("NHC_RUNTIME_COMMIT_FIXTURE_ID", name);
+        let output = owned_child::OwnedChild::spawn(&mut command, &dir.join("child-evidence"))
+            .output(std::time::Duration::from_secs(30));
+        assert!(output.status.success(), "fixture child failed: {name}");
+        assert!(String::from_utf8_lossy(&output.stdout).contains("test result: ok. 1 passed;"));
         drop(Store::open(&path).unwrap());
+        let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
         let accepted = engine
             .set_runtime_enabled(id, write(false, 0), "commit-failure")
             .unwrap();
@@ -359,3 +393,6 @@ fn sqlite_intent_commit_failure_rolls_back_before_runtime_changes() {
         assert_eq!(after["runtime"]["admission_open"], false);
     }
 }
+
+#[path = "../tests/support/owned_child.rs"]
+mod owned_child;

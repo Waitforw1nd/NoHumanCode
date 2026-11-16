@@ -1957,14 +1957,19 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
         if admission_first {
             let r = runtime.clone();
             let s = store.clone();
+            let operation = store
+                .execution_operation(tokio_util::sync::CancellationToken::new())
+                .unwrap();
             let admit = std::thread::spawn(move || {
-                r.acquire_persisted(prepared, |revision| {
-                    s.network_admit_with_runtime_revision(
-                        &subject,
-                        NetworkPurpose::Completion,
-                        None,
-                        Some(revision),
-                    )
+                operation.test_sync(|| {
+                    r.acquire_persisted(prepared, |revision| {
+                        s.network_admit_with_runtime_revision(
+                            &subject,
+                            NetworkPurpose::Completion,
+                            None,
+                            Some(revision),
+                        )
+                    })
                 })
             });
             let arrived = barrier.wait_arrived(Duration::from_secs(5));
@@ -2026,15 +2031,20 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
             }
             let r = runtime.clone();
             let s = store.clone();
+            let operation = store
+                .execution_operation(tokio_util::sync::CancellationToken::new())
+                .unwrap();
             let admit = std::thread::spawn(move || {
                 started_tx.send(()).unwrap();
-                r.acquire_persisted(prepared, |revision| {
-                    s.network_admit_with_runtime_revision(
-                        &subject,
-                        NetworkPurpose::Completion,
-                        None,
-                        Some(revision),
-                    )
+                operation.test_sync(|| {
+                    r.acquire_persisted(prepared, |revision| {
+                        s.network_admit_with_runtime_revision(
+                            &subject,
+                            NetworkPurpose::Completion,
+                            None,
+                            Some(revision),
+                        )
+                    })
                 })
             });
             let started = started_rx.recv_timeout(Duration::from_secs(5));
