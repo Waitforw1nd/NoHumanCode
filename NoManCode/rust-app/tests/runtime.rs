@@ -605,8 +605,26 @@ async fn restart_and_http_security() {
             json!({"text":"partial recovered from event log"}),
         )
         .unwrap();
-    let store = Store::open(&temp.path().join("test.db")).unwrap();
-    assert_eq!(store.recover().unwrap(), 1);
+    let store = Arc::new(Store::open(&temp.path().join("test.db")).unwrap());
+    let before = serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap();
+    assert!(
+        store.recover().is_err(),
+        "live controller admitted recovery"
+    );
+    assert_eq!(store.task("durable-id").unwrap().status, "running");
+    assert_eq!(
+        serde_json::to_value(store.events("durable-run", 0).unwrap()).unwrap(),
+        before
+    );
+    assert!(e.shutdown(Duration::from_secs(5)).await.settled());
+    let old_store = Arc::downgrade(&e.store);
+    drop(e);
+    assert!(
+        old_store.upgrade().is_none(),
+        "old controller still holds its Store"
+    );
+    let (e, recovered) = Engine::new_recovered(store.clone(), 2).unwrap();
+    assert_eq!(recovered, 1);
     assert_eq!(
         store.events("durable-run", 0).unwrap().last().unwrap().data["status"],
         "interrupted"
