@@ -1251,6 +1251,7 @@ mod tests {
             );
             assert!(store.recover().is_err());
             assert!(Store::open(&dir.path().join("budget.db")).is_err());
+            assert!(store.open_shared().is_err());
         }
     }
     #[test]
@@ -1301,6 +1302,7 @@ mod tests {
                 BudgetErrorKind::Corrupt
             );
             assert!(Store::open(&dir.path().join("budget.db")).is_err());
+            assert!(store.open_shared().is_err());
         }
     }
     #[test]
@@ -1318,6 +1320,7 @@ mod tests {
             BudgetErrorKind::Corrupt
         );
         assert!(Store::open(&dir.path().join("budget.db")).is_err());
+        assert!(store.open_shared().is_err());
         assert!(store.recover().is_err());
         let rejected = store
             .network_admit(&subject, NetworkPurpose::Completion, None)
@@ -1364,6 +1367,7 @@ mod tests {
                 BudgetErrorKind::Corrupt
             );
             assert!(Store::open(&dir.path().join("budget.db")).is_err());
+            assert!(store.open_shared().is_err());
         }
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -1494,7 +1498,17 @@ mod tests {
                     .budget_call(project, signal.lines().nth(1).unwrap())
                     .unwrap();
                 assert_eq!(receipt.reason, Some(BudgetCallReason::Interrupted));
+                assert!(
+                    store.recover().is_err(),
+                    "live controller admitted recovery"
+                );
+                assert_eq!(
+                    engine.budget_call(project, &receipt.call_id).unwrap(),
+                    receipt
+                );
+                drop(engine);
                 store.recover().unwrap();
+                let engine = crate::engine::Engine::new(store.clone(), 2).unwrap();
                 assert_eq!(
                     engine.budget_call(project, &receipt.call_id).unwrap(),
                     receipt

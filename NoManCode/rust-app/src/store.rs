@@ -84,8 +84,11 @@ impl Store {
 
     /// A second SQLite connection under the same held OS data domain.
     pub fn open_shared(&self) -> Result<Self> {
-        let db = self.authority.connection()?;
+        let mut db = self.authority.connection()?;
         db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
+        let verify = db.transaction()?;
+        repository::verify_initialized_schema(&verify)?;
+        verify.commit()?;
         Ok(Self {
             db: Mutex::new(db),
             authority: self.authority.clone(),
@@ -111,12 +114,7 @@ impl Store {
         if *initialized {
             db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
             let verify = db.transaction()?;
-            anyhow::ensure!(
-                verify.pragma_query_value(None, "user_version", |row| row.get::<_, u32>(0))?
-                    == SCHEMA_VERSION,
-                "shared domain schema version changed"
-            );
-            repository::verify_schema_17(&verify)?;
+            repository::verify_initialized_schema(&verify)?;
             verify.commit()?;
             drop(initialized);
             return Ok(Self {
