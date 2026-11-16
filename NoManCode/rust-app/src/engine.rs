@@ -1913,7 +1913,7 @@ impl Engine {
         let workers: Vec<_> = run
             .tasks
             .iter()
-            .map(|_| self.reserve_task_worker())
+            .map(|task| self.reserve_task_worker(&task.id))
             .collect::<Result<_>>()?;
         let committed = self.store.commit_turn_bundle_in_project(
             TurnBundle {
@@ -2086,7 +2086,7 @@ impl Engine {
             created_at: created,
             updated_at: created,
         };
-        let worker = self.reserve_task_worker()?;
+        let worker = self.reserve_task_worker(&legacy.id)?;
         let receipt = self.store.append_chat_turn_authorized(
             &turn,
             &task,
@@ -2102,12 +2102,14 @@ impl Engine {
 
     fn reserve_task_worker(
         &self,
+        task_id: &str,
     ) -> Result<(
         CancellationToken,
         crate::execution_authority::ExecutionOperation,
     )> {
         let token = self.shutdown_requested.child_token();
         let operation = self.store.execution_operation(token.clone())?;
+        operation.bind_task(task_id)?;
         Ok((token, operation))
     }
     fn launch(
@@ -2186,6 +2188,10 @@ impl Engine {
                 }
             }
             match result {
+                Ok(()) if typed_unknown || claim_unknown => {
+                    task.status = if token.is_cancelled() { "cancelled" } else { "failed" }.into();
+                    task.error = Some("执行结果未知；请检查后再处理".into());
+                }
                 Ok(()) => {
                     task.status = "completed".into();
                     task.error = None;
@@ -2686,7 +2692,7 @@ impl Engine {
                 task.error = None;
                 task.output.push_str("\n\n—— 继续 ——\n");
                 task.updated_at = now();
-                let worker = self.reserve_task_worker()?;
+                let worker = self.reserve_task_worker(&task.id)?;
                 self.store.resume_task_with_pending_input(&task, message)?;
                 self.launch(task.clone(), worker);
                 Ok(task)
@@ -7762,22 +7768,19 @@ mod audit_shutdown_tests {
             let (_root, engine, task) = fixture();
             // Use the same admission, JoinSet wrapper, final snapshot and active
             // removal as launch(), with a synthetic execution outcome only.
-            engine.spawn_task_worker(
-                task,
-                engine.reserve_task_worker().unwrap(),
-                move |_, task, _| async move {
-                    let error = match kind {
-                        0 => anyhow::Error::new(crate::command_execution::CommandOutcomeUnknown)
-                            .context("command collector"),
-                        1 => anyhow::Error::new(approval::ApprovalError::UnknownResult {
-                            id: "synthetic-claim".into(),
-                        })
-                        .context("tool execution"),
-                        _ => anyhow::anyhow!("ordinary provider failure"),
-                    };
-                    (task, Err(error))
-                },
-            );
+            let worker = engine.reserve_task_worker(&task.id).unwrap();
+            engine.spawn_task_worker(task, worker, move |_, task, _| async move {
+                let error = match kind {
+                    0 => anyhow::Error::new(crate::command_execution::CommandOutcomeUnknown)
+                        .context("command collector"),
+                    1 => anyhow::Error::new(approval::ApprovalError::UnknownResult {
+                        id: "synthetic-claim".into(),
+                    })
+                    .context("tool execution"),
+                    _ => anyhow::anyhow!("ordinary provider failure"),
+                };
+                (task, Err(error))
+            });
             wait_for_task_worker(&engine).await;
             let saved = engine.store.task("shutdown-task").unwrap();
             assert_eq!(saved.status, "failed");
@@ -7818,16 +7821,13 @@ mod audit_shutdown_tests {
                 rusqlite::params![record.id, state.as_str()],
             ).unwrap();
             task = engine.store.task(&task.id).unwrap();
-            engine.spawn_task_worker(
-                task,
-                engine.reserve_task_worker().unwrap(),
-                |_, task, _| async move {
-                    (
-                        task,
-                        Err(anyhow::anyhow!("post-execution bookkeeping failed")),
-                    )
-                },
-            );
+            let worker = engine.reserve_task_worker(&task.id).unwrap();
+            engine.spawn_task_worker(task, worker, |_, task, _| async move {
+                (
+                    task,
+                    Err(anyhow::anyhow!("post-execution bookkeeping failed")),
+                )
+            });
             wait_for_task_worker(&engine).await;
             assert_eq!(engine.store.task("shutdown-task").unwrap().status, "failed");
             let report = engine.shutdown(Duration::from_secs(1)).await;
