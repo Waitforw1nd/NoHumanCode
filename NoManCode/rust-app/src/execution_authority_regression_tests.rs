@@ -204,6 +204,83 @@ fn unknown_owner_child() {
 }
 
 #[tokio::test]
+async fn durable_epoch_and_phase_are_checked_before_process_or_generation() {
+    use crate::process_lifetime::Outcome;
+    use std::time::{Duration, Instant};
+    for case in ["active", "cancelled", "epoch", "phase"] {
+        let (dir, store, engine) = setup();
+        let cancel = CancellationToken::new();
+        let op = store.execution_operation(cancel.clone()).unwrap();
+        let retained = op.hold_body();
+        match case {
+            "cancelled" => cancel.cancel(),
+            "epoch" => {
+                store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .execute("UPDATE execution_owner SET epoch=epoch+1 WHERE id=1", [])
+                    .unwrap();
+            }
+            "phase" => {
+                store
+                    .db
+                    .lock()
+                    .unwrap()
+                    .execute(
+                        "UPDATE execution_owner SET phase='recovering' WHERE id=1",
+                        [],
+                    )
+                    .unwrap();
+            }
+            _ => {}
+        }
+        let root = std::env::var_os("SystemRoot").expect("Windows SystemRoot");
+        let cmd = std::path::PathBuf::from(root).join("System32/cmd.exe");
+        let mut command = tokio::process::Command::new(cmd);
+        command
+            .current_dir(dir.path())
+            .args(["/D", "/C", "echo marker>generation-marker.txt"]);
+        let spec = crate::execution_authority::command_spec(
+            &command,
+            4096,
+            Instant::now() + Duration::from_secs(15),
+        )
+        .unwrap();
+        if case == "active" {
+            let lease = store.execution_generation(&retained).unwrap();
+            lease.settle();
+        }
+        let outcome = op.run(crate::execution_authority::run_process(spec)).await;
+        if case == "active" {
+            match outcome.unwrap() {
+                Outcome::Settled(_) => {}
+                Outcome::Unknown => loop {
+                    std::thread::park_timeout(Duration::from_secs(60));
+                },
+                Outcome::NotStarted { .. } => panic!("positive control did not start"),
+            }
+            assert!(dir.path().join("generation-marker.txt").exists());
+            drop(retained);
+            assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+        } else {
+            assert!(
+                outcome.is_err(),
+                "{case} must reject before supervisor submission"
+            );
+            assert!(
+                !dir.path().join("generation-marker.txt").exists(),
+                "{case} launched the process"
+            );
+            assert!(
+                store.execution_generation(&retained).is_err(),
+                "{case} must reject the shared file/worker generation entry"
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn unknown_owner_retains_os_exclusion_until_original_child_is_waited() {
     use std::{
         process::Command,
@@ -462,7 +539,7 @@ fn cancelled_before_start_does_not_poison_next_operation() {
 #[tokio::test]
 async fn claimed_body_can_settle_after_close_or_cancel() {
     use std::time::Duration;
-    for close in [false, true] {
+    for close in 0..3 {
         let (_dir, store, engine) = setup();
         let cancel = CancellationToken::new();
         let op = store.execution_operation(cancel.clone()).unwrap();
@@ -475,10 +552,10 @@ async fn claimed_body_can_settle_after_close_or_cancel() {
             store_positive_and_insert(&store, &tx, &op);
             tx.commit().unwrap();
         }
-        if close {
-            store.authority.close();
-        } else {
-            cancel.cancel();
+        match close {
+            0 => cancel.cancel(),
+            1 => engine.request_shutdown(),
+            _ => store.authority.close(),
         }
         {
             let mut db = store.db.lock().unwrap();
