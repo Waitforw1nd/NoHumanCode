@@ -227,12 +227,15 @@ async fn stream_redaction_codec_errors_and_future_cancel_never_flush_raw_tail() 
 struct AcrossRoundsCodec {
     parts: [&'static str; 2],
     ending: RedactionEnding,
+    streamed: bool,
+    tool_group: bool,
     decoded: AtomicUsize,
 }
 struct AcrossRoundsDecoder {
     part: &'static str,
     first: bool,
     ending: RedactionEnding,
+    streamed: bool,
     fed: bool,
 }
 impl CompletionCodec for AcrossRoundsCodec {
@@ -244,12 +247,13 @@ impl CompletionCodec for AcrossRoundsCodec {
         let part = *self.parts.get(round).ok_or(CodecError::Failed)?;
         Ok(Box::new(AcrossRoundsDecoder {
             part,
-            first: round == 0,
+            first: round == 0 && self.tool_group,
             ending: if round == 0 {
                 RedactionEnding::Clean
             } else {
                 self.ending
             },
+            streamed: self.streamed,
             fed: false,
         }))
     }
@@ -258,7 +262,9 @@ impl CompletionDecoder for AcrossRoundsDecoder {
     fn feed(&mut self, _: &[u8], emit: &mut Emit<'_>) -> Result<(), CodecError> {
         if !self.fed {
             self.fed = true;
-            emit(self.part).map_err(|_| CodecError::Failed)?;
+            if self.streamed {
+                emit(self.part).map_err(|_| CodecError::Failed)?;
+            }
         }
         if self.ending == RedactionEnding::FeedError {
             Err(CodecError::Failed)
@@ -288,13 +294,19 @@ impl CompletionDecoder for AcrossRoundsDecoder {
     }
 }
 
-async fn across_rounds_fixture(parts: [&'static str; 2], ending: RedactionEnding) -> Fixture {
+async fn across_rounds_fixture(
+    parts: [&'static str; 2],
+    ending: RedactionEnding,
+    streamed: bool,
+) -> Fixture {
     fixture_with_codec(
         Fault::None,
         false,
         Some(Arc::new(AcrossRoundsCodec {
             parts,
             ending,
+            streamed,
+            tool_group: true,
             decoded: AtomicUsize::new(0),
         })),
     )
@@ -374,18 +386,32 @@ async fn stream_redaction_across_completions_keeps_raw_context_until_task_succes
         (["password=\"", "\""], "password=\"\""),
         (["普通🦀", "文本s"], "普通🦀文本s"),
     ] {
-        let f = across_rounds_fixture(parts, RedactionEnding::Clean).await;
-        let run = f.engine.start(across_rounds_request()).await.unwrap();
-        let task = settled(&f.engine, &run.tasks[0].id).await;
-        assert_eq!(task.status, "completed", "parts: {parts:?}");
-        assert_eq!(f.mock.completions.load(Ordering::SeqCst), 2);
-        assert!(
-            task.messages
+        for streamed in [true, false] {
+            let f = across_rounds_fixture(parts, RedactionEnding::Clean, streamed).await;
+            let run = f.engine.start(across_rounds_request()).await.unwrap();
+            let task = settled(&f.engine, &run.tasks[0].id).await;
+            assert_eq!(task.status, "completed", "parts: {parts:?}");
+            assert_eq!(f.mock.completions.load(Ordering::SeqCst), 2);
+            assert!(
+                task.messages
+                    .iter()
+                    .any(|m| { m["role"] == "tool" && m["tool_call_id"] == "audit-round-list" })
+            );
+            assert_eq!(task.output, expected, "parts: {parts:?}");
+            let persisted = serde_json::to_string(&task).unwrap();
+            assert!(!persisted.contains("synthetic") && !persisted.contains("opaque123"));
+            let assistant_text: String = task
+                .messages
                 .iter()
-                .any(|m| { m["role"] == "tool" && m["tool_call_id"] == "audit-round-list" })
-        );
-        assert_eq!(task.output, expected, "parts: {parts:?}");
-        assert_redaction_delta_replay(&f, &run.id, expected).await;
+                .filter(|m| m["role"] == "assistant")
+                .filter_map(|m| m["content"].as_str())
+                .collect();
+            assert_eq!(
+                assistant_text, expected,
+                "persisted assistant content: {parts:?}"
+            );
+            assert_redaction_delta_replay(&f, &run.id, expected).await;
+        }
     }
 }
 
@@ -403,7 +429,7 @@ async fn stream_redaction_across_completions_failure_and_cancel_drop_tail() {
                 "[redacted]=[redacted]; done ",
             ),
         ] {
-            let f = across_rounds_fixture(parts, ending).await;
+            let f = across_rounds_fixture(parts, ending, true).await;
             if ending == RedactionEnding::Cancel {
                 f.mock.stream_hold.store(true, Ordering::SeqCst);
             }
@@ -436,8 +462,64 @@ async fn stream_redaction_across_completions_failure_and_cancel_drop_tail() {
             );
             assert_eq!(f.mock.completions.load(Ordering::SeqCst), 2);
             assert_eq!(task.output, expected);
+            let persisted = serde_json::to_string(&task).unwrap();
+            assert!(!persisted.contains("synthetic") && !persisted.contains("opaque123"));
             assert_redaction_delta_replay(&f, &run.id, expected).await;
         }
+    }
+}
+
+#[tokio::test]
+async fn stream_redaction_content_only_and_streamed_messages_use_safe_projection() {
+    let raw = "普通🦀 sk-synthetic123; password=opaque123; end s";
+    let expected = "普通🦀 [redacted]; password=[redacted]; end s";
+    for streamed in [true, false] {
+        let f = fixture_with_codec(
+            Fault::None,
+            false,
+            Some(Arc::new(AcrossRoundsCodec {
+                parts: [raw, raw],
+                ending: RedactionEnding::Clean,
+                streamed,
+                tool_group: false,
+                decoded: AtomicUsize::new(0),
+            })),
+        )
+        .await;
+        // Route checks use the local execute wrapper; its clean tail must also
+        // reach returned content. Task execution uses the shared-state API.
+        let checked = f
+            .engine
+            .project_route_check(&f.project, "route")
+            .await
+            .unwrap();
+        assert_eq!(checked.result["answer"], expected);
+        let run = f.engine.start(request()).await.unwrap();
+        let task = settled(&f.engine, &run.tasks[0].id).await;
+        assert_eq!(task.status, "completed");
+        assert_eq!(task.output, expected);
+        assert_eq!(task.messages.last().unwrap()["content"], expected);
+        let persisted = serde_json::to_string(&task).unwrap();
+        assert!(!persisted.contains("synthetic") && !persisted.contains("opaque123"));
+        assert_redaction_delta_replay(&f, &run.id, expected).await;
+    }
+}
+
+#[tokio::test]
+async fn stream_redaction_plain_token_fragment_preserves_output_events_and_sse() {
+    // The second piece is token-shaped only when its prior raw context is
+    // discarded. A Store that re-redacts each safe delta changes this output.
+    for streamed in [true, false] {
+        let f = across_rounds_fixture(["foo", "sk-plain"], RedactionEnding::Clean, streamed).await;
+        let run = f.engine.start(across_rounds_request()).await.unwrap();
+        let task = settled(&f.engine, &run.tasks[0].id).await;
+        assert_eq!(task.status, "completed");
+        assert_eq!(f.mock.completions.load(Ordering::SeqCst), 2);
+        assert_eq!(task.output, "foosk-plain");
+        assert_redaction_delta_replay(&f, &run.id, "foosk-plain").await;
+        // Stored messages retain the independent safe_task_value policy. It may
+        // conservatively redact a token-shaped piece in an individual message;
+        // the three concatenated user-output projections must stay identical.
     }
 }
 
