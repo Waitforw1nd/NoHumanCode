@@ -106,15 +106,22 @@ impl ExecutionAuthority {
         op: &ExecutionOperation,
         settlement: bool,
     ) -> Result<()> {
+        self.fence_scope(tx, &op.scope, settlement)
+    }
+    fn fence_scope(
+        self: &Arc<Self>,
+        tx: &rusqlite::Transaction<'_>,
+        scope: &OperationScope,
+        settlement: bool,
+    ) -> Result<()> {
         // Ordinary caller rejection must not poison another domain or turn a
         // clean cancellation into an unknown resource outcome.
         ensure!(
-            Arc::ptr_eq(self, &op.scope.authority),
+            Arc::ptr_eq(self, &scope.authority),
             "cross-domain operation"
         );
         {
-            let operation = op
-                .scope
+            let operation = scope
                 .state
                 .lock()
                 .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
@@ -122,7 +129,7 @@ impl ExecutionAuthority {
                 operation.bodies > 0
                     && !operation.unknown
                     && !operation.settled
-                    && (settlement || !op.scope.cancel.is_cancelled()),
+                    && (settlement || !scope.cancel.is_cancelled()),
                 "operation closed"
             );
             let state = self
@@ -133,7 +140,7 @@ impl ExecutionAuthority {
                 state.controller
                     && (settlement || state.open)
                     && state.unknown == 0
-                    && state.epoch == Some(op.scope.epoch),
+                    && state.epoch == Some(scope.epoch),
                 "stale operation"
             );
         }
@@ -143,7 +150,7 @@ impl ExecutionAuthority {
         let result = (|| {
             self.domain.verify()?;
             crate::repository::verify_execution_owner(tx, &self.domain.identity_key()?)?;
-            let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND epoch=?1 AND phase='active')", [op.scope.epoch], |r| r.get(0))?;
+            let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND epoch=?1 AND phase='active')", [scope.epoch], |r| r.get(0))?;
             ensure!(valid, "execution epoch or phase mismatch");
             Ok(())
         })();
@@ -382,31 +389,52 @@ impl OperationScope {
         }
     }
     fn generation(self: &Arc<Self>) -> Result<Box<dyn DomainLease>> {
-        self.authority.domain.verify()?;
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
-        let admission = self
-            .authority
-            .admission
-            .lock()
-            .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
-        ensure!(
-            admission.controller && admission.open,
-            "data domain admission is closed"
-        );
-        ensure!(!self.cancel.is_cancelled(), "operation was cancelled");
-        ensure!(
-            state.bodies != 0 && !state.unknown && state.active.is_none(),
-            "operation generation is closed or busy"
-        );
-        let id = state
-            .generation
-            .checked_add(1)
-            .context("operation generation exhausted")?;
-        state.generation = id;
-        state.active = Some(id);
+        // Take the SQLite writer lock before any operation/admission mutex.
+        // The same transaction verifies the pinned main handle and captured
+        // epoch before reserving the generation. No external work starts until
+        // its commit succeeds.
+        let mut db = self.authority.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.authority.fence_scope(&tx, self, false)?;
+        let id = {
+            let mut state = self
+                .state
+                .lock()
+                .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+            let admission = self
+                .authority
+                .admission
+                .lock()
+                .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+            ensure!(
+                admission.controller
+                    && admission.open
+                    && admission.unknown == 0
+                    && admission.epoch == Some(self.epoch),
+                "data domain admission is closed"
+            );
+            ensure!(!self.cancel.is_cancelled(), "operation was cancelled");
+            ensure!(
+                state.bodies != 0 && !state.unknown && !state.settled && state.active.is_none(),
+                "operation generation is closed or busy"
+            );
+            let id = state
+                .generation
+                .checked_add(1)
+                .context("operation generation exhausted")?;
+            state.generation = id;
+            state.active = Some(id);
+            id
+        };
+        if let Err(error) = tx.commit() {
+            let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+            if state.active == Some(id) {
+                state.active = None;
+            }
+            drop(state);
+            self.authority.seal_unknown();
+            return Err(error.into());
+        }
         Ok(Box::new(Generation {
             scope: self.clone(),
             id,
