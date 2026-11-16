@@ -134,6 +134,13 @@ pub(crate) enum CompletionReason {
 #[derive(Debug)]
 pub(crate) struct Settled {
     pub reason: CompletionReason,
+    #[cfg_attr(
+        not(test),
+        allow(
+            dead_code,
+            reason = "Retain original process creation evidence; schema17 consumers expose only legacy command output"
+        )
+    )]
     pub identity: ProcessIdentity,
     pub exit_code: u32,
     pub stdout: Capture,
@@ -1576,7 +1583,8 @@ mod platform {
                 // do not adopt a successful exit for Terminate policy.
                 if reason.is_none()
                     && spec.overflow == OverflowPolicy::Terminate
-                    && overflow.load(Ordering::Acquire)
+                    && (out_value.as_ref().is_some_and(|capture| capture.truncated)
+                        || err_value.as_ref().is_some_and(|capture| capture.truncated))
                 {
                     reason = Some(CompletionReason::OutputLimit);
                 }
