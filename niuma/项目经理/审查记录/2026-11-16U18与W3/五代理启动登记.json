@@ -1,0 +1,46 @@
+{
+  "started_utc": "2026-11-16 11:58:36 UTC",
+  "baseline_head": "1d09a551199292df0b719f6faa99f3799e02afef",
+  "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+  "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26",
+  "agents": [
+    {
+      "role": "A",
+      "agent_id": "01a1e438-a256-7b40-a64d-ce2832a23d37",
+      "nickname": "Helmholtz",
+      "model": "gpt-6.1-terra",
+      "reasoning_effort": "high"
+    },
+    {
+      "role": "B",
+      "agent_id": "01a1e438-a2bd-7890-8aae-a4af45453b8e",
+      "nickname": "Mill",
+      "model": "gpt-6.1-terra",
+      "reasoning_effort": "high"
+    },
+    {
+      "role": "C",
+      "agent_id": "01a1e438-a337-7bb3-b6d7-33c1542e54f1",
+      "nickname": "Hilbert",
+      "model": "gpt-6.1-terra",
+      "reasoning_effort": "high"
+    },
+    {
+      "role": "D",
+      "agent_id": "01a1e438-a397-72b3-910d-bc87036a774c",
+      "nickname": "Aquinas",
+      "model": "gpt-6.1-terra",
+      "reasoning_effort": "high"
+    },
+    {
+      "role": "E",
+      "agent_id": "01a1e438-a3f9-7003-81ef-b857f950f830",
+      "nickname": "Jason",
+      "model": "gpt-6.1-terra",
+      "reasoning_effort": "high"
+    }
+  ],
+  "model_source": "Explicit user request; exact model and reasoning_effort submitted to successful spawn_agent calls",
+  "preservation_manifest": ".local/u18-20261116/baseline-preservation/manifest.json",
+  "preservation_sha256": "1fe3771c4479e9c72689cafde30312b766632f9719ed6efdc836884959b14a14"
+}
