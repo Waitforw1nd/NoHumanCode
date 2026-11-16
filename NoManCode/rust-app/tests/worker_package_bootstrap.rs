@@ -4,7 +4,11 @@
 
 use peachsh::worker_bootstrap::bootstrap_from_packaged_digest;
 use sha2::{Digest, Sha256};
-use std::{fs, process::Command};
+use std::{fs, process::Command, time::Duration};
+
+#[path = "support/owned_child.rs"]
+mod owned_child;
+use owned_child::OwnedChild;
 
 const WORKER: &str = "peachsh-wasm-worker.exe";
 const TRUSTED: &[u8] = b"trusted fixture worker bytes";
@@ -45,7 +49,8 @@ fn bootstrap_child() {
 
 #[test]
 fn packaged_bootstrap_rejects_mismatch_and_pins_fixed_copy() {
-    let root = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap().keep();
+    println!("retained fixture directory: {}", root.display());
     let original = std::env::current_exe().unwrap();
     for case in [
         "disabled",
@@ -55,7 +60,7 @@ fn packaged_bootstrap_rejects_mismatch_and_pins_fixed_copy() {
         "missing",
         "ready_and_pin",
     ] {
-        let dir = root.path().join(case);
+        let dir = root.join(case);
         fs::create_dir(&dir).unwrap();
         let host = dir.join("fixture-host.exe");
         fs::copy(&original, &host).unwrap();
@@ -66,51 +71,78 @@ fn packaged_bootstrap_rejects_mismatch_and_pins_fixed_copy() {
             )
             .unwrap();
         }
-        // Wait owns the original child; no PID reopening, kill or timeout-based cleanup.
-        let status = Command::new(host)
-            .args(["--exact", "bootstrap_child", "--nocapture"])
-            .env("NHC_BOOTSTRAP_FIXTURE_CASE", case)
-            .status()
-            .unwrap();
-        assert!(status.success(), "bootstrap case failed: {case}");
+        let output = OwnedChild::spawn(
+            Command::new(host)
+                .args(["--exact", "bootstrap_child", "--nocapture"])
+                .env("NHC_BOOTSTRAP_FIXTURE_CASE", case),
+            &dir.join("evidence"),
+        )
+        .output(Duration::from_secs(30));
+        assert!(output.status.success(), "bootstrap case failed: {case}");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("running 1 test"), "fixture did not run: {case}");
+        assert!(stdout.contains("test result: ok. 1 passed;"), "fixture result: {case}");
     }
 }
 
-/// Run explicitly with two independently built pairs and an unbound Host.
+/// Run explicitly with a built pair, a distinct real worker and an unbound Host.
 /// External paths are test inputs, never passed to the product as worker paths.
 #[test]
 #[ignore = "requires manager-built real pairs and an unbound Host"]
 fn real_pair_host_check_rejects_tampering_and_mix() {
     let pair_a = std::path::PathBuf::from(std::env::var_os("NHC_TEST_PAIR_A").expect("pair A"));
-    let pair_b = std::path::PathBuf::from(std::env::var_os("NHC_TEST_PAIR_B").expect("pair B"));
+    let foreign = std::path::PathBuf::from(
+        std::env::var_os("NHC_TEST_FOREIGN_WORKER").expect("foreign worker"),
+    );
     let unbound = std::path::PathBuf::from(
         std::env::var_os("NHC_TEST_UNBOUND_HOST").expect("unbound host"),
     );
     let worker_a = fs::read(pair_a.join(WORKER)).unwrap();
-    let worker_b = fs::read(pair_b.join(WORKER)).unwrap();
+    let worker_b = fs::read(&foreign).unwrap();
     assert_ne!(
         worker_a, worker_b,
         "mixed-pair test needs different worker bytes"
     );
-    let root = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap().keep();
+    println!("retained real-pair directory: {}", root.display());
+    fs::write(
+        root.join("inputs.txt"),
+        format!(
+            "pair A: {}\nhost SHA256: {:x}\nworker SHA256: {:x}\nforeign worker: {}\nforeign SHA256: {:x}\nunbound Host: {}\nunbound SHA256: {:x}\n",
+            pair_a.display(),
+            Sha256::digest(fs::read(pair_a.join("peachsh.exe")).unwrap()),
+            Sha256::digest(&worker_a),
+            foreign.display(),
+            Sha256::digest(&worker_b),
+            unbound.display(),
+            Sha256::digest(fs::read(&unbound).unwrap()),
+        ),
+    )
+    .unwrap();
     let check = |case: &str, host: &std::path::Path, worker: Option<&[u8]>, success: bool| {
-        let dir = root.path().join(case);
+        let dir = root.join(case);
         fs::create_dir(&dir).unwrap();
         let executable = dir.join("peachsh.exe");
         fs::copy(host, &executable).unwrap();
         if let Some(bytes) = worker {
             fs::write(dir.join(WORKER), bytes).unwrap();
         }
-        let status = Command::new(executable)
-            .arg("--check")
-            .arg("--data-dir")
-            .arg(dir.join("data"))
-            .arg("--workspace")
-            .arg(dir.join("workspace"))
-            .current_dir(&dir)
-            .status()
-            .unwrap();
-        assert_eq!(status.success(), success, "real Host case: {case}");
+        let output = OwnedChild::spawn(
+            Command::new(executable)
+                .arg("--check")
+                .arg("--data-dir")
+                .arg(dir.join("data"))
+                .arg("--workspace")
+                .arg(dir.join("workspace"))
+                .current_dir(&dir),
+            &dir.join("evidence"),
+        )
+        .output(Duration::from_secs(30));
+        assert_eq!(output.status.success(), success, "real Host case: {case}");
+        if !success {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains("可信 WASM worker 初始化失败"), "wrong failure: {case}");
+        }
     };
     let host_a = pair_a.join("peachsh.exe");
     check("pair-a", &host_a, Some(&worker_a), true);

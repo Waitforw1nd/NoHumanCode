@@ -75,13 +75,41 @@ all build inputs, or reproducibility. They may expose local paths. `pair.json` i
 self-described evidence, never an authentication authority.
 
 The Windows integration test `tests/worker_package_bootstrap.rs` exercises the
-production bootstrap in isolated copied test executables. The ignored real-pair
-case requires manager-built distinct pairs via `NHC_TEST_PAIR_A` and
-`NHC_TEST_PAIR_B` plus an unbound Host via `NHC_TEST_UNBOUND_HOST`. It copies
-the binaries into isolated directories and uses `--check` with isolated data;
-it does not read `pair.json` as an oracle. Those tests launch real processes and
-belong exclusively to the manager's supervised window. Protocol and public
-`run_wasm` execution remain separate gates.
+production bootstrap in isolated copied test executables. Its ignored real-pair
+case uses a prepared pair, a separately fixed real worker with different bytes,
+and an unbound Host; no `pair.json` is used as an oracle. Only the manager runs
+these process tests in the supervised window. After candidate integration, set
+the three paths below to approved, fixed inputs on E and run from the repository
+root, using the full candidate Git IDs and a new attempt name:
+
+```powershell
+$env:NHC_TEST_PAIR_A = 'E:\path\to\pair-a'
+$env:NHC_TEST_FOREIGN_WORKER = 'E:\path\to\baseline\peachsh-wasm-worker.exe'
+$env:NHC_TEST_UNBOUND_HOST = 'E:\path\to\unbound\peachsh.exe'
+python -B NoManCode/rust-app/tools/worker-package/run-bootstrap-check.py `
+  --head <full-head> --product-tree <full-product-tree> --rust-tree <full-rust-tree> `
+  --attempt real-pair-attempt1 --step-timeout-seconds 300
+```
+
+The harness records input paths and SHA256 in the retained temporary fixture
+directory, prints its location, copies artifacts into isolated case directories,
+and uses isolated data and workspace paths. The gate runner checks source IDs,
+requires a passing test, and retains its gate and evidence. Each original child
+is owned by `tests/support/owned_child.rs`, with no window, file-backed logs and
+a 30-second deadline; ordinary failure/unwind invokes its exact-child kill/wait
+guard. Timeout or uncertain observation writes unknown evidence, emits
+`NHC_TERMINAL_UNKNOWN` and retains that original Child indefinitely. Do not kill
+the test or supervisor, start another step, unlock, remove the fixture or infer
+descendant cleanup from direct exit; the manager reconciles the same objects and
+gate. An outer deadline likewise stops admission while the original supervisor
+retains the Cargo process. Neither direct exit nor this test proves descendant
+cleanup. Protocol and public `run_wasm` execution remain separate gates.
+
+The non-ignored independent bootstrap case can be selected through the existing
+`run-gates.ps1 -Mode targeted -TestTarget worker_package_bootstrap -Filter
+packaged_bootstrap_rejects_mismatch_and_pins_fixed_copy` with candidate IDs,
+a fresh attempt and an appropriate outer deadline. The child's harness output
+must show exactly one passing test per case.
 
 Pure mock tests, safe while the manager owns the real build window:
 
