@@ -2106,7 +2106,7 @@ impl Engine {
             };
             let mut emit = |delta: &str| {
                 if !delta.is_empty() {
-                    self.store.event(&task.id, "delta", json!({"text":delta}))?;
+                    self.store.completion_delta(&task.id, delta)?;
                     text.push_str(delta);
                 }
                 Ok(())
@@ -2173,12 +2173,12 @@ impl Engine {
             candidate.updated_at = now();
             if calls.is_some() {
                 self.store.save_new_assistant_group(&candidate)?;
-            } else {
-                self.store.save_running_snapshot(&candidate)?;
+                #[cfg(test)]
+                crash_probe::block(&task.id, "agent_after_assistant_save", "");
             }
+            // A final text message is appended once, after the success decision
+            // and redactor tail. Already saved message prefixes are immutable.
             *task = candidate;
-            #[cfg(test)]
-            crash_probe::block(&task.id, "agent_after_assistant_save", "");
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let classes: Vec<_> = calls
                 .map(|calls| {
@@ -2208,11 +2208,21 @@ impl Engine {
                 // suffix. Errors, cancellation and round exhaustion drop it.
                 let tail = output_redactor.finish();
                 if !tail.is_empty() {
-                    self.store.event(&task.id, "delta", json!({"text":tail}))?;
+                    self.store.completion_delta(&task.id, &tail)?;
                     task.output.push_str(&tail);
-                    task.updated_at = now();
-                    self.store.save_running_snapshot(task)?;
+                    let message = task
+                        .messages
+                        .last_mut()
+                        .context("最终 assistant 消息缺失")?;
+                    match &mut message["content"] {
+                        Value::String(content) => content.push_str(&tail),
+                        content => *content = Value::String(tail),
+                    }
                 }
+                task.updated_at = now();
+                self.store.save_running_snapshot(task)?;
+                #[cfg(test)]
+                crash_probe::block(&task.id, "agent_after_assistant_save", "");
                 return Ok(());
             };
             let crate::agent_runtime::StrategyAction::ToolVotes(votes) = decision else {

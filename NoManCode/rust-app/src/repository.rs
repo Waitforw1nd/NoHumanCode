@@ -1723,6 +1723,19 @@ impl<'a> Repository<'a> {
         insert_event_tx(tx, event)
     }
 
+    /// Host-only completion text already filtered with the stream's preceding
+    /// context. Re-filtering an isolated delta can change a safe word boundary.
+    pub(crate) fn append_completion_delta(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
+        anyhow::ensure!(
+            event.kind == "delta"
+                && event.data.as_object().is_some_and(|data| {
+                    data.len() == 1 && data.get("text").is_some_and(Value::is_string)
+                }),
+            "可信 completion 入口只接受文本 delta"
+        );
+        insert_event_data_tx(tx, event, &event.data)
+    }
+
     pub fn events_after(&self, session_id: &SessionId, after: i64) -> Result<Vec<Event>> {
         let mut stmt = self.conn.prepare(
             "SELECT seq,schema_version,cursor,session_id,turn_id,task_id,kind,data,at FROM events WHERE session_id=?1 AND seq>?2 ORDER BY seq LIMIT 500",
@@ -1932,6 +1945,11 @@ fn insert_turn_task_tx(tx: &Transaction<'_>, task: &TurnTask) -> Result<()> {
 }
 
 fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
+    let data = secrets::redact_persisted(&event.data);
+    insert_event_data_tx(tx, event, &data)
+}
+
+fn insert_event_data_tx(tx: &Transaction<'_>, event: &Event, data: &Value) -> Result<i64> {
     validate_event_kind(&event.kind)?;
     anyhow::ensure!(event.seq == 0, "新事件的 seq 必须由数据库分配");
     anyhow::ensure!(
@@ -2004,7 +2022,6 @@ fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
         )?;
         anyhow::ensure!(exists == 1, "事件引用了不存在的任务");
     }
-    let data = secrets::redact_persisted(&event.data);
     tx.execute(
         "INSERT INTO events(task_id,kind,data,at,schema_version,cursor,session_id,turn_id) VALUES (?1,?2,?3,?4,?5,'',?6,?7)",
         params![
