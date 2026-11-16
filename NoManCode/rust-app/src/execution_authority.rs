@@ -14,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 struct Admission {
     controller: bool,
     open: bool,
+    closed: bool,
     in_flight: usize,
     unknown: usize,
     epoch: Option<i64>,
@@ -47,6 +48,7 @@ impl ExecutionAuthority {
         );
         state.controller = true;
         state.open = false;
+        state.closed = false;
         drop(state);
         let registration = (|| -> Result<i64> {
             let mut db = self.connection()?;
@@ -139,7 +141,7 @@ impl ExecutionAuthority {
             ensure!(
                 state.controller
                     && (settlement || state.open)
-                    && state.unknown == 0
+                    && (settlement || state.unknown == 0)
                     && state.epoch == Some(scope.epoch),
                 "stale operation"
             );
@@ -177,10 +179,52 @@ impl ExecutionAuthority {
         self.retain_unknown_owner();
     }
     pub(crate) fn close(&self) {
-        self.admission
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .open = false;
+        let mut state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
+        state.open = false;
+        state.closed = true;
+    }
+    pub(crate) fn unknown_terminal_fence(
+        self: &Arc<Self>,
+        tx: &rusqlite::Transaction<'_>,
+        op: &ExecutionOperation,
+    ) -> Result<()> {
+        ensure!(
+            Arc::ptr_eq(self, &op.scope.authority),
+            "cross-domain operation"
+        );
+        {
+            let operation = op
+                .scope
+                .state
+                .lock()
+                .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+            let state = self
+                .admission
+                .lock()
+                .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+            ensure!(
+                operation.bodies > 0
+                    && !operation.settled
+                    && operation.unknown
+                    && state.controller
+                    && !state.closed
+                    && state.unknown > 0
+                    && state.epoch == Some(op.scope.epoch),
+                "unknown terminal operation required"
+            );
+        }
+        self.domain.verify_connection(tx)?;
+        let result = (|| {
+            self.domain.verify()?;
+            crate::repository::verify_execution_owner(tx, &self.domain.identity_key()?)?;
+            let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND epoch=?1 AND phase='active')", [op.scope.epoch], |r| r.get(0))?;
+            ensure!(valid, "execution epoch or phase mismatch");
+            Ok(())
+        })();
+        if result.is_err() {
+            self.seal_unknown();
+        }
+        result
     }
     pub(crate) fn status(&self) -> (bool, usize, usize) {
         let state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
@@ -303,6 +347,9 @@ enum CancellationOwner {
 }
 tokio::task_local! { static CURRENT: Arc<OperationScope>; }
 impl ExecutionOperation {
+    pub(crate) fn cancellation_token(&self) -> CancellationToken {
+        self.scope.cancel.clone()
+    }
     /// Mark the original operation outcome indeterminate; this is sticky on
     /// the same authority even if the caller and all counted bodies disappear.
     pub(crate) fn seal_unknown(&self) {
@@ -981,6 +1028,33 @@ mod platform {
             Ok(db)
         }
     }
+}
+
+/// Run test fixtures under the same controller/recovery/operation path as production.
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) fn test_with_store_sync<R>(
+    store: &crate::store::Store,
+    work: impl FnOnce() -> R,
+) -> Result<R> {
+    let controller = store.authority.claim()?;
+    store.recover_with_controller(&controller)?;
+    let operation = store.execution_operation(CancellationToken::new())?;
+    Ok(CURRENT.sync_scope(operation.scope.clone(), || {
+        let _operation = operation;
+        work()
+    }))
+}
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) async fn test_with_store<F: Future>(
+    store: &crate::store::Store,
+    work: F,
+) -> Result<F::Output> {
+    let controller = store.authority.claim()?;
+    store.recover_with_controller(&controller)?;
+    let operation = store.execution_operation(CancellationToken::new())?;
+    Ok(operation.run(work).await)
 }
 
 #[cfg(test)]

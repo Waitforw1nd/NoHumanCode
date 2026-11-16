@@ -589,6 +589,32 @@ impl Store {
         Ok(())
     }
 
+    /// Persist only a conservative terminal status for this same unknown
+    /// operation. No caller-provided message, output, result or approval state
+    /// is accepted through this path.
+    pub(crate) fn save_unknown_terminal(&self, task: &Task) -> Result<()> {
+        anyhow::ensure!(
+            matches!(task.status.as_str(), "failed" | "cancelled"),
+            "unknown outcome must be failed or cancelled"
+        );
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.authority.unknown_terminal_fence(&tx, &op)?;
+        let mut durable = legacy_task_row(&tx, &task.id)?;
+        anyhow::ensure!(
+            matches!(durable.status.as_str(), "queued" | "running" | "cancelled"),
+            "task is already terminal"
+        );
+        if durable.status != "cancelled" {
+            durable.status = task.status.clone();
+        }
+        durable.error = Some("执行结果未知；请检查后再继续".into());
+        durable.updated_at = now();
+        save_task_tx(&tx, &durable, false)?;
+        self.commit_execution_tx(tx)
+    }
+
     pub(crate) fn recover_legacy_read_result(
         &self,
         caller: &Task,
