@@ -890,17 +890,6 @@ impl ShutdownReport {
     }
 }
 impl Engine {
-    #[cfg(feature = "integration-test-support")]
-    pub async fn with_integration_test_operation<F: std::future::Future>(
-        &self,
-        work: F,
-    ) -> Result<F::Output> {
-        let operation = self
-            .store
-            .execution_operation(self.shutdown_requested.clone())?;
-        Ok(operation.run(work).await)
-    }
-
     #[cfg(all(test, windows))]
     pub(crate) fn test_worker_operation(
         &self,
