@@ -62,27 +62,84 @@ fn bounded_child_with_value(
     env_value: &str,
 ) -> std::process::Output {
     use std::process::Stdio;
-    let mut child = hidden_test_command()
-        .args(["--exact", test_name, "--nocapture"])
-        .env(env_name, env_value)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+    let evidence = tempfile::tempdir().unwrap().keep();
+    let stdout = evidence.join("stdout.log");
+    let stderr = evidence.join("stderr.log");
+    let mut child = OwnedChild(
+        hidden_test_command()
+            .args(["--exact", test_name, "--nocapture"])
+            .env(env_name, env_value)
+            .stdin(Stdio::null())
+            .stdout(Stdio::from(std::fs::File::create(&stdout).unwrap()))
+            .stderr(Stdio::from(std::fs::File::create(&stderr).unwrap()))
+            .spawn()
+            .unwrap(),
+    );
     let deadline = std::time::Instant::now() + Duration::from_secs(15);
     loop {
-        if child.try_wait().unwrap().is_some() {
-            return child.wait_with_output().unwrap();
-        }
         if std::time::Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("bounded child timed out: {test_name}");
+            child.retain_unknown("bounded agent fixture observation deadline");
+        }
+        let status = child.try_wait();
+        if std::time::Instant::now() >= deadline {
+            child.retain_unknown("bounded agent fixture signal observed late");
+        }
+        match status {
+            Ok(Some(status)) => {
+                return std::process::Output {
+                    status,
+                    stdout: std::fs::read(&stdout).unwrap(),
+                    stderr: std::fs::read(&stderr).unwrap(),
+                };
+            }
+            Ok(None) => {}
+            Err(_) => {
+                child.retain_unknown("bounded agent fixture observation failed");
+            }
         }
         std::thread::sleep(Duration::from_millis(10));
     }
 }
 struct OwnedChild(std::process::Child);
+impl OwnedChild {
+    fn observe(&mut self) -> Option<std::process::ExitStatus> {
+        match self.0.try_wait() {
+            Ok(status) => status,
+            Err(_) => self.retain_unknown("agent fixture observation failed"),
+        }
+    }
+    fn retain_unknown(&mut self, reason: &str) -> ! {
+        eprintln!("NHC_TERMINAL_UNKNOWN: {reason}; original agent fixture Child retained");
+        loop {
+            std::thread::park_timeout(Duration::from_secs(60));
+        }
+    }
+    fn kill_wait(&mut self) -> std::process::ExitStatus {
+        match self.0.try_wait() {
+            Ok(Some(status)) => return status,
+            Ok(None) => {}
+            Err(_) => self.retain_unknown("agent fixture observation failed"),
+        }
+        if self.0.kill().is_err() {
+            return match self.0.try_wait() {
+                Ok(Some(status)) => status,
+                _ => self.retain_unknown("agent fixture termination unconfirmed"),
+            };
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        loop {
+            if std::time::Instant::now() >= deadline {
+                self.retain_unknown("agent fixture termination deadline");
+            }
+            match self.0.try_wait() {
+                Ok(Some(status)) if std::time::Instant::now() < deadline => return status,
+                Ok(Some(_)) => self.retain_unknown("agent fixture signal observed late"),
+                Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+                Err(_) => self.retain_unknown("agent fixture signal unconfirmed"),
+            }
+        }
+    }
+}
 impl std::ops::Deref for OwnedChild {
     type Target = std::process::Child;
     fn deref(&self) -> &Self::Target {
@@ -96,10 +153,7 @@ impl std::ops::DerefMut for OwnedChild {
 }
 impl Drop for OwnedChild {
     fn drop(&mut self) {
-        if !matches!(self.0.try_wait(), Ok(Some(_))) {
-            let _ = self.0.kill();
-            let _ = self.0.wait();
-        }
+        let _ = self.kill_wait();
     }
 }
 fn read_task_identity(path: &std::path::Path) -> anyhow::Result<Option<String>> {
@@ -114,11 +168,11 @@ fn read_task_identity(path: &std::path::Path) -> anyhow::Result<Option<String>> 
 }
 
 fn ready_task_identity(child: &mut OwnedChild, path: &std::path::Path) -> Option<String> {
-    if let Some(status) = child.try_wait().expect("check child before task identity") {
+    if let Some(status) = child.observe() {
         panic!("child exited before task identity: {status}");
     }
     let result = read_task_identity(path).expect("invalid or unreadable task identity");
-    if let Some(status) = child.try_wait().expect("check child after task identity") {
+    if let Some(status) = child.observe() {
         panic!("child exited before accepting task identity: {status}");
     }
     result
@@ -405,10 +459,10 @@ async fn child_parent_decision(engine: &Engine, root: &std::path::Path, id: &str
     .expect("child approval/decision barrier timed out");
 }
 async fn parent_approval(child: &mut OwnedChild, root: &std::path::Path) -> Value {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    let result = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             assert!(
-                child.try_wait().unwrap().is_none(),
+                child.observe().is_none(),
                 "child exited before approval publication"
             );
             match std::fs::read(root.join("approval-ready.json")) {
@@ -419,8 +473,11 @@ async fn parent_approval(child: &mut OwnedChild, root: &std::path::Path) -> Valu
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
     })
-    .await
-    .expect("parent approval observation timed out")
+    .await;
+    match result {
+        Ok(value) => value,
+        Err(_) => child.retain_unknown("parent approval observation deadline"),
+    }
 }
 struct FixtureCodec {
     messages: Arc<Mutex<VecDeque<Value>>>,
@@ -1477,13 +1534,11 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
             if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
                 break id;
             }
-            if let Some(s) = child.try_wait().unwrap() {
+            if let Some(s) = child.observe() {
                 panic!("crash child exited early {phase}: {s}");
             }
             if tokio::time::Instant::now() >= deadline {
-                let _ = child.kill();
-                let _ = child.wait();
-                panic!("arming timeout {phase}");
+                child.retain_unknown("agent fixture arming deadline");
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         };
@@ -1493,19 +1548,16 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
             if root.join("crash-signal").exists() {
                 break;
             }
-            if let Some(s) = child.try_wait().unwrap() {
+            if let Some(s) = child.observe() {
                 panic!("crash child exited before signal {phase}: {s}");
             }
             if tokio::time::Instant::now() >= deadline {
-                let _ = child.kill();
-                let _ = child.wait();
-                panic!("signal timeout {phase}");
+                child.retain_unknown("agent fixture signal deadline");
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         let pid = child.id();
-        child.kill().unwrap();
-        let status = child.wait().unwrap();
+        let status = child.kill_wait();
         assert!(!status.success());
         eprintln!(
             "a10-kill {}",
@@ -2154,13 +2206,11 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
         if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
             break id;
         }
-        if let Some(s) = child.try_wait().unwrap() {
+        if let Some(s) = child.observe() {
             panic!("unknown child exited: {s}");
         }
         if tokio::time::Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("unknown arm timeout");
+            child.retain_unknown("agent fixture unknown-arm deadline");
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
@@ -2173,19 +2223,16 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
         if root.join("crash-signal").exists() {
             break;
         }
-        if let Some(s) = child.try_wait().unwrap() {
+        if let Some(s) = child.observe() {
             panic!("unknown child exited before claim signal: {s}");
         }
         if tokio::time::Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("unknown claim timeout");
+            child.retain_unknown("agent fixture unknown-claim deadline");
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     let child_pid = child.id();
-    child.kill().unwrap();
-    let child_status = child.wait().unwrap();
+    let child_status = child.kill_wait();
     assert!(!child_status.success());
     eprintln!(
         "a10-kill {}",
@@ -3309,18 +3356,20 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
             if let Some(id) = ready_task_identity(&mut child, &root.join("armed")) {
                 break id;
             }
-            if let Some(status) = child.try_wait().unwrap() {
+            if let Some(status) = child.observe() {
                 panic!("proof child {pid} exited: {status}");
             }
-            assert!(
-                tokio::time::Instant::now() < deadline,
-                "proof child not armed"
-            );
+            if tokio::time::Instant::now() >= deadline {
+                child.retain_unknown("proof child not armed");
+            }
             tokio::time::sleep(Duration::from_millis(10)).await;
         };
-        tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+        if tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
             .await
-            .unwrap();
+            .is_err()
+        {
+            child.retain_unknown("agent provider barrier deadline");
+        }
         f.mock.hold.store(false, Ordering::SeqCst);
         f.mock.release.notify_one();
         let publication = parent_approval(&mut child, root).await;
@@ -3339,22 +3388,20 @@ async fn n19_redacted_decision_process_kill_reconciles_once() {
         .unwrap();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         while !root.join("proof-signal").is_file() {
-            if let Some(status) = child.try_wait().unwrap() {
+            if let Some(status) = child.observe() {
                 panic!("proof child {pid} exited before probe: {status}");
             }
-            assert!(
-                tokio::time::Instant::now() < deadline,
-                "proof probe timed out"
-            );
+            if tokio::time::Instant::now() >= deadline {
+                child.retain_unknown("proof probe timed out");
+            }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         assert_eq!(
             std::fs::read_to_string(root.join("proof-signal")).unwrap(),
             format!("{id}\nproof-call\nbefore_commit\n")
         );
-        assert!(child.try_wait().unwrap().is_none());
-        child.kill().unwrap();
-        let status = child.wait().unwrap();
+        assert!(child.observe().is_none());
+        let status = child.kill_wait();
         assert!(!status.success());
         for folder in ["proof-raw", "proof-query", "proof-recovery"] {
             std::fs::create_dir(root.join(folder)).unwrap();
@@ -3599,36 +3646,36 @@ async fn n19_legacy_read_event_child_kill_then_reconcile_and_new_turn() {
         if let Some(id) = ready_task_identity(&mut child, &root.join("legacy-armed")) {
             break id;
         }
-        if let Some(status) = child.try_wait().unwrap() {
+        if let Some(status) = child.observe() {
             panic!("legacy child {pid} exited: {status}");
         }
-        assert!(
-            tokio::time::Instant::now() < deadline,
-            "legacy child not armed"
-        );
+        if tokio::time::Instant::now() >= deadline {
+            child.retain_unknown("legacy child not armed");
+        }
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
-    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+    if tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
         .await
-        .unwrap();
+        .is_err()
+    {
+        child.retain_unknown("agent provider barrier deadline");
+    }
     f.mock.hold.store(false, Ordering::SeqCst);
     f.mock.release.notify_one();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     while !root.join("legacy-signal").is_file() {
-        if let Some(status) = child.try_wait().unwrap() {
+        if let Some(status) = child.observe() {
             panic!("legacy child {pid} exited before signal: {status}");
         }
-        assert!(
-            tokio::time::Instant::now() < deadline,
-            "legacy signal timeout"
-        );
+        if tokio::time::Instant::now() >= deadline {
+            child.retain_unknown("legacy signal timeout");
+        }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     let signal = std::fs::read_to_string(root.join("legacy-signal")).unwrap();
     assert_eq!(signal, format!("{id}\n\n"));
-    assert!(child.try_wait().unwrap().is_none());
-    child.kill().unwrap();
-    let status = child.wait().unwrap();
+    assert!(child.observe().is_none());
+    let status = child.kill_wait();
     assert!(!status.success());
     for folder in ["legacy-raw", "legacy-query", "legacy-recovery"] {
         std::fs::create_dir(root.join(folder)).unwrap();
@@ -4039,29 +4086,30 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
         if let Some(id) = ready_task_identity(&mut child, &root.join("host-denied-armed")) {
             break id;
         }
-        if let Some(status) = child.try_wait().unwrap() {
+        if let Some(status) = child.observe() {
             panic!("HostDenied child {pid} exited before arm: {status}");
         }
-        assert!(
-            tokio::time::Instant::now() < deadline,
-            "HostDenied child arm timeout"
-        );
+        if tokio::time::Instant::now() >= deadline {
+            child.retain_unknown("HostDenied child arm timeout");
+        }
         tokio::time::sleep(Duration::from_millis(10)).await;
     };
-    tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
+    if tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
         .await
-        .unwrap();
+        .is_err()
+    {
+        child.retain_unknown("agent provider barrier deadline");
+    }
     f.mock.hold.store(false, Ordering::SeqCst);
     f.mock.release.notify_one();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
     while !root.join("host-denied-signal").is_file() {
-        if let Some(status) = child.try_wait().unwrap() {
+        if let Some(status) = child.observe() {
             panic!("HostDenied child {pid} exited before result commit: {status}");
         }
-        assert!(
-            tokio::time::Instant::now() < deadline,
-            "HostDenied after_commit timeout"
-        );
+        if tokio::time::Instant::now() >= deadline {
+            child.retain_unknown("HostDenied after_commit timeout");
+        }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
     assert_eq!(
@@ -4069,9 +4117,8 @@ async fn n19_builtin_host_denied_after_commit_kill_recover_and_new_turn() {
         format!("{id}\nhost-kill\nafter_commit\n")
     );
     assert_eq!(f.mock.hits.load(Ordering::SeqCst), 1);
-    assert!(child.try_wait().unwrap().is_none());
-    child.kill().unwrap();
-    let status = child.wait().unwrap();
+    assert!(child.observe().is_none());
+    let status = child.kill_wait();
     assert!(!status.success());
     for folder in [
         "host-denied-raw",
