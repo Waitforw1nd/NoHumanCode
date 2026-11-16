@@ -2019,6 +2019,9 @@ impl Engine {
             .reconcile_open_tools(task, cancel, &key)
             .await?;
         *task = self.store.consume_resume_inputs(task)?;
+        // Task output concatenates all completion rounds. A codec-level filter
+        // alone cannot recognize a credential split across two completions.
+        let mut output_redactor = secrets::StreamRedactor::default();
         for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let available = self.tool_runtime.definitions(task)?;
@@ -2066,10 +2069,19 @@ impl Engine {
                     })?
             };
             let mut emit = |delta: &str| {
-                text.push_str(delta);
-                self.store.event(&task.id, "delta", json!({"text":delta}))
+                if !delta.is_empty() {
+                    self.store.event(&task.id, "delta", json!({"text":delta}))?;
+                    text.push_str(delta);
+                }
+                Ok(())
             };
-            let call = lease.execute(&self.client, permit, &task.route, &mut emit);
+            let call = lease.execute_with_redactor(
+                &self.client,
+                permit,
+                &task.route,
+                &mut emit,
+                &mut output_redactor,
+            );
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
             let result = self.store.finish_completion(receipt, result);
             task.output.push_str(&text);
@@ -2156,6 +2168,15 @@ impl Engine {
                     matches!(decision, crate::agent_runtime::StrategyAction::Finish),
                     "invalid agent decision"
                 );
+                // Only a successful final completion may publish an undecided
+                // suffix. Errors, cancellation and round exhaustion drop it.
+                let tail = output_redactor.finish();
+                if !tail.is_empty() {
+                    self.store.event(&task.id, "delta", json!({"text":tail}))?;
+                    task.output.push_str(&tail);
+                    task.updated_at = now();
+                    self.store.save_running_snapshot(task)?;
+                }
                 return Ok(());
             };
             let crate::agent_runtime::StrategyAction::ToolVotes(votes) = decision else {
@@ -4598,6 +4619,88 @@ mod workspace_phase_tests {
         assert_eq!(
             std::fs::read(temp.path().join("src/b.txt")).unwrap(),
             b"before-b"
+        );
+    }
+
+    #[tokio::test]
+    async fn audit_legacy_same_path_checkpoint_reads_but_refuses_different_restore() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        finish_two_writes(&engine, &task_id, usize::MAX).await;
+        let checkpoint = engine
+            .create_checkpoint(&task_id, "legacy-same-path")
+            .await
+            .unwrap()
+            .checkpoint;
+        let mut sources = engine.store.workspace_changes_for_task(&task_id).unwrap();
+        assert_eq!(sources.len(), 2);
+        sources.reverse();
+        let legacy_bytes = {
+            let db = engine.store.db.lock().unwrap();
+            db.execute(
+                "UPDATE workspace_changes SET created_at=1000-rowid WHERE task_id=?1",
+                [&task_id],
+            )
+            .unwrap();
+            let raw: String = db
+                .query_row(
+                    "SELECT manifest FROM checkpoints WHERE id=?1",
+                    [&checkpoint.checkpoint_id],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            let mut manifest: crate::checkpoint::Manifest = serde_json::from_str(&raw).unwrap();
+            manifest.source_digest = crate::checkpoint::source_digest(&sources).unwrap();
+            manifest.entries[0].before_digest = sources[0].before_digest.clone();
+            manifest.entries[0].after_digest = sources[1].after_digest.clone().unwrap();
+            let raw = serde_json::to_string(&manifest).unwrap();
+            db.execute(
+                "UPDATE checkpoints SET manifest=?2,manifest_digest=?3 WHERE id=?1",
+                rusqlite::params![checkpoint.checkpoint_id, raw, digest(raw.as_bytes())],
+            )
+            .unwrap();
+            raw
+        };
+        drop(engine);
+        let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let loaded = engine.checkpoint(&checkpoint.checkpoint_id).unwrap();
+        assert_ne!(loaded.entries, checkpoint.entries);
+        let before = std::fs::read(temp.path().join("src/a.txt")).unwrap();
+        let task_before = serde_json::to_value(store.task(&task_id).unwrap()).unwrap();
+        assert!(store.latest_restore(&task_id).unwrap().is_none());
+        for result in [
+            engine.restore_checkpoint(&checkpoint.checkpoint_id).await,
+            engine.restore(&task_id).await,
+        ] {
+            assert!(matches!(
+                result.unwrap_err().downcast_ref::<WorkspaceChangeError>(),
+                Some(WorkspaceChangeError::Conflict { receipt: None })
+            ));
+        }
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            before
+        );
+        assert_eq!(
+            serde_json::to_value(store.task(&task_id).unwrap()).unwrap(),
+            task_before
+        );
+        assert!(store.latest_restore(&task_id).unwrap().is_none());
+        let after: String = store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT manifest FROM checkpoints WHERE id=?1",
+                [&checkpoint.checkpoint_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(after, legacy_bytes);
+        assert_eq!(
+            engine.checkpoint(&checkpoint.checkpoint_id).unwrap(),
+            loaded
         );
     }
 
