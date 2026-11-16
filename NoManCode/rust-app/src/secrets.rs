@@ -401,11 +401,15 @@ fn token_end(input: &str, index: usize) -> Option<usize> {
 }
 
 /// Incremental Host output policy, independent of the selected completion codec.
-/// Only an undecided prefix (at most 11 bytes) and the last 128 ASCII field-name
-/// bytes are retained. Secret values are discarded, never buffered. Dropping on
-/// error/cancellation deliberately discards the undecided prefix; only a clean
-/// completion may call `finish`. This is the recognizable-text policy, not a
-/// detector for arbitrary unknown secrets.
+/// State is bounded: an undecided prefix (at most 11 bytes), the last 128 compressed
+/// ASCII field-name bytes, and constant-size mode context (including a short
+/// authorization-scheme probe). A token may also be an assignment field, so its
+/// bounded suffix can contain secret characters even while output is suppressed;
+/// this is bounded buffering, not zero retention or secure memory erasure. Values
+/// never accumulate with stream length. Dropping on error/cancellation deliberately
+/// discards the undecided prefix; only final output success may call `finish`.
+/// Concatenated completions must share one instance at the raw codec boundary.
+/// This is the recognizable-text policy, not a detector for arbitrary secrets.
 #[derive(Default)]
 pub(crate) struct StreamRedactor {
     pending: String,
@@ -428,6 +432,9 @@ enum StreamMode {
     Token,
     BearerStart,
     Bearer,
+    QuotedStart {
+        quote: char,
+    },
     Quoted {
         quote: char,
         escaped: bool,
@@ -460,6 +467,22 @@ impl StreamRedactor {
         self.pending.drain(..bytes);
     }
 
+    fn track_field(&mut self, ch: char) {
+        // normalize_field folds runs of separators to one underscore. Compress
+        // BEFORE bounding the suffix: api + many underscores + key is api_key.
+        if matches!(ch, '_' | '-' | '.') {
+            if self.field.is_empty() || self.field.ends_with('_') {
+                return;
+            }
+            self.field.push('_');
+        } else {
+            self.field.push(ch);
+        }
+        if self.field.len() > 128 {
+            self.field.remove(0);
+        }
+    }
+
     fn drain(&mut self, eof: bool, output: &mut String) {
         while let Some(ch) = self.pending.chars().next() {
             let mode = std::mem::take(&mut self.mode);
@@ -476,7 +499,9 @@ impl StreamRedactor {
                         }) {
                             let len = prefix.len();
                             output.push_str("[redacted]");
-                            self.field.clear();
+                            for ch in prefix.chars() {
+                                self.track_field(ch);
+                            }
                             self.mode = StreamMode::Token;
                             self.consume(len);
                             continue;
@@ -499,10 +524,7 @@ impl StreamRedactor {
                         }
                     }
                     if field_char(ch) {
-                        self.field.push(ch);
-                        if self.field.len() > 128 {
-                            self.field.remove(0);
-                        }
+                        self.track_field(ch);
                     } else {
                         if sensitive_assignment_field(&self.field) {
                             let field = normalize_field(&self.field);
@@ -547,12 +569,8 @@ impl StreamRedactor {
                         self.mode = StreamMode::ValueStart { authorization };
                     } else if matches!(ch, '\'' | '"') {
                         output.push(ch);
-                        output.push_str("[redacted]");
                         self.consume(ch.len_utf8());
-                        self.mode = StreamMode::Quoted {
-                            quote: ch,
-                            escaped: false,
-                        };
+                        self.mode = StreamMode::QuotedStart { quote: ch };
                     } else if self.pending.starts_with("[redacted]") {
                         output.push_str("[redacted]");
                         self.consume(10);
@@ -571,6 +589,10 @@ impl StreamRedactor {
                 }
                 StreamMode::Token => {
                     if token_char(ch) {
+                        // sk-password is both a token-shaped word and a sensitive
+                        // assignment field. Suppressing the name must not expose
+                        // the value following its later '=' or ':'.
+                        self.track_field(ch);
                         self.consume(ch.len_utf8());
                         self.mode = StreamMode::Token;
                     }
@@ -588,6 +610,18 @@ impl StreamRedactor {
                     if !ch.is_ascii_whitespace() {
                         self.consume(ch.len_utf8());
                         self.mode = StreamMode::Bearer;
+                    }
+                }
+                StreamMode::QuotedStart { quote } => {
+                    if ch == quote {
+                        output.push(ch);
+                        self.consume(ch.len_utf8());
+                    } else {
+                        output.push_str("[redacted]");
+                        self.mode = StreamMode::Quoted {
+                            quote,
+                            escaped: false,
+                        };
                     }
                 }
                 StreamMode::Quoted { quote, escaped } => {
@@ -687,6 +721,8 @@ mod stream_redaction_tests {
                 "foo.sk-synthetic123 end",
                 "password=[redacted] next",
                 "password=\"[redacted]\" next",
+                "password=\"\" next",
+                "password='' next",
             ]
             .map(str::to_owned),
         );
@@ -713,6 +749,58 @@ mod stream_redaction_tests {
     }
 
     #[test]
+    fn stream_redaction_review_counterexamples_keep_assignment_context() {
+        assert_eq!(
+            filtered(&["sk-", "password", "=", "opaque123"]),
+            "[redacted]=[redacted]"
+        );
+        for name in ["sk-password", "sk-api_key", "sk-authorization"] {
+            let input = format!("{name}=opaque123; done");
+            for split in 0..=input.len() {
+                assert_eq!(
+                    filtered(&[&input[..split], &input[split..]]),
+                    "[redacted]=[redacted]; done"
+                );
+            }
+            let chars: Vec<_> = input
+                .char_indices()
+                .map(|(i, _)| &input[i..i + 1])
+                .collect();
+            assert_eq!(filtered(&chars), "[redacted]=[redacted]; done");
+        }
+        for (separator, count) in [
+            ("_", 128),
+            ("_", 1024),
+            ("-", 1024),
+            (".", 1024),
+            ("_-.", 1024),
+        ] {
+            let head = format!("api{}", separator.repeat(count));
+            let input = format!("{head}key=opaque123");
+            let expected = format!("{head}key=[redacted]");
+            assert_eq!(filtered(&[&head, "key=", "opaque123"]), expected);
+            assert_eq!(filtered(&[&input]), expected);
+            let chars: Vec<_> = input
+                .char_indices()
+                .map(|(i, _)| &input[i..i + 1])
+                .collect();
+            assert_eq!(filtered(&chars), expected);
+            assert_eq!(redact_text(&input), expected);
+        }
+        assert_eq!(filtered(&["password=\"", "\""]), "password=\"\"");
+        assert_eq!(
+            filtered(&["password=\"", "opaque123", "\""]),
+            "password=\"[redacted]\""
+        );
+        // Normalization ambiguity must not delay a long ordinary identifier.
+        let mut r = StreamRedactor::default();
+        let head = format!("api{}", "_".repeat(4096));
+        assert_eq!(r.push(&head), head);
+        assert!(r.field.len() <= 128);
+        assert_eq!(r.push("key=opaque123"), "key=[redacted]");
+    }
+
+    #[test]
     fn stream_redaction_long_plain_text_is_streamed_and_state_is_bounded() {
         let mut redactor = StreamRedactor::default();
         let plain = "z".repeat(4096);
@@ -733,9 +821,13 @@ mod stream_redaction_tests {
         for _ in 0..100 {
             assert_eq!(secret.push(&plain), "");
             assert!(secret.pending.len() <= 11);
-            assert!(secret.field.is_empty());
+            assert!(secret.field.len() <= 128);
+            // The field suffix may retain secret characters for a later '='.
+            // It stays bounded, and none of that suffix may reach the sink.
+            assert_eq!(secret.field, "z".repeat(128));
         }
         assert_eq!(secret.push(" done"), " done");
+        assert_eq!(secret.finish(), "");
     }
 
     #[test]

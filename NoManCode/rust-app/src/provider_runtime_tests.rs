@@ -54,6 +54,8 @@ const REDACTION_PARTS: &[&str] = &[
     "; Authorization: Ba",
     "sic ",
     "synthetic789",
+    "; empty_password=\"",
+    "\"",
     "\nend s",
 ];
 impl CompletionCodec for RedactionCodec {
@@ -109,7 +111,7 @@ async fn stream_redaction_replacement_codec_reaches_store_and_sse_safely() {
     let run = f.engine.start(request()).await.unwrap();
     let task = settled(&f.engine, &run.tasks[0].id).await;
     assert_eq!(task.status, "completed");
-    let expected = "普通🦀 [redacted]; password=\"[redacted]\"; Authorization: [redacted]\nend [redacted]; done";
+    let expected = "普通🦀 [redacted]; password=\"[redacted]\"; Authorization: [redacted]; empty_password=\"\"\nend [redacted]; done";
     assert_eq!(task.output, expected);
     assert_eq!(task.messages.last().unwrap()["content"], expected);
     let events = f.engine.store.events(&run.id, 0).unwrap();
@@ -219,6 +221,223 @@ async fn stream_redaction_codec_errors_and_future_cancel_never_flush_raw_tail() 
             assert!(delta.ends_with("end "));
         }
         assert_eq!(task.output, delta);
+    }
+}
+
+struct AcrossRoundsCodec {
+    parts: [&'static str; 2],
+    ending: RedactionEnding,
+    decoded: AtomicUsize,
+}
+struct AcrossRoundsDecoder {
+    part: &'static str,
+    first: bool,
+    ending: RedactionEnding,
+    fed: bool,
+}
+impl CompletionCodec for AcrossRoundsCodec {
+    fn encode(&self, input: &CompletionInput<'_>) -> Result<Value, CodecError> {
+        Ok(crate::provider_runtime::expected_body(input))
+    }
+    fn decoder(&self) -> Result<Box<dyn CompletionDecoder>, CodecError> {
+        let round = self.decoded.fetch_add(1, Ordering::SeqCst);
+        let part = *self.parts.get(round).ok_or(CodecError::Failed)?;
+        Ok(Box::new(AcrossRoundsDecoder {
+            part,
+            first: round == 0,
+            ending: if round == 0 {
+                RedactionEnding::Clean
+            } else {
+                self.ending
+            },
+            fed: false,
+        }))
+    }
+}
+impl CompletionDecoder for AcrossRoundsDecoder {
+    fn feed(&mut self, _: &[u8], emit: &mut Emit<'_>) -> Result<(), CodecError> {
+        if !self.fed {
+            self.fed = true;
+            emit(self.part).map_err(|_| CodecError::Failed)?;
+        }
+        if self.ending == RedactionEnding::FeedError {
+            Err(CodecError::Failed)
+        } else {
+            Ok(())
+        }
+    }
+    fn is_done(&self) -> bool {
+        self.fed && self.ending != RedactionEnding::Cancel
+    }
+    fn finish(self: Box<Self>, _: &mut Emit<'_>) -> Result<CompletionOutput, CodecError> {
+        if self.ending == RedactionEnding::FinishError {
+            return Err(CodecError::Failed);
+        }
+        let mut message = json!({"role":"assistant", "content":self.part});
+        if self.first {
+            // A real read-only tool group makes Engine request a second completion.
+            message["tool_calls"] = json!([{
+                "id":"audit-round-list", "type":"function",
+                "function":{"name":"list_files", "arguments":"{\"path\":\".\"}"}
+            }]);
+        }
+        Ok((
+            message,
+            json!({"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}),
+        ))
+    }
+}
+
+async fn across_rounds_fixture(parts: [&'static str; 2], ending: RedactionEnding) -> Fixture {
+    fixture_with_codec(
+        Fault::None,
+        false,
+        Some(Arc::new(AcrossRoundsCodec {
+            parts,
+            ending,
+            decoded: AtomicUsize::new(0),
+        })),
+    )
+    .await
+}
+
+fn across_rounds_request() -> RunRequest {
+    let mut request = request();
+    request.tasks[0].tools = true;
+    request.tasks[0].max_rounds = 2;
+    request
+}
+
+async fn assert_redaction_delta_replay(f: &Fixture, run_id: &str, expected: &str) {
+    use tower::ServiceExt;
+    let events = f.engine.store.events(run_id, 0).unwrap();
+    let delta: String = events
+        .iter()
+        .filter(|e| e.kind == "delta")
+        .map(|e| e.data["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(delta, expected, "persisted delta concatenation");
+    let app = crate::server::router(crate::server::App {
+        engine: f.engine.clone(),
+        token: "fixture-token".into(),
+        origin: "http://127.0.0.1:12345".into(),
+    });
+    let response = app
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/runs/{run_id}/events"))
+                .header("host", "127.0.0.1:12345")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    let mut body = response.into_body().into_data_stream();
+    let mut wire = Vec::new();
+    tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            wire.extend_from_slice(&body.next().await.unwrap().unwrap());
+            if String::from_utf8_lossy(&wire)
+                .lines()
+                .filter(|l| l.starts_with("data:"))
+                .count()
+                >= events.len()
+            {
+                break;
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let wire = String::from_utf8(wire).unwrap();
+    let replay: String = wire
+        .lines()
+        .filter_map(|l| l.strip_prefix("data:"))
+        .map(|l| serde_json::from_str::<Value>(l.trim_start()).unwrap())
+        .filter(|v| v["kind"] == "delta")
+        .map(|v| v["data"]["text"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(replay, expected, "SSE delta concatenation");
+    assert!(!replay.contains("synthetic") && !replay.contains("opaque123"));
+}
+
+#[tokio::test]
+async fn stream_redaction_across_completions_keeps_raw_context_until_task_success() {
+    for (parts, expected) in [
+        (["s", "k-synthetic123"], "[redacted]"),
+        (["password=", "opaque123"], "password=[redacted]"),
+        (["Bearer ", "opaque123"], "bearer [redacted]"),
+        // An inner, separately finished filter would lose the sensitive field
+        // name before an outer filter ever sees the '='. One raw state is needed.
+        (["sk-password", "=opaque123"], "[redacted]=[redacted]"),
+        (["password=\"", "\""], "password=\"\""),
+        (["普通🦀", "文本s"], "普通🦀文本s"),
+    ] {
+        let f = across_rounds_fixture(parts, RedactionEnding::Clean).await;
+        let run = f.engine.start(across_rounds_request()).await.unwrap();
+        let task = settled(&f.engine, &run.tasks[0].id).await;
+        assert_eq!(task.status, "completed", "parts: {parts:?}");
+        assert_eq!(f.mock.completions.load(Ordering::SeqCst), 2);
+        assert!(
+            task.messages
+                .iter()
+                .any(|m| { m["role"] == "tool" && m["tool_call_id"] == "audit-round-list" })
+        );
+        assert_eq!(task.output, expected, "parts: {parts:?}");
+        assert_redaction_delta_replay(&f, &run.id, expected).await;
+    }
+}
+
+#[tokio::test]
+async fn stream_redaction_across_completions_failure_and_cancel_drop_tail() {
+    for ending in [
+        RedactionEnding::FeedError,
+        RedactionEnding::FinishError,
+        RedactionEnding::Cancel,
+    ] {
+        for (parts, expected) in [
+            (["s", "k-synthetic123 done s"], "[redacted] done "),
+            (
+                ["sk-password", "=opaque123; done s"],
+                "[redacted]=[redacted]; done ",
+            ),
+        ] {
+            let f = across_rounds_fixture(parts, ending).await;
+            if ending == RedactionEnding::Cancel {
+                f.mock.stream_hold.store(true, Ordering::SeqCst);
+            }
+            let run = f.engine.start(across_rounds_request()).await.unwrap();
+            if ending == RedactionEnding::Cancel {
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    loop {
+                        let events = f.engine.store.events(&run.id, 0).unwrap();
+                        if events.iter().any(|e| {
+                            e.kind == "delta"
+                                && e.data["text"].as_str().is_some_and(|s| s.contains("done "))
+                        }) {
+                            break;
+                        }
+                        tokio::time::sleep(Duration::from_millis(5)).await;
+                    }
+                })
+                .await
+                .unwrap();
+                f.engine.cancel(&run.tasks[0].id).unwrap();
+            }
+            let task = settled(&f.engine, &run.tasks[0].id).await;
+            assert_eq!(
+                task.status,
+                if ending == RedactionEnding::Cancel {
+                    "cancelled"
+                } else {
+                    "failed"
+                }
+            );
+            assert_eq!(f.mock.completions.load(Ordering::SeqCst), 2);
+            assert_eq!(task.output, expected);
+            assert_redaction_delta_replay(&f, &run.id, expected).await;
+        }
     }
 }
 
