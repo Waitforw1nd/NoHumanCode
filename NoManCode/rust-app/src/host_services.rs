@@ -519,7 +519,16 @@ impl ReviewRecovery {
             };
             originals.push(before);
         }
-        let receipt = self.store.claim_restore(id, &changes)?;
+        // Reserve the generation before the durable claim, so a concurrent
+        // shutdown can reject the claim or let this exact body settle it.
+        let effect = workspace::FileEffectGuard::begin(&self.store)?;
+        let receipt = match self.store.claim_restore(id, &changes) {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                effect.settle();
+                return Err(error);
+            }
+        };
         anyhow::ensure!(receipt.status == RestoreStatus::Claimed, "恢复领取状态损坏");
         #[cfg(test)]
         crate::engine::runtime_barrier::block(id, "restore_claim_committed");
@@ -533,12 +542,14 @@ impl ReviewRecovery {
         for (completed, ((change, target), original)) in
             changes.iter().zip(targets).zip(originals).enumerate()
         {
+            let mut action_started = false;
             let action = (|| -> Result<()> {
                 #[cfg(test)]
                 anyhow::ensure!(
                     !crash_probe::take_restore_failure(id, &change.path),
                     "injected restore path failure"
                 );
+                action_started = true;
                 restore_observe!(
                     self,
                     id,
@@ -600,6 +611,9 @@ impl ReviewRecovery {
                 let saved = self.store.finish_restore(&restore_id, status);
                 let failed_to_persist = saved.is_err();
                 let receipt = saved.unwrap_or_else(|_| self.unknown_restore_receipt(&receipt));
+                if !action_started && !failed_to_persist {
+                    effect.settle();
+                }
                 return Err(if status == RestoreStatus::Partial && !failed_to_persist {
                     WorkspaceChangeError::Conflict {
                         receipt: Some(receipt),
@@ -643,7 +657,10 @@ impl ReviewRecovery {
             .store
             .finish_restore(&restore_id, RestoreStatus::Complete)
         {
-            Ok(value) => Ok(value),
+            Ok(value) => {
+                effect.settle();
+                Ok(value)
+            }
             Err(_) => {
                 let unknown = self
                     .store

@@ -190,14 +190,9 @@ impl ToolCallApplication {
         key: &str,
         cancel: &CancellationToken,
     ) -> Result<()> {
-        if crate::execution_authority::current().is_some() {
-            return self
-                .execute_or_wait_in_domain(task, call, name, args, key, cancel)
-                .await;
-        }
-        let operation = self.store.execution_operation(cancel.clone())?;
-        operation
-            .run(self.execute_or_wait_in_domain(task, call, name, args, key, cancel))
+        let _operation =
+            crate::execution_authority::current().context("tool operation required")?;
+        self.execute_or_wait_in_domain(task, call, name, args, key, cancel)
             .await
     }
     #[allow(clippy::too_many_arguments)]
@@ -450,7 +445,49 @@ impl ToolCallApplication {
         if name == "write_file" {
             crash_probe::block(&task.id, "write_pre_fs", &prepared.as_ref().unwrap().1.id);
         }
-        let (result, succeeded) = match lease.execute(task, args).await {
+        let file_effect = if name == "write_file" {
+            match crate::workspace::FileEffectGuard::begin(&self.store) {
+                Ok(effect) => Some(effect),
+                Err(error) => {
+                    // Admission closed before the write began. Settle the
+                    // already prepared claim with the original operation.
+                    let (approval_id, change) = prepared.as_ref().context("write claim missing")?;
+                    self.store.mark_workspace_change_failed(&change.id)?;
+                    let content = json!({"error":"write_file 未执行；执行域已关闭"}).to_string();
+                    let serialized = self.store.finish_approval_with_change(
+                        task,
+                        approval_id,
+                        &content,
+                        name,
+                        tool_call_id,
+                        None,
+                    )?;
+                    task.messages.push(
+                        json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}),
+                    );
+                    task.updated_at = now();
+                    return Err(error);
+                }
+            }
+        } else {
+            None
+        };
+        let execution = if file_effect.is_some() {
+            crate::workspace::with_write_authority(lease.execute(task, args)).await
+        } else {
+            lease.execute(task, args).await
+        };
+        if file_effect.is_some()
+            && execution
+                .as_ref()
+                .err()
+                .is_some_and(|error| !error.is::<crate::workspace::WriteNotStarted>())
+        {
+            // A filesystem error can follow a partial effect. The guard seals
+            // and retains the original operation rather than asserting no write.
+            anyhow::bail!("write_file outcome unknown");
+        }
+        let (result, succeeded) = match execution {
             Ok(value) => (value, true),
             Err(error)
                 if name == "run_command"
@@ -498,6 +535,9 @@ impl ToolCallApplication {
             task.messages
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
             task.updated_at = now();
+            if let Some(effect) = file_effect {
+                effect.settle();
+            }
             Ok(())
         } else {
             self.record_tool_result(
