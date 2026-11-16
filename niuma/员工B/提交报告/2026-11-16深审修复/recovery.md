@@ -120,3 +120,15 @@ cargo test --offline --locked --lib audit_completion_delta -- --test-threads=1
 ## 当前剩余与交接
 
 产品冻结在 `b06a1b1b`；除主线程实测失败返工外，本轮不继续修改产品。下一操作由经理整合 A 新测试，执行最终专项和整套门禁，再维护主仓身份/任务板及验收结论。完整 U/W3 和历史事故结论不因本轮局部通过而改变。本报告只记录本轮实现与已收到的验证证据，不替代主线程验收。
+
+## 后续：完整门禁中的 Worktree HTTP 超时取证
+
+经理完整 workspace 门禁在 `tests/worktree_http.rs` 初始第 351 行失败：创建 POST 的 reqwest 6 秒期限到期，尚未获得 receipt；该 suite 为 1 passed / 1 failed，用时 12.37 秒。原日志保留在 integration 的 `.local/audit-20261116/final-attempt1/test.log`，不能把前面专项通过视为完整门禁通过。
+
+经理随后不修改受测产品，执行单 package 定向 suite，两项通过、14.20 秒；其二进制为 `worktree_http-e320a9fa806f17e7.exe`，与 workspace 特性组合的 `worktree_http-1dced705004efa15.exe` 不同。再执行原 workspace 二进制，第一项通过，第二项初始第 690 行的真实创建 POST 触发同一 6 秒超时，suite 14.68 秒。分别记录在 `worktree-http-reproduce.log`、`worktree-http-workspace-binary.log`；这些是经理执行，本人仅只读核对日志及源码。
+
+静态复核尚未发现 JoinSet 死锁证据：spawn 后任务独立调度，admission gate 在 await oneshot 前释放；已通过的 `successful_worktree_worker_reply_preserves_unknown_state` 先 await worker 回执、之后才调用 shutdown，证明不依赖父 future 轮询 JoinSet。完整门禁中的 current-thread 真实创建、丢弃调用者后仍注册等测试也已通过。`git_worktree.rs` 和 `workspace_identity.rs` 本轮未变。
+
+另核得既有 `worktree_diagnostics.rs` 的单项目调用预算为 claim 前 27 次读取、claim 后 58 次读取和 1 次变更；生产单读取期限 10 秒、变更 30 秒、清理 5 秒。6 秒 HTTP 总期限并非这些生产期限的合计，但目前不能只据此认定超时原因或直接调高测试期限。
+
+经理扩写授权仅 `tests/worktree_http.rs`。新增诊断候选 `04ff7b609cdc79570749c6a5ca2711a0e85285a2`：默认路径保持原客户端期限；显式设置 `NHC_WORKTREE_HTTP_TIMING=1` 才以只读 lookup 观察 before_claim/claimed/终态变化、6 秒时状态及同一个原请求最终状态与耗时。60 秒仅为诊断观察上限，迟于 6 秒响应仍明确失败，不重发创建，不删除或放松原业务断言。本人 rustfmt/check、diff check 退出 0，未 Cargo；该诊断尚待经理在原 workspace 特性组合执行。产品实现继续冻结，正式期限修复须以阶段/耗时证据为依据，不能把诊断候选冒称已修复超时。
