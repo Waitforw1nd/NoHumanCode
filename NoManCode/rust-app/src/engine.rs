@@ -2546,6 +2546,7 @@ impl Engine {
         cancel: &CancellationToken,
     ) -> Result<()> {
         let operation = self.store.execution_operation(cancel.clone())?;
+        operation.bind_task(&task.id)?;
         operation
             .run(
                 self.tool_calls
@@ -2553,34 +2554,6 @@ impl Engine {
             )
             .await
     }
-    #[cfg(test)]
-    #[allow(clippy::too_many_arguments)]
-    async fn perform_tool(
-        &self,
-        task: &mut Task,
-        tool_call_id: &str,
-        name: &str,
-        args: &Value,
-        key: &str,
-        approval_id: Option<&str>,
-        lease: crate::tool_runtime::ToolLease,
-    ) -> Result<()> {
-        let operation = self
-            .store
-            .execution_operation(self.shutdown_requested.clone())?;
-        operation
-            .run(self.tool_calls.perform_tool(
-                task,
-                tool_call_id,
-                name,
-                args,
-                key,
-                approval_id,
-                lease,
-            ))
-            .await
-    }
-
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
         // Preserve the durable unresolved-effect diagnosis even when that
         // effect has already closed admission. This read cannot grant work.
