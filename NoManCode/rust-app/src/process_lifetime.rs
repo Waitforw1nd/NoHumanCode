@@ -278,7 +278,7 @@ impl Slot {
         self.released = true;
     }
 
-    #[cfg(windows)]
+    #[cfg(all(test, windows))]
     fn attach_current_thread(&mut self) -> std::io::Result<()> {
         use std::os::windows::io::FromRawHandle;
         use windows_sys::Win32::{
@@ -425,24 +425,22 @@ impl Supervisor {
             let worker_cancelled = Arc::clone(&cancelled);
             let worker_cancel_at = Arc::clone(&cancel_at);
             let worker_cell = Arc::clone(&cell);
+            // Transfer the handle returned by thread creation before any OS
+            // target operation. A fallible self-DuplicateHandle used to leave
+            // a permanently occupied slot even for proven unstarted work.
+            let (start_tx, start_rx) = std::sync::mpsc::sync_channel(1);
             let spawn = std::thread::Builder::new()
                 .name("nhc-process-holder".into())
                 .spawn(move || {
+                    let Ok(thread_handle) = start_rx.recv() else {
+                        return;
+                    };
                     let work = worker_pending
                         .lock()
                         .unwrap_or_else(|e| e.into_inner())
                         .take();
                     if let Some((spec, mut slot, send)) = work {
-                        if let Err(error) = slot.attach_current_thread() {
-                            worker_cell.finish(Outcome::NotStarted {
-                                stage: "holder_thread_identity",
-                                os_error: error.raw_os_error(),
-                            });
-                            let _ = send.send(());
-                            // No thread signal handle exists; keep this one
-                            // reservation conservatively occupied.
-                            return;
-                        }
+                        slot.holder_thread = Some(thread_handle);
                         platform::run(
                             spec,
                             worker_cell,
@@ -453,24 +451,43 @@ impl Supervisor {
                         );
                     }
                 });
-            if spawn.is_err() {
-                let (_, mut slot, _) = pending
+            let thread = match spawn {
+                Ok(thread) => thread,
+                Err(_) => {
+                    let (_, mut slot, _) = pending
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .take()
+                        .expect("unstarted work remains");
+                    slot.release_unstarted();
+                    let lease = cell
+                        .0
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .lease
+                        .take()
+                        .expect("unstarted lease remains");
+                    return Err(NotStarted {
+                        reason: "cannot create process holder thread",
+                        lease,
+                    });
+                }
+            };
+            let thread = std::os::windows::io::OwnedHandle::from(thread);
+            if let Err(error) = start_tx.send(thread) {
+                // The receiver did not start target work. Preserve its original
+                // thread handle until signal even on this handoff failure.
+                let (_, mut slot, send) = pending
                     .lock()
                     .unwrap_or_else(|e| e.into_inner())
                     .take()
-                    .expect("unstarted work remains");
-                slot.release_unstarted();
-                let lease = cell
-                    .0
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .lease
-                    .take()
-                    .expect("unstarted lease remains");
-                return Err(NotStarted {
-                    reason: "cannot create process holder thread",
-                    lease,
+                    .expect("unstarted handoff remains");
+                slot.holder_thread = Some(error.0);
+                cell.finish(Outcome::NotStarted {
+                    stage: "holder_thread_handoff",
+                    os_error: None,
                 });
+                let _ = send.send(());
             }
             Ok(Operation {
                 receive,
@@ -1834,6 +1851,33 @@ mod state_tests {
         assert!(supervisor.reserve().is_none());
         one.release_unstarted();
         two.release_unstarted();
+    }
+
+    #[test]
+    fn original_holder_handle_keeps_slot_until_actual_thread_exit() {
+        let supervisor = Supervisor::new(NonZeroUsize::new(1).unwrap());
+        let mut slot = supervisor.reserve().unwrap();
+        let (start_tx, start_rx) = mpsc::sync_channel(1);
+        let (dropped_tx, dropped_rx) = mpsc::channel();
+        let (exit_tx, exit_rx) = mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            slot.holder_thread = Some(start_rx.recv().unwrap());
+            drop(slot);
+            let _ = dropped_tx.send(());
+            let _ = exit_rx.recv();
+        });
+        start_tx
+            .send(std::os::windows::io::OwnedHandle::from(thread))
+            .unwrap();
+        dropped_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let still_full = supervisor.reserve().is_none();
+        exit_tx.send(()).unwrap();
+        let until = Instant::now() + Duration::from_secs(2);
+        while supervisor.active_count() != 0 && Instant::now() < until {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(still_full, "returning the slot is not a thread exit proof");
+        assert_eq!(supervisor.active_count(), 0);
     }
 
     #[test]
