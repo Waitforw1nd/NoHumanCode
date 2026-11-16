@@ -1100,87 +1100,90 @@ mod tests {
     }
     #[tokio::test]
     async fn f04_real_write_lease_finishes_after_disable_and_all_release_paths_count() {
-        let root = tempfile::tempdir().unwrap();
-        let task = task(root.path().to_str().unwrap());
-        let runtime = ToolRuntime::builtin().unwrap();
-        let (lease, receipt) = runtime
-            .acquire(&task, "write_file", || Ok(json!({"claimed":17})))
-            .unwrap();
-        assert_eq!(status(&runtime).in_flight, 1);
-        let stopped = reconcile(&runtime, false);
-        assert!(stopped.draining);
-        assert_eq!(stopped.in_flight, 1);
-        assert_eq!(stopped.effects_count, 0);
-        assert_eq!(receipt, json!({"claimed":17}));
-        lease
-            .execute(&task, &json!({"path":"real.txt","content":"once"}))
-            .await
-            .unwrap();
-        assert_eq!(
-            std::fs::read_to_string(root.path().join("real.txt")).unwrap(),
-            "once"
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
-        assert!(!status(&runtime).draining);
-        assert!(
-            runtime
-                .acquire(&task, "write_file", || -> Result<()> {
-                    panic!("disabled claim")
-                })
-                .is_err()
-        );
-        // Compat remains available under the same original task permissions.
-        let mut command_task = task.clone();
-        command_task.spec.allow_commands = true;
-        let (compat, ()) = runtime
-            .acquire(&command_task, "run_command", || Ok(()))
-            .unwrap();
-        assert_eq!(status(&runtime).in_flight, 0);
-        // Component callback only; real approval/network acknowledgement is Engine's responsibility.
-        let output = compat
-            .execute(
-                &command_task,
-                &json!({"command":"Write-Output 'compat-marker'","timeout_seconds":5}),
-            )
-            .await
-            .unwrap();
-        assert_eq!(output["exit_code"], 0);
-        assert!(output["stdout"].as_str().unwrap().contains("compat-marker"));
-        reconcile(&runtime, true);
-        let (dropped, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
-        runtime
-            .with_files_control(|control| {
-                assert_eq!(control.snapshot().in_flight, 1);
-                drop(dropped); // Drop while the runtime lock is held must not lock it.
-                assert_eq!(control.snapshot().in_flight, 0);
-                Ok(())
-            })
-            .unwrap();
-        let (bad, ()) = runtime.acquire(&task, "write_file", || Ok(())).unwrap();
-        assert!(
-            bad.execute(&task, &json!({"path":"../outside","content":"no"}))
+        crate::execution_authority::test_scope(async {
+            let root = tempfile::tempdir().unwrap();
+            let task = task(root.path().to_str().unwrap());
+            let runtime = ToolRuntime::builtin().unwrap();
+            let (lease, receipt) = runtime
+                .acquire(&task, "write_file", || Ok(json!({"claimed":17})))
+                .unwrap();
+            assert_eq!(status(&runtime).in_flight, 1);
+            let stopped = reconcile(&runtime, false);
+            assert!(stopped.draining);
+            assert_eq!(stopped.in_flight, 1);
+            assert_eq!(stopped.effects_count, 0);
+            assert_eq!(receipt, json!({"claimed":17}));
+            lease
+                .execute(&task, &json!({"path":"real.txt","content":"once"}))
                 .await
-                .is_err()
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
-        assert!(
-            runtime
-                .acquire(&task, "read_file", || -> Result<()> {
-                    bail!("claim rejected")
-                })
-                .is_err()
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
-        let (bound, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
-        let mut wrong = task.clone();
-        wrong.id = "other".into();
-        assert!(
-            bound
-                .execute(&wrong, &json!({"path":"real.txt"}))
+                .unwrap();
+            assert_eq!(
+                std::fs::read_to_string(root.path().join("real.txt")).unwrap(),
+                "once"
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            assert!(!status(&runtime).draining);
+            assert!(
+                runtime
+                    .acquire(&task, "write_file", || -> Result<()> {
+                        panic!("disabled claim")
+                    })
+                    .is_err()
+            );
+            // Compat remains available under the same original task permissions.
+            let mut command_task = task.clone();
+            command_task.spec.allow_commands = true;
+            let (compat, ()) = runtime
+                .acquire(&command_task, "run_command", || Ok(()))
+                .unwrap();
+            assert_eq!(status(&runtime).in_flight, 0);
+            // Component callback only; real approval/network acknowledgement is Engine's responsibility.
+            let output = compat
+                .execute(
+                    &command_task,
+                    &json!({"command":"Write-Output 'compat-marker'","timeout_seconds":5}),
+                )
                 .await
-                .is_err()
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
+                .unwrap();
+            assert_eq!(output["exit_code"], 0);
+            assert!(output["stdout"].as_str().unwrap().contains("compat-marker"));
+            reconcile(&runtime, true);
+            let (dropped, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+            runtime
+                .with_files_control(|control| {
+                    assert_eq!(control.snapshot().in_flight, 1);
+                    drop(dropped); // Drop while the runtime lock is held must not lock it.
+                    assert_eq!(control.snapshot().in_flight, 0);
+                    Ok(())
+                })
+                .unwrap();
+            let (bad, ()) = runtime.acquire(&task, "write_file", || Ok(())).unwrap();
+            assert!(
+                bad.execute(&task, &json!({"path":"../outside","content":"no"}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            assert!(
+                runtime
+                    .acquire(&task, "read_file", || -> Result<()> {
+                        bail!("claim rejected")
+                    })
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            let (bound, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+            let mut wrong = task.clone();
+            wrong.id = "other".into();
+            assert!(
+                bound
+                    .execute(&wrong, &json!({"path":"real.txt"}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+        })
+        .await;
     }
     struct ProbePlugin {
         id: &'static str,
