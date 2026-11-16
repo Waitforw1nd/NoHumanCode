@@ -2,7 +2,10 @@
 use crate::domain::Task;
 use anyhow::{Context, Result, bail, ensure};
 use serde_json::{Value, json};
-use std::{fmt, process::Stdio, time::Duration};
+#[cfg(test)]
+use std::process::Stdio;
+use std::{fmt, time::Duration};
+#[cfg(test)]
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
     process::Command,
@@ -60,7 +63,9 @@ fn take_unknown_fault(task_id: &str) -> bool {
 
 // Even an unexpected unwind/runtime teardown must not detach readers. Normal
 // completion and the bounded finalizer still explicitly join each task.
+#[cfg(test)]
 struct ReaderTask(tokio::task::JoinHandle<Result<Vec<u8>>>);
+#[cfg(test)]
 impl Drop for ReaderTask {
     fn drop(&mut self) {
         self.0.abort();
@@ -71,6 +76,7 @@ const OUTPUT_LIMIT: usize = 65_536;
 
 /// The retention bound is not an EOF: keep the pipe open and drain the rest.
 /// Completion still requires the real EOF (or the caller's cleanup deadline).
+#[cfg(test)]
 async fn read_output(mut reader: impl AsyncRead + Unpin) -> Result<Vec<u8>> {
     let mut bytes = Vec::new();
     let mut buffer = [0u8; 8192];
@@ -85,6 +91,7 @@ async fn read_output(mut reader: impl AsyncRead + Unpin) -> Result<Vec<u8>> {
 }
 
 pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
+    use crate::process_lifetime::{CompletionReason, Outcome, OverflowPolicy, ProcessSpec};
     ensure!(task.spec.allow_commands, "当前任务未授权运行命令");
     let command = args["command"].as_str().context("缺少 command")?;
     ensure!(command.len() <= 8192, "命令过长");
@@ -93,47 +100,105 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
         (1..=600).contains(&timeout_seconds),
         "命令超时时间必须在 1–600 秒之间"
     );
-    let mut process = Command::new("pwsh.exe");
-    process
-        .args(["-NoProfile", "-NonInteractive", "-Command", command])
-        .current_dir(&task.workspace)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-    for (name, _) in std::env::vars() {
-        if name.contains("KEY") || name.contains("TOKEN") || name.contains("SECRET") {
-            process.env_remove(name);
+    let deadline = std::time::Instant::now() + Duration::from_secs(timeout_seconds);
+    let root = std::fs::canonicalize(&task.workspace).context("命令工作区不可用")?;
+    // CreateProcessW does not search PATH when lpApplicationName is non-null.
+    // Resolve only absolute PATH entries, never a workspace-provided executable.
+    let executable = std::env::var_os("PATH")
+        .and_then(|paths| {
+            std::env::split_paths(&paths)
+                .filter(|path| path.is_absolute())
+                .filter_map(|path| path.join("pwsh.exe").canonicalize().ok())
+                .find(|path| path.is_file() && !path.starts_with(&root))
+        })
+        .context("无法解析可信 PowerShell 程序")?;
+    let environment = std::env::vars_os()
+        .filter(|(name, _)| {
+            let name = name.to_string_lossy().to_ascii_uppercase();
+            !name.contains("KEY") && !name.contains("TOKEN") && !name.contains("SECRET")
+        })
+        .collect();
+    let mut spec = ProcessSpec::new(
+        executable,
+        root,
+        environment,
+        (OUTPUT_LIMIT, OUTPUT_LIMIT),
+        OverflowPolicy::TruncateAndDrain,
+        deadline,
+        Duration::from_secs(5),
+    );
+    spec.args = ["-NoProfile", "-NonInteractive", "-Command", command]
+        .into_iter()
+        .map(Into::into)
+        .collect();
+    #[cfg(all(test, windows))]
+    let hooks = {
+        let hooks = std::sync::Arc::new(crate::process_lifetime::TestHooks::default());
+        let forced = take_unknown_fault(&task.id);
+        let probe = tests::PROBE.try_with(std::sync::Arc::clone).ok();
+        use std::sync::atomic::Ordering::SeqCst;
+        hooks.fail_stdout_reader.store(
+            forced || probe.as_ref().is_some_and(|p| p.reader_error),
+            SeqCst,
+        );
+        hooks
+            .fail_exit_code
+            .store(probe.as_ref().is_some_and(|p| p.wait_error), SeqCst);
+        hooks
+            .hold_stdout_reader
+            .store(probe.as_ref().is_some_and(|p| p.cleanup_unknown), SeqCst);
+        // Reader/exit-query faults are reached promptly and still exercise the
+        // actual failure branches; cleanup_unknown retains a real stuck reader.
+        if probe
+            .as_ref()
+            .is_some_and(|p| p.wait_error || p.cleanup_unknown)
+        {
+            spec.deadline = std::time::Instant::now() + Duration::from_millis(100);
+            spec.cleanup_budget = Duration::from_millis(100);
+        }
+        spec.test_hooks = Some(hooks.clone());
+        hooks
+    };
+    let outcome = crate::execution_authority::run_process(spec).await?;
+    #[cfg(all(test, windows))]
+    {
+        use std::sync::atomic::Ordering::SeqCst;
+        hooks.release_stdout_reader.store(true, SeqCst);
+        hooks.fail_exit_code.store(false, SeqCst);
+        let until = tokio::time::Instant::now() + Duration::from_secs(5);
+        while !(hooks.root_signaled.load(SeqCst)
+            && hooks.job_empty.load(SeqCst)
+            && hooks.stdout_reader_joined.load(SeqCst)
+            && hooks.stderr_reader_joined.load(SeqCst))
+            && tokio::time::Instant::now() < until
+        {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        if let Ok(probe) = tests::PROBE.try_with(std::sync::Arc::clone) {
+            probe.capture_supervised(&hooks);
         }
     }
-    #[cfg(windows)]
-    process.creation_flags(0x08000000);
-    let deadline = Instant::now() + Duration::from_secs(timeout_seconds);
-    let child = process.spawn().context("无法启动 PowerShell")?;
-    #[cfg(test)]
-    let probe = tests::PROBE.try_with(std::sync::Arc::clone).ok();
-    #[cfg(test)]
-    if let Some(probe) = &probe {
-        probe
-            .pid
-            .store(child.id().unwrap(), std::sync::atomic::Ordering::SeqCst);
-        #[cfg(windows)]
-        probe.capture_process(&child);
+    match outcome {
+        Outcome::NotStarted { stage, os_error } => {
+            bail!("无法启动 PowerShell ({stage}, {os_error:?})")
+        }
+        Outcome::Unknown => Err(CommandOutcomeUnknown.into()),
+        Outcome::Settled(result) => match result.reason {
+            CompletionReason::Exited => Ok(json!({
+                "exit_code": result.exit_code as i32,
+                "stdout": String::from_utf8_lossy(&result.stdout.bytes),
+                "stderr": String::from_utf8_lossy(&result.stderr.bytes),
+            })),
+            CompletionReason::Deadline => {
+                bail!("命令运行超过 {timeout_seconds} 秒；进程树与输出收集已结束")
+            }
+            CompletionReason::Cancelled => bail!("命令已取消；进程树与输出收集已结束"),
+            CompletionReason::OutputLimit => bail!("命令输出超过限制；进程树与输出收集已结束"),
+        },
     }
-    #[cfg(test)]
-    let forced_unknown = take_unknown_fault(&task.id);
-    collect(
-        child,
-        deadline,
-        timeout_seconds,
-        #[cfg(test)]
-        probe,
-        #[cfg(test)]
-        forced_unknown,
-    )
-    .await
 }
 
+#[cfg(test)]
 async fn collect(
     mut child: tokio::process::Child,
     deadline: Instant,
@@ -248,6 +313,13 @@ mod tests {
         atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
     };
     tokio::task_local! { pub(super) static PROBE: Arc<Probe>; }
+    async fn execute(task: &Task, args: &Value) -> Result<Value> {
+        let data = tempfile::tempdir()?;
+        let store = Arc::new(crate::store::Store::open(&data.path().join("shell.db"))?);
+        let _engine = crate::engine::Engine::new(store.clone(), 1)?;
+        let operation = store.execution_operation(tokio_util::sync::CancellationToken::new())?;
+        operation.run(super::execute(task, args)).await
+    }
 
     #[tokio::test]
     async fn output_reader_drains_beyond_limit_and_keeps_only_prefix() {
@@ -442,6 +514,38 @@ mod tests {
     }
     #[cfg(windows)]
     impl Probe {
+        pub(super) fn capture_supervised(&self, hooks: &crate::process_lifetime::TestHooks) {
+            use std::os::windows::io::AsRawHandle;
+            let captured = hooks
+                .process_handle
+                .lock()
+                .unwrap()
+                .take()
+                .context("supervisor original process handle missing")
+                .and_then(|handle| {
+                    let pid = unsafe { GetProcessId(handle.as_raw_handle()) };
+                    self.pid.store(pid, Ordering::SeqCst);
+                    ProcessObservation::from_handle(handle, pid)
+                })
+                .map_err(|error| format!("{error:#}"));
+            self.parent_waited
+                .store(hooks.root_signaled.load(Ordering::SeqCst), Ordering::SeqCst);
+            assert!(
+                hooks.job_empty.load(Ordering::SeqCst),
+                "original Job not empty"
+            );
+            assert!(
+                hooks.stdout_reader_joined.load(Ordering::SeqCst),
+                "original stdout reader not joined"
+            );
+            assert!(
+                hooks.stderr_reader_joined.load(Ordering::SeqCst),
+                "original stderr reader not joined"
+            );
+            assert!(hooks.stderr_eof_joined.load(Ordering::SeqCst));
+            *self.original.lock().unwrap() = Some(captured);
+        }
+
         pub(super) fn capture_process(&self, child: &tokio::process::Child) {
             use std::io::Write;
             // Retain failures for the test assertion; never interrupt product cleanup.

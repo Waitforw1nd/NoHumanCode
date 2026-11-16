@@ -120,20 +120,10 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         .workspace
         .unwrap_or_else(|| PathBuf::from("../workspace"));
     std::fs::create_dir_all(&data_dir).context("无法创建数据目录")?;
-    *instance_lock = if !args.check {
-        let file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(data_dir.join("instance.lock"))?;
-        file.try_lock()
-            .context("此数据目录已有一个 🍑sh 实例正在运行")?;
-        Some(file)
-    } else {
-        None
-    };
     let store = Arc::new(Store::open(&data_dir.join("peachsh.sqlite3"))?);
+    // Duplicate the same held file object; the Domain and all process tickets
+    // retain the original beyond Engine/Store or main's runtime teardown.
+    *instance_lock = Some(store.instance_lock_handle()?);
     let settings = match store.settings()? {
         Some(s) => s,
         None => match args.legacy_data.as_deref() {

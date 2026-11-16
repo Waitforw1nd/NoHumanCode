@@ -806,11 +806,11 @@ impl ShutdownReport {
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
-        let recovery = host_services::RecoveryService::new(store.clone());
+        let recovery = host_services::RecoveryService::new(store.clone())?;
         Self::new_with_recovery(store, max_concurrency, recovery)
     }
     pub fn new_recovered(store: Arc<Store>, max_concurrency: usize) -> Result<(Arc<Self>, usize)> {
-        let recovery = host_services::RecoveryService::new(store.clone());
+        let recovery = host_services::RecoveryService::new(store.clone())?;
         let interrupted = recovery.recover()?;
         Ok((
             Self::new_with_recovery(store, max_concurrency, recovery)?,
@@ -902,7 +902,7 @@ impl Engine {
         provider_runtime: crate::provider_runtime::ProviderRuntime,
         agent_runtime: crate::agent_runtime::AgentRuntime,
     ) -> Result<Arc<Self>> {
-        let recovery = host_services::RecoveryService::new(store.clone());
+        let recovery = host_services::RecoveryService::new(store.clone())?;
         Self::assemble_with_recovery(
             store,
             max_concurrency,
@@ -935,6 +935,13 @@ impl Engine {
         max_concurrency: usize,
     ) -> Result<Arc<Self>> {
         debug_assert!(composition.recovery.owns(&composition.store));
+        ensure!(max_concurrency > 0, "max concurrency must be nonzero");
+        composition.recovery.activate();
+        composition
+            .store
+            .authority
+            .supervisor
+            .resize(std::num::NonZeroUsize::new(max_concurrency).unwrap());
         let store = composition.store.clone();
         let gate = composition.gate.clone();
         let active = composition.active.clone();
@@ -1041,6 +1048,17 @@ impl Engine {
             .and_then(|slot| slot.clone())
     }
     pub async fn create_project_worktree(
+        self: &Arc<Self>,
+        request: crate::worktree_management::CreateWorktree,
+    ) -> Result<crate::worktree_management::WorktreeReceipt> {
+        let operation = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        operation
+            .run(self.create_project_worktree_in_domain(request))
+            .await
+    }
+    async fn create_project_worktree_in_domain(
         self: &Arc<Self>,
         request: crate::worktree_management::CreateWorktree,
     ) -> Result<crate::worktree_management::WorktreeReceipt> {
@@ -1234,6 +1252,18 @@ impl Engine {
         }
     }
     pub async fn inspect_project_worktree(
+        &self,
+        source: &ProjectId,
+        operation: &str,
+    ) -> Result<crate::worktree_management::WorktreeInspection> {
+        let ticket = self
+            .store
+            .execution_operation(self.shutdown_requested.clone())?;
+        ticket
+            .run(self.inspect_project_worktree_in_domain(source, operation))
+            .await
+    }
+    async fn inspect_project_worktree_in_domain(
         &self,
         source: &ProjectId,
         operation: &str,
@@ -1480,6 +1510,10 @@ impl Engine {
                 .forget_permits(current - settings.max_concurrency);
         }
         *self.slot_capacity.lock().unwrap() = settings.max_concurrency;
+        self.store
+            .authority
+            .supervisor
+            .resize(std::num::NonZeroUsize::new(settings.max_concurrency).unwrap());
         self.slot_notify.notify_waiters();
         self.key_slots.lock().unwrap().clear();
         Ok(())
@@ -1921,7 +1955,10 @@ impl Engine {
         );
         let engine = self.clone();
         self.spawn_background(async move {
-            let (mut task, result) = run(engine.clone(), task, token.clone()).await;
+            let (mut task, result) = match engine.store.execution_operation(token.clone()) {
+                Ok(operation) => operation.run(run(engine.clone(), task, token.clone())).await,
+                Err(error) => (task, Err(error)),
+            };
             // Saving a failed Task is not evidence that its external effect ended.
             // Keep typed unknown errors and durable unresolved claims independently
             // of the terminal snapshot's success (and of ordinary business errors).
@@ -2439,6 +2476,7 @@ impl Engine {
     }
 
     fn ensure_accepting(&self) -> Result<()> {
+        self.store.authority.check()?;
         ensure!(
             !self.shutdown_requested.is_cancelled(),
             "Host 正在关闭，拒绝新工作"
@@ -2467,8 +2505,9 @@ impl Engine {
     ) -> tokio::sync::oneshot::Receiver<Result<crate::worktree_management::WorktreeReceipt>> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let engine = self.clone();
+        let scope = crate::execution_authority::current();
         self.spawn_background(async move {
-            let result = work.await;
+            let result = crate::execution_authority::inherit(scope, work).await;
             if result.as_ref().is_ok_and(|receipt| {
                 matches!(
                     receipt.state,
@@ -2489,6 +2528,7 @@ impl Engine {
     }
 
     pub fn request_shutdown(&self) {
+        self.store.authority.close();
         let active = self.active.lock().unwrap();
         self.shutdown_tasks
             .lock()
@@ -3902,7 +3942,7 @@ mod workspace_phase_tests {
         }
     }
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn n12_claimed_shell_finishes_after_disable_and_normal_cancel() {
+    async fn n12_claimed_shell_disable_preserves_work_and_cancel_prevents_unstarted_process() {
         for cancel in [false, true] {
             let temp = tempfile::tempdir().unwrap();
             let (engine,id,calls)=shell_engine(temp.path(),"[IO.File]::WriteAllText('shell-marker.txt','executed'); Write-Output 'shell-complete'",true,true).await;
@@ -3952,10 +3992,17 @@ mod workspace_phase_tests {
             }
             release_tx.send(()).unwrap();
             n10_idle(&engine).await;
-            assert_eq!(
-                std::fs::read_to_string(temp.path().join("shell-marker.txt")).unwrap(),
-                "executed"
-            );
+            if cancel {
+                assert!(
+                    !temp.path().join("shell-marker.txt").exists(),
+                    "cancel before generation admission must not start the process"
+                );
+            } else {
+                assert_eq!(
+                    std::fs::read_to_string(temp.path().join("shell-marker.txt")).unwrap(),
+                    "executed"
+                );
+            }
             assert_eq!(
                 engine.store.approval(&pending.id).unwrap().execution_state,
                 approval::ExecutionState::Finished
@@ -3969,13 +4016,21 @@ mod workspace_phase_tests {
             assert_eq!(outputs.len(), 1);
             let result: Value =
                 serde_json::from_str(outputs[0]["content"].as_str().unwrap()).unwrap();
-            assert_eq!(result["exit_code"], 0);
-            assert!(
-                result["stdout"]
-                    .as_str()
-                    .unwrap()
-                    .contains("shell-complete")
-            );
+            if cancel {
+                assert!(
+                    result["error"]
+                        .as_str()
+                        .is_some_and(|error| error.contains("cancelled"))
+                );
+            } else {
+                assert_eq!(result["exit_code"], 0);
+                assert!(
+                    result["stdout"]
+                        .as_str()
+                        .unwrap()
+                        .contains("shell-complete")
+                );
+            }
             let events = engine.store.events(&task.run_id, 0).unwrap();
             assert_eq!(events.iter().filter(|e| e.kind == "tool_start").count(), 1);
             assert_eq!(events.iter().filter(|e| e.kind == "tool_result").count(), 1);
@@ -7124,7 +7179,7 @@ mod composition_tests {
         let dir = tempfile::tempdir().unwrap();
         let first = Arc::new(Store::open(&dir.path().join("first.db")).unwrap());
         let second = Arc::new(Store::open(&dir.path().join("second.db")).unwrap());
-        let recovery = host_services::RecoveryService::new(second);
+        let recovery = host_services::RecoveryService::new(second).unwrap();
         let result = composition::HostComposition::new(
             first,
             ToolRuntime::builtin().unwrap(),

@@ -704,7 +704,12 @@ impl ReviewRecovery {
                 return Err(WorkspaceChangeError::Active.into());
             }
         }
-        Ok(crate::git_diff::read_git_diff(root, request).await?)
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        Ok(operation
+            .run(crate::git_diff::read_git_diff(root, request))
+            .await?)
     }
 
     pub(crate) fn checkpoint(&self, checkpoint_id: &str) -> Result<crate::checkpoint::Checkpoint> {
@@ -1000,18 +1005,23 @@ impl SessionService {
 
 pub(crate) struct RecoveryService {
     store: Arc<Store>,
+    controller: crate::execution_authority::ExecutionController,
 }
 impl RecoveryService {
     pub(crate) const ID: &'static str = "host.recovery";
     pub(crate) const VERSION: &'static str = "1.0.0";
-    pub(crate) fn new(store: Arc<Store>) -> Self {
-        Self { store }
+    pub(crate) fn new(store: Arc<Store>) -> Result<Self> {
+        let controller = store.authority.claim()?;
+        Ok(Self { store, controller })
+    }
+    pub(crate) fn activate(&self) {
+        self.controller.activate();
     }
     pub(crate) fn owns(&self, store: &Arc<Store>) -> bool {
         Arc::ptr_eq(&self.store, store)
     }
     pub(crate) fn recover(&self) -> Result<usize> {
-        self.store.recover()
+        self.store.recover_with_controller(&self.controller)
     }
 }
 

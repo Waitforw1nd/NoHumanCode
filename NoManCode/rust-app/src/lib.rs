@@ -9,6 +9,7 @@ mod composition;
 pub mod credential_input;
 pub mod domain;
 pub mod engine;
+mod execution_authority;
 pub mod git_diff;
 pub(crate) mod git_worktree;
 pub mod host_configuration;
@@ -21,7 +22,7 @@ pub mod plugin_catalog;
 pub mod plugin_host;
 pub mod plugin_management;
 mod process_lifetime;
-#[cfg(test)]
+#[cfg(all(test, windows))]
 mod process_lifetime_tests;
 #[cfg(all(test, windows))]
 mod process_test_fixture;
