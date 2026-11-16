@@ -60,6 +60,17 @@ class GateTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertFalse(self.out.exists())
 
+    def test_windows_uppercase_environment_preserves_toolchain_provenance(self):
+        roots = {"VCTOOLSINSTALLDIR": "E:/mock/msvc", "WINDOWSSDKDIR": "E:/mock/sdk",
+                 "CC_X86_64_PC_WINDOWS_MSVC": "E:/mock/cl.exe", "AR_X86_64_PC_WINDOWS_MSVC": "E:/mock/lib.exe"}
+        environment = dict(gates.ENVIRONMENT, **roots)
+        code, manifest = self.run_attempt(environment=environment)
+        self.assertEqual(code, 0)
+        for key in ("VCToolsInstallDir", "WindowsSdkDir", "CC_x86_64_pc_windows_msvc", "AR_x86_64_pc_windows_msvc"):
+            self.assertEqual(manifest["environment"][key], roots[key.upper()])
+        self.assertNotIn("VCToolsInstallDir", environment)
+        self.assertIsNone(gates.environment_value(environment, "missing"))
+
     def test_failed_step_stops_preserves_exit_and_gate(self):
         def fail(*args):
             self.invoke(*args)

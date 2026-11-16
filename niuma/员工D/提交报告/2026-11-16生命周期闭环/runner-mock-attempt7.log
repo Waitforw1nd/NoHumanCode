@@ -1,0 +1,39 @@
+test_attempt_is_never_reused (__main__.GateTests.test_attempt_is_never_reused) ... ok
+test_busy_gate_cannot_start_or_replace_evidence (__main__.GateTests.test_busy_gate_cannot_start_or_replace_evidence) ... ok
+test_candidate_mismatch_never_starts (__main__.GateTests.test_candidate_mismatch_never_starts) ... ok
+test_change_at_final_snapshot_cannot_return_exit_zero (__main__.GateTests.test_change_at_final_snapshot_cannot_return_exit_zero) ... ok
+test_check_is_not_published_as_full (__main__.GateTests.test_check_is_not_published_as_full) ... ok
+NHC_TERMINAL_UNKNOWN deadline.log: step_deadline_exceeded; original handle retained, waiting for direct terminal state
+test_deadline_is_sticky_after_original_process_exits (__main__.GateTests.test_deadline_is_sticky_after_original_process_exits) ... ok
+test_dirty_input_never_starts (__main__.GateTests.test_dirty_input_never_starts) ... ok
+test_e_only_resolved_paths (__main__.GateTests.test_e_only_resolved_paths) ... ok
+test_failed_step_stops_preserves_exit_and_gate (__main__.GateTests.test_failed_step_stops_preserves_exit_and_gate) ... ok
+test_full_success_and_exact_byte_publication (__main__.GateTests.test_full_success_and_exact_byte_publication) ... ok
+test_interrupt_does_not_release_or_invent_exit (__main__.GateTests.test_interrupt_does_not_release_or_invent_exit) ... ok
+test_lib_and_compile_only_modes_have_explicit_safe_commands (__main__.GateTests.test_lib_and_compile_only_modes_have_explicit_safe_commands) ... ok
+test_metadata_tampering_and_unrecorded_artifact_rejected (__main__.GateTests.test_metadata_tampering_and_unrecorded_artifact_rejected) ... ok
+test_no_automatic_gate_release_api (__main__.GateTests.test_no_automatic_gate_release_api) ... ok
+test_plan_rejects_shell_and_ignored_injection (__main__.GateTests.test_plan_rejects_shell_and_ignored_injection) ... ok
+test_snapshot_records_dirty_and_raw_bytes (__main__.GateTests.test_snapshot_records_dirty_and_raw_bytes) ... ok
+test_source_bytes_changed_under_same_git_tree (__main__.GateTests.test_source_bytes_changed_under_same_git_tree) ... ok
+NHC_TERMINAL_UNKNOWN supervised.log: supervisor_interrupted; original handle retained, waiting for direct terminal state
+test_supervisor_retains_same_object_after_deadline_and_interrupt (__main__.GateTests.test_supervisor_retains_same_object_after_deadline_and_interrupt) ... ok
+test_tampered_log_and_later_head_rejected (__main__.GateTests.test_tampered_log_and_later_head_rejected) ... ok
+NHC_TERMINAL_UNKNOWN marker.log: child_terminal_unknown; original handle retained, waiting for direct terminal state
+test_terminal_marker_detected_even_on_fast_exit (__main__.GateTests.test_terminal_marker_detected_even_on_fast_exit) ... ok
+test_unknown_even_with_direct_exit_zero_stops_next_step (__main__.GateTests.test_unknown_even_with_direct_exit_zero_stops_next_step) ... ok
+test_windows_uppercase_environment_preserves_toolchain_provenance (__main__.GateTests.test_windows_uppercase_environment_preserves_toolchain_provenance) ... FAIL
+test_zero_matching_tests_fails_even_with_exit_zero (__main__.GateTests.test_zero_matching_tests_fails_even_with_exit_zero) ... ok
+
+======================================================================
+FAIL: test_windows_uppercase_environment_preserves_toolchain_provenance (__main__.GateTests.test_windows_uppercase_environment_preserves_toolchain_provenance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\code\nhc-lifecycle-20261116-d\NoManCode\rust-app\tools\lifecycle\test_lifecycle_gates.py", line 72, in test_windows_uppercase_environment_preserves_toolchain_provenance
+    self.assertFalse(self.out.exists())
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.289s
+
+FAILED (failures=1)

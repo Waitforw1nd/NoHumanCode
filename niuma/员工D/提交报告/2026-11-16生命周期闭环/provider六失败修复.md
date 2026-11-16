@@ -1,0 +1,18 @@
+# Provider 六项失败的夹具修复
+
+2026-11-16，D。经理新增唯一写权 `NoManCode/rust-app/src/provider_runtime_tests.rs`。独立代码提交 `00949b1ff578eea9de01f6b7538eba836b3e4ded` 仅修改此文件；经理应单独选择本提交，不合入其祖先W3候选。
+
+full-1 原日志中 provider 的六项失败：p06_real_host_kill_and_recovery_preserve_claim_without_resend，以及 n18_cross_store_false_true_does_not_revive_old_prepared_completion、n18_provider_admission_and_remote_disable_have_a_transaction_order、n18_persisted_rejection_drops_reentrant_decoder_outside_lock、n18_permit_failure_after_claim_compensates_without_completion_send、n18_same_true_revision_change_invalidates_old_provider_preparation。
+
+静态定位及修复：
+
+- p06 父Fixture持有Arc Engine/Store时启动同库child。参照C夹具增加可取出的FixtureEngine，先真实shutdown且settled，再drop并用Weak证明Store已释放，mock HTTP服务仍存活。保持原两个崩溃相位、原Child真实kill/终态、两个独立恢复进程与预算unknown/100 held/无重发/状态一致断言。恢复child结束前也真实shutdown。
+- 原p06 child stdout/stderr为null，TempDir失败后清理；只读原目录盘点没有可归属的provider-test.db原件可据以还原内部panic，因此不声称已从stderr证实原因。新版本保留精确目录、文件stdout/stderr，提前退出把stderr列入失败信息，Windows隐藏创建。15秒相位界和5秒原Child终止观察界；未知时同观察者保留原Child直到直接终态，迟到退出仍panic失败并发NHC_TERMINAL_UNKNOWN，不按PID重开/猜杀。
+- 四项n18原来创建第二Engine，违背本轮单controller规则。改为同域第二Store的set_runtime_desired真实事务，继续使用原请求修订号和幂等key；不开放第二Engine、不改生产锁。原旧prepared拒绝、无新增call/无发送、预算不变、false→true和same-true后的新合法正控、decoder重入、两个事务顺序断言均保留。
+- 两个注入key从实际f.engine.store.db连接的pragma_database_list读取，避免新建连接的非canonical路径与实际hook不同。permit失败仍要求models=1/completions=0、Completion NotSent、held/unresolved/spent=0，不以泛化Err替代这些断言。
+
+只运行单文件rustfmt与git diff --check，均exit0；没有Cargo或真实进程测试。六项修复仍待经理固定整合版本运行，当前不宣称通过。
+
+环境provenance另外提交 `db4042e3a762c2ccd25e211f670bc62d25df15dc`：Windows环境键大小写无关读取仅用于manifest，子进程env/gate不变。runner-mock-attempt8为23项全部通过/exit0。attempt7新增用例插入位置误带旧busy-gate的末尾断言，23项中1失败；已归还原用例，原失败日志/exit1保留。
+
+full-1最终证据见 `full-1独立hash复核.json`。该窗口为固定9步计划，Rust全量在第6步失败，后续门禁未运行；385 passed/51 failed/44 ignored是该次lib结果，不是产品通过结论。D只复核原证据与Git tree，不宣称PID快照或测试进程退出证明树清理。

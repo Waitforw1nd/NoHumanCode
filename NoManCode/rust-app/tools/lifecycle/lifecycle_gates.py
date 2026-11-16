@@ -40,6 +40,12 @@ def digest(raw):
     return hashlib.sha256(raw).hexdigest()
 
 
+def environment_value(environment, key):
+    # dict(os.environ) on Windows normalizes keys to uppercase. This lookup is
+    # for provenance only; do not rewrite the actual child environment.
+    return next((value for name, value in environment.items() if name.casefold() == key.casefold()), None)
+
+
 def encode(value):
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
@@ -291,7 +297,7 @@ def run_attempt(repo, out, gate_path, expected, steps, environment, options,
     manifest = {"version": 1, "candidate": expected, "options": options, "plan": steps,
                 "started_utc": utc(), "steps": [], "status": "failed", "inputs_verified": False,
                 "process_tree_cleanup": "not_proven_by_this_runner",
-                "environment": {k: environment.get(k) for k in [*ENVIRONMENT, "CARGO_TARGET_DIR", "TMP", "TEMP",
+                "environment": {k: environment_value(environment, k) for k in [*ENVIRONMENT, "CARGO_TARGET_DIR", "TMP", "TEMP",
                     "VCToolsInstallDir", "WindowsSdkDir", "CC_x86_64_pc_windows_msvc", "AR_x86_64_pc_windows_msvc",
                     "CARGO_HOME", "RUSTUP_HOME", "RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "CARGO_BUILD_TARGET"]}}
     code = 1
