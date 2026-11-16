@@ -112,3 +112,31 @@ pwsh -NoProfile -File NoManCode/rust-app/build.ps1 -Action web-test
 经理已收到并明确 A/B 分工：A 负责安全 message 投影、无 delta codec fallback 和全 Task 秘密断言；B 负责可信 Host 流式 delta 的内部 Store 入口，避免再次制造边界，并将最终 tail 写入对应 assistant message。此处仅登记派发，不声明修复完成或测试已通过。最终候选待经理交回后再核相应 diff。
 
 本次仍未编辑 A/B 产品文件，未执行 Cargo/rustc、产品、真实进程测试或外部服务调用；所有结论均为静态反例。复审范围停留在上述既有 token/bearer/assignment 策略及消息/事件一致性，不扩展未知凭据识别承诺。
+
+## 最终交叉审结论：原反例范围关闭（2026-11-16）
+
+结论：`APPROVED（D-XA-01～05 原反例及对应回归范围）`。前文保留发现时的源码快照与待办状态；本节按后续修复和验证更新结论，不改写历史。本次没有发现上述路径的明确剩余阻断，不扩展未知凭据识别能力，也不代表全产品或发布验收通过。
+
+### 版本与证据归属
+
+- 父线程确认受测 HEAD 为 `89e3bb1dfd2cf013571854014580f25aee20e370`；最后 10 项安全专项全部通过，覆盖完整 Task、SSE、codec fallback 和普通 `foo` / `sk-plain` 负控，另可信 delta Store 专项 1/1 通过。这是父线程本轮动态结果，D 没有独立重跑，也未在本次核验原始运行日志、命令或退出码，不将其编造为 D 自行执行的证据。
+- D 最后只读复核 A `f81cec7aa536916f23ed4fb7a69f0fd51eb70c0f`（含实现 `26951f042900bf2da322d6535955247c7bed982f`）及 B `b06a1b1baad6e3660d9bbf72e4cb1e406d621a31`。随后对受测 HEAD 做限定 `git diff --quiet`：A 的 `secrets.rs`、`provider_runtime.rs`、`provider_runtime_tests.rs` 三文件无差异，B 的 `engine.rs`、`store.rs`、`repository.rs` 三文件无差异，两次 exit 0。下列路径均相对仓库根，行号绑定受测 HEAD。
+- 本次 docs 提交以 D 树 `69e767f2d1fb593330885d8a16a543b28423dee5` 为父提交，仅追加本报告。产品继续冻结；主仓身份、总验收及整合由经理维护。
+
+### 逐项关闭依据
+
+| 原问题 | 受测代码与行为断言 | 范围结论 |
+| --- | --- | --- |
+| D-XA-01：`sk-` / `password` / `=` / `opaque123` 丢失赋值字段身份 | `NoManCode/rust-app/src/secrets.rs:590` 的 Token 分支继续 `track_field`；同文件第 752 行测试精确四片反例及 token 形状字段的所有分片边界，期望 `[redacted]=[redacted]`。`provider_runtime_tests.rs:385` 另覆盖跨 completion 的同类字段身份。 | 原值泄漏关闭；不要求敏感字段名必须保留为原始字面文本。 |
+| D-XA-02：长分隔符使 `api_key` 被截断为普通 `key` | `NoManCode/rust-app/src/secrets.rs:470` 先压缩连续分隔符再限制字段状态；第 771 行起覆盖 128/1024 个分隔符、混合分隔符、整体及分片输入，并与完整 `redact_text` 比较；第 797 行覆盖 4096 个分隔符及状态上界。 | 原长字段反例关闭；不是任意未知字段识别保证。 |
+| D-XA-03：空引号值提前输出占位符 | `NoManCode/rust-app/src/secrets.rs:615` 的 QuotedStart 先判断闭引号；第 790 行空值断言及第 791 行非空负向区分仍在。`provider_runtime_tests.rs:386` 跨轮空值由后续完整 Task/assistant/output/SSE 断言验证。 | 原空引号不一致关闭。 |
+| D-XA-04：跨轮 output 安全但原始秘密仍进入 assistant messages | `NoManCode/rust-app/src/provider_runtime.rs:640` 累积同一 redactor 的安全输出，第 672 行无 delta fallback 继续同一状态，第 688 行替换返回 message.content。`engine.rs:2174` 仅工具组先保存；最终文本分支第 2209 行结束 redactor，第 2217 行补消息 tail，第 2223 行才首次持久保存最终消息。`provider_runtime_tests.rs:378`、第 419 行及第 473 行分别覆盖跨轮成功、失败/取消和有/无 delta codec；第 402/466/503 行检查整个 Task 不含测试秘密，第 409/501 行检查 assistant 内容。 | 原持久消息泄漏关闭；最终成功 tail 不再遗漏于首次保存，错误/取消路径不提前 flush。 |
+| D-XA-05：逐事件重滤制造 `foo` / `sk-plain` 的假边界 | `NoManCode/rust-app/src/engine.rs:2109` 与第 2211 行通过 `Store.completion_delta`；`store.rs:1115` 为 crate 内部入口；`repository.rs:1728` 限定文本 delta，转第 1952 行公共关系校验，不再逐片重滤。普通 `append_event` 仍在第 1947 行过滤。`provider_runtime_tests.rs:509` 检查普通跨轮片段的 output、事件/SSE 回放；`store.rs:4340` 专项检查新旧任务、公开入口脱敏、kind/shape/关系拒绝及重开数据库后文本。 | 原 output 与事件/SSE 不一致关闭。 |
+
+普通片段负控的范围是拼接后的 task.output、持久事件和 SSE；独立 assistant 消息仍经过既有 `safe_task_value` 策略，可能对单条消息开头的 token 形状文本保守脱敏。`provider_runtime_tests.rs:520` 已明确这一边界，不将负控通过解释为取消消息持久化策略或要求每条消息与原始 codec 文本逐字相同。
+
+### 未执行与后续验收
+
+本次只读代码、Git 版本及测试断言，修改唯一文件为本报告；没有运行 Cargo/rustc、产品、真实进程测试或外部服务调用，没有修改 A/B 或整合树。没有新增功能、schema、迁移、权限或凭据策略变更。
+
+父线程在上述受测 HEAD 开始六项门禁并冻结产品；截至此结论，六项门禁仍在验收中，未记为通过。D 无上述原反例范围内待修事项；后续由父线程记录门禁原件、最终整合与总验收。历史 unknown、真实 release 分发及未覆盖的其他范围不因这次专项关闭而改判。
