@@ -40,17 +40,36 @@ fn nonzero_port(value: &str) -> std::result::Result<u16, String> {
         .ok_or_else(|| "端口必须在 1..=65535".to_owned())
 }
 fn main() -> Result<()> {
+    // Declare the lock before the runtime so unwinding also tears the runtime
+    // down first. Startup/run errors must not admit another Host while old
+    // blocking work is still being drained.
+    let mut instance_lock = None;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    let result = runtime.block_on(run());
+    let result = runtime.block_on(run(&mut instance_lock));
     // An unknown shutdown must not silently become an unbounded runtime Drop.
     // This bounds runtime teardown; it does not certify external process exit.
-    runtime.shutdown_timeout(Duration::from_secs(1));
+    let instance_lock = teardown_runtime(runtime, instance_lock, Duration::from_secs(1));
+    if result.is_err() {
+        // Only on main's final error/unknown exit: a timed-out blocking worker
+        // may still write until the process dies. Let the OS release this handle
+        // at process termination, not while Rust prints the returned error.
+        std::mem::forget(instance_lock);
+    }
     result
 }
 
-async fn run() -> Result<()> {
+fn teardown_runtime(
+    runtime: tokio::runtime::Runtime,
+    instance_lock: Option<std::fs::File>,
+    timeout: Duration,
+) -> Option<std::fs::File> {
+    runtime.shutdown_timeout(timeout);
+    instance_lock
+}
+
+async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
     let args = Args::try_parse().unwrap_or_else(|error| {
         // Clap may echo invalid argument values. The Host setup namespace never
         // echoes untrusted input, including an accidentally pasted credential.
@@ -101,7 +120,7 @@ async fn run() -> Result<()> {
         .workspace
         .unwrap_or_else(|| PathBuf::from("../workspace"));
     std::fs::create_dir_all(&data_dir).context("无法创建数据目录")?;
-    let _instance_lock = if !args.check {
+    *instance_lock = if !args.check {
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -175,12 +194,153 @@ async fn run() -> Result<()> {
     );
     anyhow::ensure!(
         shutdown.settled(),
-        "Host 关闭结果 unknown：{} 个后台工作未收束，持久化或工作失败={}，超时={}",
+        "Host 关闭结果 unknown：{} 个后台工作未收束，持久化或工作失败={}，外部结果未知={}，超时={}",
         shutdown.remaining_workers,
         shutdown.persistence_or_worker_failure,
+        shutdown.external_outcome_unknown,
         shutdown.timed_out
     );
     http?;
     signal.context("无法等待关闭信号")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod audit_shutdown_tests {
+    use super::*;
+    use std::sync::mpsc;
+
+    struct TeardownStarted(mpsc::Sender<()>);
+    impl Drop for TeardownStarted {
+        fn drop(&mut self) {
+            let _ = self.0.send(());
+        }
+    }
+
+    #[test]
+    fn instance_lock_covers_runtime_teardown_after_run_error() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("instance.lock");
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .unwrap();
+        lock.try_lock().unwrap();
+        let contender = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .build()
+            .unwrap();
+        let (teardown_tx, teardown_rx) = mpsc::channel();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        runtime.spawn(async move {
+            let _guard = TeardownStarted(teardown_tx);
+            let _ = ready_tx.send(());
+            std::future::pending::<()>().await;
+        });
+        runtime.block_on(ready_rx).unwrap();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (finished_tx, finished_rx) = mpsc::channel();
+        let blocking = runtime.spawn_blocking(move || {
+            let _ = started_tx.send(());
+            // A bounded synthetic database writer; no child process is involved.
+            let _ = release_rx.recv_timeout(Duration::from_secs(5));
+            let _ = finished_tx.send(());
+        });
+        started_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let (stopped_tx, stopped_rx) = mpsc::channel();
+        let teardown = std::thread::spawn(move || {
+            let result: Result<()> = Err(anyhow::anyhow!("synthetic run failure"));
+            let lock = teardown_runtime(runtime, Some(lock), Duration::from_secs(5));
+            // This synthetic writer has drained; the test deliberately releases
+            // its handle instead of taking main's process-lifetime error path.
+            drop(lock);
+            let _ = stopped_tx.send(result);
+        });
+        // The cancelled async guard proves teardown has actually begun, rather
+        // than merely racing a thread that has not entered shutdown yet.
+        teardown_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let during_teardown = contender.try_lock();
+        let still_draining = stopped_rx.try_recv().is_err();
+        let _ = release_tx.send(());
+        finished_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let result = stopped_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        teardown.join().unwrap();
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(blocking)
+            .unwrap();
+        assert!(
+            during_teardown.is_err(),
+            "another Host acquired the lock during teardown"
+        );
+        assert!(
+            still_draining,
+            "teardown returned while the blocking writer was held"
+        );
+        assert_eq!(result.unwrap_err().to_string(), "synthetic run failure");
+        contender.try_lock().unwrap();
+    }
+
+    #[test]
+    fn instance_lock_survives_teardown_timeout_until_owner_releases_it() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("instance.lock");
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .unwrap();
+        lock.try_lock().unwrap();
+        let contender = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .build()
+            .unwrap();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (finished_tx, finished_rx) = mpsc::channel();
+        let blocking = runtime.spawn_blocking(move || {
+            let _ = started_tx.send(());
+            let _ = release_rx.recv_timeout(Duration::from_secs(5));
+            let _ = finished_tx.send(());
+        });
+        started_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let retained = teardown_runtime(runtime, Some(lock), Duration::from_millis(20));
+        assert!(
+            finished_rx.try_recv().is_err(),
+            "the writer must still be held"
+        );
+        let while_writer_alive = contender.try_lock();
+        let _ = release_tx.send(());
+        finished_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(blocking)
+            .unwrap();
+        assert!(
+            while_writer_alive.is_err(),
+            "timeout released the instance lock"
+        );
+        assert!(
+            contender.try_lock().is_err(),
+            "teardown must return the original locked handle"
+        );
+        drop(retained);
+        contender.try_lock().unwrap();
+    }
 }
