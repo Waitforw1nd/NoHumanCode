@@ -12,6 +12,8 @@ pub mod credential_input;
 pub mod domain;
 pub mod engine;
 mod execution_authority;
+#[cfg(test)]
+mod execution_authority_regression_tests;
 #[cfg(all(test, windows))]
 #[allow(dead_code)]
 #[path = "../tests/support/lifecycle/fixture.rs"]
@@ -70,6 +72,7 @@ pub mod wasm_worker_process;
 #[cfg(all(test, windows))]
 mod wasm_worker_process_tests;
 pub mod wasm_worker_protocol;
+pub mod worker_bootstrap;
 pub mod workspace;
 pub mod workspace_changes;
 pub mod workspace_identity;

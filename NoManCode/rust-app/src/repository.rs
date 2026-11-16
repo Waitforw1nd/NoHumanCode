@@ -748,6 +748,7 @@ pub(crate) fn verify_initialized_schema(tx: &Transaction<'_>) -> Result<()> {
     verify_schema_14(tx)?;
     verify_schema_15(tx)?;
     verify_schema_16(tx)?;
+    verify_execution_owner_shape(tx)?;
     Ok(())
 }
 
@@ -3062,7 +3063,7 @@ pub(crate) fn runtime17_probe(tx: &Transaction<'_>, phase: &'static str) -> Resu
 pub(crate) fn apply_schema_17(tx: &Transaction<'_>) -> Result<()> {
     let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
     let marker = migration_applied(tx, RUNTIME_MANAGEMENT_MIGRATION_ID)?;
-    if version == 17 {
+    if version >= 17 {
         anyhow::ensure!(marker, "schema 17 marker missing");
         return verify_schema_17(tx);
     }
@@ -4034,4 +4035,70 @@ mod budget_schema_tests {
             assert_eq!(rows(&db), before);
         }
     }
+}
+
+// Schema 18 adds only the durable fence to the existing schema 17 data.
+pub(crate) const EXECUTION_OWNER_MIGRATION_ID: &str = "execution-owner-v18";
+const EXECUTION_OWNER_DDL: &str = "CREATE TABLE execution_owner (id INTEGER PRIMARY KEY CHECK(id=1), domain_identity TEXT NOT NULL, epoch INTEGER NOT NULL CHECK(typeof(epoch)='integer' AND epoch>=0), phase TEXT NOT NULL CHECK(phase IN ('recovering','active')))";
+
+pub(crate) fn verify_execution_owner_shape(tx: &Transaction<'_>) -> Result<()> {
+    anyhow::ensure!(
+        tx.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))? == 18,
+        "execution schema version mismatch"
+    );
+    anyhow::ensure!(
+        migration_applied(tx, EXECUTION_OWNER_MIGRATION_ID)?,
+        "execution marker missing"
+    );
+    let ddl: String = tx.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='execution_owner'",
+        [],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(
+        ddl == EXECUTION_OWNER_DDL,
+        "execution owner schema mismatch"
+    );
+    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name='execution_owner' AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
+    let count: i64 = tx.query_row("SELECT count(*) FROM execution_owner", [], |r| r.get(0))?;
+    let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND typeof(domain_identity)='text' AND length(domain_identity)>0 AND typeof(epoch)='integer' AND epoch>=0 AND phase IN ('recovering','active'))", [], |r| r.get(0))?;
+    anyhow::ensure!(
+        extras == 0 && count == 1 && valid,
+        "invalid execution owner state"
+    );
+    Ok(())
+}
+pub(crate) fn verify_execution_owner(tx: &Transaction<'_>, identity: &str) -> Result<()> {
+    verify_execution_owner_shape(tx)?;
+    let matches: bool = tx.query_row(
+        "SELECT domain_identity=?1 FROM execution_owner WHERE id=1",
+        [identity],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(matches, "execution domain identity mismatch");
+    Ok(())
+}
+pub(crate) fn apply_schema_18(tx: &Transaction<'_>, identity: &str) -> Result<()> {
+    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let marker = migration_applied(tx, EXECUTION_OWNER_MIGRATION_ID)?;
+    if version == 18 {
+        anyhow::ensure!(marker, "execution marker missing");
+        return verify_execution_owner(tx, identity);
+    }
+    anyhow::ensure!(
+        version == 17 && !marker,
+        "execution marker/version mismatch"
+    );
+    verify_schema_17(tx)?;
+    tx.execute_batch(EXECUTION_OWNER_DDL)?;
+    tx.execute(
+        "INSERT INTO execution_owner(id,domain_identity,epoch,phase) VALUES(1,?1,0,'recovering')",
+        [identity],
+    )?;
+    tx.execute(
+        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
+        rusqlite::params![EXECUTION_OWNER_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 18)?;
+    verify_execution_owner(tx, identity)
 }

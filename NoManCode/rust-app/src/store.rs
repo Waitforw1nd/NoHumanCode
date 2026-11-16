@@ -4,7 +4,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 use std::{path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 17;
+pub const SCHEMA_VERSION: u32 = 18;
 
 #[derive(Debug)]
 pub struct IdempotencyConflict;
@@ -88,11 +88,47 @@ impl Store {
         db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
         let verify = db.transaction()?;
         repository::verify_initialized_schema(&verify)?;
+        repository::verify_execution_owner(&verify, &self.authority.identity_key()?)?;
         verify.commit()?;
         Ok(Self {
             db: Mutex::new(db),
             authority: self.authority.clone(),
         })
+    }
+    pub(crate) fn execution_fence(&self, tx: &rusqlite::Transaction<'_>) -> Result<()> {
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        self.execution_fence_for(tx, &op)
+    }
+    pub(crate) fn execution_fence_for(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+        op: &crate::execution_authority::ExecutionOperation,
+    ) -> Result<()> {
+        self.authority.fence(tx, op, false)
+    }
+    pub(crate) fn execution_settlement_fence_for(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+        op: &crate::execution_authority::ExecutionOperation,
+    ) -> Result<()> {
+        self.authority.fence(tx, op, true)
+    }
+    pub(crate) fn execution_settlement_fence(&self, tx: &rusqlite::Transaction<'_>) -> Result<()> {
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        self.execution_settlement_fence_for(tx, &op)
+    }
+    pub(crate) fn execution_generation(
+        &self,
+        op: &crate::execution_authority::ExecutionOperation,
+    ) -> Result<Box<dyn crate::process_lifetime::DomainLease>> {
+        op.generation_for(&self.authority)
+    }
+    pub(crate) fn commit_execution_tx(&self, tx: rusqlite::Transaction<'_>) -> Result<()> {
+        if let Err(error) = tx.commit() {
+            self.authority.seal_unknown();
+            return Err(error.into());
+        }
+        Ok(())
     }
     pub fn execution_admission_status(&self) -> Result<(bool, usize, usize)> {
         Ok(self.authority.status())
@@ -115,6 +151,7 @@ impl Store {
             db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
             let verify = db.transaction()?;
             repository::verify_initialized_schema(&verify)?;
+            repository::verify_execution_owner(&verify, &authority.identity_key()?)?;
             verify.commit()?;
             drop(initialized);
             return Ok(Self {
@@ -407,6 +444,14 @@ impl Store {
                 crate::engine::crash_probe::block(&path, "runtime17_after_commit", "");
             }
         }
+        {
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            repository::apply_schema_18(&tx, &authority.identity_key()?)?;
+            if let Err(error) = tx.commit() {
+                authority.seal_unknown();
+                return Err(error.into());
+            }
+        }
         *initialized = true;
         drop(initialized);
         Ok(Self {
@@ -477,12 +522,13 @@ impl Store {
             "旧任务必须属于本次运行"
         );
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         insert_legacy_run(&tx, run)?;
         for task in &run.tasks {
             insert_legacy_task(&tx, task)?;
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
     pub fn create_run_with_idempotency(
@@ -498,7 +544,8 @@ impl Store {
             "旧任务必须属于本次运行"
         );
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         if classify_both(&repository::Repository::new(&tx), key, request_hash)?.is_some() {
             return Err(IdempotencyConflict.into());
         }
@@ -510,7 +557,7 @@ impl Store {
             "INSERT INTO idempotency(key,run_id,created_at,request_hash) VALUES (?1,?2,?3,?4)",
             params![key, run.id, now(), request_hash],
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
     pub fn idempotent_run(&self, key: &str, request_hash: &str) -> Result<Option<Run>> {
@@ -525,18 +572,20 @@ impl Store {
     }
     pub fn save_task(&self, task: &Task) -> Result<()> {
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         save_task_tx(&tx, task, false)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
 
     pub(crate) fn save_running_snapshot(&self, task: &Task) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let protected = protect_running_projection(&tx, task)?;
         save_task_tx(&tx, &protected, false)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
 
@@ -552,6 +601,7 @@ impl Store {
         }
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let mut durable = legacy_task_row(&tx, &caller.id)?;
         if safe_task_value(caller)?["messages"] != safe_task_value(&durable)?["messages"]
             || caller.run_id != durable.run_id
@@ -643,7 +693,7 @@ impl Store {
             .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
         durable.updated_at = now();
         save_task_tx(&tx, &durable, false)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(Some(durable))
     }
 
@@ -658,6 +708,7 @@ impl Store {
         use crate::tool_results::{CommitDisposition, Origin, ToolResultError};
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let mut durable = legacy_task_row(&tx, &caller.id)?;
         let safe_caller = safe_task_value(caller)?;
         let safe_durable = safe_task_value(&durable)?;
@@ -857,7 +908,7 @@ impl Store {
             {
                 return Err(ToolResultError::Conflict.into());
             }
-            tx.commit()?;
+            self.commit_execution_tx(tx)?;
             return Ok((durable, CommitDisposition::Replayed));
         }
         if group_index + 1 + call_index != durable.messages.len() {
@@ -901,7 +952,7 @@ impl Store {
         )?;
         #[cfg(test)]
         crate::tool_results::crash_probe::block(&database, &durable.id, call_id, "before_commit");
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         #[cfg(test)]
         crate::tool_results::crash_probe::block(&database, &durable.id, call_id, "after_commit");
         Ok((durable, CommitDisposition::Inserted))
@@ -915,6 +966,7 @@ impl Store {
             .context("assistant tool group missing")?;
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         for call in calls {
             let id = call["id"].as_str().context("tool call id missing")?;
             let exists: bool = tx.query_row(
@@ -926,7 +978,7 @@ impl Store {
         }
         let protected = protect_running_projection(&tx, task)?;
         save_task_tx(&tx, &protected, false)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
     pub(crate) fn check_resume_unsealed(&self, task_id: &str) -> Result<()> {
@@ -944,6 +996,7 @@ impl Store {
     fn resume_task_inner(&self, task: &Task, input: &str, pending: bool) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         ensure_resume_unsealed(&tx, &task.id)?;
         crate::project_config::validate_task_tx(&tx, task, true, true)?;
         ensure_resume_targets_latest_chat_turn(&tx, &task.id)?;
@@ -956,7 +1009,7 @@ impl Store {
             "resume",
             json!({"message": input, "delivery_version": 1, "pending": pending}),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
 
@@ -970,6 +1023,7 @@ impl Store {
     pub(crate) fn consume_resume_inputs(&self, caller: &Task) -> Result<Task> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let pending = pending_resume_inputs_tx(&tx, &caller.id)?;
         if pending.is_empty() {
             return Ok(caller.clone());
@@ -1000,7 +1054,7 @@ impl Store {
                 json!({"delivery_version":1,"resume_seq":seq}),
             )?;
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(protected)
     }
     pub fn task(&self, id: &str) -> Result<Task> {
@@ -1113,7 +1167,8 @@ impl Store {
             "approval evidence is reserved for the approval transaction"
         );
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         // Status events are projections of durable state, never a second
         // unguarded state mutation path.
         if kind == "status" || kind == "task.status" {
@@ -1157,7 +1212,7 @@ impl Store {
             ..event
         };
         repository::Repository::append_event(&tx, &event)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
 
@@ -1165,10 +1220,11 @@ impl Store {
     /// Public/untrusted event writes must continue through `event`.
     pub(crate) fn completion_delta(&self, task_id: &str, safe_text: &str) -> Result<()> {
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let event = task_event_envelope(&tx, task_id, "delta", json!({"text":safe_text}))?;
         repository::Repository::append_completion_delta(&tx, &event)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
 
@@ -1237,11 +1293,12 @@ impl Store {
     ) -> Result<Turn> {
         validate_turn_input(turn, tasks, key)?;
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         if let Some(existing) = self.commit_turn_in_tx(&tx, turn, tasks, key, legacy_tasks)? {
             return Ok(existing);
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(turn.clone())
     }
 
@@ -1284,6 +1341,7 @@ impl Store {
         );
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         if let Some(key) = key {
             match classify_both(&repository::Repository::new(&tx), key, &turn.request_hash)? {
                 Some(IdempotencyReplay::Turn(existing)) => return Ok(existing),
@@ -1322,7 +1380,7 @@ impl Store {
                 crate::network_authorization::bind_task_tx(&tx, task)?;
             }
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(turn.clone())
     }
 
@@ -1535,6 +1593,7 @@ impl Store {
         validate_turn_input(turn, std::slice::from_ref(task), Some(key))?;
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         match classify_both(&repository::Repository::new(&tx), key, &turn.request_hash)? {
             Some(IdempotencyReplay::Turn(existing)) => {
                 let tasks = repository::Repository::new(&tx).turn_tasks(&existing.id)?;
@@ -1640,7 +1699,7 @@ impl Store {
             )?;
             crate::network_authorization::bind_task_tx(&tx, legacy_task)?;
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(ChatTurnReceipt {
             turn: turn.clone(),
             task: task.clone(),
@@ -1707,6 +1766,7 @@ impl Store {
         let workspace_digest = digest(task.workspace.as_bytes());
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         let approval = repository::Repository::new(&tx)
             .approval_by_tool_call(&task.id, tool_call_id)?
             .ok_or(WorkspaceChangeError::Corrupt)?;
@@ -1758,7 +1818,7 @@ impl Store {
             "file_backup",
             json!({"change_id":id,"path":path,"kind":kind,"state":"prepared"}),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         drop(db);
         self.workspace_change_by_id(&id)
     }
@@ -1777,14 +1837,20 @@ impl Store {
     }
 
     pub(crate) fn mark_workspace_change_failed(&self, id: &str) -> Result<()> {
-        let changed = self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='failed',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
+        let changed = tx.execute("UPDATE workspace_changes SET state='failed',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
         anyhow::ensure!(changed == 1, "文件变更失败状态竞争");
-        Ok(())
+        self.commit_execution_tx(tx)
     }
 
     pub(crate) fn mark_workspace_change_unknown(&self, id: &str) -> Result<()> {
-        self.db.lock().unwrap().execute("UPDATE workspace_changes SET state='unknown',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
-        Ok(())
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
+        tx.execute("UPDATE workspace_changes SET state='unknown',finished_at=?1 WHERE id=?2 AND state='prepared'", params![now(), id])?;
+        self.commit_execution_tx(tx)
     }
 
     pub(crate) fn latest_restore(&self, task_id: &str) -> Result<Option<RestoreReceipt>> {
@@ -1800,6 +1866,7 @@ impl Store {
     ) -> Result<RestoreReceipt> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         if let Some(id) = tx.query_row("SELECT id FROM workspace_restores WHERE task_id=?1 ORDER BY created_at DESC,rowid DESC LIMIT 1", [task_id], |row| row.get::<_, String>(0)).optional()? {
             return restore_receipt(&tx, &id);
         }
@@ -1816,21 +1883,22 @@ impl Store {
             "file_restore",
             json!({"restore_id":id,"status":"claimed","count":changes.len()}),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         drop(db);
         self.restore_receipt(&id)
     }
 
     pub(crate) fn finish_restore_path(&self, restore_id: &str, change_id: &str) -> Result<()> {
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let changed = tx.execute("UPDATE workspace_restore_outcomes SET status='complete',updated_at=?1 WHERE restore_id=?2 AND change_id=?3 AND status='claimed'", params![now(),restore_id,change_id])?;
         anyhow::ensure!(changed == 1, "恢复路径状态竞争失败");
         tx.execute(
             "UPDATE workspace_changes SET restore_state='restored' WHERE id=?1",
             [change_id],
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(())
     }
 
@@ -1847,7 +1915,8 @@ impl Store {
             RestoreStatus::Unknown => "unknown",
         };
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let changed = tx.execute("UPDATE workspace_restores SET status=?1,finished_at=?2 WHERE id=?3 AND status='claimed'", params![status,now(),restore_id])?;
         anyhow::ensure!(changed == 1, "恢复状态竞争失败");
         if status != "complete" {
@@ -1865,7 +1934,7 @@ impl Store {
             "file_restore",
             json!({"restore_id":restore_id,"status":status}),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         drop(db);
         self.restore_receipt(restore_id)
     }
@@ -1955,6 +2024,7 @@ impl Store {
     ) -> Result<(approval::ApprovalRecord, bool)> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         if require_current {
             validate_current_approval_call(&tx, task, tool_call_id, tool_name)?;
         }
@@ -2054,7 +2124,7 @@ impl Store {
                 "safe_call_digest": safe_call_digest
             }),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok((record, true))
     }
 
@@ -2073,8 +2143,26 @@ impl Store {
         decided_by: &str,
         acknowledge_command_network: bool,
     ) -> Result<approval::ApprovalRecord> {
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        self.decide_approval_with_network_ack_for(
+            approval_id,
+            approved,
+            decided_by,
+            acknowledge_command_network,
+            &op,
+        )
+    }
+    pub(crate) fn decide_approval_with_network_ack_for(
+        &self,
+        approval_id: &str,
+        approved: bool,
+        decided_by: &str,
+        acknowledge_command_network: bool,
+        op: &crate::execution_authority::ExecutionOperation,
+    ) -> Result<approval::ApprovalRecord> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence_for(&tx, op)?;
         let current = repository::Repository::new(&tx).approval(approval_id)?;
         if approved {
             crate::project_config::validate_task_tx(
@@ -2125,7 +2213,7 @@ impl Store {
                 }
                 if current.status == approval::ApprovalStatus::Approved {
                     let result = repository::Repository::new(&tx).approval(approval_id)?;
-                    tx.commit()?;
+                    self.commit_execution_tx(tx)?;
                     return Ok(result);
                 }
             }
@@ -2168,13 +2256,22 @@ impl Store {
                 "decided_at": updated.decided_at
             }),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(updated)
     }
 
     pub fn cancel_pending_approvals(&self, task_id: &str) -> Result<Vec<approval::ApprovalRecord>> {
+        let op = crate::execution_authority::current().context("execution operation required")?;
+        self.cancel_pending_approvals_for(task_id, &op)
+    }
+    pub(crate) fn cancel_pending_approvals_for(
+        &self,
+        task_id: &str,
+        op: &crate::execution_authority::ExecutionOperation,
+    ) -> Result<Vec<approval::ApprovalRecord>> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence_for(&tx, op)?;
         let mut task = legacy_task_row(&tx, task_id)?;
         if matches!(task.status.as_str(), "queued" | "running") {
             task.status = "cancelled".into();
@@ -2217,7 +2314,7 @@ impl Store {
             }
             cancelled.push(updated);
         }
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(cancelled)
     }
 
@@ -2251,6 +2348,7 @@ impl Store {
     ) -> Result<approval::ApprovalRecord> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         if require_current {
             validate_current_approval_call(&tx, task, tool_call_id, tool_name)?;
         }
@@ -2316,7 +2414,7 @@ impl Store {
         )?;
         anyhow::ensure!(changed == 1, "审批执行权竞争失败");
         let claimed = repository::Repository::new(&tx).approval(&current.id)?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(claimed)
     }
 
@@ -2343,6 +2441,7 @@ impl Store {
     ) -> Result<String> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         let current = repository::Repository::new(&tx).approval(approval_id)?;
         if current.task_id != task.id
             || current.tool_call_id != tool_call_id
@@ -2387,7 +2486,7 @@ impl Store {
             )?;
         }
         tx.execute("UPDATE approvals SET execution_state='finished' WHERE id=?1 AND execution_state='claimed'", [&approval_id])?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(result)
     }
 
@@ -2407,7 +2506,8 @@ impl Store {
             "recovery requires an unstarted controller for this domain"
         );
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        controller.recovery_fence(&tx)?;
         crate::budget::verify_persisted_rows(&tx)?;
         let pending = repository::Repository::new(&tx).nonterminal_turns()?;
         let values: Vec<String> = {
@@ -2462,7 +2562,26 @@ impl Store {
             }
         }
         affected += crate::worktree_management::recover_claimed_tx(&tx)?;
-        tx.commit()?;
+        controller.recovery_fence(&tx)?;
+        #[cfg(test)]
+        crate::engine::crash_probe::block("u18-owner", "recovery_before_commit", "");
+        anyhow::ensure!(
+            tx.execute(
+                "UPDATE execution_owner SET phase='active' WHERE id=1 AND phase='recovering'",
+                []
+            )? == 1,
+            "cannot activate execution owner"
+        );
+        if let Err(error) = tx.commit() {
+            self.authority.seal_unknown();
+            return Err(error.into());
+        }
+        #[cfg(test)]
+        crate::engine::crash_probe::block("u18-owner", "recovery_after_commit", "");
+        if let Err(error) = controller.finish_recovery() {
+            self.authority.seal_unknown();
+            return Err(error);
+        }
         Ok(affected)
     }
 }
@@ -4075,6 +4194,7 @@ impl Store {
         use crate::checkpoint::{Checkpoint, CheckpointCreated, CheckpointError};
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_settlement_fence(&tx)?;
         if let Some((id, old_key)) = tx
             .query_row(
                 "SELECT id,creation_key FROM checkpoints WHERE task_id=?1",
@@ -4123,7 +4243,7 @@ impl Store {
             "checkpoint.created",
             json!({"checkpoint_id":checkpoint.checkpoint_id,"task_id":task.id,"count":checkpoint.entries.len(),"manifest_digest":checkpoint.manifest_digest}),
         )?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok(CheckpointCreated {
             checkpoint,
             replayed: false,
