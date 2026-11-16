@@ -14,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 struct Admission {
     controller: bool,
     open: bool,
+    closed: bool,
     in_flight: usize,
     unknown: usize,
     epoch: Option<i64>,
@@ -22,6 +23,7 @@ pub(crate) struct ExecutionAuthority {
     domain: platform::Domain,
     pub(crate) initialization: Mutex<bool>,
     admission: Mutex<Admission>,
+    retained_unknown: std::sync::atomic::AtomicBool,
     pub(crate) supervisor: Supervisor,
 }
 impl ExecutionAuthority {
@@ -46,6 +48,7 @@ impl ExecutionAuthority {
         );
         state.controller = true;
         state.open = false;
+        state.closed = false;
         drop(state);
         let registration = (|| -> Result<i64> {
             let mut db = self.connection()?;
@@ -68,6 +71,8 @@ impl ExecutionAuthority {
                 state.controller = false;
                 state.open = false;
                 state.unknown = state.unknown.saturating_add(1);
+                drop(state);
+                self.retain_unknown_owner();
                 return Err(error);
             }
         };
@@ -98,20 +103,27 @@ impl ExecutionAuthority {
         self.domain.identity_key()
     }
     pub(crate) fn fence(
-        &self,
+        self: &Arc<Self>,
         tx: &rusqlite::Transaction<'_>,
         op: &ExecutionOperation,
+        settlement: bool,
+    ) -> Result<()> {
+        self.fence_scope(tx, &op.scope, settlement)
+    }
+    fn fence_scope(
+        self: &Arc<Self>,
+        tx: &rusqlite::Transaction<'_>,
+        scope: &OperationScope,
         settlement: bool,
     ) -> Result<()> {
         // Ordinary caller rejection must not poison another domain or turn a
         // clean cancellation into an unknown resource outcome.
         ensure!(
-            std::ptr::eq(self, op.scope.authority.as_ref()),
+            Arc::ptr_eq(self, &scope.authority),
             "cross-domain operation"
         );
         {
-            let operation = op
-                .scope
+            let operation = scope
                 .state
                 .lock()
                 .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
@@ -119,7 +131,7 @@ impl ExecutionAuthority {
                 operation.bodies > 0
                     && !operation.unknown
                     && !operation.settled
-                    && (settlement || !op.scope.cancel.is_cancelled()),
+                    && (settlement || !scope.cancel.is_cancelled()),
                 "operation closed"
             );
             let state = self
@@ -129,14 +141,79 @@ impl ExecutionAuthority {
             ensure!(
                 state.controller
                     && (settlement || state.open)
-                    && state.unknown == 0
-                    && state.epoch == Some(op.scope.epoch),
+                    && (settlement || state.unknown == 0)
+                    && state.epoch == Some(scope.epoch),
                 "stale operation"
             );
         }
         self.domain.verify_connection(tx)?;
         // A verified same-owner ticket encountering corrupt or changed durable
         // state cannot establish a safe continuation: close this owner.
+        let result = (|| {
+            self.domain.verify()?;
+            crate::repository::verify_execution_owner(tx, &self.domain.identity_key()?)?;
+            let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND epoch=?1 AND phase='active')", [scope.epoch], |r| r.get(0))?;
+            ensure!(valid, "execution epoch or phase mismatch");
+            Ok(())
+        })();
+        if result.is_err() {
+            self.seal_unknown();
+        }
+        result
+    }
+    // Keep the original owner and its OS locks alive until process exit when
+    // an outcome cannot be confirmed. This does not settle the original I/O.
+    fn retain_unknown_owner(self: &Arc<Self>) {
+        if !self
+            .retained_unknown
+            .swap(true, std::sync::atomic::Ordering::AcqRel)
+        {
+            std::mem::forget(self.clone());
+        }
+    }
+    pub(crate) fn seal_unknown(self: &Arc<Self>) {
+        let mut state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
+        state.open = false;
+        state.unknown = state.unknown.saturating_add(1);
+        drop(state);
+        self.retain_unknown_owner();
+    }
+    pub(crate) fn close(&self) {
+        let mut state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
+        state.open = false;
+        state.closed = true;
+    }
+    pub(crate) fn unknown_terminal_fence(
+        self: &Arc<Self>,
+        tx: &rusqlite::Transaction<'_>,
+        op: &ExecutionOperation,
+    ) -> Result<()> {
+        ensure!(
+            Arc::ptr_eq(self, &op.scope.authority),
+            "cross-domain operation"
+        );
+        {
+            let operation = op
+                .scope
+                .state
+                .lock()
+                .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+            let state = self
+                .admission
+                .lock()
+                .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+            ensure!(
+                operation.bodies > 0
+                    && !operation.settled
+                    && operation.unknown
+                    && state.controller
+                    && !state.closed
+                    && state.unknown > 0
+                    && state.epoch == Some(op.scope.epoch),
+                "unknown terminal operation required"
+            );
+        }
+        self.domain.verify_connection(tx)?;
         let result = (|| {
             self.domain.verify()?;
             crate::repository::verify_execution_owner(tx, &self.domain.identity_key()?)?;
@@ -148,17 +225,6 @@ impl ExecutionAuthority {
             self.seal_unknown();
         }
         result
-    }
-    pub(crate) fn seal_unknown(&self) {
-        let mut state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
-        state.open = false;
-        state.unknown = state.unknown.saturating_add(1);
-    }
-    pub(crate) fn close(&self) {
-        self.admission
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .open = false;
     }
     pub(crate) fn status(&self) -> (bool, usize, usize) {
         let state = self.admission.lock().unwrap_or_else(|p| p.into_inner());
@@ -281,6 +347,9 @@ enum CancellationOwner {
 }
 tokio::task_local! { static CURRENT: Arc<OperationScope>; }
 impl ExecutionOperation {
+    pub(crate) fn cancellation_token(&self) -> CancellationToken {
+        self.scope.cancel.clone()
+    }
     /// Mark the original operation outcome indeterminate; this is sticky on
     /// the same authority even if the caller and all counted bodies disappear.
     pub(crate) fn seal_unknown(&self) {
@@ -295,6 +364,7 @@ impl ExecutionOperation {
             state.unknown = true;
             admission.open = false;
             admission.unknown = admission.unknown.saturating_add(1);
+            self.scope.authority.retain_unknown_owner();
         }
     }
     pub(crate) fn generation_for(
@@ -366,31 +436,52 @@ impl OperationScope {
         }
     }
     fn generation(self: &Arc<Self>) -> Result<Box<dyn DomainLease>> {
-        self.authority.domain.verify()?;
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
-        let admission = self
-            .authority
-            .admission
-            .lock()
-            .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
-        ensure!(
-            admission.controller && admission.open,
-            "data domain admission is closed"
-        );
-        ensure!(!self.cancel.is_cancelled(), "operation was cancelled");
-        ensure!(
-            state.bodies != 0 && !state.unknown && state.active.is_none(),
-            "operation generation is closed or busy"
-        );
-        let id = state
-            .generation
-            .checked_add(1)
-            .context("operation generation exhausted")?;
-        state.generation = id;
-        state.active = Some(id);
+        // Take the SQLite writer lock before any operation/admission mutex.
+        // The same transaction verifies the pinned main handle and captured
+        // epoch before reserving the generation. No external work starts until
+        // its commit succeeds.
+        let mut db = self.authority.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.authority.fence_scope(&tx, self, false)?;
+        let id = {
+            let mut state = self
+                .state
+                .lock()
+                .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+            let admission = self
+                .authority
+                .admission
+                .lock()
+                .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+            ensure!(
+                admission.controller
+                    && admission.open
+                    && admission.unknown == 0
+                    && admission.epoch == Some(self.epoch),
+                "data domain admission is closed"
+            );
+            ensure!(!self.cancel.is_cancelled(), "operation was cancelled");
+            ensure!(
+                state.bodies != 0 && !state.unknown && !state.settled && state.active.is_none(),
+                "operation generation is closed or busy"
+            );
+            let id = state
+                .generation
+                .checked_add(1)
+                .context("operation generation exhausted")?;
+            state.generation = id;
+            state.active = Some(id);
+            id
+        };
+        if let Err(error) = tx.commit() {
+            let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+            if state.active == Some(id) {
+                state.active = None;
+            }
+            drop(state);
+            self.authority.seal_unknown();
+            return Err(error.into());
+        }
         Ok(Box::new(Generation {
             scope: self.clone(),
             id,
@@ -414,6 +505,7 @@ impl DomainLease for Generation {
             admission.open = false;
             admission.unknown = admission.unknown.saturating_add(1);
             state.unknown = true;
+            self.scope.authority.retain_unknown_owner();
         }
     }
     fn settle(self: Box<Self>) {
@@ -866,6 +958,7 @@ mod platform {
             },
             initialization: Mutex::new(false),
             admission: Mutex::new(Admission::default()),
+            retained_unknown: std::sync::atomic::AtomicBool::new(false),
             supervisor: Supervisor::new(NonZeroUsize::new(1).unwrap()),
         });
         owner.domain.verify()?;
@@ -935,6 +1028,33 @@ mod platform {
             Ok(db)
         }
     }
+}
+
+/// Run test fixtures under the same controller/recovery/operation path as production.
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) fn test_with_store_sync<R>(
+    store: &crate::store::Store,
+    work: impl FnOnce() -> R,
+) -> Result<R> {
+    let controller = store.authority.claim()?;
+    store.recover_with_controller(&controller)?;
+    let operation = store.execution_operation(CancellationToken::new())?;
+    Ok(CURRENT.sync_scope(operation.scope.clone(), || {
+        let _operation = operation;
+        work()
+    }))
+}
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) async fn test_with_store<F: Future>(
+    store: &crate::store::Store,
+    work: F,
+) -> Result<F::Output> {
+    let controller = store.authority.claim()?;
+    store.recover_with_controller(&controller)?;
+    let operation = store.execution_operation(CancellationToken::new())?;
+    Ok(operation.run(work).await)
 }
 
 #[cfg(test)]
