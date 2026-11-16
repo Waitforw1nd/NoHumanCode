@@ -108,17 +108,21 @@ fn forbidden(relative: &str) -> bool {
     })
 }
 
+fn within_write_scopes(normalized: &str, scopes: &[String]) -> bool {
+    scopes.iter().any(|s| {
+        s == "*"
+            || scope_path(s).ok().is_some_and(|scope| {
+                normalized == scope || normalized.starts_with(&format!("{scope}/"))
+            })
+    })
+}
+
 pub fn resolve(root: &Path, relative: &str, writing: bool, scopes: &[String]) -> Result<PathBuf> {
     let normalized = scope_path(relative)?;
     ensure!(!forbidden(relative), "此路径不允许由文件工具访问");
     if writing {
         ensure!(
-            scopes.iter().any(|s| {
-                s == "*"
-                    || scope_path(s).ok().is_some_and(|scope| {
-                        normalized == scope || normalized.starts_with(&format!("{scope}/"))
-                    })
-            }),
+            within_write_scopes(&normalized, scopes),
             "写入超出当前成员范围"
         );
     }
@@ -156,6 +160,17 @@ pub fn resolve(root: &Path, relative: &str, writing: bool, scopes: &[String]) ->
         // Preserve the resolved ancestor when a later component is absent.
         // Returning the canonical spelling also avoids reopening the alias.
         target = canonical;
+    }
+    if writing {
+        // Admission/conflict checks use declared lexical scopes. An alias-only
+        // scope must not silently authorize a different canonical namespace.
+        let actual = scope_path(
+            target
+                .strip_prefix(&root)?
+                .to_str()
+                .context("文件路径不是 UTF-8")?,
+        )?;
+        ensure!(within_write_scopes(&actual, scopes), "写入超出当前成员范围");
     }
     Ok(target)
 }
@@ -378,21 +393,43 @@ mod tests {
 
     #[cfg(windows)]
     fn short_leaf(path: &Path) -> String {
-        use std::os::windows::ffi::{OsStrExt, OsStringExt};
-        use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
+        use std::os::windows::{
+            ffi::{OsStrExt, OsStringExt},
+            fs::OpenOptionsExt,
+            io::AsRawHandle,
+        };
+        use std::sync::atomic::{AtomicU32, Ordering};
+        use windows_sys::Win32::Storage::FileSystem::{
+            FILE_FLAG_BACKUP_SEMANTICS, GetShortPathNameW, SetFileShortNameW,
+        };
+        static NEXT_ALIAS: AtomicU32 = AtomicU32::new(1);
+        let sequence = NEXT_ALIAS.fetch_add(1, Ordering::Relaxed);
+        assert!(sequence <= 0xfffff, "synthetic alias counter exhausted");
+        let alias = format!("NHC{sequence:05X}");
+        let alias_wide: Vec<u16> = alias.encode_utf16().chain(Some(0)).collect();
+        // Assign a real alias to this test's own object. This works when the
+        // volume disables automatic 8.3 creation; no global setting is changed.
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .access_mode(0x10000000) // GENERIC_ALL on this synthetic object only
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+            .open(path)
+            .expect("cannot open synthetic short-name fixture");
+        assert!(
+            unsafe { SetFileShortNameW(file.as_raw_handle(), alias_wide.as_ptr()) } != 0,
+            "cannot assign synthetic 8.3 alias: {}",
+            std::io::Error::last_os_error()
+        );
+        drop(file);
         let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
         let mut output = vec![0u16; 32_768];
-        // Only synthetic fixtures are queried. Never enable 8.3 names globally.
         let count =
             unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), output.len() as u32) }
                 as usize;
         assert!(count > 0 && count < output.len(), "8.3 query failed");
         let short = PathBuf::from(std::ffi::OsString::from_wide(&output[..count]));
         let leaf = short.file_name().unwrap().to_str().unwrap().to_owned();
-        assert!(
-            !leaf.eq_ignore_ascii_case(path.file_name().unwrap().to_str().unwrap()),
-            "fixture requires an NTFS directory with 8.3 name creation enabled"
-        );
+        assert_eq!(leaf, alias, "Windows must publish the assigned real alias");
         assert_eq!(short.canonicalize().unwrap(), path.canonicalize().unwrap());
         leaf
     }
@@ -497,6 +534,71 @@ mod tests {
         .unwrap();
         assert_eq!(display, "ordinary-long-directory/new/nested.txt");
         assert_eq!(key, display);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_alias_only_scope_cannot_authorize_another_namespace() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("ordinary-long-directory");
+        std::fs::create_dir(&directory).unwrap();
+        std::fs::write(directory.join("existing.txt"), "scope sentinel").unwrap();
+        let alias = short_leaf(&directory);
+        let scopes = vec![alias.to_lowercase()];
+        // Engine's lexical conflict detector considers these scopes disjoint.
+        assert!(!crate::domain::overlaps(
+            &scopes[0],
+            "ordinary-long-directory"
+        ));
+        for suffix in ["existing.txt", "missing/nested.txt"] {
+            let request = format!("{alias}/{suffix}");
+            assert!(within_write_scopes(&scope_path(&request).unwrap(), &scopes));
+            let error = resolve(temp.path(), &request, true, &scopes).unwrap_err();
+            assert!(
+                error.to_string().contains("写入超出当前成员范围"),
+                "{error:#}"
+            );
+            assert!(resolve(temp.path(), &request, false, &[]).is_ok());
+        }
+        assert!(!directory.join("missing").exists());
+        assert_eq!(
+            std::fs::read_to_string(directory.join("existing.txt")).unwrap(),
+            "scope sentinel"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_alias_below_declared_long_scope_remains_writable() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("src/ordinary-long-directory");
+        std::fs::create_dir_all(&directory).unwrap();
+        let file = directory.join("ordinary-long-file.txt");
+        std::fs::write(&file, "scope sentinel").unwrap();
+        let alias = short_leaf(&directory);
+        let file_alias = short_leaf(&file);
+        let scopes = vec!["src".into()];
+        let existing = resolve(
+            temp.path(),
+            &format!("src/{alias}/{file_alias}"),
+            true,
+            &scopes,
+        )
+        .unwrap();
+        assert_eq!(existing, file.canonicalize().unwrap());
+        let missing = resolve(
+            temp.path(),
+            &format!("src/{alias}/new/nested.txt"),
+            true,
+            &scopes,
+        )
+        .unwrap();
+        assert_eq!(
+            missing,
+            directory.canonicalize().unwrap().join("new/nested.txt")
+        );
+        assert!(!missing.exists());
+        assert!(resolve(temp.path(), "src/plain/new.txt", true, &scopes).is_ok());
     }
 
     #[tokio::test]

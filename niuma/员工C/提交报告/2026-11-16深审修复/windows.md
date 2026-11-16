@@ -34,9 +34,9 @@
 - `workspace::tests::windows_short_directories_cannot_hide_protected_ancestors`：真实目录短名，目录本身、已有文件及多级不存在目标在读写模式均拒绝，不产生副产物。
 - `workspace::tests::windows_allowed_aliases_preserve_existing_and_missing_targets`：普通文件/目录别名正控、创建目标正控、范围外写拒绝、change_target 长名投影。
 
-夹具要求临时目录支持生成实际 8.3 名称；没有别名时明确失败，不能无声跳过并当作通过。不修改磁盘全局 8.3 设置。本次 Windows 原语检查使用宿主默认临时目录，确实生成了上述别名。
+初版夹具要求临时目录自动生成实际 8.3 名称；没有别名时明确失败。本次初始 Windows 原语检查使用宿主默认临时目录，确实生成了上述别名。主线程随后在 E 盘验证发现自动生成不可用，修订见本文后续复核段；没有跳过失败或修改磁盘全局 8.3 设置。
 
-边界：仍是现有检查后使用的文件策略，不是持句柄文件系统沙箱；不声称关闭并发替换或任意硬链接别名问题。按原请求拼写检查的非通配写入范围语义保持。
+边界：仍是现有检查后使用的文件策略，不是持句柄文件系统沙箱；不声称关闭并发替换或任意硬链接别名问题。初版保留按请求拼写检查非通配写入范围，后续复核另补真实路径范围校验，见下文。
 
 ## W16-F02：64 KiB 捕获上限被误当作 EOF
 
@@ -88,3 +88,58 @@ cargo test --offline --locked --lib command_execution::tests::s16_large_output_k
 - `niuma/员工C/提交报告/2026-11-16深审修复/windows.md`
 
 提交 SHA 由本报告同次提交后的回执提供，避免文档自引用哈希。无需改 `lib.rs`。
+
+## 2026-11-16 串行验证后的最小修订
+
+初次提交为 `ba285d4b83bc9154064bb525a3709016c63e0141`。本段后的提交只修改 `workspace.rs` 与本报告，不修改命令 collector 或新增进程树实现。
+
+### E 盘夹具真实失败与修正
+
+已只读核实主线程 `../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/windows-workspace-tests.log`：Rust 编译成功，workspace 单测 2 通过、3 失败；三个新测试都在自动短名不存在的前置断言失败，未触及目标拒绝/允许断言。该结果不是产品修复通过。
+
+随后在本树 E 盘 `.local/audit-20261116` 的随机合成目录进行 Windows 原语验证。只为自身 `.credentials.yaml` 文件及 `.ssh` 目录调用 CreateFileW/SetFileShortNameW，分别指定 `NHCRED~1.YAM`/`NHSSH~1`。两对象均 `set_ok=true`、`set_error=0`、GetShortPathNameW 返回指定短名且别名路径存在。句柄已关闭，合成文件/目录按原名逐项删除。未修改全局自动 8.3 设置、未调整权限、未启动产品/真实进程测试。
+
+夹具改为通过 `SetFileShortNameW` 给自身合成对象显式设置唯一合法短名，再断言 GetShortPathNameW 返回该名称、短长路径 canonical identity 一致。设置失败仍明确失败；不静默跳过、不替换为字符串模拟，也不移往 C 盘。新候选 Rust 回归尚未重跑，由主线程继续 E 盘串行验证。
+
+### W16-F03：真实路径也必须落在声明写范围内
+
+反例：真实目录 `ordinary-long-directory` 存在别名 `NHC00001`。任务声明写范围 `nhc00001`，请求 `NHC00001/existing.txt` 或 `NHC00001/missing/nested.txt` 会通过原词法前缀检查，但目标真实相对路径属于 `ordinary-long-directory`。Engine::scope_conflicts 和项目范围上限按词法比较，两个名称会被当成不同范围；不能靠运行时展开 alias 扩张声明命名空间。
+
+最小修复：保留原请求范围检查，并对 resolve 最终返回的真实相对路径再执行同一范围判定。仅短别名声明现在拒绝写入；`*` 仍允许普通别名，声明 `src` 时 `src` 内部普通目录/文件别名仍允许，未存在目标沿已解析祖先继续判定。读取语义不变。
+
+新增有意义回归：
+
+- `workspace::tests::windows_alias_only_scope_cannot_authorize_another_namespace`：先断言词法范围确实不重叠且旧条件会通过，再核真实目标拒绝、缺失父目录未创建、已有内容未改、读取仍正常。
+- `workspace::tests::windows_alias_below_declared_long_scope_remains_writable`：声明长范围内的文件与目录别名正控，以及已存在/多级不存在目标。
+
+兼容变化明确：仅靠短别名定义的写范围须改成实际长路径范围；没有在此修改 Engine/项目配置存储或自动重写用户配置。并发文件名替换的检查后使用窗口仍属于原边界。
+
+### 现有非 ignored 命令测试过滤审查
+
+`command_execution::tests` 共 10 个非 ignored 测试：3 个纯内存 reader 测试、1 个新增大输出测试、6 个旧 s06 测试。未发现这些测试或继承管道所用 prepare 正常路径中的显式无限 park：prepare 外层 15 秒；两个脚本各自有 60 秒停止条件；collector 为执行期限+5秒 cleanup；Job 查询等待 5 秒。
+
+但计时器不构成真实进程/底层同步 I/O 的全部收束证明。本仓锁定 Tokio 1.53.1；已读本机同版本源码 `src/process/windows.rs` 的 ChildStdio 使用 `Blocking<ArcFile>`，`src/io/blocking.rs` 在后台执行真实 read。外层 reader task abort/join 不证明已经启动的后台阻塞 read 结束；运行时退出会等待 started blocking task。
+
+首轮精确排除 `command_execution::tests::s06_deadline_covers_inherited_pipe_after_direct_parent_exit`：它调用 `process_test_fixture::prepare` 启动实际后代，后代持 stdout/stderr，collector 超时后才由测试调用 fixture.cleanup 发 release/终止 Job。准备失败/清理失败时 Job::drop 只记录错误并退出，没有独立确认与异常接续；若底层读仍未结束，异步 timeout 不会形成进程级硬上限。该风险未在本轮动态复现，不能描述成必现无限挂起；此用例需另行原对象监督窗口。
+
+推荐首轮无进程选择：
+
+```powershell
+cargo test --offline --locked --lib workspace::tests:: -- --test-threads=1
+cargo test --offline --locked --lib command_execution::tests::output_reader_ -- --test-threads=1
+```
+
+在主线程明确的真实进程窗口内，下列完整名称逐个用 `cargo test --offline --locked --lib <名称> -- --exact --test-threads=1 --nocapture`；不要笼统选择整个 command_execution 模块：
+
+| 完整测试名 | 夹具与边界 |
+| --- | --- |
+| `command_execution::tests::s16_large_output_keeps_both_pipes_open_until_command_finishes` | 一个隐藏 PowerShell，无后代；10秒执行+5秒清理，核原进程与reader |
+| `command_execution::tests::s06_original_handle_rejects_live_and_query_failure_accepts_exit` | 一个隐藏 PowerShell；显式 kill 后5秒 wait，控制结果在清理后断言 |
+| `command_execution::tests::s06_real_timeout_reaps_child_and_readers_without_false_unknown` | 一个隐藏 PowerShell，1秒执行+5秒清理；慢启动可能导致 ready 断言失败，但不含后代循环 |
+| `command_execution::tests::s06_execute_two_second_deadline_starts_before_spawn` | 一个隐藏 PowerShell，2秒执行+5秒清理 |
+| `command_execution::tests::s06_reader_error_and_unconfirmed_cleanup_are_typed_unknown` | 三个串行隐藏 PowerShell；每个1秒执行+5秒清理，unknown 为注入，最终核原进程退出 |
+| `command_execution::tests::s06_task_scoped_unknown_hook_is_once_guarded_and_reaps_real_spawn` | 四个串行隐藏 PowerShell；默认每次30秒执行+5秒清理，其中一次注入unknown；不创建后代 |
+
+以上 allowlist 仍需外部原进程监督来处理 OS 清理失败；不是对任意 OS 故障的无条件无遗留保证。不要把 `process_test_fixture::process_fixture_failure_controls_reap_job` 等独立夹具负控意外带入当前首轮；它们不属于上述 exact 选择。
+
+本次只运行合成文件原语及 rustfmt/diff 静态检查；未运行 Cargo、产品、真实进程、卷配置命令。历史 unknown 不改判。
