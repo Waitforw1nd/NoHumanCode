@@ -585,11 +585,40 @@ pub struct ProviderRuntimeStatus {
 }
 impl CompletionLease {
     pub(crate) async fn execute(
+        self,
+        client: &ProviderClient,
+        permit: ProviderPermit,
+        route: &Route,
+        emit: &mut Emit<'_>,
+    ) -> Result<CompletionOutput, TransportError> {
+        let mut redactor = crate::secrets::StreamRedactor::default();
+        let mut output = self
+            .execute_with_redactor(client, permit, route, emit, &mut redactor)
+            .await?;
+        let tail = redactor.finish();
+        if !tail.is_empty() {
+            emit(&tail).map_err(|_| TransportError::Unknown)?;
+            match output.0.get_mut("content") {
+                Some(Value::String(content)) => content.push_str(&tail),
+                _ => return Err(TransportError::Unknown),
+            }
+        }
+        Ok(output)
+    }
+
+    /// Filter raw codec output with the caller's state, without finishing it.
+    /// A task that concatenates completions must retain this same state across
+    /// rounds and finish only after final success. On any error or cancellation,
+    /// discard it; Drop never emits or performs fallible persistence.
+    /// Returned message.content is exactly this call's published safe text;
+    /// tool_calls and other message fields retain their existing structure.
+    pub(crate) async fn execute_with_redactor(
         mut self,
         client: &ProviderClient,
         permit: ProviderPermit,
         route: &Route,
         emit: &mut Emit<'_>,
+        redactor: &mut crate::secrets::StreamRedactor,
     ) -> Result<CompletionOutput, TransportError> {
         permit.matches(
             &route.base_url,
@@ -604,16 +633,19 @@ impl CompletionLease {
         }
         let mut bytes = response.bytes_stream();
         let mut size = 0usize;
-        let mut redactor = crate::secrets::StreamRedactor::default();
         let mut emission_failed = false;
-        let output = {
+        let mut emitted = false;
+        let mut safe_content = String::new();
+        let mut output = {
             let mut filtered_emit = |text: &str| -> anyhow::Result<()> {
+                emitted = true;
                 anyhow::ensure!(!emission_failed, "completion output unavailable");
                 let safe = redactor.push(text);
                 if !safe.is_empty() && emit(&safe).is_err() {
                     emission_failed = true;
                     anyhow::bail!("completion output unavailable");
                 }
+                safe_content.push_str(&safe);
                 Ok(())
             };
             while let Some(chunk) = bytes.next().await {
@@ -633,15 +665,27 @@ impl CompletionLease {
                 .map_err(|_| TransportError::Unknown)?
                 .map_err(|_| TransportError::Unknown)?
         };
-        // Do not flush on codec/transport failure or future Drop (cancellation).
-        // The raw assistant message still follows the existing Store policy.
+        // The caller owns the output lifetime, so never flush between rounds.
         if emission_failed {
             return Err(TransportError::Unknown);
         }
-        let tail = redactor.finish();
-        if !tail.is_empty() {
-            emit(&tail).map_err(|_| TransportError::Unknown)?;
+        if !emitted {
+            // Compatibility for codecs that return content only in finish.
+            // Never replay final raw content after any codec emit: it may contain
+            // credentials whose assignment context belongs to an earlier round.
+            if let Some(content) = output.0.get("content").and_then(Value::as_str) {
+                let safe = redactor.push(content);
+                if !safe.is_empty() {
+                    emit(&safe).map_err(|_| TransportError::Unknown)?;
+                }
+                safe_content.push_str(&safe);
+            }
         }
+        output
+            .0
+            .as_object_mut()
+            .ok_or(TransportError::Unknown)?
+            .insert("content".into(), Value::String(safe_content));
         Ok(output)
     }
 }
