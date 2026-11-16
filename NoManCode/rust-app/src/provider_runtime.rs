@@ -604,21 +604,45 @@ impl CompletionLease {
         }
         let mut bytes = response.bytes_stream();
         let mut size = 0usize;
-        while let Some(chunk) = bytes.next().await {
-            let chunk = chunk.map_err(|_| TransportError::Unknown)?;
-            account_response_bytes(&mut size, chunk.len()).map_err(|_| TransportError::Unknown)?;
-            guarded(|| self.decoder.feed(&chunk, emit))
-                .map_err(|_| TransportError::Unknown)?
-                .map_err(|_| TransportError::Unknown)?;
-            if guarded(|| self.decoder.is_done()).map_err(|_| TransportError::Unknown)? {
-                break;
+        let mut redactor = crate::secrets::StreamRedactor::default();
+        let mut emission_failed = false;
+        let output = {
+            let mut filtered_emit = |text: &str| -> anyhow::Result<()> {
+                anyhow::ensure!(!emission_failed, "completion output unavailable");
+                let safe = redactor.push(text);
+                if !safe.is_empty() && emit(&safe).is_err() {
+                    emission_failed = true;
+                    anyhow::bail!("completion output unavailable");
+                }
+                Ok(())
+            };
+            while let Some(chunk) = bytes.next().await {
+                let chunk = chunk.map_err(|_| TransportError::Unknown)?;
+                account_response_bytes(&mut size, chunk.len())
+                    .map_err(|_| TransportError::Unknown)?;
+                guarded(|| self.decoder.feed(&chunk, &mut filtered_emit))
+                    .map_err(|_| TransportError::Unknown)?
+                    .map_err(|_| TransportError::Unknown)?;
+                if guarded(|| self.decoder.is_done()).map_err(|_| TransportError::Unknown)? {
+                    break;
+                }
             }
+            // Move out of a Drop type without unsafe or retaining the decoder after completion.
+            let decoder = std::mem::replace(&mut self.decoder, Box::new(EmptyDecoder));
+            guarded(|| decoder.finish(&mut filtered_emit))
+                .map_err(|_| TransportError::Unknown)?
+                .map_err(|_| TransportError::Unknown)?
+        };
+        // Do not flush on codec/transport failure or future Drop (cancellation).
+        // The raw assistant message still follows the existing Store policy.
+        if emission_failed {
+            return Err(TransportError::Unknown);
         }
-        // Move out of a Drop type without unsafe or retaining the decoder after completion.
-        let decoder = std::mem::replace(&mut self.decoder, Box::new(EmptyDecoder));
-        guarded(|| decoder.finish(emit))
-            .map_err(|_| TransportError::Unknown)?
-            .map_err(|_| TransportError::Unknown)
+        let tail = redactor.finish();
+        if !tail.is_empty() {
+            emit(&tail).map_err(|_| TransportError::Unknown)?;
+        }
+        Ok(output)
     }
 }
 struct EmptyDecoder;

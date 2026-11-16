@@ -261,22 +261,32 @@ pub async fn complete(
     }
     let mut decoder = Decoder::default();
     let mut bytes = response.bytes_stream();
-    while let Some(chunk) = bytes.next().await {
-        let chunk = chunk.map_err(|_| TransportError::Unknown)?;
-        decoder
-            .feed(&chunk, &mut emit)
-            .map_err(|_| TransportError::Unknown)?;
-        if decoder.done {
-            break;
+    let mut redactor = crate::secrets::StreamRedactor::default();
+    let (message, usage) = {
+        let mut filtered_emit = |text: &str| {
+            let safe = redactor.push(text);
+            if safe.is_empty() { Ok(()) } else { emit(&safe) }
+        };
+        while let Some(chunk) = bytes.next().await {
+            let chunk = chunk.map_err(|_| TransportError::Unknown)?;
+            decoder
+                .feed(&chunk, &mut filtered_emit)
+                .map_err(|_| TransportError::Unknown)?;
+            if decoder.done {
+                break;
+            }
         }
+        let usage = decoder.usage.clone();
+        let message = decoder
+            .finish(&mut filtered_emit)
+            .map_err(|_| TransportError::Unknown)?;
+        (message, usage)
+    };
+    let tail = redactor.finish();
+    if !tail.is_empty() {
+        emit(&tail).map_err(|_| TransportError::Unknown)?;
     }
-    let usage = decoder.usage.clone();
-    Ok((
-        decoder
-            .finish(&mut emit)
-            .map_err(|_| TransportError::Unknown)?,
-        usage,
-    ))
+    Ok((message, usage))
 }
 
 fn number(v: &Value) -> Option<f64> {

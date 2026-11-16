@@ -366,19 +366,20 @@ fn assignment_range(input: &str, index: usize) -> Option<(usize, usize)> {
     (end > value_start).then_some((value_start, end))
 }
 
+const TOKEN_PREFIXES: &[&str] = &[
+    "github_pat_",
+    "sk-",
+    "pk-",
+    "rk-",
+    "xai-",
+    "ghp_",
+    "gho_",
+    "pat_",
+    "ntn_",
+    "AKIA",
+];
+
 fn token_end(input: &str, index: usize) -> Option<usize> {
-    const PREFIXES: &[&str] = &[
-        "github_pat_",
-        "sk-",
-        "pk-",
-        "rk-",
-        "xai-",
-        "ghp_",
-        "gho_",
-        "pat_",
-        "ntn_",
-        "AKIA",
-    ];
     if index > 0 {
         let previous = input[..index].chars().next_back()?;
         if previous.is_ascii_alphanumeric() || previous == '_' || previous == '-' {
@@ -386,7 +387,7 @@ fn token_end(input: &str, index: usize) -> Option<usize> {
         }
     }
     let rest = &input[index..];
-    let prefix = PREFIXES
+    let prefix = TOKEN_PREFIXES
         .iter()
         .find(|prefix| rest.len() > prefix.len() && rest.starts_with(*prefix))?;
     let mut end = index + prefix.len();
@@ -397,6 +398,365 @@ fn token_end(input: &str, index: usize) -> Option<usize> {
         end += 1;
     }
     (end > index + prefix.len()).then_some(end)
+}
+
+/// Incremental Host output policy, independent of the selected completion codec.
+/// Only an undecided prefix (at most 11 bytes) and the last 128 ASCII field-name
+/// bytes are retained. Secret values are discarded, never buffered. Dropping on
+/// error/cancellation deliberately discards the undecided prefix; only a clean
+/// completion may call `finish`. This is the recognizable-text policy, not a
+/// detector for arbitrary unknown secrets.
+#[derive(Default)]
+pub(crate) struct StreamRedactor {
+    pending: String,
+    field: String,
+    previous: Option<char>,
+    mode: StreamMode,
+}
+
+#[derive(Default)]
+enum StreamMode {
+    #[default]
+    Text,
+    AssignmentSeparator {
+        authorization: bool,
+        quote: bool,
+    },
+    ValueStart {
+        authorization: bool,
+    },
+    Token,
+    BearerStart,
+    Bearer,
+    Quoted {
+        quote: char,
+        escaped: bool,
+    },
+    Unquoted {
+        scheme: String,
+        authorization: bool,
+    },
+    AuthorizationGap,
+}
+
+impl StreamRedactor {
+    pub(crate) fn push(&mut self, input: &str) -> String {
+        let mut output = String::new();
+        for ch in input.chars() {
+            self.pending.push(ch);
+            self.drain(false, &mut output);
+        }
+        output
+    }
+
+    pub(crate) fn finish(mut self) -> String {
+        let mut output = String::new();
+        self.drain(true, &mut output);
+        output
+    }
+
+    fn consume(&mut self, bytes: usize) {
+        self.previous = self.pending[..bytes].chars().next_back();
+        self.pending.drain(..bytes);
+    }
+
+    fn drain(&mut self, eof: bool, output: &mut String) {
+        while let Some(ch) = self.pending.chars().next() {
+            let mode = std::mem::take(&mut self.mode);
+            match mode {
+                StreamMode::Text => {
+                    let token_boundary = self
+                        .previous
+                        .is_none_or(|c| !c.is_ascii_alphanumeric() && !matches!(c, '_' | '-'));
+                    let bearer_boundary = self.previous.is_none_or(|c| !c.is_ascii_alphanumeric());
+                    if token_boundary {
+                        if let Some(prefix) = TOKEN_PREFIXES.iter().find(|p| {
+                            self.pending.starts_with(**p)
+                                && self.pending[p.len()..].starts_with(token_char)
+                        }) {
+                            let len = prefix.len();
+                            output.push_str("[redacted]");
+                            self.field.clear();
+                            self.mode = StreamMode::Token;
+                            self.consume(len);
+                            continue;
+                        }
+                        if !eof && TOKEN_PREFIXES.iter().any(|p| p.starts_with(&self.pending)) {
+                            break;
+                        }
+                    }
+                    if bearer_boundary {
+                        let lower = self.pending.to_ascii_lowercase();
+                        if lower.starts_with("bearer ") {
+                            output.push_str("bearer ");
+                            self.field.clear();
+                            self.mode = StreamMode::BearerStart;
+                            self.consume(7);
+                            continue;
+                        }
+                        if !eof && "bearer ".starts_with(&lower) {
+                            break;
+                        }
+                    }
+                    if field_char(ch) {
+                        self.field.push(ch);
+                        if self.field.len() > 128 {
+                            self.field.remove(0);
+                        }
+                    } else {
+                        if sensitive_assignment_field(&self.field) {
+                            let field = normalize_field(&self.field);
+                            let authorization = field == "authorization"
+                                || field == "authorization_header"
+                                || field.ends_with("_authorization");
+                            if matches!(ch, '=' | ':') {
+                                self.mode = StreamMode::ValueStart { authorization };
+                            } else if ch.is_ascii_whitespace() || matches!(ch, '\'' | '"') {
+                                self.mode = StreamMode::AssignmentSeparator {
+                                    authorization,
+                                    quote: ch.is_ascii_whitespace(),
+                                };
+                            }
+                        }
+                        self.field.clear();
+                    }
+                    output.push(ch);
+                    self.consume(ch.len_utf8());
+                }
+                StreamMode::AssignmentSeparator {
+                    authorization,
+                    quote,
+                } => {
+                    if ch.is_ascii_whitespace() || (quote && matches!(ch, '\'' | '"')) {
+                        self.mode = StreamMode::AssignmentSeparator {
+                            authorization,
+                            quote: quote && ch.is_ascii_whitespace(),
+                        };
+                    } else if matches!(ch, '=' | ':') {
+                        self.mode = StreamMode::ValueStart { authorization };
+                    } else {
+                        continue; // Reprocess in Text; no input has been consumed.
+                    }
+                    output.push(ch);
+                    self.consume(ch.len_utf8());
+                }
+                StreamMode::ValueStart { authorization } => {
+                    if ch.is_ascii_whitespace() {
+                        output.push(ch);
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::ValueStart { authorization };
+                    } else if matches!(ch, '\'' | '"') {
+                        output.push(ch);
+                        output.push_str("[redacted]");
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::Quoted {
+                            quote: ch,
+                            escaped: false,
+                        };
+                    } else if self.pending.starts_with("[redacted]") {
+                        output.push_str("[redacted]");
+                        self.consume(10);
+                    } else if !eof && "[redacted]".starts_with(&self.pending) {
+                        self.mode = StreamMode::ValueStart { authorization };
+                        break;
+                    } else if value_end(ch) {
+                        continue;
+                    } else {
+                        output.push_str("[redacted]");
+                        self.mode = StreamMode::Unquoted {
+                            scheme: String::new(),
+                            authorization,
+                        };
+                    }
+                }
+                StreamMode::Token => {
+                    if token_char(ch) {
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::Token;
+                    }
+                }
+                StreamMode::BearerStart => {
+                    if ch.is_ascii_whitespace() {
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::BearerStart;
+                    } else {
+                        output.push_str("[redacted]");
+                        self.mode = StreamMode::Bearer;
+                    }
+                }
+                StreamMode::Bearer => {
+                    if !ch.is_ascii_whitespace() {
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::Bearer;
+                    }
+                }
+                StreamMode::Quoted { quote, escaped } => {
+                    self.consume(ch.len_utf8());
+                    if ch == quote && !escaped {
+                        output.push(ch);
+                    } else {
+                        self.mode = StreamMode::Quoted {
+                            quote,
+                            escaped: ch == '\\' && !escaped,
+                        };
+                    }
+                }
+                StreamMode::Unquoted {
+                    mut scheme,
+                    authorization,
+                } => {
+                    if value_end(ch) {
+                        if authorization
+                            && matches!(ch, ' ' | '\t')
+                            && ["bearer", "basic", "token", "negotiate", "ntlm"]
+                                .iter()
+                                .any(|s| scheme.eq_ignore_ascii_case(s))
+                        {
+                            self.mode = StreamMode::AuthorizationGap;
+                            self.consume(ch.len_utf8());
+                        }
+                    } else {
+                        if authorization && scheme.len() < 10 {
+                            scheme.push(ch);
+                        }
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::Unquoted {
+                            scheme,
+                            authorization,
+                        };
+                    }
+                }
+                StreamMode::AuthorizationGap => {
+                    if matches!(ch, ' ' | '\t') {
+                        self.consume(ch.len_utf8());
+                        self.mode = StreamMode::AuthorizationGap;
+                    } else if !value_end(ch) {
+                        self.mode = StreamMode::Unquoted {
+                            scheme: String::new(),
+                            authorization: false,
+                        };
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn token_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-')
+}
+fn field_char(ch: char) -> bool {
+    token_char(ch) || ch == '.'
+}
+fn value_end(ch: char) -> bool {
+    ch.is_ascii_whitespace() || matches!(ch, ',' | ';' | '}' | ']' | '\'' | '"')
+}
+
+#[cfg(test)]
+mod stream_redaction_tests {
+    use super::*;
+
+    fn filtered(parts: &[&str]) -> String {
+        let mut redactor = StreamRedactor::default();
+        let mut output = String::new();
+        for part in parts {
+            output.push_str(&redactor.push(part));
+            assert!(redactor.pending.len() <= 11);
+            assert!(redactor.field.len() <= 128);
+        }
+        output.push_str(&redactor.finish());
+        output
+    }
+
+    #[test]
+    fn stream_redaction_all_splits_match_complete_policy() {
+        let mut fixtures: Vec<String> = TOKEN_PREFIXES
+            .iter()
+            .map(|prefix| format!("前文 {prefix}synthetic123 后文🦀"))
+            .collect();
+        fixtures.extend(
+            [
+                "before Bearer synthetic123 after",
+                "api_key=synthetic123; next",
+                "accessToken : 'synthetic123' next",
+                "{\"password\":\"synthetic\\\"123\"}",
+                "service_client_secret = \"synthetic\n123\" done",
+                "Authorization: Basic synthetic123\nnext",
+                "authorization_header: Negotiate synthetic123\nnext",
+                "Authorization: \"Bearer synthetic123\" next",
+                "foo.sk-synthetic123 end",
+                "password=[redacted] next",
+                "password=\"[redacted]\" next",
+            ]
+            .map(str::to_owned),
+        );
+        for input in fixtures {
+            let expected = redact_text(&input);
+            for split in input.char_indices().map(|(i, _)| i).chain([input.len()]) {
+                assert_eq!(
+                    filtered(&[&input[..split], &input[split..]]),
+                    expected,
+                    "split={split}, input={input:?}"
+                );
+            }
+            let chars: Vec<_> = input
+                .char_indices()
+                .map(|(i, c)| &input[i..i + c.len_utf8()])
+                .collect();
+            assert_eq!(filtered(&chars), expected);
+        }
+        // This negative control is precisely the pre-fix event-by-event policy.
+        assert_eq!(
+            format!("{}{}", redact_text("s"), redact_text("k-synthetic123")),
+            "sk-synthetic123"
+        );
+    }
+
+    #[test]
+    fn stream_redaction_long_plain_text_is_streamed_and_state_is_bounded() {
+        let mut redactor = StreamRedactor::default();
+        let plain = "z".repeat(4096);
+        for _ in 0..100 {
+            assert_eq!(redactor.push(&plain), plain);
+            assert!(redactor.pending.len() <= 11);
+            assert!(redactor.field.len() <= 128);
+        }
+        assert_eq!(
+            redactor.push("_password=synthetic123;"),
+            "_password=[redacted];"
+        );
+        assert_eq!(redactor.push("中文🦀"), "中文🦀");
+        assert_eq!(redactor.finish(), "");
+
+        let mut secret = StreamRedactor::default();
+        assert_eq!(secret.push("sk-synthetic"), "[redacted]");
+        for _ in 0..100 {
+            assert_eq!(secret.push(&plain), "");
+            assert!(secret.pending.len() <= 11);
+            assert!(secret.field.is_empty());
+        }
+        assert_eq!(secret.push(" done"), " done");
+    }
+
+    #[test]
+    fn stream_redaction_only_clean_finish_releases_undecided_text() {
+        let mut redactor = StreamRedactor::default();
+        assert_eq!(redactor.push("visible s"), "visible ");
+        assert_eq!(redactor.finish(), "s");
+        for partial in [
+            "s",
+            "sk-",
+            "Bearer ",
+            "password=\"synthetic",
+            "Authorization: Basic synthetic",
+        ] {
+            let mut redactor = StreamRedactor::default();
+            let safe = redactor.push(partial);
+            assert!(!safe.contains("synthetic"));
+            // Transport failure / cancellation drops state without calling a sink.
+            drop(redactor);
+        }
+    }
 }
 
 pub fn scrub(text: &str, secret: &str) -> String {
