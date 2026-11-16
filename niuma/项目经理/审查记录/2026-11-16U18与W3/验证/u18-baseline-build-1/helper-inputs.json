@@ -1,0 +1,18 @@
+{
+  "expected": {
+    "head": "1d09a551199292df0b719f6faa99f3799e02afef",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "files": [
+    {
+      "path": ".local/u18-baseline-build.py",
+      "sha256": "8e5942028402c8fbe8a3d2375e9394b744dba891eed75751e9599df5f1f28f1c"
+    },
+    {
+      "path": ".local/u18-baseline-invoke.ps1",
+      "sha256": "a3fa203a068f44e0e93e414d84e093a7cd0924d206221ed1253f452ba676ed87"
+    }
+  ],
+  "host_digest_absent": true
+}

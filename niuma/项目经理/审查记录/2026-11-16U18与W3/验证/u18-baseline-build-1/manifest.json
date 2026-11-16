@@ -1,0 +1,122 @@
+{
+  "artifacts": [
+    {
+      "bytes": 159,
+      "path": "01-baseline-bins.direct-exit.json",
+      "sha256": "68cb1a57962aa0d7d14222c03e9fffd72ef3dfd6cf2691955ec120ec42188031"
+    },
+    {
+      "bytes": 186942,
+      "path": "01-baseline-bins.log",
+      "sha256": "37da7a09e94e90073b34b2859db4759d8baaac6475659abdd55df2a00d881634"
+    },
+    {
+      "bytes": 652,
+      "path": "01-baseline-bins.result.json",
+      "sha256": "6da1fd4d3d9f8e966eaffbcc38d274490d13c32fd64d5380c16192886ef9bde2"
+    },
+    {
+      "bytes": 409,
+      "path": "01-baseline-bins.started.json",
+      "sha256": "93b6d0f12b30ba3d38e80822fbf347da372f1b303e2398e62a21808a0c2d15c0"
+    },
+    {
+      "bytes": 39687,
+      "path": "source-after.json",
+      "sha256": "29979eb1dd1a1b86c218607d424e186273583de356649d6128d7108a40574038"
+    },
+    {
+      "bytes": 39687,
+      "path": "source-before.json",
+      "sha256": "29979eb1dd1a1b86c218607d424e186273583de356649d6128d7108a40574038"
+    }
+  ],
+  "candidate": {
+    "head": "1d09a551199292df0b719f6faa99f3799e02afef",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "ended_utc": "2026-11-16T12:07:56.331537+00:00",
+  "environment": {
+    "AR_x86_64_pc_windows_msvc": null,
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_BUILD_TARGET": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_HOME": null,
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "CC_x86_64_pc_windows_msvc": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTFLAGS": null,
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUSTUP_HOME": null,
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\u18-build-tmp",
+    "TMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\u18-build-tmp",
+    "VCToolsInstallDir": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+    "WindowsSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10"
+  },
+  "gate_retained": true,
+  "inputs_verified": true,
+  "options": {
+    "mode": "baseline-artifact-build",
+    "purpose": "Real unbound Host and foreign worker for W3 negative controls; no product tests"
+  },
+  "plan": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "E:\\code\\nhc-u18-20261116-integration\\.local\\u18-baseline-invoke.ps1"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked",
+        "--message-format=json-render-diagnostics"
+      ],
+      "name": "baseline-bins",
+      "timeout_seconds": 1800
+    }
+  ],
+  "process_tree_cleanup": "not_proven_by_this_runner",
+  "runner_exit_code": 0,
+  "started_utc": "2026-11-16T12:07:30.689251+00:00",
+  "status": "passed",
+  "steps": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "E:\\code\\nhc-u18-20261116-integration\\.local\\u18-baseline-invoke.ps1"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked",
+        "--message-format=json-render-diagnostics"
+      ],
+      "ended_utc": "2026-11-16T12:07:55.339011+00:00",
+      "exit_code": 0,
+      "log": "01-baseline-bins.log",
+      "log_bytes": 186942,
+      "log_sha256": "37da7a09e94e90073b34b2859db4759d8baaac6475659abdd55df2a00d881634",
+      "name": "baseline-bins",
+      "started_utc": "2026-11-16T12:07:31.643364+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    }
+  ],
+  "version": 1
+}
