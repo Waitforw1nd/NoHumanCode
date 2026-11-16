@@ -231,6 +231,13 @@ class PairTests(unittest.TestCase):
             self.assertIn("--offline", command)
             self.assertNotIn("install", command)
 
+    def test_windows_toolchain_roots_are_recorded_without_changing_child_env(self):
+        code, report = self.run_pair(environment={"VCTOOLSINSTALLDIR": "E:/mock/msvc", "WINDOWSSDKDIR": "E:/mock/sdk"})
+        self.assertEqual(code, 0)
+        self.assertEqual(report["environment"]["VCToolsInstallDir"], "E:/mock/msvc")
+        self.assertEqual(report["environment"]["WindowsSdkDir"], "E:/mock/sdk")
+        self.assertEqual(self.calls[0][1]["VCTOOLSINSTALLDIR"], "E:/mock/msvc")
+
     def test_pair_verification_rejects_mutated_host_or_foreign_candidate(self):
         self.run_pair()
         with self.assertRaises(ValueError):

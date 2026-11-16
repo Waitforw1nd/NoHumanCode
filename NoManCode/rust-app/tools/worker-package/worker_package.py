@@ -230,7 +230,8 @@ def build_pair(repo, evidence, stage, pair, gate_path, expected, target_dir, pro
               "steps": [], "gate_retained": True, "process_tree_cleanup": "not_proven_by_this_tool",
               "runtime_binding_verified": False}
     # Record only relevant non-secret configuration, never dump the caller's env.
-    report["environment"] = {key: env.get(key) for key in (
+    provenance_env = {key.casefold(): value for key, value in env.items()}
+    report["environment"] = {key: provenance_env.get(key.casefold()) for key in (
         *ENVIRONMENT, "CARGO_TARGET_DIR", "TMP", "TEMP", "VCToolsInstallDir",
         "VSINSTALLDIR", "WindowsSdkDir", "UniversalCRTSdkDir",
     )}
