@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "path": "case.json",
+      "bytes": 51,
+      "sha256": "d8509f250aed7622bf672603ea9292be04c0680e71d8327f7b1322b9a267c9e3"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "handles.json",
+      "bytes": 34,
+      "sha256": "5ee3e22fbb223aaee06c68a130ddbc8adddddacc9acaa607a9d3b1aba56f6c72"
+    },
+    {
+      "path": "identity.json",
+      "bytes": 112,
+      "sha256": "9214fd59fe6c9b6f12daf255494ff06ad8daa7f30f87bb2fea794d3dcf25ece3"
+    },
+    {
+      "path": "parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "f39a198a71a9fd5133c91e351b46334e192dab18b80d1082093c00453bb12006"
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+  "artifacts": [
+    {
+      "bytes": 159,
+      "path": "01-check.direct-exit.json",
+      "sha256": "d61b00440b7e07696a551432fcf89724d1fabf0a5f9ca75d31ec262cb0e46205"
+    },
+    {
+      "bytes": 577,
+      "path": "01-check.log",
+      "sha256": "7dbd08e378c5d06ce860428ab86179e71a3d69b187eaee87635820ab930a9e4d"
+    },
+    {
+      "bytes": 598,
+      "path": "01-check.result.json",
+      "sha256": "b48b3d80154003df2b35cc2a46dbb964b5ce8cabfd44b7765751e61b98c8be4d"
+    },
+    {
+      "bytes": 366,
+      "path": "01-check.started.json",
+      "sha256": "4aae758cc990f3456e0113f1b3f33d1bae0b615a21ceb03691958c48a07ac4cf"
+    },
+    {
+      "bytes": 159,
+      "path": "02-debug-bins.direct-exit.json",
+      "sha256": "56a9e597c13a45e4f59d8877afdbed7a9f30b5edd1dcec392a112a64eb93b433"
+    },
+    {
+      "bytes": 322,
+      "path": "02-debug-bins.log",
+      "sha256": "7b76792a52a30cb6024d5deddcd2ff4e004384083ef324ee7c7efa829a0f02ac"
+    },
+    {
+      "bytes": 587,
+      "path": "02-debug-bins.result.json",
+      "sha256": "bce6cc73eda8d67432bdbb4f88c29d916e28fff7cd2852bc779c60ec1edbee8c"
+    },
+    {
+      "bytes": 350,
+      "path": "02-debug-bins.started.json",
+      "sha256": "cd0cd34fa1ab12d5b661a4394272b459fa1cbf82f42c1d3df6c04d2c6334c374"
+    },
+    {
+      "bytes": 161,
+      "path": "03-test.direct-exit.json",
+      "sha256": "cd036306c8989a29e0856decac70156ed7eb5f915a552f76a6b2f882aa57d8aa"
+    },
+    {
+      "bytes": 88692,
+      "path": "03-test.log",
+      "sha256": "65658fd8a2020aa91b91071c8df10d51cc7d764701768ebc1c867df18a250c7e"
+    },
+    {
+      "bytes": 587,
+      "path": "03-test.result.json",
+      "sha256": "333f78a3890b08f7b7669a1b34c987cc15fe9f3e77f80ec0b9708f90e0abedb5"
+    },
+    {
+      "bytes": 352,
+      "path": "03-test.started.json",
+      "sha256": "f637e351ff4606f39256abb05eeab64298b208f91b306681de2ea6fef264a824"
+    },
+    {
+      "bytes": 41600,
+      "path": "source-after.json",
+      "sha256": "4ee7bc3481dd0fad80144437eae425c29b58e6cc0e94a8ed6140d541d655f607"
+    },
+    {
+      "bytes": 41600,
+      "path": "source-before.json",
+      "sha256": "4ee7bc3481dd0fad80144437eae425c29b58e6cc0e94a8ed6140d541d655f607"
+    }
+  ],
+  "candidate": {
+    "head": "375b85d9619f2ff33780c33563327aeec78f3e9a",
+    "product_tree": "3d115093281410bc24c978dd1a126d0842db7721",
+    "rust_tree": "90884ebe6b93ac3a1fed4436d42a71858a5f2a3e"
+  },
+  "ended_utc": "2026-11-16T13:13:32.843990+00:00",
+  "environment": {
+    "AR_x86_64_pc_windows_msvc": null,
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_BUILD_TARGET": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_HOME": null,
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "CC_x86_64_pc_windows_msvc": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTFLAGS": null,
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUSTUP_HOME": null,
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-full-discovery-2\\tmp",
+    "TMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-full-discovery-2\\tmp",
+    "VCToolsInstallDir": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+    "WindowsSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10"
+  },
+  "gate_retained": true,
+  "inputs_verified": true,
+  "options": {
+    "examples": [],
+    "filter": "",
+    "mode": "full",
+    "step_timeout_seconds": 1800,
+    "test_targets": []
+  },
+  "plan": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "name": "check",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "name": "debug-bins",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "test"
+      ],
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "build.ps1",
+        "-Action",
+        "test"
+      ],
+      "name": "test",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "fmt"
+      ],
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "name": "fmt",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "clippy"
+      ],
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "name": "clippy",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "wasm-check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "peachsh-ui",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--offline",
+        "--locked"
+      ],
+      "name": "wasm-check",
+      "timeout_seconds": 1800
+    }
+  ],
+  "process_tree_cleanup": "not_proven_by_this_runner",
+  "runner_exit_code": 101,
+  "started_utc": "2026-11-16T13:01:35.328437+00:00",
+  "status": "failed",
+  "steps": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T13:01:55.609829+00:00",
+      "exit_code": 0,
+      "log": "01-check.log",
+      "log_bytes": 577,
+      "log_sha256": "7dbd08e378c5d06ce860428ab86179e71a3d69b187eaee87635820ab930a9e4d",
+      "name": "check",
+      "started_utc": "2026-11-16T13:01:36.215590+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T13:02:15.745377+00:00",
+      "exit_code": 0,
+      "log": "02-debug-bins.log",
+      "log_bytes": 322,
+      "log_sha256": "7b76792a52a30cb6024d5deddcd2ff4e004384083ef324ee7c7efa829a0f02ac",
+      "name": "debug-bins",
+      "started_utc": "2026-11-16T13:01:56.561555+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "test"
+      ],
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "build.ps1",
+        "-Action",
+        "test"
+      ],
+      "ended_utc": "2026-11-16T13:13:31.531287+00:00",
+      "exit_code": 101,
+      "log": "03-test.log",
+      "log_bytes": 88692,
+      "log_sha256": "65658fd8a2020aa91b91071c8df10d51cc7d764701768ebc1c867df18a250c7e",
+      "name": "test",
+      "started_utc": "2026-11-16T13:02:16.649802+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    }
+  ],
+  "version": 1
+}
