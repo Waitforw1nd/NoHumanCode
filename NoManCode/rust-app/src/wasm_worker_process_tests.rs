@@ -257,6 +257,153 @@ mod fault_matrix {
             },
         }
     }
+
+    fn bound_host() -> (
+        std::sync::Arc<crate::store::Store>,
+        std::sync::Arc<crate::engine::Engine>,
+        WorkerService,
+    ) {
+        let root = tempfile::tempdir().unwrap().keep();
+        let store =
+            std::sync::Arc::new(crate::store::Store::open(&root.join("peachsh.sqlite3")).unwrap());
+        let engine = crate::engine::Engine::new(store.clone(), 1).unwrap();
+        let mut service = worker();
+        service.bind_store(&store).unwrap();
+        (store, engine, service)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires fixed real worker and isolated process observation"]
+    async fn w07_bound_same_domain_and_cross_domain() {
+        let (store, _engine, service) = bound_host();
+        let (other, _other_engine, _) = bound_host();
+        let op = store.execution_operation(CancellationToken::new()).unwrap();
+        test_observer::arm(false);
+        let result = op
+            .run(service.call(manifest(), before(), wasm(), CancellationToken::new()))
+            .await
+            .unwrap();
+        assert!(result.process_signaled && result.io_completed && result.job_active_processes == 0);
+        let (pid, handle) = test_observer::take().expect("original process observer");
+        assert_eq!(pid, result.process_id);
+        assert_eq!(
+            unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) },
+            WAIT_OBJECT_0
+        );
+        assert_eq!(store.execution_admission_status().unwrap(), (true, 0, 0));
+        let log = read_log(&PathBuf::from(
+            std::env::var_os("NHC_W2_STAGE_LOG").unwrap(),
+        ));
+        assert_reaped(&log, pid);
+        let other_op = other.execution_operation(CancellationToken::new()).unwrap();
+        let result = other_op
+            .run(service.call(manifest(), before(), wasm(), CancellationToken::new()))
+            .await;
+        assert!(matches!(
+            result,
+            Err(WorkerError::IsolationUnavailable("domain_generation", None))
+        ));
+        assert_eq!(
+            read_log(&PathBuf::from(
+                std::env::var_os("NHC_W2_STAGE_LOG").unwrap()
+            )),
+            log
+        );
+        assert_eq!(store.execution_admission_status().unwrap(), (true, 0, 0));
+        assert_eq!(other.execution_admission_status().unwrap(), (true, 0, 0));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "requires fixed real worker and isolated process observation"]
+    async fn w07_bound_future_drop_retains_original_domain() {
+        let (store, _engine, service) = bound_host();
+        let op = store.execution_operation(CancellationToken::new()).unwrap();
+        let hook = test_hooks::arm("resume_before_ticket");
+        test_observer::arm(false);
+        let task = tokio::spawn(op.run(async move {
+            service
+                .call(manifest(), before(), wasm(), CancellationToken::new())
+                .await
+        }));
+        assert!(wait_until(test_hooks::reached, Duration::from_secs(4)).await);
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        assert_eq!(store.execution_admission_status().unwrap(), (true, 1, 0));
+        assert!(crate::engine::Engine::new(store.clone(), 1).is_err());
+        assert!(!test_hooks::slot_free());
+        test_hooks::release();
+        assert!(wait_until(test_hooks::slot_free, Duration::from_secs(8)).await);
+        assert!(
+            wait_until(
+                || store.execution_admission_status().unwrap().1 == 0,
+                Duration::from_secs(8)
+            )
+            .await
+        );
+        assert!(test_hooks::completed_without_timeout());
+        drop(hook);
+        let (pid, handle) = test_observer::take().expect("original process observer");
+        assert_eq!(
+            unsafe { WaitForSingleObject(handle.as_raw_handle(), 0) },
+            WAIT_OBJECT_0
+        );
+        let log = read_log(&PathBuf::from(
+            std::env::var_os("NHC_W2_STAGE_LOG").unwrap(),
+        ));
+        assert_reaped(&log, pid);
+        assert_eq!(store.execution_admission_status().unwrap(), (true, 0, 0));
+    }
+
+    async fn bound_supervisor_panic(drop_future: bool) {
+        let (store, _engine, service) = bound_host();
+        let op = store.execution_operation(CancellationToken::new()).unwrap();
+        let hook = test_hooks::arm("supervisor_injected_panic");
+        let task = tokio::spawn(op.run(async move {
+            service
+                .call(manifest(), before(), wasm(), CancellationToken::new())
+                .await
+        }));
+        assert!(wait_until(test_hooks::reached, Duration::from_secs(4)).await);
+        assert_eq!(store.execution_admission_status().unwrap(), (true, 1, 0));
+        if drop_future {
+            task.abort();
+            assert!(task.await.unwrap_err().is_cancelled());
+            test_hooks::release();
+        } else {
+            test_hooks::release();
+            let result = tokio::time::timeout(Duration::from_secs(4), task)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!(matches!(result, Err(WorkerError::CleanupUnknown)));
+        }
+        assert!(
+            wait_until(
+                || store.execution_admission_status().unwrap().2 > 0,
+                Duration::from_secs(4)
+            )
+            .await
+        );
+        assert!(test_hooks::completed_without_timeout());
+        drop(hook);
+        let (open, in_flight, unknown) = store.execution_admission_status().unwrap();
+        assert!(!open && in_flight > 0 && unknown > 0);
+        assert!(!test_hooks::slot_free());
+        assert!(store.execution_operation(CancellationToken::new()).is_err());
+        assert!(crate::engine::Engine::new(store.clone(), 1).is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "must run alone: intentionally retains unknown slot and domain until test process exits"]
+    async fn w07_bound_supervisor_panic_disconnect_seals_domain() {
+        bound_supervisor_panic(false).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "must run alone: intentionally retains unknown slot and domain until test process exits"]
+    async fn w07_bound_supervisor_panic_after_future_drop_seals_domain() {
+        bound_supervisor_panic(true).await;
+    }
     fn input_for(mode: &str) -> Input {
         match mode {
             "decision-no-tools" => Input {
