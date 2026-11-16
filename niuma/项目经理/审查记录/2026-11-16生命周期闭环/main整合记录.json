@@ -1,0 +1,144 @@
+{
+  "checked_utc": "2026-11-16T10:22:07.745550+00:00",
+  "product_merge": "d858eef99cc05458294511a4f09d65ac2b07b6ad",
+  "final_audit_merge": "79141826a53b34bf4187a8d41356b91c87e56f88",
+  "main_before_handoff_commit": "79141826a53b34bf4187a8d41356b91c87e56f88",
+  "integrated_candidate": "6337d7221a7195b0ad099ccbb8269ef3cb0f5dd8",
+  "tested_candidate": {
+    "head": "0fb205851748fdf25abdf35ca0911a0b24527fd4",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "main_trees": {
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "tree_equivalence": true,
+  "product_worktree_clean": true,
+  "source_files": {
+    "total": 218,
+    "byte_exact": 211,
+    "preexisting_line_ending_only": [
+      {
+        "path": "NoManCode/dsh-peachsh.cmd",
+        "main_sha256": "f7eb83171f5081f2d4368defa6d19f446f14354238fd5a06eec539338668c104",
+        "tested_sha256": "bb23e12a0b4038f55514f65e5c5dcb5ff589be19a54047a27a8f78c742fa8383",
+        "main_bytes": 1471,
+        "tested_bytes": 1506,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      },
+      {
+        "path": "NoManCode/newapi.cmd",
+        "main_sha256": "1cbaa6d924a05eeb5c1a6a88e02028d95eae75a4f63251cae437954f4990101a",
+        "tested_sha256": "bc7c3e6146c4566003dacc99cad47f10e9ed27863a8c3744d1a53f26caa0c4d9",
+        "main_bytes": 1308,
+        "tested_bytes": 1347,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      },
+      {
+        "path": "NoManCode/overrides/root/@deepseek-ai/dsh-experimental-client-ui-agent-team/lib/client.js",
+        "main_sha256": "6f408a37fe71ca2a8752f83365687b34eb480925d9d787b2279e5c22fa043621",
+        "tested_sha256": "736eaf3f0c035eba3138854009ca4360fc82938e47606808031125f5baf09d26",
+        "main_bytes": 174294,
+        "tested_bytes": 174292,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      },
+      {
+        "path": "NoManCode/rust-app/GOAL-ROADMAP-DRAFT.md",
+        "main_sha256": "5e8581f12bb30038af4e1015c174359f81c9bb889d2923a58536ac43a35eb246",
+        "tested_sha256": "cdfbe02f79182454ae80f4ad4b4f7402e130670762b985c6a3fb4738fdb58374",
+        "main_bytes": 18434,
+        "tested_bytes": 18432,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      },
+      {
+        "path": "NoManCode/start-peachsh-legacy.cmd",
+        "main_sha256": "8328566959d4c0a491821f59adea3492a711cceb62e8013ee2d94aa80b122d0d",
+        "tested_sha256": "ba6f0d5cf675cfda25bb8599e72c9fcc04f8955dc2e817fc14d2c51af4d24eab",
+        "main_bytes": 1525,
+        "tested_bytes": 1562,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      },
+      {
+        "path": "NoManCode/start-peachsh.cmd",
+        "main_sha256": "5c5181dfdfb1b6720a0a0dfdedf6ec47a4b73cbbd1527512455fb420bd8fde7a",
+        "tested_sha256": "030d320e403e5c792f9ec31fc2f541e98975d968eb079b6ad6b860e197787afe",
+        "main_bytes": 391,
+        "tested_bytes": 401,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      },
+      {
+        "path": "NoManCode/tests/dump-config.txt",
+        "main_sha256": "b33d8834fce668a80eb6bc570a9aff4e7b73e19edd1cf268e4ccc3c8ea5f29d8",
+        "tested_sha256": "59e1e658f3291d9ffcac4e9aa8847d216531e0d74a0c8875aad15be4c030e262",
+        "main_bytes": 19325,
+        "tested_bytes": 18740,
+        "unchanged_by_this_slice": true,
+        "equal_after_crlf_normalization": true
+      }
+    ]
+  },
+  "publication_files_verified": 63,
+  "independent_audits": {
+    "full-3完整证据复核.json": {
+      "checks": 99,
+      "sha256": "dd6209af52cbf1d618f7598528699d690716ebabce4430ed0939e5d9f417d001"
+    },
+    "full-3发布与最终源码核验-v2.json": {
+      "checks": 305,
+      "sha256": "0d3510de72c5bc8c1fdb15ac90bf34db176a721353033f18ddb293e0452068d0"
+    }
+  },
+  "preservation": {
+    "original-suffix-preserved": 7,
+    "unchanged": 150
+  },
+  "inherited_changes_staged": false,
+  "handoff_prefix_documents": 12,
+  "handoff_links_checked": true,
+  "index_scope": "Only the new prefixes and new integration records; inherited personnel and conversation deltas remain unstaged",
+  "conflict_resolution": "Only manager task add/add; candidate retained the complete tracked main prefix and appended reviewed ownership and acceptance entries",
+  "original_supervisor": {
+    "session": 1465,
+    "exit_code": 0
+  },
+  "common_gate_archived": true,
+  "agents": {
+    "closed_utc": "2026-11-16 10:20:32 UTC",
+    "agents": [
+      {
+        "role": "A",
+        "agent_id": "01a1e374-7373-72e1-9d78-29b4383ed0e9",
+        "close_tool_previous_status": "completed"
+      },
+      {
+        "role": "B",
+        "agent_id": "01a1e374-73a6-7c72-8f47-a400eed3631c",
+        "close_tool_previous_status": "completed"
+      },
+      {
+        "role": "C",
+        "agent_id": "01a1e374-73da-7213-8d07-2fe5ed7acd86",
+        "close_tool_previous_status": "completed"
+      },
+      {
+        "role": "D",
+        "agent_id": "01a1e374-7409-7943-8533-532f00126820",
+        "close_tool_previous_status": "completed"
+      }
+    ],
+    "all_completed_before_close": true
+  },
+  "remaining": [
+    "Full U/schema18 migration and epoch/phase transaction fences",
+    "W3 trusted bootstrap, persistent production binding and same-domain worker authority",
+    "Desktop and remaining product stages"
+  ],
+  "historical_unknown_reclassified": false
+}

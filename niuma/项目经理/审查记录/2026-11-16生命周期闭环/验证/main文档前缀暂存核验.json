@@ -1,0 +1,89 @@
+{
+  "head_before": "79141826a53b34bf4187a8d41356b91c87e56f88",
+  "documents": [
+    {
+      "path": "niuma/项目经理/个人身份认知.md",
+      "index_blob": "69c8dd8eff15f44d7de779fdf932bfec3096bb72",
+      "prefix_sha256": "cc54fbd1565c43fa670666673886e3c90bf09a6a65d0e9d29a2aa168122915ad",
+      "work_original_suffix_sha256": "6135e9546614d9022b8c6fe245cd00225bf1f0507a94d74c9a3222fc97d6429e",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/项目经理/当前任务板.md",
+      "index_blob": "58a48106dd0f6e8edb18605b37fa937f08f22cef",
+      "prefix_sha256": "cd927f109c368200eecd268f2bca12b59a3c1d347248fd8a3d43a0d817b89eab",
+      "work_original_suffix_sha256": "d2e7fa49fa9b782dbd8c6c8b0ca3cffb0f1d54d4d063289a6ed570205f0626fb",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/项目经理/项目记录/PROJECT-PROGRESS-SUMMARY.md",
+      "index_blob": "3d1968c95c876569dd2a57887cdf9ad1131fce08",
+      "prefix_sha256": "03dccd87c773d3be75bf26b53cbc3d65eecd27b70a4711229d47ad011b4dc9e2",
+      "work_original_suffix_sha256": "02966e32a5bbf4566d78852e189bd1dc82cb84b46cdbf278a4b9db21913f7db5",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/项目经理/项目记录/CONVERSATION-FULL.md",
+      "index_blob": "6b3c7455bf2f40f2a25e4d39a3368baf4596131a",
+      "prefix_sha256": "03dccd87c773d3be75bf26b53cbc3d65eecd27b70a4711229d47ad011b4dc9e2",
+      "work_original_suffix_sha256": "c47a5099266d4682ae13fedbcd0c757dc9c36a1c4a20352f83dd7784c0a5e78c",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/员工A/个人身份认知.md",
+      "index_blob": "a03d46f246233ee0015176b7c9a64e07043975c3",
+      "prefix_sha256": "29aac1304f9f2778c562ab5d9f62c14d6be9408803b0f0ab00eda4cbc17ffffa",
+      "work_original_suffix_sha256": "05c0ba9112acf7726cd2ed6ae226ff4b30673790b8bdf745cf75bf946f845202",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/员工B/个人身份认知.md",
+      "index_blob": "37c1cf371b04cc30cb0350d0e0fb5122756ae862",
+      "prefix_sha256": "dcc251391792865e1305f3f7b2fea7b8811d41ec54e3a73151ab5594e0d2da52",
+      "work_original_suffix_sha256": "b46831bb5f28142099f085353831f5452d69882322c93d65ca503eebd9038c78",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/员工C/个人身份认知.md",
+      "index_blob": "e774dfc2b18adef89ae273a5e4d7fe3bcb3d0ab7",
+      "prefix_sha256": "908bc0694db2cdb3032c3fa92cbb40980b6b85d6fe7f53e1c2d10c5689da822a",
+      "work_original_suffix_sha256": "075ad169469fffbde2eb147323f0aa76229f1d9f904c1bfc0def669a4f102a2f",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/员工D/个人身份认知.md",
+      "index_blob": "85d0aef0bfa5a91422b4dfdcd4d1116e9976ed6e",
+      "prefix_sha256": "ea2a4813029d81e1990964e17f771cde5ba758b8e6e4c5731eec088c932f2a16",
+      "work_original_suffix_sha256": "8b1e00d8629bc1f7bf831660695af9fe93fa99711a498e9135c911a4b455d0d7",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/项目经理/项目地图.md",
+      "index_blob": "97751c99857e60c2bfd302bf02eea2880280f5f2",
+      "prefix_sha256": "0de6912b33c2191414c893f5f523289de7804811b5271cd37904eca143f00193",
+      "work_original_suffix_sha256": "0766e43b2dcd6e8363637d296b748fdfe7b5dc9cb5d3897290c27d985a9f697d",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "niuma/项目经理/环境与验证.md",
+      "index_blob": "1169c0d3a75196b7c1262aedbec76c30f272e64e",
+      "prefix_sha256": "19bf8e91a40b4834eefbc38091dc70e2e265e313aab255ef5510c4846c4424fc",
+      "work_original_suffix_sha256": "1ac581ae39ffb17cc313e87e31db23f68fe52afa6233fef1fb4d2e07e5237cf3",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "HANDOFF-TO-NEXT-MODEL.md",
+      "index_blob": "e06d70a6cf1fa99e7c63c1b184f76d8108a7af8b",
+      "prefix_sha256": "8a037af5f6bda3a6e02532399926bf41bb8c364e0bba6017236c0d33a02caae4",
+      "work_original_suffix_sha256": "c9db0c444bfb82e46f678e246bc3e07f3a540416c333c6449ef8d140fd973a2d",
+      "inherited_changes_staged": false
+    },
+    {
+      "path": "项目经理启动提示词.md",
+      "index_blob": "fc83063fcca58db3bf6d9f1451af7fd10361191e",
+      "prefix_sha256": "abe22f1feb62d3015babbca056ef8bce5aebff04d21d8b7aa7583e2c8d6c27ff",
+      "work_original_suffix_sha256": "1a400588a07d81081ae91c4aa10eefaf961af4f3b1687b8eac149165b674fee9",
+      "inherited_changes_staged": false
+    }
+  ]
+}

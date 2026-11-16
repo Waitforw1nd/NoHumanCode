@@ -1,0 +1,26 @@
+{
+  "closed_utc": "2026-11-16 10:20:32 UTC",
+  "agents": [
+    {
+      "role": "A",
+      "agent_id": "01a1e374-7373-72e1-9d78-29b4383ed0e9",
+      "close_tool_previous_status": "completed"
+    },
+    {
+      "role": "B",
+      "agent_id": "01a1e374-73a6-7c72-8f47-a400eed3631c",
+      "close_tool_previous_status": "completed"
+    },
+    {
+      "role": "C",
+      "agent_id": "01a1e374-73da-7213-8d07-2fe5ed7acd86",
+      "close_tool_previous_status": "completed"
+    },
+    {
+      "role": "D",
+      "agent_id": "01a1e374-7409-7943-8533-532f00126820",
+      "close_tool_previous_status": "completed"
+    }
+  ],
+  "all_completed_before_close": true
+}

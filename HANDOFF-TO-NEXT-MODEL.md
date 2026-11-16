@@ -1,3 +1,21 @@
+# 2026-11-16 当前有效交接：生命周期首切片已合main
+
+产品`dec9a1e0fc0fbd0a0822dc49b41124015c4202fe`、Rust`a4cee432f0a2be0d326519840881d8c7d1b12b26`、schema17；固定受测HEAD`0fb205851748fdf25abdf35ca0911a0b24527fd4`，main产品整合提交`d858eef99cc05458294511a4f09d65ac2b07b6ad`。
+
+Shell/Git后代、原Job/readers及后台body未收束时保留原域票；取消和Host关闭实际到达collector。已证明结束的普通失败可结算，unknown同步封门且迟到清理不改判。合法多Store共享一个真实域owner，只允许一个活动controller；旧安全、恢复、审批与权限断言继续通过。
+
+完整Rust 915/0/45（passed/failed/ignored），六项门禁及网页六组通过；九个修复target另计149通过；25项固定组件矩阵通过，按12项组件输入等价链关联至最终候选，非冒称最终HEAD重跑。监督工具23项、W3配对工具19项纯mock通过。
+
+完整U/schema18、持久epoch/phase及所有副作用/结果事务fence、W3可信bootstrap/生产绑定和Desktop未完成。W3工具只交付配对构建前置，main没有编译期可信摘要消费者，真实打包前置拒绝；公开run_wasm保持拒绝。
+
+四名实际subagent为A Carson、B Wegener、C Lagrange、D Pascal，本轮实现与交叉审查均已完成并关闭；没有后台编译或正在派发的产品写权。用户继续开发及使用四代理的授权持续有效，下一切片直接按当前证据重新冻结唯一文件归属并实施，不重复确认角色。
+
+旧B23/C35、全部继承未提交内容、历史unknown和本轮失败证据保留。当前无活动重型窗口；仅归档本轮精确窗口，不动历史unknown锁。未执行live、release、push、安装或旧树清理。
+
+先读[本轮最终验收](niuma/项目经理/审查记录/2026-11-16生命周期闭环/首切片最终验收.md)、[main整合记录](niuma/项目经理/审查记录/2026-11-16生命周期闭环/main整合记录.json)与[任务板](niuma/项目经理/当前任务板.md)。继承修改继续保全；不要因git status仍有人事修改而清理它们。下一切片从本次main开发完整U/schema18及W3可信bootstrap，保留公开拒绝门直至独立生产验收。
+
+以下为历史交接原文，旧“未启动/暂停/首轮待测”不覆盖本段。
+
 ## 2026-11-16 新开发经理提示词已更新
 
 更新人：项目经理。
