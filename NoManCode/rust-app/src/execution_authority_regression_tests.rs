@@ -356,6 +356,53 @@ async fn checkpoint_waiting_at_gate_cannot_claim_after_shutdown() {
     assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn claimed_restore_finishes_after_shutdown_cutoff() {
+    use std::time::Duration;
+    let root = tempfile::tempdir().unwrap();
+    let (engine, task) =
+        crate::engine::workspace_phase_tests::n13_completed_fixture(root.path()).await;
+    let file = root.path().join("source/src/a.txt");
+    assert_ne!(std::fs::read(&file).unwrap(), b"before-a");
+    let barrier = crate::engine::runtime_barrier::arm(task.clone(), "restore_claim_committed");
+    struct ReleaseBarrier(Arc<crate::engine::runtime_barrier::Barrier>);
+    impl Drop for ReleaseBarrier {
+        fn drop(&mut self) {
+            self.0.release();
+        }
+    }
+    let _release_on_failure = ReleaseBarrier(barrier.clone());
+    let worker = {
+        let engine = engine.clone();
+        let task = task.clone();
+        tokio::spawn(async move { engine.restore(&task).await })
+    };
+    let arrived = barrier.wait_arrived(Duration::from_secs(10));
+    if !arrived {
+        barrier.release();
+        panic!("restore did not reach the committed-claim barrier");
+    }
+    assert_eq!(
+        engine.latest_restore(&task).unwrap().unwrap().status,
+        crate::workspace_changes::RestoreStatus::Claimed
+    );
+    assert!(engine.store.execution_admission_status().unwrap().1 > 0);
+    engine.request_shutdown();
+    barrier.release();
+    let receipt = tokio::time::timeout(Duration::from_secs(10), worker)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        receipt.status,
+        crate::workspace_changes::RestoreStatus::Complete
+    );
+    assert_eq!(std::fs::read(&file).unwrap(), b"before-a");
+    assert_eq!(engine.latest_restore(&task).unwrap().unwrap(), receipt);
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+}
+
 fn store_positive_and_insert(
     store: &Store,
     tx: &rusqlite::Transaction<'_>,
