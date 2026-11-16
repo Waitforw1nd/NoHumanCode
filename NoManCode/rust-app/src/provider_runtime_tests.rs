@@ -15,6 +15,7 @@ use axum::{
     extract::State,
     routing::{get, post},
 };
+use futures_util::StreamExt;
 use serde_json::{Value, json};
 use std::{
     sync::{
@@ -25,6 +26,201 @@ use std::{
 };
 
 const SENTINEL: &str = "nhc-codec-private-panic-sentinel";
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RedactionEnding {
+    Clean,
+    FeedError,
+    FinishError,
+    Cancel,
+}
+struct RedactionCodec(RedactionEnding);
+struct RedactionDecoder {
+    ending: RedactionEnding,
+    fed: bool,
+}
+const REDACTION_PARTS: &[&str] = &[
+    "普通🦀 ",
+    "s",
+    "k-",
+    "synthetic123",
+    "; ",
+    "password",
+    "=",
+    "\"",
+    "synthetic",
+    "456",
+    "\"",
+    "; Authorization: Ba",
+    "sic ",
+    "synthetic789",
+    "\nend s",
+];
+impl CompletionCodec for RedactionCodec {
+    fn encode(&self, input: &CompletionInput<'_>) -> Result<Value, CodecError> {
+        Ok(crate::provider_runtime::expected_body(input))
+    }
+    fn decoder(&self) -> Result<Box<dyn CompletionDecoder>, CodecError> {
+        Ok(Box::new(RedactionDecoder {
+            ending: self.0,
+            fed: false,
+        }))
+    }
+}
+impl CompletionDecoder for RedactionDecoder {
+    fn feed(&mut self, _: &[u8], emit: &mut Emit<'_>) -> Result<(), CodecError> {
+        if !self.fed {
+            self.fed = true;
+            for part in REDACTION_PARTS {
+                emit(part).map_err(|_| CodecError::Failed)?;
+            }
+        }
+        if self.ending == RedactionEnding::FeedError {
+            Err(CodecError::Failed)
+        } else {
+            Ok(())
+        }
+    }
+    fn is_done(&self) -> bool {
+        self.fed && self.ending != RedactionEnding::Cancel
+    }
+    fn finish(self: Box<Self>, emit: &mut Emit<'_>) -> Result<CompletionOutput, CodecError> {
+        // A codec may emit in finish, and a secret may cross feed -> finish.
+        emit("k-syntheticFinish; done").map_err(|_| CodecError::Failed)?;
+        if self.ending == RedactionEnding::FinishError {
+            return Err(CodecError::Failed);
+        }
+        Ok((
+            json!({"role":"assistant", "content":format!("{}k-syntheticFinish; done", REDACTION_PARTS.join(""))}),
+            json!({"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}),
+        ))
+    }
+}
+
+#[tokio::test]
+async fn stream_redaction_replacement_codec_reaches_store_and_sse_safely() {
+    use tower::ServiceExt;
+    let f = fixture_with_codec(
+        Fault::None,
+        false,
+        Some(Arc::new(RedactionCodec(RedactionEnding::Clean))),
+    )
+    .await;
+    let run = f.engine.start(request()).await.unwrap();
+    let task = settled(&f.engine, &run.tasks[0].id).await;
+    assert_eq!(task.status, "completed");
+    let expected = "普通🦀 [redacted]; password=\"[redacted]\"; Authorization: [redacted]\nend [redacted]; done";
+    assert_eq!(task.output, expected);
+    assert_eq!(task.messages.last().unwrap()["content"], expected);
+    let events = f.engine.store.events(&run.id, 0).unwrap();
+    let delta: String = events
+        .iter()
+        .filter(|e| e.kind == "delta")
+        .map(|e| e.data["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(delta, expected);
+    assert!(
+        !serde_json::to_string(&events)
+            .unwrap()
+            .contains("synthetic")
+    );
+
+    let app = crate::server::router(crate::server::App {
+        engine: f.engine.clone(),
+        token: "fixture-token".into(),
+        origin: "http://127.0.0.1:12345".into(),
+    });
+    let response = app
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/runs/{}/events", run.id))
+                .header("host", "127.0.0.1:12345")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), axum::http::StatusCode::OK);
+    let mut body = response.into_body().into_data_stream();
+    let mut wire = String::new();
+    let mut frames = 0;
+    while frames < events.len() {
+        let chunk = tokio::time::timeout(Duration::from_secs(3), body.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        wire.push_str(std::str::from_utf8(&chunk).unwrap());
+        frames = wire.lines().filter(|l| l.starts_with("data:")).count();
+    }
+    let replay: String = wire
+        .lines()
+        .filter_map(|l| l.strip_prefix("data:"))
+        .map(|l| serde_json::from_str::<Value>(l.trim_start()).unwrap())
+        .filter(|v| v["kind"] == "delta")
+        .map(|v| v["data"]["text"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(replay, expected);
+    assert!(!wire.contains("synthetic"));
+}
+
+#[tokio::test]
+async fn stream_redaction_codec_errors_and_future_cancel_never_flush_raw_tail() {
+    for ending in [
+        RedactionEnding::FeedError,
+        RedactionEnding::FinishError,
+        RedactionEnding::Cancel,
+    ] {
+        let f =
+            fixture_with_codec(Fault::None, false, Some(Arc::new(RedactionCodec(ending)))).await;
+        if ending == RedactionEnding::Cancel {
+            f.mock.stream_hold.store(true, Ordering::SeqCst);
+        }
+        let run = f.engine.start(request()).await.unwrap();
+        if ending == RedactionEnding::Cancel {
+            tokio::time::timeout(Duration::from_secs(5), async {
+                loop {
+                    let events = f.engine.store.events(&run.id, 0).unwrap();
+                    if events.iter().any(|e| {
+                        e.kind == "delta"
+                            && e.data["text"].as_str().is_some_and(|s| s.contains("end "))
+                    }) {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(5)).await;
+                }
+            })
+            .await
+            .unwrap();
+            f.engine.cancel(&run.tasks[0].id).unwrap();
+        }
+        let task = settled(&f.engine, &run.tasks[0].id).await;
+        assert_eq!(
+            task.status,
+            if ending == RedactionEnding::Cancel {
+                "cancelled"
+            } else {
+                "failed"
+            }
+        );
+        let events = f.engine.store.events(&run.id, 0).unwrap();
+        let delta: String = events
+            .iter()
+            .filter(|e| e.kind == "delta")
+            .map(|e| e.data["text"].as_str().unwrap())
+            .collect();
+        assert!(!delta.contains("synthetic"));
+        assert!(
+            !serde_json::to_string(&events)
+                .unwrap()
+                .contains("synthetic")
+        );
+        if ending != RedactionEnding::FinishError {
+            assert!(delta.ends_with("end "));
+        }
+        assert_eq!(task.output, delta);
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Fault {
@@ -135,19 +331,30 @@ struct Mock {
     hold: Arc<AtomicBool>,
     arrived: Arc<tokio::sync::Notify>,
     release: Arc<tokio::sync::Notify>,
+    stream_hold: Arc<AtomicBool>,
 }
 async fn models(State(m): State<Mock>) -> Json<Value> {
     m.models.fetch_add(1, Ordering::SeqCst);
     Json(json!({"data":[{"id":"mock"}]}))
 }
-async fn completion(State(m): State<Mock>, Json(body): Json<Value>) -> &'static str {
+async fn completion(State(m): State<Mock>, Json(body): Json<Value>) -> axum::response::Response {
+    use axum::response::IntoResponse;
     m.completions.fetch_add(1, Ordering::SeqCst);
     m.requests.lock().unwrap().push(body);
     if m.hold.load(Ordering::SeqCst) {
         m.arrived.notify_one();
         m.release.notified().await;
     }
-    "data: {\"choices\":[{\"delta\":{\"content\":\"wire-marker\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5}}\n\ndata: [DONE]\n\n"
+    let wire = "data: {\"choices\":[{\"delta\":{\"content\":\"wire-marker\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2,\"total_tokens\":5}}\n\ndata: [DONE]\n\n";
+    if m.stream_hold.load(Ordering::SeqCst) {
+        let stream = futures_util::stream::once(async move {
+            Ok::<_, std::io::Error>(axum::body::Bytes::from_static(wire.as_bytes()))
+        })
+        .chain(futures_util::stream::pending());
+        axum::body::Body::from_stream(stream).into_response()
+    } else {
+        wire.into_response()
+    }
 }
 struct Fixture {
     _dir: tempfile::TempDir,
@@ -167,6 +374,13 @@ async fn fixture(fault: Fault) -> Fixture {
     fixture_mode(fault, false).await
 }
 async fn fixture_mode(fault: Fault, builtin: bool) -> Fixture {
+    fixture_with_codec(fault, builtin, None).await
+}
+async fn fixture_with_codec(
+    fault: Fault,
+    builtin: bool,
+    codec: Option<Arc<dyn CompletionCodec>>,
+) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let mock = Mock::default();
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -244,12 +458,14 @@ async fn fixture_mode(fault: Fault, builtin: bool) -> Fixture {
         .unwrap();
     let encoded = Arc::new(AtomicUsize::new(0));
     let decoded = Arc::new(AtomicUsize::new(0));
-    let runtime = ProviderRuntime::with_codec_for_test(Arc::new(TestCodec {
-        fault,
-        encoded: encoded.clone(),
-        decoded: decoded.clone(),
-    }))
-    .unwrap();
+    let codec = codec.unwrap_or_else(|| {
+        Arc::new(TestCodec {
+            fault,
+            encoded: encoded.clone(),
+            decoded: decoded.clone(),
+        })
+    });
+    let runtime = ProviderRuntime::with_codec_for_test(codec).unwrap();
     let engine = if builtin {
         Engine::new(store, 2).unwrap()
     } else {
