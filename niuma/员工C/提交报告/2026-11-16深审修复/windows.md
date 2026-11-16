@@ -143,3 +143,53 @@ cargo test --offline --locked --lib command_execution::tests::output_reader_ -- 
 以上 allowlist 仍需外部原进程监督来处理 OS 清理失败；不是对任意 OS 故障的无条件无遗留保证。不要把 `process_test_fixture::process_fixture_failure_controls_reap_job` 等独立夹具负控意外带入当前首轮；它们不属于上述 exact 选择。
 
 本次只运行合成文件原语及 rustfmt/diff 静态检查；未运行 Cargo、产品、真实进程、卷配置命令。历史 unknown 不改判。
+
+## 2026-11-16 B 关闭路径只读交叉审与主线程专项反馈
+
+派发来源：主线程要求 C 对 B 的 shutdown 新代码做只读交叉审，重点取消、collector 边界和资源留存；随后授权把本次交叉审追加本报告并单独作普通 docs 提交。此提交只改本报告。身份同步仍由主线程负责，不修改主仓身份或产品源码，不接管旧 B/C 树。
+
+### 受审版本与证据性质
+
+- B 候选位于仓库旁 `../nhc-audit-20261116-recovery`；审查时 HEAD 为 `bd31edeb80ab6801af6987ee50e719d14f457935`，相关修改尚未提交且 B 正在编辑。
+- 下述 B 源码路径均相对该候选根。最后读取的 `NoManCode/rust-app/src/engine.rs` 文件 SHA-256 为 `3B727B39DC46C7AA4C218CCB5AC4AED307269598E8336CF9F7D1EED3A0A55531`；`NoManCode/rust-app/src/main.rs` 为 `8A2CDC8E3A496A3DE0F51433A696BA826C8F831FA32FAA158DDEF8B132A2590E`。行号是当时快照，不能直接套用后续修订。
+- 对接的 C collector 修复另在 `../nhc-audit-20261116-integration`，当时 HEAD 短号为 `af3eaf4a`。没有假定 B 独立树已含 C 修复，也没有在 C 树合并 B 在途代码。
+- 覆盖 B 的 Engine worker 注册/汇总、取消/准入/关闭等待、main/runtime/实例锁寿命，以及工具应用层到 Shell collector、Git worktree 的结果传播；读取新增 shutdown 测试与本地锁定版本 Tokio 1.53.1 的 Windows pipe/blocking 实现作为边界证据。未扩展审计数据库、HTTP 或构建脚本。
+- 两项均为静态代码路径候选，未作本轮动态复现，未运行 Cargo、产品、真实进程测试或事故诊断。新增合成 worker 测试代码不能替代真实调用链验收。
+
+### W16-X01 / P1：资源 unknown 被终态持久化成功覆盖
+
+Shell 触发路径：integration `NoManCode/rust-app/src/command_execution.rs:237` 在 cleanup 未确认时返回 `CommandOutcomeUnknown`；B 候选 `NoManCode/rust-app/src/tool_call_application.rs:431` 执行工具，433–441 行将该错误转为 `ApprovalError::UnknownResult` 返回。错误经 `engine.rs` 的工具调用 `.await?` 传播到任务 worker，`engine.rs:1915` 接收执行结果，1921–1931 行仅写任务失败/取消与错误文本；1935 行保存终态，1950 行向 JoinSet 返回的仅是保存结果。
+
+触发条件：collector 无法确认清理完成，但终态写库成功，且其他关闭工作正常完成。实际后果：JoinSet 收到 `Ok(())`，`engine.rs:2460` 的汇总不置失败标记；worker 数归零后可报告 `settled=true`，尽管原资源结果仍为 unknown。审批 claim 保留不等于关闭报告保留 unknown。
+
+Worktree 同类分支：`engine.rs:1196` 将 `GitWorktreeError::OutcomeUnknown` 映射为 `Unknown/ProcessOutcomeUnknown` receipt，1209–1211 行持久化后可以返回 `Ok(receipt)`；1220 行只判断 `result.is_err()`，1223 行仍返回 `Ok(())`。底层 `NoManCode/rust-app/src/git_worktree.rs:424` 开始清理，436 行丢弃 kill/wait 结果，438 行在 mutating 分支返回 OutcomeUnknown；因此清理无法确认的情形也可能进入上述成功汇总。此处只针对进程/清理未知，不将所有登记或业务结果未知都认定为本地资源仍活。
+
+建议：独立传递资源收束结果与持久化结果；对无法证明清理完成的结果保持粘性 unknown，不能由保存成功覆盖，也不应把所有普通业务失败一概归为资源未收束。最小验证应经过实际 worker 包装层注入 collector unknown，同时令终态保存成功，断言关闭仍不能 settled；Worktree 对应覆盖成功保存的 ProcessOutcomeUnknown receipt。
+
+状态：已提交给主线程，主线程已转 B 处理；本报告未宣称修复或验收通过。
+
+### W16-X02 / P1：实例锁早于 runtime 与原工作释放
+
+证据：B 候选 `NoManCode/rust-app/src/main.rs:104` 的 `_instance_lock` 是 `run()` 局部变量；176–182 行在关闭等待结果不 settled 时返回错误，局部锁随 `run()` 返回释放。外层 `main.rs:46` 才取得返回值，49 行随后执行一秒 `runtime.shutdown_timeout`。
+
+触发条件：30 秒关闭等待到期，原工作尚未收束。实际后果：实例锁已经释放而 runtime teardown 尚未完成，另一实例可能取得锁并执行启动恢复。B 的 `engine.rs:2430` 已启动的关闭持久化 `spawn_blocking` 就是仍可能存活的工作之一。锁定版本 Tokio 的 `src/task/blocking.rs:106–119` 明确说明已启动 blocking 任务不能靠 abort 终止，shutdown_timeout 仅停止等待。此项是既有生命周期缺口在本轮关闭改造中仍未闭合，未声称是本轮新引入回归。
+
+建议：至少将实例锁所有权提升至外层 Host，覆盖 runtime teardown；用受控合成 worker 与第二个独立打开的锁文件句柄，验证 teardown 期间不能重新取得实例锁。此最小修复仍不证明完整进程树已经结束，不能把外部后代、运行时底层 I/O 或原资源 owner 的最终收束一并判为通过。
+
+状态：主线程已转 B 处理，并再次明确外层锁至少覆盖 runtime teardown；等待 B 修订后只读复核。
+
+### 已确认改善与仍未关闭的边界
+
+B 当前候选已经实现先取消后持久化、关闭准入、等待期限覆盖 gate，以及 Engine 存活时保留原 JoinHandles。新增 shutdown 测试使用合成 worker 验证取消持久化失败和超时后的再次 join；尚不能覆盖上面两项完整路径。
+
+C 的持续排空补丁只保留各流前 65,536 字节，但继续读取真实 EOF；它不等于进程树监管。当前 command collector 没有 Engine 取消令牌，执行期限为 1..600 秒并另有 5 秒清理预算，Host 的 30 秒关闭等待因此可能诚实返回 unknown。Engine 保留 JoinHandles 的局部保证也不能自动延伸为二进制退出后仍保有实际资源 owner。没有导入未验收的旧 B23，也没有更改历史事故 unknown。
+
+### 主线程 E 盘专项结果与当前门禁口径
+
+据主线程明确反馈，合入 `a3843809` 后在 E 盘执行的 workspace 专项实际 **7/7 通过**，包含真实 `SetFileShortNameW` 别名用例和写范围回归。此结果由主线程运行并提供；C 本人没有运行 Cargo，也没有把该反馈扩张为 shutdown 或完整进程树验收。
+
+首次 **2 通过、3 失败**的日志继续保留：`../nhc-audit-20261116-integration/NoManCode/rust-app/.local/audit-20261116/windows-workspace-tests.log`。本报告前节对初次 8.3 夹具失败的记录仍是历史事实；后续 7/7 是显式别名夹具与写范围补丁整合后的反馈，不覆盖、不删除初次失败证据。
+
+门禁更新：前节“首轮排除继承管道测试”和 exact allowlist 是当时的静态建议，已由主线程最新决定替代。主线程仍串行执行固定组合的标准非 ignored 门禁，不因未复现的假设风险禁用现有测试；ignored W2/live 继续不运行。若实际出现挂起或无法证明退出，记录现场和 unknown，不强判通过。本次 docs 提交不运行这些门禁。
+
+下一步：等待 B 提交修订候选及相应验证证据，再按 W16-X01/W16-X02 逐项只读复核。C 不新增产品写入、进程树实现或真实进程测试。
