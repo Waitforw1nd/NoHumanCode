@@ -1,0 +1,41 @@
+{
+  "scope": "preserved failed diagnostic attempt; not final acceptance",
+  "source_attempt": ".local\\lifecycle\\integrated-external-1",
+  "files": [
+    {
+      "path": "01-external-tests.direct-exit.json",
+      "bytes": 161,
+      "sha256": "b7f62500d3b3db7b854fc9ba3f5eeeca0cae35f936a5c88210064cd7d61b77ea"
+    },
+    {
+      "path": "01-external-tests.log",
+      "bytes": 54520,
+      "sha256": "1e8126d815798003c11d353ef83a0f5b85b81a8e95ddac4ec64c6aab26d60bef"
+    },
+    {
+      "path": "01-external-tests.result.json",
+      "bytes": 2707,
+      "sha256": "f2f797fefdcd0bcecd51c226247cee64f50c2c7c8c37a620651e293691c49396"
+    },
+    {
+      "path": "01-external-tests.started.json",
+      "bytes": 2462,
+      "sha256": "8e404eccf37fe33309372f8d4b2736305814c20109cea2adc1e5dde027b5c0a4"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 10408,
+      "sha256": "4ba3c0b5a531bd7e7c514a9d7fe680d35e968a520095746afc1323f565133fd5"
+    },
+    {
+      "path": "source-after.json",
+      "bytes": 39504,
+      "sha256": "af682d8415f4a09d30cd47da361bff8d474d8815405981653f5b86c3f2ad0b7f"
+    },
+    {
+      "path": "source-before.json",
+      "bytes": 39504,
+      "sha256": "af682d8415f4a09d30cd47da361bff8d474d8815405981653f5b86c3f2ad0b7f"
+    }
+  ]
+}

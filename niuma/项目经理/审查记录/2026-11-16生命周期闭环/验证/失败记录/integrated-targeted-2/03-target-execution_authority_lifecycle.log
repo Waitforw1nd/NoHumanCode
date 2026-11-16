@@ -1,0 +1,76 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+   Compiling peachsh v0.2.0 (E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app)
+warning: field `truncated` is never read
+   --> src\process_lifetime.rs:121:9
+    |
+119 | pub(crate) struct Capture {
+    |                   ------- field in this struct
+120 |     pub bytes: Vec<u8>,
+121 |     pub truncated: bool,
+    |         ^^^^^^^^^
+    |
+    = note: `Capture` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `identity` is never read
+   --> src\process_lifetime.rs:137:9
+    |
+135 | pub(crate) struct Settled {
+    |                   ------- field in this struct
+136 |     pub reason: CompletionReason,
+137 |     pub identity: ProcessIdentity,
+    |         ^^^^^^^^
+    |
+    = note: `Settled` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: `peachsh` (lib) generated 2 warnings
+    Finished `test` profile [unoptimized] target(s) in 18.09s
+     Running tests\execution_authority_lifecycle.rs (E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle-target\debug\deps\execution_authority_lifecycle-a2e274df3c337b73.exe)
+
+running 18 tests
+test actual_domain_alias_cannot_create_second_controller_and_reopens_after_close ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\domain-alias-2guezi
+ok
+test component::component_cancel_token_requests_real_tree_cleanup_without_early_drop ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\component-cancel-WSMc0v
+ok
+test component::component_eof_keeps_lease_until_original_descendant_exits ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\component-eof-DgdyMx
+Error: bounded lifecycle observation expired
+
+Caused by:
+    deadline has elapsed
+FAILED
+test component::component_failed_reader_join_releases_resources_but_preserves_unknown ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\reader-failed-wLAUY4
+ok
+test component::component_final_read_overflow_cannot_be_adopted_as_success ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\final-read-overflow-LueBxq
+ok
+test component::component_unknown_seals_before_return_and_keeps_reader_and_capacity ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\component-unknown-LuwpDE
+ok
+test concurrent_controllers_on_two_store_connections_have_one_winner ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\domain-concurrent-bVJZrv
+ok
+test host_shutdown_cancels_real_shell_before_reporting_settled ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\host-shutdown-fkFTFr
+ok
+test ordinary_shell_and_git_failures_release_and_path_commands_work ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\ordinary-failure-PktJX8
+Error: real Git diff not text
+FAILED
+test process_lifetime::state_tests::blocking_settle_does_not_hold_decision_lock_or_release_slot ... ok
+test process_lifetime::state_tests::caller_drop_only_requests_cancel_until_holder_decides ... ok
+test process_lifetime::state_tests::original_holder_handle_keeps_slot_until_actual_thread_exit ... ok
+test process_lifetime::state_tests::resize_preserves_existing_slots_and_uses_new_limit ... ok
+test process_lifetime::state_tests::unknown_is_sticky_and_ticket_consumed_once_after_cleanup ... ok
+test real_git_alias_descendant_keeps_shell_approval_claimed ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\git-descendant-ii0x72
+ok
+test shell_cancel_reaps_original_tree_then_allows_next_command ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\shell-cancel-CYrjf7
+ok
+test shell_deadline_reaps_descendant_without_false_unknown ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\shell-deadline-uRJKdD
+ok
+test shell_eof_and_parent_exit_do_not_release_live_descendant ... LIFECYCLE_CASE=E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\target\lifecycle-fixtures\shell-eof-g201a3
+ok
+
+failures:
+
+failures:
+    component::component_eof_keeps_lease_until_original_descendant_exits
+    ordinary_shell_and_git_failures_release_and_path_commands_work
+
+test result: FAILED. 16 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 45.10s
+
+error: test failed, to rerun pass `--test execution_authority_lifecycle`

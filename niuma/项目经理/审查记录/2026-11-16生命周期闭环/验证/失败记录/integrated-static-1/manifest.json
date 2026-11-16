@@ -1,0 +1,126 @@
+{
+  "artifacts": [
+    {
+      "bytes": 39592,
+      "path": "source-after.json",
+      "sha256": "285321c4a589e97b8a7aa27022f63abf72fb7444de89a2512cb72c0577b42977"
+    },
+    {
+      "bytes": 39592,
+      "path": "source-before.json",
+      "sha256": "285321c4a589e97b8a7aa27022f63abf72fb7444de89a2512cb72c0577b42977"
+    }
+  ],
+  "candidate": {
+    "head": "9eaf71425d26d0da25b093e852a702262bcaa164",
+    "product_tree": "37319fbee48ed5037ba140a325c467b06db58072",
+    "rust_tree": "927dc61d107caa9996c6a8628ab055ffa2c57362"
+  },
+  "ended_utc": "2026-11-16T09:10:46.124874+00:00",
+  "environment": {
+    "AR_x86_64_pc_windows_msvc": null,
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_BUILD_TARGET": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_HOME": null,
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "CC_x86_64_pc_windows_msvc": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTFLAGS": null,
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUSTUP_HOME": null,
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-static-1\\tmp",
+    "TMP": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-static-1\\tmp",
+    "VCToolsInstallDir": null,
+    "WindowsSdkDir": null
+  },
+  "error": "ValueError: Build inputs are dirty (tracked, staged or untracked)",
+  "gate_retained": true,
+  "inputs_verified": false,
+  "options": {
+    "mode": "manager-static-diagnostics",
+    "required_order": [
+      "clippy",
+      "fmt",
+      "wasm-check"
+    ]
+  },
+  "plan": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "clippy"
+      ],
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "name": "clippy",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "fmt"
+      ],
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "name": "fmt",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "wasm-check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "peachsh-ui",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--offline",
+        "--locked"
+      ],
+      "name": "wasm-check",
+      "timeout_seconds": 1800
+    }
+  ],
+  "process_tree_cleanup": "not_proven_by_this_runner",
+  "runner_exit_code": 1,
+  "started_utc": "2026-11-16T09:10:45.248912+00:00",
+  "status": "failed",
+  "steps": [],
+  "version": 1
+}

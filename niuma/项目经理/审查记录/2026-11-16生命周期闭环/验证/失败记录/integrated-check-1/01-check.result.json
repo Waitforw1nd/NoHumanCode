@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "check"
+  ],
+  "command": [
+    "cargo",
+    "check",
+    "--workspace",
+    "--all-targets",
+    "--offline",
+    "--locked"
+  ],
+  "ended_utc": "2026-11-16T08:43:29.404589+00:00",
+  "exit_code": 1,
+  "log": "01-check.log",
+  "log_bytes": 423,
+  "log_sha256": "1533d8424d35019b5fbb8412bf77b1c126684597f7fe603fa93dd8187667e578",
+  "name": "check",
+  "started_utc": "2026-11-16T08:43:28.749934+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}
