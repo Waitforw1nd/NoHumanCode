@@ -656,11 +656,10 @@ impl CompletionLease {
                 let chunk = chunk.map_err(|_| TransportError::Unknown)?;
                 account_response_bytes(&mut size, chunk.len())
                     .map_err(|_| TransportError::Unknown)?;
-                guarded(|| self.decoder.feed(&chunk, &mut filtered_emit))
-                    .map_err(|_| TransportError::Unknown)?
-                    .map_err(|_| TransportError::Unknown)?;
-                if guarded(|| self.decoder.is_done()).map_err(|_| TransportError::Unknown)? {
-                    break;
+                if !guarded(|| self.decoder.is_done()).map_err(|_| TransportError::Unknown)? {
+                    guarded(|| self.decoder.feed(&chunk, &mut filtered_emit))
+                        .map_err(|_| TransportError::Unknown)?
+                        .map_err(|_| TransportError::Unknown)?;
                 }
             }
             // Move out of a Drop type without unsafe or retaining the decoder after completion.

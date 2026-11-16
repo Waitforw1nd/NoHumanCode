@@ -912,7 +912,8 @@ impl Store {
         (|| -> AnyResult<_> {
             let mut db = self.db.lock().map_err(|_| failure(NetworkErrorKind::Internal))?;
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            self.execution_fence(&tx)?;
+            let operation = crate::execution_authority::current().context("network operation required")?;
+            self.execution_fence_for(&tx, &operation)?;
             if let Some(expected) = revision {
                 let desired = crate::plugin_management::desired_for_tx(&tx, "builtin.provider-xpeach")?;
                 if !desired.enabled || desired.revision != expected {
@@ -1009,7 +1010,7 @@ impl Store {
                 id,
                 model,
                 user,
-            ) };
+            ).map(|permit| permit.bind_operation(operation, self.authority.clone())) };
             drop(db);
             match permit {
                 Ok(permit) => Ok((permit, value)),
