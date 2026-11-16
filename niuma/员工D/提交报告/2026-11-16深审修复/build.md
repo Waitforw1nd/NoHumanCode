@@ -140,3 +140,46 @@ pwsh -NoProfile -File NoManCode/rust-app/build.ps1 -Action web-test
 本次只读代码、Git 版本及测试断言，修改唯一文件为本报告；没有运行 Cargo/rustc、产品、真实进程测试或外部服务调用，没有修改 A/B 或整合树。没有新增功能、schema、迁移、权限或凭据策略变更。
 
 父线程在上述受测 HEAD 开始六项门禁并冻结产品；截至此结论，六项门禁仍在验收中，未记为通过。D 无上述原反例范围内待修事项；后续由父线程记录门禁原件、最终整合与总验收。历史 unknown、真实 release 分发及未覆盖的其他范围不因这次专项关闭而改判。
+
+## 最终构建与证据脚本静审（2026-11-16，在途快照）
+
+经理按用户提速四路并行指令再次派发 D，只读核对 integration 的 `.local/audit-20261116/run-gates.ps1` 与 `publish_evidence.py`，检查最终测试口径、原件哈希、失败 attempt 保留和 ignored 边界。本次结论为 `CHANGES_REQUIRED（证据发布脚本两处校验缺口）`；不撤销上一节对 D-XA-01～05 的限定结论，也不修改产品或父线程本地脚本。
+
+### 固定审查输入
+
+- 读取工作树为 `../nhc-audit-20261116-integration`；复核时 HEAD 为 `ed98a606d2d10dd8d1f9ef5ae0a49605e962dde2`，`git status --short -- NoManCode` 空。最终 attempt1 是较早的 `89e3bb1dfd2cf013571854014580f25aee20e370`，不把当前 HEAD 冒充其受测版本。
+- 以下脚本路径均以整合树仓库根为基准。`NoManCode/rust-app/.local/audit-20261116/run-gates.ps1`：4077 bytes，SHA-256 `7d6c8d5978517ff8fa66bf719b5c18340a9198c824e06fa9b38e158e35c3445a`；`publish_evidence.py`：3347 bytes，SHA-256 `40a347238c0758b589314ebf79de157259b8bba8c6c884777b1dc2025e78be71`。行号绑定这次原件快照，两脚本均属于被忽略的本地执行材料，不因 HEAD 相同自动获得版本绑定。
+- 只读脚本审查期间，经理给 runner 增加了 `worktree_timing` 记录；本节固定的是含该字段的上述版本。D 未修改任何父线程材料，未参与 B 的超时根因诊断。
+
+### 两处发布前需修正的问题
+
+**D-EV-01 / P1：最终工作区检查失败仍可能留下可发布的成功 manifest。**
+
+- 位置：`NoManCode/rust-app/.local/audit-20261116/run-gates.ps1:64` 至第 68 行；`NoManCode/rust-app/.local/audit-20261116/publish_evidence.py:12`。
+- 触发：六项命令均 exit 0，但执行过程中产品出现未提交变化，HEAD/product tree 未变。runner 第 64–66 行先把六个成功结果、final_product_tree 和 ended_utc 写入 manifest，随后第 68 行才因 dirty 状态抛错。
+- 影响：publisher 只要求六项 exit 0、前后提交树一致；该失败路径生成的 manifest 仍满足第 12–13 行条件，可以发布为最终门禁证据。Git tree 哈希不能代表未提交文件的实际字节。本次只读未发现该情况实际发生，当前产品 status 空；问题由代码的具体先后顺序证明。
+- 建议：最终树/工作区检查通过后再写显式 `status=passed` 或等效完成回执；检查失败写 `status=failed`，发布端必须验证最终成功状态。完整性检查及明确门禁名称集合校验均应在创建正式发布目录前完成。以“六个命令成功、末尾 dirty 检查失败”为负控，确认禁止发布。
+
+**D-EV-02 / P2：发布端未把实际日志字节与门禁记录的哈希绑定。**
+
+- 位置：`NoManCode/rust-app/.local/audit-20261116/publish_evidence.py:39` 至第 48 行，结合第 12–13 行和第 50–57 行。
+- 触发：某一门禁结束并记录哈希后，原日志被截断、编辑或替换；例如 `check.log` 被改写，而 test.log 仍保留全通过结果。发布端对当前日志重新计算 source/published 哈希，但从未比较 `manifest.gates[*].sha256`、`bytes` 与此次读取的原件。
+- 影响：发布清单会同时带上历史门禁哈希和另一份原件的新哈希，仍输出最终摘要。对非 test 日志没有任何内容核对；对 test 日志仅核部分正则结果，也不能证明它就是产生门禁退出码的原件。本次现存原件校验全部匹配，不称已有日志损坏。
+- 建议：复制前按六门禁固定名称逐一读取日志，要求 SHA-256/字节数等于 manifest；缺失或不匹配即拒绝发布。同一份已校验的 bytes 用于规范化、写副本和生成双哈希，避免另读一次换了原件。专项日志的旧清单也应做同类核对；有意保留的空日志/失败日志按其真实状态记录，不能要求它们冒充成功。
+
+两项已在本轮聊天即时反馈经理；D 没有擅自修脚本。后续若经理修改，需要按新的脚本原件哈希复核，不能把本结论直接套到新版本。
+
+### 实际原件校验与测试口径
+
+- 用只读 Python 解析 JSON、日志并计算 SHA-256/字节数，未导入或执行 publisher。attempt1 的 check/debug-bins/test 三份日志与 manifest 全部匹配；`intermediate-results.json` 的九项专项日志也全部匹配，包括失败的 `windows-workspace-tests`，没有只验证成功项。
+- attempt1 manifest 固定 `product_tree=84e03b3a44024ef2114241a8613b4955746d8fa3`、`rust_tree=13fda626af066d1932ca1fcc56a72585be7bfc8c`；check/debug-bins exit 0，test exit 101。其 test.log 为 93536 bytes，SHA-256 `c989d0886c9461c3074ce3a0b2a5af3edfee037735fe32a59521965434712208`。失败原件确实保留 `worktree_http` 的 TimedOut 和第 351 行 unwrap；不把后续专项通过覆盖为 attempt1 全过，也不在本报告认定超时根因。
+- 对 attempt1 已输出的 59 个 Rust `test result` 块求和为 **875 passed / 1 failed / 25 ignored**，这是提前失败的部分结果，不能称最终全量结果。25 个 ignored 明确包含 24 个受控进程/工件用例及 1 个需要测试密钥的付费模型用例，均未执行，不并入 passed。没有 `--ignored` 或 `--include-ignored` 的最终 gate；`build.ps1:90` 的独立 live 入口没有被 runner 调用。
+- `build.ps1:85` 的日常 test 先执行 `cargo test --workspace --locked`，第 87 行失败立即退出，再到第 88 行 Node。故 attempt1 的网页 PASS 组数为 0，网页检查未执行；fmt、Clippy、wasm-check 也尚未执行。`check`/debug build/wasm-check 的编译成功不计为测试通过。
+- publisher 第 50–63 行只从选定最终 attempt 的 test.log 汇总 Rust passed/failed/ignored，并把网页 PASS 组单列；没有把历史 attempt 或专项的数量累加到最终 Rust passed。此统计分离方向正确，但仍须先解决上面两项原件/终态校验问题。
+- publisher 第 64 行 `build_mock_scenarios=13` 为硬编码，不能证明本次最终门禁重跑过 mock。本次核其独立 `build-script-tests.log`，确有 13 项 PASS；中途清单记录 exit 0、受测 HEAD `0eb7cac849cfc303ec65e5888f4a24db2c93df6d`，日志哈希/字节数匹配。`git diff --quiet` 确认该 HEAD 到当前 HEAD 的 build.ps1 与 tests/build-script.ps1 无变化（exit 0）。可作为独立、相关源码一致的既有证据保留；最终报告应标清来源与受测版本，不能将 13 并入最终 Rust/网页总数，建议摘要从已核清单派生该值而不是固定写死。
+
+### 保留策略与限制
+
+runner 第 27 行创建新的 attempt 目录，不带 Force，同名目录存在即拒绝，正常执行不会覆盖旧 attempt；每项命令结束先落 manifest 再遇非零退出，因此当前失败 attempt1 已有完整三项记录。publisher 第 33–36 行会复制其他 `final-attempt*` 目录直接包含的 `.log` / `.json`，第 65 行独立列其名称；只从选定 attempt 汇总结果。该范围不自动包含临时数据库、深层子目录或其他类型工件，报告不能说已发布全部失败现场。原件仅被读取；发布副本作工作树前缀规范化并分别计算 source/published 哈希，旧原件哈希仍应保留。
+
+此次没有执行门禁、Cargo/rustc、产品、进程测试、publisher 或外部服务；Python 仅做现有文件读取、摘要解析和哈希计算。修改仅为 D 本报告补充，普通 docs 提交交经理整合；身份及总验收仍由经理同步。最终六门禁、B 超时诊断和修订后的发布流程仍在进行，不在本报告预写通过。
