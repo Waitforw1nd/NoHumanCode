@@ -1,0 +1,10 @@
+# B：外部runtime/session夹具适配
+
+2026-11-16。经理新增唯一写权仅`tests/runtime.rs`、`tests/session_turns.rs`，C已排除；B普通提交`083337caafdbfbeeefa6c18f776ec2b28c9a92fe`，没有修改其他角色tests或首切片生产代码。
+
+- runtime.restart_and_http_security先验证活动controller期间recover拒绝、原running状态与事件不变；随后旧Engine有界shutdown settled、drop且Weak Store消失，使用new_recovered重启。原recover计数恰1、事件恢复partial文本、interrupted状态和全部HTTP安全断言保留。
+- session_turns原双Store同key事务竞争保持；应用层两个并发调用共享唯一Engine，另明确断言同域第二Engine拒绝。原唯一created/replayed、相同turn、恰一次provider派发及原用户消息断言保留。
+- 取消重启和已commit未launch段先有界shutdown并join后台，drop后断言旧Store引用消失；保留TempDir到重开断言完成，避免旧Harness整体drop先删除数据库目录。原取消不得改为interrupted、queued恢复interrupted、模型、消息、幂等replay及无新执行断言不变。
+- 真实流式中断段仍销毁原runtime，并在其线程确认旧Store引用消失再join。父方用明确READ_ONLY SQLite观察同run/task的真实delta，不以Store::open意外持域或触发初始化；仍验证原partial文本、interrupted、模型和replay不新增provider请求。
+
+只静核、单文件rustfmt及git diff检查。未Cargo/真实进程；读取external-1时尚未找到这两个target的动态结果，候选等待经理串行验证，不声称通过。
