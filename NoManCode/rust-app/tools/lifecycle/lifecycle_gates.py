@@ -97,30 +97,48 @@ def snapshot(repo):
     }
 
 
-def plan(mode, targets, test_filter="", step_timeout_seconds=1800):
+def plan(mode, targets, test_filter="", step_timeout_seconds=1800, examples=()):
     if not isinstance(step_timeout_seconds, int) or not 1 <= step_timeout_seconds <= 7200:
         raise ValueError("Step timeout must be 1..7200 seconds")
-    if mode not in ("check", "targeted", "full"):
+    if mode not in ("check", "targeted", "full", "lib", "test-build", "example-build"):
         raise ValueError("Unknown mode")
     if len(targets) != len(set(targets)) or any(not re.fullmatch(r"[A-Za-z0-9_]+", t) for t in targets):
         raise ValueError("Targets must be distinct integration-test names")
     if test_filter and not re.fullmatch(r"[A-Za-z0-9_:]+", test_filter):
         raise ValueError("Invalid test filter")
-    if mode == "targeted" and not targets:
-        raise ValueError("targeted mode requires --test-target")
+    if len(examples) != len(set(examples)) or any(not re.fullmatch(r"[A-Za-z0-9_]+", t) for t in examples):
+        raise ValueError("Examples must be distinct example names")
+    if mode in ("targeted", "test-build") and not targets:
+        raise ValueError("This mode requires --test-target")
     if mode == "check" and (targets or test_filter):
         raise ValueError("check mode has no test arguments")
-    if test_filter and not targets:
+    if test_filter and not targets and mode != "lib":
         raise ValueError("Filter requires an explicit test target")
+    if mode == "lib" and (targets or not test_filter):
+        raise ValueError("lib mode requires only an explicit --filter")
+    if mode == "example-build" and (not examples or targets or test_filter):
+        raise ValueError("example-build requires only explicit --example names")
+    if examples and mode != "example-build":
+        raise ValueError("Examples require example-build mode")
+    if mode == "test-build" and test_filter:
+        raise ValueError("test-build cannot run a filter")
     steps = [("check", ["cargo", "check", "--workspace", "--all-targets", "--offline", "--locked"])]
     if mode != "check":
         steps.append(("debug-bins", ["cargo", "build", "--bins", "--offline", "--locked"]))
         for target in targets:
             args = ["cargo", "test", "--offline", "--locked", "--test", target]
+            if mode == "test-build":
+                steps.append(("compile-test-" + target, args + ["--no-run"]))
+                continue
             if test_filter:
                 args.append(test_filter)
             args += ["--", "--test-threads=1"]
             steps.append(("target-" + target, args))
+        if mode == "lib":
+            steps.append(("library-test", ["cargo", "test", "--offline", "--locked", "--lib", test_filter,
+                                         "--", "--test-threads=1"]))
+        for example in examples:
+            steps.append(("example-" + example, ["cargo", "build", "--offline", "--locked", "--example", example]))
     if mode == "full":
         steps += [
             ("test", ["pwsh", "-NoProfile", "-File", "build.ps1", "-Action", "test"]),
@@ -130,12 +148,27 @@ def plan(mode, targets, test_filter="", step_timeout_seconds=1800):
         ]
     result = []
     for name, command in steps:
-        stage = "targeted" if name.startswith("target-") else name
+        if name == "library-test":
+            stage = "lib-test"
+        elif name.startswith("target-"):
+            stage = "targeted"
+        elif name.startswith("compile-test-"):
+            stage = "test-build"
+        elif name.startswith("example-"):
+            stage = "example-build"
+        else:
+            stage = name
         argv = ["pwsh", "-NoProfile", "-File", "tools/lifecycle/invoke-step.ps1", "-Stage", stage]
         if stage == "targeted":
             argv += ["-TestTarget", name.removeprefix("target-")]
             if test_filter:
                 argv += ["-Filter", test_filter]
+        elif stage == "lib-test":
+            argv += ["-Filter", test_filter]
+        elif stage == "test-build":
+            argv += ["-TestTarget", name.removeprefix("compile-test-")]
+        elif stage == "example-build":
+            argv += ["-Example", name.removeprefix("example-")]
         result.append({"name": name, "argv": argv, "command": command,
                        "timeout_seconds": step_timeout_seconds})
     return result
@@ -285,7 +318,7 @@ def run_attempt(repo, out, gate_path, expected, steps, environment, options,
                 raise ValueError("Inputs changed during step")
             if code:
                 break
-            if step["name"].startswith("target-"):
+            if step["name"].startswith("target-") or step["name"] == "library-test":
                 totals = re.findall(rb"test result: ok\. ([0-9]+) passed; 0 failed;", raw)
                 if not totals or sum(int(n) for n in totals) == 0:
                     raise ValueError("Targeted test matched no passing tests; not a validated target")
@@ -305,6 +338,11 @@ def run_attempt(repo, out, gate_path, expected, steps, environment, options,
     manifest["ended_utc"] = utc()
     manifest["gate_retained"] = True
     if out.is_dir():
+        manifest["artifacts"] = [
+            {"path": path.name, "bytes": len(raw), "sha256": digest(raw)}
+            for path in sorted(out.iterdir()) if path.is_file()
+            for raw in [path.read_bytes()]
+        ]
         write_new(out / "manifest.json", manifest)
     return code, manifest
 
@@ -313,8 +351,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("head", "product-tree", "rust-tree", "attempt"):
         parser.add_argument("--" + name, required=True)
-    parser.add_argument("--mode", choices=("check", "targeted", "full"), default="full")
+    parser.add_argument("--mode", choices=("check", "targeted", "full", "lib", "test-build", "example-build"), default="full")
     parser.add_argument("--test-target", action="append", default=[])
+    parser.add_argument("--example", action="append", default=[])
     parser.add_argument("--filter", default="")
     parser.add_argument("--evidence-root", default=".local/lifecycle")
     parser.add_argument("--target-dir", default=".local/lifecycle-target")
@@ -335,10 +374,13 @@ def main():
             raise ValueError("Outputs must be outside NoManCode")
     common = e_path(repo, git_text(repo, "rev-parse", "--git-common-dir"))
     gate_path = common / "nhc-heavy-window.lock"
-    steps = plan(args.mode, args.test_target, args.filter, args.step_timeout_seconds)
+    steps = plan(args.mode, args.test_target, args.filter, args.step_timeout_seconds, args.example)
     for name in args.test_target:
         if not (repo / RUST_REL / "tests" / (name + ".rs")).is_file():
             raise ValueError(f"Integration target missing: {name}")
+    for name in args.example:
+        if not (repo / RUST_REL / "examples" / (name + ".rs")).is_file():
+            raise ValueError(f"Example source missing: {name}")
     # Create output paths only while owning the global gate (inside first step).
     environment = dict(os.environ, **ENVIRONMENT, CARGO_TARGET_DIR=str(target), TMP=str(temp), TEMP=str(temp))
 
@@ -352,7 +394,7 @@ def main():
 
     code, manifest = run_attempt(repo, out, gate_path, expected, steps, environment,
                                 {"mode": args.mode, "test_targets": args.test_target, "filter": args.filter,
-                                 "step_timeout_seconds": args.step_timeout_seconds},
+                                 "step_timeout_seconds": args.step_timeout_seconds, "examples": args.example},
                                 invoke=invoke)
     print(json.dumps({"status": manifest["status"], "exit_code": code, "evidence": str(out),
                       "gate_retained": manifest["gate_retained"]}))

@@ -25,6 +25,14 @@ checks, builds debug bins, then runs each `-TestTarget lifecycle_compat` (option
 between debug-bin build and the full tests. No ignored/live/release steps are added.
 An explicit target matching zero passing tests fails validation.
 
+Additional explicit modes: `-Mode lib -Filter process_lifetime_tests::cancel`
+runs filtered library tests; `-Mode test-build -TestTarget lifecycle_compat`
+compiles that integration target with `--no-run`; `-Mode example-build -Example
+process_lifetime_probe` builds the named example without starting it. All three
+retain check/debug-bin prerequisites. No mode accepts arbitrary commands or
+enables ignored tests. A process matrix may instead use its separately reviewed
+supervisor inside the manager's same exclusive window.
+
 Default paths are repository-relative `.local/lifecycle/<Attempt>`,
 `.local/lifecycle-target`, and `<Attempt>/tmp`. `-EvidenceRoot` / `-TargetDir`
 override them. Resolved paths, shared Git directory and repository must be on E.

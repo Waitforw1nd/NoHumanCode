@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check','debug-bins','targeted','test','fmt','clippy','wasm-check')][string]$Stage,
+    [Parameter(Mandatory)][ValidateSet('check','debug-bins','targeted','test','fmt','clippy','wasm-check','lib-test','test-build','example-build')][string]$Stage,
     [ValidatePattern('^[a-zA-Z0-9_]+$')][string]$TestTarget = '',
+    [ValidatePattern('^[a-zA-Z0-9_]+$')][string]$Example = '',
     [ValidatePattern('^[a-zA-Z0-9_:]+$')][string]$Filter = ''
 )
 $ErrorActionPreference = 'Stop'
@@ -23,6 +24,18 @@ switch ($Stage) {
         & cargo @taskArgs
     }
     'test' { & (Join-Path $PSScriptRoot '../../build.ps1') -Action test }
+    'lib-test' {
+        if (-not $Filter) { throw 'A lib filter is required' }
+        & cargo test --offline --locked --lib $Filter -- --test-threads=1
+    }
+    'test-build' {
+        if (-not $TestTarget) { throw 'TestTarget is required' }
+        & cargo test --offline --locked --test $TestTarget --no-run
+    }
+    'example-build' {
+        if (-not $Example) { throw 'Example is required' }
+        & cargo build --offline --locked --example $Example
+    }
     'fmt' { & cargo fmt --all -- --check }
     'clippy' { & cargo clippy --workspace --all-targets --offline --locked -- -D warnings }
     'wasm-check' { & cargo check -p peachsh-ui --target wasm32-unknown-unknown --offline --locked }

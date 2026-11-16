@@ -21,7 +21,7 @@ def verify(attempt, current):
     if manifest["process_tree_cleanup"] != "not_proven_by_this_runner" or not manifest["gate_retained"]:
         raise ValueError("Unsupported process cleanup claim")
     options = manifest["options"]
-    expected_plan = plan(options["mode"], options["test_targets"], options["filter"], options["step_timeout_seconds"])
+    expected_plan = plan(options["mode"], options["test_targets"], options["filter"], options["step_timeout_seconds"], options["examples"])
     if manifest["plan"] != expected_plan or len(manifest["steps"]) != len(expected_plan):
         raise ValueError("Incomplete or substituted plan")
     for key, value in ENVIRONMENT.items():
@@ -33,6 +33,13 @@ def verify(attempt, current):
     validate_candidate(current, manifest["candidate"])
     if before != after or before != current or before["source_sha256"] != digest(encode(before["files"])):
         raise ValueError("Source hashes or current candidate differ from tested inputs")
+    artifacts = manifest["artifacts"]
+    if {item["path"] for item in artifacts} != set(blobs) - {"manifest.json"}:
+        raise ValueError("Missing or unexpected attempt artifacts")
+    for artifact in artifacts:
+        raw = blobs[artifact["path"]]
+        if len(raw) != artifact["bytes"] or digest(raw) != artifact["sha256"]:
+            raise ValueError("Artifact hash or length mismatch")
     for index, (step, required) in enumerate(zip(manifest["steps"], expected_plan)):
         prefix = f"{index + 1:02d}-{required['name']}"
         if any(step[key] != required[key] for key in required) or step["exit_code"] != 0 or step["terminal_unknown"]:

@@ -24,7 +24,7 @@ class GateTests(unittest.TestCase):
         files = [{"path": "NoManCode/source.rs", "bytes": 6, "sha256": gates.digest(b"source")}]
         self.source = {**self.expected, "clean": True, "status": "", "files": files, "source_sha256": gates.digest(gates.encode(files))}
         self.calls = []
-        self.options = {"mode": "full", "test_targets": [], "filter": "", "step_timeout_seconds": 1800}
+        self.options = {"mode": "full", "test_targets": [], "filter": "", "step_timeout_seconds": 1800, "examples": []}
 
     def invoke(self, argv, cwd, env, timeout_seconds, log):
         self.assertTrue(self.lock.exists(), "No command before exclusive gate")
@@ -156,6 +156,34 @@ class GateTests(unittest.TestCase):
 
     def test_no_automatic_gate_release_api(self):
         self.assertFalse(hasattr(gates.Gate, "release"))
+
+    def test_lib_and_compile_only_modes_have_explicit_safe_commands(self):
+        lib = gates.plan("lib", [], "process_lifetime_tests::cancel")[-1]
+        self.assertEqual(lib["name"], "library-test")
+        integration_lib = gates.plan("targeted", ["lib"])[-1]
+        self.assertEqual(integration_lib["argv"][-3:], ["targeted", "-TestTarget", "lib"])
+        self.assertIn("--lib", lib["command"])
+        self.assertIn("--test-threads=1", lib["command"])
+        test_build = gates.plan("test-build", ["lifecycle_compat"])[-1]
+        self.assertIn("--no-run", test_build["command"])
+        example = gates.plan("example-build", [], examples=["process_lifetime_probe"])[-1]
+        self.assertEqual(example["command"][-2:], ["--example", "process_lifetime_probe"])
+        with self.assertRaises(ValueError):
+            gates.plan("lib", [], "")
+        with self.assertRaises(ValueError):
+            gates.plan("example-build", [], examples=["x;Invoke-Expression"])
+        with self.assertRaises(ValueError):
+            gates.plan("test-build", ["lifecycle_compat"], "cancel")
+
+    def test_metadata_tampering_and_unrecorded_artifact_rejected(self):
+        self.run_attempt()
+        source = self.out / "source-after.json"
+        source.write_bytes(source.read_bytes() + b" ")
+        with self.assertRaises(ValueError):
+            evidence.verify(self.out, self.source)
+        (self.out / "unrecorded.log").write_bytes(b"not in manifest")
+        with self.assertRaises(ValueError):
+            evidence.verify(self.out, self.source)
 
     def test_unknown_even_with_direct_exit_zero_stops_next_step(self):
         def unknown(*args):
