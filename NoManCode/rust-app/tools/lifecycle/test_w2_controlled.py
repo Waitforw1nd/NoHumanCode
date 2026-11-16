@@ -52,6 +52,8 @@ class ControlledTests(unittest.TestCase):
 
     def test_listing_rejects_missing_and_new_unmapped_cases(self):
         names = (*runner.CASES, *runner.HELPERS)
+        self.assertIn(runner.PREFIX + "w07_bound_shutdown_before_resume_retains_ticket", names)
+        self.assertIn(runner.PREFIX + "w07_bound_shutdown_running_retains_ticket", names)
         raw = "\n".join(name + ": test" for name in names).encode()
         self.assertTrue(runner.listing_matches(raw))
         self.assertFalse(runner.listing_matches(b"\n".join(raw.splitlines()[1:])))
@@ -89,7 +91,7 @@ class ControlledTests(unittest.TestCase):
 
         def fake_run(repo, out, gate, expected, steps, env, options, invoke):
             self.assertEqual(gate.name, "nhc-heavy-window.lock")
-            self.assertEqual(options["mapped_count"], 25)
+            self.assertEqual(options["mapped_count"], 27)
             out.mkdir(parents=True)
             for index, step in enumerate(steps):
                 result = invoke(step["argv"], self.source, env, step["timeout_seconds"], out / f"{index}.log")
