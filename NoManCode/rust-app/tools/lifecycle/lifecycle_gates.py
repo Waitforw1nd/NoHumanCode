@@ -251,6 +251,10 @@ def execute(argv, cwd, environment, timeout_seconds, log):
                 if time.monotonic() >= deadline:
                     mark_unknown("step_deadline_exceeded")
                 code = process.wait(timeout=0.25)
+                # A wait begun just before the deadline can return after it.
+                # A late observation is never evidence of timely completion.
+                if time.monotonic() >= deadline:
+                    mark_unknown("step_deadline_exceeded")
                 # Also inspect final bytes from a fast exiting command.
                 try:
                     final_size = log.stat().st_size

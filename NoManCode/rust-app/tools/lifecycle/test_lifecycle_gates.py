@@ -241,9 +241,23 @@ class GateTests(unittest.TestCase):
         from unittest.mock import Mock
         process = Mock()
         process.wait.return_value = 0
-        with patch.object(gates.subprocess, "Popen", return_value=process), patch.object(gates.time, "monotonic", side_effect=[0, 2]):
+        with patch.object(gates.subprocess, "Popen", return_value=process), patch.object(gates.time, "monotonic", side_effect=[0, 2, 2]):
             result = gates.execute(["mock"], self.root, {}, 1, self.root / "deadline.log")
         self.assertEqual(result.reason, "step_deadline_exceeded")
+
+    def test_exit_first_observed_after_deadline_is_unknown(self):
+        from unittest.mock import Mock
+        process = Mock()
+        process.wait.return_value = 0
+        log = self.root / "late-exit.log"
+        with patch.object(gates.subprocess, "Popen", return_value=process) as spawn, \
+                patch.object(gates.time, "monotonic", side_effect=[0, 0.9, 1.1]):
+            result = gates.execute(["mock"], self.root, {}, 1, log)
+        self.assertEqual(spawn.call_count, 1)
+        self.assertEqual(process.wait.call_count, 1)
+        self.assertTrue(result.terminal_unknown)
+        self.assertEqual(result.reason, "step_deadline_exceeded")
+        self.assertTrue(log.with_suffix(".terminal-unknown.json").is_file())
 
     def test_terminal_marker_detected_even_on_fast_exit(self):
         from unittest.mock import Mock
