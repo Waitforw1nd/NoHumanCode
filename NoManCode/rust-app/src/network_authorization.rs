@@ -1074,6 +1074,7 @@ impl Store {
         observed: Option<crate::provider_usage::UsageObservation>,
     ) -> Result<NetworkResponse<T>, NetworkError> {
         use crate::provider_transport::TransportError;
+        let transport_unknown = matches!(&result, Err(TransportError::Unknown));
         value.finished_at = Some(now());
         let kind = match &result {
             Ok(_) => {
@@ -1116,10 +1117,28 @@ impl Store {
             );
         }
         let saved = (|| -> AnyResult<()> {
+            if transport_unknown {
+                crate::execution_authority::current()
+                    .context("network operation required")?
+                    .seal_unknown();
+            }
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            self.execution_settlement_fence(&tx)?;
+            if transport_unknown {
+                self.execution_unknown_fence(&tx)?;
+            } else {
+                self.execution_settlement_fence(&tx)?;
+            }
             let old = receipt(&tx, &value.call_id)?;
+            if transport_unknown {
+                let mut original = value.clone();
+                original.state = CallState::Claimed;
+                original.finished_at = None;
+                original.success = None;
+                original.http_status = None;
+                original.result = None;
+                anyhow::ensure!(old == original, "unknown network claim changed");
+            }
             let managed = crate::budget::finish_tx(&tx, &value, observed)?;
             if let Some(record) = managed {
                 value = record;
