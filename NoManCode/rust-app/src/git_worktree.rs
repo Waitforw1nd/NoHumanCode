@@ -2469,15 +2469,25 @@ mod tests {
                     );
                 }
                 if mode == "smudge" || mode == "process" || mode == "include" {
-                    let mut positive = Command::new("git");
+                    // This positive control intentionally enables the filter.
+                    // Resolve the executable and supply its environment before
+                    // handing it to the same native collector as production.
+                    let executable = std::env::split_paths(&std::env::var_os("PATH").unwrap())
+                        .filter(|path| path.is_absolute())
+                        .filter_map(|path| path.join("git.exe").canonicalize().ok())
+                        .find(|path| path.is_file() && !within(path, &f.source))
+                        .expect("trusted Git positive control executable");
+                    let mut positive = Command::new(executable);
                     positive
+                        .env_clear()
+                        .envs(std::env::vars_os())
                         .current_dir(&f.source)
                         .args(["cat-file", "--filters", "HEAD:a.txt"])
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped())
                         .stdin(Stdio::null())
                         .kill_on_drop(true);
-                    let _ = run(
+                    let observed = run(
                         positive,
                         8192,
                         Instant::now() + Duration::from_secs(3),
@@ -2486,7 +2496,8 @@ mod tests {
                     .await;
                     assert!(
                         marker.exists(),
-                        "Git filter {mode} positive control must launch script"
+                        "Git filter {mode} positive control must launch script: {:?}",
+                        observed.as_ref().err()
                     );
                     std::fs::remove_file(&marker).unwrap();
                 }

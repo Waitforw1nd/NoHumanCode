@@ -2374,7 +2374,10 @@ impl Engine {
             !self.active.lock().unwrap().contains_key(id),
             "成员仍在运行"
         );
-        self.ensure_accepting()?;
+        ensure!(
+            !self.shutdown_requested.is_cancelled(),
+            "Host 正在关闭，拒绝新工作"
+        );
         let mut task = self.store.task(id)?;
         approval::validate_call_history(&task.messages)?;
         // Verify all finished evidence too, including already answered calls.
@@ -2386,6 +2389,9 @@ impl Engine {
                 return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
             }
         }
+        // Reading durable unknown evidence preserves the existing public error
+        // without admitting any work. All effects still require the domain gate.
+        self.ensure_accepting()?;
         self.store.network_preflight(
             &self.task_route_subject(&task)?,
             &[NetworkPurpose::Completion],
@@ -4203,17 +4209,25 @@ mod workspace_phase_tests {
         let payload: Value = serde_json::from_slice(&std::fs::read(&signal).unwrap()).unwrap();
         let task_id = payload["task_id"].as_str().unwrap();
         let approval_id = payload["approval_id"].as_str().unwrap();
-        let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
-        assert_eq!(
-            store.approval(approval_id).unwrap().execution_state,
-            approval::ExecutionState::Claimed
-        );
-        let before = n10_rows(&store.db.lock().unwrap());
+        let observer = rusqlite::Connection::open_with_flags(
+            temp.path().join("shell.db"),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .unwrap();
+        let state: String = observer
+            .query_row(
+                "SELECT execution_state FROM approvals WHERE id=?1",
+                [approval_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(state, "claimed");
+        let before = n10_rows(&observer);
         assert!(!temp.path().join("shell-marker.txt").exists());
         let exit = child.stop();
         assert!(!exit.success());
         eprintln!("S09: actual claim-before-spawn child kill+wait complete: {exit}");
-        drop(store);
+        drop(observer);
         let store = Arc::new(Store::open(&temp.path().join("shell.db")).unwrap());
         assert!(store.recover().unwrap() > 0);
         assert_eq!(
@@ -4368,7 +4382,13 @@ mod workspace_phase_tests {
         let temp = tempfile::tempdir().unwrap();
         let (engine, task_id) = two_write_engine(temp.path()).await;
         finish_two_writes(&engine, &task_id, usize::MAX).await;
-        let other = Engine::new(engine.store.clone(), 2).unwrap();
+        assert!(Engine::new(engine.store.clone(), 2).is_err());
+        let other_root = tempfile::tempdir().unwrap();
+        let other = Engine::new(
+            Arc::new(Store::open(&other_root.path().join("other.db")).unwrap()),
+            2,
+        )
+        .unwrap();
         let hits = Arc::new(AtomicUsize::new(0));
         let count = hits.clone();
         engine.set_restore_probe(
@@ -5036,7 +5056,8 @@ mod workspace_phase_tests {
                     deny_first,
                 }))
                 .unwrap();
-            let engine = Engine::new_with_agent_runtime_for_test(store.clone(), 2, agent).unwrap();
+            let mut engine =
+                Engine::new_with_agent_runtime_for_test(store.clone(), 2, agent).unwrap();
             let task = engine
                 .start(RunRequest {
                     title: "r01".into(),
@@ -5182,7 +5203,17 @@ mod workspace_phase_tests {
             assert!(!temp.path().join("src/first.txt").exists());
             if bearer && !approve {
                 if cancel {
+                    let before = n10_rows(&store.db.lock().unwrap());
+                    assert!(store.recover().is_err());
+                    assert_eq!(n10_rows(&store.db.lock().unwrap()), before);
+                    drop(engine);
                     store.recover().unwrap();
+                    let agent = crate::agent_runtime::AgentRuntime::with_strategy_for_test(
+                        Arc::new(R01Strategy { deny_first }),
+                    )
+                    .unwrap();
+                    engine =
+                        Engine::new_with_agent_runtime_for_test(store.clone(), 2, agent).unwrap();
                     engine
                         .resume(&task.id, "continue after cancellation")
                         .await
@@ -5454,16 +5485,21 @@ mod workspace_phase_tests {
             expected_head: n13_raw(&root, &["rev-parse", "HEAD"]).trim().into(),
             idempotency_key: id(),
         };
-        let plan = crate::git_worktree::prepare(
-            &ctx,
-            &source,
-            &crate::workspace_identity::RootIdentity::capture(parent).unwrap(),
-            &id(),
-            &request.expected_head,
-        )
-        .await
-        .unwrap()
-        .into_persisted_plan();
+        let operation = engine
+            .store
+            .execution_operation(CancellationToken::new())
+            .unwrap();
+        let plan = operation
+            .run(crate::git_worktree::prepare(
+                &ctx,
+                &source,
+                &crate::workspace_identity::RootIdentity::capture(parent).unwrap(),
+                &id(),
+                &request.expected_head,
+            ))
+            .await
+            .unwrap()
+            .into_persisted_plan();
         (request, inventory, plan)
     }
     #[track_caller]
@@ -6293,8 +6329,7 @@ mod workspace_phase_tests {
         );
         assert!(!process.stop().success());
         let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
-        let engine = Engine::new(store.clone(), 2).unwrap();
-        store.recover().unwrap();
+        let (engine, _) = Engine::new_recovered(store.clone(), 2).unwrap();
         assert_eq!(engine.checkpoint(&checkpoint_id).unwrap().task_id, task_id);
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             if phase == "checkpoint_pre_claim" {
@@ -6563,8 +6598,10 @@ mod workspace_phase_tests {
                 (engine, id)
             });
             runtime.shutdown_timeout(Duration::from_secs(2));
-            old_engine.store.recover().unwrap();
-            let engine = Engine::new(old_engine.store.clone(), 2).unwrap();
+            let store = old_engine.store.clone();
+            assert!(store.recover().is_err());
+            drop(old_engine);
+            let (engine, _) = Engine::new_recovered(store, 2).unwrap();
             let task = engine.store.task(&task_id).unwrap();
             assert!(
                 !crate::tool_call_application::unanswered_tool_calls(&task.messages).is_empty()
