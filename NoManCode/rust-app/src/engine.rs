@@ -2019,6 +2019,9 @@ impl Engine {
             .reconcile_open_tools(task, cancel, &key)
             .await?;
         *task = self.store.consume_resume_inputs(task)?;
+        // Task output concatenates all completion rounds. A codec-level filter
+        // alone cannot recognize a credential split across two completions.
+        let mut output_redactor = secrets::StreamRedactor::default();
         for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let available = self.tool_runtime.definitions(task)?;
@@ -2066,8 +2069,12 @@ impl Engine {
                     })?
             };
             let mut emit = |delta: &str| {
-                text.push_str(delta);
-                self.store.event(&task.id, "delta", json!({"text":delta}))
+                let safe = output_redactor.push(delta);
+                if !safe.is_empty() {
+                    self.store.event(&task.id, "delta", json!({"text":safe}))?;
+                    text.push_str(&safe);
+                }
+                Ok(())
             };
             let call = lease.execute(&self.client, permit, &task.route, &mut emit);
             let result = tokio::select! { r=call=>r, _=cancel.cancelled()=>Err(crate::provider_transport::TransportError::Unknown) };
@@ -2156,6 +2163,15 @@ impl Engine {
                     matches!(decision, crate::agent_runtime::StrategyAction::Finish),
                     "invalid agent decision"
                 );
+                // Only a successful final completion may publish an undecided
+                // suffix. Errors, cancellation and round exhaustion drop it.
+                let tail = output_redactor.finish();
+                if !tail.is_empty() {
+                    self.store.event(&task.id, "delta", json!({"text":tail}))?;
+                    task.output.push_str(&tail);
+                    task.updated_at = now();
+                    self.store.save_running_snapshot(task)?;
+                }
                 return Ok(());
             };
             let crate::agent_runtime::StrategyAction::ToolVotes(votes) = decision else {
