@@ -77,8 +77,12 @@ impl NetworkClaimGuard {
 }
 impl Drop for NetworkClaimGuard {
     fn drop(&mut self) {
-        if let Some(operation) = &self.0 {
+        if let Some(operation) = self.0.take() {
             operation.seal_unknown();
+            // A dropped response future does not prove that the underlying
+            // transport has stopped. Retain this exact body and its domain
+            // owner until process exit; unknown is deliberately not retried.
+            std::mem::forget(operation);
         }
     }
 }
@@ -1088,6 +1092,11 @@ impl Engine {
             #[cfg(test)]
             shell_claim_probe,
         }))
+    }
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn workspace_gate_for_test(&self) -> Arc<AsyncMutex<()>> {
+        self.gate.clone()
     }
     #[cfg(test)]
     pub(crate) fn set_restore_probe(
