@@ -4,7 +4,7 @@ use anyhow::{Context, Result, bail, ensure};
 use serde_json::{Value, json};
 use std::{fmt, process::Stdio, time::Duration};
 use tokio::{
-    io::AsyncReadExt,
+    io::{AsyncRead, AsyncReadExt},
     process::Command,
     time::{Instant, timeout_at},
 };
@@ -64,6 +64,23 @@ struct ReaderTask(tokio::task::JoinHandle<Result<Vec<u8>>>);
 impl Drop for ReaderTask {
     fn drop(&mut self) {
         self.0.abort();
+    }
+}
+
+const OUTPUT_LIMIT: usize = 65_536;
+
+/// The retention bound is not an EOF: keep the pipe open and drain the rest.
+/// Completion still requires the real EOF (or the caller's cleanup deadline).
+async fn read_output(mut reader: impl AsyncRead + Unpin) -> Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    let mut buffer = [0u8; 8192];
+    loop {
+        let count = reader.read(&mut buffer).await?;
+        if count == 0 {
+            return Ok(bytes);
+        }
+        let retain = count.min(OUTPUT_LIMIT.saturating_sub(bytes.len()));
+        bytes.extend_from_slice(&buffer[..retain]);
     }
 }
 
@@ -137,26 +154,14 @@ async fn collect(
         if out_probe.as_ref().is_some_and(|p| p.reader_error) {
             bail!("test reader failure");
         }
-        let mut bytes = Vec::new();
-        stdout
-            .context("missing stdout")?
-            .take(65536)
-            .read_to_end(&mut bytes)
-            .await?;
-        Ok::<_, anyhow::Error>(bytes)
+        read_output(stdout.context("missing stdout")?).await
     }));
     #[cfg(test)]
     let err_probe = probe.clone();
     let mut err = ReaderTask(tokio::spawn(async move {
         #[cfg(test)]
         let _reader = tests::ReaderGuard::new(err_probe);
-        let mut bytes = Vec::new();
-        stderr
-            .context("missing stderr")?
-            .take(65536)
-            .read_to_end(&mut bytes)
-            .await?;
-        Ok::<_, anyhow::Error>(bytes)
+        read_output(stderr.context("missing stderr")?).await
     }));
     let mut out_joined = false;
     let mut err_joined = false;
@@ -193,6 +198,8 @@ async fn collect(
     })
     .await;
     if let Ok(Ok(value)) = completion {
+        // This proves direct-child exit and real pipe EOF, not process-tree
+        // exit: a descendant can redirect/close both pipes and keep running.
         return Ok(value);
     }
     // All failure branches converge here. There is one additional total budget,
@@ -241,6 +248,87 @@ mod tests {
         atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
     };
     tokio::task_local! { pub(super) static PROBE: Arc<Probe>; }
+
+    #[tokio::test]
+    async fn output_reader_drains_beyond_limit_and_keeps_only_prefix() {
+        let input: Vec<u8> = (0..OUTPUT_LIMIT * 3).map(|i| (i % 251) as u8).collect();
+        let mut source = input.as_slice();
+        let output = read_output(&mut source).await.unwrap();
+        assert_eq!(output, input[..OUTPUT_LIMIT]);
+        assert!(
+            source.is_empty(),
+            "truncating capture must still drain all input"
+        );
+    }
+
+    #[tokio::test]
+    async fn output_reader_waits_for_real_eof_after_limit() {
+        use tokio::io::AsyncWriteExt;
+        let (mut writer, reader) = tokio::io::duplex(OUTPUT_LIMIT + 1024);
+        writer
+            .write_all(&vec![b'x'; OUTPUT_LIMIT + 1])
+            .await
+            .unwrap();
+        let mut capture = Box::pin(read_output(reader));
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), &mut capture)
+                .await
+                .is_err(),
+            "capture limit must not manufacture EOF while a writer is alive"
+        );
+        writer.write_all(b"discarded suffix").await.unwrap();
+        drop(writer);
+        let output = tokio::time::timeout(Duration::from_secs(1), capture)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(output, vec![b'x'; OUTPUT_LIMIT]);
+    }
+
+    #[tokio::test]
+    async fn output_reader_reports_errors_after_capture_limit() {
+        struct FailingReader;
+        impl AsyncRead for FailingReader {
+            fn poll_read(
+                self: std::pin::Pin<&mut Self>,
+                _: &mut std::task::Context<'_>,
+                _: &mut tokio::io::ReadBuf<'_>,
+            ) -> std::task::Poll<std::io::Result<()>> {
+                std::task::Poll::Ready(Err(std::io::Error::other("synthetic late reader failure")))
+            }
+        }
+        let prefix = vec![b'x'; OUTPUT_LIMIT + 1];
+        let error = read_output(prefix.as_slice().chain(FailingReader))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("synthetic late reader failure"));
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn s16_large_output_keeps_both_pipes_open_until_command_finishes() {
+        let root = tempfile::tempdir().unwrap();
+        let probe = Arc::new(Probe {
+            case: "large-output",
+            ..Probe::default()
+        });
+        let result = PROBE.scope(probe.clone(), execute(&task(root.path()), &json!({
+            "command": "[Console]::Out.Write(('o' * 131072)); [Console]::Error.Write(('e' * 131072)); [IO.File]::WriteAllText((Join-Path $PWD 'finished'), 'done'); exit 0",
+            "timeout_seconds": 10
+        }))).await;
+        // Observe the original process object before unwrapping the result.
+        original_exit(&probe).unwrap();
+        assert_eq!(probe.readers.load(Ordering::SeqCst), 0);
+        let result = result.unwrap();
+        assert_eq!(result["exit_code"], 0);
+        assert_eq!(result["stdout"], "o".repeat(OUTPUT_LIMIT));
+        assert_eq!(result["stderr"], "e".repeat(OUTPUT_LIMIT));
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("finished")).unwrap(),
+            "done"
+        );
+    }
+
     #[derive(Default)]
     pub(super) struct Probe {
         pub case: &'static str,

@@ -128,24 +128,34 @@ pub fn resolve(root: &Path, relative: &str, writing: bool, scopes: &[String]) ->
     let mut target = root.clone();
     for part in relative.split('/') {
         target.push(part);
-        if let Ok(meta) = std::fs::symlink_metadata(&target) {
-            if meta.is_dir() {
-                crate::workspace_identity::verify_directory_policy(&target)?;
-            }
-            #[cfg(windows)]
-            {
-                use std::os::windows::fs::MetadataExt;
-                ensure!(
-                    meta.file_attributes() & 0x400 == 0,
-                    "不允许经过目录联接或符号链接"
-                );
-            }
-            ensure!(!meta.file_type().is_symlink(), "不允许经过符号链接");
+        let meta = match std::fs::symlink_metadata(&target) {
+            Ok(meta) => meta,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error).context("无法检查文件路径"),
+        };
+        if meta.is_dir() {
+            crate::workspace_identity::verify_directory_policy(&target)?;
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
             ensure!(
-                target.canonicalize()?.starts_with(&root),
-                "路径超出工作目录"
+                meta.file_attributes() & 0x400 == 0,
+                "不允许经过目录联接或符号链接"
             );
         }
+        ensure!(!meta.file_type().is_symlink(), "不允许经过符号链接");
+        let canonical = target.canonicalize()?;
+        let actual_relative = canonical.strip_prefix(&root).context("路径超出工作目录")?;
+        // Windows 8.3 names can hide both protected leaves and directories.
+        // Check every existing component's real spelling, not just the input.
+        ensure!(
+            !forbidden(actual_relative.to_str().context("文件路径不是 UTF-8")?),
+            "此路径不允许由文件工具访问"
+        );
+        // Preserve the resolved ancestor when a later component is absent.
+        // Returning the canonical spelling also avoids reopening the alias.
+        target = canonical;
     }
     Ok(target)
 }
@@ -364,6 +374,129 @@ mod tests {
         assert!(resolve(temp.path(), "src/a.rs", true, &["src".into()]).is_ok());
         assert!(resolve(temp.path(), "src2/a.rs", true, &["src".into()]).is_err());
         assert!(resolve(temp.path(), "src/a.rs", true, &[]).is_err());
+    }
+
+    #[cfg(windows)]
+    fn short_leaf(path: &Path) -> String {
+        use std::os::windows::ffi::{OsStrExt, OsStringExt};
+        use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
+        let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+        let mut output = vec![0u16; 32_768];
+        // Only synthetic fixtures are queried. Never enable 8.3 names globally.
+        let count =
+            unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), output.len() as u32) }
+                as usize;
+        assert!(count > 0 && count < output.len(), "8.3 query failed");
+        let short = PathBuf::from(std::ffi::OsString::from_wide(&output[..count]));
+        let leaf = short.file_name().unwrap().to_str().unwrap().to_owned();
+        assert!(
+            !leaf.eq_ignore_ascii_case(path.file_name().unwrap().to_str().unwrap()),
+            "fixture requires an NTFS directory with 8.3 name creation enabled"
+        );
+        assert_eq!(short.canonicalize().unwrap(), path.canonicalize().unwrap());
+        leaf
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_short_names_cannot_hide_protected_files() {
+        let temp = tempfile::tempdir().unwrap();
+        for name in [".credentials.yaml", ".env.production", "peachsh.sqlite3"] {
+            let path = temp.path().join(name);
+            std::fs::write(&path, "synthetic-non-secret").unwrap();
+            let alias = short_leaf(&path);
+            // This is the old input-only check's actual counterexample.
+            assert!(!forbidden(&alias), "fixture must bypass lexical policy");
+            for writing in [false, true] {
+                let error = resolve(temp.path(), &alias, writing, &["*".into()]).unwrap_err();
+                assert!(error.to_string().contains("此路径不允许"), "{error:#}");
+            }
+            assert_eq!(
+                std::fs::read_to_string(path).unwrap(),
+                "synthetic-non-secret"
+            );
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_short_directories_cannot_hide_protected_ancestors() {
+        let temp = tempfile::tempdir().unwrap();
+        for name in [".ssh", ".git", "node_modules"] {
+            let directory = temp.path().join(name);
+            std::fs::create_dir(&directory).unwrap();
+            std::fs::write(directory.join("existing.txt"), "synthetic-non-secret").unwrap();
+            let alias = short_leaf(&directory);
+            assert!(!forbidden(&alias), "fixture must bypass lexical policy");
+            for suffix in ["", "/existing.txt", "/missing/nested.txt"] {
+                for writing in [false, true] {
+                    let error = resolve(
+                        temp.path(),
+                        &format!("{alias}{suffix}"),
+                        writing,
+                        &["*".into()],
+                    )
+                    .unwrap_err();
+                    assert!(error.to_string().contains("此路径不允许"), "{error:#}");
+                }
+            }
+            assert!(!directory.join("missing").exists());
+            assert_eq!(
+                std::fs::read_to_string(directory.join("existing.txt")).unwrap(),
+                "synthetic-non-secret"
+            );
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_allowed_aliases_preserve_existing_and_missing_targets() {
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("ordinary-long-directory");
+        std::fs::create_dir(&directory).unwrap();
+        let file = directory.join("ordinary-long-file.txt");
+        std::fs::write(&file, "safe fixture").unwrap();
+        let directory_alias = short_leaf(&directory);
+        let file_alias = short_leaf(&file);
+        for writing in [false, true] {
+            let existing = resolve(
+                temp.path(),
+                &format!("{directory_alias}/{file_alias}"),
+                writing,
+                &["*".into()],
+            )
+            .unwrap();
+            assert_eq!(existing, file.canonicalize().unwrap());
+            let missing = resolve(
+                temp.path(),
+                &format!("{directory_alias}/new/nested.txt"),
+                writing,
+                &["*".into()],
+            )
+            .unwrap();
+            assert_eq!(
+                missing,
+                directory.canonicalize().unwrap().join("new/nested.txt")
+            );
+            assert!(!missing.exists());
+        }
+        assert!(
+            resolve(
+                temp.path(),
+                &format!("{directory_alias}/{file_alias}"),
+                true,
+                &["elsewhere".into()],
+            )
+            .is_err()
+        );
+        let (_, display, key) = change_target(
+            temp.path(),
+            &format!("{directory_alias}/new/nested.txt"),
+            &["*".into()],
+        )
+        .unwrap();
+        assert_eq!(display, "ordinary-long-directory/new/nested.txt");
+        assert_eq!(key, display);
     }
 
     #[tokio::test]
