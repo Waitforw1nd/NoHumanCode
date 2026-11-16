@@ -8,7 +8,23 @@ using System;
 using System.Runtime.InteropServices;
 public static class LifecycleHandles {
     [DllImport("kernel32.dll", SetLastError=true)] public static extern IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll", SetLastError=true)] public static extern IntPtr GetStdHandle(int which);
+    [DllImport("kernel32.dll", SetLastError=true)] public static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
+    [DllImport("kernel32.dll", SetLastError=true)] public static extern bool GetHandleInformation(IntPtr handle, out uint flags);
     [DllImport("kernel32.dll", SetLastError=true)] public static extern bool DuplicateHandle(IntPtr from, IntPtr source, IntPtr into, out IntPtr copy, uint access, bool inherit, uint flags);
+    public static uint DisableStandardHandleInheritance(int which) {
+        IntPtr handle = GetStdHandle(which);
+        if (handle == IntPtr.Zero || handle == new IntPtr(-1))
+            throw new InvalidOperationException("missing parent standard handle");
+        if (!SetHandleInformation(handle, 1, 0))
+            throw new System.ComponentModel.Win32Exception();
+        uint flags;
+        if (!GetHandleInformation(handle, out flags))
+            throw new System.ComponentModel.Win32Exception();
+        if ((flags & 1) != 0)
+            throw new InvalidOperationException("parent standard handle is still inheritable");
+        return flags;
+    }
     public static long Copy(IntPtr source, IntPtr observer) {
         IntPtr copy;
         if (!DuplicateHandle(GetCurrentProcess(), source, observer, out copy, 0, false, 2))
@@ -48,6 +64,13 @@ $start.RedirectStandardError = $true
 foreach ($arg in @('-NoProfile','-NonInteractive','-File',(Join-Path $Root 'child.ps1'),'-Root',$Root)) {
     $start.ArgumentList.Add($arg)
 }
+# Redirecting the child's standard streams does not exclude other inheritable
+# handles from .NET's CreateProcess call. Keep the parent's pipes open for its
+# own output, but prevent hidden copies from delaying Host EOF until child exit.
+$stdoutFlags = [LifecycleHandles]::DisableStandardHandleInheritance(-11)
+$stderrFlags = [LifecycleHandles]::DisableStandardHandleInheritance(-12)
+@{ stdout_flags = $stdoutFlags; stderr_flags = $stderrFlags } | ConvertTo-Json -Compress |
+    Set-Content -LiteralPath (Join-Path $Root 'parent-stdio-non-inheritable.json') -Encoding utf8
 $child = [Diagnostics.Process]::Start($start)
 $child.StandardInput.Close()
 $childHandle = [LifecycleHandles]::Copy($child.Handle, $watcherHandle)
