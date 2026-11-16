@@ -2870,7 +2870,7 @@ fn validate_new_tool_group(previous: &[Value], calls: &[Value]) -> Result<()> {
 }
 
 #[cfg(test)]
-mod workspace_phase_tests {
+pub(crate) mod workspace_phase_tests {
     fn authorize_fixture(store: &crate::store::Store) {
         super::configure_fixture_project(store);
         for route in store.settings().unwrap().unwrap().routes {
@@ -5643,7 +5643,7 @@ mod workspace_phase_tests {
         );
         String::from_utf8(out.stdout).unwrap()
     }
-    async fn n13_completed_fixture(root: &Path) -> (Arc<Engine>, String) {
+    pub(crate) async fn n13_completed_fixture(root: &Path) -> (Arc<Engine>, String) {
         let source = root.join("source");
         std::fs::create_dir(&source).unwrap();
         let (engine, task) =
