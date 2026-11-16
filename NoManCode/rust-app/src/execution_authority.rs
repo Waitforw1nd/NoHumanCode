@@ -251,6 +251,8 @@ impl ExecutionAuthority {
                 cancel: cancel.child_token(),
                 state: Mutex::new(OperationState {
                     bodies: 1,
+                    task_id: None,
+                    network_calls: Default::default(),
                     cancellation_owner: CancellationOwner::Caller,
                     generation: 0,
                     active: None,
@@ -320,6 +322,8 @@ impl Drop for ExecutionController {
 // Lock order is operation -> admission; no admission lock calls a callback.
 struct OperationState {
     bodies: usize,
+    task_id: Option<String>,
+    network_calls: std::collections::HashSet<String>,
     cancellation_owner: CancellationOwner,
     generation: u64,
     active: Option<u64>,
@@ -343,6 +347,91 @@ enum CancellationOwner {
 }
 tokio::task_local! { static CURRENT: Arc<OperationScope>; }
 impl ExecutionOperation {
+    /// Bind identities at their trusted claim boundary. The bindings live only
+    /// in this original operation scope and cannot be manufactured from an
+    /// epoch or a caller-supplied receipt.
+    pub(crate) fn bind_task(&self, task_id: &str) -> Result<()> {
+        crate::secrets::validate_persisted_id("task_id", task_id)?;
+        let mut state = self
+            .scope
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+        let admission = self
+            .scope
+            .authority
+            .admission
+            .lock()
+            .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+        ensure!(
+            admission.controller
+                && admission.open
+                && admission.unknown == 0
+                && admission.epoch == Some(self.scope.epoch)
+                && state.bodies > 0
+                && !state.unknown
+                && !state.settled
+                && !self.scope.cancel.is_cancelled(),
+            "operation cannot bind task"
+        );
+        ensure!(state.task_id.is_none(), "operation task already bound");
+        state.task_id = Some(task_id.to_owned());
+        Ok(())
+    }
+    pub(crate) fn bind_network_call(&self, call_id: &str) -> Result<()> {
+        crate::secrets::validate_persisted_id("call_id", call_id)?;
+        let mut state = self
+            .scope
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+        let admission = self
+            .scope
+            .authority
+            .admission
+            .lock()
+            .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+        ensure!(
+            admission.controller
+                && admission.open
+                && admission.unknown == 0
+                && admission.epoch == Some(self.scope.epoch)
+                && state.bodies > 0
+                && !state.unknown
+                && !state.settled
+                && !self.scope.cancel.is_cancelled(),
+            "operation cannot bind call"
+        );
+        ensure!(
+            state.network_calls.insert(call_id.to_owned()),
+            "operation call already bound"
+        );
+        Ok(())
+    }
+    pub(crate) fn verify_network_call(&self, call_id: &str) -> Result<()> {
+        let state = self
+            .scope
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+        ensure!(
+            state.bodies > 0 && !state.settled && state.network_calls.contains(call_id),
+            "network call belongs to another operation"
+        );
+        Ok(())
+    }
+    pub(crate) fn verify_task(&self, task_id: &str) -> Result<()> {
+        let state = self
+            .scope
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+        ensure!(
+            state.bodies > 0 && !state.settled && state.task_id.as_deref() == Some(task_id),
+            "task belongs to another operation"
+        );
+        Ok(())
+    }
     #[cfg(test)]
     #[allow(dead_code)]
     pub(crate) fn test_sync<R>(&self, work: impl FnOnce() -> R) -> R {
