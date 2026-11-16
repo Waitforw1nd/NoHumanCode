@@ -1570,15 +1570,16 @@ async fn a10_real_kill_recover_resume_never_replays_prior_tool_group() {
             let recovery_pid = recovery.id();
             let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
             loop {
-                if let Some(s) = recovery.try_wait().unwrap() {
-                    assert!(s.success(), "recovery failed {phase} {round}: {s}");
-                    assert!(recovery.wait().unwrap().success());
-                    break;
-                }
                 if tokio::time::Instant::now() >= deadline {
-                    let _ = recovery.kill();
-                    let _ = recovery.wait();
-                    panic!("recovery timeout {phase} {round}");
+                    recovery.retain_unknown("agent recovery deadline");
+                }
+                let observed = recovery.observe();
+                if tokio::time::Instant::now() >= deadline {
+                    recovery.retain_unknown("agent recovery observation late");
+                }
+                if let Some(s) = observed {
+                    assert!(s.success(), "recovery failed {phase} {round}: {s}");
+                    break;
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
@@ -2257,15 +2258,16 @@ async fn a10_unknown_approved_write_survives_restarts_without_automatic_retry() 
         let pid = recovery.id();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         loop {
-            if let Some(s) = recovery.try_wait().unwrap() {
-                assert!(s.success(), "unknown recovery failed: {s}");
-                assert!(recovery.wait().unwrap().success());
-                break;
-            }
             if tokio::time::Instant::now() >= deadline {
-                let _ = recovery.kill();
-                let _ = recovery.wait();
-                panic!("unknown recovery timeout");
+                recovery.retain_unknown("unknown recovery deadline");
+            }
+            let observed = recovery.observe();
+            if tokio::time::Instant::now() >= deadline {
+                recovery.retain_unknown("unknown recovery observation late");
+            }
+            if let Some(s) = observed {
+                assert!(s.success(), "unknown recovery failed: {s}");
+                break;
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
