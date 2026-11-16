@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "worker_package_bootstrap"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "worker_package_bootstrap",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": null,
+  "name": "target-worker_package_bootstrap",
+  "started_utc": "2026-11-16T12:20:00.650518+00:00",
+  "timeout_seconds": 300
+}

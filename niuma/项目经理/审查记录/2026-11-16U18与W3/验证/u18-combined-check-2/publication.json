@@ -1,0 +1,55 @@
+{
+  "candidate": {
+    "head": "be253200e4385a7274dd1d4ebdd1b0d332c056cf",
+    "product_tree": "447d61193693abfd599f1196757383fed4ec3bf9",
+    "rust_tree": "29d195ac28531733a76bb90698d145a87555f1b2"
+  },
+  "status": "passed",
+  "files": [
+    {
+      "path": "01-check.direct-exit.json",
+      "bytes": 159,
+      "sha256": "209f773647ba9b131fef8cafe3bd88ecc0783edfd199c55676317e23dfad3b78"
+    },
+    {
+      "path": "01-check.log",
+      "bytes": 1080,
+      "sha256": "c520088b2b43940c77588a7248b0f1e28806f17ef7214f872db84f091845520d"
+    },
+    {
+      "path": "01-check.result.json",
+      "bytes": 599,
+      "sha256": "15a0727b2690eca62640564ccd0e1e3d6ed6d41f6962701e32152b43250e9288"
+    },
+    {
+      "path": "01-check.started.json",
+      "bytes": 366,
+      "sha256": "46a20c2b81c0f71e8d90b3366be2d45ebef790de56c6078ac22ae35239bf73ad"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 3694,
+      "sha256": "170faefa887adddaef5759ebd467fd8e3ade82c09bd4e2ec069005ad126a9f4f"
+    },
+    {
+      "path": "source-after.json",
+      "bytes": 41034,
+      "sha256": "10f07501817b46328c19d73415495027372f1b2f79b5474ac02be8cb92359708"
+    },
+    {
+      "path": "source-before.json",
+      "bytes": 41034,
+      "sha256": "10f07501817b46328c19d73415495027372f1b2f79b5474ac02be8cb92359708"
+    },
+    {
+      "path": "closure.json",
+      "bytes": 663,
+      "sha256": "9def07ea6625d42eb6a03d2ff6d0091493b943a0e7bea8283f304d621a204408"
+    },
+    {
+      "path": "gate-archived.lock",
+      "bytes": 393,
+      "sha256": "63cf169dc7c5bb98fc5c0848bae395924e6afa86e7276eeda9e54ae60f9ac6f5"
+    }
+  ]
+}

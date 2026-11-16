@@ -1,0 +1,16 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+warning: method `output` is never used
+  --> tests\support\owned_child.rs:40:12
+   |
+13 | impl OwnedChild {
+   | --------------- method in this implementation
+...
+40 |     pub fn output(mut self, timeout: Duration) -> Output {
+   |            ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `peachsh` (test "execution_authority_epoch") generated 1 warning
+    Finished `dev` profile [unoptimized] target(s) in 0.44s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
