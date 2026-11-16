@@ -2515,7 +2515,11 @@ impl Engine {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let engine = self.clone();
         let scope = crate::execution_authority::current();
-        let body = scope.as_ref().map(|scope| scope.hold_body());
+        // The committed operation belongs to this worker through persistence
+        // and delivery. Dropping the HTTP/library waiter must not cancel it.
+        let body = scope
+            .as_ref()
+            .map(|scope| scope.hold_body().take_worker_cancellation());
         self.spawn_background(async move {
             let _body = body;
             let result = crate::execution_authority::inherit(scope, work).await;

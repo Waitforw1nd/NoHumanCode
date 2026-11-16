@@ -90,12 +90,13 @@ impl ExecutionAuthority {
             .checked_add(1)
             .context("domain ticket count exhausted")?;
         Ok(ExecutionOperation {
-            cancel_on_drop: true,
+            cancel_on_drop: Some(CancellationOwner::Caller),
             scope: Arc::new(OperationScope {
                 authority: self.clone(),
                 cancel: cancel.child_token(),
                 state: Mutex::new(OperationState {
                     bodies: 1,
+                    cancellation_owner: CancellationOwner::Caller,
                     generation: 0,
                     active: None,
                     unknown: false,
@@ -129,6 +130,7 @@ impl Drop for ExecutionController {
 // Lock order is operation -> admission; no admission lock calls a callback.
 struct OperationState {
     bodies: usize,
+    cancellation_owner: CancellationOwner,
     generation: u64,
     active: Option<u64>,
     unknown: bool,
@@ -141,7 +143,12 @@ pub(crate) struct OperationScope {
 }
 pub(crate) struct ExecutionOperation {
     scope: Arc<OperationScope>,
-    cancel_on_drop: bool,
+    cancel_on_drop: Option<CancellationOwner>,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CancellationOwner {
+    Caller,
+    Worker,
 }
 tokio::task_local! { static CURRENT: Arc<OperationScope>; }
 impl ExecutionOperation {
@@ -153,8 +160,21 @@ impl ExecutionOperation {
             .expect("operation body count exhausted");
         Self {
             scope: self.scope.clone(),
-            cancel_on_drop: false,
+            cancel_on_drop: None,
         }
+    }
+
+    /// Transfer cancellation of this same operation after its durable claim.
+    /// The caller can then disappear while the independently owned worker runs.
+    /// The token remains a child of the original Host shutdown token.
+    pub(crate) fn take_worker_cancellation(mut self) -> Self {
+        {
+            let mut state = self.scope.state.lock().unwrap_or_else(|p| p.into_inner());
+            assert!(state.cancellation_owner == CancellationOwner::Caller);
+            state.cancellation_owner = CancellationOwner::Worker;
+            self.cancel_on_drop = Some(CancellationOwner::Worker);
+        }
+        self
     }
 
     pub(crate) async fn run<F: Future>(self, work: F) -> F::Output {
@@ -163,10 +183,10 @@ impl ExecutionOperation {
 }
 impl Drop for ExecutionOperation {
     fn drop(&mut self) {
-        if self.cancel_on_drop {
+        let mut state = self.scope.state.lock().unwrap_or_else(|p| p.into_inner());
+        if self.cancel_on_drop == Some(state.cancellation_owner) {
             self.scope.cancel.cancel();
         }
-        let mut state = self.scope.state.lock().unwrap_or_else(|p| p.into_inner());
         state.bodies = state
             .bodies
             .checked_sub(1)
@@ -262,7 +282,7 @@ pub(crate) fn current() -> Option<ExecutionOperation> {
                 .expect("operation body count exhausted");
             ExecutionOperation {
                 scope: scope.clone(),
-                cancel_on_drop: false,
+                cancel_on_drop: None,
             }
         })
         .ok()
@@ -975,6 +995,40 @@ mod lifecycle_tests {
     #[tokio::test]
     async fn native_git_unknown_seals_admission_until_and_after_reader_join() -> Result<()> {
         native_git_case("unknown").await
+    }
+
+    #[test]
+    fn worktree_handoff_keeps_original_ticket_and_parent_cancellation() {
+        for stop_host in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let store =
+                Arc::new(crate::store::Store::open(&root.path().join("handoff.db")).unwrap());
+            let engine = Engine::new(store.clone(), 1).unwrap();
+            let shutdown = CancellationToken::new();
+            let original = store.execution_operation(shutdown.clone()).unwrap();
+            let cancelled = original.scope.cancel.clone();
+            let worker = original.hold_body().take_worker_cancellation();
+            drop(original);
+            assert!(
+                !cancelled.is_cancelled(),
+                "waiter drop cancelled committed worker"
+            );
+            assert_eq!(store.execution_admission_status().unwrap().1, 1);
+            assert!(Engine::new(store.clone(), 1).is_err());
+            if stop_host {
+                shutdown.cancel();
+                assert!(
+                    cancelled.is_cancelled(),
+                    "parent stop lost original token chain"
+                );
+            }
+            drop(worker);
+            assert!(
+                cancelled.is_cancelled(),
+                "worker drop must cancel remaining process work"
+            );
+            assert_eq!(store.execution_admission_status().unwrap().1, 0);
+        }
     }
 
     #[test]
