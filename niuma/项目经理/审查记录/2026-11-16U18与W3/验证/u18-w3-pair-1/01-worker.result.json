@@ -1,0 +1,36 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/worker-package/invoke-build.ps1",
+    "-Stage",
+    "worker",
+    "-Profile",
+    "debug",
+    "-Target",
+    "x86_64-pc-windows-msvc"
+  ],
+  "command": [
+    "cargo",
+    "build",
+    "--offline",
+    "--locked",
+    "--target",
+    "x86_64-pc-windows-msvc",
+    "--bin",
+    "peachsh-wasm-worker",
+    "--message-format=json-render-diagnostics"
+  ],
+  "ended_utc": "2026-11-16T12:51:39.173793+00:00",
+  "exit_code": 0,
+  "host_compile_digest": null,
+  "log": "01-worker.log",
+  "log_bytes": 193597,
+  "log_sha256": "b19f993e0476f4e4e2d068bce00ff7a487647f685c8a3ded4cd759bded99702f",
+  "reason": null,
+  "stage": "worker",
+  "started_utc": "2026-11-16T12:51:14.037815+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800
+}

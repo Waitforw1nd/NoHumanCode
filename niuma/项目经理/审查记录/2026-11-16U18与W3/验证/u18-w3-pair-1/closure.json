@@ -1,0 +1,15 @@
+{
+  "state": "prepared-closed",
+  "candidate": {
+    "head": "4ee71d95789300141796ae119b865530999369cb",
+    "product_tree": "b579ebac617f96a70af28c5fdef92d8ffdf3c738",
+    "rust_tree": "4b3eb66712d05245b54e60c021fd4826d534d8eb"
+  },
+  "closed_utc": "2026-11-16T12:52:11.112995+00:00",
+  "original_session": 85629,
+  "original_supervisor_exit": 0,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "gate_sha256": "e2f4f0c39460d9499c8dab631c10e7a5a6d6bdb05a3750b2d4913d59fc4e15ce",
+  "scope": "Original supervised build exited; fixed pair hashes verified. Runtime bootstrap requires separate tests."
+}

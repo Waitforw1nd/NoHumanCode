@@ -1,0 +1,15 @@
+{
+  "state": "failed-closed",
+  "closed_utc": "2026-11-16T12:55:07.603986+00:00",
+  "candidate": {
+    "head": "fd34bc044ab56b827e3fd91daeb5efa662b8dd67",
+    "product_tree": "76e142765cb144d5003f64d70579ae367b41d96c",
+    "rust_tree": "847b73c3a4d35968a6864633221c7f90aac66066"
+  },
+  "gate_sha256": "a15acc317be4dcdcf5d9a1284095a5e740d1c49dce6791f5e7b945ed423a416c",
+  "original_session": 84725,
+  "original_supervisor_exit": 101,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Epoch five passed; provider four passed and one legacy same-process restart expectation failed. Original supervisor exited; no terminal unknown marker or unresolved child supervision."
+}

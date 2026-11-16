@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "debug-bins"
+  ],
+  "command": [
+    "cargo",
+    "build",
+    "--bins",
+    "--offline",
+    "--locked"
+  ],
+  "ended_utc": "2026-11-16T12:54:12.543379+00:00",
+  "exit_code": 0,
+  "log": "02-debug-bins.log",
+  "log_bytes": 322,
+  "log_sha256": "f10a39b45af84ccaa76816bd1232216a799491af933ef48018b1ff48b838406b",
+  "name": "debug-bins",
+  "started_utc": "2026-11-16T12:53:52.873374+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

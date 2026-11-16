@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "provider_network"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "provider_network",
+    "--",
+    "--test-threads=1"
+  ],
+  "ended_utc": "2026-11-16T12:54:46.663462+00:00",
+  "exit_code": 101,
+  "log": "04-target-provider_network.log",
+  "log_bytes": 1467,
+  "log_sha256": "3511ec7f1aec5e4d4716c6f3578f83e928a3efc8234f046cfcf5a7a271f9bb7a",
+  "name": "target-provider_network",
+  "started_utc": "2026-11-16T12:54:36.902700+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

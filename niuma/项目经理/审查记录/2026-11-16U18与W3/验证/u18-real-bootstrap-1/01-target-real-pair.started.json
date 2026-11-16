@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/worker-package/invoke-bootstrap-check.ps1"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "worker_package_bootstrap",
+    "--",
+    "real_pair_host_check_rejects_tampering_and_mix",
+    "--exact",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "exit_code": null,
+  "name": "target-real-pair",
+  "started_utc": "2026-11-16T12:52:12.596209+00:00",
+  "timeout_seconds": 600
+}

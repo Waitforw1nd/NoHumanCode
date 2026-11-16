@@ -1,0 +1,27 @@
+{
+  "msvc": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+  "tools": {
+    "lib.exe": {
+      "sha256": "e3bb9c895bed7c8b2d2b6c6922e68df3a7288d80a05ba18b7746d3fba637f560",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx86\\x64\\lib.exe"
+    },
+    "cl.exe": {
+      "sha256": "5e87e3700437d820002cedf66d44b0db6a0b463d1174a3d8ac3f7fc9efbc5ae0",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx86\\x64\\cl.exe"
+    },
+    "link.exe": {
+      "sha256": "bb1459293f2001eb536d04c00d2eb96160e69374ac4eb6e1611bf372cd872e1d",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808\\bin\\Hostx86\\x64\\link.exe"
+    },
+    "rustc": {
+      "sha256": "6f4bef66261261fcb43131be8720bab817d403a09edec7455c371974b90bdb7e",
+      "path": "C:\\Users\\Administrator\\.cargo\\bin\\rustc.exe"
+    },
+    "cargo": {
+      "sha256": "6f4bef66261261fcb43131be8720bab817d403a09edec7455c371974b90bdb7e",
+      "path": "C:\\Users\\Administrator\\.cargo\\bin\\cargo.exe"
+    }
+  },
+  "sdk": "C:\\Program Files (x86)\\Windows Kits\\10\\Lib\\10.0.22621.0",
+  "scope": "discovered command files; rustup, wrappers, linker inputs and effective versions are not attested"
+}

@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\worker-package-evidence\\u18-w3-pair-1",
+  "candidate": {
+    "head": "4ee71d95789300141796ae119b865530999369cb",
+    "product_tree": "b579ebac617f96a70af28c5fdef92d8ffdf3c738",
+    "rust_tree": "4b3eb66712d05245b54e60c021fd4826d534d8eb"
+  },
+  "kind": "worker-pair",
+  "nonce": "56033e608cce46fe94c422d1c3a9a47a",
+  "started_utc": "2026-11-16T12:50:41.286404+00:00"
+}
