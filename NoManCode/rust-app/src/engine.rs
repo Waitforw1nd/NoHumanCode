@@ -2169,6 +2169,9 @@ impl Engine {
             };
             if typed_unknown || claim_unknown {
                 engine.external_outcome_unknown.store(true, Ordering::Release);
+                if let Some(operation) = crate::execution_authority::current() {
+                    operation.seal_unknown();
+                }
             }
             match result {
                 Ok(()) => {
@@ -2189,7 +2192,11 @@ impl Engine {
                 }
             }
             task.updated_at = now();
-            let saved = engine.store.save_running_snapshot(&task);
+            let saved = if typed_unknown || claim_unknown {
+                engine.store.save_unknown_terminal(&task)
+            } else {
+                engine.store.save_running_snapshot(&task)
+            };
             if let Err(error) = &saved {
                 // A terminal database failure must be visible in the host
                 // logs. Silently treating the in-memory result as durable
@@ -2752,7 +2759,7 @@ impl Engine {
             if slot.is_none() && !self.shutdown_requested.is_cancelled() {
                 match self.store.execution_operation(CancellationToken::new()) {
                     Ok(op) => *slot = Some(op),
-                    Err(_) => self.background_failed.store(true, Ordering::Release),
+                    Err(_) => {} // The gate-protected ID set decides whether a ticket is needed.
                 }
             }
         }
@@ -2791,6 +2798,9 @@ impl Engine {
                 .collect();
             let store = self.store.clone();
             let op = self.shutdown_operation.lock().unwrap().take();
+            if ids.is_empty() {
+                return;
+            }
             self.spawn_background(async move {
                 tokio::task::spawn_blocking(move || {
                     let op = op.context("shutdown operation unavailable")?;
