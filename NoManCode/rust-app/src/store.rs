@@ -613,6 +613,7 @@ impl Store {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         self.authority.unknown_terminal_fence(&tx, &op)?;
+        op.verify_task(&task.id)?;
         let mut durable = legacy_task_row(&tx, &task.id)?;
         anyhow::ensure!(
             matches!(durable.status.as_str(), "queued" | "running" | "cancelled"),
