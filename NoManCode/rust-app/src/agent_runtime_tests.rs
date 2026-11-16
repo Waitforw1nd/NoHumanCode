@@ -2611,6 +2611,8 @@ fn n18_agent_admission_and_remote_disable_have_a_transaction_order() {
         let path = dir.path().join("agent-runtime.db");
         let store = Arc::new(Store::open(&path).unwrap());
         let other = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        // Keep the sole controller alive after the racing disable thread exits.
+        let _controller = other.clone();
         // Match the canonical path used by production admission/intent hooks.
         let db = store.db.lock().unwrap();
         let key: String = db
@@ -3810,6 +3812,7 @@ async fn n19_admitted_read_finishes_after_real_engine_cancellation() {
     f.mock.hold.store(true, Ordering::SeqCst);
     let run = f.engine.start(request(2)).await.unwrap();
     let id = run.tasks[0].id.clone();
+    crate::execution_authority::current().unwrap().bind_task(&id).unwrap();
     tokio::time::timeout(Duration::from_secs(10), f.mock.arrived.notified())
         .await
         .unwrap();
