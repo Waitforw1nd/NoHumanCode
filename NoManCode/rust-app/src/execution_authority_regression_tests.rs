@@ -1264,6 +1264,169 @@ fn network_receipt_is_bound_to_its_original_operation() {
     );
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn network_before_send_authority_child() {
+    use crate::{
+        domain::{Route, Settings},
+        network_authorization::{
+            ConfirmRequest, NetworkPurpose, NetworkSubject, NetworkSubjectKind,
+        },
+    };
+    use std::{
+        collections::HashMap,
+        sync::atomic::{AtomicUsize, Ordering},
+        time::Duration,
+    };
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let Ok(case) = std::env::var("NHC_U18_NETWORK_CASE") else {
+        return;
+    };
+    let root = tempfile::tempdir().unwrap();
+    let (engine, _) =
+        crate::engine::workspace_phase_tests::n13_completed_fixture(root.path()).await;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/v1", listener.local_addr().unwrap());
+    let count = Arc::new(AtomicUsize::new(0));
+    let seen = count.clone();
+    let server = tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            seen.fetch_add(1, Ordering::SeqCst);
+            let mut data = [0; 2048];
+            let _ = socket.read(&mut data).await;
+            let body = b"{\"data\":[{\"id\":\"m\"}]}";
+            let _ = socket
+                .write_all(
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    )
+                    .as_bytes(),
+                )
+                .await;
+            let _ = socket.write_all(body).await;
+        }
+    });
+    engine
+        .configure_with_keys(
+            Settings {
+                workspace: root.path().join("source").to_string_lossy().into_owned(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "route".into(),
+                    name: "route".into(),
+                    base_url: base.clone(),
+                    model: "m".into(),
+                    max_tokens: 64,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            },
+            HashMap::from([("route".into(), "fixture-key".into())]),
+        )
+        .await
+        .unwrap();
+    let subject = NetworkSubject {
+        kind: NetworkSubjectKind::Route,
+        id: "route".into(),
+        project_id: engine.current_project().unwrap().project_id,
+    };
+    let preview = engine.network_preview(subject.clone()).await.unwrap();
+    engine
+        .network_confirm(
+            subject,
+            ConfirmRequest {
+                config_revision: preview.config_revision,
+                credential_revision: preview.credential_revision,
+                binding_digest: preview.binding_digest,
+                purposes: vec![NetworkPurpose::Models],
+            },
+            "u18-pre-send",
+        )
+        .await
+        .unwrap();
+    assert!(engine.route_models("route").await.is_ok());
+    assert_eq!(count.load(Ordering::SeqCst), 1);
+    let barrier =
+        crate::engine::runtime_barrier::arm(format!("{base}/models"), "network_before_send");
+    struct ReleaseBarrier(Arc<crate::engine::runtime_barrier::Barrier>);
+    impl Drop for ReleaseBarrier {
+        fn drop(&mut self) {
+            self.0.release();
+        }
+    }
+    let _release_on_failure = ReleaseBarrier(barrier.clone());
+    let worker = {
+        let engine = engine.clone();
+        tokio::spawn(async move { engine.route_models("route").await })
+    };
+    assert!(
+        barrier.wait_arrived(Duration::from_secs(10)),
+        "network permit did not reach pre-send barrier"
+    );
+    let before: i64 = engine
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT count(*) FROM network_calls WHERE state='claimed'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(before, 1);
+    let sql = match case.as_str() {
+        "epoch" => "UPDATE execution_owner SET epoch=epoch+1 WHERE id=1",
+        "phase" => "UPDATE execution_owner SET phase='recovering' WHERE id=1",
+        _ => panic!("invalid case"),
+    };
+    engine.store.db.lock().unwrap().execute(sql, []).unwrap();
+    barrier.release();
+    assert!(
+        tokio::time::timeout(Duration::from_secs(10), worker)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_err()
+    );
+    assert_eq!(
+        count.load(Ordering::SeqCst),
+        1,
+        "invalid authority must not open a second network connection"
+    );
+    assert!(engine.store.execution_admission_status().unwrap().2 > 0);
+    server.abort();
+    let _ = server.await;
+}
+
+#[test]
+fn network_pre_send_checks_original_durable_authority() {
+    use std::{process::Command, time::Duration};
+    for case in ["epoch", "phase"] {
+        let root = tempfile::Builder::new()
+            .prefix("u18-network-send-")
+            .tempdir()
+            .unwrap()
+            .keep();
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "execution_authority_regression_tests::network_before_send_authority_child",
+                "--nocapture",
+            ])
+            .env("NHC_U18_NETWORK_CASE", case);
+        let output =
+            owned_child::OwnedChild::spawn(&mut command, &root).output(Duration::from_secs(40));
+        assert!(
+            output.status.success(),
+            "{case} child failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
 #[test]
 fn restore_rechecks_durable_authority_before_file_action() {
     use std::{process::Command, time::Duration};
@@ -1436,9 +1599,12 @@ async fn restart_and_http_security() {
         created_at: now(),
         updated_at: now(),
     };
-    e.store
+    let operation = e
+        .store
         .execution_operation(CancellationToken::new())
-        .unwrap()
+        .unwrap();
+    operation.bind_task("durable-id").unwrap();
+    operation
         .run(async {
             e.store
                 .create_run(&Run {

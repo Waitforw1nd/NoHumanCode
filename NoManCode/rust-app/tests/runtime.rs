@@ -705,7 +705,7 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
 }
 
 #[tokio::test]
-async fn wasm_plugin_runs_through_agent_tool_boundary() {
+async fn wasm_echo_runs_locally_but_public_tool_boundary_rejects() {
     let temp = tempfile::tempdir().unwrap();
     let (base, _, server) = mock_server().await;
     let engine = setup(temp.path(), &base);
@@ -745,14 +745,14 @@ async fn wasm_plugin_runs_through_agent_tool_boundary() {
         created_at: now(),
         updated_at: now(),
     };
-    let result = workspace::execute(
-        &task,
-        "run_wasm",
-        &json!({"plugin":"echo","input":{"message":"边界测试"}}),
-    )
-    .await
-    .unwrap();
-    assert_eq!(result["output"]["message"], "边界测试");
+    let input = json!({"message":"边界测试"});
+    let plugin = wasm::load(&temp.path().join(".peachsh/plugins"), "echo").unwrap();
+    let result = wasm::run(&plugin, &input).unwrap();
+    assert_eq!(result.output["message"], "边界测试");
+    let error = workspace::execute(&task, "run_wasm", &json!({"plugin":"echo","input":input}))
+        .await
+        .unwrap_err();
+    assert!(format!("{error:#}").contains("run_wasm is not available"));
     assert_eq!(
         workspace::definitions(&task)
             .iter()
