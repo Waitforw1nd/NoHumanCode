@@ -20,7 +20,10 @@ use sha2::Digest;
 use std::{
     collections::{HashMap, hash_map::DefaultHasher},
     hash::{Hash, Hasher},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 #[cfg(test)]
 use tokio::sync::oneshot;
@@ -144,6 +147,7 @@ impl Engine {
             notified.as_mut().enable();
             {
                 let _gate = self.gate.lock().await;
+                self.ensure_accepting().map_err(safe_error)?;
                 match self.slots.clone().try_acquire_owned() {
                     Ok(permit) => {
                         return Ok(NetworkSlot {
@@ -350,6 +354,7 @@ impl Engine {
         let _slot = self.acquire_network_slot().await?;
         let (route, permit, receipt) = {
             let _gate = self.gate.lock().await;
+            self.ensure_accepting().map_err(safe_error)?;
             let route = self.network_route(id)?;
             let (permit, receipt) =
                 self.store
@@ -382,6 +387,7 @@ impl Engine {
         let _slot = self.acquire_network_slot().await?;
         let (mut route, permit, receipt) = {
             let _gate = self.gate.lock().await;
+            self.ensure_accepting().map_err(safe_error)?;
             let route = self.network_route(id)?;
             self.store.network_preflight(
                 &subject,
@@ -423,6 +429,7 @@ impl Engine {
             })?;
         let next = {
             let _gate = self.gate.lock().await;
+            self.ensure_accepting().map_err(safe_error)?;
             self.provider_runtime
                 .acquire_persisted(prepared, |revision| {
                     self.store.network_admit_with_runtime_revision(
@@ -466,6 +473,7 @@ impl Engine {
         let _slot = self.acquire_network_slot().await?;
         let (account, permit, receipt) = {
             let _gate = self.gate.lock().await;
+            self.ensure_accepting().map_err(safe_error)?;
             let account = self
                 .store
                 .settings()
@@ -757,7 +765,11 @@ pub struct Engine {
     slot_capacity: Mutex<usize>,
     slot_notify: Arc<tokio::sync::Notify>,
     key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
-    deferred_resume: Mutex<HashMap<String, String>>,
+    shutdown_requested: CancellationToken,
+    shutdown_persistence_started: AtomicBool,
+    shutdown_tasks: Mutex<std::collections::HashSet<String>>,
+    background: Mutex<tokio::task::JoinSet<Result<()>>>,
+    background_failed: AtomicBool,
     tool_runtime: Arc<ToolRuntime>,
     tool_calls: crate::tool_call_application::ToolCallApplication,
     provider_runtime: Arc<crate::provider_runtime::ProviderRuntime>,
@@ -774,6 +786,18 @@ pub struct Engine {
     restore_probe: Arc<Mutex<Option<restore_probe::Hook>>>,
     #[cfg(test)]
     shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShutdownReport {
+    pub remaining_workers: usize,
+    pub persistence_or_worker_failure: bool,
+    pub timed_out: bool,
+}
+impl ShutdownReport {
+    pub fn settled(&self) -> bool {
+        self.remaining_workers == 0 && !self.persistence_or_worker_failure && !self.timed_out
+    }
 }
 impl Engine {
     pub fn new(store: Arc<Store>, max_concurrency: usize) -> Result<Arc<Self>> {
@@ -925,6 +949,7 @@ impl Engine {
             #[cfg(test)]
             shell_claim_probe.clone(),
         );
+        let shutdown_requested = composition.workspace.stopping.clone();
         Ok(Arc::new(Self {
             store,
             client: provider::client()?,
@@ -935,7 +960,11 @@ impl Engine {
             slot_capacity: Mutex::new(max_concurrency),
             slot_notify: Arc::new(tokio::sync::Notify::new()),
             key_slots: Mutex::new(HashMap::new()),
-            deferred_resume: Mutex::new(HashMap::new()),
+            shutdown_requested,
+            shutdown_persistence_started: AtomicBool::new(false),
+            shutdown_tasks: Mutex::new(std::collections::HashSet::new()),
+            background: Mutex::new(tokio::task::JoinSet::new()),
+            background_failed: AtomicBool::new(false),
             tool_runtime,
             tool_calls,
             provider_runtime,
@@ -1010,6 +1039,7 @@ impl Engine {
         request: crate::worktree_management::CreateWorktree,
     ) -> Result<crate::worktree_management::WorktreeReceipt> {
         use crate::{git_worktree as git, worktree_management::*};
+        self.ensure_accepting()?;
         #[cfg(test)]
         crate::worktree_diagnostics::event("engine_entry");
         let request = normalize_request(request)?;
@@ -1096,6 +1126,8 @@ impl Engine {
         }
         #[cfg(test)]
         crate::worktree_diagnostics::event("claim_begin");
+        let admission = self.gate.lock().await;
+        self.ensure_accepting()?;
         let claim = self
             .store
             .claim_worktree(&request, &inventory, &members, &plan);
@@ -1182,7 +1214,15 @@ impl Engine {
         };
         #[cfg(test)]
         let worker_future = crate::worktree_diagnostics::scope(diagnostic_case, worker_future);
-        let worker = tokio::spawn(worker_future);
+        let (sender, worker) = tokio::sync::oneshot::channel();
+        self.spawn_background(async move {
+            let result = worker_future.await;
+            let failed = result.is_err();
+            let _ = sender.send(result);
+            ensure!(!failed, "worktree 后台结果未持久确认");
+            Ok(())
+        });
+        drop(admission);
         #[cfg(test)]
         crate::worktree_diagnostics::event("worker_spawned");
         match worker.await {
@@ -1200,6 +1240,7 @@ impl Engine {
         operation: &str,
     ) -> Result<crate::worktree_management::WorktreeInspection> {
         use crate::{git_worktree as git, worktree_management::*};
+        self.ensure_accepting()?;
         let receipt = self.store.worktree_receipt(source, operation)?;
         let plan = self.store.worktree_plan(source, operation)?;
         let roots = self.store.worktree_inventory()?.snapshots()?;
@@ -1534,6 +1575,7 @@ impl Engine {
         project_id: ProjectId,
         revision: u64,
     ) -> Result<Run> {
+        self.ensure_accepting()?;
         let config = self.project_config(&project_id)?;
         if config.revision != revision {
             return Err(ProjectError::RevisionConflict.into());
@@ -1712,6 +1754,7 @@ impl Engine {
     }
 
     fn send_chat_turn_locked(self: &Arc<Self>, command: SendChatTurn) -> Result<ChatTurnReceipt> {
+        self.ensure_accepting()?;
         if command.message.trim().is_empty() || command.message.len() > 100_000 {
             return Err(ChatTurnError::InvalidInput.into());
         }
@@ -1853,7 +1896,7 @@ impl Engine {
     }
 
     fn launch(self: &Arc<Self>, task: Task) {
-        let token = CancellationToken::new();
+        let token = self.shutdown_requested.child_token();
         self.active.lock().unwrap().insert(
             task.id.clone(),
             Active {
@@ -1867,7 +1910,7 @@ impl Engine {
             },
         );
         let engine = self.clone();
-        tokio::spawn(async move {
+        self.spawn_background(async move {
             let mut task = task;
             let result = engine.run_task(&mut task, &token).await;
             match result {
@@ -1889,7 +1932,8 @@ impl Engine {
                 }
             }
             task.updated_at = now();
-            if let Err(error) = engine.store.save_running_snapshot(&task) {
+            let saved = engine.store.save_running_snapshot(&task);
+            if let Err(error) = &saved {
                 // A terminal database failure must be visible in the host
                 // logs. Silently treating the in-memory result as durable
                 // makes a restart appear to lose or rerun work.
@@ -1903,6 +1947,7 @@ impl Engine {
                 }
             }
             engine.active.lock().unwrap().remove(&task.id);
+            saved
         });
     }
     async fn run_task(&self, task: &mut Task, cancel: &CancellationToken) -> Result<()> {
@@ -1973,11 +2018,7 @@ impl Engine {
         self.tool_calls
             .reconcile_open_tools(task, cancel, &key)
             .await?;
-        if let Some(message) = self.deferred_resume.lock().unwrap().remove(&task.id) {
-            task.messages.push(json!({"role":"user","content":message}));
-            task.updated_at = now();
-            self.store.save_running_snapshot(task)?;
-        }
+        *task = self.store.consume_resume_inputs(task)?;
         for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let available = self.tool_runtime.definitions(task)?;
@@ -2012,6 +2053,7 @@ impl Engine {
             )?;
             let (lease, (permit, receipt)) = {
                 let _gate = self.gate.lock().await;
+                self.ensure_accepting()?;
                 let subject = self.task_route_subject(task)?;
                 self.provider_runtime
                     .acquire_persisted(prepared, |revision| {
@@ -2175,6 +2217,7 @@ impl Engine {
         decided_by: Option<&str>,
         acknowledge_command_network: bool,
     ) -> Result<approval::ApprovalRecord> {
+        self.ensure_accepting()?;
         self.tool_calls.decide_approval_with_network_ack(
             approval_id,
             approved,
@@ -2224,6 +2267,7 @@ impl Engine {
             !self.active.lock().unwrap().contains_key(id),
             "成员仍在运行"
         );
+        self.ensure_accepting()?;
         let mut task = self.store.task(id)?;
         approval::validate_call_history(&task.messages)?;
         // Verify all finished evidence too, including already answered calls.
@@ -2257,9 +2301,7 @@ impl Engine {
             .filter(|id| !answered.contains(*id))
             .map(String::from)
             .collect();
-        let mut waiting_for_approval = false;
         for id in pending {
-            waiting_for_approval = true;
             match self.store.approval_by_tool_call(&task.id, &id)? {
                 None => {}
                 Some(record)
@@ -2286,29 +2328,19 @@ impl Engine {
                 }
             }
         }
-        if !waiting_for_approval {
-            task.messages.push(json!({"role":"user","content":message}));
-        }
         task.status = "queued".into();
         task.error = None;
         task.output.push_str("\n\n—— 继续 ——\n");
         task.updated_at = now();
-        self.store.resume_task(&task, message)?;
-        if waiting_for_approval {
-            self.deferred_resume
-                .lock()
-                .unwrap()
-                .insert(task.id.clone(), message.to_owned());
-        }
+        self.store.resume_task_with_pending_input(&task, message)?;
         self.launch(task.clone());
         Ok(task)
     }
     pub fn cancel(&self, id: &str) -> Result<()> {
-        self.store.cancel_pending_approvals(id)?;
-        let active = self.active.lock().unwrap();
-        if let Some(active) = active.get(id) {
+        if let Some(active) = self.active.lock().unwrap().get(id) {
             active.cancel.cancel();
         }
+        self.store.cancel_pending_approvals(id)?;
         Ok(())
     }
     pub fn changes(&self, id: &str) -> Result<Vec<WorkspaceChange>> {
@@ -2321,10 +2353,128 @@ impl Engine {
         self.composition.review_recovery.restore(id).await
     }
     pub fn cancel_all(&self) {
-        for (id, task) in self.active.lock().unwrap().iter() {
-            if self.store.cancel_pending_approvals(id).is_ok() {
-                task.cancel.cancel();
+        let ids: Vec<_> = {
+            let active = self.active.lock().unwrap();
+            active
+                .iter()
+                .map(|(id, task)| {
+                    task.cancel.cancel();
+                    id.clone()
+                })
+                .collect()
+        };
+        for id in ids {
+            if self.store.cancel_pending_approvals(&id).is_err() {
+                self.background_failed.store(true, Ordering::Release);
+                eprintln!("🍑sh: 任务 {id} 的取消持久化失败；取消信号已发送");
             }
+        }
+    }
+
+    fn ensure_accepting(&self) -> Result<()> {
+        ensure!(
+            !self.shutdown_requested.is_cancelled(),
+            "Host 正在关闭，拒绝新工作"
+        );
+        Ok(())
+    }
+
+    fn spawn_background(
+        &self,
+        work: impl std::future::Future<Output = Result<()>> + Send + 'static,
+    ) {
+        let mut workers = self.background.lock().unwrap();
+        while let Some(result) = workers.try_join_next() {
+            if !matches!(result, Ok(Ok(()))) {
+                self.background_failed.store(true, Ordering::Release);
+            }
+        }
+        workers.spawn(work);
+    }
+
+    pub fn request_shutdown(&self) {
+        let active = self.active.lock().unwrap();
+        self.shutdown_tasks
+            .lock()
+            .unwrap()
+            .extend(active.keys().cloned());
+        self.shutdown_requested.cancel();
+        self.slots.close();
+        self.slot_notify.notify_waiters();
+        for active in active.values() {
+            active.cancel.cancel();
+        }
+    }
+
+    /// Serialize the admission cutoff with task commits and worker registration.
+    /// Cancellation is unconditional even when the following durable writes fail.
+    pub async fn begin_shutdown(&self) {
+        self.request_shutdown();
+        let _gate = self.gate.lock().await;
+        // Include a task whose commit/registration already held the gate at the
+        // cutoff, and retain IDs even if cancellation already finished it.
+        self.request_shutdown();
+        if !self
+            .shutdown_persistence_started
+            .swap(true, Ordering::AcqRel)
+        {
+            let ids: Vec<_> = self
+                .shutdown_tasks
+                .lock()
+                .unwrap()
+                .iter()
+                .cloned()
+                .collect();
+            let store = self.store.clone();
+            self.spawn_background(async move {
+                tokio::task::spawn_blocking(move || {
+                    let mut failed = false;
+                    for id in ids {
+                        failed |= store.cancel_pending_approvals(&id).is_err();
+                    }
+                    ensure!(!failed, "关闭时取消持久化失败；结果未知");
+                    Ok(())
+                })
+                .await?
+            });
+        }
+    }
+
+    /// A timeout leaves the original JoinHandles owned by this Engine. It does
+    /// not abort workers or reclassify an outstanding external effect as settled.
+    pub async fn shutdown(&self, timeout: std::time::Duration) -> ShutdownReport {
+        let deadline = tokio::time::Instant::now() + timeout;
+        if tokio::time::timeout_at(deadline, self.begin_shutdown())
+            .await
+            .is_err()
+        {
+            return ShutdownReport {
+                remaining_workers: self.background.lock().unwrap().len(),
+                persistence_or_worker_failure: self.background_failed.load(Ordering::Acquire),
+                timed_out: true,
+            };
+        }
+        loop {
+            let remaining = {
+                let mut workers = self.background.lock().unwrap();
+                while let Some(result) = workers.try_join_next() {
+                    if !matches!(result, Ok(Ok(()))) {
+                        self.background_failed.store(true, Ordering::Release);
+                    }
+                }
+                workers.len()
+            };
+            if remaining == 0 || tokio::time::Instant::now() >= deadline {
+                return ShutdownReport {
+                    remaining_workers: remaining,
+                    persistence_or_worker_failure: self.background_failed.load(Ordering::Acquire),
+                    timed_out: remaining != 0,
+                };
+            }
+            tokio::time::sleep_until(
+                deadline.min(tokio::time::Instant::now() + std::time::Duration::from_millis(10)),
+            )
+            .await;
         }
     }
 }
@@ -4214,6 +4364,243 @@ mod workspace_phase_tests {
         }
     }
 
+    #[tokio::test]
+    async fn audit_resume_pending_survives_reopen_and_consumption_rolls_back() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine
+                .store
+                .pending_approvals_for_task(&task_id)
+                .unwrap()
+                .is_empty()
+            {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        engine.cancel(&task_id).unwrap();
+        tokio::time::timeout(Duration::from_secs(8), async {
+            while engine.is_busy() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let mut queued = engine.store.task(&task_id).unwrap();
+        assert!(!crate::tool_call_application::unanswered_tool_calls(&queued.messages).is_empty());
+        queued.status = "queued".into();
+        queued.error = None;
+        engine
+            .store
+            .resume_task_with_pending_input(&queued, "accepted-first")
+            .unwrap();
+        assert!(
+            !queued
+                .messages
+                .iter()
+                .any(|m| m["content"] == "accepted-first")
+        );
+        drop(engine);
+
+        let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
+        store.recover().unwrap();
+        assert_eq!(store.pending_resume_inputs(&task_id).unwrap().len(), 1);
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        let mut queued = store.task(&task_id).unwrap();
+        queued.status = "queued".into();
+        queued.error = None;
+        store
+            .resume_task_with_pending_input(&queued, "accepted-second")
+            .unwrap();
+        assert!(
+            store
+                .consume_resume_inputs(&queued)
+                .unwrap_err()
+                .to_string()
+                .contains("工具调用组未闭合")
+        );
+        engine
+            .tool_calls
+            .reconcile_open_tools(&mut queued, &CancellationToken::new(), "phase-test-key")
+            .await
+            .unwrap();
+        let before = store.task(&task_id).unwrap().messages;
+        store.db.lock().unwrap().execute_batch("CREATE TRIGGER audit_reject_consumption BEFORE INSERT ON events WHEN NEW.kind='unknown:resume_consumed' BEGIN SELECT RAISE(ABORT,'audit consumption fault'); END;").unwrap();
+        assert!(
+            store
+                .consume_resume_inputs(&queued)
+                .unwrap_err()
+                .to_string()
+                .contains("audit consumption fault")
+        );
+        assert_eq!(store.task(&task_id).unwrap().messages, before);
+        assert_eq!(store.pending_resume_inputs(&task_id).unwrap().len(), 2);
+        store
+            .db
+            .lock()
+            .unwrap()
+            .execute_batch("DROP TRIGGER audit_reject_consumption;")
+            .unwrap();
+        let delivered = store.consume_resume_inputs(&queued).unwrap();
+        let tail: Vec<_> = delivered.messages[before.len()..]
+            .iter()
+            .map(|m| m["content"].as_str().unwrap())
+            .collect();
+        assert_eq!(tail, ["accepted-first", "accepted-second"]);
+        assert!(store.pending_resume_inputs(&task_id).unwrap().is_empty());
+        assert_eq!(
+            store.consume_resume_inputs(&delivered).unwrap().messages,
+            delivered.messages
+        );
+        store
+            .event(
+                &task_id,
+                "resume",
+                json!({"message":"legacy-already-delivered"}),
+            )
+            .unwrap();
+        assert!(store.pending_resume_inputs(&task_id).unwrap().is_empty());
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        drop(engine);
+        drop(store);
+        let reopened = Store::open(&temp.path().join("phase.db")).unwrap();
+        assert!(reopened.pending_resume_inputs(&task_id).unwrap().is_empty());
+        assert_eq!(
+            reopened.task(&task_id).unwrap().messages,
+            delivered.messages
+        );
+        assert_eq!(
+            reopened
+                .db
+                .lock()
+                .unwrap()
+                .pragma_query_value::<u32, _>(None, "user_version", |r| r.get(0))
+                .unwrap(),
+            17
+        );
+    }
+
+    #[tokio::test]
+    async fn audit_shutdown_deadline_covers_gate_and_rejects_queued_start_resume() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine(temp.path()).await;
+        finish_two_writes(&engine, &task_id, usize::MAX).await;
+        let task = engine.store.task(&task_id).unwrap();
+        let before = resume_business_snapshot(&engine.store);
+        let gate = engine.gate.lock().await;
+        let mut start = std::pin::pin!(engine.start(RunRequest {
+            title: "closing race".into(),
+            kind: SessionKind::Chat,
+            tasks: vec![task.spec.clone()]
+        }));
+        let mut resume = std::pin::pin!(engine.resume(&task_id, "must not be accepted"));
+        assert_gate_pending(start.as_mut()).await;
+        assert_gate_pending(resume.as_mut()).await;
+        let report = tokio::time::timeout(
+            Duration::from_secs(1),
+            engine.shutdown(Duration::from_millis(20)),
+        )
+        .await
+        .unwrap();
+        assert!(report.timed_out);
+        assert!(!report.settled());
+        drop(gate);
+        assert!(
+            start
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("Host 正在关闭")
+        );
+        assert!(
+            resume
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("Host 正在关闭")
+        );
+        assert_eq!(resume_business_snapshot(&engine.store), before);
+        assert!(engine.shutdown(Duration::from_secs(1)).await.settled());
+    }
+
+    #[tokio::test]
+    async fn audit_legacy_checkpoint_order_remains_readable_without_rewrite() {
+        let temp = tempfile::tempdir().unwrap();
+        let (engine, task_id) = two_write_engine_paths(temp.path(), SessionKind::Chat, true).await;
+        finish_two_writes(&engine, &task_id, usize::MAX).await;
+        let created = engine
+            .create_checkpoint(&task_id, "legacy-order")
+            .await
+            .unwrap()
+            .checkpoint;
+        let mut old_sources = engine.store.workspace_changes_for_task(&task_id).unwrap();
+        assert_eq!(old_sources.len(), 2);
+        old_sources.reverse();
+        let legacy_bytes = {
+            let db = engine.store.db.lock().unwrap();
+            db.execute(
+                "UPDATE workspace_changes SET created_at=1000-rowid WHERE task_id=?1",
+                [&task_id],
+            )
+            .unwrap();
+            let raw: String = db
+                .query_row(
+                    "SELECT manifest FROM checkpoints WHERE id=?1",
+                    [&created.checkpoint_id],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            let mut manifest: crate::checkpoint::Manifest = serde_json::from_str(&raw).unwrap();
+            manifest.source_digest = crate::checkpoint::source_digest(&old_sources).unwrap();
+            let raw = serde_json::to_string(&manifest).unwrap();
+            db.execute(
+                "UPDATE checkpoints SET manifest=?2,manifest_digest=?3 WHERE id=?1",
+                rusqlite::params![created.checkpoint_id, raw, digest(raw.as_bytes())],
+            )
+            .unwrap();
+            raw
+        };
+        drop(engine);
+        let store = Arc::new(Store::open(&temp.path().join("phase.db")).unwrap());
+        let engine = Engine::new(store.clone(), 2).unwrap();
+        assert_eq!(
+            engine.checkpoint(&created.checkpoint_id).unwrap().entries,
+            created.entries
+        );
+        let after: String = store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT manifest FROM checkpoints WHERE id=?1",
+                [&created.checkpoint_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(after, legacy_bytes);
+        assert_eq!(
+            engine
+                .restore_checkpoint(&created.checkpoint_id)
+                .await
+                .unwrap()
+                .status,
+            RestoreStatus::Complete
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+            b"before-a"
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("src/b.txt")).unwrap(),
+            b"before-b"
+        );
+    }
+
     async fn provider_reply(
         State(calls): State<Arc<AtomicUsize>>,
         Json(_): Json<Value>,
@@ -5967,7 +6354,13 @@ mod workspace_phase_tests {
                 assert!(error.to_string().contains("resume fixture fault"));
             }
             assert_eq!(resume_business_snapshot(&engine.store), before);
-            assert!(engine.deferred_resume.lock().unwrap().is_empty());
+            assert!(
+                engine
+                    .store
+                    .pending_resume_inputs(&task_id)
+                    .unwrap()
+                    .is_empty()
+            );
             assert!(!engine.is_busy());
             assert_eq!(
                 std::fs::read(temp.path().join("src/a.txt")).unwrap(),
@@ -6086,7 +6479,7 @@ mod workspace_phase_tests {
         );
         assert_eq!(resume_business_snapshot(&engine.store), before);
         assert!(!engine.is_busy());
-        assert!(engine.deferred_resume.lock().unwrap().is_empty());
+        assert!(engine.store.pending_resume_inputs(id).unwrap().is_empty());
     }
 
     #[test]
@@ -6608,3 +7001,139 @@ mod composition_tests {
 #[cfg(all(test, windows))]
 #[path = "composition_tests.rs"]
 mod composition_independent_tests;
+
+#[cfg(test)]
+mod audit_shutdown_tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn fixture() -> (tempfile::TempDir, Arc<Engine>, Task) {
+        let root = tempfile::tempdir().unwrap();
+        let store = Arc::new(Store::open(&root.path().join("shutdown.db")).unwrap());
+        let task = Task {
+            id: "shutdown-task".into(),
+            run_id: "shutdown-run".into(),
+            spec: TaskSpec {
+                name: "worker".into(),
+                role: "worker".into(),
+                route_id: "route".into(),
+                prompt: "work".into(),
+                depends_on: vec![],
+                write_scopes: vec![],
+                tools: false,
+                allow_commands: false,
+                max_rounds: 1,
+            },
+            route: Route {
+                id: "route".into(),
+                name: "route".into(),
+                base_url: "https://example.invalid/v1".into(),
+                model: "mock".into(),
+                max_tokens: 128,
+                parallel_limit: 1,
+                key_env: None,
+            },
+            workspace: root.path().to_string_lossy().into_owned(),
+            status: "running".into(),
+            output: String::new(),
+            error: None,
+            messages: vec![
+                json!({"role":"system","content":"fixture"}),
+                json!({"role":"user","content":"work"}),
+            ],
+            usage: Value::Null,
+            created_at: 1,
+            updated_at: 1,
+        };
+        store
+            .create_run(&Run {
+                id: task.run_id.clone(),
+                title: "shutdown".into(),
+                kind: SessionKind::Team,
+                created_at: 1,
+                tasks: vec![task.clone()],
+            })
+            .unwrap();
+        let engine = Engine::new(store, 1).unwrap();
+        (root, engine, task)
+    }
+
+    #[tokio::test]
+    async fn cancellation_survives_persistence_failure_and_waits_for_original_worker() {
+        let (_root, engine, mut task) = fixture();
+        let token = engine.shutdown_requested.child_token();
+        engine.active.lock().unwrap().insert(
+            task.id.clone(),
+            Active {
+                cancel: token.clone(),
+                workspace: task.workspace.clone(),
+                scopes: vec![],
+            },
+        );
+        let (observed, signal) = tokio::sync::oneshot::channel();
+        let (release, released) = tokio::sync::oneshot::channel();
+        let worker_engine = engine.clone();
+        engine.spawn_background(async move {
+            token.cancelled().await;
+            let _ = observed.send(());
+            released.await?;
+            task.status = "cancelled".into();
+            let saved = worker_engine.store.save_running_snapshot(&task);
+            worker_engine.active.lock().unwrap().remove(&task.id);
+            saved
+        });
+        engine.store.db.lock().unwrap().execute_batch("CREATE TRIGGER audit_cancel_failure BEFORE UPDATE ON tasks BEGIN SELECT RAISE(ABORT,'audit cancellation persistence failure'); END;").unwrap();
+        engine.cancel_all();
+        tokio::time::timeout(Duration::from_secs(1), signal)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            engine.store.task("shutdown-task").unwrap().status,
+            "running"
+        );
+        let report = engine.shutdown(Duration::from_millis(30)).await;
+        assert!(report.timed_out);
+        assert!(report.persistence_or_worker_failure);
+        assert!(!report.settled());
+        engine
+            .store
+            .db
+            .lock()
+            .unwrap()
+            .execute_batch("DROP TRIGGER audit_cancel_failure;")
+            .unwrap();
+        release
+            .send(())
+            .expect("shutdown must retain, not abort, the original worker");
+        let report = engine.shutdown(Duration::from_secs(1)).await;
+        assert_eq!(report.remaining_workers, 0);
+        assert!(
+            !report.settled(),
+            "a failed durable cancellation remains an explicit unknown"
+        );
+        assert_eq!(
+            engine.store.task("shutdown-task").unwrap().status,
+            "cancelled"
+        );
+    }
+
+    #[tokio::test]
+    async fn timeout_retains_worker_and_late_join_can_be_observed() {
+        let (_root, engine, mut task) = fixture();
+        task.status = "cancelled".into();
+        engine.store.save_task(&task).unwrap();
+        let (release, released) = tokio::sync::oneshot::channel();
+        engine.spawn_background(async move {
+            released.await?;
+            Ok(())
+        });
+        let first = engine.shutdown(Duration::from_millis(20)).await;
+        assert!(first.timed_out);
+        assert_eq!(first.remaining_workers, 1);
+        assert!(!first.settled());
+        release.send(()).unwrap();
+        let second = engine.shutdown(Duration::from_secs(1)).await;
+        assert!(second.settled());
+    }
+}

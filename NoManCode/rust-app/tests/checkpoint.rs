@@ -21,6 +21,67 @@ use std::{
 type Script = Arc<Mutex<VecDeque<Value>>>;
 
 #[tokio::test]
+async fn audit_reversed_clock_keeps_three_writes_and_checkpoint_causal() {
+    use sha2::Digest;
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "first").unwrap();
+    let (base, server) = scripted_server(vec![
+        write_delta("audit-w1", "src/a.txt", "second"),
+        write_delta("audit-w2", "src/a.txt", "third"),
+        write_delta("audit-w3", "src/a.txt", "fourth"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    // Model a backwards wall clock at the actual durable prepare boundary;
+    // all writes still execute through approvals and the real file service.
+    db.execute_batch("CREATE TRIGGER audit_reverse_clock AFTER INSERT ON workspace_changes BEGIN UPDATE workspace_changes SET created_at=1000-(SELECT count(*) FROM workspace_changes) WHERE id=NEW.id; END;").unwrap();
+    let task = complete_script(&engine, 3).await;
+    assert_eq!(
+        std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+        b"fourth"
+    );
+    let checkpoint = engine
+        .create_checkpoint(&task, "audit-clock")
+        .await
+        .unwrap()
+        .checkpoint;
+    assert_eq!(checkpoint.entries.len(), 1);
+    assert_eq!(
+        checkpoint.entries[0].before_digest,
+        Some(format!("{:x}", sha2::Sha256::digest(b"first")))
+    );
+    assert_eq!(
+        checkpoint.entries[0].after_digest,
+        format!("{:x}", sha2::Sha256::digest(b"fourth"))
+    );
+    drop(db);
+    drop(engine);
+    let store = Arc::new(Store::open(&temp.path().join("workspace.db")).unwrap());
+    let reopened = Engine::new(store, 2).unwrap();
+    assert_eq!(
+        reopened.checkpoint(&checkpoint.checkpoint_id).unwrap(),
+        checkpoint
+    );
+    assert_eq!(
+        reopened
+            .restore_checkpoint(&checkpoint.checkpoint_id)
+            .await
+            .unwrap()
+            .status,
+        RestoreStatus::Complete
+    );
+    assert_eq!(
+        std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+        b"first"
+    );
+    server.abort();
+    let _ = server.await;
+}
+
+#[tokio::test]
 async fn cross_project_restore_keeps_original_root_and_waits_for_host_command() {
     use peachsh::workspace_changes::WorkspaceChangeError;
     use peachsh::{

@@ -5,7 +5,7 @@ use peachsh::{
     server::{self, App},
     store::{Store, fresh_settings, initial_settings},
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{future::IntoFuture, path::PathBuf, sync::Arc, time::Duration};
 
 mod cli;
 
@@ -39,8 +39,18 @@ fn nonzero_port(value: &str) -> std::result::Result<u16, String> {
         .filter(|port| *port != 0)
         .ok_or_else(|| "端口必须在 1..=65535".to_owned())
 }
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    let result = runtime.block_on(run());
+    // An unknown shutdown must not silently become an unbounded runtime Drop.
+    // This bounds runtime teardown; it does not certify external process exit.
+    runtime.shutdown_timeout(Duration::from_secs(1));
+    result
+}
+
+async fn run() -> Result<()> {
     let args = Args::try_parse().unwrap_or_else(|error| {
         // Clap may echo invalid argument values. The Host setup namespace never
         // echoes untrusted input, including an accidentally pasted credential.
@@ -139,11 +149,38 @@ async fn main() -> Result<()> {
         "🍑sh harness {} · Rust\n{origin}\n恢复为中断状态的任务：{interrupted}",
         env!("CARGO_PKG_VERSION")
     );
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async move {
-            let _ = tokio::signal::ctrl_c().await;
-            engine.cancel_all();
-        })
-        .await?;
+    let http_stop = tokio_util::sync::CancellationToken::new();
+    let serving = axum::serve(listener, app)
+        .with_graceful_shutdown(http_stop.clone().cancelled_owned())
+        .into_future();
+    tokio::pin!(serving);
+    let (completed, signal) = tokio::select! {
+        result = &mut serving => (Some(result), Ok(())),
+        signal = tokio::signal::ctrl_c() => (None, signal),
+    };
+    engine.request_shutdown();
+    http_stop.cancel();
+    let timeout = Duration::from_secs(30);
+    let (http, shutdown) = tokio::join!(
+        async {
+            match completed {
+                Some(result) => result.context("HTTP 服务退出失败"),
+                None => tokio::time::timeout(timeout, &mut serving)
+                    .await
+                    .context("HTTP 关闭超时；结果 unknown")?
+                    .context("HTTP 服务退出失败"),
+            }
+        },
+        engine.shutdown(timeout),
+    );
+    anyhow::ensure!(
+        shutdown.settled(),
+        "Host 关闭结果 unknown：{} 个后台工作未收束，持久化或工作失败={}，超时={}",
+        shutdown.remaining_workers,
+        shutdown.persistence_or_worker_failure,
+        shutdown.timed_out
+    );
+    http?;
+    signal.context("无法等待关闭信号")?;
     Ok(())
 }
