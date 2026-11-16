@@ -2587,6 +2587,16 @@ impl Engine {
     }
 
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
+        // Preserve the durable unresolved-effect diagnosis even when that
+        // effect has already closed admission. This read cannot grant work.
+        for record in self.store.approvals_for_task(id)? {
+            if matches!(
+                record.execution_state,
+                approval::ExecutionState::Unknown | approval::ExecutionState::Claimed
+            ) {
+                return Err(approval::ApprovalError::UnknownResult { id: record.id }.into());
+            }
+        }
         let operation = self
             .store
             .execution_operation(self.shutdown_requested.clone())?;
