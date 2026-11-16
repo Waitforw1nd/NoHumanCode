@@ -7178,6 +7178,10 @@ mod audit_shutdown_tests {
     use std::time::Duration;
 
     fn fixture() -> (tempfile::TempDir, Arc<Engine>, Task) {
+        fixture_with_tools(false)
+    }
+
+    fn fixture_with_tools(tools: bool) -> (tempfile::TempDir, Arc<Engine>, Task) {
         let root = tempfile::tempdir().unwrap();
         let store = Arc::new(Store::open(&root.path().join("shutdown.db")).unwrap());
         let task = Task {
@@ -7189,8 +7193,8 @@ mod audit_shutdown_tests {
                 route_id: "route".into(),
                 prompt: "work".into(),
                 depends_on: vec![],
-                write_scopes: vec![],
-                tools: false,
+                write_scopes: if tools { vec!["*".into()] } else { vec![] },
+                tools,
                 allow_commands: false,
                 max_rounds: 1,
             },
@@ -7355,9 +7359,7 @@ mod audit_shutdown_tests {
             approval::ExecutionState::Claimed,
             approval::ExecutionState::Unknown,
         ] {
-            let (_root, engine, mut task) = fixture();
-            task.spec.tools = true;
-            task.spec.write_scopes = vec!["*".into()];
+            let (_root, engine, mut task) = fixture_with_tools(true);
             let args = json!({"path":"effect.txt","content":"synthetic"});
             task.messages.push(json!({
                 "role":"assistant", "content":null,
