@@ -230,7 +230,15 @@ async fn real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved
     assert_eq!(rows(&db), before);
     pending.abort();
     assert!(pending.await.unwrap_err().is_cancelled());
+    let before_recovery = rows(&db);
+    assert!(store.recover().is_err());
+    assert_eq!(rows(&db), before_recovery);
+    let report = engine.shutdown(std::time::Duration::from_secs(5)).await;
+    assert!(report.settled(), "{report:?}");
+    drop(engine);
+    // Recovery owns the domain only after the original controller and workers end.
     store.recover().unwrap();
+    let engine = Engine::new(store.clone(), 3).unwrap();
     mock.release.notify_one();
     let status = store.budget_status(&p1).unwrap();
     assert_eq!(status.unresolved_count, 1);
@@ -324,6 +332,9 @@ async fn real_engine_busy_two_projects_old_task_and_unknown_budget_are_preserved
         first.receipt
     );
     server.abort();
+    let _ = server.await;
+    let report = engine.shutdown(std::time::Duration::from_secs(5)).await;
+    assert!(report.settled(), "{report:?}");
     drop(engine);
     drop(store);
     // A controlled, nonempty schema15 fixture, not a claim about an old binary.
