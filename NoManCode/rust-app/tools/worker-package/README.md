@@ -28,7 +28,8 @@ pwsh -NoProfile -File NoManCode/rust-app/tools/worker-package/package-worker.ps1
 No build is authorized merely by this example. `debug` is the default; `release`
 exists as an explicit future selection. Both bins use the same fixed Windows MSVC
 target, profile, default Cargo features, locked/offline dependencies and source
-snapshot. This version intentionally has no arbitrary feature/config/command flags.
+snapshot. This version intentionally has no arbitrary feature/config/command flags;
+ambient Cargo configuration and environment may still change build behavior.
 It reuses discovered MSVC/SDK setup and jobs2/debug0/incremental0 from lifecycle
 tooling. Relative paths resolve from the repository, all active outputs to E.
 
@@ -64,6 +65,23 @@ retains the original Process object until its direct terminal state. Persistent
 gate retention still does not prove descendant cleanup. A prepared pair records
 `runtime_binding_verified: false`; artifact hashes and recorded build settings
 cannot substitute for Host runtime pin/identity/protocol/fail-closed acceptance.
+
+`ambient-inputs.json` fingerprints relevant inherited environment values and
+Cargo configuration files without recording their contents; the files are checked
+again after each build. Each invocation also records the discovered MSVC/SDK and
+command paths plus command-file hashes after environment setup. A rustup shim or
+wrapper may select other tools; the records do not attest the effective compiler,
+all build inputs, or reproducibility. They may expose local paths. `pair.json` is
+self-described evidence, never an authentication authority.
+
+The Windows integration test `tests/worker_package_bootstrap.rs` exercises the
+production bootstrap in isolated copied test executables. The ignored real-pair
+case requires manager-built distinct pairs via `NHC_TEST_PAIR_A` and
+`NHC_TEST_PAIR_B` plus an unbound Host via `NHC_TEST_UNBOUND_HOST`. It copies
+the binaries into isolated directories and uses `--check` with isolated data;
+it does not read `pair.json` as an oracle. Those tests launch real processes and
+belong exclusively to the manager's supervised window. Protocol and public
+`run_wasm` execution remain separate gates.
 
 Pure mock tests, safe while the manager owns the real build window:
 
