@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\lifecycle\\u18-combined-check-5",
+  "candidate": {
+    "head": "57b91bb950a717e79bb1473cbf020bf9c5de0ffb",
+    "product_tree": "7f41afe5a55a36429102300a8e1d1078011de10c",
+    "rust_tree": "c3cea019cd887936ffa992ac74af322c2bf150a2"
+  },
+  "nonce": "b1a37025c37e455e91f7109de1fce2e6",
+  "pid_diagnostic_only": 4048,
+  "started_utc": "2026-11-16T12:56:33.713757+00:00"
+}
