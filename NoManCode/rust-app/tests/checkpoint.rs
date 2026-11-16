@@ -21,6 +21,58 @@ use std::{
 type Script = Arc<Mutex<VecDeque<Value>>>;
 
 #[tokio::test]
+async fn shutdown_rejects_new_checkpoint_without_changing_records_or_files() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::create_dir(temp.path().join("src")).unwrap();
+    std::fs::write(temp.path().join("src/a.txt"), "initial").unwrap();
+    let (base, server) = scripted_server(vec![
+        write_delta("u18-first", "src/a.txt", "first"),
+        json!({"content":"done"}),
+        write_delta("u18-second", "src/a.txt", "second"),
+        json!({"content":"done"}),
+    ])
+    .await;
+    let engine = setup(temp.path(), &base);
+    let first = write_once(&engine).await;
+    let checkpoint = engine
+        .create_checkpoint(&first, "u18-positive")
+        .await
+        .unwrap()
+        .checkpoint;
+    let second = write_once(&engine).await;
+    let db = Connection::open(temp.path().join("workspace.db")).unwrap();
+    let before: i64 = db
+        .query_row("SELECT count(*) FROM checkpoints", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(before, 1);
+    let file_before = std::fs::read(temp.path().join("src/a.txt")).unwrap();
+    assert_eq!(file_before, b"second");
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+    assert!(
+        engine
+            .create_checkpoint(&second, "u18-closed")
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM checkpoints", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        before
+    );
+    assert_eq!(
+        engine.checkpoint(&checkpoint.checkpoint_id).unwrap(),
+        checkpoint
+    );
+    assert_eq!(
+        std::fs::read(temp.path().join("src/a.txt")).unwrap(),
+        file_before
+    );
+    server.abort();
+    let _ = server.await;
+}
+
+#[tokio::test]
 async fn audit_reversed_clock_keeps_three_writes_and_checkpoint_causal() {
     use sha2::Digest;
     let temp = tempfile::tempdir().unwrap();

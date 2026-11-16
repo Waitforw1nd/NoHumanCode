@@ -17,6 +17,45 @@ fn setup() -> (tempfile::TempDir, Arc<Store>, Arc<Engine>) {
     (dir, store, engine)
 }
 
+#[test]
+fn real_old_body_blocks_new_epoch_after_controller_drop_until_settled() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(&dir.path().join("domain.db")).unwrap();
+    let controller = store.authority.claim().unwrap();
+    store.recover_with_controller(&controller).unwrap();
+    let operation = store.execution_operation(CancellationToken::new()).unwrap();
+    let body = operation.hold_body();
+    let read_owner = || {
+        store
+            .db
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT epoch,phase FROM execution_owner WHERE id=1",
+                [],
+                |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)),
+            )
+            .unwrap()
+    };
+    let before = read_owner();
+    assert_eq!(before.1, "active");
+    drop(controller);
+    assert!(store.authority.claim().is_err());
+    assert_eq!(read_owner(), before);
+    drop(operation);
+    assert!(
+        store.authority.claim().is_err(),
+        "retained original body must block a new epoch"
+    );
+    assert_eq!(read_owner(), before);
+    drop(body);
+    assert_eq!(store.execution_admission_status().unwrap().1, 0);
+    let next = store.authority.claim().unwrap();
+    assert_eq!(read_owner(), (before.0 + 1, "recovering".to_owned()));
+    store.recover_with_controller(&next).unwrap();
+    assert_eq!(read_owner(), (before.0 + 1, "active".to_owned()));
+}
+
 fn value(store: &Store) -> Option<String> {
     use rusqlite::OptionalExtension;
     store
@@ -185,6 +224,20 @@ fn copied_owner_row_cannot_make_foreign_transaction_belong_to_original_store() {
         .unwrap(),
         0
     );
+    drop(db);
+    let mut db = first.db.lock().unwrap();
+    let tx = db
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
+    first.execution_fence_for(&tx, &op).unwrap();
+    tx.execute(
+        "UPDATE config SET value='after' WHERE id='u18-fence-test'",
+        [],
+    )
+    .unwrap();
+    tx.commit().unwrap();
+    drop(db);
+    assert_eq!(value(&first).as_deref(), Some("after"));
 }
 
 #[test]
