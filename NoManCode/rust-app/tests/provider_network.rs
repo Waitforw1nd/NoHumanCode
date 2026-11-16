@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/owned_child.rs"]
+mod owned_child;
 #[path = "support/project_fixture.rs"]
 #[allow(dead_code)]
 mod project_fixture;
@@ -524,6 +527,32 @@ async fn account_binding_is_local_and_identity_changes_need_separate_confirmatio
 }
 
 #[tokio::test]
+async fn truncated_response_original_owner_child() {
+    let Some(root) = std::env::var_os("NHC_U18_PROVIDER_ROOT") else {
+        return;
+    };
+    let root = std::path::PathBuf::from(root);
+    let base = std::env::var("NHC_U18_PROVIDER_BASE").unwrap();
+    let engine = engine(&root, &base, "fixture-key").await;
+    authorize(
+        &engine,
+        subject(&engine),
+        vec![NetworkPurpose::Models],
+        "one-call",
+    )
+    .await;
+    let error = engine.route_models("route").await.unwrap_err();
+    assert_eq!(error.kind, NetworkErrorKind::Unknown);
+    assert_eq!(error.calls.len(), 1);
+    let call = &error.calls[0];
+    assert_eq!(call.state, CallState::Unknown);
+    assert_eq!(call.result, Some(CallResult::TransportUnknown));
+    std::fs::write(root.join("receipt.json"), serde_json::to_vec(call).unwrap()).unwrap();
+    // The injected HTTP server has already closed the truncated response.
+    // Exit this actual owner process before the parent attempts recovery.
+}
+
+#[tokio::test]
 async fn redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reopen() {
     let b = Endpoint::start(None).await;
     for (wire, state, result, kind) in [
@@ -531,6 +560,26 @@ async fn redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reop
         (b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n{}".to_vec(), CallState::Unknown, CallResult::TransportUnknown, NetworkErrorKind::Unknown),
     ] {
         let a = Endpoint::start(Some(wire)).await; let dir = tempfile::tempdir_in("target").unwrap();
+        if state == CallState::Unknown {
+            let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+            command.args(["--exact", "truncated_response_original_owner_child", "--nocapture"])
+                .env("NHC_U18_PROVIDER_ROOT", dir.path()).env("NHC_U18_PROVIDER_BASE", &a.base);
+            let child = owned_child::OwnedChild::spawn(&mut command, &dir.path().join("child-evidence"));
+            let output = tokio::task::spawn_blocking(move || child.output(std::time::Duration::from_secs(40))).await.unwrap();
+            assert!(output.status.success(), "original provider child failed: {}", String::from_utf8_lossy(&output.stderr));
+            let call: peachsh::network_authorization::CallReceipt = serde_json::from_slice(&std::fs::read(dir.path().join("receipt.json")).unwrap()).unwrap();
+            assert_eq!(call.state, state);
+            assert_eq!(call.result, Some(result));
+            assert_eq!(a.counts(), (1, 1));
+            assert_eq!(b.counts(), (0, 0));
+            let reopened = Engine::new(Arc::new(Store::open(&dir.path().join("test.db")).unwrap()), 2).unwrap();
+            assert_eq!(reopened.network_call(&call.call_id).unwrap(), call);
+            assert_eq!(a.counts(), (1, 1));
+            assert_eq!(b.counts(), (0, 0));
+            drop(reopened);
+            a.stop().await;
+            continue;
+        }
         let engine = engine(dir.path(), &a.base, "fixture-key").await;
         authorize(&engine, subject(&engine), vec![NetworkPurpose::Models], "one-call").await;
         let error = engine.route_models("route").await.unwrap_err(); assert_eq!(error.kind, kind); assert_eq!(error.calls.len(), 1);
