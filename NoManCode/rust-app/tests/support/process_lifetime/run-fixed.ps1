@@ -111,7 +111,8 @@ public static class NhcLifetimeWait {
       'process_lifetime_tests::token_cancel_waits_for_original_holder_and_reader_before_settlement',
       'process_lifetime_tests::final_read_overflow_cannot_be_adopted_as_ordinary_exit',
       'process_lifetime_tests::token_cancel_unknown_keeps_reader_and_stays_sealed_after_late_cleanup',
-      'process_lifetime::state_tests::original_holder_handle_keeps_slot_until_actual_thread_exit'
+      'process_lifetime::state_tests::original_holder_handle_keeps_slot_until_actual_thread_exit',
+      'process_lifetime_tests::known_result_allows_immediate_next_submit_at_capacity_one'
     )
     $env:NHC_PROCESS_LIFETIME_PROBE = $probe
     $env:NHC_PROCESS_LIFETIME_PROBE_SHA256 = $ProbeSha256

@@ -740,11 +740,45 @@ async fn watchdog_real_exit_is_covered_by_slot() {
     s.args = vec!["exit".into(), "0".into()];
     let task = tokio::spawn(submit(&supervisor, s, &domain).wait());
     guard.track(&task);
-    assert!(matches!(result(task).await, Outcome::Settled(_)));
     until(|| hooks.watchdog_held.load(Ordering::Acquire)).await;
     assert_eq!(supervisor.active_count(), 1, "watchdog has not exited");
+    assert!(
+        !task.is_finished(),
+        "known result waits for the original holder thread"
+    );
     hooks.release_watchdog.store(true, Ordering::Release);
+    assert!(matches!(result(task).await, Outcome::Settled(_)));
     until(|| supervisor.active_count() == 0).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires isolated fixed executable and serial process supervision"]
+async fn known_result_allows_immediate_next_submit_at_capacity_one() {
+    let supervisor = Arc::new(Supervisor::new(NonZeroUsize::new(1).unwrap()));
+    let domain = Arc::new(Domain::default());
+    let mut guard = FixtureGuard::new(Arc::clone(&supervisor), Arc::clone(&domain), None);
+    for mode in ["missing", "0", "7"] {
+        let mut s = spec(guard.path(), Duration::from_secs(10), None);
+        s.args = vec!["exit".into(), mode.into()];
+        if mode == "missing" {
+            s.program = guard.path().join("missing.exe");
+        }
+        // Intentionally no active_count polling or delay between submissions.
+        let task = tokio::spawn(submit(&supervisor, s, &domain).wait());
+        guard.track(&task);
+        match result(task).await {
+            Outcome::NotStarted { stage, .. } if mode == "missing" => {
+                assert_eq!(stage, "create_returned_no_process")
+            }
+            Outcome::Settled(value) if mode != "missing" => {
+                assert_eq!(value.exit_code, mode.parse::<u32>().unwrap());
+                assert_eq!(value.reason, CompletionReason::Exited);
+            }
+            other => panic!("unexpected known result: {other:?}"),
+        }
+    }
+    assert_eq!(domain.settled.load(Ordering::Acquire), 3);
+    assert!(!domain.sealed.load(Ordering::Acquire));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
