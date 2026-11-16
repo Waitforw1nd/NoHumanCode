@@ -1,0 +1,24 @@
+test_artifact_outside_selected_target_is_rejected (__main__.PairTests.test_artifact_outside_selected_target_is_rejected) ... ok
+test_comment_or_string_is_not_a_compile_digest_consumer (__main__.PairTests.test_comment_or_string_is_not_a_compile_digest_consumer) ... ok
+test_destination_race_keeps_the_existing_pair_and_partial_stage (__main__.PairTests.test_destination_race_keeps_the_existing_pair_and_partial_stage) ... ok
+test_existing_pair_or_gate_is_not_overwritten (__main__.PairTests.test_existing_pair_or_gate_is_not_overwritten) ... ok
+test_host_cannot_mutate_frozen_worker (__main__.PairTests.test_host_cannot_mutate_frozen_worker) ... ok
+test_host_failure_keeps_partial_staging_but_publishes_no_pair (__main__.PairTests.test_host_failure_keeps_partial_staging_but_publishes_no_pair) ... ok
+test_invalid_or_ambiguous_protocol_stops_before_build (__main__.PairTests.test_invalid_or_ambiguous_protocol_stops_before_build) ... ok
+test_library_or_worker_digest_consumer_rejected (__main__.PairTests.test_library_or_worker_digest_consumer_rejected) ... ok
+test_missing_ambiguous_and_wrong_source_artifacts_fail_closed (__main__.PairTests.test_missing_ambiguous_and_wrong_source_artifacts_fail_closed) ... ok
+test_missing_host_binding_fails_before_any_build (__main__.PairTests.test_missing_host_binding_fails_before_any_build) ... ok
+test_output_overlap_is_rejected_before_gate (__main__.PairTests.test_output_overlap_is_rejected_before_gate) ... ok
+test_pair_is_frozen_before_host_build_and_old_pair_untouched (__main__.PairTests.test_pair_is_frozen_before_host_build_and_old_pair_untouched) ... ok
+test_pair_verification_rejects_mutated_host_or_foreign_candidate (__main__.PairTests.test_pair_verification_rejects_mutated_host_or_foreign_candidate) ... ok
+test_protocol_is_bound_to_source_not_inherited_environment (__main__.PairTests.test_protocol_is_bound_to_source_not_inherited_environment) ... ok
+test_same_target_profile_and_no_install_command (__main__.PairTests.test_same_target_profile_and_no_install_command) ... ok
+test_source_drift_after_worker_does_not_start_host (__main__.PairTests.test_source_drift_after_worker_does_not_start_host) ... ok
+test_unknown_stops_even_when_direct_exit_is_zero (__main__.PairTests.test_unknown_stops_even_when_direct_exit_is_zero) ... ok
+test_windows_toolchain_roots_are_recorded_without_changing_child_env (__main__.PairTests.test_windows_toolchain_roots_are_recorded_without_changing_child_env) ... ok
+test_worker_failure_does_not_start_host (__main__.PairTests.test_worker_failure_does_not_start_host) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.346s
+
+OK
