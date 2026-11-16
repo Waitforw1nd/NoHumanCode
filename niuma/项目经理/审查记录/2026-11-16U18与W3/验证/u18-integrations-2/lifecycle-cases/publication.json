@@ -1,0 +1,215 @@
+{
+  "roots": 13,
+  "files": [
+    {
+      "path": "domain-alias-fvYEYN/case.json",
+      "bytes": 44,
+      "sha256": "27de89c4963947f0c9d1919a4828d606766a1763cb3ef10b5ccb7d2eb6e3e0d7"
+    },
+    {
+      "path": "component-cancel-krV9XW/case.json",
+      "bytes": 48,
+      "sha256": "c1af1c34c99200bf48a6c33e1b3020bb0f48221723d20e30de7f86fb567192a7"
+    },
+    {
+      "path": "component-cancel-krV9XW/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "component-cancel-krV9XW/handles.json",
+      "bytes": 33,
+      "sha256": "f7aabfd091cbcddaf0289bcbb960eadfb7367d6572b54916d75b7353cfc124a9"
+    },
+    {
+      "path": "component-cancel-krV9XW/identity.json",
+      "bytes": 111,
+      "sha256": "185eff8144ae28a9dcf20f07676057af6bf9ef263447b38bcf3dffc839f833cb"
+    },
+    {
+      "path": "component-cancel-krV9XW/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "adf484179794205b5af9181d8fdfad02bc85eb4026e250dfac7093eb0e2182b8"
+    },
+    {
+      "path": "component-eof-15hJld/case.json",
+      "bytes": 45,
+      "sha256": "24722bc9825cd4582fc5de54e900cdb12457d8b05b6eff2cb705589924af281e"
+    },
+    {
+      "path": "component-eof-15hJld/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "component-eof-15hJld/handles.json",
+      "bytes": 33,
+      "sha256": "bb5cf2b12c7de6031e7aeae349028b2db48b95699e62eec2c621e9a7a1b74d57"
+    },
+    {
+      "path": "component-eof-15hJld/identity.json",
+      "bytes": 112,
+      "sha256": "9ab6097996eeb38b1265c31554890182cf81f37bf7eb8c07755c941c5c9ce0aa"
+    },
+    {
+      "path": "component-eof-15hJld/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "adf484179794205b5af9181d8fdfad02bc85eb4026e250dfac7093eb0e2182b8"
+    },
+    {
+      "path": "reader-failed-6KTgxs/case.json",
+      "bytes": 45,
+      "sha256": "f15fe3c212019560ee91b67a68b97846bae6359c158fe920db194ba508c63e4e"
+    },
+    {
+      "path": "final-read-overflow-l4kqQW/case.json",
+      "bytes": 51,
+      "sha256": "1958ca98ec00985a5a11dce1d26c93177c4aff127949f7020629b724084e571f"
+    },
+    {
+      "path": "component-unknown-MOq4Rk/case.json",
+      "bytes": 49,
+      "sha256": "0fe983221160a41cddc25802e7c35eede092b4d90f0ef666a35d140c2e8be1a2"
+    },
+    {
+      "path": "component-unknown-MOq4Rk/unknown.json",
+      "bytes": 79,
+      "sha256": "dde214ae2161b337477aad4652c9c6ff3e2fb3ae2b46b4bb205e121544276f18"
+    },
+    {
+      "path": "domain-concurrent-hh53kB/case.json",
+      "bytes": 49,
+      "sha256": "9a92ae0c9c96f7a26f8a90199500d992da603daf3d2a2c7f365c80bd9bfe2054"
+    },
+    {
+      "path": "host-shutdown-pim7hN/case.json",
+      "bytes": 45,
+      "sha256": "148ee4d9dfba54e7a09c110675af153af9f7d30c81220c047403e09a7beb69c7"
+    },
+    {
+      "path": "host-shutdown-pim7hN/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "host-shutdown-pim7hN/handles.json",
+      "bytes": 33,
+      "sha256": "acbbfc222c860b5789527554a91de111495c9ce2c5c37ed97056f6b89dc7a5a2"
+    },
+    {
+      "path": "host-shutdown-pim7hN/identity.json",
+      "bytes": 112,
+      "sha256": "6e10ae34f8a48c25613888413171c41b963099d51e527f4dde3a4b7afe66b180"
+    },
+    {
+      "path": "host-shutdown-pim7hN/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "adf484179794205b5af9181d8fdfad02bc85eb4026e250dfac7093eb0e2182b8"
+    },
+    {
+      "path": "ordinary-failure-with space-4E46sF/case.json",
+      "bytes": 59,
+      "sha256": "fdbc6d2de3caf7ab377f8b6edaf71c9855025173f74d366f3c53d6f0a84e28ba"
+    },
+    {
+      "path": "git-descendant-RUKnWD/case.json",
+      "bytes": 46,
+      "sha256": "42e2f987a0edf0b1b3dded4c915418e3c45d7172233481f71174c002c564a435"
+    },
+    {
+      "path": "git-descendant-RUKnWD/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "git-descendant-RUKnWD/handles.json",
+      "bytes": 33,
+      "sha256": "ea7648a03e8ecd6c83740714feca7062dd5c692cfcf091c44c38ea59e4aab8af"
+    },
+    {
+      "path": "git-descendant-RUKnWD/identity.json",
+      "bytes": 112,
+      "sha256": "fd46224a8d64d48e1df850b4c0944cdcf9fbafccd818cb468d6312c36dfe47f2"
+    },
+    {
+      "path": "git-descendant-RUKnWD/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "f39a198a71a9fd5133c91e351b46334e192dab18b80d1082093c00453bb12006"
+    },
+    {
+      "path": "shell-cancel-EnvnKp/case.json",
+      "bytes": 44,
+      "sha256": "2137ebe8b306a62c78b7c775c371c703ac0fad061dabad701e5bd9e488787866"
+    },
+    {
+      "path": "shell-cancel-EnvnKp/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "shell-cancel-EnvnKp/handles.json",
+      "bytes": 33,
+      "sha256": "00a16eb4dad5ee1a31eaccff61c87a7098b0e98055e9164ce4af3bdf93c0c2fe"
+    },
+    {
+      "path": "shell-cancel-EnvnKp/identity.json",
+      "bytes": 112,
+      "sha256": "bcf08c1a6e710af03b84b34bec570137537c5fe951084f30db40622ccacfe5d4"
+    },
+    {
+      "path": "shell-cancel-EnvnKp/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "adf484179794205b5af9181d8fdfad02bc85eb4026e250dfac7093eb0e2182b8"
+    },
+    {
+      "path": "shell-deadline-Dj6Z5O/case.json",
+      "bytes": 46,
+      "sha256": "466bedefe8df40f58cbac868e8a0e6751f00d981ea6d5a11f42bdb2c0321225b"
+    },
+    {
+      "path": "shell-deadline-Dj6Z5O/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "shell-deadline-Dj6Z5O/handles.json",
+      "bytes": 33,
+      "sha256": "df222947606c91734de780ad1c09b8f5aab7cddf412b167265e401bcec45dff3"
+    },
+    {
+      "path": "shell-deadline-Dj6Z5O/identity.json",
+      "bytes": 112,
+      "sha256": "0a6646a6cf802f985b5d4e2315af9563e1cc8d07569ef777518b44533ac1a291"
+    },
+    {
+      "path": "shell-deadline-Dj6Z5O/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "adf484179794205b5af9181d8fdfad02bc85eb4026e250dfac7093eb0e2182b8"
+    },
+    {
+      "path": "shell-eof-fnbci7/case.json",
+      "bytes": 41,
+      "sha256": "df61349cb143a34e5131f1aee36c6a02d6a59e74108d0e7af6b4618184d1ae2c"
+    },
+    {
+      "path": "shell-eof-fnbci7/cleanup.json",
+      "bytes": 91,
+      "sha256": "2d786461de6e6fd5f700e384e45ad002bc498011ce7f3a1f3d2878c5ac8b6e71"
+    },
+    {
+      "path": "shell-eof-fnbci7/handles.json",
+      "bytes": 33,
+      "sha256": "e158b98888ea412810bb50983aa5892aec5663386013f720f52e990506277998"
+    },
+    {
+      "path": "shell-eof-fnbci7/identity.json",
+      "bytes": 112,
+      "sha256": "4500cca51b90cc5d164d415a93a2cd5e7c3979ab62f7d06e08863f8f4b7e422a"
+    },
+    {
+      "path": "shell-eof-fnbci7/parent-stdio-non-inheritable.json",
+      "bytes": 37,
+      "sha256": "f39a198a71a9fd5133c91e351b46334e192dab18b80d1082093c00453bb12006"
+    }
+  ]
+}

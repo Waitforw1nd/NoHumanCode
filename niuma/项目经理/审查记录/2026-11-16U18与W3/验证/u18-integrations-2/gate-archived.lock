@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\lifecycle\\u18-integrations-2",
+  "candidate": {
+    "head": "6a9b55b2d1d4b53939855b44c5f003553ed15d94",
+    "product_tree": "32f5bfa7cce79b6f649caabf3a3872c0289e77c4",
+    "rust_tree": "ab4835bbc92f2ca63e4fa0f0c2ccb28c6e9d59aa"
+  },
+  "nonce": "a3f2c24e4dee42b09fc86a6dcdb7657f",
+  "pid_diagnostic_only": 65528,
+  "started_utc": "2026-11-16T13:14:47.004377+00:00"
+}
