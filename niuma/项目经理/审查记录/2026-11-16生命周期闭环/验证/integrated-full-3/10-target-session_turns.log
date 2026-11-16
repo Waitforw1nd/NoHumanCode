@@ -1,0 +1,28 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+   Compiling peachsh v0.2.0 (E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 3.50s
+     Running tests\session_turns.rs (E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle-target\debug\deps\session_turns-34ce6832b85090f6.exe)
+
+running 19 tests
+test run_context_distinguishes_missing_unmapped_and_corrupt ... ok
+test run_context_uses_persisted_mapping_and_commit_order ... ok
+test session_and_turn_decode_failures_are_corrupt_not_missing ... ok
+test t10_historical_resume_loses_to_a_newer_turn ... ok
+test t10_running_resume_blocks_append ... ok
+test t11_route_removal_uses_a_valid_short_prefix ... ok
+test t11_route_workspace_and_context_limits_fail_closed ... ok
+test t12_session_events_stay_ordered_across_turns ... ok
+test t1_t2_three_turns_keep_identity_and_independent_results ... ok
+test t3_same_key_replay_does_not_relaunch_or_grow ... ok
+test t4_changed_key_inputs_and_legacy_key_conflict ... ok
+test t4_workspace_guard_is_independent_of_agent_count ... ok
+test t5_two_store_connections_allow_only_one_successor ... ok
+test t6_same_second_uuid_order_does_not_decide_latest ... ok
+test t7_busy_non_chat_corrupt_order_and_unpaired_tools_are_refused ... ok
+test t7_each_prefix_fault_is_the_only_reason ... ok
+test t7_unsupported_and_invalid_inputs_add_nothing ... ok
+test t8_event_insert_failure_rolls_back_append ... ok
+test t9_cancel_restart_and_resume_boundaries ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s
+

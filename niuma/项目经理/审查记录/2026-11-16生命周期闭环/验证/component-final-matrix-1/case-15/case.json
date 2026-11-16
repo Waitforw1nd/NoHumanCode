@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960304442693,
+  "pid": 48980,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::argv_cwd_environment_roundtrip_and_invalid_prestart",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:10.4424493Z",
+  "elapsed_ms": 392
+}

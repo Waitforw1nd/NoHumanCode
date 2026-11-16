@@ -1,0 +1,16 @@
+{
+  "checks": [
+    {
+      "file": "NoManCode/rust-app/tools/worker-package/package-worker.ps1",
+      "errors": [],
+      "error_count": 0
+    },
+    {
+      "file": "NoManCode/rust-app/tools/worker-package/invoke-build.ps1",
+      "errors": [],
+      "error_count": 0
+    }
+  ],
+  "exit_code": 0,
+  "scope": "Parser only; no script execution"
+}

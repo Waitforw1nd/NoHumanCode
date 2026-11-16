@@ -188,6 +188,26 @@ impl ToolCallApplication {
         key: &str,
         cancel: &CancellationToken,
     ) -> Result<()> {
+        if crate::execution_authority::current().is_some() {
+            return self
+                .execute_or_wait_in_domain(task, call, name, args, key, cancel)
+                .await;
+        }
+        let operation = self.store.execution_operation(cancel.clone())?;
+        operation
+            .run(self.execute_or_wait_in_domain(task, call, name, args, key, cancel))
+            .await
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_or_wait_in_domain(
+        &self,
+        task: &mut Task,
+        call: &Value,
+        name: &str,
+        args: &Value,
+        key: &str,
+        cancel: &CancellationToken,
+    ) -> Result<()> {
         let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
         if name == "run_wasm" {
             return Err(ProjectError::OperationUnsupported.into());

@@ -21,7 +21,7 @@ use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
     path::Path,
-    process::{Command, Output, Stdio},
+    process::{Command, Output},
     sync::{
         Arc, Mutex,
         atomic::{AtomicUsize, Ordering},
@@ -29,6 +29,9 @@ use std::{
     time::Duration,
 };
 use tempfile::TempDir;
+
+#[path = "support/owned_child.rs"]
+mod owned_child;
 
 const BIN: &str = env!("CARGO_BIN_EXE_peachsh");
 
@@ -891,8 +894,8 @@ async fn cl08_check_and_server_startup_remain_compatible() {
     let legacy = dir.path().join("legacy");
     let workspace = dir.path().join("workspace");
     std::fs::create_dir_all(&workspace).unwrap();
-    let check = Command::new(BIN)
-        .args([
+    let check = owned_child::OwnedChild::spawn(
+        Command::new(BIN).args([
             "--data-dir",
             data.to_str().unwrap(),
             "--legacy-data",
@@ -900,9 +903,10 @@ async fn cl08_check_and_server_startup_remain_compatible() {
             "--workspace",
             workspace.to_str().unwrap(),
             "--check",
-        ])
-        .output()
-        .unwrap();
+        ]),
+        &dir.path().join("check-child"),
+    )
+    .output(Duration::from_secs(15));
     assert!(check.status.success(), "{}", stderr(&check));
     assert!(data.join("peachsh.sqlite3").exists());
 
@@ -910,8 +914,8 @@ async fn cl08_check_and_server_startup_remain_compatible() {
     let p = listener.local_addr().unwrap().port();
     drop(listener);
     let server_data = dir.path().join("server-data");
-    let prepare = Command::new(BIN)
-        .args([
+    let prepare = owned_child::OwnedChild::spawn(
+        Command::new(BIN).args([
             "--data-dir",
             server_data.to_str().unwrap(),
             "--legacy-data",
@@ -919,9 +923,10 @@ async fn cl08_check_and_server_startup_remain_compatible() {
             "--workspace",
             workspace.to_str().unwrap(),
             "--check",
-        ])
-        .output()
-        .unwrap();
+        ]),
+        &dir.path().join("prepare-child"),
+    )
+    .output(Duration::from_secs(15));
     assert!(prepare.status.success());
     let approval_id = {
         let store = Store::open(&server_data.join("peachsh.sqlite3")).unwrap();
@@ -938,21 +943,19 @@ async fn cl08_check_and_server_startup_remain_compatible() {
             .0
             .id
     };
-    let mut child = Command::new(BIN)
-        .args([
-            "--port",
-            &p.to_string(),
-            "--data-dir",
-            server_data.to_str().unwrap(),
-            "--legacy-data",
-            legacy.to_str().unwrap(),
-            "--workspace",
-            workspace.to_str().unwrap(),
-        ])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
+    let mut server_command = Command::new(BIN);
+    server_command.args([
+        "--port",
+        &p.to_string(),
+        "--data-dir",
+        server_data.to_str().unwrap(),
+        "--legacy-data",
+        legacy.to_str().unwrap(),
+        "--workspace",
+        workspace.to_str().unwrap(),
+    ]);
+    let mut child =
+        owned_child::OwnedChild::spawn(&mut server_command, &dir.path().join("server-child"));
     let client = reqwest::Client::builder().no_proxy().build().unwrap();
     tokio::time::timeout(Duration::from_secs(8), async {
         loop {
@@ -970,8 +973,8 @@ async fn cl08_check_and_server_startup_remain_compatible() {
     .await
     .unwrap();
     let second_port = if p == u16::MAX { p - 1 } else { p + 1 };
-    let second = Command::new(BIN)
-        .args([
+    let second = owned_child::OwnedChild::spawn(
+        Command::new(BIN).args([
             "--port",
             &second_port.to_string(),
             "--data-dir",
@@ -980,9 +983,10 @@ async fn cl08_check_and_server_startup_remain_compatible() {
             legacy.to_str().unwrap(),
             "--workspace",
             workspace.to_str().unwrap(),
-        ])
-        .output()
-        .unwrap();
+        ]),
+        &dir.path().join("contender-child"),
+    )
+    .output(Duration::from_secs(15));
     assert_eq!(second.status.code(), Some(1));
     assert!(
         stderr(&second).contains("此数据目录已有一个 🍑sh 实例正在运行"),
@@ -995,8 +999,7 @@ async fn cl08_check_and_server_startup_remain_compatible() {
         stdout(&connected),
         format!("{approval_id}\tpending\tnot_started\n")
     );
-    child.kill().unwrap();
-    child.wait().unwrap();
+    child.kill_wait();
 }
 
 #[tokio::test(flavor = "multi_thread")]

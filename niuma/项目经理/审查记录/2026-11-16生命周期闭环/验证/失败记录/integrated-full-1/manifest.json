@@ -1,0 +1,559 @@
+{
+  "artifacts": [
+    {
+      "bytes": 159,
+      "path": "01-check.direct-exit.json",
+      "sha256": "e7171d3c6fad1d1e1d96953d9fb9cadbc92ce3acf300aa42172b5d96f99c9be7"
+    },
+    {
+      "bytes": 583,
+      "path": "01-check.log",
+      "sha256": "cbda1df70ed46a4dbea24a3ba5d297db6fba0c33fa8cddb9d313c3449d5079b2"
+    },
+    {
+      "bytes": 598,
+      "path": "01-check.result.json",
+      "sha256": "316cc8c087fc9406c39919abc65b0983261593955428ddcf4b515a1778da6e4d"
+    },
+    {
+      "bytes": 366,
+      "path": "01-check.started.json",
+      "sha256": "f38b6b8aa4796d258f24116261bee65a508d1c2478e4c2ddcb830d029ea7950a"
+    },
+    {
+      "bytes": 159,
+      "path": "02-debug-bins.direct-exit.json",
+      "sha256": "9d64dad26f7e65ef8e96d43464fdc1b7ae768a18d56ccc9cb538ef2bc665c252"
+    },
+    {
+      "bytes": 328,
+      "path": "02-debug-bins.log",
+      "sha256": "d3dc77a492b2ff3656d7db11b8d3014b8e93d5bd6cdf987d366ba8818af78359"
+    },
+    {
+      "bytes": 587,
+      "path": "02-debug-bins.result.json",
+      "sha256": "bf21afa4d7b18c14427ff4cc638b50b4d387e6a4300caf6f8a8ca44c7e1f3e24"
+    },
+    {
+      "bytes": 350,
+      "path": "02-debug-bins.started.json",
+      "sha256": "2bc52ca68f5b5f8c786bc200e359f243b7b2926d61fd208f93376ac909f7248e"
+    },
+    {
+      "bytes": 159,
+      "path": "03-target-execution_authority_lifecycle.direct-exit.json",
+      "sha256": "6db4c2f2eb2af8924b9c3056bdd91a2fa19390de7eb802b01b5e2b27fd577d68"
+    },
+    {
+      "bytes": 3783,
+      "path": "03-target-execution_authority_lifecycle.log",
+      "sha256": "8e7c323da7237366170b405d620fb6e0e38542a1348247608978d635b4000117"
+    },
+    {
+      "bytes": 764,
+      "path": "03-target-execution_authority_lifecycle.result.json",
+      "sha256": "4599ec0105737ac71813d35069a8f80a5cbd83a50901d56b3001da45670f4a5e"
+    },
+    {
+      "bytes": 500,
+      "path": "03-target-execution_authority_lifecycle.started.json",
+      "sha256": "b6ccb4454e48095e0e3ce86a32ea6cae0403d94e9ffae75991685ea9cd3221a6"
+    },
+    {
+      "bytes": 159,
+      "path": "04-target-lifecycle_compat.direct-exit.json",
+      "sha256": "0a1cb08d8c504b278ad228873a739d5e199f234f4f28b9a552f73aa20418acfc"
+    },
+    {
+      "bytes": 914,
+      "path": "04-target-lifecycle_compat.log",
+      "sha256": "5f4dc9349f8c0fedfdee866a47ebaadae13f5f3d757416fa1d93f3248e483753"
+    },
+    {
+      "bytes": 711,
+      "path": "04-target-lifecycle_compat.result.json",
+      "sha256": "90800933f4832d8085c7db5929c3b1aa5c13eee460fff72735298f1765d99c42"
+    },
+    {
+      "bytes": 461,
+      "path": "04-target-lifecycle_compat.started.json",
+      "sha256": "711319d2591d8c2f14657e95553c0b2fff29282da66e1ccd0d3b763d22d42faa"
+    },
+    {
+      "bytes": 159,
+      "path": "05-target-git_diff.direct-exit.json",
+      "sha256": "67376ab5673d434bb0709bf49ff5930341dd086a731d4a423b11af14d7011d91"
+    },
+    {
+      "bytes": 780,
+      "path": "05-target-git_diff.log",
+      "sha256": "a99c6576c1ebc6827a05bd7b56bc963ad8c4bdd1d19b5e500c9faa2e5d00dbbc"
+    },
+    {
+      "bytes": 679,
+      "path": "05-target-git_diff.result.json",
+      "sha256": "490b9a039c7b42ea908b348b9a0fbbebca71621dbe5ae4ee7b52857ec739cd45"
+    },
+    {
+      "bytes": 437,
+      "path": "05-target-git_diff.started.json",
+      "sha256": "49f74071a6aed922dfd164af19fe3f46f18fb9394aa1963cf98adc3414dc30b2"
+    },
+    {
+      "bytes": 161,
+      "path": "06-test.direct-exit.json",
+      "sha256": "33fb785a6bc2ff7fc2ad9a3a3069a77a8ba7e7ced7ed4920bb783a5465ca6a14"
+    },
+    {
+      "bytes": 75272,
+      "path": "06-test.log",
+      "sha256": "9abead69a7ae2b727070cc9680f41e0b61a112e96439a29d87357fa968d3de9f"
+    },
+    {
+      "bytes": 587,
+      "path": "06-test.result.json",
+      "sha256": "09d7af277752733cf638beb7a0ed9038703c237c793c6a0e21cc9eb69e018818"
+    },
+    {
+      "bytes": 352,
+      "path": "06-test.started.json",
+      "sha256": "2fe3a4a01d606a113a5459bab51cbdbd7f829b0358113e0dc07e59339560225f"
+    },
+    {
+      "bytes": 38545,
+      "path": "source-after.json",
+      "sha256": "698f729c504cf84b71a3be5e5cc69c69db305fabe3c3523df965dab303a1d548"
+    },
+    {
+      "bytes": 38545,
+      "path": "source-before.json",
+      "sha256": "698f729c504cf84b71a3be5e5cc69c69db305fabe3c3523df965dab303a1d548"
+    }
+  ],
+  "candidate": {
+    "head": "e6ddea7e2468f79e6fb295b329cac163a2d354ed",
+    "product_tree": "b567657690958560a598c21faaf370fc2f3f342e",
+    "rust_tree": "8af3ecdfb29cfe30b58a9eb00bbeb4dd1a09e222"
+  },
+  "ended_utc": "2026-11-16T09:08:01.336959+00:00",
+  "environment": {
+    "AR_x86_64_pc_windows_msvc": null,
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_BUILD_TARGET": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_HOME": null,
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "CC_x86_64_pc_windows_msvc": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTFLAGS": null,
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUSTUP_HOME": null,
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-full-1\\tmp",
+    "TMP": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-full-1\\tmp",
+    "VCToolsInstallDir": null,
+    "WindowsSdkDir": null
+  },
+  "gate_retained": true,
+  "inputs_verified": true,
+  "options": {
+    "examples": [],
+    "filter": "",
+    "mode": "full",
+    "step_timeout_seconds": 1800,
+    "test_targets": [
+      "execution_authority_lifecycle",
+      "lifecycle_compat",
+      "git_diff"
+    ]
+  },
+  "plan": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "name": "check",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "name": "debug-bins",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "execution_authority_lifecycle"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "execution_authority_lifecycle",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-execution_authority_lifecycle",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "lifecycle_compat"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "lifecycle_compat",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-lifecycle_compat",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "git_diff"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "git_diff",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-git_diff",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "test"
+      ],
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "build.ps1",
+        "-Action",
+        "test"
+      ],
+      "name": "test",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "fmt"
+      ],
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "name": "fmt",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "clippy"
+      ],
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "name": "clippy",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "wasm-check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "peachsh-ui",
+        "--target",
+        "wasm32-unknown-unknown",
+        "--offline",
+        "--locked"
+      ],
+      "name": "wasm-check",
+      "timeout_seconds": 1800
+    }
+  ],
+  "process_tree_cleanup": "not_proven_by_this_runner",
+  "runner_exit_code": 101,
+  "started_utc": "2026-11-16T08:58:12.826601+00:00",
+  "status": "failed",
+  "steps": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T08:58:32.703203+00:00",
+      "exit_code": 0,
+      "log": "01-check.log",
+      "log_bytes": 583,
+      "log_sha256": "cbda1df70ed46a4dbea24a3ba5d297db6fba0c33fa8cddb9d313c3449d5079b2",
+      "name": "check",
+      "started_utc": "2026-11-16T08:58:14.033303+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T08:58:52.181802+00:00",
+      "exit_code": 0,
+      "log": "02-debug-bins.log",
+      "log_bytes": 328,
+      "log_sha256": "d3dc77a492b2ff3656d7db11b8d3014b8e93d5bd6cdf987d366ba8818af78359",
+      "name": "debug-bins",
+      "started_utc": "2026-11-16T08:58:33.611963+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "execution_authority_lifecycle"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "execution_authority_lifecycle",
+        "--",
+        "--test-threads=1"
+      ],
+      "ended_utc": "2026-11-16T08:59:40.351958+00:00",
+      "exit_code": 0,
+      "log": "03-target-execution_authority_lifecycle.log",
+      "log_bytes": 3783,
+      "log_sha256": "8e7c323da7237366170b405d620fb6e0e38542a1348247608978d635b4000117",
+      "name": "target-execution_authority_lifecycle",
+      "started_utc": "2026-11-16T08:58:53.074150+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "lifecycle_compat"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "lifecycle_compat",
+        "--",
+        "--test-threads=1"
+      ],
+      "ended_utc": "2026-11-16T08:59:46.883730+00:00",
+      "exit_code": 0,
+      "log": "04-target-lifecycle_compat.log",
+      "log_bytes": 914,
+      "log_sha256": "5f4dc9349f8c0fedfdee866a47ebaadae13f5f3d757416fa1d93f3248e483753",
+      "name": "target-lifecycle_compat",
+      "started_utc": "2026-11-16T08:59:41.231954+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "git_diff"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "git_diff",
+        "--",
+        "--test-threads=1"
+      ],
+      "ended_utc": "2026-11-16T08:59:54.605413+00:00",
+      "exit_code": 0,
+      "log": "05-target-git_diff.log",
+      "log_bytes": 780,
+      "log_sha256": "a99c6576c1ebc6827a05bd7b56bc963ad8c4bdd1d19b5e500c9faa2e5d00dbbc",
+      "name": "target-git_diff",
+      "started_utc": "2026-11-16T08:59:47.781846+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "test"
+      ],
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "build.ps1",
+        "-Action",
+        "test"
+      ],
+      "ended_utc": "2026-11-16T09:08:00.436252+00:00",
+      "exit_code": 101,
+      "log": "06-test.log",
+      "log_bytes": 75272,
+      "log_sha256": "9abead69a7ae2b727070cc9680f41e0b61a112e96439a29d87357fa968d3de9f",
+      "name": "test",
+      "started_utc": "2026-11-16T08:59:55.457562+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    }
+  ],
+  "version": 1
+}

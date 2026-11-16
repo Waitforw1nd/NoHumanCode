@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960298080916,
+  "pid": 69336,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::resize_races_submit_without_erasing_existing_slots",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:09.8060239Z",
+  "elapsed_ms": 164
+}

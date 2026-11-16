@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "approval_gate"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "approval_gate",
+    "--",
+    "--test-threads=1"
+  ],
+  "ended_utc": "2026-11-16T09:56:12.778201+00:00",
+  "exit_code": 0,
+  "log": "03-target-approval_gate.log",
+  "log_bytes": 2852,
+  "log_sha256": "1854f39cb61c87a8d98fd3e2941f5c702d25c73e0c7115bca6e083ff0fc884cc",
+  "name": "target-approval_gate",
+  "started_utc": "2026-11-16T09:55:42.674227+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

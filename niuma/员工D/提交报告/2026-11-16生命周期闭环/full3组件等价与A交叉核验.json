@@ -1,0 +1,270 @@
+{
+  "mode": "read-only; no Cargo or real process tests",
+  "full3_source_before_sha256": "a9da8478ab33b16f55ab53621d4049759ffc5fae6f4bc9e0dcd7c1fd6846c2d5",
+  "full3_candidate": {
+    "head": "0fb205851748fdf25abdf35ca0911a0b24527fd4",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26",
+    "clean": true,
+    "status": ""
+  },
+  "current_head": "0fb205851748fdf25abdf35ca0911a0b24527fd4",
+  "bridge": [
+    {
+      "path": "NoManCode/rust-app/build.ps1",
+      "matrix": {
+        "path": "NoManCode/rust-app/build.ps1",
+        "bytes": 8085,
+        "sha256": "5d915feb6bc2bca48390189b1f26039bc5d76df4b1f82aac95e072dbe0c77674"
+      },
+      "full3": {
+        "bytes": 8085,
+        "path": "NoManCode/rust-app/build.ps1",
+        "sha256": "5d915feb6bc2bca48390189b1f26039bc5d76df4b1f82aac95e072dbe0c77674"
+      },
+      "current_sha256": "5d915feb6bc2bca48390189b1f26039bc5d76df4b1f82aac95e072dbe0c77674",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.lock",
+      "matrix": {
+        "path": "NoManCode/rust-app/Cargo.lock",
+        "bytes": 77750,
+        "sha256": "d8c5cecfd62a03edb49ef29f18b2be6063a2b27d7ad292bcb63b11f8d7ab8519"
+      },
+      "full3": {
+        "bytes": 77750,
+        "path": "NoManCode/rust-app/Cargo.lock",
+        "sha256": "d8c5cecfd62a03edb49ef29f18b2be6063a2b27d7ad292bcb63b11f8d7ab8519"
+      },
+      "current_sha256": "d8c5cecfd62a03edb49ef29f18b2be6063a2b27d7ad292bcb63b11f8d7ab8519",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/Cargo.toml",
+      "matrix": {
+        "path": "NoManCode/rust-app/Cargo.toml",
+        "bytes": 1323,
+        "sha256": "9f244787f737aecb43cc72bb4c73ff1b3c13f7f8a072392eed7371e2b1abb5b8"
+      },
+      "full3": {
+        "bytes": 1323,
+        "path": "NoManCode/rust-app/Cargo.toml",
+        "sha256": "9f244787f737aecb43cc72bb4c73ff1b3c13f7f8a072392eed7371e2b1abb5b8"
+      },
+      "current_sha256": "9f244787f737aecb43cc72bb4c73ff1b3c13f7f8a072392eed7371e2b1abb5b8",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+      "matrix": {
+        "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+        "bytes": 230,
+        "sha256": "c08caaf927c6aac2617fda42782247c789cbbeed17c3e0266d2f3d5e658eb9c0"
+      },
+      "full3": {
+        "bytes": 230,
+        "path": "NoManCode/rust-app/crates/protocol/Cargo.toml",
+        "sha256": "c08caaf927c6aac2617fda42782247c789cbbeed17c3e0266d2f3d5e658eb9c0"
+      },
+      "current_sha256": "c08caaf927c6aac2617fda42782247c789cbbeed17c3e0266d2f3d5e658eb9c0",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+      "matrix": {
+        "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+        "bytes": 342,
+        "sha256": "a711032cb89732c3642f968415953bbee07b81fceb7ae5e57ce324e0beb67ee0"
+      },
+      "full3": {
+        "bytes": 342,
+        "path": "NoManCode/rust-app/crates/ui/Cargo.toml",
+        "sha256": "a711032cb89732c3642f968415953bbee07b81fceb7ae5e57ce324e0beb67ee0"
+      },
+      "current_sha256": "a711032cb89732c3642f968415953bbee07b81fceb7ae5e57ce324e0beb67ee0",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/examples/process_lifetime_probe.rs",
+      "matrix": {
+        "path": "NoManCode/rust-app/examples/process_lifetime_probe.rs",
+        "bytes": 13139,
+        "sha256": "c96dc60d13eaa2bb1881696da0b8491933213606fd4473633460fa342ec19f34"
+      },
+      "full3": {
+        "bytes": 13139,
+        "path": "NoManCode/rust-app/examples/process_lifetime_probe.rs",
+        "sha256": "c96dc60d13eaa2bb1881696da0b8491933213606fd4473633460fa342ec19f34"
+      },
+      "current_sha256": "c96dc60d13eaa2bb1881696da0b8491933213606fd4473633460fa342ec19f34",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/rust-toolchain.toml",
+      "matrix": {
+        "path": "NoManCode/rust-app/rust-toolchain.toml",
+        "bytes": 123,
+        "sha256": "c108ed211a59f68fd4c4bec19cf5dc818f291cef2ed4131c3060608a132aaa7a"
+      },
+      "full3": {
+        "bytes": 123,
+        "path": "NoManCode/rust-app/rust-toolchain.toml",
+        "sha256": "c108ed211a59f68fd4c4bec19cf5dc818f291cef2ed4131c3060608a132aaa7a"
+      },
+      "current_sha256": "c108ed211a59f68fd4c4bec19cf5dc818f291cef2ed4131c3060608a132aaa7a",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/lib.rs",
+      "matrix": {
+        "path": "NoManCode/rust-app/src/lib.rs",
+        "bytes": 1977,
+        "sha256": "3209ff2ff07c7193fd0e298f2f80a35535b9533cf6b490a9ba1045c146d7b2c5"
+      },
+      "full3": {
+        "bytes": 1977,
+        "path": "NoManCode/rust-app/src/lib.rs",
+        "sha256": "3209ff2ff07c7193fd0e298f2f80a35535b9533cf6b490a9ba1045c146d7b2c5"
+      },
+      "current_sha256": "3209ff2ff07c7193fd0e298f2f80a35535b9533cf6b490a9ba1045c146d7b2c5",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/process_lifetime_tests.rs",
+      "matrix": {
+        "path": "NoManCode/rust-app/src/process_lifetime_tests.rs",
+        "bytes": 43672,
+        "sha256": "30c5c961beb0385b5ff62556972fc429dd261162e5a5bf77f8b17e264c09ec14"
+      },
+      "full3": {
+        "bytes": 43672,
+        "path": "NoManCode/rust-app/src/process_lifetime_tests.rs",
+        "sha256": "30c5c961beb0385b5ff62556972fc429dd261162e5a5bf77f8b17e264c09ec14"
+      },
+      "current_sha256": "30c5c961beb0385b5ff62556972fc429dd261162e5a5bf77f8b17e264c09ec14",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/src/process_lifetime.rs",
+      "matrix": {
+        "path": "NoManCode/rust-app/src/process_lifetime.rs",
+        "bytes": 76088,
+        "sha256": "92813bf5884183da323aba6a3205b8ab113dda17ee7b55d25862e206c461dcb7"
+      },
+      "full3": {
+        "bytes": 76088,
+        "path": "NoManCode/rust-app/src/process_lifetime.rs",
+        "sha256": "92813bf5884183da323aba6a3205b8ab113dda17ee7b55d25862e206c461dcb7"
+      },
+      "current_sha256": "92813bf5884183da323aba6a3205b8ab113dda17ee7b55d25862e206c461dcb7",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/process_lifetime/run-fixed.ps1",
+      "matrix": {
+        "path": "NoManCode/rust-app/tests/support/process_lifetime/run-fixed.ps1",
+        "bytes": 11492,
+        "sha256": "3324177d2c013cfc1b00690f92865c3f43dfc217e5a45dcd340e2fea37e6271c"
+      },
+      "full3": {
+        "bytes": 11492,
+        "path": "NoManCode/rust-app/tests/support/process_lifetime/run-fixed.ps1",
+        "sha256": "3324177d2c013cfc1b00690f92865c3f43dfc217e5a45dcd340e2fea37e6271c"
+      },
+      "current_sha256": "3324177d2c013cfc1b00690f92865c3f43dfc217e5a45dcd340e2fea37e6271c",
+      "equal": true
+    },
+    {
+      "path": "NoManCode/rust-app/tests/support/wasm_worker_process/DirectProcess.cs",
+      "matrix": {
+        "path": "NoManCode/rust-app/tests/support/wasm_worker_process/DirectProcess.cs",
+        "bytes": 3316,
+        "sha256": "7c85ab87fe34ba201015ed078dc7aada3c48cba02bffcf3418af1a007e33949d"
+      },
+      "full3": {
+        "bytes": 3316,
+        "path": "NoManCode/rust-app/tests/support/wasm_worker_process/DirectProcess.cs",
+        "sha256": "7c85ab87fe34ba201015ed078dc7aada3c48cba02bffcf3418af1a007e33949d"
+      },
+      "current_sha256": "7c85ab87fe34ba201015ed078dc7aada3c48cba02bffcf3418af1a007e33949d",
+      "equal": true
+    }
+  ],
+  "bridge_all_equal": true,
+  "a_commit": "14b65ae3b4e808e63c8de0799455dd24fc7947fd",
+  "a_full3_blobs": [
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration.rs",
+      "a_blob": "27ff0ef3b8842531e12f457f939f2f7e031a3bad",
+      "full3_blob": "27ff0ef3b8842531e12f457f939f2f7e031a3bad"
+    },
+    {
+      "path": "NoManCode/rust-app/tests/host_configuration_security.rs",
+      "a_blob": "efde39001f3baeb612b533bcde192ac90516e7b1",
+      "full3_blob": "efde39001f3baeb612b533bcde192ac90516e7b1"
+    }
+  ],
+  "a_files_equal_full3": true,
+  "scanner_body_byte_unchanged": true,
+  "incident_closure_sha256": "3f191cca2512c28a6e1278a8485e122988c83935a89e611852d938d3e73d135d",
+  "incident_artifacts": [
+    {
+      "path": "action-before.json",
+      "bytes": 943,
+      "sha256": "3b520ce016d2c502021ff1f7352cf98e8e4abf08e41b18c643464fa964c7b32e",
+      "equal": true
+    },
+    {
+      "path": "action-terminal.json",
+      "bytes": 761,
+      "sha256": "eefde8b7ecc00bcd4e101fcde5c76425264afb923698182ee5be649baeb396eb",
+      "equal": true
+    },
+    {
+      "path": "capture.json",
+      "bytes": 1206,
+      "sha256": "078c9a4d71694ad619720742eb90cf977690322d4e2e053bd1435d36f945f58b",
+      "equal": true
+    },
+    {
+      "path": "cim-observation.json",
+      "bytes": 737,
+      "sha256": "440264f5dcfc89a5b9dd679df202eb00c3033f21d92e47a4b9e6397cd64dc37e",
+      "equal": true
+    },
+    {
+      "path": "terminal.json",
+      "bytes": 866,
+      "sha256": "1ac71dea8000523ef6708371231b4a204cd164cb85df883ab87432b04d105c89",
+      "equal": true
+    },
+    {
+      "path": "retain-fixture-host.py",
+      "bytes": 5409,
+      "sha256": "3b32d36b5e3940563da30eaa5cc8b63b86fbd6f8c7a6de03a2510fcd77014444",
+      "equal": true
+    },
+    {
+      "path": "finish-fixture-host.py",
+      "bytes": 5515,
+      "sha256": "cebdc495ad09db7d581eadc7dfcb2db4d5d4cc2e2c94639d7e45d30008ad5080",
+      "equal": true
+    }
+  ],
+  "incident_identity_equal": true,
+  "incident_capture_supervisor_exit": 0,
+  "incident_action_supervisor_exit": 0,
+  "incident_target_exit_codes": [
+    1,
+    1
+  ],
+  "incident_handles_signalled": [
+    true,
+    true
+  ],
+  "incident_identity_binding": "original spawn handle was not retained by old fixture; current handles were verified against exact image, creation time, command line, unique attempt data domain and idle durable rows before cleanup",
+  "incident_scope": "known termination of this exact idle fixture Host; not a general process-tree proof",
+  "scope": "Component matrix source-equivalence bridge only; full3 run is not yet accepted.",
+  "passed": true
+}

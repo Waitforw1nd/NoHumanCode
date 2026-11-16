@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\lifecycle\\integrated-check-1",
+  "candidate": {
+    "head": "2ca5cf15634bf1f13de81b05255d634e457c8a2e",
+    "product_tree": "adab72e4dd28968f58ebe3f5a8c2dd3a7e44e602",
+    "rust_tree": "e1046d8ee28356dd1964fadb63b127ad93aff001"
+  },
+  "nonce": "cc40c66fc4e948d9b6916e9b05e03f6d",
+  "pid_diagnostic_only": 54784,
+  "started_utc": "2026-11-16T08:43:27.918300+00:00"
+}

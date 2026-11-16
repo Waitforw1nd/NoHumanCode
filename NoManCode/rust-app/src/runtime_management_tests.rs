@@ -13,6 +13,18 @@ fn write(enabled: bool, expected_revision: u64) -> SetPluginEnabled {
         expected_revision,
     }
 }
+fn database_key(store: &Store) -> String {
+    store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT file FROM pragma_database_list WHERE name='main'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap()
+}
 fn status(engine: &Engine, id: RuntimeId) -> Value {
     serde_json::to_value(engine.runtime_component_status(id).unwrap()).unwrap()
 }
@@ -64,27 +76,30 @@ fn persistent_disable_survives_restart_and_old_local_enable_cannot_bypass_it() {
 fn global_key_conflict_and_independent_store_cas() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("runtime.db");
-    let first = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-    let second = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
-    first
+    let first = Arc::new(Store::open(&path).unwrap());
+    let second = Arc::new(first.open_shared().unwrap());
+    let owner = Engine::new(first.clone(), 2).unwrap();
+    assert!(Engine::new(second.clone(), 2).is_err());
+    owner
         .set_runtime_enabled(RuntimeId::ChatAgent, write(false, 0), "shared")
         .unwrap();
     assert!(matches!(
-        second.set_runtime_enabled(RuntimeId::CompletionProvider, write(false, 0), "shared"),
+        second.set_runtime_desired("builtin.provider-xpeach", &write(false, 0), "shared", None),
         Err(RuntimeManagementError::IdempotencyConflict)
     ));
     let gate = Arc::new(Barrier::new(3));
     let handles: Vec<_> = [first, second]
         .into_iter()
         .enumerate()
-        .map(|(i, engine)| {
+        .map(|(i, store)| {
             let gate = gate.clone();
             std::thread::spawn(move || {
                 gate.wait();
-                engine.set_runtime_enabled(
-                    RuntimeId::CompletionProvider,
-                    write(false, 0),
+                store.set_runtime_desired(
+                    "builtin.provider-xpeach",
+                    &write(false, 0),
                     if i == 0 { "race-a" } else { "race-b" },
+                    None,
                 )
             })
         })
@@ -99,6 +114,26 @@ fn global_key_conflict_and_independent_store_cas() {
             .count(),
         1
     );
+    assert_eq!(
+        status(&owner, RuntimeId::CompletionProvider)["desired"]["revision"],
+        1
+    );
+    assert_eq!(
+        status(&owner, RuntimeId::CompletionProvider)["desired"]["enabled"],
+        false
+    );
+    let receipts: i64 = owner
+        .store
+        .db
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT count(*) FROM plugin_management_requests WHERE key IN ('race-a','race-b')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(receipts, 1, "losing connection must not consume its key");
 }
 #[test]
 fn local_suppression_requires_a_new_persistent_intent_to_restore_runtime() {
@@ -224,13 +259,7 @@ fn intent_receipt_insert_failure_rolls_back_without_changing_local_runtime() {
         let before = status(&engine, id);
         let probe=db.execute("INSERT INTO plugin_management_requests(key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES('write-failure',?1,0,0,1,1)",[component]).unwrap_err();
         assert!(probe.to_string().contains("n18_receipt_injected"));
-        let db_key: String = db
-            .query_row(
-                "SELECT file FROM pragma_database_list WHERE name='main'",
-                [],
-                |r| r.get(0),
-            )
-            .unwrap();
+        let db_key = database_key(&engine.store);
         let gate =
             crate::engine::runtime_barrier::arm(db_key, "runtime_intent_before_receipt_insert");
         let worker_engine = engine.clone();
@@ -282,13 +311,7 @@ fn sqlite_intent_commit_failure_rolls_back_before_runtime_changes() {
         let path = dir.path().join("runtime.db");
         let engine = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
         let db = rusqlite::Connection::open(&path).unwrap();
-        let db_key: String = db
-            .query_row(
-                "SELECT file FROM pragma_database_list WHERE name='main'",
-                [],
-                |r| r.get(0),
-            )
-            .unwrap();
+        let db_key = database_key(&engine.store);
         let component = match id {
             RuntimeId::ChatAgent => "builtin.chat-agent",
             RuntimeId::CompletionProvider => "builtin.provider-xpeach",

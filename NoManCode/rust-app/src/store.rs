@@ -48,6 +48,7 @@ fn ensure_resume_unsealed(db: &Connection, task_id: &str) -> Result<()> {
 
 pub struct Store {
     pub(crate) db: Mutex<Connection>,
+    pub(crate) authority: std::sync::Arc<crate::execution_authority::ExecutionAuthority>,
 }
 
 fn pending_resume_inputs_tx(db: &Connection, task_id: &str) -> Result<Vec<(i64, String)>> {
@@ -74,8 +75,53 @@ pub struct TurnBundle<'a> {
     pub legacy_tasks: &'a [Task],
 }
 impl Store {
+    /// Duplicate the already-held legacy instance lock for main's runtime
+    /// teardown guard. The original remains owned by all domain work tickets.
+    #[doc(hidden)]
+    pub fn instance_lock_handle(&self) -> Result<std::fs::File> {
+        self.authority.instance_lock_handle()
+    }
+
+    /// A second SQLite connection under the same held OS data domain.
+    pub fn open_shared(&self) -> Result<Self> {
+        let mut db = self.authority.connection()?;
+        db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
+        let verify = db.transaction()?;
+        repository::verify_initialized_schema(&verify)?;
+        verify.commit()?;
+        Ok(Self {
+            db: Mutex::new(db),
+            authority: self.authority.clone(),
+        })
+    }
+    pub fn execution_admission_status(&self) -> Result<(bool, usize, usize)> {
+        Ok(self.authority.status())
+    }
+    pub(crate) fn execution_operation(
+        &self,
+        cancel: tokio_util::sync::CancellationToken,
+    ) -> Result<crate::execution_authority::ExecutionOperation> {
+        self.authority.operation(cancel)
+    }
+
     pub fn open(path: &Path) -> Result<Self> {
-        let mut db = Connection::open(path).context("无法打开任务数据库")?;
+        let authority = crate::execution_authority::ExecutionAuthority::acquire(path)?;
+        let mut initialized = authority
+            .initialization
+            .lock()
+            .map_err(|_| anyhow::anyhow!("domain initialization poisoned"))?;
+        let mut db = authority.connection().context("无法打开任务数据库")?;
+        if *initialized {
+            db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;")?;
+            let verify = db.transaction()?;
+            repository::verify_initialized_schema(&verify)?;
+            verify.commit()?;
+            drop(initialized);
+            return Ok(Self {
+                db: Mutex::new(db),
+                authority,
+            });
+        }
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
           CREATE TABLE IF NOT EXISTS config (id TEXT PRIMARY KEY, value TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS secrets (id TEXT PRIMARY KEY, value BLOB NOT NULL);
@@ -361,7 +407,12 @@ impl Store {
                 crate::engine::crash_probe::block(&path, "runtime17_after_commit", "");
             }
         }
-        Ok(Self { db: Mutex::new(db) })
+        *initialized = true;
+        drop(initialized);
+        Ok(Self {
+            db: Mutex::new(db),
+            authority,
+        })
     }
     pub fn schema_version(&self) -> Result<u32> {
         Ok(self
@@ -2342,7 +2393,19 @@ impl Store {
 
     /// Restart marks queued/running tasks interrupted. Pending approvals stay
     /// pending: an approval is a user decision, not a process lease.
+    /// A maintenance recovery is excluded by the same real domain owner.
     pub fn recover(&self) -> Result<usize> {
+        let controller = self.authority.claim()?;
+        self.recover_with_controller(&controller)
+    }
+    pub(crate) fn recover_with_controller(
+        &self,
+        controller: &crate::execution_authority::ExecutionController,
+    ) -> Result<usize> {
+        anyhow::ensure!(
+            controller.owns(&self.authority) && controller.can_recover(),
+            "recovery requires an unstarted controller for this domain"
+        );
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
         crate::budget::verify_persisted_rows(&tx)?;

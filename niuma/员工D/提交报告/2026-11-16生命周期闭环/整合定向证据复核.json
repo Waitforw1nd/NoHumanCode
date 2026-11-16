@@ -1,0 +1,190 @@
+{
+  "reviewer": "D",
+  "checked_utc": "2026-11-16T09:06:42.763064+00:00",
+  "records": [
+    {
+      "attempt": "integrated-check-2",
+      "candidate": {
+        "head": "2ca5cf15634bf1f13de81b05255d634e457c8a2e",
+        "product_tree": "adab72e4dd28968f58ebe3f5a8c2dd3a7e44e602",
+        "rust_tree": "e1046d8ee28356dd1964fadb63b127ad93aff001"
+      },
+      "manifest_sha256": "9bb114fe7390e437a8b40e83c87b11aaeac4070728921c55e258e3717bbdb318",
+      "recorded_status": "failed",
+      "recorded_runner_exit": null,
+      "runner_exit_field_present": false,
+      "steps": [
+        {
+          "name": "check",
+          "exit_code": 101,
+          "terminal_unknown": false,
+          "log_hash_matches": true
+        }
+      ],
+      "source_before_after_equal": true,
+      "checks": [
+        {
+          "path": "01-check.direct-exit.json",
+          "sha256": "45bdacfe3d5d5d1f038cd4c622ba48d911adb99ccc53c15d2755e7396198ff24",
+          "bytes": 161,
+          "matches": true
+        },
+        {
+          "path": "01-check.log",
+          "sha256": "281e3956f9b5c17c9b4cfc452754d91ed4998cac439326b00998c3e66bee754c",
+          "bytes": 2562,
+          "matches": true
+        },
+        {
+          "path": "01-check.result.json",
+          "sha256": "f458acfbfd13ad929249281c4e060df26cb122e0bd1450ffe37412ecd4e3e257",
+          "bytes": 601,
+          "matches": true
+        },
+        {
+          "path": "01-check.started.json",
+          "sha256": "3805404843a30f0f70bba49f9d8795a7ceeef56fbc625b485a864fc7ff522a78",
+          "bytes": 366,
+          "matches": true
+        },
+        {
+          "path": "source-after.json",
+          "sha256": "0bd422a2fc9aca48d415a671d4bb9d4a10cef4117baf85c5f46795ee879a41c2",
+          "bytes": 38347,
+          "matches": true
+        },
+        {
+          "path": "source-before.json",
+          "sha256": "0bd422a2fc9aca48d415a671d4bb9d4a10cef4117baf85c5f46795ee879a41c2",
+          "bytes": 38347,
+          "matches": true
+        }
+      ],
+      "mismatches": [
+        "artifact set"
+      ],
+      "scope": "Read-only historical evidence consistency, not current HEAD acceptance or process-tree proof"
+    },
+    {
+      "attempt": "integrated-targeted-2",
+      "candidate": {
+        "head": "6a11f8e8ac34ad8bfa90d432ce47c3220f1a6b7c",
+        "product_tree": "2845d59085415d8dcfe20ff847b52e86a2de36fd",
+        "rust_tree": "284286b8247220b30b43df5f99afe4a10620e6c7"
+      },
+      "manifest_sha256": "9ae6836932d860098558782e3c46ffc2050f6b6af29ec45513dc5ccb81e93ce3",
+      "recorded_status": "failed",
+      "recorded_runner_exit": 101,
+      "runner_exit_field_present": true,
+      "steps": [
+        {
+          "name": "check",
+          "exit_code": 0,
+          "terminal_unknown": false,
+          "log_hash_matches": true
+        },
+        {
+          "name": "debug-bins",
+          "exit_code": 0,
+          "terminal_unknown": false,
+          "log_hash_matches": true
+        },
+        {
+          "name": "target-execution_authority_lifecycle",
+          "exit_code": 101,
+          "terminal_unknown": false,
+          "log_hash_matches": true
+        }
+      ],
+      "source_before_after_equal": true,
+      "checks": [
+        {
+          "path": "01-check.direct-exit.json",
+          "sha256": "e31aac3a0139eab6eebda8c3500ca2d40848f8e0f2cb7201401f253881b72c6a",
+          "bytes": 159,
+          "matches": true
+        },
+        {
+          "path": "01-check.log",
+          "sha256": "6f0720a1e49e4a76cc6e12738d9c5eb59c8645dc54430358340e9dd160aa9c94",
+          "bytes": 1927,
+          "matches": true
+        },
+        {
+          "path": "01-check.result.json",
+          "sha256": "81447e8f8bd4179e89bb6cc0a7a5aeec88b618f02a8d09905a7b6b035e62b61b",
+          "bytes": 599,
+          "matches": true
+        },
+        {
+          "path": "01-check.started.json",
+          "sha256": "67893f55164f935543cfc75cffa7ba4b00aa5fbb6f1eefeb9436dad3c8b0dd84",
+          "bytes": 366,
+          "matches": true
+        },
+        {
+          "path": "02-debug-bins.direct-exit.json",
+          "sha256": "c792c795bc46a33d947358eebc8139681076752f3d9e1965a622d4c9ccaae6f2",
+          "bytes": 159,
+          "matches": true
+        },
+        {
+          "path": "02-debug-bins.log",
+          "sha256": "41c99a8ae5eaff443872b90e5da7cbcd73999ab8171c802ff3f6391bd4fafc9d",
+          "bytes": 1241,
+          "matches": true
+        },
+        {
+          "path": "02-debug-bins.result.json",
+          "sha256": "ea52f9b6ee6e02038b830c55f899435311a6664780446740b2a3250a20e13108",
+          "bytes": 588,
+          "matches": true
+        },
+        {
+          "path": "02-debug-bins.started.json",
+          "sha256": "a7614a1548ee4d41034350328de92d404f7d933b613c8563f483ec4034a70ea6",
+          "bytes": 350,
+          "matches": true
+        },
+        {
+          "path": "03-target-execution_authority_lifecycle.direct-exit.json",
+          "sha256": "bfa131b3bffa91263563bab9f0ad15f6c05044d362f30a5b4cf5d076e1a74f74",
+          "bytes": 161,
+          "matches": true
+        },
+        {
+          "path": "03-target-execution_authority_lifecycle.log",
+          "sha256": "db27dda4d93f51a1f1f99e70c109bad9a2873aeb5fefee51b3ffa9e6c4a9292c",
+          "bytes": 5044,
+          "matches": true
+        },
+        {
+          "path": "03-target-execution_authority_lifecycle.result.json",
+          "sha256": "a4923690f8282a355202f1f0b1bb9390d389ddcf12b3321421afc522683736c4",
+          "bytes": 766,
+          "matches": true
+        },
+        {
+          "path": "03-target-execution_authority_lifecycle.started.json",
+          "sha256": "0741586b3bc78abc98c7a364d1d899e38f0a466f3c4e5fc7e36afe3bd6ba3343",
+          "bytes": 500,
+          "matches": true
+        },
+        {
+          "path": "source-after.json",
+          "sha256": "1f27830be6d40f236abf041a6dcf2d68b667ca2476b551bc7fb70b82437ac160",
+          "bytes": 38545,
+          "matches": true
+        },
+        {
+          "path": "source-before.json",
+          "sha256": "1f27830be6d40f236abf041a6dcf2d68b667ca2476b551bc7fb70b82437ac160",
+          "bytes": 38545,
+          "matches": true
+        }
+      ],
+      "mismatches": [],
+      "scope": "Read-only historical evidence consistency, not current HEAD acceptance or process-tree proof"
+    }
+  ]
+}

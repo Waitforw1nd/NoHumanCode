@@ -659,12 +659,32 @@ async fn completion(State(m): State<Mock>, Json(body): Json<Value>) -> axum::res
 }
 struct Fixture {
     _dir: tempfile::TempDir,
-    engine: Arc<Engine>,
+    engine: FixtureEngine,
     project: ProjectId,
     mock: Mock,
     server: tokio::task::JoinHandle<()>,
     encoded: Arc<AtomicUsize>,
     decoded: Arc<AtomicUsize>,
+}
+struct FixtureEngine(Option<Arc<Engine>>);
+impl std::ops::Deref for FixtureEngine {
+    type Target = Arc<Engine>;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("parent controller already released")
+    }
+}
+impl Fixture {
+    async fn release_parent_controller(&mut self) {
+        let engine = self.engine.0.take().expect("parent controller exists");
+        let report = engine.shutdown(Duration::from_secs(5)).await;
+        assert!(report.settled(), "parent fixture not settled: {report:?}");
+        let store = Arc::downgrade(&engine.store);
+        drop(engine);
+        assert!(
+            store.upgrade().is_none(),
+            "parent Store still retains domain"
+        );
+    }
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
@@ -785,7 +805,7 @@ async fn fixture_with_codec(
         .unwrap();
     Fixture {
         _dir: dir,
-        engine,
+        engine: FixtureEngine(Some(engine)),
         project: project.id,
         mock,
         server,
@@ -1062,6 +1082,46 @@ async fn p06_cancel_after_send_finishes_unknown_without_resend() {
     f.mock.release.notify_one();
 }
 
+fn p06_retain_unknown(child: &mut std::process::Child, root: &std::path::Path) -> ! {
+    eprintln!(
+        "NHC_TERMINAL_UNKNOWN: p06 original child retained: {}",
+        root.display()
+    );
+    loop {
+        if let Ok(Some(status)) = child.try_wait() {
+            panic!("p06 unknown remains failed after late direct exit: {status}");
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
+
+fn p06_poll(
+    child: &mut std::process::Child,
+    root: &std::path::Path,
+) -> Option<std::process::ExitStatus> {
+    child
+        .try_wait()
+        .unwrap_or_else(|_| p06_retain_unknown(child, root))
+}
+
+fn p06_kill_and_wait(
+    child: &mut std::process::Child,
+    root: &std::path::Path,
+) -> std::process::ExitStatus {
+    // Terminate only this original Child, never reopen a PID or guess a name.
+    let _ = child.kill();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        if let Some(status) = p06_poll(child, root) {
+            return status;
+        }
+        if std::time::Instant::now() >= deadline {
+            p06_retain_unknown(child, root);
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
     use std::process::{Command, Stdio};
@@ -1091,6 +1151,8 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
             }
         });
         std::fs::write(root.join(output), serde_json::to_vec(&snapshot).unwrap()).unwrap();
+        assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+        drop(engine);
         return;
     }
     if let Ok(root) = std::env::var("NHC_P16_CRASH_ROOT") {
@@ -1113,12 +1175,22 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
         panic!("crash probe did not block");
     }
     for (phase, expected_hits) in [("budget-after-claim", 0), ("budget-before-finish", 1)] {
-        let f = fixture(Fault::None).await;
-        let root = f._dir.path();
-        let mut child=Command::new(std::env::current_exe().unwrap())
+        let mut f = fixture(Fault::None).await;
+        f.release_parent_controller().await;
+        // Keep the exact fixture and child output even when a phase fails.
+        let retained = std::mem::replace(&mut f._dir, tempfile::tempdir().unwrap()).keep();
+        let root = retained.as_path();
+        eprintln!("p06-fixture phase={phase} root={}", root.display());
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        let mut child=command
             .args(["--exact","provider_runtime_tests::p06_real_host_kill_and_recovery_preserve_claim_without_resend","--nocapture"])
             .env("NHC_P16_CRASH_ROOT",root).env("NHC_P16_CRASH_PHASE",phase)
-            .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap();
+            .stdin(Stdio::null()).stdout(std::fs::File::create(root.join("crash.stdout.log")).unwrap()).stderr(std::fs::File::create(root.join("crash.stderr.log")).unwrap()).spawn().unwrap();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         let signal = loop {
             if let Ok(s) = std::fs::read_to_string(root.join("crash-signal")) {
@@ -1127,20 +1199,21 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
                     break s;
                 }
             }
-            if let Some(status) = child.try_wait().unwrap() {
-                panic!("child exited early {phase}: {status}");
+            if let Some(status) = p06_poll(&mut child, root) {
+                panic!(
+                    "child exited early {phase}: {status}; stderr={}",
+                    std::fs::read_to_string(root.join("crash.stderr.log")).unwrap()
+                );
             }
             if tokio::time::Instant::now() >= deadline {
-                let _ = child.kill();
-                let _ = child.wait();
+                p06_kill_and_wait(&mut child, root);
                 panic!("missing crash signal: {phase}");
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         };
         let call_id = signal.lines().nth(1).unwrap();
         let killed_pid = child.id();
-        child.kill().unwrap();
-        let killed_status = child.wait().unwrap();
+        let killed_status = p06_kill_and_wait(&mut child, root);
         assert!(!killed_status.success());
         eprintln!(
             "p06-recovery {}",
@@ -1151,7 +1224,13 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
         let mut states = Vec::new();
         for run in 1..=2 {
             let output = format!("recovery-{run}.json");
-            let mut recovery = Command::new(std::env::current_exe().unwrap())
+            let mut command = Command::new(std::env::current_exe().unwrap());
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                command.creation_flags(0x08000000);
+            }
+            let mut recovery = command
                 .args([
                     "--exact",
                     "provider_runtime_tests::p06_real_host_kill_and_recovery_preserve_claim_without_resend",
@@ -1160,21 +1239,26 @@ async fn p06_real_host_kill_and_recovery_preserve_claim_without_resend() {
                 .env("NHC_P16_RECOVER_ROOT", root)
                 .env("NHC_P16_RECOVER_CALL", call_id)
                 .env("NHC_P16_RECOVER_OUTPUT", &output)
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
+                .stdin(Stdio::null())
+                .stdout(std::fs::File::create(root.join(format!("recovery-{run}.stdout.log"))).unwrap())
+                .stderr(std::fs::File::create(root.join(format!("recovery-{run}.stderr.log"))).unwrap())
                 .spawn()
                 .unwrap();
             let spawned_pid = recovery.id();
             let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
             loop {
-                if let Some(status) = recovery.try_wait().unwrap() {
-                    assert!(status.success(), "recovery {run} failed: {status}");
+                if let Some(status) = p06_poll(&mut recovery, root) {
+                    assert!(
+                        status.success(),
+                        "recovery {run} failed: {status}; stderr={}",
+                        std::fs::read_to_string(root.join(format!("recovery-{run}.stderr.log")))
+                            .unwrap()
+                    );
                     assert!(recovery.wait().unwrap().success());
                     break;
                 }
                 if tokio::time::Instant::now() >= deadline {
-                    let _ = recovery.kill();
-                    let _ = recovery.wait();
+                    p06_kill_and_wait(&mut recovery, root);
                     panic!("recovery {run} timed out: {phase}");
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -1739,10 +1823,10 @@ fn p04_deactivate_callback_can_reenter_status_without_deadlock() {
 }
 #[tokio::test]
 async fn n18_cross_store_false_true_does_not_revive_old_prepared_completion() {
-    use crate::{plugin_management::SetPluginEnabled, runtime_management::RuntimeId};
+    use crate::plugin_management::SetPluginEnabled;
     let f = fixture(Fault::None).await;
     let other_store = Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap());
-    let other = Engine::new(other_store, 2).unwrap();
+    let other = other_store;
     let runtime = make_runtime();
     let messages = vec![json!({"role":"user","content":"hi"})];
     let tools = vec![];
@@ -1750,23 +1834,25 @@ async fn n18_cross_store_false_true_does_not_revive_old_prepared_completion() {
         .prepare_persisted(&f.engine.store, &input(&messages, &tools))
         .unwrap();
     other
-        .set_runtime_enabled(
-            RuntimeId::CompletionProvider,
-            SetPluginEnabled {
+        .set_runtime_desired(
+            "builtin.provider-xpeach",
+            &SetPluginEnabled {
                 enabled: false,
                 expected_revision: 0,
             },
             "p-off",
+            None,
         )
         .unwrap();
     other
-        .set_runtime_enabled(
-            RuntimeId::CompletionProvider,
-            SetPluginEnabled {
+        .set_runtime_desired(
+            "builtin.provider-xpeach",
+            &SetPluginEnabled {
                 enabled: true,
                 expected_revision: 1,
             },
             "p-on",
+            None,
         )
         .unwrap();
     let subject = NetworkSubject {
@@ -1825,18 +1911,21 @@ async fn n18_cross_store_false_true_does_not_revive_old_prepared_completion() {
 
 #[tokio::test]
 async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
-    use crate::{
-        engine::runtime_barrier, plugin_management::SetPluginEnabled, runtime_management::RuntimeId,
-    };
+    use crate::{engine::runtime_barrier, plugin_management::SetPluginEnabled};
     use std::sync::mpsc;
     for admission_first in [true, false] {
         let f = fixture(Fault::None).await;
         let _probe_guard = crate::runtime_management_tests::barrier_test_guard();
         let path = f._dir.path().join("provider-test.db");
         let store = f.engine.store.clone();
-        let other = Engine::new(Arc::new(Store::open(&path).unwrap()), 2).unwrap();
+        let other = Arc::new(Store::open(&path).unwrap());
         let db = rusqlite::Connection::open(&path).unwrap();
-        let key: String = db
+        let key: String = f
+            .engine
+            .store
+            .db
+            .lock()
+            .unwrap()
             .query_row(
                 "SELECT file FROM pragma_database_list WHERE name='main'",
                 [],
@@ -1886,13 +1975,14 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
             }
             let disable = std::thread::spawn(move || {
                 started_tx.send(()).unwrap();
-                other.set_runtime_enabled(
-                    RuntimeId::CompletionProvider,
-                    SetPluginEnabled {
+                other.set_runtime_desired(
+                    "builtin.provider-xpeach",
+                    &SetPluginEnabled {
                         enabled: false,
                         expected_revision: 0,
                     },
                     "provider-off",
+                    None,
                 )
             });
             let started = started_rx.recv_timeout(Duration::from_secs(5));
@@ -1918,13 +2008,14 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
             drop(lease);
         } else {
             let disable = std::thread::spawn(move || {
-                other.set_runtime_enabled(
-                    RuntimeId::CompletionProvider,
-                    SetPluginEnabled {
+                other.set_runtime_desired(
+                    "builtin.provider-xpeach",
+                    &SetPluginEnabled {
                         enabled: false,
                         expected_revision: 0,
                     },
                     "provider-off",
+                    None,
                 )
             });
             let arrived = barrier.wait_arrived(Duration::from_secs(5));
@@ -1977,13 +2068,9 @@ async fn n18_provider_admission_and_remote_disable_have_a_transaction_order() {
 }
 #[tokio::test]
 async fn n18_persisted_rejection_drops_reentrant_decoder_outside_lock() {
-    use crate::{plugin_management::SetPluginEnabled, runtime_management::RuntimeId};
+    use crate::plugin_management::SetPluginEnabled;
     let f = fixture(Fault::None).await;
-    let other = Engine::new(
-        Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap()),
-        2,
-    )
-    .unwrap();
+    let other = Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap());
     let slot = Arc::new(std::sync::Mutex::new(None));
     let dropped = Arc::new(AtomicUsize::new(0));
     let runtime = Arc::new(
@@ -2000,13 +2087,14 @@ async fn n18_persisted_rejection_drops_reentrant_decoder_outside_lock() {
         .prepare_persisted(&f.engine.store, &input(&messages, &tools))
         .unwrap();
     other
-        .set_runtime_enabled(
-            RuntimeId::CompletionProvider,
-            SetPluginEnabled {
+        .set_runtime_desired(
+            "builtin.provider-xpeach",
+            &SetPluginEnabled {
                 enabled: false,
                 expected_revision: 0,
             },
             "provider-off",
+            None,
         )
         .unwrap();
     let store = f.engine.store.clone();
@@ -2043,7 +2131,12 @@ async fn n18_permit_failure_after_claim_compensates_without_completion_send() {
     let f = fixture(Fault::None).await;
     let path = f._dir.path().join("provider-test.db");
     let db = rusqlite::Connection::open(path).unwrap();
-    let key: String = db
+    let key: String = f
+        .engine
+        .store
+        .db
+        .lock()
+        .unwrap()
         .query_row(
             "SELECT file FROM pragma_database_list WHERE name='main'",
             [],
@@ -2193,13 +2286,9 @@ async fn n18_provider_store_failure_never_creates_claim_or_uses_cached_enabled()
 }
 #[tokio::test]
 async fn n18_same_true_revision_change_invalidates_old_provider_preparation() {
-    use crate::{plugin_management::SetPluginEnabled, runtime_management::RuntimeId};
+    use crate::plugin_management::SetPluginEnabled;
     let f = fixture(Fault::None).await;
-    let other = Engine::new(
-        Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap()),
-        2,
-    )
-    .unwrap();
+    let other = Arc::new(Store::open(&f._dir.path().join("provider-test.db")).unwrap());
     let runtime = make_runtime();
     let messages = vec![json!({"role":"user","content":"hi"})];
     let tools = vec![];
@@ -2207,16 +2296,17 @@ async fn n18_same_true_revision_change_invalidates_old_provider_preparation() {
         .prepare_persisted(&f.engine.store, &input(&messages, &tools))
         .unwrap();
     let receipt = other
-        .set_runtime_enabled(
-            RuntimeId::CompletionProvider,
-            SetPluginEnabled {
+        .set_runtime_desired(
+            "builtin.provider-xpeach",
+            &SetPluginEnabled {
                 enabled: true,
                 expected_revision: 0,
             },
             "same-true",
+            None,
         )
         .unwrap();
-    assert_eq!(receipt.receipt.revision, 1);
+    assert_eq!(receipt.0.revision, 1);
     let subject = NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: "route".into(),

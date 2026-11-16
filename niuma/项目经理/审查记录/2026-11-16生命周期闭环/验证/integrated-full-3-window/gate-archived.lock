@@ -1,0 +1,11 @@
+{
+  "attempt": ".local\\lifecycle\\integrated-full-3",
+  "candidate": {
+    "head": "0fb205851748fdf25abdf35ca0911a0b24527fd4",
+    "product_tree": "dec9a1e0fc0fbd0a0822dc49b41124015c4202fe",
+    "rust_tree": "a4cee432f0a2be0d326519840881d8c7d1b12b26"
+  },
+  "nonce": "761a15c66265420393009ff1a9d5ea23",
+  "pid_diagnostic_only": 71760,
+  "started_utc": "2026-11-16T09:55:30.842293+00:00"
+}

@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "approval_gate"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "approval_gate",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": null,
+  "name": "target-approval_gate",
+  "started_utc": "2026-11-16T09:55:42.674227+00:00",
+  "timeout_seconds": 1800
+}

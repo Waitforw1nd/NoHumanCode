@@ -1,0 +1,28 @@
+# D HTTP原runtime与单controller固定审查
+
+2026-11-16，员工A，只读审查固定提交 `57fc5eaf37dc4ced22be674597221fa7eba3c848`。范围仅该delta的 `tests/approval_http.rs`、`tests/turn_http.rs`，未修改D文件或集成源码。
+
+**本delta未见静态阻断。原runtime终止后的等待增加真实域状态与旧Engine释放证据，单controller并发保留HTTP层及独立Store事务层各自的竞争断言。** 动态是否通过仍待经理integrated-full-3，A未运行Cargo或真实测试。
+
+## 原runtime收束
+
+|固定位置|静态复核|
+|---|---|
+|approval_http::await_http_runtime_stopped|原Store observer跨过runtime.shutdown_timeout继续持有同一authority。只在execution_admission_status=(false,0,0)时返回，确保准入已关闭、原operation票据为0且无sticky unknown；超时/未知/查询错误写证据并保留observer与现场，不进入恢复|
+|ah06_real_command_side_effect_then_shutdown_recovers_unknown|原真实HTTP批准、真实shell副作用一次、approval仍Claimed、tool_result=0的窗口全部保留。runtime停止后先等原域，再断言旧Engine弱引用不可升级与持久Claimed仍在，释放observer后才重开同库并new_recovered。原unknown GET、409重批、resume拒绝、counter仍1、tool_start=1/tool_result=0断言保留|
+|ah14_unknown_is_visible_and_decision_remains_conflict|使用明确current-thread runtime；同步批准/持久claim到返回block_on之间没有await，旧worker不能插入执行。退出旧runtime后仍等待原域及旧Engine释放，验证Claimed未被提前改判，再恢复同库；HTTP unknown、409不可重批、approval.resolved恰1与最终Unknown断言保留|
+
+status来自原Store authority，不是另造观测域；同一operation仍只有body归零且active generation为空才减in_flight。结合A组件既有的process tree与reader结束判据，helper没有把runtime.shutdown_timeout或单纯is_busy=false当作收束。旧Engine弱引用断言补上controller实际释放，observer只保原数据域、不创建第二Engine。这里的业务持久Claimed→恢复Unknown与collector生命周期unknown是不同事实，代码没有互相改判。
+
+## 单controller并发
+
+- n11_same_key_concurrency继续执行原同listener竞争；第二段保留两个真实HTTP listener和两路barrier并发请求，二者都引用同一个原Engine。额外显式尝试第二Engine并要求controller busy拒绝，不放开单owner规则。
+- HTTP段仍要求一个201创建、一个200重放，真实provider仅调用一次、最终Task completed、五类持久表各只增一行。旧测试文字“双引擎”只是请求正文/诊断字符串，执行对象已是两个listener共享唯一controller。
+- 新增Store段使用原Engine.store与另一次Store::open得到的独立SQLite连接；两个系统线程经Barrier竞争同一新幂等key，调用真实append_chat_turn的Immediate事务及幂等分类路径，各自join后验证一创建一重放、同turn/task、五表各增一行、provider计数不变。没有第二controller或新执行票据，也没有用此存储段替换真实HTTP请求。
+- Store段基于此前已完成的纯文本前驱复制合法continuation并加入一条user消息。该段明确只验证存储事务原子性，不声称执行了新增queued task或恢复了外部副作用。
+
+## 验证边界
+
+固定提交diff-check通过；审查时两文件与冻结集成源码无差异。full-3 source-before为HEAD `0fb205851748fdf25abdf35ca0911a0b24527fd4`、产品tree `dec9a1e0fc0fbd0a0822dc49b41124015c4202fe`、Rust tree `a4cee432f0a2be0d326519840881d8c7d1b12b26`，clean=true。
+
+尚未由A动态验证真实shell晚退出/reader收束、运行时drop竞态、HTTP两listener竞争与Store两事务竞争。经理先跑九个失败target后全套；本报告不提前判其通过，不改变组件25矩阵的输入或验收声明。

@@ -1,3 +1,5 @@
+#[cfg(all(test, windows))]
+extern crate self as peachsh;
 pub mod agent_runtime;
 #[cfg(all(test, windows))]
 mod agent_runtime_tests;
@@ -9,17 +11,32 @@ mod composition;
 pub mod credential_input;
 pub mod domain;
 pub mod engine;
+mod execution_authority;
+#[cfg(all(test, windows))]
+#[allow(dead_code)]
+#[path = "../tests/support/lifecycle/fixture.rs"]
+mod fixture;
 pub mod git_diff;
+#[cfg(all(test, windows))]
+#[path = "../tests/support/lifecycle/git_diff_internal.rs"]
+mod git_diff_contract_tests;
 pub(crate) mod git_worktree;
 pub mod host_configuration;
 #[cfg(all(test, windows))]
 mod host_configuration_crash_tests;
 mod host_services;
+#[cfg(all(test, windows))]
+#[allow(dead_code)]
+#[path = "../tests/support/lifecycle/host.rs"]
+mod lifecycle_host;
 pub mod network_authorization;
 mod plugin_callback;
 pub mod plugin_catalog;
 pub mod plugin_host;
 pub mod plugin_management;
+mod process_lifetime;
+#[cfg(all(test, windows))]
+mod process_lifetime_tests;
 #[cfg(all(test, windows))]
 mod process_test_fixture;
 pub mod project_config;

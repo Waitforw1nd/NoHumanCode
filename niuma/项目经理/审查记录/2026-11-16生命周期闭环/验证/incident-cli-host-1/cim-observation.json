@@ -1,0 +1,7 @@
+{
+  "ProcessId": 59404,
+  "ParentProcessId": 68012,
+  "CreationDate": "2026-11-16T17:40:11.834265+08:00",
+  "ExecutablePath": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\peachsh.exe",
+  "CommandLine": "\"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\peachsh.exe\" --port 54408 --data-dir E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-external-1\\tmp\\.tmpeJelLY\\server-data --legacy-data E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-external-1\\tmp\\.tmpeJelLY\\legacy --workspace E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-external-1\\tmp\\.tmpeJelLY\\workspace"
+}

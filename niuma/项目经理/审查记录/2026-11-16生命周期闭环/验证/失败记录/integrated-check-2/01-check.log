@@ -1,0 +1,43 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+    Checking peachsh v0.2.0 (E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app)
+error[E0599]: `tokio::fs::File` is not an iterator
+   --> src\git_diff.rs:374:10
+    |
+374 |     file.take(SIDE_LIMIT as u64 + 1)
+    |          ^^^^ `tokio::fs::File` is not an iterator
+    |
+   ::: C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tokio-1.53.1\src\fs\file.rs:95:1
+    |
+ 95 | pub struct File {
+    | --------------- doesn't satisfy `tokio::fs::File: std::iter::Iterator`
+    |
+    = note: the following trait bounds were not satisfied:
+            `tokio::fs::File: std::iter::Iterator`
+            which is required by `&mut tokio::fs::File: std::iter::Iterator`
+    = help: items from traits can only be used if the trait is in scope
+help: trait `AsyncReadExt` which provides `take` is implemented but not in scope; perhaps you want to import it
+    |
+  2 + use tokio::io::AsyncReadExt;
+    |
+
+error[E0425]: cannot find function, tuple struct or tuple variant `Synctest_command` in this scope
+    --> src\git_worktree.rs:1619:26
+     |
+1323 |     fn test_command() -> Command {
+     |     ---------------------------- similarly named function `test_command` defined here
+...
+1619 |             let output = Synctest_command().args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path ...
+     |                          ^^^^^^^^^^^^^^^^
+     |
+help: a function with a similar name exists
+     |
+1619 -             let output = Synctest_command().args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
+1619 +             let output = test_command().args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
+     |
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `peachsh` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `peachsh` (lib test) due to 2 previous errors

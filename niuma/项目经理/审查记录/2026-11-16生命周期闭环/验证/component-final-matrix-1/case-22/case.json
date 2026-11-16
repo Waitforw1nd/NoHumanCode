@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960352822248,
+  "pid": 55060,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::final_read_overflow_cannot_be_adopted_as_ordinary_exit",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:15.2798303Z",
+  "elapsed_ms": 90
+}

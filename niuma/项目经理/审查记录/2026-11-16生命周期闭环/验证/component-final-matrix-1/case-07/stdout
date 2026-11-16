@@ -1,0 +1,6 @@
+
+running 1 test
+test process_lifetime_tests::reader_error_joins_and_cleans_but_unknown_is_sticky ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 480 filtered out; finished in 0.07s
+

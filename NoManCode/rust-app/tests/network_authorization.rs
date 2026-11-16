@@ -1,3 +1,5 @@
+#[path = "support/owned_child.rs"]
+mod owned_child;
 #[path = "support/project_fixture.rs"]
 #[allow(dead_code)]
 mod project_fixture;
@@ -532,7 +534,14 @@ async fn receipt_contradictions_are_corrupt_and_result_commit_failure_keeps_same
     assert_eq!(error.calls[0].result, Some(CallResult::PersistenceUnknown));
     assert_eq!(e.network_call(&id).unwrap().state, CallState::Claimed);
     db.execute_batch("DROP TRIGGER fail_finish").unwrap();
-    e.store.recover().unwrap();
+    let report = e.shutdown(Duration::from_secs(5)).await;
+    assert!(
+        report.settled(),
+        "network result owner did not settle: {report:?}"
+    );
+    let store = e.store.clone();
+    drop(e);
+    let (e, _) = Engine::new_recovered(store, 2).unwrap();
     assert_eq!(e.network_call(&id).unwrap().state, CallState::Unknown);
     assert_eq!(mock.hits(), 2);
 }
@@ -647,6 +656,12 @@ async fn environment_credential_reference_and_value_are_rechecked_across_real_pr
         } else {
             assert_eq!(response.unwrap().result, vec!["mock"]);
         }
+        let report = e.shutdown(Duration::from_secs(5)).await;
+        assert!(
+            report.settled(),
+            "environment child owner did not settle: {report:?}"
+        );
+        drop(e);
         return;
     }
     let mock = Mock::new().await;
@@ -664,22 +679,49 @@ async fn environment_credential_reference_and_value_are_rechecked_across_real_pr
             .credential_ref
             .starts_with("stored/")
     );
-    for (mode, key) in [
+    let report = e.shutdown(Duration::from_secs(5)).await;
+    assert!(report.settled(), "parent owner did not settle: {report:?}");
+    drop(e); // Drop the Store and real domain lock before any child opens it.
+    for (index, (mode, key)) in [
         ("reject", "fixture-network-secret"),
         ("confirm", "fixture-network-secret"),
         ("send", "fixture-network-secret"),
         ("reject", "fixture-env-rotation"),
-    ] {
+    ]
+    .into_iter()
+    .enumerate()
+    {
         let root = dir.path().to_owned();
         let variable = variable.clone();
-        let output=tokio::task::spawn_blocking(move ||std::process::Command::new(std::env::current_exe().unwrap()).args(["--exact","environment_credential_reference_and_value_are_rechecked_across_real_processes","--nocapture"]).env("NHC_NETWORK_ENV_CHILD",mode).env("NHC_NETWORK_ENV_ROOT",root).env(variable,key).output().unwrap()).await.unwrap();
+        let output = tokio::task::spawn_blocking(move || {
+            let evidence = root.join(format!("environment-child-{index}-{mode}"));
+            let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+            command
+                .args(["--exact", "environment_credential_reference_and_value_are_rechecked_across_real_processes", "--nocapture"])
+                .env("NHC_NETWORK_ENV_CHILD", mode)
+                .env("NHC_NETWORK_ENV_ROOT", &root)
+                .env(variable, key);
+            owned_child::OwnedChild::spawn(&mut command, &evidence).output(Duration::from_secs(30))
+        }).await.unwrap();
         assert!(
             output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stdout)
+            "environment mode={mode}, exit={}\nstdout:\n{}\nstderr:\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.contains("running 1 test") && stdout.contains("1 passed; 0 failed"),
+            "exact child selector did not run one test: {stdout}"
         );
     }
     assert_eq!(mock.hits(), 2);
+    let e = Engine::new(
+        Arc::new(Store::open(&dir.path().join("network.db")).unwrap()),
+        2,
+    )
+    .unwrap();
     assert_eq!(
         e.network_authorization(&original.authorization_id)
             .unwrap()

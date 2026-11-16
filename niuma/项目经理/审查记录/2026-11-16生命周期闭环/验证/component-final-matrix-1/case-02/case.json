@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960156296194,
+  "pid": 56160,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::detached_multi_child_waits_for_real_tree_zero",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:46:55.6272385Z",
+  "elapsed_ms": 255
+}

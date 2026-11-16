@@ -1,4 +1,4 @@
-param([ValidateSet('test','web-test','live','build','check','refresh','fmt','clippy','wasm-check')][string]$Action = 'build')
+param([ValidateSet('test','web-test','live','build','check','refresh','fmt','clippy','wasm-check','environment')][string]$Action = 'build')
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 Set-Location -LiteralPath $PSScriptRoot
@@ -76,6 +76,7 @@ $env:LIB = "$taskMsvc\lib\x64;$($taskSdk.FullName)\ucrt\x64;$($taskSdk.FullName)
 $env:INCLUDE = "$taskMsvc\include;$taskSdkRoot\Include\$($taskSdk.Name)\ucrt;$taskSdkRoot\Include\$($taskSdk.Name)\shared;$taskSdkRoot\Include\$($taskSdk.Name)\um"
 $env:CC_x86_64_pc_windows_msvc = Join-Path $taskBin 'cl.exe'
 $env:AR_x86_64_pc_windows_msvc = Join-Path $taskBin 'lib.exe'
+if ($Action -eq 'environment') { return } # Dot-source to prepare the same discovered toolchain without invoking Cargo.
 switch ($Action) {
     'build' {
         # Cargo resolves CARGO_TARGET_DIR and build.target (including target triples).

@@ -787,8 +787,13 @@ impl ToolLease {
             let args = args.clone();
             let (send, receive) = tokio::sync::oneshot::channel();
             // The worker, not the caller waiting on its channel, owns the lease.
+            let scope = crate::execution_authority::current();
+            let body = scope.as_ref().map(|scope| scope.hold_body());
             tokio::spawn(async move {
-                let result = self.service.execute(&task, &args).await;
+                let _body = body;
+                let result =
+                    crate::execution_authority::inherit(scope, self.service.execute(&task, &args))
+                        .await;
                 drop(self);
                 let _ = send.send(result);
             });
@@ -1095,87 +1100,90 @@ mod tests {
     }
     #[tokio::test]
     async fn f04_real_write_lease_finishes_after_disable_and_all_release_paths_count() {
-        let root = tempfile::tempdir().unwrap();
-        let task = task(root.path().to_str().unwrap());
-        let runtime = ToolRuntime::builtin().unwrap();
-        let (lease, receipt) = runtime
-            .acquire(&task, "write_file", || Ok(json!({"claimed":17})))
-            .unwrap();
-        assert_eq!(status(&runtime).in_flight, 1);
-        let stopped = reconcile(&runtime, false);
-        assert!(stopped.draining);
-        assert_eq!(stopped.in_flight, 1);
-        assert_eq!(stopped.effects_count, 0);
-        assert_eq!(receipt, json!({"claimed":17}));
-        lease
-            .execute(&task, &json!({"path":"real.txt","content":"once"}))
-            .await
-            .unwrap();
-        assert_eq!(
-            std::fs::read_to_string(root.path().join("real.txt")).unwrap(),
-            "once"
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
-        assert!(!status(&runtime).draining);
-        assert!(
-            runtime
-                .acquire(&task, "write_file", || -> Result<()> {
-                    panic!("disabled claim")
-                })
-                .is_err()
-        );
-        // Compat remains available under the same original task permissions.
-        let mut command_task = task.clone();
-        command_task.spec.allow_commands = true;
-        let (compat, ()) = runtime
-            .acquire(&command_task, "run_command", || Ok(()))
-            .unwrap();
-        assert_eq!(status(&runtime).in_flight, 0);
-        // Component callback only; real approval/network acknowledgement is Engine's responsibility.
-        let output = compat
-            .execute(
-                &command_task,
-                &json!({"command":"Write-Output 'compat-marker'","timeout_seconds":5}),
-            )
-            .await
-            .unwrap();
-        assert_eq!(output["exit_code"], 0);
-        assert!(output["stdout"].as_str().unwrap().contains("compat-marker"));
-        reconcile(&runtime, true);
-        let (dropped, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
-        runtime
-            .with_files_control(|control| {
-                assert_eq!(control.snapshot().in_flight, 1);
-                drop(dropped); // Drop while the runtime lock is held must not lock it.
-                assert_eq!(control.snapshot().in_flight, 0);
-                Ok(())
-            })
-            .unwrap();
-        let (bad, ()) = runtime.acquire(&task, "write_file", || Ok(())).unwrap();
-        assert!(
-            bad.execute(&task, &json!({"path":"../outside","content":"no"}))
+        crate::execution_authority::test_scope(async {
+            let root = tempfile::tempdir().unwrap();
+            let task = task(root.path().to_str().unwrap());
+            let runtime = ToolRuntime::builtin().unwrap();
+            let (lease, receipt) = runtime
+                .acquire(&task, "write_file", || Ok(json!({"claimed":17})))
+                .unwrap();
+            assert_eq!(status(&runtime).in_flight, 1);
+            let stopped = reconcile(&runtime, false);
+            assert!(stopped.draining);
+            assert_eq!(stopped.in_flight, 1);
+            assert_eq!(stopped.effects_count, 0);
+            assert_eq!(receipt, json!({"claimed":17}));
+            lease
+                .execute(&task, &json!({"path":"real.txt","content":"once"}))
                 .await
-                .is_err()
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
-        assert!(
-            runtime
-                .acquire(&task, "read_file", || -> Result<()> {
-                    bail!("claim rejected")
-                })
-                .is_err()
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
-        let (bound, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
-        let mut wrong = task.clone();
-        wrong.id = "other".into();
-        assert!(
-            bound
-                .execute(&wrong, &json!({"path":"real.txt"}))
+                .unwrap();
+            assert_eq!(
+                std::fs::read_to_string(root.path().join("real.txt")).unwrap(),
+                "once"
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            assert!(!status(&runtime).draining);
+            assert!(
+                runtime
+                    .acquire(&task, "write_file", || -> Result<()> {
+                        panic!("disabled claim")
+                    })
+                    .is_err()
+            );
+            // Compat remains available under the same original task permissions.
+            let mut command_task = task.clone();
+            command_task.spec.allow_commands = true;
+            let (compat, ()) = runtime
+                .acquire(&command_task, "run_command", || Ok(()))
+                .unwrap();
+            assert_eq!(status(&runtime).in_flight, 0);
+            // Component callback only; real approval/network acknowledgement is Engine's responsibility.
+            let output = compat
+                .execute(
+                    &command_task,
+                    &json!({"command":"Write-Output 'compat-marker'","timeout_seconds":5}),
+                )
                 .await
-                .is_err()
-        );
-        assert_eq!(status(&runtime).in_flight, 0);
+                .unwrap();
+            assert_eq!(output["exit_code"], 0);
+            assert!(output["stdout"].as_str().unwrap().contains("compat-marker"));
+            reconcile(&runtime, true);
+            let (dropped, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+            runtime
+                .with_files_control(|control| {
+                    assert_eq!(control.snapshot().in_flight, 1);
+                    drop(dropped); // Drop while the runtime lock is held must not lock it.
+                    assert_eq!(control.snapshot().in_flight, 0);
+                    Ok(())
+                })
+                .unwrap();
+            let (bad, ()) = runtime.acquire(&task, "write_file", || Ok(())).unwrap();
+            assert!(
+                bad.execute(&task, &json!({"path":"../outside","content":"no"}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            assert!(
+                runtime
+                    .acquire(&task, "read_file", || -> Result<()> {
+                        bail!("claim rejected")
+                    })
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+            let (bound, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
+            let mut wrong = task.clone();
+            wrong.id = "other".into();
+            assert!(
+                bound
+                    .execute(&wrong, &json!({"path":"real.txt"}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(status(&runtime).in_flight, 0);
+        })
+        .await;
     }
     struct ProbePlugin {
         id: &'static str,
@@ -1471,7 +1479,9 @@ mod tests {
         .unwrap();
         let task = task("unused");
         let (lease, ()) = runtime.acquire(&task, "read_file", || Ok(())).unwrap();
-        let running = tokio::spawn(async move { lease.execute(&task, &json!({})).await });
+        let running = crate::execution_authority::test_spawn(async move {
+            lease.execute(&task, &json!({})).await
+        });
         tokio::time::timeout(WAIT, entered.notified())
             .await
             .unwrap();
@@ -1858,7 +1868,9 @@ mod tests {
             let runtime = ToolRuntime::assemble(services).unwrap();
             let task = task("unused");
             let lease = runtime.acquire(&task, name, || Ok(())).unwrap().0;
-            let running = tokio::spawn(async move { lease.execute(&task, &json!({})).await });
+            let running = crate::execution_authority::test_spawn(async move {
+                lease.execute(&task, &json!({})).await
+            });
             tokio::time::timeout(WAIT, entered.notified())
                 .await
                 .unwrap();
@@ -1975,68 +1987,71 @@ mod tests {
     }
     #[tokio::test]
     async fn s01_s02_real_registry_and_independent_disable_unload() {
-        let root = tempfile::tempdir().unwrap();
-        let task = command_task(root.path());
-        let runtime = ToolRuntime::builtin().unwrap();
-        assert_eq!(
-            (
-                status(&runtime).effects_count,
-                shell_status(&runtime).effects_count
-            ),
-            (4, 1)
-        );
-        let shell = shell_status(&runtime);
-        assert_eq!(
-            shell
-                .instances
-                .iter()
-                .map(|i| i.plugin_id.as_str())
-                .collect::<Vec<_>>(),
-            [SHELL, SHELL_CONSUMER]
-        );
-        assert_eq!(shell.providers[0].provider_id, SHELL);
-        assert_eq!(shell.providers[0].key, key("run_command"));
-        assert_eq!(shell.subscriptions_count, 0);
-        for (id, version) in [
-            (FILES, "1.2.0"),
-            (CONSUMER, "1.2.0"),
-            (SHELL, "1.0.0"),
-            (SHELL_CONSUMER, "1.0.0"),
-        ] {
+        crate::execution_authority::test_scope(async {
+            let root = tempfile::tempdir().unwrap();
+            let task = command_task(root.path());
+            let runtime = ToolRuntime::builtin().unwrap();
             assert_eq!(
-                manifest(id, id == FILES || id == SHELL).version.to_string(),
-                version
+                (
+                    status(&runtime).effects_count,
+                    shell_status(&runtime).effects_count
+                ),
+                (4, 1)
             );
-        }
-        assert_eq!(manifest(SHELL, true).permissions, ["process.exec"]);
-        assert_eq!(COMPAT_TOOLS, ["run_wasm"]);
-        real_shell(&runtime, &task).await;
-        runtime.disable_builtin_files().unwrap();
-        real_shell(&runtime, &task).await;
-        runtime.unload_builtin_files().unwrap();
-        real_shell(&runtime, &task).await;
-        assert_eq!(shell_status(&runtime), shell);
-        reconcile(&runtime, true);
-        runtime.disable_builtin_shell().unwrap();
-        real_files(&runtime, &task).await;
-        runtime.unload_builtin_shell().unwrap();
-        real_files(&runtime, &task).await;
-        assert_eq!(shell_status(&runtime).effects_count, 0);
-        assert_eq!(status(&runtime).effects_count, 4);
-        assert!(
-            runtime
-                .acquire(&task, "run_command", || -> Result<()> {
-                    panic!("disabled shell claimed")
-                })
-                .is_err()
-        );
-        assert!(
-            !runtime
-                .definitions(&task)
-                .unwrap()
-                .iter()
-                .any(|d| d["function"]["name"] == "run_command")
-        );
+            let shell = shell_status(&runtime);
+            assert_eq!(
+                shell
+                    .instances
+                    .iter()
+                    .map(|i| i.plugin_id.as_str())
+                    .collect::<Vec<_>>(),
+                [SHELL, SHELL_CONSUMER]
+            );
+            assert_eq!(shell.providers[0].provider_id, SHELL);
+            assert_eq!(shell.providers[0].key, key("run_command"));
+            assert_eq!(shell.subscriptions_count, 0);
+            for (id, version) in [
+                (FILES, "1.2.0"),
+                (CONSUMER, "1.2.0"),
+                (SHELL, "1.0.0"),
+                (SHELL_CONSUMER, "1.0.0"),
+            ] {
+                assert_eq!(
+                    manifest(id, id == FILES || id == SHELL).version.to_string(),
+                    version
+                );
+            }
+            assert_eq!(manifest(SHELL, true).permissions, ["process.exec"]);
+            assert_eq!(COMPAT_TOOLS, ["run_wasm"]);
+            real_shell(&runtime, &task).await;
+            runtime.disable_builtin_files().unwrap();
+            real_shell(&runtime, &task).await;
+            runtime.unload_builtin_files().unwrap();
+            real_shell(&runtime, &task).await;
+            assert_eq!(shell_status(&runtime), shell);
+            reconcile(&runtime, true);
+            runtime.disable_builtin_shell().unwrap();
+            real_files(&runtime, &task).await;
+            runtime.unload_builtin_shell().unwrap();
+            real_files(&runtime, &task).await;
+            assert_eq!(shell_status(&runtime).effects_count, 0);
+            assert_eq!(status(&runtime).effects_count, 4);
+            assert!(
+                runtime
+                    .acquire(&task, "run_command", || -> Result<()> {
+                        panic!("disabled shell claimed")
+                    })
+                    .is_err()
+            );
+            assert!(
+                !runtime
+                    .definitions(&task)
+                    .unwrap()
+                    .iter()
+                    .any(|d| d["function"]["name"] == "run_command")
+            );
+        })
+        .await;
     }
     #[test]
     fn s01_all_desired_combinations_and_shell_unpolled_binding_counts() {
@@ -2104,70 +2119,74 @@ mod tests {
     }
     #[tokio::test]
     async fn s02_missing_registration_and_lifecycle_failure_do_not_cross_groups() {
-        let root = tempfile::tempdir().unwrap();
-        let task = command_task(root.path());
-        let files_mode = Arc::new(AtomicUsize::new(4));
-        let runtime = probe_runtime(
-            true,
-            files_mode.clone(),
-            Arc::new(AtomicUsize::new(0)),
-            Arc::new(Mutex::new(vec![])),
-        );
-        assert_eq!(status(&runtime).state, FilesRuntimeState::Failed);
-        real_shell(&runtime, &task).await;
-        assert!(
-            runtime
-                .definitions(&task)
-                .unwrap()
-                .iter()
-                .any(|d| d["function"]["name"] == "run_command")
-        );
-        files_mode.store(0, Ordering::SeqCst);
-        reconcile(&runtime, true);
-        let shell_mode = Arc::new(AtomicUsize::new(4));
-        install_shell_probe(&runtime, shell_mode.clone());
-        let failed = shell_reconcile(&runtime, true);
-        assert_eq!(failed.state, FilesRuntimeState::Failed);
-        assert_eq!(failed.effects_count, 0);
-        assert!(
-            failed
-                .recovery
-                .iter()
-                .all(|r| r.plugin_id == SHELL || r.plugin_id == SHELL_CONSUMER)
-        );
-        real_files(&runtime, &task).await;
-        assert!(
-            runtime
-                .acquire(&task, "run_command", || -> Result<()> {
-                    panic!("missing registry claim")
-                })
-                .is_err()
-        );
-        assert_eq!(runtime.definitions(&task).unwrap().len(), 5);
-        shell_mode.store(0, Ordering::SeqCst);
-        shell_reconcile(&runtime, true);
-        let history = shell_status(&runtime).recovery;
-        shell_mode.store(2, Ordering::SeqCst);
-        assert_eq!(
-            shell_reconcile(&runtime, false).state,
-            FilesRuntimeState::Failed
-        );
-        real_files(&runtime, &task).await;
-        let cleared = shell_reconcile(&runtime, false);
-        assert_eq!(cleared.state, FilesRuntimeState::Unloaded);
-        assert!(cleared.recovery.starts_with(&history));
-        shell_mode.store(0, Ordering::SeqCst);
-        shell_reconcile(&runtime, true);
-        files_mode.store(2, Ordering::SeqCst);
-        assert_eq!(reconcile(&runtime, false).state, FilesRuntimeState::Failed);
-        real_shell(&runtime, &task).await;
-        assert_eq!(
-            reconcile(&runtime, false).state,
-            FilesRuntimeState::Unloaded
-        );
+        crate::execution_authority::test_scope(async {
+            let root = tempfile::tempdir().unwrap();
+            let task = command_task(root.path());
+            let files_mode = Arc::new(AtomicUsize::new(4));
+            let runtime = probe_runtime(
+                true,
+                files_mode.clone(),
+                Arc::new(AtomicUsize::new(0)),
+                Arc::new(Mutex::new(vec![])),
+            );
+            assert_eq!(status(&runtime).state, FilesRuntimeState::Failed);
+            real_shell(&runtime, &task).await;
+            assert!(
+                runtime
+                    .definitions(&task)
+                    .unwrap()
+                    .iter()
+                    .any(|d| d["function"]["name"] == "run_command")
+            );
+            files_mode.store(0, Ordering::SeqCst);
+            reconcile(&runtime, true);
+            let shell_mode = Arc::new(AtomicUsize::new(4));
+            install_shell_probe(&runtime, shell_mode.clone());
+            let failed = shell_reconcile(&runtime, true);
+            assert_eq!(failed.state, FilesRuntimeState::Failed);
+            assert_eq!(failed.effects_count, 0);
+            assert!(
+                failed
+                    .recovery
+                    .iter()
+                    .all(|r| r.plugin_id == SHELL || r.plugin_id == SHELL_CONSUMER)
+            );
+            real_files(&runtime, &task).await;
+            assert!(
+                runtime
+                    .acquire(&task, "run_command", || -> Result<()> {
+                        panic!("missing registry claim")
+                    })
+                    .is_err()
+            );
+            assert_eq!(runtime.definitions(&task).unwrap().len(), 5);
+            shell_mode.store(0, Ordering::SeqCst);
+            shell_reconcile(&runtime, true);
+            let history = shell_status(&runtime).recovery;
+            shell_mode.store(2, Ordering::SeqCst);
+            assert_eq!(
+                shell_reconcile(&runtime, false).state,
+                FilesRuntimeState::Failed
+            );
+            real_files(&runtime, &task).await;
+            let cleared = shell_reconcile(&runtime, false);
+            assert_eq!(cleared.state, FilesRuntimeState::Unloaded);
+            assert!(cleared.recovery.starts_with(&history));
+            shell_mode.store(0, Ordering::SeqCst);
+            shell_reconcile(&runtime, true);
+            files_mode.store(2, Ordering::SeqCst);
+            assert_eq!(reconcile(&runtime, false).state, FilesRuntimeState::Failed);
+            real_shell(&runtime, &task).await;
+            assert_eq!(
+                reconcile(&runtime, false).state,
+                FilesRuntimeState::Unloaded
+            );
+        })
+        .await;
     }
     #[tokio::test]
     async fn s05_caller_abort_keeps_real_worker_lease_through_disable_and_completion() {
+        crate::execution_authority::test_scope(async {
         let root = tempfile::tempdir().unwrap();
         let task = command_task(root.path());
         let runtime = ToolRuntime::builtin().unwrap();
@@ -2176,7 +2195,7 @@ mod tests {
         let release = root.path().join("release");
         let finished = root.path().join("finished");
         let command = "[IO.File]::WriteAllText((Join-Path $PWD 'ready'), [string]$PID); $deadline=[DateTime]::UtcNow.AddSeconds(8); while (!(Test-Path (Join-Path $PWD 'release'))) { if ([DateTime]::UtcNow -gt $deadline) { exit 98 }; Start-Sleep -Milliseconds 10 }; [IO.File]::WriteAllText((Join-Path $PWD 'finished'), 'completed'); 'worker-output'";
-        let caller = tokio::spawn(async move {
+        let caller = crate::execution_authority::test_spawn(async move {
             lease
                 .execute(&task, &json!({"command":command, "timeout_seconds":10}))
                 .await
@@ -2194,43 +2213,47 @@ mod tests {
         wait_until(|| shell_status(&runtime).in_flight == 0).await;
         assert_eq!(std::fs::read_to_string(finished).unwrap(), "completed");
         assert!(!shell_status(&runtime).draining);
+        }).await;
     }
     #[tokio::test]
     async fn s05_shell_binding_rejection_errors_and_admitted_after_disable() {
-        let root = tempfile::tempdir().unwrap();
-        let task = command_task(root.path());
-        let runtime = ToolRuntime::builtin().unwrap();
-        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
-        let mut wrong = task.clone();
-        wrong.spec.allow_commands = false;
-        assert!(
-            lease
-                .execute(&wrong, &json!({"command":"'no'"}))
-                .await
-                .is_err()
-        );
-        assert_eq!(shell_status(&runtime).in_flight, 0);
-        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
-        assert!(
-            lease
-                .execute(&task, &json!({"command":"'no'", "timeout_seconds":0}))
-                .await
-                .is_err()
-        );
-        assert_eq!(shell_status(&runtime).in_flight, 0);
-        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
-        runtime.disable_builtin_shell().unwrap();
-        assert_eq!(
-            lease
-                .execute(&task, &json!({"command":"'already-admitted'"}))
-                .await
-                .unwrap()["stdout"]
-                .as_str()
-                .unwrap()
-                .trim(),
-            "already-admitted"
-        );
-        assert_eq!(shell_status(&runtime).in_flight, 0);
+        crate::execution_authority::test_scope(async {
+            let root = tempfile::tempdir().unwrap();
+            let task = command_task(root.path());
+            let runtime = ToolRuntime::builtin().unwrap();
+            let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+            let mut wrong = task.clone();
+            wrong.spec.allow_commands = false;
+            assert!(
+                lease
+                    .execute(&wrong, &json!({"command":"'no'"}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(shell_status(&runtime).in_flight, 0);
+            let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+            assert!(
+                lease
+                    .execute(&task, &json!({"command":"'no'", "timeout_seconds":0}))
+                    .await
+                    .is_err()
+            );
+            assert_eq!(shell_status(&runtime).in_flight, 0);
+            let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+            runtime.disable_builtin_shell().unwrap();
+            assert_eq!(
+                lease
+                    .execute(&task, &json!({"command":"'already-admitted'"}))
+                    .await
+                    .unwrap()["stdout"]
+                    .as_str()
+                    .unwrap()
+                    .trim(),
+                "already-admitted"
+            );
+            assert_eq!(shell_status(&runtime).in_flight, 0);
+        })
+        .await;
     }
     struct DisappearingShellWorker;
     impl ToolServiceV1 for DisappearingShellWorker {
@@ -2243,31 +2266,34 @@ mod tests {
     }
     #[tokio::test]
     async fn s05_worker_channel_loss_is_unknown_and_releases_owned_count() {
-        let runtime = ToolRuntime::builtin().unwrap();
-        runtime.unload_builtin_shell().unwrap();
-        {
-            let mut state = runtime.shell_host.lock().unwrap();
-            state.host.with_factory(SHELL, || {
-                Box::new(ShellPlugin(Arc::new(DisappearingShellWorker)))
-            });
-        }
-        shell_reconcile(&runtime, true);
-        let mut task = task("unused");
-        task.spec.allow_commands = true;
-        let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
-        let error = lease.execute(&task, &json!({})).await.unwrap_err();
-        assert!(error.is::<crate::command_execution::CommandOutcomeUnknown>());
-        assert_eq!(shell_status(&runtime).in_flight, 0);
-        runtime.shell_in_flight.store(u64::MAX, Ordering::SeqCst);
-        assert!(
-            runtime
-                .acquire(&task, "run_command", || -> Result<()> {
-                    panic!("overflow must precede claim")
-                })
-                .is_err()
-        );
-        runtime.shell_in_flight.store(0, Ordering::SeqCst);
-        assert_eq!(status(&runtime).in_flight, 0);
+        crate::execution_authority::test_scope(async {
+            let runtime = ToolRuntime::builtin().unwrap();
+            runtime.unload_builtin_shell().unwrap();
+            {
+                let mut state = runtime.shell_host.lock().unwrap();
+                state.host.with_factory(SHELL, || {
+                    Box::new(ShellPlugin(Arc::new(DisappearingShellWorker)))
+                });
+            }
+            shell_reconcile(&runtime, true);
+            let mut task = task("unused");
+            task.spec.allow_commands = true;
+            let (lease, ()) = runtime.acquire(&task, "run_command", || Ok(())).unwrap();
+            let error = lease.execute(&task, &json!({})).await.unwrap_err();
+            assert!(error.is::<crate::command_execution::CommandOutcomeUnknown>());
+            assert_eq!(shell_status(&runtime).in_flight, 0);
+            runtime.shell_in_flight.store(u64::MAX, Ordering::SeqCst);
+            assert!(
+                runtime
+                    .acquire(&task, "run_command", || -> Result<()> {
+                        panic!("overflow must precede claim")
+                    })
+                    .is_err()
+            );
+            runtime.shell_in_flight.store(0, Ordering::SeqCst);
+            assert_eq!(status(&runtime).in_flight, 0);
+        })
+        .await;
     }
     #[test]
     fn s08_durable_acceptance_survives_real_shell_apply_failure_and_replay() {

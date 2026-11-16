@@ -547,14 +547,19 @@ async fn t3_same_key_replay_does_not_relaunch_or_grow() {
     assert_eq!(table_counts(&harness).4, 4);
 
     let engine_retry = started().await;
-    let other_engine = Engine::new(
-        Arc::new(Store::open(&engine_retry._dir.path().join("turns.db")).unwrap()),
-        2,
-    )
-    .unwrap();
+    assert!(
+        Engine::new(
+            Arc::new(Store::open(&engine_retry._dir.path().join("turns.db")).unwrap()),
+            2,
+        )
+        .is_err(),
+        "same-domain second controller must be rejected"
+    );
     let barrier = Arc::new(tokio::sync::Barrier::new(2));
     let left = engine_retry.engine.clone();
-    let right = other_engine.clone();
+    // The independent Store transaction race above still exercises database
+    // arbitration. Concurrent application callers share the one controller.
+    let right = engine_retry.engine.clone();
     let session = engine_retry.session.id.clone();
     let agent = engine_retry.agent.id.clone();
     let previous = engine_retry.first.turn.id.clone();
@@ -1043,7 +1048,15 @@ async fn t9_cancel_restart_and_resume_boundaries() {
     let still = harness.engine.store.task(&cancelled.id).unwrap();
     assert_eq!(still.status, "cancelled");
     let cancel_db = harness._dir.path().join("turns.db");
-    drop(harness);
+    let Harness {
+        _dir: _cancel_dir,
+        engine,
+        ..
+    } = harness;
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+    let old_store = Arc::downgrade(&engine.store);
+    drop(engine);
+    assert!(old_store.upgrade().is_none());
     let persisted_cancel = Store::open(&cancel_db).unwrap();
     assert_eq!(
         persisted_cancel.recover().unwrap(),
@@ -1105,7 +1118,7 @@ async fn t9_cancel_restart_and_resume_boundaries() {
             .enable_all()
             .build()
             .unwrap();
-        let started = runtime.block_on(async {
+        let (started, old_store) = runtime.block_on(async {
             let engine = engine_at(&worker_dir, &worker_base);
             let run = engine
                 .start_idempotent(chat_request("第一轮"), "partial-create")
@@ -1133,16 +1146,23 @@ async fn t9_cancel_restart_and_resume_boundaries() {
                 .await
                 .unwrap();
             (
-                session_id,
-                agent_id,
-                turn_id,
-                receipt.task.legacy_task_id,
-                run.id,
+                (
+                    session_id,
+                    agent_id,
+                    turn_id,
+                    receipt.task.legacy_task_id,
+                    run.id,
+                ),
+                Arc::downgrade(&engine.store),
             )
         });
         ready_tx.send(started).unwrap();
         let _ = stop_rx.recv();
         drop(runtime);
+        assert!(
+            old_store.upgrade().is_none(),
+            "stopped runtime retained its controller"
+        );
     });
     let (partial_session, partial_agent, partial_turn, partial_task, partial_run) =
         tokio::time::timeout(Duration::from_secs(5), async {
@@ -1157,16 +1177,13 @@ async fn t9_cancel_restart_and_resume_boundaries() {
         .expect("partial runtime did not start");
     tokio::time::timeout(Duration::from_secs(3), async {
         loop {
-            let hit = Store::open(&partial_db)
-                .unwrap()
-                .events(&partial_run, 0)
-                .unwrap()
-                .into_iter()
-                .any(|event| {
-                    event.kind == "delta"
-                        && event.task_id == partial_task
-                        && event.data["text"] == "partial-b-r5"
-                });
+            let observer = Connection::open_with_flags(
+                &partial_db, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+            ).unwrap();
+            let hit: bool = observer.query_row(
+                "SELECT EXISTS(SELECT 1 FROM events e JOIN tasks t ON t.id=e.task_id WHERE t.run_id=?1 AND e.task_id=?2 AND e.kind='delta' AND json_extract(e.data,'$.text')='partial-b-r5')",
+                params![partial_run, partial_task], |row| row.get(0),
+            ).unwrap();
             if hit {
                 break;
             }
@@ -1262,7 +1279,15 @@ async fn t9_cancel_restart_and_resume_boundaries() {
         )
         .unwrap();
     let unlaunched_predecessor = unlaunched.first.turn.id.clone();
-    drop(unlaunched);
+    let Harness {
+        _dir: _queued_dir,
+        engine,
+        ..
+    } = unlaunched;
+    assert!(engine.shutdown(Duration::from_secs(5)).await.settled());
+    let old_store = Arc::downgrade(&engine.store);
+    drop(engine);
+    assert!(old_store.upgrade().is_none());
     let restarted = Store::open(&queued_path).unwrap();
     assert!(restarted.recover().unwrap() >= 1);
     let stored = restarted.task("committed-not-launched").unwrap();

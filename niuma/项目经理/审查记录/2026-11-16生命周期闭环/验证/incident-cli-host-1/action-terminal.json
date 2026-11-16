@@ -1,0 +1,10 @@
+{
+  "identity": {
+    "image": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\peachsh.exe",
+    "creation_filetime": 134392956118342657,
+    "command_line": "\"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\peachsh.exe\" --port 54408 --data-dir E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-external-1\\tmp\\.tmpeJelLY\\server-data --legacy-data E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-external-1\\tmp\\.tmpeJelLY\\legacy --workspace E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-external-1\\tmp\\.tmpeJelLY\\workspace"
+  },
+  "exit_code": 1,
+  "signalled": true,
+  "unknown_ever": false
+}

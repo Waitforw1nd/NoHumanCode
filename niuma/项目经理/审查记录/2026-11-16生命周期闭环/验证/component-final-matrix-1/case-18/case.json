@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960326119985,
+  "pid": 70628,
+  "exit_code": 0,
+  "case": "process_lifetime::state_tests::blocking_settle_does_not_hold_decision_lock_or_release_slot",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:12.6099744Z",
+  "elapsed_ms": 41
+}

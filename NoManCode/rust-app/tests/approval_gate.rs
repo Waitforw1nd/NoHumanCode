@@ -112,7 +112,7 @@ fn spec(commands: bool) -> TaskSpec {
         max_rounds: 8,
     }
 }
-fn setup(path: &Path, base: &str) -> Arc<Engine> {
+fn setup_store(path: &Path, base: &str) -> Arc<Store> {
     let store = Arc::new(Store::open(&path.join("approval.db")).unwrap());
     store
         .save_settings(&Settings {
@@ -124,7 +124,44 @@ fn setup(path: &Path, base: &str) -> Arc<Engine> {
         .unwrap();
     store.put_secret("route", "fake-key-approval").unwrap();
     network_fixture::authorize_routes(&store);
-    Engine::new(store, 4).unwrap()
+    store
+}
+fn setup(path: &Path, base: &str) -> Arc<Engine> {
+    Engine::new(setup_store(path, base), 4).unwrap()
+}
+fn setup_recovered(path: &Path, base: &str) -> Arc<Engine> {
+    let store = setup_store(path, base);
+    await_stopped_runtime(&store, path);
+    Engine::new_recovered(store, 4).unwrap().0
+}
+
+// Runtime destruction drops the controller but only requests cancellation of
+// an original process holder. Observe its actual ticket settlement before
+// recovery; do not replace a crash with graceful approval cancellation.
+fn await_stopped_runtime(store: &Store, root: &Path) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(12);
+    loop {
+        let status = store.execution_admission_status().unwrap();
+        if status == (false, 0, 0) {
+            return;
+        }
+        if status.2 != 0 || std::time::Instant::now() >= deadline {
+            let _ = std::fs::write(
+                root.join("restart-holder-unknown.json"),
+                json!({"admission":status,"reason":"old runtime owner did not settle"}).to_string(),
+            );
+            eprintln!(
+                "NHC_TERMINAL_UNKNOWN: retaining original Store/holder at {}: {status:?}",
+                root.display()
+            );
+            // Preserve the same process and owner for the manager's supervisor.
+            // No recovery, new controller, guessed PID cleanup or next case.
+            loop {
+                std::thread::park_timeout(Duration::from_secs(60));
+            }
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 async fn start(e: &Arc<Engine>, commands: bool) -> Task {
     e.start(RunRequest {
@@ -543,8 +580,7 @@ fn ap08_restart_public_cancel_is_idempotent_without_active_runtime() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(async {
             let (base, _server) = server(temp.path(), vec![]).await;
-            let e = setup(temp.path(), &base);
-            e.store.recover().unwrap();
+            let e = setup_recovered(temp.path(), &base);
             assert_eq!(e.store.task(&task.id).unwrap().status, "interrupted");
 
             e.cancel(&task.id).unwrap();
@@ -645,8 +681,7 @@ fn redacted_command_result_stays_finished_across_restart() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let (base, _server) = server(temp.path(), vec![]).await;
-        let e = setup(temp.path(), &base);
-        e.store.recover().unwrap();
+        let e = setup_recovered(temp.path(), &base);
         assert_eq!(
             e.store.approval(&card.id).unwrap().execution_state,
             ExecutionState::Finished
@@ -921,8 +956,7 @@ fn ap06_ap07_ap18_runtime_restart_and_decide_before_waiter() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(async {
             let (base, _server) = server(temp.path(), vec![]).await;
-            let e = setup(temp.path(), &base);
-            e.store.recover().unwrap();
+            let e = setup_recovered(temp.path(), &base);
             // Preserve the same route endpoint in the task by updating the mock
             // fixture's persisted route (before any binding uses route metadata).
             let connection = db(temp.path());
@@ -1029,12 +1063,18 @@ fn ap15_claimed_before_execute_runtime_stops_then_unknown() {
 fn ap15_real_command_effect_then_runtime_stop_unknown() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (t,card)=runtime.block_on(async {
+    let (t,card,observer)=runtime.block_on(async {
         let c=call("cmd","run_command",json!({"command":"Add-Content -LiteralPath counter.txt -Value one; Start-Sleep -Seconds 120", "timeout_seconds":180}));
         let (base,_server)=server(temp.path(),vec![vec![c]]).await; let e=setup(temp.path(),&base); let t=start(&e,true).await; let card=pending(&e,&t.id).await; e.decide_approval_with_network_ack(&card.id, true, None, card.tool_name=="run_command").unwrap();
-        until(|| std::fs::read_to_string(temp.path().join("counter.txt")).ok().filter(|s| s.lines().count()==1)).await; assert_eq!(event_count(&e,&t,"tool_result"),0); (t,card)
+        until(|| std::fs::read_to_string(temp.path().join("counter.txt")).ok().filter(|s| s.lines().count()==1)).await; assert_eq!(event_count(&e,&t,"tool_result"),0); (t,card,e.store.clone())
     });
     runtime.shutdown_timeout(Duration::from_secs(2));
+    await_stopped_runtime(&observer, temp.path());
+    assert_eq!(
+        observer.approval(&card.id).unwrap().execution_state,
+        ExecutionState::Claimed
+    );
+    drop(observer);
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let s = Arc::new(Store::open(&temp.path().join("approval.db")).unwrap());
@@ -1107,8 +1147,7 @@ fn ap16_finished_restart_never_reexecutes_and_missing_result_is_corrupt() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let (base, _server) = server(temp.path(), vec![]).await;
-        let e = setup(temp.path(), &base);
-        e.store.recover().unwrap();
+        let e = setup_recovered(temp.path(), &base);
         let mut task = e.store.task(&t.id).unwrap();
         task.route.base_url = base;
         db(temp.path())
@@ -1283,8 +1322,7 @@ fn ap15_approved_before_claim_stopped_runtime_executes_once() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let (base, _server) = server(temp.path(), vec![]).await;
-        let e = setup(temp.path(), &base);
-        e.store.recover().unwrap();
+        let e = setup_recovered(temp.path(), &base);
         let mut t = e.store.task(&task.id).unwrap();
         t.route.base_url = base;
         db(temp.path())
@@ -1641,8 +1679,7 @@ fn ap06_reconcile_preserves_order_with_pending_and_unapproved_calls() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         let (base, _server) = server(temp.path(), vec![]).await;
-        let e = setup(temp.path(), &base);
-        e.store.recover().unwrap();
+        let e = setup_recovered(temp.path(), &base);
         let mut t = e.store.task(&task.id).unwrap();
         t.route.base_url = base;
         db(temp.path())

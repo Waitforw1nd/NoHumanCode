@@ -2330,7 +2330,7 @@ fn git_diff_error(error: anyhow::Error) -> ApiError {
             ErrorCode::RequestFailed,
             "差异路径无效",
         ),
-        Some(GitDiffError::Unavailable) => {
+        Some(GitDiffError::Unavailable | GitDiffError::OutcomeUnknown) => {
             (StatusCode::CONFLICT, ErrorCode::Conflict, "Git差异不可用")
         }
         Some(GitDiffError::Unsupported) => {

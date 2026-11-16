@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "clippy"
+  ],
+  "command": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--offline",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "ended_utc": "2026-11-16T09:12:03.642662+00:00",
+  "exit_code": 0,
+  "log": "01-clippy.log",
+  "log_bytes": 805,
+  "log_sha256": "cb9e33f2d3f88f0d3188fed4557da224933e24c6c8f2bbc6c83beb0edea3fbf3",
+  "name": "clippy",
+  "started_utc": "2026-11-16T09:11:40.372147+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

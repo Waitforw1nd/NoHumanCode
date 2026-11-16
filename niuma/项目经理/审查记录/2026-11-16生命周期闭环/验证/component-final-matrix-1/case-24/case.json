@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960368803929,
+  "pid": 70056,
+  "exit_code": 0,
+  "case": "process_lifetime::state_tests::original_holder_handle_keeps_slot_until_actual_thread_exit",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:16.8785281Z",
+  "elapsed_ms": 68
+}

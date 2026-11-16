@@ -1,0 +1,92 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+   Compiling peachsh v0.2.0 (E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app)
+    Finished `test` profile [unoptimized] target(s) in 28.90s
+     Running unittests src\lib.rs (E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle-target\debug\deps\peachsh-772c8a6873d0d381.exe)
+
+running 44 tests
+test agent_runtime_tests::a01_builtin_first_and_next_turn_preserve_messages_and_usage ... ok
+test agent_runtime_tests::a01_empty_tool_group_continues_and_consumes_round ... ok
+test agent_runtime_tests::a02_provider_cannot_execute_a_tool_removed_by_strategy ... ok
+test agent_runtime_tests::a02_subset_changes_real_provider_request_without_modifying_definitions ... ok
+test agent_runtime_tests::a03_deny_pairs_host_result_without_approval_or_write_then_continues ... ok
+test agent_runtime_tests::a03_malformed_later_call_keeps_valid_prefix_and_fails_in_order ... ok
+test agent_runtime_tests::a04_deny_repetition_still_exhausts_host_round_limit ... ok
+test agent_runtime_tests::a04_finish_on_empty_group_is_rejected_after_message_save ... ok
+test agent_runtime_tests::a04_invalid_after_does_not_create_approval_or_false_completion ... ok
+test agent_runtime_tests::a04_invalid_before_or_stop_fails_without_provider_or_approval ... ok
+test agent_runtime_tests::a04_present_non_array_tool_calls_fails_after_settlement_without_finish ... ok
+test agent_runtime_tests::a05_plugin_host_missing_version_factory_type_and_activation_fail_closed ... ok
+test agent_runtime_tests::a06_disable_drains_existing_task_refuses_new_and_enable_until_release ... ok
+test agent_runtime_tests::a07_callback_panic_is_redacted_but_ordinary_panic_hook_remains ... ok
+test agent_runtime_tests::a07_deactivation_error_and_panic_close_admission_and_scrub_output ... ok
+test agent_runtime_tests::a07_enable_cannot_race_reserved_stop_on_disable_or_last_drop ... ok
+test agent_runtime_tests::a07_generation_overflow_failclosed_still_drains_and_revokes ... ok
+test agent_runtime_tests::a07_panicking_strategy_drop_cannot_skip_count_or_draining_stop ... ok
+test agent_runtime_tests::a07_runtime_final_drop_and_failed_binding_cannot_escape_guard ... ok
+test agent_runtime_tests::a08_cancel_during_before_and_after_callback_stops_next_host_action ... ok
+test agent_runtime_tests::a08_cancel_during_provider_call_keeps_unknown_and_releases_task_lease ... ok
+test agent_runtime_tests::a08_cancel_while_waiting_for_approval_releases_agent_lease ... ok
+test agent_runtime_tests::a08_old_task_lease_cannot_bypass_current_project_permission_revocation ... ok
+test agent_runtime_tests::a09_orphan_approval_blocks_new_assistant_and_terminal_save_cannot_write_it_back ... ok
+test agent_runtime_tests::a09_transaction_failure_rolls_back_group_and_terminal_save_uses_old_snapshot ... ok
+test agent_runtime_tests::a10_real_kill_recover_resume_never_replays_prior_tool_group ... a10-fixture {"directory":"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-agent-1\\tmp\\.tmptPNQB2","phase":"agent_after_assistant_save"}
+a10-kill {"exit_code":1,"phase":"agent_after_assistant_save","pid":37368,"task_id":"fe73bf65-1548-4f18-b67a-2e5ad8a2a32e"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\106fb253-f7f0-4c91-92de-ad4755750d71","phase":"agent_after_assistant_save-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\18535796-78a6-4d49-9086-60cafc35ccef","phase":"agent_after_assistant_save-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":37368,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":47004,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\58d857a1-d8da-4f0e-91be-3553c784ec77","phase":"agent_after_assistant_save-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":37368,"mock_completions":2,"phase":"agent_after_assistant_save","recovery_pid":41940,"run":2}
+a10-fixture {"directory":"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-agent-1\\tmp\\.tmp12mKGg","phase":"agent_before_denied_result"}
+a10-kill {"exit_code":1,"phase":"agent_before_denied_result","pid":65648,"task_id":"f750068d-69a1-45e0-995a-ad5537908b0b"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\33e86d30-092a-4b13-8e7c-f4aa123a8e29","phase":"agent_before_denied_result-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\23519ecc-26dd-4311-b47f-1e106b2b0b8c","phase":"agent_before_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":65648,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":20536,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\69b66d1b-196a-492a-8639-3c37a89f222b","phase":"agent_before_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":65648,"mock_completions":2,"phase":"agent_before_denied_result","recovery_pid":47112,"run":2}
+a10-fixture {"directory":"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-agent-1\\tmp\\.tmptG8ek6","phase":"agent_after_denied_result"}
+a10-kill {"exit_code":1,"phase":"agent_after_denied_result","pid":38804,"task_id":"293904c3-1a83-492c-a47d-30deccb81422"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\8e5601dc-649d-47e6-ba24-d15e88431587","phase":"agent_after_denied_result-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\c9176551-a490-4f5b-967d-a4ac1e9263fd","phase":"agent_after_denied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":38804,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":57280,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\aa44257a-2510-4d4a-afcd-397104d45d0c","phase":"agent_after_denied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":38804,"mock_completions":2,"phase":"agent_after_denied_result","recovery_pid":60776,"run":2}
+a10-fixture {"directory":"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-agent-1\\tmp\\.tmp2f0t6C","phase":"agent_after_applied_result"}
+a10-kill {"exit_code":1,"phase":"agent_after_applied_result","pid":20136,"task_id":"14e8c17d-1973-4895-95e9-6d2fdc7c91dc"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\211de193-03ee-4bd5-b02b-d8be7804aa1b","phase":"agent_after_applied_result-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\ee489832-85c7-4c56-8dbe-8359d19d334b","phase":"agent_after_applied_result-recovery-1","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":20136,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":70136,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\2cb156ef-28cc-4c7f-b96f-8c2bf048c467","phase":"agent_after_applied_result-recovery-2","snapshot":"agent-snapshot.db"}
+a10-recovery {"exit_code":0,"killed_pid":20136,"mock_completions":2,"phase":"agent_after_applied_result","recovery_pid":30316,"run":2}
+ok
+test agent_runtime_tests::a10_unknown_approved_write_survives_restarts_without_automatic_retry ... a10-fixture {"directory":"E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\integrated-agent-1\\tmp\\.tmpZC1MDb","phase":"write_pre_fs"}
+a10-kill {"exit_code":1,"phase":"write_pre_fs","pid":34616,"task_id":"3dadc982-2982-442f-80db-2f74e87f831f"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\cf36e5a5-729a-4d1a-b2d7-39e52ab2a9fd","phase":"write_pre_fs-killed","snapshot":"agent-snapshot.db"}
+a10-evidence {"directory":".local\\next17-a10-evidence\\2112554f-a79e-4344-9a53-6a1c1ed0a28a","phase":"write_pre_fs-unknown-1","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":34616,"mock_completions":1,"recovery_pid":54056,"run":1}
+a10-evidence {"directory":".local\\next17-a10-evidence\\38424389-7c75-402e-9bc4-72417882bc03","phase":"write_pre_fs-unknown-2","snapshot":"agent-snapshot.db"}
+a10-unknown {"exit_code":0,"killed_pid":34616,"mock_completions":1,"recovery_pid":70080,"run":2}
+ok
+test agent_runtime_tests::n18_agent_admission_and_remote_disable_have_a_transaction_order ... ok
+test agent_runtime_tests::n18_agent_false_start_has_no_activation_or_effects ... ok
+test agent_runtime_tests::n18_agent_store_failure_never_uses_cached_enabled_state ... ok
+test agent_runtime_tests::n18_committed_replay_precedes_busy_during_agent_stop ... ok
+test agent_runtime_tests::n18_cross_store_disable_blocks_new_agent_lease_preserves_old_lease ... ok
+test agent_runtime_tests::n18_durable_agent_stop_failure_returns_receipt_and_replay_does_not_retry ... ok
+test agent_runtime_tests::n19_admitted_read_finishes_after_real_engine_cancellation ... ok
+test agent_runtime_tests::n19_agent_denies_write_and_command_then_starts_new_turn ... ok
+test agent_runtime_tests::n19_builtin_host_denied_after_commit_kill_recover_and_new_turn ... n19 builtin HostDenied pid=69968 evidence=E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-agent-1\tmp\.tmpsBrgO7
+ok
+test agent_runtime_tests::n19_cross_store_denial_without_notification_preserves_group_order ... ok
+test agent_runtime_tests::n19_known_unadvertised_and_wasm_cannot_forge_host_denial ... ok
+test agent_runtime_tests::n19_legacy_read_event_child_kill_then_reconcile_and_new_turn ... n19 legacy pid=59412 evidence=E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-agent-1\tmp\.tmp8LUpYp
+ok
+test agent_runtime_tests::n19_legacy_read_event_is_reconciled_on_real_resume_then_new_turn ... ok
+test agent_runtime_tests::n19_redacted_decision_process_kill_reconciles_once ... n19 proof pid=28964 cancelled=false evidence=E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-agent-1\tmp\.tmpuk3SNp
+n19 proof pid=24872 cancelled=true evidence=E:\code\nhc-lifecycle-20261116-integration\.local\lifecycle\integrated-agent-1\tmp\.tmpnjSQum
+ok
+test agent_runtime_tests::n19_unknown_host_denial_fails_until_explicit_resume_then_new_turn ... ok
+test agent_runtime_tests::n19_unknown_result_commit_failure_resumes_by_rechecking_host_policy ... ok
+test agent_runtime_tests::task_identity_publication_rejects_partial_and_invalid ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 437 filtered out; finished in 7.54s
+

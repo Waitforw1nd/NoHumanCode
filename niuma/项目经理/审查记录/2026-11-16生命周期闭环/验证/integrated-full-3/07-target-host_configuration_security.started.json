@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "host_configuration_security"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "host_configuration_security",
+    "--",
+    "--test-threads=1"
+  ],
+  "exit_code": null,
+  "name": "target-host_configuration_security",
+  "started_utc": "2026-11-16T09:56:52.413035+00:00",
+  "timeout_seconds": 1800
+}

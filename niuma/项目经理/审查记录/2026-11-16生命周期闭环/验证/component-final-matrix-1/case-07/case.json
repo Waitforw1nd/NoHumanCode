@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960241795751,
+  "pid": 19752,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::reader_error_joins_and_cleans_but_unknown_is_sticky",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:04.1775110Z",
+  "elapsed_ms": 89
+}

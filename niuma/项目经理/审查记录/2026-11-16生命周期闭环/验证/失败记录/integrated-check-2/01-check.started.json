@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "check"
+  ],
+  "command": [
+    "cargo",
+    "check",
+    "--workspace",
+    "--all-targets",
+    "--offline",
+    "--locked"
+  ],
+  "exit_code": null,
+  "name": "check",
+  "started_utc": "2026-11-16T08:43:59.884470+00:00",
+  "timeout_seconds": 1800
+}

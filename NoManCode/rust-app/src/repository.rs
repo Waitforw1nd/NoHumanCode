@@ -706,6 +706,51 @@ pub(crate) fn verify_current_schema(tx: &Transaction<'_>) -> Result<()> {
     Ok(())
 }
 
+/// Validate an already initialized domain without migration or index repair.
+/// Schema17's plugin verifier alone does not cover the earlier data families.
+pub(crate) fn verify_initialized_schema(tx: &Transaction<'_>) -> Result<()> {
+    anyhow::ensure!(
+        tx.pragma_query_value(None, "user_version", |row| row.get::<_, u32>(0))?
+            == crate::store::SCHEMA_VERSION,
+        "shared domain schema version changed"
+    );
+    for marker in [
+        MIGRATION_ID,
+        APPROVAL_MIGRATION_ID,
+        WORKSPACE_CHANGE_MIGRATION_ID,
+        CHECKPOINT_MIGRATION_ID,
+        NETWORK_MIGRATION_ID,
+        PROJECT_CONFIG_MIGRATION_ID,
+        PLUGIN_MANAGEMENT_MIGRATION_ID,
+        SHELL_MANAGEMENT_MIGRATION_ID,
+        WORKTREE_MIGRATION_ID,
+        BUDGET_MIGRATION_ID,
+        HOST_CONFIG_MIGRATION_ID,
+        RUNTIME_MANAGEMENT_MIGRATION_ID,
+    ] {
+        anyhow::ensure!(
+            migration_applied(tx, marker)?,
+            "schema marker missing: {marker}"
+        );
+    }
+    // verify_current_schema may repair the legacy index. A shared reopen must
+    // require that index to be complete already and never execute its DDL.
+    verify_schema_tables(tx, SchemaCheck::Complete)?;
+    verify_event_columns(tx)?;
+    verify_schema_7(tx)?;
+    verify_schema_8(tx)?;
+    verify_schema_9(tx)?;
+    verify_schema_10(tx)?;
+    verify_schema_11(tx)?;
+    // The schema17 verifier covers the current files/shell/runtime variants;
+    // the older plugin verifiers intentionally expect fewer builtin rows.
+    verify_schema_17(tx)?;
+    verify_schema_14(tx)?;
+    verify_schema_15(tx)?;
+    verify_schema_16(tx)?;
+    Ok(())
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SchemaCheck {
     BeforeMigration,

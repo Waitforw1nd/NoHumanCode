@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "test"
+  ],
+  "command": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "build.ps1",
+    "-Action",
+    "test"
+  ],
+  "exit_code": null,
+  "name": "test",
+  "started_utc": "2026-11-16T09:24:58.130806+00:00",
+  "timeout_seconds": 1800
+}

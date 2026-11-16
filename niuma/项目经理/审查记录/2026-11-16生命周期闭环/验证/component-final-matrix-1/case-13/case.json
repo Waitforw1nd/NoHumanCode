@@ -1,0 +1,9 @@
+{
+  "creation_filetime": 134392960292044909,
+  "pid": 39980,
+  "exit_code": 0,
+  "case": "process_lifetime_tests::termination_failure_retains_live_tree_then_recovers_without_reopening",
+  "state": "passed",
+  "started_utc": "2026-11-16T09:47:09.2024638Z",
+  "elapsed_ms": 139
+}

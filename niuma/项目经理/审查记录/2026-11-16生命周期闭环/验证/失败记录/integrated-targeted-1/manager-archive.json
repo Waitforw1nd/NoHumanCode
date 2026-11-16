@@ -1,0 +1,11 @@
+{
+  "scope": "preserved failed or preflight attempt; not acceptance",
+  "source_attempt": ".local\\lifecycle\\integrated-targeted-1",
+  "files": [
+    {
+      "path": "preflight-failure.json",
+      "bytes": 274,
+      "sha256": "6f9857f9a3b55ee8b2e5903adbae665c061dc7c054cd7b7356770eb0be7c5753"
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+{
+  "artifacts": [
+    {
+      "bytes": 159,
+      "path": "01-check.direct-exit.json",
+      "sha256": "bf4f42aa4a5f02f53e0a7aae682516835d639f706b266324eeca20a7fe703779"
+    },
+    {
+      "bytes": 583,
+      "path": "01-check.log",
+      "sha256": "a0f2d1fad8114fb6c9098546cfae3c2c14f393cc12e99cab06f3634719994f82"
+    },
+    {
+      "bytes": 598,
+      "path": "01-check.result.json",
+      "sha256": "60350c7c292d25d8f62e333cd756d46622dd8450a17f6d7d092d8762e889a11b"
+    },
+    {
+      "bytes": 366,
+      "path": "01-check.started.json",
+      "sha256": "ca9fcd2664d016b9336e0672eb099871351d64c86e0d056012c63ad19dda6677"
+    },
+    {
+      "bytes": 161,
+      "path": "02-debug-bins.direct-exit.json",
+      "sha256": "1cb7999718925fc034c738bbe9a808e79645dc44d0a4998aa8d79fd1e68f0da8"
+    },
+    {
+      "bytes": 426,
+      "path": "02-debug-bins.log",
+      "sha256": "0154908e92af4c124b862d0d2b03e3e73ec5d3252372c724cbdf807d79af978a"
+    },
+    {
+      "bytes": 589,
+      "path": "02-debug-bins.result.json",
+      "sha256": "a282ab1ce3aece227948e9a8c59c2a1c7c5546e59e839d261f3591700748fea7"
+    },
+    {
+      "bytes": 350,
+      "path": "02-debug-bins.started.json",
+      "sha256": "ee96e8e0dca9e68cf2bf07ff822b0518748042a77a6dab1756df2fd4106e7c82"
+    },
+    {
+      "bytes": 39686,
+      "path": "source-after.json",
+      "sha256": "e8471320ce683390a270ef0e100923701612d9e26313c426285bc567aea70cb2"
+    },
+    {
+      "bytes": 39686,
+      "path": "source-before.json",
+      "sha256": "e8471320ce683390a270ef0e100923701612d9e26313c426285bc567aea70cb2"
+    }
+  ],
+  "candidate": {
+    "head": "74f363970a4147bf6859e504b6efef2e15b656dc",
+    "product_tree": "c75dd181cf46747c82decfb918f10137961746f9",
+    "rust_tree": "acb6bf37c694d8a1e61e650b65e3706afdc5603a"
+  },
+  "ended_utc": "2026-11-16T09:49:16.498478+00:00",
+  "environment": {
+    "AR_x86_64_pc_windows_msvc": null,
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_BUILD_TARGET": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_HOME": null,
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "CC_x86_64_pc_windows_msvc": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTFLAGS": null,
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUSTUP_HOME": null,
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\external-repaired-bc-1\\tmp",
+    "TMP": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle\\external-repaired-bc-1\\tmp",
+    "VCToolsInstallDir": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+    "WindowsSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10"
+  },
+  "gate_retained": true,
+  "inputs_verified": true,
+  "options": {
+    "examples": [],
+    "filter": "",
+    "mode": "targeted",
+    "step_timeout_seconds": 1800,
+    "test_targets": [
+      "approval_gate",
+      "cli",
+      "network_authorization",
+      "runtime",
+      "session_turns"
+    ]
+  },
+  "plan": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "name": "check",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "name": "debug-bins",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "approval_gate"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "approval_gate",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-approval_gate",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "cli"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "cli",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-cli",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "network_authorization"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "network_authorization",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-network_authorization",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "runtime"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "runtime",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-runtime",
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "targeted",
+        "-TestTarget",
+        "session_turns"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--test",
+        "session_turns",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "target-session_turns",
+      "timeout_seconds": 1800
+    }
+  ],
+  "process_tree_cleanup": "not_proven_by_this_runner",
+  "runner_exit_code": 101,
+  "started_utc": "2026-11-16T09:48:30.373736+00:00",
+  "status": "failed",
+  "steps": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T09:48:53.735298+00:00",
+      "exit_code": 0,
+      "log": "01-check.log",
+      "log_bytes": 583,
+      "log_sha256": "a0f2d1fad8114fb6c9098546cfae3c2c14f393cc12e99cab06f3634719994f82",
+      "name": "check",
+      "started_utc": "2026-11-16T09:48:31.295562+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T09:49:14.951445+00:00",
+      "exit_code": 101,
+      "log": "02-debug-bins.log",
+      "log_bytes": 426,
+      "log_sha256": "0154908e92af4c124b862d0d2b03e3e73ec5d3252372c724cbdf807d79af978a",
+      "name": "debug-bins",
+      "started_utc": "2026-11-16T09:48:54.677214+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800,
+      "unknown_reason": null
+    }
+  ],
+  "version": 1
+}
