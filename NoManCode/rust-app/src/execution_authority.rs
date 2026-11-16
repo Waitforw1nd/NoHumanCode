@@ -253,6 +253,7 @@ impl ExecutionAuthority {
                     bodies: 1,
                     task_id: None,
                     network_calls: Default::default(),
+                    worktree_operations: Default::default(),
                     cancellation_owner: CancellationOwner::Caller,
                     generation: 0,
                     active: None,
@@ -324,6 +325,7 @@ struct OperationState {
     bodies: usize,
     task_id: Option<String>,
     network_calls: std::collections::HashSet<String>,
+    worktree_operations: std::collections::HashSet<(String, String)>,
     cancellation_owner: CancellationOwner,
     generation: u64,
     active: Option<u64>,
@@ -405,6 +407,61 @@ impl ExecutionOperation {
         ensure!(
             state.network_calls.insert(call_id.to_owned()),
             "operation call already bound"
+        );
+        Ok(())
+    }
+    pub(crate) fn bind_worktree_operation(
+        &self,
+        source_project_id: &str,
+        operation_id: &str,
+    ) -> Result<()> {
+        crate::secrets::validate_persisted_id("project_id", source_project_id)?;
+        crate::secrets::validate_persisted_id("operation_id", operation_id)?;
+        let mut state = self
+            .scope
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+        let admission = self
+            .scope
+            .authority
+            .admission
+            .lock()
+            .map_err(|_| anyhow::anyhow!("domain admission poisoned"))?;
+        ensure!(
+            admission.controller
+                && admission.open
+                && admission.unknown == 0
+                && admission.epoch == Some(self.scope.epoch)
+                && state.bodies > 0
+                && !state.unknown
+                && !state.settled
+                && !self.scope.cancel.is_cancelled(),
+            "operation cannot bind worktree"
+        );
+        // The same original operation may retry a confirmed rolled-back claim.
+        state
+            .worktree_operations
+            .insert((source_project_id.to_owned(), operation_id.to_owned()));
+        Ok(())
+    }
+    pub(crate) fn verify_worktree_operation(
+        &self,
+        source_project_id: &str,
+        operation_id: &str,
+    ) -> Result<()> {
+        let state = self
+            .scope
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("operation poisoned"))?;
+        ensure!(
+            state.bodies > 0
+                && !state.settled
+                && state
+                    .worktree_operations
+                    .contains(&(source_project_id.to_owned(), operation_id.to_owned())),
+            "worktree belongs to another operation"
         );
         Ok(())
     }

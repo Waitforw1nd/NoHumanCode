@@ -5,9 +5,6 @@ edition = "2024"
 description = "Peachsh native multi-model coding harness"
 license = "MIT"
 
-[features]
-integration-test-support = []
-
 [workspace]
 members = ["crates/protocol", "crates/ui"]
 resolver = "2"
