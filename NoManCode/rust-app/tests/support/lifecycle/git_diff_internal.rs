@@ -113,6 +113,47 @@ impl FixtureOutput for Command {
     }
 }
 
+// A nested libtest may itself retain an unknown holder. Its supervisor must not
+// kill that evidence on an outer deadline: retain the original child instead.
+fn retained_test_child_output(command: &mut Command) -> std::process::Output {
+    use std::{
+        os::windows::process::CommandExt,
+        process::Stdio,
+        time::{Duration, Instant},
+    };
+    let evidence = tempfile::Builder::new()
+        .prefix("git-env-child-")
+        .tempdir()
+        .unwrap()
+        .keep();
+    let stdout = evidence.join("stdout.log");
+    let stderr = evidence.join("stderr.log");
+    command
+        .creation_flags(0x08000000)
+        .stdin(Stdio::null())
+        .stdout(std::fs::File::create(&stdout).unwrap())
+        .stderr(std::fs::File::create(&stderr).unwrap());
+    let mut child = command
+        .spawn()
+        .expect("create exact environment test child");
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
+            _ => crate::fixture::retain_unknown(
+                &evidence,
+                "nested environment test child exit unconfirmed; original Child retained",
+            ),
+        }
+    };
+    std::process::Output {
+        status,
+        stdout: std::fs::read(stdout).unwrap(),
+        stderr: std::fs::read(stderr).unwrap(),
+    }
+}
+
 fn git(root: &Path, args: &[&str]) -> String {
     let output = Command::new("git")
         .current_dir(root)
@@ -872,25 +913,26 @@ fn inherited_git_redirection_and_config_are_cleared_in_child_process() {
     let alien = repo();
     write(alien.path(), "a.txt", "alien\n");
     commit(alien.path(), "a.txt");
-    let output = Command::new(std::env::current_exe().unwrap())
-        .args([
-            "--exact",
-            "git_diff_contract_tests::malicious_environment_child",
-            "--nocapture",
-        ])
-        .env("NHC_DIFF_ENV_FIXTURE", root.path())
-        .env("GIT_DIR", alien.path().join(".git"))
-        .env("GIT_WORK_TREE", alien.path())
-        .env("GIT_INDEX_FILE", alien.path().join(".git/index"))
-        .env("GIT_OBJECT_DIRECTORY", alien.path().join(".git/objects"))
-        .env("GIT_CONFIG_COUNT", "1")
-        .env("GIT_CONFIG_KEY_0", "core.bare")
-        .env("GIT_CONFIG_VALUE_0", "true")
-        .env("GIT_CONFIG_PARAMETERS", "invalid-injected-config")
-        .env("GIT_EXTERNAL_DIFF", "nonexistent-external-command")
-        .env("GIT_CONFIG_SYSTEM", alien.path().join("bad-config"))
-        .env("GIT_CONFIG_GLOBAL", alien.path().join("bad-config"))
-        .lifecycle_output();
+    let output = retained_test_child_output(
+        Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "git_diff_contract_tests::malicious_environment_child",
+                "--nocapture",
+            ])
+            .env("NHC_DIFF_ENV_FIXTURE", root.path())
+            .env("GIT_DIR", alien.path().join(".git"))
+            .env("GIT_WORK_TREE", alien.path())
+            .env("GIT_INDEX_FILE", alien.path().join(".git/index"))
+            .env("GIT_OBJECT_DIRECTORY", alien.path().join(".git/objects"))
+            .env("GIT_CONFIG_COUNT", "1")
+            .env("GIT_CONFIG_KEY_0", "core.bare")
+            .env("GIT_CONFIG_VALUE_0", "true")
+            .env("GIT_CONFIG_PARAMETERS", "invalid-injected-config")
+            .env("GIT_EXTERNAL_DIFF", "nonexistent-external-command")
+            .env("GIT_CONFIG_SYSTEM", alien.path().join("bad-config"))
+            .env("GIT_CONFIG_GLOBAL", alien.path().join("bad-config")),
+    );
     assert!(
         output.status.success(),
         "child failed: {} {}",
