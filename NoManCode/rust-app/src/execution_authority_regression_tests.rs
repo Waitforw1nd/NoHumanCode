@@ -141,6 +141,53 @@ async fn operation_from_another_domain_cannot_authorize_transaction() {
 }
 
 #[test]
+fn copied_owner_row_cannot_make_foreign_transaction_belong_to_original_store() {
+    let (_first_dir, first, _first_engine) = setup();
+    let (_second_dir, second, _second_engine) = setup();
+    let op = first.execution_operation(CancellationToken::new()).unwrap();
+    let owner: (String, i64, String) = {
+        let db = first.db.lock().unwrap();
+        db.query_row(
+            "SELECT domain_identity,epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap()
+    };
+    {
+        let mut db = first.db.lock().unwrap();
+        let tx = db
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .unwrap();
+        store_positive_and_insert(&first, &tx, &op);
+        tx.commit().unwrap();
+    }
+    let mut db = second.db.lock().unwrap();
+    db.execute(
+        "UPDATE execution_owner SET domain_identity=?1,epoch=?2,phase=?3 WHERE id=1",
+        rusqlite::params![owner.0, owner.1, owner.2],
+    )
+    .unwrap();
+    let tx = db
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
+    assert!(
+        first.execution_fence_for(&tx, &op).is_err(),
+        "an authentic operation must not authorize another database's transaction"
+    );
+    tx.rollback().unwrap();
+    assert_eq!(
+        db.query_row(
+            "SELECT count(*) FROM config WHERE id='u18-fence-test'",
+            [],
+            |r| r.get::<_, i64>(0)
+        )
+        .unwrap(),
+        0
+    );
+}
+
+#[test]
 fn cancelled_before_start_does_not_poison_next_operation() {
     let (_dir, store, _engine) = setup();
     let cancel = CancellationToken::new();
