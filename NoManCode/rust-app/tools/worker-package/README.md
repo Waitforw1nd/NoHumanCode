@@ -28,7 +28,8 @@ pwsh -NoProfile -File NoManCode/rust-app/tools/worker-package/package-worker.ps1
 No build is authorized merely by this example. `debug` is the default; `release`
 exists as an explicit future selection. Both bins use the same fixed Windows MSVC
 target, profile, default Cargo features, locked/offline dependencies and source
-snapshot. This version intentionally has no arbitrary feature/config/command flags.
+snapshot. This version intentionally has no arbitrary feature/config/command flags;
+ambient Cargo configuration and environment may still change build behavior.
 It reuses discovered MSVC/SDK setup and jobs2/debug0/incremental0 from lifecycle
 tooling. Relative paths resolve from the repository, all active outputs to E.
 
@@ -64,6 +65,55 @@ retains the original Process object until its direct terminal state. Persistent
 gate retention still does not prove descendant cleanup. A prepared pair records
 `runtime_binding_verified: false`; artifact hashes and recorded build settings
 cannot substitute for Host runtime pin/identity/protocol/fail-closed acceptance.
+
+`ambient-inputs.json` fingerprints relevant inherited environment values and
+Cargo configuration files without recording their contents; the files are checked
+again after each build. Each invocation also records the discovered MSVC/SDK and
+command paths plus command-file hashes after environment setup. A rustup shim or
+wrapper may select other tools; the records do not attest the effective compiler,
+all build inputs, or reproducibility. They may expose local paths. `pair.json` is
+self-described evidence, never an authentication authority.
+
+The Windows integration test `tests/worker_package_bootstrap.rs` exercises the
+production bootstrap in isolated copied test executables. Its ignored real-pair
+case uses a prepared pair, a separately fixed real worker with different bytes,
+and an unbound Host; no `pair.json` is used as an oracle. Only the manager runs
+these process tests in the supervised window. After candidate integration, set
+the three paths below to approved, fixed inputs on E and run from the repository
+root, using the full candidate Git IDs and a new attempt name:
+
+```powershell
+$env:NHC_TEST_PAIR_A = 'E:\path\to\pair-a'
+$env:NHC_TEST_FOREIGN_WORKER = 'E:\path\to\baseline\peachsh-wasm-worker.exe'
+$env:NHC_TEST_UNBOUND_HOST = 'E:\path\to\unbound\peachsh.exe'
+python -B NoManCode/rust-app/tools/worker-package/run-bootstrap-check.py `
+  --head <full-head> --product-tree <full-product-tree> --rust-tree <full-rust-tree> `
+  --attempt real-pair-attempt1 --step-timeout-seconds 300
+```
+
+The harness records input paths and SHA256 in the retained temporary fixture
+directory, prints its location, copies artifacts into isolated case directories,
+and uses isolated data and workspace paths. The gate runner checks source IDs,
+requires a passing test, and retains its gate and evidence. Each original child
+is owned by `tests/support/owned_child.rs`, with no window, file-backed logs and
+a 30-second observation deadline; ordinary failure/unwind invokes its exact-child kill/wait
+guard. Timeout or uncertain observation writes unknown evidence, emits
+`NHC_TERMINAL_UNKNOWN` and retains that original Child indefinitely. Do not kill
+the test or supervisor, start another step, unlock, remove the fixture or infer
+descendant cleanup from direct exit; the manager reconciles the same objects and
+gate. An outer deadline likewise stops admission while the original supervisor
+retains the Cargo process. Neither direct exit nor this test proves descendant
+cleanup. Protocol and public `run_wasm` execution remain separate gates.
+
+Cross-review found that the baseline shared `owned_child` accepts a direct exit
+first observed after the deadline as success. C's fix `bf1bda27` must be
+integrated and verified before treating the deadline as strictly enforced.
+
+The non-ignored independent bootstrap case can be selected through the existing
+`run-gates.ps1 -Mode targeted -TestTarget worker_package_bootstrap -Filter
+packaged_bootstrap_rejects_mismatch_and_pins_fixed_copy` with candidate IDs,
+a fresh attempt and an appropriate outer deadline. The child's harness output
+must show exactly one passing test per case.
 
 Pure mock tests, safe while the manager owns the real build window:
 
