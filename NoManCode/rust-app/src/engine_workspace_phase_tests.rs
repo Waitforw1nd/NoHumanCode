@@ -61,15 +61,16 @@ async fn n11_three_reads_recheck_durable_desired_and_project_permissions() {
         };
         let call = json!({"id":format!("denied-{name}"),"function":{"name":name,"arguments":args.to_string()}});
         let before = n10_rows(&engine.store.db.lock().unwrap());
-        let error = engine
-            .execute_or_wait(
+        let (_, operation) = engine.reserve_task_worker(&task_id).unwrap();
+        let error = operation
+            .run(engine.tool_calls.execute_or_wait(
                 &mut task.clone(),
                 &call,
                 name,
                 &args,
                 "phase-test-key",
                 &CancellationToken::new(),
-            )
+            ))
             .await
             .unwrap_err();
         assert_eq!(
@@ -531,9 +532,13 @@ async fn n10_disable_first_preserves_decision_and_refuses_claim_without_side_eff
         .decide_approval(&pending.id, true, Some("test"))
         .unwrap();
     // Current-thread test has not yielded to the worker: test the real Store transaction as well.
-    let rejected = engine
-        .store
-        .claim_approval(&task, &pending.tool_call_id, "write_file", &args)
+    let (_, operation) = engine.reserve_task_worker(&task_id).unwrap();
+    let rejected = operation
+        .test_sync(|| {
+            engine
+                .store
+                .claim_approval(&task, &pending.tool_call_id, "write_file", &args)
+        })
         .unwrap_err();
     assert_eq!(
         rejected.downcast_ref::<crate::plugin_management::PluginManagementError>(),
@@ -581,15 +586,15 @@ async fn n10_disable_first_preserves_decision_and_refuses_claim_without_side_eff
     }
     task.status = "running".into();
     assert!(
-        engine
-            .execute_or_wait(
+        operation
+            .run(engine.tool_calls.execute_or_wait(
                 &mut task,
                 &call,
                 "write_file",
                 &args,
                 "phase-test-key",
                 &CancellationToken::new()
-            )
+            ))
             .await
             .is_err()
     );
@@ -970,16 +975,17 @@ async fn n09_claim_wins_stop_and_duplicate_claim_never_gets_a_second_lease() {
             .clone();
         let args: Value =
             serde_json::from_str(call["function"]["arguments"].as_str().unwrap()).unwrap();
+        let (_, operation) = engine.reserve_task_worker(&task_id).unwrap();
         let duplicate = tokio::time::timeout(
             Duration::from_secs(2),
-            engine.execute_or_wait(
+            operation.run(engine.tool_calls.execute_or_wait(
                 &mut task,
                 &call,
                 "write_file",
                 &args,
                 "phase-test-key",
                 &CancellationToken::new(),
-            ),
+            )),
         )
         .await
         .unwrap();
@@ -2589,7 +2595,10 @@ async fn r01_same_group_safe_snapshot_keeps_sensitive_approval_binding() {
                 })
         );
         if cancel {
-            store.cancel_pending_approvals(&task.id).unwrap();
+            let (_, operation) = engine.reserve_task_worker(&task.id).unwrap();
+            operation
+                .test_sync(|| store.cancel_pending_approvals(&task.id))
+                .unwrap();
         } else {
             engine
                 .decide_approval(&pending.id, approve, Some("test"))
@@ -2813,7 +2822,8 @@ async fn r01_mismatched_live_call_cannot_create_approval_or_execute() {
     current
         .messages
         .push(json!({"role":"assistant","content":null,"tool_calls":[call.clone()]}));
-    store.save_task(&current).unwrap();
+    let (_, operation) = engine.reserve_task_worker(&started.id).unwrap();
+    operation.test_sync(|| store.save_task(&current)).unwrap();
     let mut current = store.task(&started.id).unwrap();
     let forged_args = json!({"path":"src/wrong.txt","content":"sk-abc"});
     let forged = json!({"id":"r01-target","type":"function","function":{
@@ -2821,15 +2831,16 @@ async fn r01_mismatched_live_call_cannot_create_approval_or_execute() {
     }});
     let before_local = current.messages.clone();
     let before_persisted = store.task(&started.id).unwrap().messages;
-    let mismatched_safe = engine
-        .execute_or_wait(
+    let mismatched_safe = operation
+        .hold_body()
+        .run(engine.tool_calls.execute_or_wait(
             &mut current,
             &forged,
             "write_file",
             &forged_args,
             "r01-test-key",
             &CancellationToken::new(),
-        )
+        ))
         .await
         .unwrap_err();
     assert!(
@@ -2837,15 +2848,16 @@ async fn r01_mismatched_live_call_cannot_create_approval_or_execute() {
             .to_string()
             .contains("工具调用安全参数不匹配")
     );
-    let mismatched_raw = engine
-        .execute_or_wait(
+    let mismatched_raw = operation
+        .hold_body()
+        .run(engine.tool_calls.execute_or_wait(
             &mut current,
             &call,
             "write_file",
             &forged_args,
             "r01-test-key",
             &CancellationToken::new(),
-        )
+        ))
         .await
         .unwrap_err();
     assert!(mismatched_raw.to_string().contains("工具调用参数不匹配"));
@@ -4087,7 +4099,10 @@ fn sealed_pending_resume_and_failed_commit_leave_no_deferred_input() {
         if restore_first {
             let changes = engine.store.workspace_changes_for_task(&task_id).unwrap();
             assert_eq!(changes.len(), 1);
-            engine.store.claim_restore(&task_id, &changes).unwrap();
+            let (_, operation) = engine.reserve_task_worker(&task_id).unwrap();
+            operation
+                .test_sync(|| engine.store.claim_restore(&task_id, &changes))
+                .unwrap();
         } else {
             engine.store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_resume BEFORE INSERT ON events WHEN NEW.kind='resume' BEGIN SELECT RAISE(ABORT,'resume fixture fault'); END;").unwrap();
         }
@@ -4157,10 +4172,10 @@ async fn no_restore_resume_executes_and_checkpoint_keeps_original_error() {
     let before = resume_business_snapshot(&engine.store);
     let mut task = engine.store.task(&id).unwrap();
     task.status = "queued".into();
+    let (_, operation) = engine.reserve_task_worker(&id).unwrap();
     assert_eq!(
-        engine
-            .store
-            .resume_task(&task, "blocked")
+        operation
+            .test_sync(|| engine.store.resume_task(&task, "blocked"))
             .unwrap_err()
             .downcast_ref::<crate::checkpoint::CheckpointError>(),
         Some(&crate::checkpoint::CheckpointError::Conflict)
@@ -4215,10 +4230,10 @@ async fn assert_resume_sealed_without_changes(engine: &Arc<Engine>, id: &str) {
     proposed
         .messages
         .push(json!({"role":"user","content":"must not persist"}));
+    let (_, operation) = engine.reserve_task_worker(id).unwrap();
     assert_eq!(
-        engine
-            .store
-            .resume_task(&proposed, "must not persist")
+        operation
+            .test_sync(|| engine.store.resume_task(&proposed, "must not persist"))
             .unwrap_err()
             .downcast_ref::<crate::store::ResumeError>(),
         Some(&crate::store::ResumeError::Sealed)
@@ -4308,12 +4323,17 @@ fn partial_and_unknown_restore_histories_seal_resumed_writes() {
             finish_two_writes(&engine, &task_id, usize::MAX).await;
             let records = engine.store.workspace_changes_for_task(&task_id).unwrap();
             let original_ids: Vec<_> = records.iter().map(|record| record.id.clone()).collect();
-            let claimed = engine.store.claim_restore(&task_id, &records[..1]).unwrap();
+            let (_, operation) = engine.reserve_task_worker(&task_id).unwrap();
+            let claimed = operation
+                .test_sync(|| engine.store.claim_restore(&task_id, &records[..1]))
+                .unwrap();
             let restore_id = claimed.restore_id.clone().unwrap();
             let receipt = if status == RestoreStatus::Claimed {
                 claimed
             } else {
-                engine.store.finish_restore(&restore_id, status).unwrap()
+                operation
+                    .test_sync(|| engine.store.finish_restore(&restore_id, status))
+                    .unwrap()
             };
             assert_eq!(receipt.status, status);
             assert_eq!(
