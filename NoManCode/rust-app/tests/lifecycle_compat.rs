@@ -66,7 +66,8 @@ async fn cli_cancel(reply: Reply) -> (i32, Vec<u8>, Vec<u8>) {
         .route("/api/tasks/compat-task/cancel", post(cli_reply))
         .with_state(reply);
     let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-    let root = evidence_root();
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path();
     let stdout = root.join("cli.stdout");
     let stderr = root.join("cli.stderr");
     let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_peachsh"));

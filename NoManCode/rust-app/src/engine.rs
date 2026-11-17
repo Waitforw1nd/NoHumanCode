@@ -2538,25 +2538,6 @@ impl Engine {
         )
     }
 
-    #[cfg(test)]
-    async fn execute_or_wait(
-        &self,
-        task: &mut Task,
-        call: &Value,
-        name: &str,
-        args: &Value,
-        key: &str,
-        cancel: &CancellationToken,
-    ) -> Result<()> {
-        let operation = self.store.execution_operation(cancel.clone())?;
-        operation.bind_task(&task.id)?;
-        operation
-            .run(
-                self.tool_calls
-                    .execute_or_wait(task, call, name, args, key, cancel),
-            )
-            .await
-    }
     pub async fn resume(self: &Arc<Self>, id: &str, message: &str) -> Result<Task> {
         // Preserve the durable unresolved-effect diagnosis even when that
         // effect has already closed admission. This read cannot grant work.
