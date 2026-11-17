@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-step.ps1",
+    "-Stage",
+    "targeted",
+    "-TestTarget",
+    "lifecycle_compat"
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "--test",
+    "lifecycle_compat",
+    "--",
+    "--test-threads=1"
+  ],
+  "ended_utc": "2026-11-16T13:16:27.607934+00:00",
+  "exit_code": 101,
+  "log": "04-target-lifecycle_compat.log",
+  "log_bytes": 1641,
+  "log_sha256": "25a67f5e7e02654e8b7fd17b8080015d0d8e67cbea0d6266b88f442a67e39fbc",
+  "name": "target-lifecycle_compat",
+  "started_utc": "2026-11-16T13:16:22.216121+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

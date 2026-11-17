@@ -1,0 +1,4 @@
+pid=39964 phase=started
+pid=39964 phase=request_eof
+pid=39964 phase=output_written
+pid=39964 phase=exit_42

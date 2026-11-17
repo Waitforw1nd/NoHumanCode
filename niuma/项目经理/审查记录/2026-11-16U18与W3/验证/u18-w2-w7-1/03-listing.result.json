@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--list",
+    "--ignored",
+    "--format",
+    "terse"
+  ],
+  "ended_utc": "2026-11-16T12:41:02.602991+00:00",
+  "exit_code": 0,
+  "log": "03-listing.log",
+  "log_bytes": 4180,
+  "log_sha256": "fd4ee11b4281b7f2929768e791c780705f61756875b4a6ad4ba61505df8c70dd",
+  "name": "listing",
+  "stage": "listing",
+  "started_utc": "2026-11-16T12:41:02.028318+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

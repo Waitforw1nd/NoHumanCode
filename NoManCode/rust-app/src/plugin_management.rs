@@ -144,6 +144,7 @@ impl Store {
             .lock()
             .map_err(|_| PluginManagementError::Internal)?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence(&tx)?;
         ensure_plugin_enabled_tx(&tx, id)?;
         #[cfg(test)]
         let probe_path: String = tx.query_row(
@@ -155,7 +156,7 @@ impl Store {
         crate::engine::runtime_barrier::block(&probe_path, "runtime_agent_admit_before_commit");
         #[cfg(test)]
         crate::engine::crash_probe::block(&probe_path, "runtime_agent_admit_before_commit", id);
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         #[cfg(test)]
         crate::engine::runtime_barrier::block(&probe_path, "runtime_agent_admit_after_commit");
         #[cfg(test)]
@@ -163,8 +164,9 @@ impl Store {
         Ok(())
     }
     // Caller holds the runtime management lock. Never calls runtime from Store.
-    pub(crate) fn set_plugin_desired(
+    pub(crate) fn set_plugin_desired_with_operation(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         request: &SetPluginEnabled,
         key: &str,
@@ -180,6 +182,7 @@ impl Store {
             .lock()
             .map_err(|_| PluginManagementError::Internal)?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        self.execution_fence_for(&tx, op)?;
         let prior: Option<PluginMutationReceipt> = tx.query_row(
             "SELECT plugin_id,enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key=?1",
             [key], |r| Ok(PluginMutationReceipt { plugin_id:r.get(0)?, enabled:r.get(1)?, previous_revision:r.get(2)?, revision:r.get(3)?, committed_at:r.get(4)? }),
@@ -191,7 +194,7 @@ impl Store {
             {
                 return Err(PluginManagementError::IdempotencyConflict.into());
             }
-            tx.commit()?;
+            self.commit_execution_tx(tx)?;
             return Ok((receipt, true));
         }
         let current = desired_for_tx(&tx, id)?;
@@ -210,12 +213,13 @@ impl Store {
             params![receipt.enabled, receipt.revision, receipt.committed_at, id],
         )?;
         tx.execute("INSERT INTO plugin_management_requests(key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (?1,?2,?3,?4,?5,?6)", params![key, id, receipt.enabled, receipt.previous_revision, receipt.revision, receipt.committed_at])?;
-        tx.commit()?;
+        self.commit_execution_tx(tx)?;
         Ok((receipt, false))
     }
     // Called with the corresponding runtime lock held; replay precedes local rejection.
-    pub(crate) fn set_runtime_desired(
+    pub(crate) fn set_runtime_desired_with_operation(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         request: &SetPluginEnabled,
         key: &str,
@@ -235,6 +239,7 @@ impl Store {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(|_| E::Internal)?;
+        self.execution_fence_for(&tx, op).map_err(|_| E::Internal)?;
         let prior: Option<PluginMutationReceipt> = tx.query_row(
             "SELECT plugin_id,enabled,expected_revision,result_revision,committed_at FROM plugin_management_requests WHERE key=?1", [key],
             |r| Ok(PluginMutationReceipt {plugin_id:r.get(0)?,enabled:r.get(1)?,previous_revision:r.get(2)?,revision:r.get(3)?,committed_at:r.get(4)?})
@@ -246,7 +251,7 @@ impl Store {
             {
                 return Err(E::IdempotencyConflict);
             }
-            tx.commit().map_err(|_| E::Internal)?;
+            self.commit_execution_tx(tx).map_err(|_| E::Internal)?;
             return Ok((receipt, true));
         }
         if let Some(rejection) = reject {
@@ -298,13 +303,14 @@ impl Store {
             )
             .map_err(|_| E::Internal)?;
         }
-        let committed = tx.commit();
+        let committed = self.commit_execution_tx(tx);
         #[cfg(test)]
         if injected
             && matches!(
                 &committed,
-                Err(rusqlite::Error::SqliteFailure(code, _))
-                    if code.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY
+                Err(error) if matches!(error.downcast_ref::<rusqlite::Error>(),
+                    Some(rusqlite::Error::SqliteFailure(code, _))
+                        if code.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY)
             )
         {
             crate::engine::runtime_barrier::mark_intent_commit_failure_observed(&probe_path);
@@ -315,6 +321,33 @@ impl Store {
         #[cfg(test)]
         crate::engine::crash_probe::block(&probe_path, "runtime_intent_after_commit", id);
         Ok((receipt, false))
+    }
+    #[cfg(test)]
+    pub(crate) fn set_plugin_desired(
+        &self,
+        id: &str,
+        request: &SetPluginEnabled,
+        key: &str,
+    ) -> Result<(PluginMutationReceipt, bool)> {
+        let op = self.execution_operation(tokio_util::sync::CancellationToken::new())?;
+        self.set_plugin_desired_with_operation(&op, id, request, key)
+    }
+    #[cfg(test)]
+    pub(crate) fn set_runtime_desired(
+        &self,
+        id: &str,
+        request: &SetPluginEnabled,
+        key: &str,
+        reject: Option<crate::runtime_management::RuntimeManagementError>,
+    ) -> std::result::Result<
+        (PluginMutationReceipt, bool),
+        crate::runtime_management::RuntimeManagementError,
+    > {
+        use crate::runtime_management::RuntimeManagementError as E;
+        let op = self
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .map_err(|_| E::Internal)?;
+        self.set_runtime_desired_with_operation(&op, id, request, key, reject)
     }
     pub(crate) fn validate_files_read(&self, task: &crate::domain::Task) -> Result<()> {
         let db = self
@@ -330,10 +363,16 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn store() -> (tempfile::TempDir, Store) {
+    fn store() -> (
+        tempfile::TempDir,
+        Store,
+        crate::execution_authority::ExecutionController,
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let store = Store::open(&dir.path().join("state.sqlite")).unwrap();
-        (dir, store)
+        let controller = store.authority.claim().unwrap();
+        store.recover_with_controller(&controller).unwrap();
+        (dir, store, controller)
     }
     fn request(enabled: bool, expected_revision: u64) -> SetPluginEnabled {
         SetPluginEnabled {
@@ -349,7 +388,7 @@ mod tests {
     }
     #[test]
     fn shell_global_key_and_independent_revisions() {
-        let (_dir, store) = store();
+        let (_dir, store, _controller) = store();
         let (files, shell) = store.builtin_plugin_states().unwrap();
         assert_eq!((files.revision, shell.revision), (0, 0));
         let first = store
@@ -412,8 +451,9 @@ mod tests {
     #[test]
     fn b02_corrupt_shell_rows_fail_without_repair() {
         for mode in ["missing", "extra", "orphan"] {
-            let (dir, store) = store();
+            let (dir, store, controller) = store();
             let path = dir.path().join("state.sqlite");
+            drop(controller);
             drop(store);
             let db = Connection::open(&path).unwrap();
             match mode {
@@ -444,7 +484,7 @@ mod tests {
                 assert_eq!(
                     db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                         .unwrap(),
-                    17
+                    18
                 );
             }
         }
@@ -452,9 +492,9 @@ mod tests {
     #[test]
     fn b02_shell_cas_and_cross_plugin_global_key_race() {
         for cross in [false, true] {
-            let (dir, first) = store();
+            let (dir, first, _controller) = store();
             let path = dir.path().join("state.sqlite");
-            let second = Store::open(&path).unwrap();
+            let second = first.open_shared().unwrap();
             let initial = first.builtin_plugin_states().unwrap();
             let (done_tx, done_rx) = std::sync::mpsc::channel();
             let mut workers = Vec::new();
@@ -537,8 +577,9 @@ mod tests {
     }
     #[test]
     fn b02_concurrent_open_migrates_true12_once_without_losing_rows() {
-        let (dir, store) = store();
+        let (dir, store, controller) = store();
         let path = dir.path().join("state.sqlite");
+        drop(controller);
         drop(store);
         let mut db = Connection::open(&path).unwrap();
         db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
@@ -546,7 +587,7 @@ mod tests {
             let tx = db
                 .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
                 .unwrap();
-            tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
+            tx.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18'; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
             crate::repository::apply_schema_12(&tx).unwrap();
             tx.execute_batch("UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical','builtin.files',0,0,1,17); INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
             crate::repository::verify_schema_12(&tx).unwrap();
@@ -581,7 +622,7 @@ mod tests {
         for worker in workers {
             worker.join().unwrap();
         }
-        assert!(results.iter().any(|r| matches!(r, Ok(17))));
+        assert!(results.iter().any(|r| matches!(r, Ok(18))));
         for result in results {
             if let Err(error) = result {
                 let sqlite = error
@@ -595,16 +636,17 @@ mod tests {
         }
         for _ in 0..2 {
             let store = Store::open(&path).unwrap();
-            assert_eq!(store.schema_version().unwrap(), 17);
+            assert_eq!(store.schema_version().unwrap(), 18);
             let mut db = store.db.lock().unwrap();
             let tx = db.transaction().unwrap();
             crate::repository::verify_schema_17(&tx).unwrap();
             crate::repository::verify_schema_14(&tx).unwrap();
             crate::repository::verify_schema_14(&tx).unwrap();
             crate::repository::verify_schema_16(&tx).unwrap();
+            crate::repository::verify_execution_owner_shape(&tx).unwrap();
             tx.commit().unwrap();
             let after = b02_snapshot(&db);
-            assert_eq!(after.len(), before.len() + 8);
+            assert_eq!(after.len(), before.len() + 9);
             for name in [
                 "host_config_requests",
                 "project_budgets",
@@ -625,7 +667,7 @@ mod tests {
                 .unwrap(),
                 1
             );
-            assert_eq!(after.len(), before.len() + 8);
+            assert_eq!(after.len(), before.len() + 9);
             for name in [
                 "host_config_requests",
                 "project_budgets",
@@ -673,7 +715,7 @@ mod tests {
                 if name == "plugin_desired" || name == "schema_migrations" {
                     assert_eq!(
                         rows.len(),
-                        old.len() + if name == "schema_migrations" { 5 } else { 3 }
+                        old.len() + if name == "schema_migrations" { 6 } else { 3 }
                     );
                     for row in old {
                         assert!(rows.contains(row));
@@ -704,7 +746,7 @@ mod tests {
     }
     #[test]
     fn store_cas_replay_conflicts_and_atomic_failure() {
-        let (_dir, store) = store();
+        let (_dir, store, _controller) = store();
         let initial = store.plugin_desired().unwrap();
         assert!(initial.enabled);
         assert_eq!(initial.revision, 0);
@@ -792,8 +834,8 @@ mod tests {
     }
     #[test]
     fn independent_stores_cas_one_winner() {
-        let (dir, first) = store();
-        let second = Store::open(&dir.path().join("state.sqlite")).unwrap();
+        let (dir, first, _controller) = store();
+        let second = first.open_shared().unwrap();
         let timeout = std::time::Duration::from_secs(8);
         let (ready_tx, ready_rx) = std::sync::mpsc::channel();
         let (done_tx, done_rx) = std::sync::mpsc::channel();
@@ -872,8 +914,8 @@ mod tests {
             "row",
             "receipt",
         ] {
-            let (dir, store) = store();
-            assert_eq!(store.schema_version().unwrap(), 17);
+            let (dir, store, controller) = store();
+            assert_eq!(store.schema_version().unwrap(), 18);
             assert_eq!(
                 Store::open(&dir.path().join("state.sqlite"))
                     .unwrap()
@@ -919,6 +961,7 @@ mod tests {
                 _ => unreachable!(),
             }
             drop(db);
+            drop(controller);
             drop(store);
             assert!(
                 Store::open(&dir.path().join("state.sqlite")).is_err(),

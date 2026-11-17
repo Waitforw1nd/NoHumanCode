@@ -296,7 +296,7 @@ use crate::{
     store::Store,
     workspace_changes::digest,
 };
-use anyhow::Result as AnyResult;
+use anyhow::{Context, Result as AnyResult};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::json;
 
@@ -912,6 +912,8 @@ impl Store {
         (|| -> AnyResult<_> {
             let mut db = self.db.lock().map_err(|_| failure(NetworkErrorKind::Internal))?;
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let operation = crate::execution_authority::current().context("network operation required")?;
+            self.execution_fence_for(&tx, &operation)?;
             if let Some(expected) = revision {
                 let desired = crate::plugin_management::desired_for_tx(&tx, "builtin.provider-xpeach")?;
                 if !desired.enabled || desired.revision != expected {
@@ -985,7 +987,8 @@ impl Store {
                 crate::engine::runtime_barrier::block(path, "runtime_provider_admit_before_commit");
                 crate::engine::crash_probe::block(path, "runtime_provider_admit_before_commit", "builtin.provider-xpeach");
             }
-            tx.commit()?;
+            operation.bind_network_call(&id)?;
+            self.commit_execution_tx(tx)?;
             #[cfg(test)]
             if let Some(path) = &runtime_probe_path {
                 crate::engine::runtime_barrier::block(path, "runtime_provider_admit_after_commit");
@@ -1008,7 +1011,7 @@ impl Store {
                 id,
                 model,
                 user,
-            ) };
+            ).map(|permit| permit.bind_operation(operation, self.authority.clone())) };
             drop(db);
             match permit {
                 Ok(permit) => Ok((permit, value)),
@@ -1072,6 +1075,7 @@ impl Store {
         observed: Option<crate::provider_usage::UsageObservation>,
     ) -> Result<NetworkResponse<T>, NetworkError> {
         use crate::provider_transport::TransportError;
+        let transport_unknown = matches!(&result, Err(TransportError::Unknown));
         value.finished_at = Some(now());
         let kind = match &result {
             Ok(_) => {
@@ -1114,9 +1118,32 @@ impl Store {
             );
         }
         let saved = (|| -> AnyResult<()> {
+            let operation =
+                crate::execution_authority::current().context("network operation required")?;
+            // Reject a receipt from another original operation before sealing
+            // this scope; verify again under the transaction before writing.
+            operation.verify_network_call(&value.call_id)?;
+            if transport_unknown {
+                operation.seal_unknown();
+            }
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            if transport_unknown {
+                self.execution_unknown_fence(&tx)?;
+            } else {
+                self.execution_settlement_fence(&tx)?;
+            }
+            operation.verify_network_call(&value.call_id)?;
             let old = receipt(&tx, &value.call_id)?;
+            if transport_unknown {
+                let mut original = value.clone();
+                original.state = CallState::Claimed;
+                original.finished_at = None;
+                original.success = None;
+                original.http_status = None;
+                original.result = None;
+                anyhow::ensure!(old == original, "unknown network claim changed");
+            }
             let managed = crate::budget::finish_tx(&tx, &value, observed)?;
             if let Some(record) = managed {
                 value = record;
@@ -1126,7 +1153,7 @@ impl Store {
             if old.state == CallState::Claimed {
                 save_receipt(&tx, &value)?;
             }
-            tx.commit()?;
+            self.commit_execution_tx(tx)?;
             Ok(())
         })();
         if let Err(error) = saved {

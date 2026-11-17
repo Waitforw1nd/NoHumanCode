@@ -1,0 +1,5 @@
+{
+  "correction": "closure.json original_supervisor_exit was mistakenly populated with Cargo stage exit. Original write_stdin session84725 returned wrapper exit1; stage target-provider_network exit101. No change to failed result or gate review.",
+  "original_supervisor_exit": 1,
+  "stage_exit": 101
+}

@@ -489,19 +489,44 @@ pub struct WorkerSuccess {
 pub(crate) struct TrustedWorker {
     path: PathBuf,
     digest: [u8; 32],
+    #[cfg(windows)]
+    image: Option<Arc<platform::Image>>,
 }
 
 impl TrustedWorker {
     /// The caller is the trusted installation boundary, never a plugin request.
     #[allow(dead_code)] // The authenticated installation boundary is connected later.
     pub(crate) fn from_host_install(path: PathBuf, digest: [u8; 32]) -> Self {
-        Self { path, digest }
+        Self {
+            path,
+            digest,
+            #[cfg(windows)]
+            image: None,
+        }
+    }
+
+    pub(crate) fn pin_host_install(path: PathBuf, digest: [u8; 32]) -> Result<Self, WorkerError> {
+        #[cfg(windows)]
+        {
+            let image = Arc::new(platform::Image::pin(&path, &digest)?);
+            Ok(Self {
+                path,
+                digest,
+                image: Some(image),
+            })
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (path, digest);
+            Err(WorkerError::Unsupported)
+        }
     }
 }
 
 #[derive(Clone)]
 pub struct WorkerService {
     worker: Arc<TrustedWorker>,
+    store: Option<Arc<crate::store::Store>>,
 }
 
 impl WorkerService {
@@ -509,7 +534,14 @@ impl WorkerService {
     pub(crate) fn from_trusted(worker: TrustedWorker) -> Self {
         Self {
             worker: Arc::new(worker),
+            store: None,
         }
+    }
+
+    pub(crate) fn bind_store(&mut self, store: &Arc<crate::store::Store>) -> anyhow::Result<()> {
+        anyhow::ensure!(self.store.is_none(), "worker is already bound");
+        self.store = Some(store.clone());
+        Ok(())
     }
 
     /// Execute one policy request using the fixed worker; no executable is
@@ -554,27 +586,74 @@ impl WorkerService {
             input,
             module,
         };
-        let gate = Arc::new(Gate::new(cancel.clone()));
+        let (operation, domain_lease) = match &self.store {
+            Some(store) => {
+                let operation = crate::execution_authority::current()
+                    .ok_or(WorkerError::IsolationUnavailable("domain_operation", None))?;
+                let operation_cancel = operation.cancellation_token();
+                let lease = store.execution_generation(&operation).map_err(|_| {
+                    if operation_cancel.is_cancelled() || cancel.is_cancelled() {
+                        WorkerError::Cancelled
+                    } else {
+                        WorkerError::IsolationUnavailable("domain_generation", None)
+                    }
+                })?;
+                (Some(operation), Some(lease))
+            }
+            #[cfg(test)]
+            None => (None, None),
+            #[cfg(not(test))]
+            None => return Err(WorkerError::IsolationUnavailable("domain_unbound", None)),
+        };
+        let result_body = operation.as_ref().map(|op| op.hold_body());
+        let domain_lease = Arc::new(DomainCompletion(Mutex::new(DomainCompletionState {
+            lease: domain_lease,
+            platform_finished: false,
+            result_finished: false,
+        })));
+        let _result_guard = ResultCompletion(domain_lease.clone(), result_body);
+        let operation_cancel = operation
+            .as_ref()
+            .map(|op| op.cancellation_token())
+            .unwrap_or_default();
+        let gate = Arc::new(Gate::with_operation(
+            cancel.clone(),
+            operation_cancel.clone(),
+        ));
         let mut cancellation = CancelOnDrop(Some(gate.clone()));
         let (tx, mut rx) = oneshot::channel();
         let worker = self.worker.clone();
         let gate_for_thread = gate.clone();
-        std::thread::Builder::new()
+        let lease_for_thread = domain_lease.clone();
+        let started = std::thread::Builder::new()
             .name("nhc-wasm-worker-supervision".into())
             .spawn(move || {
+                let _operation = operation;
+                let mut guard = SupervisorCompletion {
+                    slot: Some(lease),
+                    domain: lease_for_thread,
+                };
+                #[cfg(all(test, windows))]
+                if test_hooks::checkpoint("supervisor_injected_panic", None) {
+                    panic!("isolated supervisor panic fixture");
+                }
                 let result = platform::run(&worker, request, deadline, &gate_for_thread);
                 record_stage("supervisor_platform_returned", None);
                 // The slot is released only when the platform has returned after
                 // confirmed cleanup. Pending kernel calls retain this thread.
-                drop(lease);
+                guard.finish();
                 let _ = tx.send(result);
-            })
-            .map_err(|_| WorkerError::IsolationUnavailable("supervisor_thread", None))?;
+            });
+        if started.is_err() {
+            domain_lease.finish_platform();
+            return Err(WorkerError::IsolationUnavailable("supervisor_thread", None));
+        }
 
         let mut received_completion = false;
         let result = tokio::select! {
             biased;
             _ = cancel.cancelled() => Err(WorkerError::Cancelled),
+            _ = operation_cancel.cancelled() => Err(WorkerError::Cancelled),
             _ = tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)) => Err(WorkerError::Deadline),
             received = &mut rx => {
                 received_completion = true;
@@ -586,15 +665,16 @@ impl WorkerService {
                             #[cfg(all(test, windows))]
                             test_hooks::checkpoint("accept_after", Some(success.process_id));
                             Ok(success)
-                        } else if cancel.is_cancelled() {
+                        } else if gate.is_cancelled() {
                             Err(WorkerError::Cancelled)
                         } else {
                             Err(WorkerError::Deadline)
                         }
                     },
-                    Ok(_) if cancel.is_cancelled() => Err(WorkerError::Cancelled),
-                    Ok(Err(error)) => Err(error),
                     Err(_) => Err(WorkerError::CleanupUnknown),
+                    Ok(Err(WorkerError::CleanupUnknown)) => Err(WorkerError::CleanupUnknown),
+                    Ok(_) if gate.is_cancelled() => Err(WorkerError::Cancelled),
+                    Ok(Err(error)) => Err(error),
                 }
             },
         };
@@ -602,12 +682,119 @@ impl WorkerService {
             gate.stop();
             if !finish_cleanup_wait(&mut rx, received_completion).await {
                 record_stage("cleanup_unknown", None);
+                domain_lease.seal_unknown();
                 cancellation.0 = None;
                 return Err(WorkerError::CleanupUnknown);
             }
         }
+        if matches!(result, Err(WorkerError::CleanupUnknown)) {
+            domain_lease.seal_unknown();
+        }
         cancellation.0 = None;
         result
+    }
+}
+
+struct DomainCompletionState {
+    lease: Option<Box<dyn crate::process_lifetime::DomainLease>>,
+    platform_finished: bool,
+    result_finished: bool,
+}
+
+// An unwinding supervisor has not proved process/Job/I/O cleanup. Keep the
+// original slot and generation alive and close the same data domain even if
+// the waiting future was already dropped.
+struct SupervisorCompletion {
+    slot: Option<SlotLease>,
+    domain: Arc<DomainCompletion>,
+}
+impl SupervisorCompletion {
+    fn finish(&mut self) {
+        self.domain.finish_platform();
+        drop(self.slot.take());
+    }
+}
+impl Drop for SupervisorCompletion {
+    fn drop(&mut self) {
+        if let Some(slot) = self.slot.take() {
+            self.domain.seal_unknown();
+            std::mem::forget(slot);
+            std::mem::forget(self.domain.clone());
+        }
+    }
+}
+struct DomainCompletion(Mutex<DomainCompletionState>);
+impl DomainCompletion {
+    fn seal_unknown(&self) {
+        let mut state = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(lease) = state.lease.as_mut() {
+            lease.seal_unknown();
+        }
+    }
+    fn finish(&self, platform: bool) {
+        let lease = {
+            let mut state = self.0.lock().unwrap_or_else(|e| e.into_inner());
+            if platform {
+                state.platform_finished = true;
+            } else {
+                state.result_finished = true;
+            }
+            if state.platform_finished && state.result_finished {
+                state.lease.take()
+            } else {
+                None
+            }
+        };
+        if let Some(lease) = lease {
+            lease.settle();
+        }
+    }
+    fn finish_platform(&self) {
+        self.finish(true);
+    }
+}
+struct ResultCompletion(
+    Arc<DomainCompletion>,
+    Option<crate::execution_authority::ExecutionOperation>,
+);
+impl Drop for ResultCompletion {
+    fn drop(&mut self) {
+        self.0.finish(false);
+        // Keep the operation body until after the generation is settled.
+        drop(self.1.take());
+    }
+}
+
+#[cfg(test)]
+mod domain_completion_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct Lease(Arc<AtomicUsize>);
+    impl crate::process_lifetime::DomainLease for Lease {
+        fn seal_unknown(&mut self) {
+            self.0.fetch_or(1, Ordering::SeqCst);
+        }
+        fn settle(self: Box<Self>) {
+            self.0.fetch_or(2, Ordering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn result_and_platform_must_both_finish_and_unknown_is_sticky() {
+        for platform_first in [true, false] {
+            let flags = Arc::new(AtomicUsize::new(0));
+            let completion = DomainCompletion(Mutex::new(DomainCompletionState {
+                lease: Some(Box::new(Lease(flags.clone()))),
+                platform_finished: false,
+                result_finished: false,
+            }));
+            completion.finish(platform_first);
+            assert_eq!(flags.load(Ordering::SeqCst), 0);
+            completion.seal_unknown();
+            completion.finish(!platform_first);
+            assert_eq!(flags.load(Ordering::SeqCst), 3);
+        }
     }
 }
 
@@ -635,14 +822,23 @@ struct Gate {
     state: AtomicU8,
     admission: Mutex<()>,
     cancel: CancellationToken,
+    operation_cancel: CancellationToken,
 }
 impl Gate {
+    #[cfg(test)]
     fn new(cancel: CancellationToken) -> Self {
+        Self::with_operation(cancel, CancellationToken::new())
+    }
+    fn with_operation(cancel: CancellationToken, operation_cancel: CancellationToken) -> Self {
         Self {
             state: AtomicU8::new(0),
             admission: Mutex::new(()),
             cancel,
+            operation_cancel,
         }
+    }
+    fn is_cancelled(&self) -> bool {
+        self.cancel.is_cancelled() || self.operation_cancel.is_cancelled()
     }
     fn stop(&self) {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
@@ -652,13 +848,11 @@ impl Gate {
     }
     #[cfg(windows)]
     fn stopped(&self, deadline: Instant) -> bool {
-        self.cancel.is_cancelled()
-            || self.state.load(Ordering::Acquire) == 1
-            || Instant::now() >= deadline
+        self.is_cancelled() || self.state.load(Ordering::Acquire) == 1 || Instant::now() >= deadline
     }
     fn accept(&self, deadline: Instant) -> bool {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if self.cancel.is_cancelled() || Instant::now() >= deadline {
+        if self.is_cancelled() || Instant::now() >= deadline {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -671,7 +865,7 @@ impl Gate {
     #[cfg(windows)]
     fn authorize(&self, deadline: Instant) -> bool {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if self.cancel.is_cancelled() || Instant::now() >= deadline {
+        if self.is_cancelled() || Instant::now() >= deadline {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -682,7 +876,7 @@ impl Gate {
     #[cfg(windows)]
     fn reject_cpu(&self, deadline: Instant, error: WorkerError) -> WorkerError {
         let _guard = self.admission.lock().unwrap_or_else(|e| e.into_inner());
-        if self.cancel.is_cancelled() {
+        if self.is_cancelled() {
             let _ = self
                 .state
                 .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire);
@@ -717,6 +911,24 @@ impl Drop for CancelOnDrop {
 #[cfg(test)]
 mod gate_tests {
     use super::*;
+
+    #[test]
+    fn caller_and_operation_cancellation_each_close_gate() {
+        for operation in [false, true] {
+            let caller = CancellationToken::new();
+            let original = CancellationToken::new();
+            let gate = Gate::with_operation(caller.clone(), original.clone());
+            if operation {
+                original.cancel();
+                assert!(!caller.is_cancelled());
+            } else {
+                caller.cancel();
+                assert!(!original.is_cancelled());
+            }
+            assert!(gate.is_cancelled());
+            assert!(!gate.accept(Instant::now() + Duration::from_secs(1)));
+        }
+    }
     use std::sync::Barrier;
 
     #[tokio::test]
@@ -938,14 +1150,14 @@ mod platform {
         )
     }
 
-    struct Image {
+    pub(super) struct Image {
         file: File,
         _parents: Vec<File>,
         path: PathBuf,
         identity: BY_HANDLE_FILE_INFORMATION,
     }
     impl Image {
-        fn pin(path: &Path, digest: &[u8; 32]) -> Result<Self, WorkerError> {
+        pub(super) fn pin(path: &Path, digest: &[u8; 32]) -> Result<Self, WorkerError> {
             if !path.is_absolute() {
                 return Err(WorkerError::IsolationUnavailable("image_absolute", None));
             }
@@ -3441,7 +3653,10 @@ mod platform {
         );
         protocol::write_request(&mut frame, &request).map_err(|_| WorkerError::InvalidRequest)?;
         ensure_open(gate, deadline)?;
-        let image = Image::pin(&worker.path, &worker.digest)?;
+        let image = match &worker.image {
+            Some(image) => image.clone(),
+            None => Arc::new(Image::pin(&worker.path, &worker.digest)?),
+        };
         ensure_open(gate, deadline)?;
         let user_sid = current_user_sid()?;
         let Pipe {

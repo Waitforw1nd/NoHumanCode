@@ -1,0 +1,7 @@
+pair A: E:\code\nhc-u18-20261116-integration\.local\worker-packages\u18-w3-pair-1
+host SHA256: 4be155ca2e0861dd022ea56e5cdb63e915571c913fd06ec6fe6c14c17a7aad23
+worker SHA256: f94ca5f6b620c0b4f8b20c7d9d22a563c5cc5c85dbd8e6e6a7ca9ae67b15c462
+foreign worker: E:\code\nhc-u18-20261116-integration\.local\u18-fixtures\baseline-binaries\peachsh-wasm-worker.exe
+foreign SHA256: 4d4a3dbea3edd9c9957bcd90dc30e9fbf5a9356fc0f2996a40ee4ed94c3d12b3
+unbound Host: E:\code\nhc-u18-20261116-integration\.local\u18-fixtures\baseline-binaries\peachsh.exe
+unbound SHA256: 46d3b09c8d7634c1ff7a280758c90cede7430196347f8753c04c8cc9bb525956

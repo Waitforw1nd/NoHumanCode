@@ -124,27 +124,27 @@ fn missing_injected_provider_binding_does_not_use_default_manifest() {
 }
 
 #[test]
-fn ordinary_constructor_does_not_recover_but_recovered_constructor_does() {
+fn ordinary_and_recovered_constructors_both_recover_before_activation() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("host.db");
     let store = Arc::new(Store::open(&db).unwrap());
     let task = task(dir.path());
-    store
-        .create_run(&Run {
+    crate::execution_authority::test_with_store_sync(&store, || {
+        store.create_run(&Run {
             id: task.run_id.clone(),
             title: "recovery".into(),
             kind: SessionKind::Team,
             created_at: 1,
             tasks: vec![task.clone()],
-        })
-        .unwrap();
-    store
-        .event(
+        })?;
+        store.event(
             &task.id,
             "tool_result",
             json!({"name":"read_file","tool_call_id":"old","result":{"content":"preserved"}}),
         )
-        .unwrap();
+    })
+    .unwrap()
+    .unwrap();
     let original = serde_json::to_value(
         store
             .events(&task.run_id, 0)
@@ -155,10 +155,10 @@ fn ordinary_constructor_does_not_recover_but_recovered_constructor_does() {
     )
     .unwrap();
     let engine = Engine::new(store.clone(), 1).unwrap();
-    assert_eq!(engine.store.task(&task.id).unwrap().status, "running");
+    assert_eq!(engine.store.task(&task.id).unwrap().status, "interrupted");
     drop(engine);
     let (engine, recovered) = Engine::new_recovered(store.clone(), 1).unwrap();
-    assert_eq!(recovered, 1);
+    assert_eq!(recovered, 0);
     assert_eq!(engine.store.task(&task.id).unwrap().status, "interrupted");
     let events = store.events(&task.run_id, 0).unwrap();
     assert_eq!(

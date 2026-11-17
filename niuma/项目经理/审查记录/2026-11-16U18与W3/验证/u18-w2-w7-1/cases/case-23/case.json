@@ -1,0 +1,15 @@
+{
+  "probe": {
+    "bytes": 2759168,
+    "file": "probe.exe",
+    "sha256": "a313e81444de05350119e6aee51a9eaac560ab9c814c939e5ad134ab43cb4a4b",
+    "source": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\x86_64-pc-windows-msvc\\debug\\examples\\wasm_worker_process_probe.exe"
+  },
+  "test": "wasm_worker_process_tests::fault_matrix::w07_bound_future_drop_retains_original_domain",
+  "worker": {
+    "bytes": 10849792,
+    "file": "worker.exe",
+    "sha256": "3bff16374e66199eda371aa0ad556baa4500edf8579a91a55ce94ec158fa5a9c",
+    "source": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\x86_64-pc-windows-msvc\\debug\\peachsh-wasm-worker.exe"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-w2-build.ps1",
+    "-Stage",
+    "bins"
+  ],
+  "ended_utc": "2026-11-16T12:40:25.175043+00:00",
+  "exit_code": 0,
+  "log": "01-build-bins.log",
+  "log_bytes": 202206,
+  "log_sha256": "68f23b7db926e3633397357fc086364bbb13b70001a7115e465de9517cb90d21",
+  "name": "build-bins",
+  "stage": "bins",
+  "started_utc": "2026-11-16T12:39:30.640054+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

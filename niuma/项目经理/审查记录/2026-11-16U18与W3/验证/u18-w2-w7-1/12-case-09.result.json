@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process_tests::fault_matrix::w04_injected_membership_failure_reaps",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process_tests::fault_matrix::w04_injected_membership_failure_reaps",
+  "ended_utc": "2026-11-16T12:43:10.442253+00:00",
+  "exit_code": 0,
+  "log": "12-case-09.log",
+  "log_bytes": 205,
+  "log_sha256": "86b4da95d3e45afdf06133bd2604079028f056e5cb2b6017faf2b5a65d4b3642",
+  "name": "case-09",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:08.558972+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

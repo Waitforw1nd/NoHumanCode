@@ -187,7 +187,17 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
         spec.test_hooks = Some(hooks.clone());
         hooks
     };
-    let outcome = crate::execution_authority::run_process(spec).await?;
+    let outcome = crate::execution_authority::run_process(spec)
+        .await
+        .map_err(|error| {
+            if crate::execution_authority::current()
+                .is_some_and(|op| op.cancellation_token().is_cancelled())
+            {
+                error.context("command cancelled before process admission")
+            } else {
+                error
+            }
+        })?;
     #[cfg(all(test, windows))]
     {
         use std::sync::atomic::Ordering::SeqCst;

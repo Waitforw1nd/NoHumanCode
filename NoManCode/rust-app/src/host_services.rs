@@ -340,9 +340,16 @@ impl ReviewRecovery {
     }
 
     pub(crate) async fn restore(&self, id: &str) -> Result<RestoreReceipt> {
-        let _gate = self.workspace.gate.lock().await;
-        self.workspace.ensure_accepting()?;
-        self.restore_locked(id)
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        operation
+            .run(async {
+                let _gate = self.workspace.gate.lock().await;
+                self.workspace.ensure_accepting()?;
+                self.restore_locked(id)
+            })
+            .await
     }
 
     fn restore_locked(&self, id: &str) -> Result<RestoreReceipt> {
@@ -512,8 +519,19 @@ impl ReviewRecovery {
             };
             originals.push(before);
         }
-        let receipt = self.store.claim_restore(id, &changes)?;
+        // Reserve the generation before the durable claim, so a concurrent
+        // shutdown can reject the claim or let this exact body settle it.
+        let effect = workspace::FileEffectGuard::begin(&self.store)?;
+        let receipt = match self.store.claim_restore(id, &changes) {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                effect.settle();
+                return Err(error);
+            }
+        };
         anyhow::ensure!(receipt.status == RestoreStatus::Claimed, "恢复领取状态损坏");
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(id, "restore_claim_committed");
         let restore_id = receipt
             .restore_id
             .as_deref()
@@ -524,6 +542,7 @@ impl ReviewRecovery {
         for (completed, ((change, target), original)) in
             changes.iter().zip(targets).zip(originals).enumerate()
         {
+            let mut action_started = false;
             let action = (|| -> Result<()> {
                 #[cfg(test)]
                 anyhow::ensure!(
@@ -569,12 +588,17 @@ impl ReviewRecovery {
                     FileAction,
                     (|| -> Result<()> {
                         match change.kind {
-                            ChangeKind::Created => std::fs::remove_file(&target)?,
+                            ChangeKind::Created => {
+                                effect.validate(&self.store)?;
+                                action_started = true;
+                                std::fs::remove_file(&target)?;
+                            }
                             ChangeKind::Modified => {
-                                self.workspace.atomic_replace(
-                                    &target,
-                                    original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?,
-                                )?;
+                                let bytes =
+                                    original.as_deref().ok_or(WorkspaceChangeError::Corrupt)?;
+                                effect.validate(&self.store)?;
+                                action_started = true;
+                                self.workspace.atomic_replace(&target, bytes)?;
                             }
                         }
                         Ok(())
@@ -591,6 +615,9 @@ impl ReviewRecovery {
                 let saved = self.store.finish_restore(&restore_id, status);
                 let failed_to_persist = saved.is_err();
                 let receipt = saved.unwrap_or_else(|_| self.unknown_restore_receipt(&receipt));
+                if !action_started && !failed_to_persist {
+                    effect.settle();
+                }
                 return Err(if status == RestoreStatus::Partial && !failed_to_persist {
                     WorkspaceChangeError::Conflict {
                         receipt: Some(receipt),
@@ -634,7 +661,10 @@ impl ReviewRecovery {
             .store
             .finish_restore(&restore_id, RestoreStatus::Complete)
         {
-            Ok(value) => Ok(value),
+            Ok(value) => {
+                effect.settle();
+                Ok(value)
+            }
             Err(_) => {
                 let unknown = self
                     .store
@@ -717,6 +747,19 @@ impl ReviewRecovery {
     }
 
     pub(crate) async fn create_checkpoint(
+        &self,
+        task_id: &str,
+        key: &str,
+    ) -> Result<crate::checkpoint::CheckpointCreated> {
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        operation
+            .run(self.create_checkpoint_in_domain(task_id, key))
+            .await
+    }
+
+    async fn create_checkpoint_in_domain(
         &self,
         task_id: &str,
         key: &str,
@@ -852,12 +895,19 @@ impl ReviewRecovery {
     }
 
     pub(crate) async fn restore_checkpoint(&self, checkpoint_id: &str) -> Result<RestoreReceipt> {
-        let _gate = self.workspace.gate.lock().await;
-        self.workspace.ensure_accepting()?;
-        let (checkpoint, _) = self.store.checkpoint_record(checkpoint_id)?;
-        #[cfg(test)]
-        crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
-        self.restore_locked(&checkpoint.task_id)
+        let operation = self
+            .store
+            .execution_operation(self.workspace.stopping.clone())?;
+        operation
+            .run(async {
+                let _gate = self.workspace.gate.lock().await;
+                self.workspace.ensure_accepting()?;
+                let (checkpoint, _) = self.store.checkpoint_record(checkpoint_id)?;
+                #[cfg(test)]
+                crash_probe::block(&checkpoint.task_id, "checkpoint_pre_claim", checkpoint_id);
+                self.restore_locked(&checkpoint.task_id)
+            })
+            .await
     }
 }
 
@@ -940,13 +990,14 @@ impl ApprovalService {
     }
     pub(crate) fn decide(
         &self,
+        op: &crate::execution_authority::ExecutionOperation,
         id: &str,
         approved: bool,
         by: &str,
         ack: bool,
     ) -> Result<approval::ApprovalRecord> {
         self.store
-            .decide_approval_with_network_ack(id, approved, by, ack)
+            .decide_approval_with_network_ack_for(id, approved, by, ack, op)
     }
     pub(crate) fn ensure(
         &self,
@@ -1013,9 +1064,6 @@ impl RecoveryService {
     pub(crate) fn new(store: Arc<Store>) -> Result<Self> {
         let controller = store.authority.claim()?;
         Ok(Self { store, controller })
-    }
-    pub(crate) fn activate(&self) {
-        self.controller.activate();
     }
     pub(crate) fn owns(&self, store: &Arc<Store>) -> bool {
         Arc::ptr_eq(&self.store, store)

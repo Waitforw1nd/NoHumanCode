@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process::platform::w06_handle_tests::sentinel_explicit_inheritance_control",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process::platform::w06_handle_tests::sentinel_explicit_inheritance_control",
+  "ended_utc": "2026-11-16T12:43:32.403828+00:00",
+  "exit_code": 0,
+  "log": "19-case-16.log",
+  "log_bytes": 282,
+  "log_sha256": "6864227a09a9b65cb29e871fd75fe9c091f9bd422a604fb1bdd855a442e492bf",
+  "name": "case-16",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:31.472537+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--list",
+    "--ignored",
+    "--format",
+    "terse"
+  ],
+  "exit_code": null,
+  "name": "listing",
+  "stage": "listing",
+  "started_utc": "2026-11-16T12:41:02.028318+00:00",
+  "timeout_seconds": 1800
+}

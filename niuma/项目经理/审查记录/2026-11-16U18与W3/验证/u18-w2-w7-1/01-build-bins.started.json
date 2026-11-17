@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-w2-build.ps1",
+    "-Stage",
+    "bins"
+  ],
+  "exit_code": null,
+  "name": "build-bins",
+  "stage": "bins",
+  "started_utc": "2026-11-16T12:39:30.640054+00:00",
+  "timeout_seconds": 1800
+}

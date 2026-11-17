@@ -1,0 +1,172 @@
+{
+  "artifacts": [
+    {
+      "bytes": 161,
+      "path": "01-check.direct-exit.json",
+      "sha256": "76f62a88ad421054f41bb7ed263825c69dd632d026be16812c3ed54c6610a0cb"
+    },
+    {
+      "bytes": 1638,
+      "path": "01-check.log",
+      "sha256": "6e8d6acd50613b4a92bc7715ca811dfae71fca0022b5195661579b431a293e0c"
+    },
+    {
+      "bytes": 600,
+      "path": "01-check.result.json",
+      "sha256": "756c11cca08dac546a07cc84b202d627046d58e6dadf2966cb463e9eb7d45a6a"
+    },
+    {
+      "bytes": 365,
+      "path": "01-check.started.json",
+      "sha256": "0444cf63db0cb492126cb0d926d03aff788bb2d1850ee2196b75c623e45fbbd6"
+    },
+    {
+      "bytes": 41600,
+      "path": "source-after.json",
+      "sha256": "8676ceda8325db5490f41f74330f8d21c0bfa3c46255548d428855772bfc6d69"
+    },
+    {
+      "bytes": 41600,
+      "path": "source-before.json",
+      "sha256": "8676ceda8325db5490f41f74330f8d21c0bfa3c46255548d428855772bfc6d69"
+    }
+  ],
+  "candidate": {
+    "head": "462257afa48aa92a346c39fa9c3f8bd02939ba3d",
+    "product_tree": "2dd117db1daaf2f1ed72da9e7c55f9a209dbbf25",
+    "rust_tree": "5c2f4c70fde9945925303a2c8a4a1173d6e4ec78"
+  },
+  "ended_utc": "2026-11-16T12:33:24.749932+00:00",
+  "environment": {
+    "AR_x86_64_pc_windows_msvc": null,
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_BUILD_TARGET": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_HOME": null,
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "CC_x86_64_pc_windows_msvc": null,
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTFLAGS": null,
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUSTUP_HOME": null,
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-authority-lib-2\\tmp",
+    "TMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-authority-lib-2\\tmp",
+    "VCToolsInstallDir": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+    "WindowsSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10"
+  },
+  "gate_retained": true,
+  "inputs_verified": true,
+  "options": {
+    "examples": [],
+    "filter": "execution_authority_regression_tests",
+    "mode": "lib",
+    "step_timeout_seconds": 600,
+    "test_targets": []
+  },
+  "plan": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "name": "check",
+      "timeout_seconds": 600
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "debug-bins"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--bins",
+        "--offline",
+        "--locked"
+      ],
+      "name": "debug-bins",
+      "timeout_seconds": 600
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "lib-test",
+        "-Filter",
+        "execution_authority_regression_tests"
+      ],
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--lib",
+        "execution_authority_regression_tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "name": "library-test",
+      "timeout_seconds": 600
+    }
+  ],
+  "process_tree_cleanup": "not_proven_by_this_runner",
+  "runner_exit_code": 101,
+  "started_utc": "2026-11-16T12:33:08.474539+00:00",
+  "status": "failed",
+  "steps": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/lifecycle/invoke-step.ps1",
+        "-Stage",
+        "check"
+      ],
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--offline",
+        "--locked"
+      ],
+      "ended_utc": "2026-11-16T12:33:23.853868+00:00",
+      "exit_code": 101,
+      "log": "01-check.log",
+      "log_bytes": 1638,
+      "log_sha256": "6e8d6acd50613b4a92bc7715ca811dfae71fca0022b5195661579b431a293e0c",
+      "name": "check",
+      "started_utc": "2026-11-16T12:33:09.470473+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 600,
+      "unknown_reason": null
+    }
+  ],
+  "version": 1
+}

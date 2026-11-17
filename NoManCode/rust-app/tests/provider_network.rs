@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/owned_child.rs"]
+mod owned_child;
 #[path = "support/project_fixture.rs"]
 #[allow(dead_code)]
 mod project_fixture;
@@ -176,6 +179,145 @@ fn not_sent(error: NetworkError, kind: NetworkErrorKind) {
     assert_eq!(error.kind, kind);
     assert_eq!(error.dispatch_state, DispatchState::NotSent);
     assert!(error.calls.is_empty());
+}
+
+#[tokio::test]
+async fn dropping_models_future_after_partial_body_seals_real_claim() {
+    use std::time::Duration;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let (sent_tx, sent_rx) = tokio::sync::oneshot::channel();
+    let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        for attempt in 0..2 {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            loop {
+                let mut bytes = [0; 2048];
+                let count = socket.read(&mut bytes).await.unwrap();
+                assert_ne!(count, 0, "request closed before headers");
+                request.extend_from_slice(&bytes[..count]);
+                if request.windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            if attempt == 0 {
+                let body = b"{\"data\":[{\"id\":\"m\"}]}";
+                socket
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            body.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+                socket.write_all(body).await.unwrap();
+            } else {
+                socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\n{\"data\":[").await.unwrap();
+                sent_tx.send(()).unwrap();
+                let _ = release_rx.await;
+                break;
+            }
+        }
+    });
+    let dir = tempfile::tempdir_in("target").unwrap();
+    let engine = engine(dir.path(), &base, "fixture-key").await;
+    authorize(
+        &engine,
+        subject(&engine),
+        vec![NetworkPurpose::Models],
+        "body-drop",
+    )
+    .await;
+    let positive = engine.route_models("route").await.unwrap();
+    assert_eq!(positive.calls.len(), 1);
+    assert_eq!(positive.calls[0].state, CallState::Finished);
+    let running = {
+        let engine = engine.clone();
+        tokio::spawn(async move { engine.route_models("route").await })
+    };
+    tokio::time::timeout(Duration::from_secs(10), sent_rx)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        !running.is_finished(),
+        "partial response body must still be outstanding"
+    );
+    let db = rusqlite::Connection::open(dir.path().join("test.db")).unwrap();
+    let claimed: String = db
+        .query_row(
+            "SELECT id FROM network_calls WHERE state='claimed'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        engine.network_call(&claimed).unwrap().state,
+        CallState::Claimed
+    );
+    assert!(engine.store.execution_admission_status().unwrap().1 > 0);
+    assert!(Engine::new(Arc::new(engine.store.open_shared().unwrap()), 1).is_err());
+    running.abort();
+    assert!(running.await.unwrap_err().is_cancelled());
+    let (open, _, unknown) = engine.store.execution_admission_status().unwrap();
+    assert!(!open && unknown > 0, "abandoned body must seal the domain");
+    assert_eq!(
+        engine.network_call(&claimed).unwrap().state,
+        CallState::Claimed
+    );
+    assert!(engine.route_models("route").await.is_err());
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
+    let report = engine.shutdown(Duration::from_secs(5)).await;
+    assert!(
+        !report.settled(),
+        "unknown external outcome cannot be reported settled"
+    );
+    let owner_before: (i64, String) = db
+        .query_row(
+            "SELECT epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    let old_store = Arc::downgrade(&engine.store);
+    drop(engine);
+    assert!(
+        old_store.upgrade().is_none(),
+        "old Engine/Store must actually be dropped"
+    );
+    let reopened = Arc::new(Store::open(&dir.path().join("test.db")).unwrap());
+    assert!(
+        Engine::new(reopened, 1).is_err(),
+        "unknown original operation must block a new controller after Store and Engine drop"
+    );
+    assert_eq!(
+        db.query_row(
+            "SELECT epoch,phase FROM execution_owner WHERE id=1",
+            [],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+        )
+        .unwrap(),
+        owner_before
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM network_calls", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
+    let _ = release_tx.send(());
+    tokio::time::timeout(Duration::from_secs(5), server)
+        .await
+        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -385,6 +527,32 @@ async fn account_binding_is_local_and_identity_changes_need_separate_confirmatio
 }
 
 #[tokio::test]
+async fn truncated_response_original_owner_child() {
+    let Some(root) = std::env::var_os("NHC_U18_PROVIDER_ROOT") else {
+        return;
+    };
+    let root = std::path::PathBuf::from(root);
+    let base = std::env::var("NHC_U18_PROVIDER_BASE").unwrap();
+    let engine = engine(&root, &base, "fixture-key").await;
+    authorize(
+        &engine,
+        subject(&engine),
+        vec![NetworkPurpose::Models],
+        "one-call",
+    )
+    .await;
+    let error = engine.route_models("route").await.unwrap_err();
+    assert_eq!(error.kind, NetworkErrorKind::Unknown);
+    assert_eq!(error.calls.len(), 1);
+    let call = &error.calls[0];
+    assert_eq!(call.state, CallState::Unknown);
+    assert_eq!(call.result, Some(CallResult::TransportUnknown));
+    std::fs::write(root.join("receipt.json"), serde_json::to_vec(call).unwrap()).unwrap();
+    // The injected HTTP server has already closed the truncated response.
+    // Exit this actual owner process before the parent attempts recovery.
+}
+
+#[tokio::test]
 async fn redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reopen() {
     let b = Endpoint::start(None).await;
     for (wire, state, result, kind) in [
@@ -392,6 +560,26 @@ async fn redirect_and_truncated_responses_keep_receipts_and_never_replay_on_reop
         (b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n{}".to_vec(), CallState::Unknown, CallResult::TransportUnknown, NetworkErrorKind::Unknown),
     ] {
         let a = Endpoint::start(Some(wire)).await; let dir = tempfile::tempdir_in("target").unwrap();
+        if state == CallState::Unknown {
+            let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+            command.args(["--exact", "truncated_response_original_owner_child", "--nocapture"])
+                .env("NHC_U18_PROVIDER_ROOT", dir.path()).env("NHC_U18_PROVIDER_BASE", &a.base);
+            let child = owned_child::OwnedChild::spawn(&mut command, &dir.path().join("child-evidence"));
+            let output = tokio::task::spawn_blocking(move || child.output(std::time::Duration::from_secs(40))).await.unwrap();
+            assert!(output.status.success(), "original provider child failed: {}", String::from_utf8_lossy(&output.stderr));
+            let call: peachsh::network_authorization::CallReceipt = serde_json::from_slice(&std::fs::read(dir.path().join("receipt.json")).unwrap()).unwrap();
+            assert_eq!(call.state, state);
+            assert_eq!(call.result, Some(result));
+            assert_eq!(a.counts(), (1, 1));
+            assert_eq!(b.counts(), (0, 0));
+            let reopened = Engine::new(Arc::new(Store::open(&dir.path().join("test.db")).unwrap()), 2).unwrap();
+            assert_eq!(reopened.network_call(&call.call_id).unwrap(), call);
+            assert_eq!(a.counts(), (1, 1));
+            assert_eq!(b.counts(), (0, 0));
+            drop(reopened);
+            a.stop().await;
+            continue;
+        }
         let engine = engine(dir.path(), &a.base, "fixture-key").await;
         authorize(&engine, subject(&engine), vec![NetworkPurpose::Models], "one-call").await;
         let error = engine.route_models("route").await.unwrap_err(); assert_eq!(error.kind, kind); assert_eq!(error.calls.len(), 1);

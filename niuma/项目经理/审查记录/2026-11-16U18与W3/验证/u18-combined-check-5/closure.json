@@ -1,0 +1,15 @@
+{
+  "state": "passed-closed",
+  "closed_utc": "2026-11-16T12:57:34.718215+00:00",
+  "candidate": {
+    "head": "57b91bb950a717e79bb1473cbf020bf9c5de0ffb",
+    "product_tree": "7f41afe5a55a36429102300a8e1d1078011de10c",
+    "rust_tree": "c3cea019cd887936ffa992ac74af322c2bf150a2"
+  },
+  "gate_sha256": "aa3a385610dcfe756a7eed6c05e12b5c845e2a09bbd12022cdbf02689b4ff436",
+  "original_session": 83639,
+  "original_supervisor_exit": 0,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "All-target check passed after original-operation identity and immediate filesystem revalidation changes."
+}

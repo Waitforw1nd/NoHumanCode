@@ -1,0 +1,52 @@
+MSVC=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.43.34808\bin\Hostx86\x64\cl.exe SDK=C:\Program Files (x86)\Windows Kits\10 version=10.0.22621.0
+    Checking peachsh-protocol v0.1.0 (E:\code\nhc-u18-20261116-integration\NoManCode\rust-app\crates\protocol)
+    Checking peachsh v0.2.0 (E:\code\nhc-u18-20261116-integration\NoManCode\rust-app)
+    Checking peachsh-ui v0.1.0 (E:\code\nhc-u18-20261116-integration\NoManCode\rust-app\crates\ui)
+error[E0603]: struct import `WorkerService` is private
+   --> src\engine.rs:850:67
+    |
+850 |     packaged_worker: Mutex<Option<Option<crate::worker_bootstrap::WorkerService>>>,
+    |                                                                   ^^^^^^^^^^^^^ private struct import
+    |
+note: the struct import `WorkerService` is defined here...
+   --> src\worker_bootstrap.rs:5:62
+    |
+  5 | use crate::wasm_worker_process::{TrustedWorker, WorkerError, WorkerService};
+    |                                                              ^^^^^^^^^^^^^
+note: ...and refers to the struct `WorkerService` which is defined here
+   --> src\wasm_worker_process.rs:527:1
+    |
+527 | pub struct WorkerService {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+help: consider importing this struct instead
+    |
+850 -     packaged_worker: Mutex<Option<Option<crate::worker_bootstrap::WorkerService>>>,
+850 +     packaged_worker: Mutex<Option<Option<crate::wasm_worker_process::WorkerService>>>,
+    |
+
+error[E0603]: struct import `WorkerService` is private
+   --> src\engine.rs:885:53
+    |
+885 |         mut worker: Option<crate::worker_bootstrap::WorkerService>,
+    |                                                     ^^^^^^^^^^^^^ private struct import
+    |
+note: the struct import `WorkerService` is defined here...
+   --> src\worker_bootstrap.rs:5:62
+    |
+  5 | use crate::wasm_worker_process::{TrustedWorker, WorkerError, WorkerService};
+    |                                                              ^^^^^^^^^^^^^
+note: ...and refers to the struct `WorkerService` which is defined here
+   --> src\wasm_worker_process.rs:527:1
+    |
+527 | pub struct WorkerService {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+help: consider importing this struct instead
+    |
+885 -         mut worker: Option<crate::worker_bootstrap::WorkerService>,
+885 +         mut worker: Option<crate::wasm_worker_process::WorkerService>,
+    |
+
+For more information about this error, try `rustc --explain E0603`.
+error: could not compile `peachsh` (lib) due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `peachsh` (lib test) due to 2 previous errors

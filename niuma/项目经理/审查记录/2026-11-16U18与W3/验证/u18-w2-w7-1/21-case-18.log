@@ -1,0 +1,7 @@
+
+running 1 test
+test wasm_worker_process_tests::fault_matrix::w06_job_handle_not_inherited ... W06 job handle pid=20560 evidence=Ok((Some(6), None))
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 508 filtered out; finished in 0.31s
+

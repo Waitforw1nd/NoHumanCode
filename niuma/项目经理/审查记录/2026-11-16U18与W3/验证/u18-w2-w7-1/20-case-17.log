@@ -1,0 +1,7 @@
+
+running 1 test
+test wasm_worker_process_tests::fault_matrix::w06_non_whitelisted_event ... W06 non-whitelisted event pid=52896 evidence=Ok((Some(6), None))
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 508 filtered out; finished in 0.29s
+

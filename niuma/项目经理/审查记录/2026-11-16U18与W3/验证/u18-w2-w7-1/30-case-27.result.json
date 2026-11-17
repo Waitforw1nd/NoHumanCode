@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "E:\\code\\nhc-u18-20261116-integration\\.local\\lifecycle\\u18-w2-w7-1\\fixed\\lib-test.exe",
+    "--exact",
+    "wasm_worker_process_tests::fault_matrix::w07_bound_shutdown_running_retains_ticket",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "case": "wasm_worker_process_tests::fault_matrix::w07_bound_shutdown_running_retains_ticket",
+  "ended_utc": "2026-11-16T12:43:58.340015+00:00",
+  "exit_code": 0,
+  "log": "30-case-27.log",
+  "log_bytes": 209,
+  "log_sha256": "ab630650c8a74501e00059a4e2ba856de139afa938e053d8f3db5830b58a0de0",
+  "name": "case-27",
+  "stage": "case",
+  "started_utc": "2026-11-16T12:43:56.736872+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

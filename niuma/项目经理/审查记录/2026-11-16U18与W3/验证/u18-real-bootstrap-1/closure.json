@@ -1,0 +1,15 @@
+{
+  "state": "passed-closed",
+  "closed_utc": "2026-11-16T12:53:03.204602+00:00",
+  "candidate": {
+    "head": "4ee71d95789300141796ae119b865530999369cb",
+    "product_tree": "b579ebac617f96a70af28c5fdef92d8ffdf3c738",
+    "rust_tree": "4b3eb66712d05245b54e60c021fd4826d534d8eb"
+  },
+  "gate_sha256": "d66fe59eb08951e1f3b8e6e7fd0ee8d2c945d0a1099376fb4188dd0fc3c3169f",
+  "original_session": 59823,
+  "original_supervisor_exit": 0,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Exactly one real-pair matrix passed: correct bound Host, missing/tampered/foreign worker refusal, and unbound Host compatibility. All original OwnedChild outputs completed; no nested unknown marker."
+}

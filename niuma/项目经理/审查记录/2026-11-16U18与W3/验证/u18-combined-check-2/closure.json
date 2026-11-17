@@ -1,0 +1,15 @@
+{
+  "state": "passed-closed",
+  "closed_utc": "2026-11-16T12:19:10.450699+00:00",
+  "candidate": {
+    "head": "be253200e4385a7274dd1d4ebdd1b0d332c056cf",
+    "product_tree": "447d61193693abfd599f1196757383fed4ec3bf9",
+    "rust_tree": "29d195ac28531733a76bb90698d145a87555f1b2"
+  },
+  "gate_sha256": "63cf169dc7c5bb98fc5c0848bae395924e6afa86e7276eeda9e54ae60f9ac6f5",
+  "original_session": 87338,
+  "original_supervisor_exit": 0,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Original supervisor and Cargo returned success; all-target compile only, no product process; no terminal unknown; source hashes stable."
+}

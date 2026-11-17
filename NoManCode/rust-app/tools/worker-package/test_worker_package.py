@@ -43,6 +43,7 @@ class PairTests(unittest.TestCase):
         self.assertTrue(self.gate.exists())
         kind = argv[argv.index("-Stage") + 1]
         self.calls.append((kind, env.copy(), argv.copy()))
+        Path(env["NHC_BUILD_PROVENANCE_PATH"]).write_text('{"tools": "mock"}', encoding="utf-8")
         path = self.target / (kind + ".exe")
         payload = b"trusted-worker" if kind == "worker" else b"host-with-digest=" + env[package.DIGEST_VARIABLE].encode()
         path.write_bytes(payload)
@@ -237,6 +238,43 @@ class PairTests(unittest.TestCase):
         self.assertEqual(report["environment"]["VCToolsInstallDir"], "E:/mock/msvc")
         self.assertEqual(report["environment"]["WindowsSdkDir"], "E:/mock/sdk")
         self.assertEqual(self.calls[0][1]["VCTOOLSINSTALLDIR"], "E:/mock/msvc")
+
+    def test_ambient_overrides_are_fingerprinted_without_disclosing_values(self):
+        env = {"RUSTFLAGS": "private flags", "RUSTC_WRAPPER": "private wrapper", "CARGO_HOME": str(self.repo / "cargo-home")}
+        config = self.repo / "cargo-home/config.toml"
+        config.parent.mkdir()
+        config.write_text('[build]\nrustflags = ["secret"]', encoding="utf-8")
+        before = package.build_inputs(self.repo, env)
+        self.assertNotIn("private", json.dumps(before))
+        self.assertIn("RUSTFLAGS", before["environment_sha256"])
+        self.assertIn("RUSTC_WRAPPER", before["environment_sha256"])
+        config.write_text('[build]\n', encoding="utf-8")
+        self.assertNotEqual(before, package.build_inputs(self.repo, env))
+
+    def test_missing_discovered_toolchain_evidence_fails_closed(self):
+        def missing(*args):
+            result = self.invoke(*args)
+            Path(args[2]["NHC_BUILD_PROVENANCE_PATH"]).unlink()
+            return result
+        code, report = self.run_pair(invoke=missing)
+        self.assertEqual(code, 1)
+        self.assertIn("toolchain", report["error"])
+        self.assertEqual(len(self.calls), 1)
+        self.assertFalse(self.pair.exists())
+
+    def test_cargo_config_drift_stops_before_host(self):
+        config = self.repo / "cargo-home/config.toml"
+        config.parent.mkdir()
+        config.write_text("# before", encoding="utf-8")
+        def drift(*args):
+            result = self.invoke(*args)
+            config.write_text("# after", encoding="utf-8")
+            return result
+        code, report = self.run_pair(environment={"CARGO_HOME": str(config.parent)}, invoke=drift)
+        self.assertEqual(code, 1)
+        self.assertIn("configuration changed", report["error"])
+        self.assertEqual(len(self.calls), 1)
+        self.assertFalse(self.pair.exists())
 
     def test_pair_verification_rejects_mutated_host_or_foreign_candidate(self):
         self.run_pair()

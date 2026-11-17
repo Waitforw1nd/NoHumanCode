@@ -1,0 +1,7 @@
+{
+  "compile_variable": "NHC_PACKAGED_WORKER_SHA256",
+  "host_digest_consumer": "NoManCode/rust-app/src/main.rs",
+  "protocol_version": 1,
+  "scope": "lexical source contract; not runtime binding proof",
+  "status": "passed"
+}

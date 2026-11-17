@@ -25,6 +25,25 @@ PROTOCOL_SOURCE = RUST_REL + "/src/wasm_worker_protocol.rs"
 TARGET = "x86_64-pc-windows-msvc"
 
 
+def build_inputs(repo, environment):
+    """Fingerprint ambient overrides and discoverable Cargo configuration, not secrets."""
+    relevant = {key.upper(): digest(value.encode("utf-8")) for key, value in environment.items()
+                if key.upper().startswith(("CARGO_", "RUST", "CC", "CXX", "AR", "LIB", "INCLUDE"))
+                or key.upper() in ("PATH", "VCTOOLSINSTALLDIR", "VSINSTALLDIR", "WINDOWSSDKDIR", "UNIVERSALCRTSDKDIR")}
+    folded = {key.upper(): value for key, value in environment.items()}
+    cargo_home = Path(folded.get("CARGO_HOME") or (Path(folded.get("USERPROFILE", str(Path.home()))) / ".cargo"))
+    start = repo / RUST_REL
+    configs = [base / ".cargo" / name for base in (start, *start.parents) for name in ("config", "config.toml")]
+    configs += [cargo_home / name for name in ("config", "config.toml")]
+    files = []
+    for path in dict.fromkeys(configs):
+        if path.is_file():
+            raw = path.read_bytes()
+            files.append({"path": str(path), "bytes": len(raw), "sha256": digest(raw)})
+    return {"environment_sha256": relevant, "cargo_configs": files,
+            "scope": "ambient fingerprints only; not a complete or reproducible build description"}
+
+
 def rust_tokens(text):
     """Lex just enough to exclude comments/literals from the macro-site check."""
     tokens = []
@@ -226,7 +245,7 @@ def build_pair(repo, evidence, stage, pair, gate_path, expected, target_dir, pro
     for key in (DIGEST_VARIABLE, "NHC_PACKAGED_WORKER_PROTOCOL"):
         env.pop(key, None)
     report = {"version": 1, "candidate": expected, "started_utc": utc(), "status": "failed",
-              "profile": profile, "target": target, "features": "Cargo defaults; identical for both bins",
+              "profile": profile, "target": target, "features": "no explicit feature flags; Cargo configuration may affect resolution",
               "steps": [], "gate_retained": True, "process_tree_cleanup": "not_proven_by_this_tool",
               "runtime_binding_verified": False}
     # Record only relevant non-secret configuration, never dump the caller's env.
@@ -239,6 +258,8 @@ def build_pair(repo, evidence, stage, pair, gate_path, expected, target_dir, pro
     try:
         evidence.mkdir(parents=True, exist_ok=False)
         before = capture(repo)
+        inputs = build_inputs(repo, env)
+        write_new(evidence / "ambient-inputs.json", inputs)
         write_new(evidence / "source-before.json", before)
         validate_candidate(before, expected)
         validate_binding_source(repo, before)
@@ -256,6 +277,7 @@ def build_pair(repo, evidence, stage, pair, gate_path, expected, target_dir, pro
             if capture(repo) != before:
                 raise ValueError("Source changed between builds")
             invocation_env = env.copy()
+            invocation_env["NHC_BUILD_PROVENANCE_PATH"] = str(evidence / (f"{number:02d}-{kind}.toolchain.json"))
             if kind == "host":
                 verify_frozen(stage, frozen["worker"])
                 invocation_env[DIGEST_VARIABLE] = frozen["worker"]["sha256"]
@@ -277,6 +299,10 @@ def build_pair(repo, evidence, stage, pair, gate_path, expected, target_dir, pro
             if outcome.terminal_unknown or outcome.exit_code:
                 code = 124 if outcome.terminal_unknown else outcome.exit_code
                 raise ValueError(f"{kind} build did not finish with a known successful result")
+            if not Path(invocation_env["NHC_BUILD_PROVENANCE_PATH"]).is_file():
+                raise ValueError("Build did not record discovered toolchain")
+            if build_inputs(repo, env) != inputs:
+                raise ValueError("Ambient build configuration changed during build")
             if capture(repo) != before:
                 raise ValueError("Source changed during build")
             artifact = select_artifact(raw, repo, kind, target_dir)

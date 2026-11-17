@@ -124,6 +124,13 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
     // Duplicate the same held file object; the Domain and all process tickets
     // retain the original beyond Engine/Store or main's runtime teardown.
     *instance_lock = Some(store.instance_lock_handle()?);
+    // This is the sole consumer of the Host build's packaged-worker digest.
+    // The bootstrap selects only the fixed sibling of this executable; no
+    // request, command line, or runtime environment can select an image.
+    let packaged_worker = peachsh::worker_bootstrap::bootstrap_from_packaged_digest(option_env!(
+        "NHC_PACKAGED_WORKER_SHA256"
+    ))
+    .map_err(|error| anyhow::anyhow!("可信 WASM worker 初始化失败: {error:?}"))?;
     let settings = match store.settings()? {
         Some(s) => s,
         None => match args.legacy_data.as_deref() {
@@ -142,6 +149,7 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         return Ok(());
     }
     let (engine, interrupted) = Engine::new_recovered(store, settings.max_concurrency)?;
+    engine.install_packaged_worker(packaged_worker)?;
     let origin = format!("http://127.0.0.1:{}", args.port);
     let app = server::router(App {
         engine: engine.clone(),

@@ -202,7 +202,7 @@ class ExecutionResult:
     reason: str | None = None
 
 
-def execute(argv, cwd, environment, timeout_seconds, log):
+def execute(argv, cwd, environment, timeout_seconds, log, unknown_files=()):
     # File-backed output avoids a pipe-reader lifetime being mistaken for EOF.
     # The deadline closes validation, not ownership. Once unknown, this SAME
     # supervisor keeps the original Popen handle and open log until that process
@@ -245,17 +245,36 @@ def execute(argv, cwd, environment, timeout_seconds, log):
                     mark_unknown("child_terminal_unknown")
                 return bool(chunk)
 
+        def read_unknown_files():
+            for path, marker in unknown_files:
+                if not path.exists():
+                    continue
+                with path.open("rb") as reader:
+                    tail = b""
+                    while chunk := reader.read(65536):
+                        data = tail + chunk
+                        if marker in data:
+                            mark_unknown("child_stage_unknown")
+                            break
+                        tail = data[-len(marker):]
+
         while True:
             try:
                 read_marker()
+                read_unknown_files()
                 if time.monotonic() >= deadline:
                     mark_unknown("step_deadline_exceeded")
                 code = process.wait(timeout=0.25)
+                # A wait begun just before the deadline can return after it.
+                # A late observation is never evidence of timely completion.
+                if time.monotonic() >= deadline:
+                    mark_unknown("step_deadline_exceeded")
                 # Also inspect final bytes from a fast exiting command.
                 try:
                     final_size = log.stat().st_size
                     while offset < final_size and read_marker(final_size - offset):
                         pass
+                    read_unknown_files()
                     write_new(log.with_suffix(".direct-exit.json"), {
                         "exit_code": code, "observed_utc": utc(),
                         "terminal_unknown": reason is not None,

@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "tools/lifecycle/invoke-w2-build.ps1",
+    "-Stage",
+    "lib"
+  ],
+  "ended_utc": "2026-11-16T12:41:01.099247+00:00",
+  "exit_code": 0,
+  "log": "02-build-lib.log",
+  "log_bytes": 195034,
+  "log_sha256": "f4aea7f479e75d63bb66ff0025457b3dc97fdae469d8c9615aa86a4ffebc631e",
+  "name": "build-lib",
+  "stage": "lib",
+  "started_utc": "2026-11-16T12:40:26.147174+00:00",
+  "terminal_unknown": false,
+  "timeout_seconds": 1800,
+  "unknown_reason": null
+}

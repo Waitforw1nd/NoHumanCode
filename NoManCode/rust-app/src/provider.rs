@@ -14,7 +14,7 @@ pub fn client() -> Result<ProviderClient> {
     Ok(ProviderClient::new()?)
 }
 pub(crate) async fn json_response(
-    response: reqwest::Response,
+    response: crate::provider_transport::ProviderResponse,
 ) -> std::result::Result<(Value, u16), TransportError> {
     let status = response.status();
     let mut bytes = Vec::new();
@@ -267,13 +267,17 @@ pub async fn complete(
             let safe = redactor.push(text);
             if safe.is_empty() { Ok(()) } else { emit(&safe) }
         };
+        let mut response_size = 0usize;
         while let Some(chunk) = bytes.next().await {
             let chunk = chunk.map_err(|_| TransportError::Unknown)?;
-            decoder
-                .feed(&chunk, &mut filtered_emit)
-                .map_err(|_| TransportError::Unknown)?;
-            if decoder.done {
-                break;
+            response_size = response_size
+                .checked_add(chunk.len())
+                .filter(|size| *size <= RESPONSE_LIMIT)
+                .ok_or(TransportError::Unknown)?;
+            if !decoder.done {
+                decoder
+                    .feed(&chunk, &mut filtered_emit)
+                    .map_err(|_| TransportError::Unknown)?;
             }
         }
         let usage = decoder.usage.clone();
@@ -317,6 +321,52 @@ pub async fn balance(
     let response = client.send(permit, None).await?;
     let (value, status) = json_response(response).await?;
     normalize_balance(value, account).map_err(|_| TransportError::InvalidResponse { status })
+}
+
+#[cfg(test)]
+mod transport_fixture {
+    use super::*;
+    use crate::{engine::Engine, store::Store};
+    use std::{cell::RefCell, sync::Arc};
+
+    tokio::task_local! {
+        static HOSTS: RefCell<Vec<Arc<Engine>>>;
+    }
+
+    pub(super) async fn scope<F: std::future::Future>(work: F) -> F::Output {
+        HOSTS.scope(RefCell::new(Vec::new()), work).await
+    }
+
+    pub(super) fn store() -> Arc<Store> {
+        HOSTS.with(|hosts| hosts.borrow().last().unwrap().store.clone())
+    }
+
+    pub(super) fn permit(
+        base: &str,
+        purpose: NetworkPurpose,
+        model: Option<&str>,
+        user: Option<&str>,
+    ) -> ProviderPermit {
+        // Each transport fixture has a real controller and operation. Isolation
+        // matters: an intentionally abandoned response seals only its own domain.
+        let dir = tempfile::tempdir().unwrap().keep();
+        let store = Arc::new(Store::open(&dir.join("transport.sqlite3")).unwrap());
+        let engine = Engine::new(store.clone(), 1).unwrap();
+        let operation = store
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .unwrap();
+        let permit = ProviderPermit::new(
+            crate::provider_transport::validate_target(base, purpose).unwrap(),
+            "fixture-secret-key".into(),
+            uuid::Uuid::new_v4().to_string(),
+            model.map(String::from),
+            user.map(String::from),
+        )
+        .unwrap()
+        .bind_operation(operation, store.authority.clone());
+        HOSTS.with(|hosts| hosts.borrow_mut().push(engine));
+        permit
+    }
 }
 
 #[cfg(test)]
@@ -376,7 +426,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn done_does_not_wait_for_connection_close() {
+    async fn done_waits_for_body_eof_and_cancel_retains_domain() {
+        super::transport_fixture::scope(async {
         use axum::{
             Router,
             body::{Body, Bytes},
@@ -401,41 +452,34 @@ mod tests {
             parallel_limit: 1,
             key_env: None,
         };
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            complete(
-                &client().unwrap(),
-                ProviderPermit::new(
-                    crate::provider_transport::validate_target(
-                        &route.base_url,
-                        NetworkPurpose::Completion,
-                    )
-                    .unwrap(),
-                    "fake".into(),
-                    "call-test".into(),
-                    Some(route.model.clone()),
-                    None,
-                )
-                .unwrap(),
-                &route,
-                &[],
-                &[],
-                |_| Ok(()),
-            ),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(result.0["content"], "OK");
+        let permit = super::transport_fixture::permit(&route.base_url, NetworkPurpose::Completion, Some(&route.model), None);
+        let store = super::transport_fixture::store();
+        let seen = std::sync::Arc::new(tokio::sync::Notify::new());
+        let notify = seen.clone();
+        let mut task = tokio::spawn(async move {
+            complete(&client().unwrap(), permit, &route, &[], &[], move |_| {
+                notify.notify_one();
+                Ok(())
+            }).await
+        });
+        tokio::time::timeout(std::time::Duration::from_secs(5), seen.notified()).await.unwrap();
+        assert!(tokio::time::timeout(std::time::Duration::from_millis(100), &mut task).await.is_err());
+        assert!(store.execution_admission_status().unwrap().1 > 0);
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        let (open, in_flight, unknown) = store.execution_admission_status().unwrap();
+        assert!(!open && in_flight > 0 && unknown > 0);
         server.abort();
         let _ = server.await;
+        let (open, in_flight, unknown) = store.execution_admission_status().unwrap();
+        assert!(!open && in_flight > 0 && unknown > 0);
+        }).await;
     }
 }
 
 #[cfg(test)]
 mod network_tests {
     use super::*;
-    use crate::provider_transport::validate_target;
     use std::sync::{
         Arc, Mutex,
         atomic::{AtomicUsize, Ordering},
@@ -538,14 +582,7 @@ mod network_tests {
         model: Option<&str>,
         user: Option<&str>,
     ) -> ProviderPermit {
-        ProviderPermit::new(
-            validate_target(base, purpose).unwrap(),
-            "fixture-secret-key".into(),
-            "fixture-call".into(),
-            model.map(String::from),
-            user.map(String::from),
-        )
-        .unwrap()
+        super::transport_fixture::permit(base, purpose, model, user)
     }
     async fn list(mock: &Mock) -> std::result::Result<Vec<String>, TransportError> {
         tokio::time::timeout(
@@ -562,144 +599,157 @@ mod network_tests {
 
     #[tokio::test]
     async fn all_redirect_statuses_do_not_reach_second_origin_or_replay_post() {
-        let b = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-        for status in [301, 302, 303, 307, 308] {
-            let a = Mock::start(
-                response(
-                    status,
-                    b"secret upstream error",
-                    &format!("Location: {}/private?token=fixture-secret-key\r\n", b.base),
-                ),
-                false,
-            )
-            .await;
-            let result = complete(
-                &client().unwrap(),
-                permit(&a.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&a.base),
-                &[],
-                &[],
-                |_| Ok(()),
-            )
-            .await;
-            assert_eq!(result.unwrap_err(), TransportError::Response { status });
-            assert_eq!(a.hits(), 1);
-            assert_eq!(b.hits(), 0);
-            assert!(a.request().starts_with("POST /chat/completions "));
-            assert!(a.request().contains("\"model\":\"m\""));
-            a.stop().await;
-        }
-        assert_eq!(list(&b).await.unwrap(), vec!["m"]);
-        assert_eq!(b.hits(), 1);
-        b.stop().await;
+        super::transport_fixture::scope(async {
+            let b = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
+            for status in [301, 302, 303, 307, 308] {
+                let a = Mock::start(
+                    response(
+                        status,
+                        b"secret upstream error",
+                        &format!("Location: {}/private?token=fixture-secret-key\r\n", b.base),
+                    ),
+                    false,
+                )
+                .await;
+                let result = complete(
+                    &client().unwrap(),
+                    permit(&a.base, NetworkPurpose::Completion, Some("m"), None),
+                    &route(&a.base),
+                    &[],
+                    &[],
+                    |_| Ok(()),
+                )
+                .await;
+                assert_eq!(result.unwrap_err(), TransportError::Response { status });
+                assert_eq!(a.hits(), 1);
+                assert_eq!(b.hits(), 0);
+                assert!(a.request().starts_with("POST /chat/completions "));
+                assert!(a.request().contains("\"model\":\"m\""));
+                a.stop().await;
+            }
+            assert_eq!(list(&b).await.unwrap(), vec!["m"]);
+            assert_eq!(b.hits(), 1);
+            b.stop().await;
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn mismatched_target_model_user_or_purpose_is_invalid_and_zero_connections() {
-        let a = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-        let b = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-        let c = client().unwrap();
-        assert_eq!(
-            models(
-                &c,
-                permit(&a.base, NetworkPurpose::Models, Some("m"), None),
-                &route(&b.base)
-            )
-            .await,
-            Err(TransportError::Invalid)
-        );
-        let mut changed = route(&a.base);
-        changed.model = "other".into();
-        assert_eq!(
-            models(
-                &c,
-                permit(&a.base, NetworkPurpose::Models, Some("m"), None),
-                &changed
-            )
-            .await,
-            Err(TransportError::Invalid)
-        );
-        assert_eq!(
-            models(
-                &c,
-                permit(&a.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&a.base)
-            )
-            .await,
-            Err(TransportError::Invalid)
-        );
-        let account = Account {
-            base_url: a.base.clone(),
-            user_id: "2".into(),
-            quota_per_unit: 1.0,
-        };
-        assert_eq!(
-            balance(
-                &c,
-                permit(&a.base, NetworkPurpose::Balance, None, Some("1")),
-                &account
-            )
-            .await,
-            Err(TransportError::Invalid)
-        );
-        assert_eq!((a.hits(), b.hits()), (0, 0));
-        assert_eq!(list(&a).await.unwrap(), vec!["m"]);
-        assert_eq!(list(&b).await.unwrap(), vec!["m"]);
-        assert_eq!((a.hits(), b.hits()), (1, 1));
-        a.stop().await;
-        b.stop().await;
+        super::transport_fixture::scope(async {
+            let a = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
+            let b = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
+            let c = client().unwrap();
+            assert_eq!(
+                models(
+                    &c,
+                    permit(&a.base, NetworkPurpose::Models, Some("m"), None),
+                    &route(&b.base)
+                )
+                .await,
+                Err(TransportError::Invalid)
+            );
+            let mut changed = route(&a.base);
+            changed.model = "other".into();
+            assert_eq!(
+                models(
+                    &c,
+                    permit(&a.base, NetworkPurpose::Models, Some("m"), None),
+                    &changed
+                )
+                .await,
+                Err(TransportError::Invalid)
+            );
+            assert_eq!(
+                models(
+                    &c,
+                    permit(&a.base, NetworkPurpose::Completion, Some("m"), None),
+                    &route(&a.base)
+                )
+                .await,
+                Err(TransportError::Invalid)
+            );
+            let account = Account {
+                base_url: a.base.clone(),
+                user_id: "2".into(),
+                quota_per_unit: 1.0,
+            };
+            assert_eq!(
+                balance(
+                    &c,
+                    permit(&a.base, NetworkPurpose::Balance, None, Some("1")),
+                    &account
+                )
+                .await,
+                Err(TransportError::Invalid)
+            );
+            assert_eq!((a.hits(), b.hits()), (0, 0));
+            assert_eq!(list(&a).await.unwrap(), vec!["m"]);
+            assert_eq!(list(&b).await.unwrap(), vec!["m"]);
+            assert_eq!((a.hits(), b.hits()), (1, 1));
+            a.stop().await;
+            b.stop().await;
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn account_uses_only_bound_header_and_target() {
-        let mock = Mock::start(
-            response(200, br#"{"success":true,"data":{"quota":10}}"#, ""),
-            false,
-        )
+        super::transport_fixture::scope(async {
+            let mock = Mock::start(
+                response(200, br#"{"success":true,"data":{"quota":10}}"#, ""),
+                false,
+            )
+            .await;
+            let account = Account {
+                base_url: mock.base.clone(),
+                user_id: "42".into(),
+                quota_per_unit: 2.0,
+            };
+            let value = balance(
+                &client().unwrap(),
+                permit(&mock.base, NetworkPurpose::Balance, None, Some("42")),
+                &account,
+            )
+            .await
+            .unwrap();
+            assert_eq!(value["balance"], 5.0);
+            let request = mock.request().to_ascii_lowercase();
+            assert!(request.starts_with("get /api/user/self "));
+            assert!(request.contains("new-api-user: 42\r\n"));
+            assert!(request.contains("authorization: bearer fixture-secret-key\r\n"));
+            mock.stop().await;
+        })
         .await;
-        let account = Account {
-            base_url: mock.base.clone(),
-            user_id: "42".into(),
-            quota_per_unit: 2.0,
-        };
-        let value = balance(
-            &client().unwrap(),
-            permit(&mock.base, NetworkPurpose::Balance, None, Some("42")),
-            &account,
-        )
-        .await
-        .unwrap();
-        assert_eq!(value["balance"], 5.0);
-        let request = mock.request().to_ascii_lowercase();
-        assert!(request.starts_with("get /api/user/self "));
-        assert!(request.contains("new-api-user: 42\r\n"));
-        assert!(request.contains("authorization: bearer fixture-secret-key\r\n"));
-        mock.stop().await;
     }
 
     #[tokio::test]
     async fn json_limit_is_enforced_before_eof_and_exact_limit_succeeds() {
-        let mut body = br#"{"data":[{"id":"m"}],"padding":""#.to_vec();
-        body.resize(RESPONSE_LIMIT - 2, b'x');
-        body.extend_from_slice(b"\"}");
-        assert_eq!(body.len(), RESPONSE_LIMIT);
-        let exact = Mock::start(response(200, &body, ""), false).await;
-        assert_eq!(list(&exact).await.unwrap(), vec!["m"]);
-        exact.stop().await;
-        let mut oversized = format!(
-            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
-            RESPONSE_LIMIT + 1000
-        )
-        .into_bytes();
-        oversized.resize(oversized.len() + RESPONSE_LIMIT + 1, b'x');
-        let large = Mock::start(oversized, true).await;
-        assert_eq!(list(&large).await, Err(TransportError::Unknown));
-        assert_eq!(large.hits(), 1);
-        large.stop().await;
+        super::transport_fixture::scope(async {
+            let mut body = br#"{"data":[{"id":"m"}],"padding":""#.to_vec();
+            body.resize(RESPONSE_LIMIT - 2, b'x');
+            body.extend_from_slice(b"\"}");
+            assert_eq!(body.len(), RESPONSE_LIMIT);
+            let exact = Mock::start(response(200, &body, ""), false).await;
+            assert_eq!(list(&exact).await.unwrap(), vec!["m"]);
+            exact.stop().await;
+            let mut oversized = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
+                RESPONSE_LIMIT + 1000
+            )
+            .into_bytes();
+            oversized.resize(oversized.len() + RESPONSE_LIMIT + 1, b'x');
+            let large = Mock::start(oversized, true).await;
+            assert_eq!(list(&large).await, Err(TransportError::Unknown));
+            assert_eq!(large.hits(), 1);
+            large.stop().await;
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn sse_exact_limit_finishes_and_over_limit_fails_before_eof() {
+        super::transport_fixture::scope(async {
         let finish = b"data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n";
         let done = b"data: [DONE]\n\n";
         let mut exact_body = finish.to_vec();
@@ -751,39 +801,44 @@ mod network_tests {
         assert_eq!(result.unwrap_err(), TransportError::Unknown);
         assert_eq!(oversized.hits(), 1);
         oversized.stop().await;
+        }).await;
     }
 
     #[tokio::test]
     async fn response_errors_distinguish_complete_invalid_and_truncated() {
-        for (wire, expected) in [
-            (
-                response(200, b"not JSON fixture-secret-key", ""),
-                TransportError::InvalidResponse { status: 200 },
-            ),
-            (
-                response(200, br#"{"data":[{"bad":true}]}"#, ""),
-                TransportError::InvalidResponse { status: 200 },
-            ),
-            (
-                response(401, b"fixture-secret-key", ""),
-                TransportError::Response { status: 401 },
-            ),
-            (
-                b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n{}".to_vec(),
-                TransportError::Unknown,
-            ),
-        ] {
-            let mock = Mock::start(wire, false).await;
-            let error = list(&mock).await.unwrap_err();
-            assert_eq!(error, expected);
-            assert!(!format!("{error:?} {error}").contains("fixture-secret-key"));
-            assert_eq!(mock.hits(), 1);
-            mock.stop().await;
-        }
+        super::transport_fixture::scope(async {
+            for (wire, expected) in [
+                (
+                    response(200, b"not JSON fixture-secret-key", ""),
+                    TransportError::InvalidResponse { status: 200 },
+                ),
+                (
+                    response(200, br#"{"data":[{"bad":true}]}"#, ""),
+                    TransportError::InvalidResponse { status: 200 },
+                ),
+                (
+                    response(401, b"fixture-secret-key", ""),
+                    TransportError::Response { status: 401 },
+                ),
+                (
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n{}".to_vec(),
+                    TransportError::Unknown,
+                ),
+            ] {
+                let mock = Mock::start(wire, false).await;
+                let error = list(&mock).await.unwrap_err();
+                assert_eq!(error, expected);
+                assert!(!format!("{error:?} {error}").contains("fixture-secret-key"));
+                assert_eq!(mock.hits(), 1);
+                mock.stop().await;
+            }
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn sse_requires_finish_and_complete_done_and_never_ignores_read_failure() {
+        super::transport_fixture::scope(async {
         let finished =
             "data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n";
         for body in [
@@ -839,6 +894,7 @@ mod network_tests {
             TransportError::Unknown
         );
         mock.stop().await;
+        }).await;
     }
 
     fn usage_stream(observations: &[Value], finish: &str, done: bool) -> String {
@@ -880,6 +936,7 @@ mod network_tests {
 
     #[tokio::test]
     async fn usage_real_transport_accepts_zero_normal_and_identical_snapshots_once() {
+        super::transport_fixture::scope(async {
         use crate::provider_usage::{TokenUsage, UsageObservation, classify_usage};
         let normal = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
         let mut details = normal.clone();
@@ -944,10 +1001,12 @@ mod network_tests {
             assert_eq!(request_body["max_tokens"], 128);
             mock.stop().await;
         }
+        }).await;
     }
 
     #[tokio::test]
     async fn usage_real_transport_missing_and_invalid_keep_network_success_and_safe_values() {
+        super::transport_fixture::scope(async {
         use crate::provider_usage::{
             UsageInvalidReason as R, UsageObservation as O, classify_usage,
         };
@@ -1019,91 +1078,95 @@ mod network_tests {
             assert_eq!(mock.hits(), 1);
             mock.stop().await;
         }
+        }).await;
     }
 
     #[tokio::test]
     async fn usage_real_transport_never_salvages_usage_from_failed_completion_or_retries() {
-        let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
-        for (status, finish, done, expected) in [
-            (200, "stop", false, TransportError::Unknown),
-            (200, "length", true, TransportError::Unknown),
-            (200, "content_filter", true, TransportError::Unknown),
-            (429, "stop", true, TransportError::Response { status: 429 }),
-            (500, "stop", true, TransportError::Response { status: 500 }),
-        ] {
-            let body = usage_stream(std::slice::from_ref(&usage), finish, done);
-            let mock = Mock::start(response(status, body.as_bytes(), ""), false).await;
-            assert_eq!(usage_complete(&mock).await.unwrap_err(), expected);
-            assert_eq!(mock.hits(), 1);
-            mock.stop().await;
-        }
+        super::transport_fixture::scope(async {
+            let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
+            for (status, finish, done, expected) in [
+                (200, "stop", false, TransportError::Unknown),
+                (200, "length", true, TransportError::Unknown),
+                (200, "content_filter", true, TransportError::Unknown),
+                (429, "stop", true, TransportError::Response { status: 429 }),
+                (500, "stop", true, TransportError::Response { status: 500 }),
+            ] {
+                let body = usage_stream(std::slice::from_ref(&usage), finish, done);
+                let mock = Mock::start(response(status, body.as_bytes(), ""), false).await;
+                assert_eq!(usage_complete(&mock).await.unwrap_err(), expected);
+                assert_eq!(mock.hits(), 1);
+                mock.stop().await;
+            }
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn usage_real_transport_done_does_not_wait_for_connection_close() {
-        use crate::provider_usage::{UsageObservation, classify_usage};
-        let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
-        let body = usage_stream(std::slice::from_ref(&usage), "stop", true);
-        // Claim an unfinished HTTP body, but send a complete SSE DONE. The protocol
-        // completion is sufficient; bytes arriving later are deliberately unobserved.
-        let mut wire = format!(
-            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
-            body.len() + 100
-        )
-        .into_bytes();
-        wire.extend_from_slice(body.as_bytes());
-        let mock = Mock::start(wire, true).await;
-        let (message, observed) = usage_complete(&mock).await.unwrap();
-        assert_eq!(message["content"], "桃子");
-        assert!(matches!(
-            classify_usage(&observed),
-            UsageObservation::Valid(_)
-        ));
-        assert_eq!(observed, usage);
-        assert_eq!(mock.hits(), 1);
-        mock.stop().await;
+        super::transport_fixture::scope(async {
+            use crate::provider_usage::{UsageObservation, classify_usage};
+            let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
+            let body = usage_stream(std::slice::from_ref(&usage), "stop", true);
+            // The HTTP body is complete even though the underlying connection remains open.
+            let wire = response(200, body.as_bytes(), "Content-Type: text/event-stream\r\n");
+            let mock = Mock::start(wire, true).await;
+            let (message, observed) = usage_complete(&mock).await.unwrap();
+            assert_eq!(message["content"], "桃子");
+            assert!(matches!(
+                classify_usage(&observed),
+                UsageObservation::Valid(_)
+            ));
+            assert_eq!(observed, usage);
+            assert_eq!(mock.hits(), 1);
+            mock.stop().await;
+        })
+        .await;
     }
 
     #[tokio::test]
     async fn proxy_environment_child() {
-        let Ok(mode) = std::env::var("NHC_D_PROXY_CHILD") else {
-            return;
-        };
-        let mock = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-        let target = format!("{}/models", mock.base);
-        if mode != "explicit" {
-            // Same process, target, proxy environment and request: only no_proxy differs.
-            assert_eq!(list(&mock).await.unwrap(), vec!["m"]);
-            assert_eq!(mock.hits(), 1);
-        }
-        let mut builder = reqwest::Client::builder()
-            .connect_timeout(std::time::Duration::from_secs(15))
-            .timeout(std::time::Duration::from_secs(180))
-            .redirect(reqwest::redirect::Policy::none())
-            .retry(reqwest::retry::never());
-        if mode == "explicit" {
-            builder = builder
-                .proxy(reqwest::Proxy::all(std::env::var("NHC_D_PROXY_URL").unwrap()).unwrap());
-        }
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            builder
-                .build()
-                .unwrap()
-                .get(&target)
-                .bearer_auth("fixture-secret-key")
-                .send(),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(result.status(), 200);
-        assert_eq!(
-            result.json::<Value>().await.unwrap()["data"][0]["id"],
-            "proxy-sentinel"
-        );
-        assert_eq!(mock.hits(), usize::from(mode != "explicit"));
-        mock.stop().await;
+        super::transport_fixture::scope(async {
+            let Ok(mode) = std::env::var("NHC_D_PROXY_CHILD") else {
+                return;
+            };
+            let mock = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
+            let target = format!("{}/models", mock.base);
+            if mode != "explicit" {
+                // Same process, target, proxy environment and request: only no_proxy differs.
+                assert_eq!(list(&mock).await.unwrap(), vec!["m"]);
+                assert_eq!(mock.hits(), 1);
+            }
+            let mut builder = reqwest::Client::builder()
+                .connect_timeout(std::time::Duration::from_secs(15))
+                .timeout(std::time::Duration::from_secs(180))
+                .redirect(reqwest::redirect::Policy::none())
+                .retry(reqwest::retry::never());
+            if mode == "explicit" {
+                builder = builder
+                    .proxy(reqwest::Proxy::all(std::env::var("NHC_D_PROXY_URL").unwrap()).unwrap());
+            }
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                builder
+                    .build()
+                    .unwrap()
+                    .get(&target)
+                    .bearer_auth("fixture-secret-key")
+                    .send(),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            assert_eq!(result.status(), 200);
+            assert_eq!(
+                result.json::<Value>().await.unwrap()["data"][0]["id"],
+                "proxy-sentinel"
+            );
+            assert_eq!(mock.hits(), usize::from(mode != "explicit"));
+            mock.stop().await;
+        })
+        .await;
     }
 
     #[tokio::test]

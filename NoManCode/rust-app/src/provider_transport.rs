@@ -1,4 +1,5 @@
 //! Fixed, authorized Provider requests. Authorization and durable claims live in the Host.
+use futures_util::{Stream, StreamExt};
 use reqwest::{Url, header::HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -138,6 +139,10 @@ pub struct ProviderPermit {
     call_id: String,
     model: Option<String>,
     account_user: Option<HeaderValue>,
+    authority: Option<(
+        crate::execution_authority::ExecutionOperation,
+        std::sync::Arc<crate::execution_authority::ExecutionAuthority>,
+    )>,
 }
 impl ProviderPermit {
     pub(crate) fn new(
@@ -166,7 +171,16 @@ impl ProviderPermit {
             call_id,
             model,
             account_user,
+            authority: None,
         })
+    }
+    pub(crate) fn bind_operation(
+        mut self,
+        operation: crate::execution_authority::ExecutionOperation,
+        authority: std::sync::Arc<crate::execution_authority::ExecutionAuthority>,
+    ) -> Self {
+        self.authority = Some((operation, authority));
+        self
     }
     pub(crate) fn model(&self) -> Option<&str> {
         self.model.as_deref()
@@ -221,6 +235,73 @@ pub(crate) fn validate_permit_inputs(
     Ok(())
 }
 
+// The transport generation stays alive through response-body EOF. If the
+// request or stream is abandoned, retain the same domain owner until exit.
+struct NetworkIoGuard {
+    operation: Option<crate::execution_authority::ExecutionOperation>,
+    generation: Option<Box<dyn crate::process_lifetime::DomainLease>>,
+}
+impl NetworkIoGuard {
+    fn settle(mut self) {
+        if let Some(generation) = self.generation.take() {
+            generation.settle();
+        }
+        self.operation.take();
+    }
+}
+impl Drop for NetworkIoGuard {
+    fn drop(&mut self) {
+        if let Some(mut generation) = self.generation.take() {
+            generation.seal_unknown();
+            std::mem::forget(generation);
+            if let Some(operation) = self.operation.take() {
+                std::mem::forget(operation);
+            }
+        }
+    }
+}
+pub(crate) struct ProviderResponse {
+    response: reqwest::Response,
+    guard: NetworkIoGuard,
+}
+impl ProviderResponse {
+    pub(crate) fn status(&self) -> reqwest::StatusCode {
+        self.response.status()
+    }
+    pub(crate) fn bytes_stream(
+        self,
+    ) -> std::pin::Pin<Box<dyn Stream<Item = Result<axum::body::Bytes, reqwest::Error>> + Send>>
+    {
+        let stream = Box::pin(self.response.bytes_stream());
+        let guard = self.guard;
+        Box::pin(futures_util::stream::unfold(
+            (stream, guard),
+            |(mut stream, guard)| async move {
+                match stream.next().await {
+                    Some(Ok(bytes)) => Some((Ok(bytes), (stream, guard))),
+                    Some(Err(error)) => {
+                        drop(guard);
+                        Some((
+                            Err(error),
+                            (
+                                stream,
+                                NetworkIoGuard {
+                                    operation: None,
+                                    generation: None,
+                                },
+                            ),
+                        ))
+                    }
+                    None => {
+                        guard.settle();
+                        None
+                    }
+                }
+            },
+        ))
+    }
+}
+
 pub struct ProviderClient {
     client: reqwest::Client,
 }
@@ -240,7 +321,7 @@ impl ProviderClient {
         &self,
         permit: ProviderPermit,
         body: Option<&Value>,
-    ) -> Result<reqwest::Response, TransportError> {
+    ) -> Result<ProviderResponse, TransportError> {
         if (permit.target.purpose == NetworkPurpose::Completion) != body.is_some() {
             return Err(TransportError::Invalid);
         }
@@ -262,11 +343,23 @@ impl ProviderClient {
             builder = builder.json(body);
         }
         let request = builder.build().map_err(|_| TransportError::Invalid)?;
+        #[cfg(test)]
+        crate::engine::runtime_barrier::block(&permit.target.endpoint, "network_before_send");
         let _call_id = permit.call_id;
-        self.client
+        let (operation, authority) = permit.authority.ok_or(TransportError::Invalid)?;
+        let generation = operation
+            .generation_for(&authority)
+            .map_err(|_| TransportError::Invalid)?;
+        let guard = NetworkIoGuard {
+            operation: Some(operation),
+            generation: Some(generation),
+        };
+        let response = self
+            .client
             .execute(request)
             .await
-            .map_err(|_| TransportError::Unknown)
+            .map_err(|_| TransportError::Unknown)?;
+        Ok(ProviderResponse { response, guard })
     }
 }
 

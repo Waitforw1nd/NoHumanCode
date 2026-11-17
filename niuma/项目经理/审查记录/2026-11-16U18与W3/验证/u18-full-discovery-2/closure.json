@@ -1,0 +1,15 @@
+{
+  "state": "failed-closed",
+  "closed_utc": "2026-11-16T13:14:00.619310+00:00",
+  "candidate": {
+    "head": "375b85d9619f2ff33780c33563327aeec78f3e9a",
+    "product_tree": "3d115093281410bc24c978dd1a126d0842db7721",
+    "rust_tree": "90884ebe6b93ac3a1fed4436d42a71858a5f2a3e"
+  },
+  "gate_sha256": "77aec1df519a2d9b1ffcf5978029a7e27863fb2aba6c36c2a0138577846b9d2b",
+  "original_session": 83332,
+  "original_supervisor_exit": 1,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Full library regression 423 passed 45 failed 50 ignored; no terminal-unknown supervisor marker. Native Git shutdown failure has original parent/descendant cleanup.json settled and forced_by_fixture false; failed zero-count expectation precedes legal shutdown ticket settlement. Original supervisor exited; downstream gates did not run."
+}

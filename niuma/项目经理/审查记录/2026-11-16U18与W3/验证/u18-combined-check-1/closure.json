@@ -1,0 +1,15 @@
+{
+  "state": "failed-closed",
+  "closed_utc": "2026-11-16T12:16:56.706819+00:00",
+  "candidate": {
+    "head": "5328d4325584b9174edbdbe138e364dc54223b86",
+    "product_tree": "d234a4f320973854e2eb5998c7bd873d7735d2fe",
+    "rust_tree": "2bf7ac2b5a7ce169021b8e269ef2f42c3d39be7e"
+  },
+  "gate_sha256": "3fcb98a0ace9b75b0adabdee9c16a9c1c40a31f913adac675e3d61bc74cd7b29",
+  "original_session": 87486,
+  "original_supervisor_exit": 1,
+  "source_unchanged": true,
+  "terminal_unknown": false,
+  "manager_review": "Original supervisor returned; Cargo type-check failed and waited compiler jobs; no product execution; source and artifact hashes checked; no terminal unknown marker."
+}

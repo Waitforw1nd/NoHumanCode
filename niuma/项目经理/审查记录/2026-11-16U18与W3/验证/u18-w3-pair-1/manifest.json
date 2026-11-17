@@ -1,0 +1,194 @@
+{
+  "artifacts": [
+    {
+      "bytes": 159,
+      "file": "01-worker.direct-exit.json",
+      "sha256": "ad2b8221d4dc8d3d7df9edbefe040796260980d799308f5e7cbeb2ae84e1897a"
+    },
+    {
+      "bytes": 140,
+      "file": "01-worker.frozen.json",
+      "sha256": "f16dd59462eeb8ca4c776c6223fed05702bb6e086fa1b61f97b068b4e1529415"
+    },
+    {
+      "bytes": 193597,
+      "file": "01-worker.log",
+      "sha256": "b19f993e0476f4e4e2d068bce00ff7a487647f685c8a3ded4cd759bded99702f"
+    },
+    {
+      "bytes": 802,
+      "file": "01-worker.result.json",
+      "sha256": "1a403149ae3d85a819728579032f48ed0812de4b6efca2445927e54809e6bcb3"
+    },
+    {
+      "bytes": 574,
+      "file": "01-worker.started.json",
+      "sha256": "cda3a2c732983287cf66124e336ce15bf5360095b91e442c3d59a07007df8561"
+    },
+    {
+      "bytes": 1401,
+      "file": "01-worker.toolchain.json",
+      "sha256": "4fe38cc42794a7b9454bc54c52f11e02fb16cae7dbd29bf7e15050ea571d783d"
+    },
+    {
+      "bytes": 159,
+      "file": "02-host.direct-exit.json",
+      "sha256": "e9726b95d22593d81eb67cbef30fa819155e0dd81e7c5e89a85bc6abdaaf242c"
+    },
+    {
+      "bytes": 129,
+      "file": "02-host.frozen.json",
+      "sha256": "b9e0850cca47fb52e9d04bcbc52cfded312236ea35e3ac968a174eebb8b47374"
+    },
+    {
+      "bytes": 193409,
+      "file": "02-host.log",
+      "sha256": "43b17b7c5ea11aad07574fb4f2ebe77753c9cf1d63595bdc25cc9616410d37df"
+    },
+    {
+      "bytes": 846,
+      "file": "02-host.result.json",
+      "sha256": "c37c7cb4e9242f8dc8de1d0c9627bcc33ddb438b72d76d310f1d552bf442a07b"
+    },
+    {
+      "bytes": 620,
+      "file": "02-host.started.json",
+      "sha256": "8d1eed029b8599300f5f53e9a7c87bf43cca8443ca15efbeb56041ae177ea82a"
+    },
+    {
+      "bytes": 1401,
+      "file": "02-host.toolchain.json",
+      "sha256": "a15388e78cea34a4b63e226e2583ce2aa0050942828768b0687f5aad70498ef9"
+    },
+    {
+      "bytes": 1344,
+      "file": "ambient-inputs.json",
+      "sha256": "994fe26e0f999f019f000a08e2c163be2c45b5ddd9f1aad3a885f7125218b8ae"
+    },
+    {
+      "bytes": 227,
+      "file": "preflight.json",
+      "sha256": "9f56e85a477c930acb573e4e146b3ee1c17d648a2c815264d574b5aad2bbf0da"
+    },
+    {
+      "bytes": 41600,
+      "file": "source-after.json",
+      "sha256": "56a6c4f571f84ae3673c4c9aa460d46deb7e1e2adc008294c5ebaa17c6443154"
+    },
+    {
+      "bytes": 41600,
+      "file": "source-before.json",
+      "sha256": "56a6c4f571f84ae3673c4c9aa460d46deb7e1e2adc008294c5ebaa17c6443154"
+    }
+  ],
+  "candidate": {
+    "head": "4ee71d95789300141796ae119b865530999369cb",
+    "product_tree": "b579ebac617f96a70af28c5fdef92d8ffdf3c738",
+    "rust_tree": "4b3eb66712d05245b54e60c021fd4826d534d8eb"
+  },
+  "ended_utc": "2026-11-16T12:51:48.508823+00:00",
+  "environment": {
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_TARGET_DIR": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "RUSTUP_AUTO_INSTALL": "0",
+    "RUST_TEST_NOCAPTURE": "1",
+    "RUST_TEST_THREADS": "1",
+    "TEMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\worker-package-evidence\\u18-w3-pair-1\\tmp",
+    "TMP": "E:\\code\\nhc-u18-20261116-integration\\.local\\worker-package-evidence\\u18-w3-pair-1\\tmp",
+    "UniversalCRTSdkDir": null,
+    "VCToolsInstallDir": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.43.34808",
+    "VSINSTALLDIR": null,
+    "WindowsSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10"
+  },
+  "features": "no explicit feature flags; Cargo configuration may affect resolution",
+  "gate_retained": true,
+  "pair": ".local\\worker-packages\\u18-w3-pair-1",
+  "pair_sha256": "2fadf11b55f8964d7f796b6f8ea404b2da48597dcbdfe2d880581702113e3b88",
+  "process_tree_cleanup": "not_proven_by_this_tool",
+  "profile": "debug",
+  "runner_exit_code": 0,
+  "runtime_binding_verified": false,
+  "started_utc": "2026-11-16T12:50:41.287949+00:00",
+  "status": "prepared",
+  "steps": [
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/worker-package/invoke-build.ps1",
+        "-Stage",
+        "worker",
+        "-Profile",
+        "debug",
+        "-Target",
+        "x86_64-pc-windows-msvc"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-msvc",
+        "--bin",
+        "peachsh-wasm-worker",
+        "--message-format=json-render-diagnostics"
+      ],
+      "ended_utc": "2026-11-16T12:51:39.173793+00:00",
+      "exit_code": 0,
+      "host_compile_digest": null,
+      "log": "01-worker.log",
+      "log_bytes": 193597,
+      "log_sha256": "b19f993e0476f4e4e2d068bce00ff7a487647f685c8a3ded4cd759bded99702f",
+      "reason": null,
+      "stage": "worker",
+      "started_utc": "2026-11-16T12:51:14.037815+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "tools/worker-package/invoke-build.ps1",
+        "-Stage",
+        "host",
+        "-Profile",
+        "debug",
+        "-Target",
+        "x86_64-pc-windows-msvc"
+      ],
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-msvc",
+        "--bin",
+        "peachsh",
+        "--message-format=json-render-diagnostics"
+      ],
+      "ended_utc": "2026-11-16T12:51:47.348817+00:00",
+      "exit_code": 0,
+      "host_compile_digest": "f94ca5f6b620c0b4f8b20c7d9d22a563c5cc5c85dbd8e6e6a7ca9ae67b15c462",
+      "log": "02-host.log",
+      "log_bytes": 193409,
+      "log_sha256": "43b17b7c5ea11aad07574fb4f2ebe77753c9cf1d63595bdc25cc9616410d37df",
+      "reason": null,
+      "stage": "host",
+      "started_utc": "2026-11-16T12:51:40.199548+00:00",
+      "terminal_unknown": false,
+      "timeout_seconds": 1800
+    }
+  ],
+  "target": "x86_64-pc-windows-msvc",
+  "version": 1
+}
