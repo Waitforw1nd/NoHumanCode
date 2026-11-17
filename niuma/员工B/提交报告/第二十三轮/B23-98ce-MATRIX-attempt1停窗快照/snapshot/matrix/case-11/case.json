@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 78624,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:44.2314196Z",
-  "creation_filetime": 134381029042332654,
-  "elapsed_ms": 143,
-  "case": "process_lifetime_tests::exit_code_failure_preserves_signal_and_waits_for_io"
-}

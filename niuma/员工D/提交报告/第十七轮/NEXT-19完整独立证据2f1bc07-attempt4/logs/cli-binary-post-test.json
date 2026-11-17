@@ -1,8 +1,0 @@
-{
-  "bytes": 30798336,
-  "sha256": "8995E9BAD0192660DF4A3D2037A12E3717C21627F3232E7FDD47EA5A2A8B9BBC",
-  "note": "Post-test observation; not proof of bytes loaded by an earlier process.",
-  "last_write_utc": "2026-10-31T15:37:23.1831182Z",
-  "path": "../nhc-d-tool-result-tests\\NoManCode\\rust-app\\.local\\next19-d-3a1ea4f-attempt1\\target\\debug\\peachsh.exe",
-  "checked_utc": "2026-10-31T15:41:30.0505922Z"
-}

@@ -1,5 +1,0 @@
-pid=78120 phase=started
-pid=78120 phase=request_eof
-pid=78120 phase=output_written
-pid=78120 phase=stderr_written
-pid=78120 phase=done

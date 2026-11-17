@@ -1,7 +1,0 @@
-{
-  "utc": "2026-11-01T15:44:49.1479154Z",
-  "worker_hash": "2fc364dfe8ad85d709a8deced561985c4a2b7db92231d5c17ff806c5c2c49c5c",
-  "expected_worker": "2fc364dfe8ad85d709a8deced561985c4a2b7db92231d5c17ff806c5c2c49c5c",
-  "probe_count": 53,
-  "probe_mismatch": []
-}

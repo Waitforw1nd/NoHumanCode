@@ -1,1 +1,0 @@
-case=s06-inherited-pipe phase=ready parent_exit=Some(0) parent_signal=0 descendant_signal=258 sentinel=true stdout_pending=true stderr_pending=true

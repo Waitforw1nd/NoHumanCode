@@ -1,4 +1,0 @@
-pid=57352 phase=started
-pid=57352 phase=request_eof
-pid=57352 phase=sentinel_result nonce=4a435d4c15b4425789e4c87421375fc4 ok=0 error=Some(6)
-pid=57352 phase=sentinel_wait nonce=4a435d4c15b4425789e4c87421375fc4

@@ -1,1 +1,0 @@
-case=w06-inherited-pipe phase=preparation

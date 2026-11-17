@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960226174155,
-  "pid": 51496,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::output_limit_termination_keeps_tree_until_real_cleanup",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:02.6154689Z",
-  "elapsed_ms": 120
-}

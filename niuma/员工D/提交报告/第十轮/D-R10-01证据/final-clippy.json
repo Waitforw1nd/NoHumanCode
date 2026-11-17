@@ -1,7 +1,0 @@
-{
-  "start_utc": "2026-09-27T05:02:19.9416550Z",
-  "command": "cargo clippy --locked --lib --test tool_runtime -- -D warnings",
-  "end_utc": "2026-09-27T05:02:34.7779964Z",
-  "sha": "bd6b8876c936382a64f5777862bd644ff3dde3fa",
-  "exit": 0
-}

@@ -1,1 +1,0 @@
-case=s06-inherited-pipe phase=cleanup release_ok=true release_wait=0 job_ok=true parent_signal=0 descendant_signal=0

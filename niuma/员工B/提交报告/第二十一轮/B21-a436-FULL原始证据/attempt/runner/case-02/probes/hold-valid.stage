@@ -1,4 +1,0 @@
-pid=83616 phase=started
-pid=83616 phase=request_eof
-pid=83616 phase=output_written
-pid=83616 phase=holding_open

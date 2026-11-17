@@ -1,1 +1,0 @@
-Error: 可信 WASM worker 初始化失败: IsolationUnavailable("image_digest", None)

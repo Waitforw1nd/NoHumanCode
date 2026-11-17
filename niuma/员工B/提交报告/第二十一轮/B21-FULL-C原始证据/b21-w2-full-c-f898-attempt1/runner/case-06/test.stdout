@@ -1,8 +1,0 @@
-
-running 1 test
-test wasm_worker_process_tests::fault_matrix::w04_injected_zero_read_sensitivity ... valid-output pid=72652 elapsed_ms=262 result=Ok(WorkerSuccess { decision: Stop, process_id: 72652, exit_code: 0, process_signaled: true, job_active_processes: 0, io_completed: true })
-valid-stderr pid=59844 elapsed_ms=266 result=Ok(WorkerSuccess { decision: Stop, process_id: 59844, exit_code: 0, process_signaled: true, job_active_processes: 0, io_completed: true })
-ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 405 filtered out; finished in 1.16s
-

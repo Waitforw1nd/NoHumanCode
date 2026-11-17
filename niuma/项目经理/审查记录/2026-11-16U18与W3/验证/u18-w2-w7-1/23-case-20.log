@@ -1,8 +1,0 @@
-
-running 1 test
-test wasm_worker_process::platform::w06_limit_tests::breakaway_single_factor ... W06 limit breakaway-control active=2 breakaway_allowed=true attempt_breakaway=true actual_flags=10506 receipt={"alive_wait":258,"created":true,"flags":16777228,"helper_pid":6680,"member":0,"membership_query":1,"nonce":"72d300d7f7ef499986d96f50dcbe0630","pid":72496,"query_error":null,"terminate":1,"terminate_error":null,"wait":0}
-W06 limit breakaway-denied active=2 breakaway_allowed=false attempt_breakaway=true actual_flags=8458 receipt={"created":false,"error":5,"flags":16777228,"helper_pid":44044,"nonce":"60e2c0ab328e4ebe8891bd17d72f0225"}
-ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 508 filtered out; finished in 0.08s
-

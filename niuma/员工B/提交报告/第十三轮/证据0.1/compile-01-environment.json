@@ -1,7 +1,0 @@
-{
-  "utc": "2026-09-27T17:51:06.7423166Z",
-  "exit": 1,
-  "cargo_executed": false,
-  "head": "c29fdc2d65b20b2fb8079182a0150c10f0892437",
-  "command": "MSVC environment preparation then cargo check --lib --locked"
-}

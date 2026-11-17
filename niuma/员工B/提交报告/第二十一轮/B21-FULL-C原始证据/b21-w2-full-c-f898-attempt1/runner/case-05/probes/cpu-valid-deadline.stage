@@ -1,6 +1,0 @@
-pid=77100 phase=started
-pid=77100 phase=request_eof
-pid=77100 phase=cpu_valid_reached user_100ns=30781250
-pid=77100 phase=cpu_valid_response_ready
-pid=77100 phase=output_written
-pid=77100 phase=done

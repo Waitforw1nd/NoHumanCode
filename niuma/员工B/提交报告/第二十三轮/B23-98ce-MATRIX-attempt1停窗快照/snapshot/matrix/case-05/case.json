@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 70148,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:40.1315123Z",
-  "creation_filetime": 134381029001335390,
-  "elapsed_ms": 112,
-  "case": "process_lifetime_tests::output_limit_termination_keeps_tree_until_real_cleanup"
-}

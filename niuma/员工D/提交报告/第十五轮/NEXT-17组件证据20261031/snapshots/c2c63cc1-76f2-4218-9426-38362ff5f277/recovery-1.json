@@ -1,1 +1,0 @@
-{"approval_states":[],"approvals":0,"held":0,"messages":[{"content":"{\"content\":\"fixture-content\"}","tool_call_id":"r1"},{"content":"Execution was interrupted. Inspect files before repeating a write or command.","tool_call_id":"w2"}],"network_calls":2,"pid":7528,"status":"completed","unresolved":0}

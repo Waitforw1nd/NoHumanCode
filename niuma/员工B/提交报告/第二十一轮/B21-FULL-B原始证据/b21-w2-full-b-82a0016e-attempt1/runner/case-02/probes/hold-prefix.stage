@@ -1,4 +1,0 @@
-pid=13388 phase=started
-pid=13388 phase=request_eof
-pid=13388 phase=output_written
-pid=13388 phase=holding_open

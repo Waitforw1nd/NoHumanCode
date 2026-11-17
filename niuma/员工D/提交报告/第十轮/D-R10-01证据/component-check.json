@@ -1,6 +1,0 @@
-{
-  "start_utc": "2026-09-27T04:54:54.9701283Z",
-  "exit": 0,
-  "end_utc": "2026-09-27T04:54:59.4448684Z",
-  "command": "build.ps1 -Action check"
-}

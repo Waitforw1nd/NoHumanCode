@@ -1,1 +1,0 @@
-[Console]::Out.Write('sentinel'); [Console]::Out.Flush(); [IO.File]::WriteAllText('descendant-ready','ready'); exit 0

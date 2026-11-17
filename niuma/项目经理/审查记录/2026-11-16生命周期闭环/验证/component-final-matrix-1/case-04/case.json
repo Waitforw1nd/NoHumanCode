@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960220122344,
-  "pid": 612,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::dropped_caller_requests_cleanup_without_immediate_unknown",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:02.0100819Z",
-  "elapsed_ms": 123
-}

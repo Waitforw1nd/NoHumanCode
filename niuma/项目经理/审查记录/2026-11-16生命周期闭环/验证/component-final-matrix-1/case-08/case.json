@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960247512307,
-  "pid": 65196,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::live_reader_keeps_slot_even_after_process_and_job_finish",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:04.7489701Z",
-  "elapsed_ms": 90
-}

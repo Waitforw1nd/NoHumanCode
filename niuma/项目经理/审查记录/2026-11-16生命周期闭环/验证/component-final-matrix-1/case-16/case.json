@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960312839651,
-  "pid": 56928,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::breakaway_independent_controls_and_component_denial",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:11.2821365Z",
-  "elapsed_ms": 155
-}

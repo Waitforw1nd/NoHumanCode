@@ -1,6 +1,0 @@
-{
-  "start": "2026-09-27T02:57:19.4134789Z",
-  "end": "2026-09-27T02:57:51.0234659Z",
-  "exit": 0,
-  "command": "pwsh -NoProfile -File NoManCode/rust-app/build.ps1 -Action check"
-}

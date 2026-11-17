@@ -1,9 +1,0 @@
-{
-  "utc": "2026-11-01T16:19:17.7000670Z",
-  "before_sha256": "a73a9675dff8b8009a83ee07d90d5902519c9c97c46069c6bc6e9ec964ce59e6",
-  "after_sha256": "a73a9675dff8b8009a83ee07d90d5902519c9c97c46069c6bc6e9ec964ce59e6",
-  "archive": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-b-82a0016e-attempt1-audit\\case04-gate.original.json",
-  "incident_sha256": "074da14668ad83206b6b1a6a7ab3400b4cc72a92b4d81a50a366cd1605755be1",
-  "numeric_process_snapshot": [],
-  "basis": "Manager verified original parent handle exit101 and 14 process/job/IO settlement records; current snapshot has no matched process. No original PID guessed or killed."
-}

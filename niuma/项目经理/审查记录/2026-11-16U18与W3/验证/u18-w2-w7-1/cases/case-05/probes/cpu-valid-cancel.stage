@@ -1,6 +1,0 @@
-pid=17752 phase=started
-pid=17752 phase=request_eof
-pid=17752 phase=cpu_valid_reached user_100ns=30937500
-pid=17752 phase=cpu_valid_response_ready
-pid=17752 phase=output_written
-pid=17752 phase=done

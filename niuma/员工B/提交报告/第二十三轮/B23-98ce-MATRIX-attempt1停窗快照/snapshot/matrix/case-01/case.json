@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 80504,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:31.9560535Z",
-  "creation_filetime": 134381028919773472,
-  "elapsed_ms": 412,
-  "case": "process_lifetime_tests::normal_nonzero_and_prestart_rejection"
-}

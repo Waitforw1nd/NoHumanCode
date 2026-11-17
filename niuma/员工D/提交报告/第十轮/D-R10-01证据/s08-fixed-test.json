@@ -1,7 +1,0 @@
-{
-  "exit": 0,
-  "command": "cargo test --locked --lib tool_runtime::tests::s08 -- --test-threads=1",
-  "sha": "5e74afc7f808963c7a9ca7c568dd2bd78ac3a5ab",
-  "end_utc": "2026-09-27T05:16:15.0279379Z",
-  "start_utc": "2026-09-27T05:16:14.6300873Z"
-}

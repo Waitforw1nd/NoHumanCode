@@ -1,1 +1,0 @@
-case=s06-inherited-pipe result=timeout elapsed_ms=2001 parent_waited=true readers=0

@@ -1,7 +1,0 @@
-{
-  "state": "preflight-rejected",
-  "cargo_started": false,
-  "gate_acquired": false,
-  "reason": "pwsh -File converted comma-delimited TestTarget into one string; corrected by invoking script with array argument",
-  "recorded_utc": "2026-11-16T08:51:08.5265145Z"
-}

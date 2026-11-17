@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 80372,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:41.1724350Z",
-  "creation_filetime": 134381029011741829,
-  "elapsed_ms": 70,
-  "case": "process_lifetime_tests::reader_error_joins_and_cleans_but_unknown_is_sticky"
-}

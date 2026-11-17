@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 89844,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:41.6631221Z",
-  "creation_filetime": 134381029016649964,
-  "elapsed_ms": 94,
-  "case": "process_lifetime_tests::live_reader_keeps_slot_even_after_process_and_job_finish"
-}

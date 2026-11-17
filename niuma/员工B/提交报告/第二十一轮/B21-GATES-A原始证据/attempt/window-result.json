@@ -1,7 +1,0 @@
-{
-  "state": "failed",
-  "exit_code": 1,
-  "started_utc": "2026-11-01T16:58:03.0062835Z",
-  "ended_utc": "2026-11-01T16:58:04.1913276Z",
-  "reason": "Invoke-Expression: E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-gates-a-f898-attempt1\\start-gates.ps1:51\r\nLine |\r\n  51 |   Invoke-Expression $setup *> (Join-Path $base 'toolchain.log')\r\n     |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | The property 'InstallationFolder' cannot be found on this object. Verify that the property exists.\r\n\r\n"
-}

@@ -1,9 +1,0 @@
-{
-  "exit_code": 101,
-  "head": "386db7a234dfcb522cd54ab85382883b519c825b",
-  "ended_utc": "2026-10-31T13:51:15.6285346Z",
-  "started_utc": "2026-10-31T13:51:04.9981183Z",
-  "rust_tree": "1ef30d7a450fb78b4ea7c0e554d80f90e0370f43",
-  "product_tree": "12863a4de9bde9fc26466811d8683d3c5685862f",
-  "command": "cargo check --offline --locked --all-targets"
-}

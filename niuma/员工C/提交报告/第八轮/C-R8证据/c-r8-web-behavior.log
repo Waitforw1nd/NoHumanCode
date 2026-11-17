@@ -1,1 +1,0 @@
-PASS web: explicit snapshot/key, unchecked purpose/command acknowledgement, approved-required sidecar flow, no auto-resume/retry, receipt visibility and read/write failure distinction

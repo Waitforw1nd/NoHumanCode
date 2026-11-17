@@ -1,9 +1,0 @@
-{
-  "rust_tree": "5e1282deb5df607959c620c25ce440d4cf26e7fd",
-  "exit_code": 0,
-  "command": "cargo build --offline --locked --bin peachsh",
-  "started_utc": "2026-10-31T06:38:00.1572821Z",
-  "head": "896b690938cb31946acb2c4030de76f58eb13d43",
-  "product_tree": "f687e5f5babcded3585cf56fabc216976434c4f0",
-  "ended_utc": "2026-10-31T06:38:00.4958668Z"
-}

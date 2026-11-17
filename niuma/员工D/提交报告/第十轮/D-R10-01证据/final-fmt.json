@@ -1,7 +1,0 @@
-{
-  "start_utc": "2026-09-27T05:02:34.7800561Z",
-  "command": "rustfmt --edition 2024 --check --config skip_children=true src/lib.rs src/tool_runtime.rs src/command_execution.rs src/workspace.rs tests/tool_runtime.rs",
-  "end_utc": "2026-09-27T05:02:34.9395483Z",
-  "sha": "bd6b8876c936382a64f5777862bd644ff3dde3fa",
-  "exit": 0
-}

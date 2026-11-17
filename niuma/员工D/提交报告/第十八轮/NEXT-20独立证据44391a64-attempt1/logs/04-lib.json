@@ -1,9 +1,0 @@
-{
-  "exit_code": 101,
-  "product_tree": "2f2b70112b004654ce96b695e336ffbfd26569bc",
-  "started_utc": "2026-10-31T17:24:05.1906627Z",
-  "head": "44391a64a7b5720546c0a2a23aab075971d7a794",
-  "command": "cargo test --offline --locked --lib -- --nocapture",
-  "rust_tree": "999c149dd7b10e6b60f25bcbc49d35c37ba81e79",
-  "ended_utc": "2026-10-31T17:24:37.8402577Z"
-}

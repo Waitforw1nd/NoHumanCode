@@ -1,4 +1,0 @@
-pid=74868 phase=started
-pid=74868 phase=read_32
-pid=74868 phase=pending_confirmed
-pid=74868 phase=stdin_closed

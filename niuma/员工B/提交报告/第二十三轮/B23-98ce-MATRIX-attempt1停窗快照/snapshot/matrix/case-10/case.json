@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 91652,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:43.7359700Z",
-  "creation_filetime": 134381029037378154,
-  "elapsed_ms": 92,
-  "case": "process_lifetime_tests::watchdog_real_exit_is_covered_by_slot"
-}

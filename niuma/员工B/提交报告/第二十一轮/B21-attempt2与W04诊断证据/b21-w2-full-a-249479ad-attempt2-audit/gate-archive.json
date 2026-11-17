@@ -1,9 +1,0 @@
-{
-  "utc": "2026-11-01T15:50:39.2827800Z",
-  "before_sha256": "69be14f47b5914c6595f9fd032f4805b2f2119054b540859833a0051f4eeb14b",
-  "after_sha256": "69be14f47b5914c6595f9fd032f4805b2f2119054b540859833a0051f4eeb14b",
-  "archive": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-full-a-249479ad-attempt2-audit\\case06-gate.original.json",
-  "incident_sha256": "e188bbbb3ec50ab95e94b6a37ec7cef4764f8e4b4fff2595d07e199e27b36979",
-  "numeric_pid_snapshot": [],
-  "basis": "Manager accepted: original test process object exit 101; control original worker signal and Job0; reached/free/hook_ok and Busy assertions passed before observed.expect; injected CreateProcess returned zero after ticket, no successful process object or resume; current parent/child numeric snapshot empty. Does not establish prior injected Job active/total or all W04."
-}

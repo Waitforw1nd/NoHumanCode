@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960339376609,
-  "pid": 45584,
-  "exit_code": 0,
-  "case": "process_lifetime::state_tests::caller_drop_only_requests_cancel_until_holder_decides",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:13.9355402Z",
-  "elapsed_ms": 117
-}

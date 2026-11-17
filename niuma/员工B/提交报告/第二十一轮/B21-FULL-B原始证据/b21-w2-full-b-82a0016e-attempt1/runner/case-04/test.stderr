@@ -1,4 +1,0 @@
-
-thread 'wasm_worker_process_tests::fault_matrix::w04_resource_limits' (54112) panicked at src\wasm_worker_process_tests.rs:378:35:
-job-cpu: Err(Deadline)
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

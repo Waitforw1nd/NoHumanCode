@@ -1,6 +1,0 @@
-Set-Location: 
-Line |
-   3 |  Set-Location -LiteralPath $PSScriptRoot
-     |                            ~~~~~~~~~~~~~
-     | Cannot bind argument to parameter 'LiteralPath' because it is an empty string.
-

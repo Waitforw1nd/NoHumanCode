@@ -1,8 +1,0 @@
-{
-  "state": "preflight-failed-closed",
-  "closed_utc": "2026-11-16T08:43:58.3817275Z",
-  "gate_sha256": "5ddc7fbf40b7221fe68ffb66b54b66279acb2c559a432f61cd34701fb284a455",
-  "cargo_started": false,
-  "reason": "build.ps1 rejected undiscovered environment roots before Cargo",
-  "original_supervisor_exit": 1
-}

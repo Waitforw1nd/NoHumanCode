@@ -1,9 +1,0 @@
-{
-  "ended_utc": "2026-10-31T06:16:50.6496110Z",
-  "command": "cargo fmt --all -- --check",
-  "head": "a26363f1d69580ef58e6c730dd061e47eceb770f",
-  "product_tree": "66cefe523d68ba313a3d61ba5bf7c8e710005c76",
-  "started_utc": "2026-10-31T06:16:49.2664038Z",
-  "rust_tree": "4937e35979683d3d8f2eb0b82ecd73d2c2c3ba38",
-  "exit_code": 0
-}

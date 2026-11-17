@@ -1,1 +1,0 @@
-phase=complete count=8 bytes_hex=73656e74696e656c

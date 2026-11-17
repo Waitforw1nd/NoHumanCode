@@ -1,4 +1,0 @@
-pid=64376 phase=started
-pid=64376 phase=request_eof
-pid=64376 phase=output_written
-pid=64376 phase=done

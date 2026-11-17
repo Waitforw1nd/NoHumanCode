@@ -1,9 +1,0 @@
-{
-  "head": "ffeeac762643c168a8ec5e1570c7e1d63bede230",
-  "exit_code": 101,
-  "rust_tree": "831168a516069c2949bb627c662d86986ef868bf",
-  "command": "cargo clippy --offline --locked --lib -- -D warnings",
-  "ended_utc": "2026-10-31T06:10:02.2944857Z",
-  "started_utc": "2026-10-31T06:09:56.5494036Z",
-  "product_tree": "7e429546b4abe26c3fc6d8543fc53f0093931790"
-}

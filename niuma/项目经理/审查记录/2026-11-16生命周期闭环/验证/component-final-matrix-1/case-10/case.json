@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960268735751,
-  "pid": 29132,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::watchdog_real_exit_is_covered_by_slot",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:06.8715146Z",
-  "elapsed_ms": 91
-}

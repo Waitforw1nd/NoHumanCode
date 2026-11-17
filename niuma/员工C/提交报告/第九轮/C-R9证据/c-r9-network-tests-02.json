@@ -1,1 +1,0 @@
-{"command":"cargo test --locked --test network_http --test network_cli","exit_code":101}

@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960274043082,
-  "pid": 2160,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::exit_code_failure_preserves_signal_and_waits_for_io",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:07.4023050Z",
-  "elapsed_ms": 434
-}

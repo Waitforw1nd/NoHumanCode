@@ -1,7 +1,0 @@
-{
-  "start": "2026-09-27T03:51:37.8183565Z",
-  "end": "2026-09-27T03:51:59.5407480Z",
-  "exit": 0,
-  "command": "cargo test --locked --lib tool_runtime::tests -- --nocapture",
-  "state": "uncommitted candidate after API 1ea0d49"
-}

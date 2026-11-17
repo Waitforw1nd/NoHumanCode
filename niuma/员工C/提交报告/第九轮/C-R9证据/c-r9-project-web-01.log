@@ -1,4 +1,0 @@
-PASS project draft remains A after selecting B; conflict preserves text/key and never auto-retries
-PASS selection CAS conflict is not refreshed or resent
-PASS config PUT is nested, tools boolean, stale configuration draft retained
-PASS follow-up uses original Session new Turn and latest task mapping despite current B

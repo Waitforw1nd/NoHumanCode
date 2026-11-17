@@ -1,8 +1,0 @@
-{
-  "state": "stopped",
-  "reason": "Exception: \r\nLine |\r\n  44 |  … taskMsvc) { throw 'Missing Visual C++ x64 build tools. Install the C+ …\r\n     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | Missing Visual C++ x64 build tools. Install the C++ build tools for Visual Studio, or set VCToolsInstallDir / VSINSTALLDIR to their installation.\r\n",
-  "at_utc": "2026-11-01T23:05:27.8769197Z",
-  "attempt": "E:\\code\\nhc-b-wasm-worker-process\\NoManCode\\rust-app\\.local\\b21-w2-gates-b-f898-attempt2",
-  "current": null,
-  "instruction": "Gate remains; manager must resolve before restart."
-}

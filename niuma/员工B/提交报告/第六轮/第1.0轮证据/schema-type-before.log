@@ -1,9 +1,0 @@
-   Compiling peachsh v0.2.0 (../nhc-b-network-authorization/NoManCode/rust-app)
-    Finished `test` profile [unoptimized] target(s) in 1.43s
-     Running tests\network_authorization.rs (target\debug\deps\network_authorization-e0cf26483d3c5d5d.exe)
-
-running 1 test
-test schema10_rejects_nullable_column_disguised_as_fused_type_keyword ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.03s
-

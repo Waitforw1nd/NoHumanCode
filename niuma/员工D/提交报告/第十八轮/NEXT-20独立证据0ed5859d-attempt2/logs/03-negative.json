@@ -1,9 +1,0 @@
-{
-  "rust_tree": "c3279badad53a87f4160ead3407358cb69019597",
-  "exit_code": 0,
-  "head": "0ed5859d1229f433847a1e3c87ecd1c2a785ca2e",
-  "command": "cargo test --offline --locked --lib process_fixture_failure_controls_reap_job -- --nocapture",
-  "started_utc": "2026-10-31T17:45:29.8707424Z",
-  "product_tree": "be3d84b833802491693f0d1704b7a6fc28282024",
-  "ended_utc": "2026-10-31T17:46:32.0404371Z"
-}

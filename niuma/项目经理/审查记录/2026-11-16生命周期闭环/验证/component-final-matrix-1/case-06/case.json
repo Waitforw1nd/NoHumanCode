@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960232341431,
-  "pid": 68912,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::failed_job_observation_stays_unknown_until_late_real_cleanup",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:03.2320178Z",
-  "elapsed_ms": 80
-}

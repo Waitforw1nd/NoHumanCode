@@ -1,7 +1,0 @@
-
-thread 'windows_console::tests::isolated_console_child' (39352) panicked at ..\..\NoManCode\rust-app\src\credential_input.rs:490:21:
-intentional restoration probe
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-thread 'windows_console::tests::isolated_console_child' (39352) panicked at ..\..\NoManCode\rust-app\src\credential_input.rs:490:21:
-intentional restoration probe

@@ -1,6 +1,0 @@
-Exception: E:\code\nhc-lifecycle-20261116-integration\NoManCode\rust-app\build.ps1:50
-Line |
-  50 |  бн taskMsvc) { throw 'Missing Visual C++ x64 build tools. Install the C+ бн
-     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Missing Visual C++ x64 build tools. Install the C++ build tools for Visual Studio, or set VCToolsInstallDir /
-     | VSINSTALLDIR to their installation.

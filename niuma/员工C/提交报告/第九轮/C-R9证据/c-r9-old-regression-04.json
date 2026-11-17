@@ -1,1 +1,0 @@
-{"command":"cargo test --locked --test approval_http --test cli_workflow","exit_code":101}

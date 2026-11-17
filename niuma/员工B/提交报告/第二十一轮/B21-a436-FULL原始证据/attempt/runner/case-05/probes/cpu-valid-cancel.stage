@@ -1,6 +1,0 @@
-pid=78420 phase=started
-pid=78420 phase=request_eof
-pid=78420 phase=cpu_valid_reached user_100ns=30781250
-pid=78420 phase=cpu_valid_response_ready
-pid=78420 phase=output_written
-pid=78420 phase=done

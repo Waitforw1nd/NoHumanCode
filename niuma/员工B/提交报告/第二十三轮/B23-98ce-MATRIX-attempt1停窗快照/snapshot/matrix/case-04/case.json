@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 59152,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:39.5657058Z",
-  "creation_filetime": 134381028995675876,
-  "elapsed_ms": 115,
-  "case": "process_lifetime_tests::dropped_caller_requests_cleanup_without_immediate_unknown"
-}

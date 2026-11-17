@@ -1,1 +1,0 @@
-{"command":"cargo test --locked --test network_http --test approval_http --test turn_http --test workspace_http --test http_contract --test cli --test cli_workflow --test review_cli --test checkpoint_http","exit_code":101}

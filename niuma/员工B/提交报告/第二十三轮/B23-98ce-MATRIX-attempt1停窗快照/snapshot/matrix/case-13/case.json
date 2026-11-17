@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "pid": 91836,
-  "state": "passed",
-  "started_utc": "2026-11-02T14:21:45.3117807Z",
-  "creation_filetime": 134381029053134787,
-  "elapsed_ms": 133,
-  "case": "process_lifetime_tests::termination_failure_retains_live_tree_then_recovers_without_reopening"
-}

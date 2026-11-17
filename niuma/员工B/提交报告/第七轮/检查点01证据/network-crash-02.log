@@ -1,9 +1,0 @@
-   Compiling peachsh v0.2.0 (<B-worktree>/NoManCode\rust-app)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.75s
-     Running unittests src\lib.rs (target\debug\deps\peachsh-07ebca1ba18a59ac.exe)
-
-running 1 test
-test engine::network_gate_tests::real_process_kill_before_and_after_network_claim_recovers_without_resend ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 102 filtered out; finished in 0.27s
-

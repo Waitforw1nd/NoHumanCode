@@ -1,8 +1,0 @@
-START UTC=2026-09-28T05:56:00.6897088Z
-eb7c1aa0df448428556a30e050d9cc30f63c2b02
-5ed341516026e95c5c8da26067a90032f6c9aa8e
-7232c48721a508bdf628c44a54a27665f44d9de4
-TMP=../nhc-c-budget-interface\.local\tmp TARGET=../nhc-c-budget-interface\.local\target
-rustc 1.98.1 (48a229cea 2026-09-01)
-cargo 1.98.1 (797e8a9bc 2026-08-05)
-ENVIRONMENT STOP: build.ps1 threw Missing Visual C++ x64 build tools; shell exit1, cargo check not started; http-cli/u07 not run. Original tool chunk b6f545 contains exception.

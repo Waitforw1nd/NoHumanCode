@@ -1,9 +1,0 @@
-Missing Visual C++ x64 build tools. Install the C++ build tools for Visual Studio, or set VCToolsInstallDir / VSINSTALL
-DIR to their installation.
-At <C_WORKTREE>\NoManCode\rust-app\build.ps1:45 char:23
-+ ... taskMsvc) { throw 'Missing Visual C++ x64 build tools. Install the C+ ...
-+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : OperationStopped: (Missing Visual ...r installation.:String) [], RuntimeException
-    + FullyQualifiedErrorId : Missing Visual C++ x64 build tools. Install the C++ build tools for Visual Studio, or se 
-   t VCToolsInstallDir / VSINSTALLDIR to their installation.
- 

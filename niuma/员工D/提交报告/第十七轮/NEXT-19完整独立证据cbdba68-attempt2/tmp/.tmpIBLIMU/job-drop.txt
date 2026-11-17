@@ -1,1 +1,0 @@
-case=w06-inherited-pipe phase=job-drop cleanup_ok=true error=None

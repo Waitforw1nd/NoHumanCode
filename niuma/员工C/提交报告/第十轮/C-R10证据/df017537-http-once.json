@@ -1,6 +1,0 @@
-{
-  "finished_utc": "2026-09-27T01:14:34.0827393Z",
-  "started_utc": "2026-09-27T01:12:57.7906072Z",
-  "command": "cargo test --locked --lib restore_http_tests::partial_restore_committed_barrier_http_reopen_no_retry -- --exact --nocapture",
-  "exit_code": 101
-}

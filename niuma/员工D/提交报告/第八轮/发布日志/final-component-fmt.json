@@ -1,6 +1,0 @@
-{
-  "utc": "2026-09-27T03:04:44.8387871Z",
-  "command": "rustfmt --edition 2024 --check src/tool_runtime.rs tests/tool_runtime.rs",
-  "exit": 0,
-  "head": "7d16de89491be8c21b8c382b97fc874d3dfcdd24"
-}

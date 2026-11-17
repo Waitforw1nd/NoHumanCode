@@ -1,7 +1,0 @@
-
-running 1 test
-test wasm_worker_process_tests::fault_matrix::w06_p01_live_job_observation ... P01 pid=68536 result=Err(IsolationUnavailable("worker_exit", Some(43))); observed records meet this case's boundary
-ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 405 filtered out; finished in 0.40s
-

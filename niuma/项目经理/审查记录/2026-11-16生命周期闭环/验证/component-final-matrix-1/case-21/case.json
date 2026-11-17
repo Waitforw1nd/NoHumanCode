@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960345025034,
-  "pid": 46812,
-  "exit_code": 0,
-  "case": "process_lifetime_tests::token_cancel_waits_for_original_holder_and_reader_before_settlement",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:14.5004032Z",
-  "elapsed_ms": 132
-}

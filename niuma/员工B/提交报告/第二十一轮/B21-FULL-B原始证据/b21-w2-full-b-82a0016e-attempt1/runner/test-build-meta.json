@@ -1,8 +1,0 @@
-{
-  "command": "cargo test --offline --locked --target-dir <target> --lib --no-run --message-format=json",
-  "target": "E:\\code\\nhc-b-tool-call-application\\NoManCode\\rust-app\\.local\\next19-b-a7fe2626-attempt4\\target",
-  "started_utc": "2026-11-01T16:09:13.1638127Z",
-  "state": "exited",
-  "exit_code": 0,
-  "ended_utc": "2026-11-01T16:09:37.9287049Z"
-}

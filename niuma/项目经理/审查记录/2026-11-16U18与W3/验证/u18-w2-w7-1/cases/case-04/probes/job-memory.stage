@@ -1,5 +1,0 @@
-pid=7108 phase=started
-pid=7108 phase=request_eof
-pid=7108 phase=memory_allocation_start
-pid=7108 phase=memory_allocation_failed count=130023424 error=1455
-pid=7108 phase=memory_allocation_failed

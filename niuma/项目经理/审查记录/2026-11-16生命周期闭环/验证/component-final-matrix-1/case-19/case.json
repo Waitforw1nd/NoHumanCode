@@ -1,9 +1,0 @@
-{
-  "creation_filetime": 134392960332833099,
-  "pid": 50948,
-  "exit_code": 0,
-  "case": "process_lifetime::state_tests::resize_preserves_existing_slots_and_uses_new_limit",
-  "state": "passed",
-  "started_utc": "2026-11-16T09:47:13.2811194Z",
-  "elapsed_ms": 20
-}

@@ -1,8 +1,0 @@
-
-running 1 test
-test wasm_worker_process_tests::w01_real_worker_before_after_and_near_8mib ... W01 before pid=64104 exit=0 signaled=true job_active=0 io_completed=true module_bytes=8388544
-W01 after pid=26616 exit=0 signaled=true job_active=0 io_completed=true
-ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 404 filtered out; finished in 2.59s
-

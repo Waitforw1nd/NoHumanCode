@@ -1,6 +1,0 @@
-   Compiling wasm-encoder v0.259.0
-   Compiling wast v259.0.0
-   Compiling wat v1.259.0
-   Compiling wasmi v2.0.0
-   Compiling peachsh v0.2.0 (../nhc-audit-20261116-integration\NoManCode\rust-app)
-    Finished `dev` profile [unoptimized] target(s) in 23.99s

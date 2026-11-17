@@ -1,8 +1,0 @@
-{
-  "state": "monitor_exception_retaining",
-  "reason": "InvalidOperation: E:\\code\\nhc-b-process-lifetime\\NoManCode\\rust-app\\.local\\b23-case16-pss-diagnostic-v2-prepared\\launch.ps1:28\r\nLine |\r\n  28 |  …          if(-not $querySeen -and $content.Contains('QUERY_COMPLETE:') …\r\n     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | You cannot call a method on a null-valued expression.\r\n\r\n",
-  "stage": "diagnostic",
-  "pid": 92080,
-  "creation_filetime": 134381043364666972,
-  "detected_utc": "2026-11-02T14:45:36.7456583Z"
-}

@@ -1,6 +1,0 @@
-{
-  "utc": "2026-09-28T16:36:04.9595447Z",
-  "failure": "First publication path guard incorrectly matched suffix p:/ of http:// in retained listen marker; stopped before manifest",
-  "product_reruns": 0,
-  "resolution": "Require drive-letter boundary; preserve and byte-verify all previously published files before resuming; no original data overwritten"
-}

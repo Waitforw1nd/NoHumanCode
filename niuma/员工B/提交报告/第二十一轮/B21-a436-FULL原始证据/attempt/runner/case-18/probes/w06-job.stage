@@ -1,4 +1,0 @@
-pid=70764 phase=started
-pid=70764 phase=request_eof
-pid=70764 phase=job_control_wait
-pid=70764 phase=job_wait nonce=87398fb34f8d4e0eb5c2f7a521f98946

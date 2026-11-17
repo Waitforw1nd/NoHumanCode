@@ -1,7 +1,0 @@
-{
-  "probe_sha256": "8a61b8bf2aac1c416c7533c9ee613292000ecc17df70bb650b6c2de120a6dc7a",
-  "probe": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\examples\\process_lifetime_probe.exe",
-  "launcher_sha256": "7C85AB87FE34BA201015ED078DC7AADA3C48CBA02BFFCF3418AF1A007E33949D",
-  "test_sha256": "67ef0f7cfa31e194c88610530efdfa6d18cf2edb9976d175d77031721d2481c2",
-  "test": "E:\\code\\nhc-lifecycle-20261116-integration\\.local\\lifecycle-target\\debug\\deps\\peachsh-772c8a6873d0d381.exe"
-}
