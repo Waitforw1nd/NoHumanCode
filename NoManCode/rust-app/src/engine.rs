@@ -3306,16 +3306,18 @@ mod audit_shutdown_tests {
             created_at: 1,
             updated_at: 1,
         };
-        store
-            .create_run(&Run {
+        let engine = Engine::new(store, 1).unwrap();
+        crate::execution_authority::test_with_active_store_sync(&engine.store, || {
+            engine.store.create_run(&Run {
                 id: task.run_id.clone(),
                 title: "shutdown".into(),
                 kind: SessionKind::Team,
                 created_at: 1,
                 tasks: vec![task.clone()],
             })
-            .unwrap();
-        let engine = Engine::new(store, 1).unwrap();
+        })
+        .unwrap()
+        .unwrap();
         (root, engine, task)
     }
 
@@ -3334,7 +3336,8 @@ mod audit_shutdown_tests {
         let (observed, signal) = tokio::sync::oneshot::channel();
         let (release, released) = tokio::sync::oneshot::channel();
         let worker_engine = engine.clone();
-        engine.spawn_background(async move {
+        let (_, operation) = engine.reserve_task_worker(&task.id).unwrap();
+        engine.spawn_background(operation.run(async move {
             token.cancelled().await;
             let _ = observed.send(());
             released.await?;
@@ -3342,7 +3345,7 @@ mod audit_shutdown_tests {
             let saved = worker_engine.store.save_running_snapshot(&task);
             worker_engine.active.lock().unwrap().remove(&task.id);
             saved
-        });
+        }));
         engine.store.db.lock().unwrap().execute_batch("CREATE TRIGGER audit_cancel_failure BEFORE UPDATE ON tasks BEGIN SELECT RAISE(ABORT,'audit cancellation persistence failure'); END;").unwrap();
         engine.cancel_all();
         tokio::time::timeout(Duration::from_secs(1), signal)
@@ -3383,7 +3386,9 @@ mod audit_shutdown_tests {
     async fn timeout_retains_worker_and_late_join_can_be_observed() {
         let (_root, engine, mut task) = fixture();
         task.status = "cancelled".into();
-        engine.store.save_task(&task).unwrap();
+        let (_, op) = engine.reserve_task_worker(&task.id).unwrap();
+        op.test_sync(|| engine.store.save_task(&task)).unwrap();
+        drop(op);
         let (release, released) = tokio::sync::oneshot::channel();
         engine.spawn_background(async move {
             released.await?;
@@ -3455,11 +3460,18 @@ mod audit_shutdown_tests {
                     "name":"write_file","arguments":args.to_string()
                 }}]
             }));
-            engine.store.save_task(&task).unwrap();
-            let (record, _) = engine
-                .store
-                .ensure_approval(&task, "audit-call", "write_file", &args)
+            let (_, op) = engine.reserve_task_worker(&task.id).unwrap();
+            op.test_sync(|| engine.store.save_task(&task)).unwrap();
+            drop(op);
+            let (_, op) = engine.reserve_task_worker(&task.id).unwrap();
+            let (record, _) = op
+                .test_sync(|| {
+                    engine
+                        .store
+                        .ensure_approval(&task, "audit-call", "write_file", &args)
+                })
                 .unwrap();
+            drop(op);
             // Model a durable claim left behind by an untyped post-execution
             // failure; do not launch a shell or perform the synthetic write.
             engine.store.db.lock().unwrap().execute(
