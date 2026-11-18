@@ -1,11 +1,17 @@
 # 参与 NoHumanCode
 
-先读 [AGENTS.md](AGENTS.md)、自己的 [人员身份](niuma/README.md)、[项目开发守则](项目开发守则.md) 与 [Git 协作规范](Git协作规范.md)。经理负责契约、分工和审查，员工按任务实施。
+协作与代码贡献请从以下现行导航文档开始：
 
-换对话使用 [经理提示词](项目经理启动提示词.md) 或 [员工提示词](员工启动提示词.md)，按 [协作架构](niuma/开发协作架构.md) 核对实际任务与派发来源；不要从已结项的历史提示词开工。
+1. [AGENTS.md](AGENTS.md)：核心工程准则、安全边界与日常构建验证命令。
+2. [PROJECT-MAP.md](PROJECT-MAP.md)：全局架构拓扑、两条核心执行主链、全部 Rust 源码模块职责与集成测试矩阵。
+3. [PROJECT-BOOK.md](PROJECT-BOOK.md)：长期产品定位、设计哲学与阶段演进规划。
 
-当前共享工作树由经理统一暂存与提交；完整基线登记后，一任务一分支、一独立工作树。修改前确认文件所有权与有效基线，不把旧 HEAD 当成已包含全部验收成果。
+## 提交与验证规范
 
-报告包含任务、候选实现 SHA（或如实记录未提交清单）、实际验证和未完成事项，写入 `niuma/<角色>/提交报告/`；审查写入对应个人目录。PR 使用仓库模板，是否提交、验收、合并、发布分别记录。
-
-目录和命令遵守 [相对路径约定](路径与可移植性.md)，不提交本机配置、凭据、依赖或运行数据；已完成的历史证据不能为迎合新结果而改写。
+- 所有仓库内文档与测试夹具均使用相对路径，严禁提交本机绝对路径、真实 API Key、DPAPI 密文、构建产物或本地运行数据库（`.nhc-data` / `data-rust`）。
+- 提交代码前，请在 `NoManCode/rust-app` 下确保格式、静态检查与测试套件全部通过：
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action fmt
+  powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action clippy
+  powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action test
+  ```

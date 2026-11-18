@@ -2,9 +2,12 @@
 
 Windows 本机优先的旗舰级 AI 编程工作台：聚焦**多模型原生流式、可审阅、可回滚、可恢复、零仪式感**的 CLI 编码闭环。
 
-## 目录结构
+## 目录结构与全局导航
 
-- `NoManCode/rust-app`：核心 Rust 工程（二进制名保留兼容 `peachsh`，含共享协议 `crates/protocol`）
+- [PROJECT-MAP.md](PROJECT-MAP.md)：**现行项目地图（全局导航入口）**——架构拓扑、两条核心执行主链、全部 38 个 Rust 源码模块职责全景与 13 个集成测试矩阵
+- [AGENTS.md](AGENTS.md)：核心工程准则与日常构建/验证命令
+- [PROJECT-BOOK.md](PROJECT-BOOK.md)：长期产品定位、设计理念与两阶段演进路线
+- [NoManCode/rust-app](NoManCode/rust-app)：核心 Rust 工程（二进制名保留兼容 `peachsh`，含共享协议 `crates/protocol`）
 - `references/`：架构与同类产品参考资料
 
 ## 快速开始

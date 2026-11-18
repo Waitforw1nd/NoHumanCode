@@ -1,53 +1,23 @@
 # NoHumanCode 项目书
 
-仓库可克隆到任意位置；本文正文中的 `./` 指仓库根，链接相对于所在文件。全部协作者遵循 [路径与可移植性](路径与可移植性.md)，历史本机路径已按用户要求相对化，旧哈希对应改写前证据。
+仓库可克隆到任意位置；本文正文中的 `./` 指仓库根，链接相对于所在文件。
 
-版本：0.2
-日期：2026-09-23
-状态：多模型协作开发基线
+版本：1.0（Stage 1 交付基线）
+日期：2026-11-18
+状态：Stage 1 CLI AI 编程工作台已交付，Desktop GUI 延后至第二阶段
 
-## 现行状态导航
+## 现行状态导航（2026-11-18 基线）
 
-本书维护产品目标和长期架构。具体当前执行、已验收完整SHA与下一份任务统一以[当前任务板](niuma/项目经理/当前任务板.md)、[项目地图](niuma/项目经理/项目地图.md)及有效审查为准。下方2026-09-23“当前执行说明”和早期阶段数字是历史快照，不构成重开任务或覆盖新验收的依据；阶段一目标不会因局部切片排除项被取消。
+本书维护 **NoHumanCode** 的长期产品目标、核心设计理念与两阶段演进原则。现行代码位置、执行调用链、全部 38 个源码模块边界与自动化测试矩阵，统一以根目录 **[PROJECT-MAP.md](PROJECT-MAP.md)** 为唯一权威导航；日常开发与验证准则以 **[AGENTS.md](AGENTS.md)** 为准；快速上手命令见 **[README.md](README.md)**。
 
-## 当前执行说明（2026-09-23，历史快照）
+当前主分支（`main`）核心基线事实：
 
-本轮最新交接：C-R2-01 第2.1轮补证经 [review 2.1](<niuma/员工C/审查记录/第二轮/员工C review 2.1.md>) APPROVED（NEXT-01 范围）；D-R1-01 已由用户指定 SWE2max 完成并在实现与冻结快照范围 APPROVED。C/D 联合候选已由经理串行执行门禁通过（[记录](niuma/项目经理/审查记录/2026-09-23C-D联合门禁.md)）；均未 Git 提交/合并/发布，Git 基线收尾待执行。SWE2max仅覆盖D本任务的默认模型安排，C原安排保持。范围、源码唯一所有权及固定快照验证见 [双线协调](niuma/项目经理/任务/2026-09-23C-D双线协调.md)，实际执行状态以任务板/员工身份为准。
+- **源码与协议结构**：Git 根目录为 `./`，Rust 工作区位于 [NoManCode/rust-app](NoManCode/rust-app)（宿主与 CLI 二进制兼容标识 `peachsh`，零 I/O 共享协议 crate 为 [NoManCode/rust-app/crates/protocol](NoManCode/rust-app/crates/protocol)）。
+- **数据库与持久化**：SQLite WAL 模式，`SCHEMA_VERSION = 18`，完整落地 Project / Session / Turn / Agent / Checkpoint 领域仓储、事件游标流、幂等回执与中断自动恢复。
+- **Stage 1 核心闭环已交付**：进程内零仪式感 CLI 工作台（`peachsh init / chat / ask`）、三大主流协议原生流式直连（OpenAI / Anthropic Messages / Google Gemini）、行级彩色 Myers Diff 预览与 `[y/n/a]` 审批、前镜像备份回滚（`/diff` `/undo` `/checkpoint` `/restore`）、标准 MCP Stdio 工具动态接入及 Git Worktree 隔离管理均已稳定交付并通过全量门禁测试。
+- **架构精简与历史归档**：图形界面（Desktop GUI）明确延后至第二阶段；空壳 `crates/ui`、死代码 `src/wasm*`、过度复杂的伪插件目录层以及早期多角色协作与审批文书目录 `niuma/` 均已从 `main` 清理移除（保留 `NoManCode/rust-app/web/` 作为 `server.rs` 内嵌静态兜底页）。早期历史文书与阶段性工作树完整归档于 Git 分支 `archive/gpt-era-20261118`、`archive/old-c35-20261118` 与 `archive/u18-consolidated-20261118`。
 
-新对话接任项目经理，从 [启动说明](niuma/项目经理/启动说明.md) 开始；现行代码位置与调用链看 [项目地图](niuma/项目经理/项目地图.md)，下一项管理交付看 [当前任务板](niuma/项目经理/当前任务板.md)。
-
-最新目录约定：总项目/Git 根目录保留 `./`；自有源码和配套文件统一放到 `./NoManCode`，Rust 工作目录为 `NoManCode/rust-app`；人员档案放 niuma，参考资料放 references。项目名称仍为 NoHumanCode，源码目录使用用户指定的 NoManCode 拼写。源码入口见 [说明](NoManCode/README.md)。
-
-项目正式名称调整为 **NoHumanCode**，`./` 表示整个仓库根。所有人员档案统一进入 [niuma](niuma/README.md)，每人含身份、任务、提交报告、审查与复盘，项目经理同样执行。每轮更新个人身份与交接状态，换对话从 [AGENTS.md](AGENTS.md) 开始。旧品牌与验收事实保留，本机路径已按用户要求相对化，旧哈希对应改写前内容；技术标识保留兼容，当前导航优先于旧快照。
-
-当前工作区是 `./`，已经建立 Git；下文关于旧目录、尚未建立 Git 和早期运行版本的描述保留为历史快照，不再作为开工指令。员工 A 的领域/Repository 基础已通过最终审查，最终修复仍保存在工作区；整个产品尚未完成。
-
-第一轮分工为：B 实现已有无工具 Chat Session 的后续 Turn 应用服务，C 完善现有 HTTP/SSE 传输契约。两者现在均已通过明确范围的最终审查，入口见下；下一阶段接新增 Turn HTTP 写入口，不同时扩大 UI/审批范围。
-
-第一轮历史并行安排（已结束，不再派工）：当时 C 同步实现现有 HTTP/SSE 与独立测试，限定 server 边界，不修改 B 的领域、存储或执行文件。B/C 现已通过；新增 Turn HTTP 写入口以任务板和后续新任务单为准。
-
-首轮历史记录：B 第一轮曾为 `CHANGES_REQUIRED`，涉及回合顺序、前序快照竞争、输入/归属拒绝及有效验收证据；原意见见 [员工 B review](<niuma/员工B/审查记录/第一轮/员工B review.md>)，当前结论以下方最终审查为准。
-
-首轮历史记录：C 第一轮曾为 `CHANGES_REQUIRED`，涉及编码游标、读取故障分类、路径错误、SSE 编帧失败及测试证据；原意见见 [员工 C review](<niuma/员工C/审查记录/第一轮/员工C review.md>)，后续均已闭合。
-
-最新 B 复审：第 1.2 轮 `APPROVED（已有单 Agent、无工具 Chat 连续 Turn 应用服务）`，B-R1～B-R5 全关闭，B-C1 原诊断反例关闭。实际 99 通过、1 忽略，fmt/Clippy/WASM 全通过，另 8+2 审查探针通过。最终契约、证据和非阻断事项见 [员工 B 最终审查](<niuma/员工B/审查记录/第一轮/员工B 最终审查.md>)。B 本轮结束，无需第 1.3 轮。
-
-最新 C 复审：第 1.2 轮已闭合 H7 握手与强制晚等待回归，C-R1～C-R5 全部关闭，结论为 `APPROVED（现有 HTTP/SSE 范围）`。C-R2-01 的新 POST Turn 入口经第2.1轮补证与 [review 2.1](<niuma/员工C/审查记录/第二轮/员工C review 2.1.md>) 复核，已按 NEXT-01 范围验收，待 Git 基线纳入。
-
-开工与协作统一查阅：
-
-- [项目开发守则](项目开发守则.md)
-- [第一轮工作总结与员工分工](niuma/项目经理/开发记录/第一轮工作总结与员工分工.md)：三位员工的职责、交付、问题、修法与后续协作方向。
-- [核心骨架完成度盘点](niuma/项目经理/开发记录/核心骨架完成度盘点-2026-09-23.md)：按完整 Host 核心范围粗估约四成，明确当前基础、缺口及后续优先级。
-- [员工 A 最终审查](<niuma/员工A/审查记录/第一轮/员工A 最终审查.md>)
-- [员工 A 复盘与反思日志](niuma/员工A/复盘/员工A复盘与反思日志.md)
-- [后续开发注意事项](niuma/项目经理/开发记录/后续开发注意事项.md)
-- [员工 B 第一轮任务](niuma/员工B/任务/第一轮/员工B提示词.md)
-- [员工 B 最终审查](<niuma/员工B/审查记录/第一轮/员工B 最终审查.md>)
-- [员工 C 第一轮任务](niuma/员工C/任务/第一轮/员工C提示词.md)
-- [员工 C 最终审查](<niuma/员工C/审查记录/第一轮/员工C 最终审查.md>)
-
-以下原项目书继续约束产品方向；已确认任务单只调整其明确涉及的实施范围。
+*(注：下文第 1～5 节完整保留项目的长期产品哲学与设计初衷；其中涉及 2026-09 早期快照及旧插件拆分的局部细节仅供演进背景参考，现行实现结构请以 [PROJECT-MAP.md](PROJECT-MAP.md) 为准。)*
 
 ## 1. 项目定位
 
@@ -65,9 +35,9 @@ NoHumanCode 是 Windows 本机优先的 AI 编程工作台。它要帮助用户�
 
 ## 2. 现行事实与历史快照
 
-2026-09-23 的现行事实：Git 总根是 ./，源码在 NoManCode/rust-app，代码中的 SCHEMA_VERSION 为 6；A/B/C 第一轮分别通过领域/Repository、无工具连续 Chat 应用服务、现有 HTTP/SSE 的限定验收。C 的新增 Turn HTTP 已按 NEXT-01 范围验收（待 Git 基线纳入）；D 的纯内存插件目录在代码范围已审，完整插件/审批/变更管理/CLI 仍未交付。当前没有据此确认新实例已经运行。
+2026-11-18 的现行事实：Git 总根是 `./`，源码在 [NoManCode/rust-app](NoManCode/rust-app)，代码中的 `SCHEMA_VERSION` 为 `18`，Stage 1 CLI AI 编程工作台与本地 HTTP/SSE Host 契约已完整交付。早期 2026-09-23 快照（当时 `SCHEMA_VERSION` 为 6，处于分模块基础建设期）已演进收敛为当前主干。
 
-实际状态依据当前代码、[验收索引](niuma/项目经理/关键约定与验收索引.md) 和 [任务板](niuma/项目经理/当前任务板.md) 核对。
+实际模块状态与测试覆盖统一依据当前代码与 [PROJECT-MAP.md](PROJECT-MAP.md) 核对。
 
 ### 2.1 2026-09-22 旧实例快照（仅供查证）
 
@@ -312,43 +282,15 @@ Schema / Migration 变化
 - 不同时重写 Team、Provider、数据库和全部 UI；
 - 保持旧 HTML/JS fallback，直到新链路完成验收。
 
-## 9. 新窗口启动提示
+## 9. 历史协作归档与当前演进指引
 
-### 给 GPT-6 项目总监
+*(注：第 6～7 节描述的多角色人工分发流程及原 `niuma/` 目录已于 2026-11-18 退役归档至 `archive/gpt-era-20261118` 分支。当前开发直接遵循 [AGENTS.md](AGENTS.md) 与 [PROJECT-MAP.md](PROJECT-MAP.md)。)*
 
-> 接任 NoHumanCode 项目经理。工作区是 ./，请先读取 niuma/项目经理/启动说明.md，按现行地图、任务板、身份和验收证据恢复工作。继续下一项经理交付，Grok 员工负责实现与测试，用户分发提示词；每轮更新身份、任务板和交接记录。
+### 当前下一步（Stage 2+ 演进方向）
 
-### 给 Grok 4.7 后端实现负责人
+Stage 1 后端 Host 与进程内 CLI AI 编程工作台（多模型原生流式、内建编码工具集、标准 MCP Stdio、行级 Diff 审批、Checkpoint/Restore 与 Worktree 管理）已在 `main` 完整交付并通过全部自动化门禁。
 
-> 你负责 NoHumanCode 的 Rust 后端实现。先读取 `./PROJECT-BOOK.md` 和交接文件。优先实现 Plugin Runtime、Context、Registry、依赖解析、可撤销生命周期、Project/Session/Turn 持久化、Approval/Capability、Provider、Workspace、Diff/Checkpoint 和 CLI。每次修改报告 API、Event、Migration、权限影响、失败路径和测试。不要把 UI 临时状态写进领域模型，不要索要或输出 API Key。
+后续演进按照小步可验证切片推进（详见 [PROJECT-MAP.md 第 5 节](PROJECT-MAP.md#5-当前已完成边界-vs-后续演进方向)）：
 
-### 给 Kimi K3 前端实现负责人
-
-> 你负责 NoHumanCode 的 Leptos/Desktop 前端实现。先读取 `./PROJECT-BOOK.md` 和交接文件。后端协议稳定前可制作 mock client 和协议测试；正式页面必须使用已确认的 API、事件和权限语义。优先实现 Chat、Approval、ToolCall、Diff、Checkpoint、Session 和 SSE 重连。浏览器不得接触 Key、DPAPI、文件、进程或 SQLite。每次修改报告 UI contract、事件消费、失败状态和 E2E 结果。
-
-## 10. 当前下一步
-
-当前C按已冻结的NEXT-01完成新增Turn HTTP并经 review 2.1 复核验收；D-R1-01 / NEXT-02A 与 D-R2-01 / NEXT-02B 均由SWE2max交付并通过经理 review：builtin 插件 Host 注册表、受限 Context、effect 注册与五态可撤销生命周期已随 merge `0fe73f3` 并入 main（不含 wasm/process 运行时、审批与持久化）。后续切片：NEXT-02C ToolCall 逐次审批与 Capability 网关任务包已备待分发（Host 应用层+schema 7 approvals，不含审批传输面）；再接审批 HTTP 入口、wasm/process 插件运行时接入、持久化、工作区变更恢复和 CLI，不能以目录计划、builtin Host 或现有 WASM 宣称完整 Host 完成。前端仍须明确任务，不自行锁定未确认协议。
-
-最初规划的后端切片路径保留作目标参考，其中 Repository、事件和部分执行基础已有验收，其他环节尚未完整交付：
-
-```text
-Plugin manifest
-→ Host registry
-→ Project/Session/Turn repository
-→ Event log
-→ CLI create/send/status/resume
-→ 一个只读工具和一个需审批工具
-→ 幂等、取消、失败和重启测试
-```
-
-这一切完成后，再将同一协议接入 Desktop。项目持续以小切片、可回退、可审阅、可测试的方式优化，不追求一次性完成所有理想能力。
-
-## 11. 对话与进度记录
-
-项目在 `niuma/项目经理/项目记录/` 中保存两种协作记录：
-
-- `CONVERSATION-FULL.md`：可见的用户消息、助手回复和工具动作元数据；
-- `PROJECT-PROGRESS-SUMMARY.md`：项目进度、当前决策、风险、下一步和模型自我述职。
-
-每轮对话结束后同步更新两份记录。全量记录不保存隐藏推理，也不保存未经脱敏的工具输出、API Key 或令牌。新模型或新窗口开始工作时，先读取摘要，再按需读取全量记录和本项目书。
+1. 持续打磨日常 CLI 交互细节、远程 HTTP/SSE MCP Transport 扩展与多账号 KeyPool 故障转移；
+2. 在 `peachsh-protocol` 与本地 HTTP/SSE Host 稳定契约之上，开展第二阶段原生桌面图形界面（Desktop GUI）设计，不重复实现领域逻辑，也不破坏现有 CLI 零仪式感体验。

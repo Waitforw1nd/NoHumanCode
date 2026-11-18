@@ -1,8 +1,11 @@
 # NoHumanCode 开发指南 (AGENTS.md)
 
-## 项目定位与原则
+## 项目定位与导航
 
-NoHumanCode 是 Windows 本机优先的 CLI AI 编程工作台（源码位于 `NoManCode/rust-app`，二进制兼容标识为 `peachsh`）。当前阶段**专注后端 Host 与 CLI 交互式编码体验，暂不开发图形界面**。
+NoHumanCode 是 Windows 本机优先的 CLI AI 编程工作台（源码位于 [NoManCode/rust-app](NoManCode/rust-app)，二进制兼容标识为 `peachsh`）。当前阶段**专注后端 Host 与 CLI 交互式编码体验，暂不开发图形界面**。
+
+- **全局架构与模块导航**：修改代码前请查阅 [PROJECT-MAP.md](PROJECT-MAP.md)，了解两条核心执行主链（进程内 CLI 工作台链与本地 HTTP/SSE Host 链）、`src/` 全部 38 个模块职责边界以及 `tests/` 测试矩阵。
+- **长期产品理念**：参见 [PROJECT-BOOK.md](PROJECT-BOOK.md)。
 
 核心工程准则：
 1. **实用与简洁优先**：拒绝过度工程化、拒绝进程内模块“零信任互防”、拒绝遇到单次 I/O 或上游异常就永久锁死用户项目/数据库的自残式防守。
