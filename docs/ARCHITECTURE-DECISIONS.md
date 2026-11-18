@@ -43,6 +43,6 @@
 - **背景**：OpenAI `reasoning_content`/`reasoning`、Anthropic `thinking_delta`、Gemini `thought: true` 在长思考期间无实时流式反馈，但又绝不能混入正文 `delta` 事件或污染 `task.output`（否则会破坏纯正文契约与既有测试）。
 - **决策**：
   1. 在 `CompletionDecoder` 上增加向后兼容的 `feed_with_reasoning(&mut self, bytes, emit_text, emit_reasoning)`（默认转发至 `feed`，保持既有调用方零改动兼容），三大协议解码器在收到思考增量时实时触发 `emit_reasoning`；
-  2. `Engine` 经 `StreamRedactor` 脱敏后写入 `events` 表独立事件类型 `kind = "reasoning_delta"`（载荷 `{"text": "..."}`），不计入正文 `task.output`（仅当模型整轮无正文且无工具调用时保留原有回退行为）；
+  2. `Engine` 在思考事件入口保留可能跨分片的密钥前缀，经 `secrets::scrub` 对当前路由密钥精确脱敏后写入 `events` 表独立事件类型 `kind = "reasoning_delta"`（载荷 `{"text": "..."}`），不计入正文 `task.output`（仅当模型整轮无正文且无工具调用时保留原有回退行为）；
   3. CLI 工作台捕获 `reasoning_delta` 事件，在终端以轻量暗色样式实时流式渲染思考过程，进入正文或工具调用时自动换行收束。
 - **影响范围**：`src/provider_runtime.rs`、`src/provider.rs`、`src/store.rs`、`src/engine.rs`、`src/cli.rs`。

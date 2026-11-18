@@ -4,6 +4,13 @@
 
 ---
 
+## Baseline 1 · Sprint 01 验收（2026-11-18）
+
+- 本地 Git 标签为 `baseline-1`，前一提交为 `fd7d4b9b`。数据库 schema 版本为 18，事件 schema 版本为 1。
+- 本轮收尾验证了 OpenAI、Anthropic 和 Gemini 流式事件。测试关闭 Engine，重开 SQLite 数据库，分别核对思考事件、正文事件与任务输出。OpenAI 夹具还验证跨分片路由密钥脱敏和普通文本保留。
+- Windows/MSVC 四项门禁均以 0 退出，分别为 `build.ps1 -Action fmt`、`check`、`clippy`（`-D warnings`）和 `test`。工作区共 133 项通过、0 项失败，1 项需凭据和付费调用的在线测试默认跳过。
+- Sprint 01 的五项工单均已完成。详见[迭代验收记录](sprints/SPRINT-01-zero-init-and-repl-ux.md)。
+
 ## [Baseline 0 — 初始盘点基线] `108459ba` (2026-11-18)
 
 - **基线提交**：`108459ba` (`refactor!: rename project to Coda CLI (coda) and promote workspace to root`)

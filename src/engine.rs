@@ -52,6 +52,22 @@ fn route_secret_id(id: &str) -> String {
     format!("route::{id}")
 }
 
+fn scrub_reasoning_delta(pending: &mut String, delta: &str, key: &str) -> String {
+    pending.push_str(delta);
+    let last_match_end = pending
+        .match_indices(key)
+        .last()
+        .map_or(0, |(index, matched)| index + matched.len());
+    // Retain only a suffix that could complete this exact key in the next delta.
+    let safe_end = pending[last_match_end..]
+        .char_indices()
+        .find(|&(index, _)| key.starts_with(&pending[last_match_end + index..]))
+        .map_or(pending.len(), |(index, _)| last_match_end + index);
+    let safe = secrets::scrub(&pending[..safe_end], key);
+    pending.replace_range(..safe_end, "");
+    safe
+}
+
 fn request_fingerprint(request: &RunRequest) -> Result<String> {
     let bytes = serde_json::to_vec(request)?;
     let digest = sha2::Sha256::digest(bytes);
@@ -1934,9 +1950,11 @@ impl Engine {
                 }
                 Ok(())
             };
+            let mut pending_reasoning = String::new();
             let mut emit_reasoning = |delta: &str| {
-                if !delta.is_empty() {
-                    self.store.reasoning_delta(&task.id, delta)?;
+                let safe = scrub_reasoning_delta(&mut pending_reasoning, delta, &key);
+                if !safe.is_empty() {
+                    self.store.reasoning_delta(&task.id, &safe)?;
                 }
                 Ok(())
             };
@@ -1955,6 +1973,9 @@ impl Engine {
                 _ = cancel.cancelled() => Err(crate::provider_transport::TransportError::Unknown),
             };
             let result = self.store.finish_completion(receipt, result);
+            if !pending_reasoning.is_empty() {
+                self.store.reasoning_delta(&task.id, &pending_reasoning)?;
+            }
             task.output.push_str(&text);
             let (message, usage) = result?.result;
             if let crate::provider_usage::UsageObservation::Valid(usage) =

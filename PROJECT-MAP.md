@@ -16,7 +16,7 @@
 | **数据目录与 Schema** | 默认本机数据目录 `%LOCALAPPDATA%\coda`（可通过 `CODA_DATA_DIR` 或 `--data-dir` 指定），SQLite 数据库 `coda.sqlite3`（WAL 模式，`SCHEMA_VERSION = 18`） |
 | **核心环境变量与配置** | `CODA_MODEL`、`CODA_DATA_DIR`、`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`；工作区配置 `.coda/`、MCP 配置 `.mcp.json` 与 `.coda/mcp.json`；本地 HTTP 鉴权头 `x-coda-token` |
 | **Rust 代码规模** | 共约 **4.2 万行** Rust 代码：`src/*.rs`（38 个文件）、`crates/protocol/src/lib.rs`（1 个文件）、`tests/**/*.rs`（17 个文件：13 个集成测试目标 + 4 个夹具模块） |
-| **质量门禁状态** | `cargo fmt --check`、`cargo clippy --workspace --all-targets -- -D warnings`、`cargo test --workspace`、`cargo build --release` 全量门禁覆盖 |
+| **质量门禁状态** | [Baseline 1](docs/BASELINE-CHANGELOG.md) 已通过 Windows/MSVC 格式、全目标编译、Clippy 和工作区测试。133 项通过，0 项失败，1 项付费在线测试默认跳过。 |
 | **历史包袱清理与归档** | 旧子目录包装层、空壳 `crates/ui`、死代码 `src/wasm*`、伪插件金字塔与早期多角色文书均已从 `main` 清理；历史快照归档于分支 `archive/gpt-era-20261118`、`archive/old-c35-20261118`、`archive/u18-consolidated-20261118` |
 
 ### 1.2 顶层目录结构
@@ -188,7 +188,7 @@ flowchart TD
 | 测试目标文件 | 覆盖子系统与核心验证点 | 运行方式 |
 | :--- | :--- | :--- |
 | [tests/cli_workbench.rs](tests/cli_workbench.rs) | **CLI 工作台端到端**：`coda init` + `coda ask` 外科手术式代码编辑、零初始化环境变量直连、`@file:start-end` 行号内联引用注入 | 常规测试套件 |
-| [tests/multi_provider_protocol.rs](tests/multi_provider_protocol.rs) | **多厂商原生流式协议**：Anthropic Messages（含 Thinking + Tool Use 往返）与 Google Gemini `streamGenerateContent` 流式工具调用及 Token 统计 | 常规测试套件 |
+| [tests/multi_provider_protocol.rs](tests/multi_provider_protocol.rs) | OpenAI、Anthropic、Gemini 流式思考事件与正文的 SQLite 回读，跨分片路由密钥脱敏，以及 Anthropic、Gemini 工具往返与用量统计 | 常规测试套件 |
 | [tests/git_diff.rs](tests/git_diff.rs) | **编码工具与 Diff 引擎**：`edit_file`（含多 Hunk Unified Patch 偏移容错）、`glob_files` / `search_files` 分页、`.gitignore` 取反/目录规则与 Myers Diff | 常规测试套件 |
 | [tests/subsystems_e2e.rs](tests/subsystems_e2e.rs) | **核心子系统联动**：`edit_file` 审批 -> Checkpoint 创建 -> 精确恢复闭环、会话中断/取消后无缝续聊、MCP 与上下文压缩验证 | 常规测试套件 |
 | [tests/tool_call_workflow.rs](tests/tool_call_workflow.rs) | **工具调用与审批工作流**：跨进程 CLI / Host 工具触发、挂起审批、批准/拒绝分支、文件写盘与错误回传 | 常规测试套件 |

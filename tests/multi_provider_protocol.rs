@@ -27,6 +27,7 @@ use std::{
 
 const ANTHROPIC_KEY: &str = "sk-ant-synthetic-test-key";
 const GEMINI_KEY: &str = "AIzaSySyntheticGeminiTestKey";
+const OPENAI_KEY: &str = "sk-openai-synthetic-test-key";
 
 #[derive(Clone, Default)]
 struct RecordedCalls {
@@ -50,6 +51,142 @@ async fn wait_for_run(engine: &Engine, run_id: &str) -> Run {
     })
     .await
     .expect("timed out waiting for multi-provider task to finish")
+}
+
+fn assert_persisted_streams(
+    db_path: &std::path::Path,
+    run_id: &str,
+    expected_reasoning: &str,
+    expected_output: &str,
+) {
+    // Read through a fresh Store after Engine shutdown, not a decoder callback or CLI output.
+    let store = Store::open(db_path).unwrap();
+    let run = store.run(run_id).unwrap();
+    let task = &run.tasks[0];
+    assert_eq!(task.status, "completed");
+    assert_eq!(task.output, expected_output);
+
+    let events = store.events(run_id, 0).unwrap();
+    let mut reasoning = String::new();
+    let mut output = String::new();
+    for event in &events {
+        let target = match event.kind.as_str() {
+            "reasoning_delta" => &mut reasoning,
+            "delta" => &mut output,
+            _ => continue,
+        };
+        assert_eq!(event.task_id, task.id);
+        let text = event.data["text"].as_str().expect("data.text must be text");
+        assert!(!text.is_empty());
+        assert_eq!(event.data, json!({"text": text}));
+        target.push_str(text);
+    }
+    assert!(!reasoning.is_empty(), "missing persisted reasoning_delta");
+    assert_eq!(reasoning, expected_reasoning);
+    assert_eq!(output, expected_output);
+}
+
+async fn openai_reasoning(
+    State(state): State<RecordedCalls>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> Response {
+    assert_eq!(
+        headers["authorization"].to_str().unwrap(),
+        format!("Bearer {OPENAI_KEY}")
+    );
+    assert_eq!(body["model"], "openai-reasoning-test");
+    assert_eq!(body["stream"], true);
+    state.requests.lock().unwrap().push(body);
+
+    let (key_prefix, key_suffix) = OPENAI_KEY.split_at(12);
+    let deltas = [
+        json!({"reasoning_content": "Plan: use sk-learn; Bearer auth; let password = \"example\"; key="}),
+        json!({"reasoning_content": key_prefix}),
+        json!({"reasoning": key_suffix}),
+        json!({"reasoning": format!("; repeat={OPENAI_KEY}; tail sk-openai-")}),
+        json!({"content": "Answer: 42."}),
+    ];
+    let stream = async_stream::stream! {
+        for delta in deltas {
+            let frame = format!("data: {}\n\n", json!({"choices": [{"delta": delta}]}));
+            yield Ok::<_, Infallible>(frame.into_bytes());
+        }
+        let finish = json!({"choices": [{"delta": {}, "finish_reason": "stop"}]});
+        yield Ok::<_, Infallible>(format!("data: {finish}\n\ndata: [DONE]\n\n").into_bytes());
+    };
+    (
+        [("content-type", "text/event-stream")],
+        Body::from_stream(stream),
+    )
+        .into_response()
+}
+
+#[tokio::test]
+async fn openai_reasoning_events_persist_scrub_known_key_and_keep_body_separate() {
+    let state = RecordedCalls::default();
+    let app = Router::new()
+        .route("/v1/chat/completions", post(openai_reasoning))
+        .with_state(state.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server_handle = tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("openai.db");
+    let store = Arc::new(Store::open(&db_path).unwrap());
+    store
+        .save_settings(&Settings {
+            workspace: dir.path().to_string_lossy().into(),
+            max_concurrency: 1,
+            routes: vec![Route {
+                id: "openai".into(),
+                name: "OpenAI Native".into(),
+                base_url: format!("http://{addr}/v1"),
+                model: "openai-reasoning-test".into(),
+                max_tokens: 1024,
+                parallel_limit: 1,
+                key_env: None,
+            }],
+            newapi: None,
+        })
+        .unwrap();
+    store.put_secret("route::openai", OPENAI_KEY).unwrap();
+    network_fixture::authorize_routes(&store);
+    let engine = Engine::new(store, 1).unwrap();
+    let started = engine
+        .start(RunRequest {
+            title: "OpenAI persisted reasoning test".into(),
+            kind: SessionKind::Chat,
+            tasks: vec![TaskSpec {
+                name: "openai-worker".into(),
+                role: "protocol verifier".into(),
+                route_id: "openai".into(),
+                prompt: "Think, then answer.".into(),
+                depends_on: vec![],
+                write_scopes: vec![],
+                tools: false,
+                allow_commands: false,
+                max_rounds: 1,
+            }],
+        })
+        .await
+        .unwrap();
+    let finished = wait_for_run(&engine, &started.id).await;
+    assert_eq!(finished.tasks[0].status, "completed");
+    assert_eq!(state.requests.lock().unwrap().len(), 1);
+    assert!(engine.shutdown(Duration::from_secs(3)).await.settled());
+    drop(engine);
+
+    assert_persisted_streams(
+        &db_path,
+        &started.id,
+        "Plan: use sk-learn; Bearer auth; let password = \"example\"; key=[redacted]; repeat=[redacted]; tail sk-openai-",
+        "Answer: 42.",
+    );
+    server_handle.abort();
 }
 
 async fn anthropic_models(headers: HeaderMap) -> Json<Value> {
@@ -370,7 +507,14 @@ async fn anthropic_native_messages_tool_roundtrip_and_usage() {
             .contains("anthropic-payload-42")
     );
 
-    let _ = engine.shutdown(Duration::from_secs(3)).await;
+    assert!(engine.shutdown(Duration::from_secs(3)).await.settled());
+    drop(engine);
+    assert_persisted_streams(
+        &dir.path().join("anthropic.db"),
+        &started.id,
+        "Inspecting notes.txt first.",
+        "Checking notes... Secret is anthropic-payload-42.",
+    );
     server_handle.abort();
 }
 
@@ -613,7 +757,14 @@ async fn gemini_native_stream_generate_content_tool_roundtrip_and_usage() {
     assert!(fn_resp["response"].is_object());
     assert!(fn_resp["response"].to_string().contains("8080"));
 
-    let _ = engine.shutdown(Duration::from_secs(3)).await;
+    assert!(engine.shutdown(Duration::from_secs(3)).await.settled());
+    drop(engine);
+    assert_persisted_streams(
+        &dir.path().join("gemini.db"),
+        &started.id,
+        "Need to inspect config.json",
+        "Reading config... Port is 8080.",
+    );
     server_handle.abort();
 }
 

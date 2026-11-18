@@ -41,7 +41,9 @@
   2. `src/provider.rs`：OpenAI `Decoder`（`reasoning_content` / `reasoning`）、`AnthropicDecoder`（`thinking_delta`）、`GeminiDecoder`（`thought == true` 文本分片）在 `feed_with_reasoning` 中实时调用 `emit_reasoning(delta)`；正文 `emit` 与 `finish` 返回结构保持 100% 原有语义；
   3. `src/store.rs` & `src/engine.rs`：`Store` 新增 `pub(crate) fn reasoning_delta(&self, task_id: &str, safe_text: &str) -> Result<()>` 写入 `kind = "reasoning_delta"`、`data = {"text": safe_text}` 事件；`Engine` 为思考流配备独立的 `secrets::StreamRedactor`，实时脱敏写入事件表且**不追加进 `task.output`**。
 - **验收标准 (DoD)**：既有 `provider_usage`、`http_contract`、`multi_provider_protocol` 全部保持兼容通过，并新增流式 `reasoning_delta` 事件落盘断言测试。
-- **实现与验收进度**：三大协议已接入 `CompletionDecoder::feed_with_reasoning`。Engine 分别对正文和思考分片脱敏，Store 和 Repository 写入独立事件，`src/domain.rs` 已登记事件类型。解码回调和 CLI 输出分流测试通过。规格要求的落盘回读仍缺直接断言，需从 Store 读回事件并核对 `kind`、`data.text` 及对应任务的正文。
+- **实现与验收进度**：三大协议已接入 `CompletionDecoder::feed_with_reasoning`，Store 和 Repository 写入独立事件，`src/domain.rs` 已登记事件类型。现有 `StreamRedactor` 为直通兼容桩；本次在 Engine 思考事件入口复用 `secrets::scrub` 精确脱敏当前路由 Key，保留跨分片的 Key 前缀，完成时释放未匹配的尾部文本，不对普通代码作启发式替换。
+- **已通过的验收用例**：新增 `openai_reasoning_events_persist_scrub_known_key_and_keep_body_separate`，覆盖 `reasoning_content` / `reasoning`、跨分片 Key 脱敏与合法代码/未匹配尾部保留；复用 `anthropic_native_messages_tool_roundtrip_and_usage` 和 `gemini_native_stream_generate_content_tool_roundtrip_and_usage`。三者均在 Engine 关闭后重开 Store，直接核对持久化 `reasoning_delta` 的 `kind`、`data.text`，以及正文 `delta` 与 `task.output` 的精确内容。
+- **验收环境**。在 Windows/MSVC 工作树运行完整测试。上述三个协议用例均通过，且 `provider_usage`、`http_contract` 和 `multi_provider_protocol` 测试目标全部通过。
 
 ---
 
@@ -70,5 +72,5 @@
   1. `build.ps1 -Action fmt`、`clippy`、`test` 全量 100% 通过（0 失败、0 警告）；
   2. `README.md` 与 `PROJECT-MAP.md` 同步新增的斜杠命令（`/checkpoints`、`/routes`、`/todos`）、`coda init --provider` 与 `docs/` 导航说明；
   3. 更新 `BASELINE-CHANGELOG.md` 封板登记 Baseline 1。
-- **门禁实测（2026-11-18）**：从仓库根运行 `build.ps1` 的 `fmt`、`check`、`clippy`、`test`，退出码均为 0。工作区共 132 项通过，0 项失败。另有 1 项需付费调用的 live 测试按默认配置跳过。Clippy 通过 `-D warnings`；部分测试夹具中的 Git 打印了 LF/CRLF 转换提示。原先失败的 Worktree 集成用例与路径规范化单元测试均通过。
-- **基线状态**：README 和项目地图已同步。当前结果对应 `108459ba` 上的未提交工作树，待 S1-T2 的直接落盘断言补齐并重跑门禁后登记 Baseline 1。
+- **前次门禁实测（2026-11-18，S1-T2 本次补充前）**：从仓库根运行 `build.ps1` 的 `fmt`、`check`、`clippy`、`test`，退出码均为 0。工作区共 132 项通过，0 项失败。另有 1 项需付费调用的 live 测试按默认配置跳过。Clippy 通过 `-D warnings`；部分测试夹具中的 Git 打印了 LF/CRLF 转换提示。原先失败的 Worktree 集成用例与路径规范化单元测试均通过。
+- **Baseline 1 验收（2026-11-18）**。Windows/MSVC 实跑 `build.ps1 -Action fmt`、`check`、`clippy` 和 `test`，四项退出码均为 0。工作区 133 项通过、0 项失败、1 项付费在线测试按默认设置跳过。S1-T2、S1-T4 已完成。见[基线台账](../BASELINE-CHANGELOG.md)。
