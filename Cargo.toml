@@ -1,0 +1,42 @@
+[package]
+name = "coda"
+version = "0.2.0"
+edition = "2024"
+description = "Coda CLI — native multi-model AI coding workbench"
+license = "MIT"
+
+[workspace]
+members = ["crates/protocol"]
+resolver = "2"
+
+[dependencies]
+anyhow = "1"
+async-stream = "0.3"
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+futures-util = "0.3"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+uuid = { version = "1", features = ["v4"] }
+coda-protocol = { path = "crates/protocol" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Security_Cryptography", "Win32_Foundation", "Win32_Globalization", "Win32_System_Memory", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_System_JobObjects", "Win32_System_Pipes", "Win32_System_IO"] }
+
+[dev-dependencies]
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+strip = true
+lto = "thin"

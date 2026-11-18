@@ -1,10 +1,10 @@
-# NoHumanCode 开发指南 (AGENTS.md)
+# Coda CLI 开发指南 (AGENTS.md)
 
 ## 项目定位与导航
 
-NoHumanCode 是 Windows 本机优先的 CLI AI 编程工作台（源码位于 [NoManCode/rust-app](NoManCode/rust-app)，二进制兼容标识为 `peachsh`）。当前阶段**专注后端 Host 与 CLI 交互式编码体验，暂不开发图形界面**。
+**Coda CLI** 是 Windows 本机优先的 AI 编程工作台（Rust Workspace 直接位于仓库根目录 `./`，主库与 CLI 二进制为 `coda`，共享协议包为 `coda-protocol`）。当前阶段**专注后端 Host 与 CLI 交互式编码体验，暂不开发图形界面**。
 
-- **全局架构与模块导航**：修改代码前请查阅 [PROJECT-MAP.md](PROJECT-MAP.md)，了解两条核心执行主链（进程内 CLI 工作台链与本地 HTTP/SSE Host 链）、`src/` 全部 38 个模块职责边界以及 `tests/` 测试矩阵。
+- **全局架构与模块导航**：修改代码前请查阅 [PROJECT-MAP.md](PROJECT-MAP.md)，了解两条核心执行主链（进程内 CLI 工作台链与本地 HTTP/SSE Host 链）、[src/](src) 全部 38 个模块职责边界以及 [tests/](tests) 测试矩阵。
 - **长期产品理念**：参见 [PROJECT-BOOK.md](PROJECT-BOOK.md)。
 
 核心工程准则：
@@ -15,11 +15,14 @@ NoHumanCode 是 Windows 本机优先的 CLI AI 编程工作台（源码位于 [N
 
 ## 常用构建与验证命令
 
-在 `NoManCode/rust-app` 下执行：
+在仓库根目录下直接执行：
 
 ```powershell
 # 加载 MSVC 环境并检查编译
 powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action check
+
+# 代码格式检查
+powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action fmt
 
 # 运行 Clippy 静态检查
 powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action clippy

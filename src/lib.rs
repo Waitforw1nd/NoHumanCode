@@ -1,0 +1,38 @@
+#[cfg(all(test, windows))]
+extern crate self as coda;
+
+pub mod agent_runtime;
+pub mod approval;
+pub mod budget;
+pub mod checkpoint;
+mod command_execution;
+mod composition;
+pub mod credential_input;
+pub mod domain;
+pub mod engine;
+mod execution_authority;
+pub mod git_diff;
+pub(crate) mod git_worktree;
+pub mod host_configuration;
+mod host_services;
+pub mod mcp;
+pub mod network_authorization;
+pub mod plugin_management;
+mod process_lifetime;
+pub mod project_config;
+pub mod provider;
+pub mod provider_runtime;
+pub mod provider_transport;
+pub mod provider_usage;
+pub mod repository;
+pub mod runtime_management;
+pub mod secrets;
+pub mod server;
+pub mod store;
+mod tool_call_application;
+mod tool_results;
+pub mod tool_runtime;
+pub mod workspace;
+pub mod workspace_changes;
+pub mod workspace_identity;
+pub mod worktree_management;

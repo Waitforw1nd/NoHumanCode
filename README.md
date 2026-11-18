@@ -1,4 +1,4 @@
-# NoHumanCode
+# Coda CLI
 
 Windows 本机优先的旗舰级 AI 编程工作台：聚焦**多模型原生流式、可审阅、可回滚、可恢复、零仪式感**的 CLI 编码闭环。
 
@@ -7,15 +7,17 @@ Windows 本机优先的旗舰级 AI 编程工作台：聚焦**多模型原生流
 - [PROJECT-MAP.md](PROJECT-MAP.md)：**现行项目地图（全局导航入口）**——架构拓扑、两条核心执行主链、全部 38 个 Rust 源码模块职责全景与 13 个集成测试矩阵
 - [AGENTS.md](AGENTS.md)：核心工程准则与日常构建/验证命令
 - [PROJECT-BOOK.md](PROJECT-BOOK.md)：长期产品定位、设计理念与两阶段演进路线
-- [NoManCode/rust-app](NoManCode/rust-app)：核心 Rust 工程（二进制名保留兼容 `peachsh`，含共享协议 `crates/protocol`）
+- [src/](src) & [crates/protocol/](crates/protocol)：核心 Rust 工程（主包与二进制 `coda`，共享协议包 `coda-protocol`）
+- [tests/](tests)：端到端与核心子系统集成测试矩阵
 - `references/`：架构与同类产品参考资料
 
 ## 快速开始
 
 ### 1. 构建
 
+在仓库根目录下直接执行：
+
 ```powershell
-cd NoManCode/rust-app
 powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action build
 ```
 
@@ -23,33 +25,35 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action build
 
 原生支持三大主流协议的流式推理与工具调用，无需额外部署中转层：
 
-- **OpenAI Chat Completions**（及兼容接口）：`OPENAI_API_KEY`（可选 `OPENAI_BASE_URL`、`NHC_MODEL`）
+- **OpenAI Chat Completions**（及兼容接口）：`OPENAI_API_KEY`（可选 `OPENAI_BASE_URL`、`CODA_MODEL`）
 - **Anthropic Messages API**（原生支持 Extended Thinking + Tool Use）：`ANTHROPIC_API_KEY`
 - **Google Gemini `streamGenerateContent`**：`GEMINI_API_KEY`
 
+默认本机数据目录为 `%LOCALAPPDATA%\coda`（数据库文件 `coda.sqlite3`，可通过环境变量 `CODA_DATA_DIR` 或 `--data-dir` 覆盖）。
+
 ```powershell
 # 方式 A：一步式持久化初始化路由与加密凭据
-peachsh init --base-url https://api.openai.com/v1 --model gpt-4.1
+coda init --base-url https://api.openai.com/v1 --model gpt-4.1
 
 # 方式 B：零初始化（Zero-Init）环境变量直连开箱即用
 $env:OPENAI_API_KEY = "sk-..."          # 或设置 ANTHROPIC_API_KEY / GEMINI_API_KEY
 $env:OPENAI_BASE_URL = "https://api.openai.com/v1"
-$env:NHC_MODEL = "gpt-4.1"
+$env:CODA_MODEL = "gpt-4.1"
 ```
 
-### 3. 交互式工作台（`peachsh chat`）与单次执行（`peachsh ask`）
+### 3. 交互式工作台（`coda chat`）与单次执行（`coda ask`）
 
 ```powershell
 # 启动交互式流式 REPL（支持行级彩色 Diff 预览与单键 [y/n/a] 审批）
-peachsh chat
+coda chat
 
 # 无缝续接当前目录最近一次会话，或指定 session_id / run_id 恢复多轮上下文
-peachsh chat -c
-peachsh chat --resume <session_or_run_id>
+coda chat -c
+coda chat --resume <session_or_run_id>
 
 # 单次执行编码任务（同样支持 -y 自动审批、-c / --continue 跨调用续接与 @ 内联引用）
-peachsh ask -y "解释 @src/lib.rs:1-40 并梳理 @src/ 目录职责"
-peachsh ask -c "基于刚才的分析补充边界单元测试并运行验证"
+coda ask -y "解释 @src/lib.rs:1-38 并梳理 @src/ 目录职责"
+coda ask -c "基于刚才的分析补充边界单元测试并运行验证"
 ```
 
 #### 内联上下文引用与 REPL 斜杠命令
@@ -67,7 +71,7 @@ peachsh ask -c "基于刚才的分析补充边界单元测试并运行验证"
 ### 4. 启动本地 HTTP/SSE Host 服务（供脚本或远程客户端调用）
 
 ```powershell
-peachsh --port 3090 --data-dir .nhc-data --workspace .
+coda serve --port 3090 --data-dir .coda-data --workspace .
 ```
 
 ## 核心编码工具与 MCP 生态
@@ -77,6 +81,6 @@ peachsh --port 3090 --data-dir .nhc-data --workspace .
   - 精准读写与补丁编辑：`read_file`（带行号分页读取）、`edit_file`（支持单处精确替换、`edits` 批量替换与多 Hunk Unified `patch` 模式，自动适配 CRLF/LF 并生成行级 Diff）、`write_file`（原子写盘）
   - 仓库状态、任务规划与受控终端：`git_status`（结构化工作区变更洞察）、`todo_write` / `todo_read`（多步工程任务清单追踪）、`run_command`（Windows JobObject 受控 PowerShell 子进程树回收）
 - **标准 MCP（Model Context Protocol）stdio 生态**：
-  - 自动发现工作区 `.mcp.json` 或 `.nhc/mcp.json` 中配置的本地 MCP Server，通过标准 JSON-RPC 2.0 stdio 协议动态注册外部工具（`mcp__<server>__<tool>`），并统一纳入宿主机审批与安全审计闭环。
+  - 自动发现工作区 `.mcp.json` 或 `.coda/mcp.json` 中配置的本地 MCP Server，通过标准 JSON-RPC 2.0 stdio 协议动态注册外部工具（`mcp__<server>__<tool>`），并统一纳入宿主机审批与安全审计闭环。
 - **副作用可审阅、可回滚与长上下文韧性**：
   - 文件写入、外部命令与 MCP 调用均支持行级预览与细粒度审批；所有文件变更具备持久化前镜像备份（`/undo` 与 Checkpoint 恢复），自动加载项目 `AGENTS.md` / `CLAUDE.md` 规范并在长链路推理中保持上下文自动压缩与中断可恢复。
