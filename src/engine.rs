@@ -1483,7 +1483,17 @@ impl Engine {
             Err(error) => return Err(error),
         };
         messages.push(json!({"role":"user","content":command.message}));
-        self.key(&previous.route)?;
+        let effective_route = self
+            .store
+            .settings()?
+            .and_then(|settings| {
+                settings
+                    .routes
+                    .into_iter()
+                    .find(|route| route.id == previous.spec.route_id)
+            })
+            .unwrap_or_else(|| previous.route.clone());
+        self.key(&effective_route)?;
         let created = now();
         let legacy_id = id();
         let turn_id = TurnId(id());
@@ -1501,7 +1511,7 @@ impl Engine {
                 allow_commands: previous.spec.allow_commands,
                 max_rounds: previous.spec.max_rounds,
             },
-            route: previous.route.clone(),
+            route: effective_route,
             workspace: previous.workspace.clone(),
             status: LifecycleStatus::Queued.as_str().into(),
             output: String::new(),
@@ -1924,12 +1934,21 @@ impl Engine {
                 }
                 Ok(())
             };
-            let call = lease.execute_with_redactor(
+            let mut emit_reasoning = |delta: &str| {
+                if !delta.is_empty() {
+                    self.store.reasoning_delta(&task.id, delta)?;
+                }
+                Ok(())
+            };
+            let mut reasoning_redactor = secrets::StreamRedactor;
+            let call = lease.execute_with_reasoning_redactors(
                 &self.client,
                 permit,
                 &task.route,
                 &mut emit,
                 &mut output_redactor,
+                &mut emit_reasoning,
+                &mut reasoning_redactor,
             );
             let result = tokio::select! {
                 r = call => r,
@@ -2222,6 +2241,13 @@ impl Engine {
 
     pub fn checkpoint(&self, checkpoint_id: &str) -> Result<crate::checkpoint::Checkpoint> {
         self.composition.review_recovery.checkpoint(checkpoint_id)
+    }
+
+    pub fn checkpoints_for_tasks(
+        &self,
+        task_ids: &[String],
+    ) -> Result<Vec<crate::checkpoint::Checkpoint>> {
+        self.store.checkpoints_for_tasks(task_ids)
     }
 
     pub async fn create_checkpoint(

@@ -35,6 +35,46 @@ pub fn todos_for_run(run_id: &str) -> Vec<TodoItem> {
     guard.get(run_id).cloned().unwrap_or_default()
 }
 
+pub fn clear_todo_cache_for_run(run_id: &str) {
+    let mut guard = todo_store().lock().unwrap_or_else(|e| e.into_inner());
+    guard.remove(run_id);
+}
+
+pub fn todos_for_task(task: &Task) -> Vec<TodoItem> {
+    {
+        let guard = todo_store().lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(items) = guard.get(&task.run_id) {
+            return items.clone();
+        }
+    }
+    for msg in task.messages.iter().rev() {
+        if msg["role"] != "assistant" {
+            continue;
+        }
+        let Some(calls) = msg["tool_calls"].as_array() else {
+            continue;
+        };
+        for call in calls.iter().rev() {
+            if call["function"]["name"].as_str() != Some("todo_write") {
+                continue;
+            }
+            let parsed = match &call["function"]["arguments"] {
+                Value::String(raw) => serde_json::from_str::<Value>(raw).ok(),
+                other if other.is_object() => Some(other.clone()),
+                _ => None,
+            };
+            if let Some(args) = parsed
+                && let Ok(items) = parse_todo_items(&args)
+            {
+                let mut guard = todo_store().lock().unwrap_or_else(|e| e.into_inner());
+                guard.insert(task.run_id.clone(), items.clone());
+                return items;
+            }
+        }
+    }
+    Vec::new()
+}
+
 fn parse_todo_items(args: &Value) -> Result<Vec<TodoItem>> {
     let list = args
         .get("todos")
@@ -1766,7 +1806,7 @@ pub(crate) async fn execute_builtin(task: &Task, name: &str, args: &Value) -> Re
             Ok(todo_response(&task.run_id, &items))
         }
         "todo_read" => {
-            let items = todos_for_run(&task.run_id);
+            let items = todos_for_task(task);
             Ok(todo_response(&task.run_id, &items))
         }
         "write_file" => {

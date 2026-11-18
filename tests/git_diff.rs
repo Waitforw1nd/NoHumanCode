@@ -467,24 +467,76 @@ async fn git_status_and_session_todo_tools_work_without_approval_friction() {
     assert_eq!(read_back["todos"].as_array().unwrap().len(), 3);
 
     let cli_items = workspace::todos_for_run(&task.run_id);
+    let expected_items = vec![
+        TodoItem {
+            id: "1".into(),
+            content: "Inspect git_status".into(),
+            status: "completed".into(),
+        },
+        TodoItem {
+            id: "2".into(),
+            content: "Apply unified patch".into(),
+            status: "in_progress".into(),
+        },
+        TodoItem {
+            id: "3".into(),
+            content: "Verify tests".into(),
+            status: "pending".into(),
+        },
+    ];
+    assert_eq!(cli_items, expected_items);
+
+    // 4. Simulate cross-process restart: clear in-memory RUN_TODOS cache and recover from task.messages!
+    task.messages = vec![
+        json!({"role": "user", "content": "track tasks"}),
+        json!({
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [{
+                "id": "call-todo-old",
+                "type": "function",
+                "function": {
+                    "name": "todo_write",
+                    "arguments": json!({
+                        "todos": [{"id": "1", "content": "Old item", "status": "pending"}]
+                    }).to_string()
+                }
+            }]
+        }),
+        json!({"role": "tool", "tool_call_id": "call-todo-old", "content": "{}"}),
+        json!({
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [{
+                "id": "call-todo-latest",
+                "type": "function",
+                "function": {
+                    "name": "todo_write",
+                    "arguments": json!({
+                        "todos": [
+                            {"id": "1", "content": "Inspect git_status", "status": "completed"},
+                            {"id": "2", "content": "Apply unified patch", "status": "in_progress"},
+                            {"id": "3", "content": "Verify tests", "status": "pending"}
+                        ]
+                    }).to_string()
+                }
+            }]
+        }),
+        json!({"role": "tool", "tool_call_id": "call-todo-latest", "content": "{}"}),
+    ];
+    workspace::clear_todo_cache_for_run(&task.run_id);
+    assert!(workspace::todos_for_run(&task.run_id).is_empty());
+
+    let recovered = workspace::todos_for_task(&task);
+    assert_eq!(recovered, expected_items);
+    assert_eq!(workspace::todos_for_run(&task.run_id), expected_items);
+
+    workspace::clear_todo_cache_for_run(&task.run_id);
+    let read_after_clear = workspace::execute(&task, "todo_read", &json!({}))
+        .await
+        .unwrap();
     assert_eq!(
-        cli_items,
-        vec![
-            TodoItem {
-                id: "1".into(),
-                content: "Inspect git_status".into(),
-                status: "completed".into(),
-            },
-            TodoItem {
-                id: "2".into(),
-                content: "Apply unified patch".into(),
-                status: "in_progress".into(),
-            },
-            TodoItem {
-                id: "3".into(),
-                content: "Verify tests".into(),
-                status: "pending".into(),
-            },
-        ]
+        serde_json::from_value::<Vec<TodoItem>>(read_after_clear["todos"].clone()).unwrap(),
+        expected_items
     );
 }

@@ -42,6 +42,14 @@ pub(crate) trait CompletionCodec: Send + Sync {
 
 pub(crate) trait CompletionDecoder: Send {
     fn feed(&mut self, bytes: &[u8], emit: &mut Emit<'_>) -> Result<(), CodecError>;
+    fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut Emit<'_>,
+        _emit_reasoning: &mut Emit<'_>,
+    ) -> Result<(), CodecError> {
+        self.feed(bytes, emit)
+    }
     fn is_done(&self) -> bool;
     fn finish(self: Box<Self>, emit: &mut Emit<'_>) -> Result<CompletionOutput, CodecError>;
 }
@@ -301,12 +309,36 @@ impl CompletionLease {
     }
 
     pub(crate) async fn execute_with_redactor(
-        mut self,
+        self,
         client: &ProviderClient,
         permit: ProviderPermit,
         route: &Route,
         emit: &mut Emit<'_>,
-        _redactor: &mut crate::secrets::StreamRedactor,
+        redactor: &mut crate::secrets::StreamRedactor,
+    ) -> Result<CompletionOutput, TransportError> {
+        let mut noop_reasoning = crate::secrets::StreamRedactor;
+        self.execute_with_reasoning_redactors(
+            client,
+            permit,
+            route,
+            emit,
+            redactor,
+            &mut |_| Ok(()),
+            &mut noop_reasoning,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn execute_with_reasoning_redactors(
+        mut self,
+        client: &ProviderClient,
+        permit: ProviderPermit,
+        route: &Route,
+        emit: &mut (impl FnMut(&str) -> anyhow::Result<()> + Send + ?Sized),
+        redactor: &mut crate::secrets::StreamRedactor,
+        emit_reasoning: &mut (impl FnMut(&str) -> anyhow::Result<()> + Send + ?Sized),
+        reasoning_redactor: &mut crate::secrets::StreamRedactor,
     ) -> Result<CompletionOutput, TransportError> {
         use crate::provider_transport::ProviderProtocol;
         let protocol = permit.protocol();
@@ -342,15 +374,29 @@ impl CompletionLease {
         let mut emitted = false;
         let mut streamed_text = String::new();
         let mut emission_failed = false;
+        let mut reasoning_emission_failed = false;
 
-        let mut pass_emit = |text: &str| -> anyhow::Result<()> {
+        let mut safe_emit = |text: &str| -> anyhow::Result<()> {
             emitted = true;
             anyhow::ensure!(!emission_failed, "completion output unavailable");
-            if !text.is_empty() && emit(text).is_err() {
+            let safe = redactor.push(text);
+            if !safe.is_empty() && emit(&safe).is_err() {
                 emission_failed = true;
                 anyhow::bail!("completion output unavailable");
             }
-            streamed_text.push_str(text);
+            streamed_text.push_str(&safe);
+            Ok(())
+        };
+        let mut safe_reasoning_emit = |raw: &str| -> anyhow::Result<()> {
+            anyhow::ensure!(
+                !reasoning_emission_failed,
+                "completion reasoning unavailable"
+            );
+            let safe = reasoning_redactor.push(raw);
+            if !safe.is_empty() && emit_reasoning(&safe).is_err() {
+                reasoning_emission_failed = true;
+                anyhow::bail!("completion reasoning unavailable");
+            }
             Ok(())
         };
 
@@ -362,21 +408,26 @@ impl CompletionLease {
             size += chunk.len();
             if !decoder.is_done() {
                 decoder
-                    .feed(&chunk, &mut pass_emit)
+                    .feed_with_reasoning(&chunk, &mut safe_emit, &mut safe_reasoning_emit)
                     .map_err(|_| TransportError::Unknown)?;
             }
         }
         let mut output = decoder
-            .finish(&mut pass_emit)
+            .finish(&mut safe_emit)
             .map_err(|_| TransportError::Unknown)?;
-        if emission_failed {
+        if emission_failed || reasoning_emission_failed {
             return Err(TransportError::Unknown);
         }
+        let reasoning_tail = std::mem::take(reasoning_redactor).finish();
+        if !reasoning_tail.is_empty() {
+            emit_reasoning(&reasoning_tail).map_err(|_| TransportError::Unknown)?;
+        }
         if !emitted && let Some(content) = output.0.get("content").and_then(Value::as_str) {
-            if !content.is_empty() {
-                emit(content).map_err(|_| TransportError::Unknown)?;
+            let safe = redactor.push(content);
+            if !safe.is_empty() {
+                emit(&safe).map_err(|_| TransportError::Unknown)?;
             }
-            streamed_text.push_str(content);
+            streamed_text.push_str(&safe);
         }
         output
             .0
@@ -404,6 +455,26 @@ mod tests {
         }
     }
 
+    struct LegacyOnlyDecoder {
+        buf: String,
+    }
+
+    impl CompletionDecoder for LegacyOnlyDecoder {
+        fn feed(&mut self, bytes: &[u8], emit: &mut Emit<'_>) -> Result<(), CodecError> {
+            let text = std::str::from_utf8(bytes).map_err(|_| CodecError::Failed)?;
+            self.buf.push_str(text);
+            emit(text).map_err(|_| CodecError::Failed)
+        }
+
+        fn is_done(&self) -> bool {
+            false
+        }
+
+        fn finish(self: Box<Self>, _emit: &mut Emit<'_>) -> Result<CompletionOutput, CodecError> {
+            Ok((json!({"role": "assistant", "content": self.buf}), json!({})))
+        }
+    }
+
     #[test]
     fn custom_request_fields_are_not_blocked_by_prepare() {
         let runtime = ProviderRuntime::with_codec_for_test(Arc::new(CustomTempCodec)).unwrap();
@@ -418,5 +489,30 @@ mod tests {
             .unwrap();
         assert_eq!(prepared.body["temperature"], json!(0.2));
         assert_eq!(prepared.body["reasoning_effort"], json!("high"));
+    }
+
+    #[test]
+    fn default_feed_with_reasoning_delegates_to_feed() {
+        let mut decoder: Box<dyn CompletionDecoder> =
+            Box::new(LegacyOnlyDecoder { buf: String::new() });
+        let mut out = String::new();
+        let mut reasoning = String::new();
+        decoder
+            .feed_with_reasoning(
+                b"hello",
+                &mut |s| {
+                    out.push_str(s);
+                    Ok(())
+                },
+                &mut |r| {
+                    reasoning.push_str(r);
+                    Ok(())
+                },
+            )
+            .unwrap();
+        let (msg, _) = decoder.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(out, "hello");
+        assert!(reasoning.is_empty());
+        assert_eq!(msg["content"], "hello");
     }
 }

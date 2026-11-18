@@ -756,6 +756,7 @@ pub fn validate_event_kind(kind: &str) -> Result<()> {
     const LEGACY: &[&str] = &[
         "status",
         "delta",
+        "reasoning_delta",
         "error",
         "persistence_error",
         "tool_start",

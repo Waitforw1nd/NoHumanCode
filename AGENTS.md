@@ -5,6 +5,7 @@
 **Coda CLI** 是 Windows 本机优先的 AI 编程工作台（Rust Workspace 直接位于仓库根目录 `./`，主库与 CLI 二进制为 `coda`，共享协议包为 `coda-protocol`）。当前阶段**专注后端 Host 与 CLI 交互式编码体验，暂不开发图形界面**。
 
 - **全局架构与模块导航**：修改代码前请查阅 [PROJECT-MAP.md](PROJECT-MAP.md)，了解两条核心执行主链（进程内 CLI 工作台链与本地 HTTP/SSE Host 链）、[src/](src) 全部 38 个模块职责边界以及 [tests/](tests) 测试矩阵。
+- **研发节奏与持久化基线看板**：跨窗口续接开发或分工协作前，请先查阅 [docs/PM-BOARD.md](docs/PM-BOARD.md)（总控看板）、[docs/TEAM-CHARTER.md](docs/TEAM-CHARTER.md)（团队领地归属）与 [docs/ARCHITECTURE-DECISIONS.md](docs/ARCHITECTURE-DECISIONS.md)（架构决策录）。
 - **长期产品理念**：参见 [PROJECT-BOOK.md](PROJECT-BOOK.md)。
 
 核心工程准则：

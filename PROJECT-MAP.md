@@ -32,6 +32,7 @@
 ├── PROJECT-MAP.md                  # 现行项目地图：架构主链、源码模块全景与测试矩阵（本文档）
 ├── PROJECT-BOOK.md                 # 长期产品理念、领域边界与架构演进背景
 ├── CONTRIBUTING.md                 # 协作与提交流程简明指南
+├── docs/                           # 公司制研发总控看板（PM-BOARD）、团队领地、ADR 与稳固基线台账
 ├── crates/
 │   └── protocol/                   # 前后端/客户端零 I/O 共享协议类型（coda-protocol）
 ├── src/                            # Host 核心、CLI 工作台、多模型传输、工具与存储（38 个模块）
@@ -83,6 +84,8 @@ flowchart TD
 ### 2.1 链 A：零仪式感进程内 CLI 工作台链（主力日常入口）
 
 面向开发者终端日常高频编码，无需预先启动后台守护进程：
+
+首次配置可用 `coda init --provider openai|anthropic|gemini` 选择厂商预设。在 `coda chat` 中，`/routes` 列出路由，`/route <id>` 切至其他路由时开启新上下文，`/model <name>` 在当前路由内保留会话。`/todos` 显示任务清单，`/checkpoints` 列出当前会话的检查点，尚未选择会话时列出项目内各会话的检查点。
 
 1. **命令入口与会话绑定**：用户运行 `coda init`、`coda chat` 或 `coda ask`（支持零初始化环境变量 `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` + `CODA_MODEL` 开箱即用，或通过 `-c` / `--continue` / `--resume <id>` 恢复多轮上下文）。
 2. **上下文展开与环境感知**：[src/cli.rs](src/cli.rs) 解析提问中的 `@file`、`@file:start-end`、`@dir/` 内联引用，拼装行号上下文；自动注入系统环境、Git 仓库状态、项目级 `AGENTS.md` / `CLAUDE.md` 规范，并从 `.mcp.json` / `.coda/mcp.json` 发现注册本地 Stdio MCP 工具（[src/mcp.rs](src/mcp.rs)）。

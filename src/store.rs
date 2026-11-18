@@ -1050,6 +1050,16 @@ impl Store {
         Ok(())
     }
 
+    pub(crate) fn reasoning_delta(&self, task_id: &str, safe_text: &str) -> Result<()> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let event =
+            task_event_envelope(&tx, task_id, "reasoning_delta", json!({"text":safe_text}))?;
+        repository::Repository::append_reasoning_delta(&tx, &event)?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn insert_project(&self, project: &Project) -> Result<()> {
         secrets::validate_persisted_id("project_id", &project.id.0)?;
         secrets::safe_metadata_text("project_name", &project.name)?;
@@ -1483,12 +1493,26 @@ impl Store {
         if authorize {
             crate::project_config::validate_task_tx(&tx, &previous_legacy, true, true)?;
         }
+        let configured_route: Option<Route> = tx
+            .query_row("SELECT value FROM config WHERE id='settings'", [], |row| {
+                row.get::<_, String>(0)
+            })
+            .optional()?
+            .map(|raw| serde_json::from_str::<Settings>(&raw))
+            .transpose()?
+            .and_then(|settings| {
+                settings
+                    .routes
+                    .into_iter()
+                    .find(|route| route.id == previous_legacy.spec.route_id)
+            });
         let prefix = chat_continuation_prefix_tx(&tx, &session.id, &previous_legacy)?;
         if !candidate_continues_snapshot(
             &previous_legacy,
             legacy_task,
             &command_message(legacy_task),
             &prefix,
+            configured_route.as_ref(),
         ) {
             return Err(ChatTurnError::PredecessorChanged.into());
         }
@@ -2438,6 +2462,41 @@ impl Store {
         Ok(affected)
     }
 
+    pub fn checkpoints_for_tasks(
+        &self,
+        task_ids: &[String],
+    ) -> Result<Vec<crate::checkpoint::Checkpoint>> {
+        if task_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+        let mut rows_with_order: Vec<(i64, String)> = Vec::new();
+        for chunk in task_ids.chunks(500) {
+            let placeholders = (1..=chunk.len())
+                .map(|i| format!("?{i}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            let sql = format!(
+                "SELECT rowid, id FROM checkpoints WHERE task_id IN ({placeholders}) ORDER BY rowid DESC"
+            );
+            let mut stmt = tx.prepare(&sql)?;
+            let mapped = stmt.query_map(rusqlite::params_from_iter(chunk.iter()), |r| {
+                Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+            })?;
+            for row in mapped {
+                rows_with_order.push(row?);
+            }
+        }
+        rows_with_order.sort_by_key(|a| std::cmp::Reverse(a.0));
+        rows_with_order.dedup_by(|a, b| a.1 == b.1);
+        let mut checkpoints = Vec::with_capacity(rows_with_order.len());
+        for (_, id) in rows_with_order {
+            checkpoints.push(read_checkpoint(&tx, &id)?.0);
+        }
+        Ok(checkpoints)
+    }
+
     pub(crate) fn checkpoint_for_task(
         &self,
         task_id: &str,
@@ -2824,9 +2883,15 @@ fn candidate_continues_snapshot(
     candidate: &Task,
     message: &str,
     expected_prefix: &[Value],
+    configured_route: Option<&Route>,
 ) -> bool {
+    let candidate_route = serde_json::to_value(&candidate.route).ok();
+    let route_matches_previous = candidate_route == serde_json::to_value(&previous.route).ok();
+    let route_matches_configured = configured_route
+        .and_then(|route| serde_json::to_value(route).ok())
+        .is_some_and(|expected| candidate_route.as_ref() == Some(&expected));
     if candidate.spec.prompt != message
-        || serde_json::to_value(&candidate.route).ok() != serde_json::to_value(&previous.route).ok()
+        || (!route_matches_previous && !route_matches_configured)
         || candidate.workspace != previous.workspace
         || candidate.spec.name != previous.spec.name
         || candidate.spec.role != previous.spec.role

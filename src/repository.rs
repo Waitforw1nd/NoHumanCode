@@ -1076,6 +1076,18 @@ impl<'a> Repository<'a> {
         insert_event_data_tx(tx, event, &event.data)
     }
 
+    #[allow(dead_code)]
+    pub(crate) fn append_reasoning_delta(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
+        anyhow::ensure!(
+            event.kind == "reasoning_delta"
+                && event.data.as_object().is_some_and(|data| {
+                    data.len() == 1 && data.get("text").is_some_and(Value::is_string)
+                }),
+            "可信 reasoning 入口只接受文本 reasoning_delta"
+        );
+        insert_event_data_tx(tx, event, &event.data)
+    }
+
     pub fn events_after(&self, session_id: &SessionId, after: i64) -> Result<Vec<Event>> {
         let mut stmt = self.conn.prepare(
             "SELECT seq,schema_version,cursor,session_id,turn_id,task_id,kind,data,at FROM events WHERE session_id=?1 AND seq>?2 ORDER BY seq LIMIT 500",

@@ -164,6 +164,123 @@ async fn llm_handler(State(state): State<ScriptedLlm>, Json(body): Json<Value>) 
             });
             format!("data: {c}\n\ndata: [DONE]\n\n")
         }
+        ("todo_and_model_switch", 0) => {
+            let model = body["model"].as_str().unwrap_or_default();
+            let args = json!({
+                "todos": [
+                    { "id": "t1", "content": format!("plan-with-{model}"), "status": "completed" },
+                    { "id": "t2", "content": "verify-switch", "status": "in_progress" }
+                ]
+            })
+            .to_string();
+            let c = json!({
+                "choices": [{
+                    "delta": {
+                        "tool_calls": [{
+                            "index": 0,
+                            "id": "call-todo-1",
+                            "type": "function",
+                            "function": { "name": "todo_write", "arguments": args }
+                        }]
+                    },
+                    "finish_reason": "tool_calls"
+                }],
+                "usage": { "prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20 }
+            });
+            format!("data: {c}\n\ndata: [DONE]\n\n")
+        }
+        ("todo_and_model_switch", 1) => {
+            let args = json!({
+                "path": "step1.txt",
+                "content": "turn1-checkpoint-file\n"
+            })
+            .to_string();
+            let c = json!({
+                "choices": [{
+                    "delta": {
+                        "tool_calls": [{
+                            "index": 0,
+                            "id": "call-write-1",
+                            "type": "function",
+                            "function": { "name": "write_file", "arguments": args }
+                        }]
+                    },
+                    "finish_reason": "tool_calls"
+                }],
+                "usage": { "prompt_tokens": 12, "completion_tokens": 10, "total_tokens": 22 }
+            });
+            format!("data: {c}\n\ndata: [DONE]\n\n")
+        }
+        ("todo_and_model_switch", 2) => {
+            let model = body["model"].as_str().unwrap_or_default();
+            let c = json!({
+                "choices": [{
+                    "delta": { "content": format!("turn1-done:{model}") },
+                    "finish_reason": "stop"
+                }],
+                "usage": { "prompt_tokens": 14, "completion_tokens": 8, "total_tokens": 22 }
+            });
+            format!("data: {c}\n\ndata: [DONE]\n\n")
+        }
+        ("todo_and_model_switch", 3) => {
+            let c = json!({
+                "choices": [{
+                    "delta": {
+                        "tool_calls": [{
+                            "index": 0,
+                            "id": "call-todo-read-2",
+                            "type": "function",
+                            "function": { "name": "todo_read", "arguments": "{}" }
+                        }]
+                    },
+                    "finish_reason": "tool_calls"
+                }],
+                "usage": { "prompt_tokens": 16, "completion_tokens": 8, "total_tokens": 24 }
+            });
+            format!("data: {c}\n\ndata: [DONE]\n\n")
+        }
+        ("todo_and_model_switch", 4) => {
+            let args = json!({
+                "path": "step2.txt",
+                "content": "turn2-checkpoint-file\n"
+            })
+            .to_string();
+            let c = json!({
+                "choices": [{
+                    "delta": {
+                        "tool_calls": [{
+                            "index": 0,
+                            "id": "call-write-2",
+                            "type": "function",
+                            "function": { "name": "write_file", "arguments": args }
+                        }]
+                    },
+                    "finish_reason": "tool_calls"
+                }],
+                "usage": { "prompt_tokens": 18, "completion_tokens": 10, "total_tokens": 28 }
+            });
+            format!("data: {c}\n\ndata: [DONE]\n\n")
+        }
+        ("todo_and_model_switch", _) => {
+            let model = body["model"].as_str().unwrap_or_default();
+            let max_tokens = body["max_tokens"].as_u64().unwrap_or_default();
+            let todo_reply = body["messages"]
+                .as_array()
+                .and_then(|msgs| {
+                    msgs.iter()
+                        .find(|m| m["role"] == "tool" && m["tool_call_id"] == "call-todo-read-2")
+                })
+                .and_then(|m| m["content"].as_str())
+                .unwrap_or("missing-todo");
+            let c = json!({
+                "choices": [{
+                    "delta": { "content": format!("turn2-model={model}|max={max_tokens}|todos={todo_reply}") },
+                    "finish_reason": "stop"
+                }],
+                "usage": { "prompt_tokens": 20, "completion_tokens": 12, "total_tokens": 32 }
+            });
+            format!("data: {c}\n\ndata: [DONE]\n\n")
+        }
         _ => {
             let c = json!({
                 "choices": [{
@@ -619,6 +736,7 @@ async fn fast_worktree_creation_succeeds_even_with_untracked_files_in_source_rep
         .unwrap();
     assert_eq!(receipt.state, WorktreeState::Succeeded);
     assert!(receipt.project_id.is_some());
+    assert!(!receipt.parent_path.starts_with(r"\\?\"));
     assert!(
         std::path::Path::new(&receipt.target_path)
             .join("README.md")
@@ -763,5 +881,159 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
 
     let final_approval = engine.store.approval(&approval_id).unwrap();
     assert_eq!(final_approval.execution_state, ExecutionState::Finished);
+    server.abort();
+}
+
+#[tokio::test]
+async fn chat_turn_syncs_updated_route_model_recovers_todos_and_lists_checkpoints_newest_first() {
+    let (base_url, server) = start_mock_llm("todo_and_model_switch").await;
+    let temp = tempfile::tempdir().unwrap();
+    let ws = temp.path().join("session_ws");
+    let (engine, project_id) =
+        setup_engine_with_project(&temp.path().join("data"), &ws, &base_url).await;
+
+    assert!(engine.checkpoints_for_tasks(&[]).unwrap().is_empty());
+
+    // Turn 1 runs on initial model "test-coder", writes todos + step1.txt
+    let run = engine
+        .start_in_project(StartInProject {
+            project_id,
+            expected_config_revision: 2,
+            request: RunRequest {
+                title: "Session todo, model switch, and checkpoints".into(),
+                kind: SessionKind::Chat,
+                tasks: vec![TaskSpec {
+                    name: "coder".into(),
+                    role: "engineer".into(),
+                    route_id: "default".into(),
+                    prompt: "Start turn 1".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["*".into()],
+                    tools: true,
+                    allow_commands: false,
+                    max_rounds: 6,
+                }],
+            },
+            idempotency_key: "run-s1-t1".into(),
+        })
+        .await
+        .unwrap();
+    let task1_id = run.tasks[0].id.clone();
+
+    let app1_id = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let list = engine.store.approvals_for_task(&task1_id).unwrap();
+            if let Some(rec) = list.first() {
+                return rec.id.clone();
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    engine
+        .decide_approval_with_network_ack(&app1_id, true, Some("tester"), false)
+        .unwrap();
+
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let t = engine.store.task(&task1_id).unwrap();
+            if t.status == "completed" {
+                assert!(t.output.contains("turn1-done:test-coder"));
+                break;
+            }
+            assert_ne!(t.status, "failed", "turn 1 failed: {:?}", t.error);
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+
+    let cp1 = engine
+        .create_checkpoint(&task1_id, "cp-turn-1")
+        .await
+        .unwrap();
+
+    // Update route "default" model in settings (simulating `/model upgraded-coder-v2`)
+    let mut settings = engine.store.settings().unwrap().unwrap();
+    settings.routes[0].model = "upgraded-coder-v2".into();
+    settings.routes[0].max_tokens = 8192;
+    engine.store.save_settings(&settings).unwrap();
+
+    // Clear in-memory RUN_TODOS cache to simulate cross-process continuation (`coda ask -c`)
+    coda::workspace::clear_todo_cache_for_run(&run.id);
+
+    // Turn 2 continues the same session and should use "upgraded-coder-v2" + recover todos from messages!
+    let ctx = engine.store.run_context(&run.id).unwrap();
+    let turn2 = engine
+        .send_chat_turn(SendChatTurn {
+            session_id: ctx.session.id,
+            agent_id: ctx.tasks[0].agent_id.clone(),
+            expected_last_turn_id: ctx.latest_turn.id,
+            message: "Continue on upgraded model".into(),
+            idempotency_key: "turn-2-switch".into(),
+        })
+        .await
+        .unwrap();
+    let task2_id = turn2.task.legacy_task_id.clone();
+
+    let app2_id = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let list = engine.store.approvals_for_task(&task2_id).unwrap();
+            if let Some(rec) = list.first() {
+                return rec.id.clone();
+            }
+            let t = engine.store.task(&task2_id).unwrap();
+            assert_ne!(t.status, "failed", "turn 2 failed early: {:?}", t.error);
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    engine
+        .decide_approval_with_network_ack(&app2_id, true, Some("tester"), false)
+        .unwrap();
+
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let t = engine.store.task(&task2_id).unwrap();
+            if t.status == "completed" {
+                assert_eq!(t.route.model, "upgraded-coder-v2");
+                assert_eq!(t.route.max_tokens, 8192);
+                assert!(
+                    t.output
+                        .contains("turn2-model=upgraded-coder-v2|max=8192|todos="),
+                    "unexpected turn2 output: {}",
+                    t.output
+                );
+                assert!(
+                    t.output.contains("plan-with-test-coder"),
+                    "todo_read did not recover turn 1 todos after cache clear: {}",
+                    t.output
+                );
+                break;
+            }
+            assert_ne!(t.status, "failed", "turn 2 failed: {:?}", t.error);
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+
+    let cp2 = engine
+        .create_checkpoint(&task2_id, "cp-turn-2")
+        .await
+        .unwrap();
+
+    // Verify checkpoints_for_tasks returns newest-first (cp2, then cp1)
+    let listed = engine
+        .checkpoints_for_tasks(&[task1_id.clone(), task2_id.clone()])
+        .unwrap();
+    assert_eq!(listed.len(), 2);
+    assert_eq!(listed[0].checkpoint_id, cp2.checkpoint.checkpoint_id);
+    assert_eq!(listed[0].task_id, task2_id);
+    assert_eq!(listed[1].checkpoint_id, cp1.checkpoint.checkpoint_id);
+    assert_eq!(listed[1].task_id, task1_id);
+
     server.abort();
 }

@@ -5,6 +5,7 @@ Windows 本机优先的旗舰级 AI 编程工作台：聚焦**多模型原生流
 ## 目录结构与全局导航
 
 - [PROJECT-MAP.md](PROJECT-MAP.md)：**现行项目地图（全局导航入口）**——架构拓扑、两条核心执行主链、全部 38 个 Rust 源码模块职责全景与 13 个集成测试矩阵
+- [docs/PM-BOARD.md](docs/PM-BOARD.md)：**研发总控看板与基线台账**——迭代节奏、团队模块领地（[TEAM-CHARTER.md](docs/TEAM-CHARTER.md)）、架构决策录（[ARCHITECTURE-DECISIONS.md](docs/ARCHITECTURE-DECISIONS.md)）与已验证基线记录
 - [AGENTS.md](AGENTS.md)：核心工程准则与日常构建/验证命令
 - [PROJECT-BOOK.md](PROJECT-BOOK.md)：长期产品定位、设计理念与两阶段演进路线
 - [src/](src) & [crates/protocol/](crates/protocol)：核心 Rust 工程（主包与二进制 `coda`，共享协议包 `coda-protocol`）
@@ -32,12 +33,14 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1 -Action build
 默认本机数据目录为 `%LOCALAPPDATA%\coda`（数据库文件 `coda.sqlite3`，可通过环境变量 `CODA_DATA_DIR` 或 `--data-dir` 覆盖）。
 
 ```powershell
-# 方式 A：一步式持久化初始化路由与加密凭据
-coda init --base-url https://api.openai.com/v1 --model gpt-4.1
+# 方式 A：一步式持久化初始化路由与加密凭据（支持 --provider openai|anthropic|gemini 快捷预设）
+coda init --provider openai --model gpt-4.1
+coda init --provider anthropic --route anthropic
+coda init --provider gemini --route gemini
 
 # 方式 B：零初始化（Zero-Init）环境变量直连开箱即用
 $env:OPENAI_API_KEY = "sk-..."          # 或设置 ANTHROPIC_API_KEY / GEMINI_API_KEY
-$env:OPENAI_BASE_URL = "https://api.openai.com/v1"
+$env:OPENAI_BASE_URL = "https://api.openai.com/v1" # 可选（另有 ANTHROPIC_BASE_URL / GEMINI_BASE_URL）
 $env:CODA_MODEL = "gpt-4.1"
 ```
 
@@ -59,14 +62,14 @@ coda ask -c "基于刚才的分析补充边界单元测试并运行验证"
 #### 内联上下文引用与 REPL 斜杠命令
 
 - **内联工作区引用**：在提问中直接写入 `@path/to/file`、`@path/to/file:start-end`（精确行范围）或 `@dir/`（目录清单），自动安全解析并注入带行号的 `<context_files>` 上下文。
-- **交互式斜杠命令**：
-  - `/sessions`：列出当前项目近期会话（ID、状态、轮数、标题）
-  - `/resume <id>`：即时切换并续接指定历史会话
-  - `/diff`：查看当前工作区 Git 状态、变更统计与本轮已追踪文件修改
-  - `/undo`：一键回滚最近一轮任务产生的文件修改
-  - `/checkpoint` & `/restore <checkpoint_id>`：为当前任务创建持久化快照检查点并支持随时精确恢复
+- **交互式斜杠命令**（支持行尾 `\` 多行续行输入与思维链 `💭` 实时流式展示）：
+  - `/sessions` & `/resume <id>`：列出当前项目近期会话并即时切换续接
+  - `/diff` & `/undo`：查看工作区 Git 状态/变更统计与一键回滚最近一轮文件修改
+  - `/checkpoint`、`/checkpoints` & `/restore <checkpoint_id>`：创建、列举并随时精确恢复持久化快照检查点
+  - `/todos`：查看当前会话持久化的多步任务进度清单（跨 `coda ask -c` 与重启自动保持）
+  - `/routes` & `/route <id>`：查看已配置模型路由列表并一键切换活跃路由
   - `/compact`：按原子工具调用组压缩长对话历史消息并展示节省体积
-  - `/status` / `/model <name>` / `/auto` / `/new`：查看会话与 Token 用量统计（每轮结束自动展示 `[tokens: prompt=X, completion=Y, total=Z]`）、切换模型、切换自动审批或开启新会话
+  - `/status` / `/model <name>` / `/auto` / `/new`：查看会话与 Token 用量统计、**保留当前对话上下文无缝切换模型**、切换自动审批或开启新会话
 
 ### 4. 启动本地 HTTP/SSE Host 服务（供脚本或远程客户端调用）
 

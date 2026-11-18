@@ -198,15 +198,29 @@ impl WorktreeReceipt {
             self.branch == format!("codex/workspace/{}", self.operation_id),
             WorktreeError::Corrupt
         );
-        ensure!(
-            windows_path_key(&self.target_path)
-                == windows_path_key(&format!(
-                    "{}/coda-{}",
-                    self.parent_path.trim_end_matches(['/', '\\']),
-                    self.operation_id
-                )),
-            WorktreeError::Corrupt
-        );
+        let target_key = windows_path_key(&self.target_path);
+        let direct_expected = windows_path_key(&format!(
+            "{}/coda-{}",
+            self.parent_path.trim_end_matches(['/', '\\']),
+            self.operation_id
+        ));
+        let path_matches = if target_key == direct_expected {
+            true
+        } else if let Ok(canonical_parent) =
+            std::fs::canonicalize(std::path::Path::new(&self.parent_path))
+        {
+            let canonical_expected = windows_path_key(&format!(
+                "{}/coda-{}",
+                canonical_parent
+                    .to_string_lossy()
+                    .trim_end_matches(['/', '\\']),
+                self.operation_id
+            ));
+            target_key == canonical_expected
+        } else {
+            false
+        };
+        ensure!(path_matches, WorktreeError::Corrupt);
         ensure!(
             !self.name.trim().is_empty()
                 && self.name.len() <= 500
@@ -343,6 +357,17 @@ pub(crate) fn recover_claimed_tx(db: &Connection) -> Result<usize> {
         )?;
     }
     Ok(rows.len())
+}
+
+pub(crate) fn display_canonical_path(path: &std::path::Path) -> String {
+    let raw = path.to_string_lossy();
+    if let Some(unc) = raw.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{unc}")
+    } else if let Some(stripped) = raw.strip_prefix(r"\\?\") {
+        stripped.to_owned()
+    } else {
+        raw.into_owned()
+    }
 }
 
 pub(crate) fn windows_path_key(path: &str) -> String {
@@ -577,7 +602,7 @@ impl crate::store::Store {
             operation_id: plan.operation_id.clone(),
             source_project_id: request.source_project_id.clone(),
             name: request.name.clone(),
-            parent_path: request.parent_path.clone(),
+            parent_path: display_canonical_path(plan.target_parent.canonical_path()),
             target_path: target,
             branch: plan
                 .branch_ref
@@ -823,5 +848,62 @@ mod tests {
         let norm = normalize_request(req).unwrap();
         assert_eq!(norm.expected_head.len(), 64);
         assert!(norm.expected_head.bytes().all(|b| !b.is_ascii_uppercase()));
+    }
+
+    #[test]
+    fn validates_receipt_with_noncanonical_or_short_parent_path_and_strips_verbatim_prefix() {
+        assert_eq!(
+            display_canonical_path(std::path::Path::new(
+                r"\\?\C:\Users\Administrator\worktrees"
+            )),
+            r"C:\Users\Administrator\worktrees"
+        );
+        assert_eq!(
+            display_canonical_path(std::path::Path::new(r"\\?\UNC\srv\share\worktrees")),
+            r"\\srv\share\worktrees"
+        );
+
+        let temp = tempfile::tempdir().unwrap();
+        let parent_dir = temp.path().join("wt_parent");
+        std::fs::create_dir_all(&parent_dir).unwrap();
+        let canonical_parent = std::fs::canonicalize(&parent_dir).unwrap();
+        let op_id = uuid::Uuid::new_v4().to_string();
+        let target_path = canonical_parent
+            .join(format!("coda-{op_id}"))
+            .to_string_lossy()
+            .into_owned();
+
+        // Simulate a historical or raw Windows %TEMP% 8.3 short-path parent_path paired with canonical target_path
+        let noncanonical_parent = format!("{}/../wt_parent", parent_dir.to_string_lossy());
+        let mut receipt = WorktreeReceipt {
+            schema_version: 1,
+            operation_id: op_id.clone(),
+            source_project_id: ProjectId("src-proj".into()),
+            name: "wt-check".into(),
+            parent_path: noncanonical_parent,
+            target_path,
+            branch: format!("codex/workspace/{op_id}"),
+            expected_config_revision: 1,
+            expected_head: "a".repeat(40),
+            request_digest: "b".repeat(64),
+            revision: 1,
+            state: WorktreeState::Claimed,
+            project_id: None,
+            cause: None,
+            created_at: 100,
+            updated_at: 100,
+        };
+        assert!(receipt.validate().is_ok());
+
+        // Normalized display_canonical_path also validates directly without disk fallback
+        receipt.parent_path = display_canonical_path(&canonical_parent);
+        assert!(!receipt.parent_path.starts_with(r"\\?\"));
+        assert!(receipt.validate().is_ok());
+
+        // Mismatched directory must still be rejected as Corrupt
+        let other_dir = temp.path().join("unrelated");
+        std::fs::create_dir_all(&other_dir).unwrap();
+        receipt.parent_path = other_dir.to_string_lossy().into_owned();
+        assert!(receipt.validate().is_err());
     }
 }

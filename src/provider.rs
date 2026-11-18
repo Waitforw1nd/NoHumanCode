@@ -117,6 +117,15 @@ pub struct Decoder {
 
 impl Decoder {
     pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        self.feed_with_reasoning(bytes, emit, &mut |_| Ok(()))
+    }
+
+    pub fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut impl FnMut(&str) -> Result<()>,
+        emit_reasoning: &mut impl FnMut(&str) -> Result<()>,
+    ) -> Result<()> {
         ensure!(
             bytes.len() <= RESPONSE_LIMIT.saturating_sub(self.size),
             "模型输出超过安全上限"
@@ -127,7 +136,7 @@ impl Decoder {
             let line: Vec<u8> = self.buffer.drain(..=pos).collect();
             let line = std::str::from_utf8(&line)?.trim_end_matches(['\r', '\n']);
             if line.is_empty() {
-                self.flush(emit)?;
+                self.flush(emit, emit_reasoning)?;
             } else if let Some(data) = line.strip_prefix("data:") {
                 if !self.event.is_empty() {
                     self.event.push('\n');
@@ -138,7 +147,11 @@ impl Decoder {
         Ok(())
     }
 
-    fn flush(&mut self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+    fn flush(
+        &mut self,
+        emit: &mut impl FnMut(&str) -> Result<()>,
+        emit_reasoning: &mut impl FnMut(&str) -> Result<()>,
+    ) -> Result<()> {
         let data = std::mem::take(&mut self.event);
         if data.is_empty() {
             return Ok(());
@@ -163,6 +176,7 @@ impl Decoder {
                 && !reasoning.is_empty()
             {
                 self.reasoning.push_str(reasoning);
+                emit_reasoning(reasoning)?;
             }
             if let Some(text) = delta["content"].as_str()
                 && !text.is_empty()
@@ -682,6 +696,15 @@ pub struct AnthropicDecoder {
 
 impl AnthropicDecoder {
     pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        self.feed_with_reasoning(bytes, emit, &mut |_| Ok(()))
+    }
+
+    pub fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut impl FnMut(&str) -> Result<()>,
+        emit_reasoning: &mut impl FnMut(&str) -> Result<()>,
+    ) -> Result<()> {
         ensure!(
             bytes.len() <= RESPONSE_LIMIT.saturating_sub(self.size),
             "模型输出超过安全上限"
@@ -692,7 +715,7 @@ impl AnthropicDecoder {
             let line: Vec<u8> = self.buffer.drain(..=pos).collect();
             let line = std::str::from_utf8(&line)?.trim_end_matches(['\r', '\n']);
             if line.is_empty() {
-                self.flush(emit)?;
+                self.flush(emit, emit_reasoning)?;
             } else if let Some(ev) = line.strip_prefix("event:") {
                 self.event_name = ev.trim().to_owned();
             } else if let Some(data) = line.strip_prefix("data:") {
@@ -718,7 +741,11 @@ impl AnthropicDecoder {
         }
     }
 
-    fn flush(&mut self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+    fn flush(
+        &mut self,
+        emit: &mut impl FnMut(&str) -> Result<()>,
+        emit_reasoning: &mut impl FnMut(&str) -> Result<()>,
+    ) -> Result<()> {
         let event_name = std::mem::take(&mut self.event_name);
         let data = std::mem::take(&mut self.event_data);
         if data.is_empty() {
@@ -778,6 +805,7 @@ impl AnthropicDecoder {
                             && !thinking.is_empty()
                         {
                             self.reasoning.push_str(thinking);
+                            emit_reasoning(thinking)?;
                         }
                         if let Some(sig) = block.get("signature").and_then(Value::as_str)
                             && !sig.is_empty()
@@ -818,6 +846,7 @@ impl AnthropicDecoder {
                             && !thinking.is_empty()
                         {
                             self.reasoning.push_str(thinking);
+                            emit_reasoning(thinking)?;
                         }
                     }
                     Some("signature_delta") => {
@@ -947,6 +976,15 @@ pub struct GeminiDecoder {
 
 impl GeminiDecoder {
     pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        self.feed_with_reasoning(bytes, emit, &mut |_| Ok(()))
+    }
+
+    pub fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut impl FnMut(&str) -> Result<()>,
+        emit_reasoning: &mut impl FnMut(&str) -> Result<()>,
+    ) -> Result<()> {
         ensure!(
             bytes.len() <= RESPONSE_LIMIT.saturating_sub(self.size),
             "模型输出超过安全上限"
@@ -957,7 +995,7 @@ impl GeminiDecoder {
             let line: Vec<u8> = self.buffer.drain(..=pos).collect();
             let line = std::str::from_utf8(&line)?.trim_end_matches(['\r', '\n']);
             if line.is_empty() {
-                self.flush(emit)?;
+                self.flush(emit, emit_reasoning)?;
             } else if let Some(data) = line.strip_prefix("data:") {
                 if !self.event.is_empty() {
                     self.event.push('\n');
@@ -968,7 +1006,11 @@ impl GeminiDecoder {
         Ok(())
     }
 
-    fn flush(&mut self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+    fn flush(
+        &mut self,
+        emit: &mut impl FnMut(&str) -> Result<()>,
+        emit_reasoning: &mut impl FnMut(&str) -> Result<()>,
+    ) -> Result<()> {
         let data = std::mem::take(&mut self.event);
         if data.is_empty() {
             return Ok(());
@@ -1030,6 +1072,7 @@ impl GeminiDecoder {
                             && !t.is_empty()
                         {
                             self.reasoning.push_str(t);
+                            emit_reasoning(t)?;
                         }
                     } else if let Some(t) = part.get("text").and_then(Value::as_str)
                         && !t.is_empty()
@@ -1151,6 +1194,18 @@ impl crate::provider_runtime::CompletionDecoder for Decoder {
             .map_err(|_| crate::provider_runtime::CodecError::Failed)
     }
 
+    fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut crate::provider_runtime::Emit<'_>,
+        emit_reasoning: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
+        Decoder::feed_with_reasoning(self, bytes, &mut |text| emit(text), &mut |reasoning| {
+            emit_reasoning(reasoning)
+        })
+        .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+
     fn is_done(&self) -> bool {
         self.done
     }
@@ -1179,6 +1234,21 @@ impl crate::provider_runtime::CompletionDecoder for AnthropicDecoder {
             .map_err(|_| crate::provider_runtime::CodecError::Failed)
     }
 
+    fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut crate::provider_runtime::Emit<'_>,
+        emit_reasoning: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
+        AnthropicDecoder::feed_with_reasoning(
+            self,
+            bytes,
+            &mut |text| emit(text),
+            &mut |reasoning| emit_reasoning(reasoning),
+        )
+        .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+
     fn is_done(&self) -> bool {
         self.done
     }
@@ -1205,6 +1275,18 @@ impl crate::provider_runtime::CompletionDecoder for GeminiDecoder {
     ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
         GeminiDecoder::feed(self, bytes, &mut |text| emit(text))
             .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+
+    fn feed_with_reasoning(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut crate::provider_runtime::Emit<'_>,
+        emit_reasoning: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
+        GeminiDecoder::feed_with_reasoning(self, bytes, &mut |text| emit(text), &mut |reasoning| {
+            emit_reasoning(reasoning)
+        })
+        .map_err(|_| crate::provider_runtime::CodecError::Failed)
     }
 
     fn is_done(&self) -> bool {
@@ -1498,5 +1580,100 @@ mod tests {
         assert_eq!(gem_usage["prompt_tokens"], 12);
         assert_eq!(gem_usage["completion_tokens"], 9);
         assert_eq!(gem_usage["total_tokens"], 26);
+    }
+
+    #[test]
+    fn completion_decoders_stream_reasoning_chunks_separately_from_content() {
+        // 1. OpenAI protocol decoder (`reasoning_content` + `reasoning`)
+        let openai_sse = concat!(
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"think-1 \",\"content\":null}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"reasoning\":\"think-2\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"answer-ok\"},\"finish_reason\":\"stop\"}]}\n\n",
+            "data: [DONE]\n\n"
+        );
+        let mut oai = protocol_decoder(ProviderProtocol::OpenAi);
+        let mut oai_text = Vec::new();
+        let mut oai_reasoning = Vec::new();
+        for b in openai_sse.as_bytes() {
+            oai.feed_with_reasoning(
+                &[*b],
+                &mut |s| {
+                    oai_text.push(s.to_owned());
+                    Ok(())
+                },
+                &mut |r| {
+                    oai_reasoning.push(r.to_owned());
+                    Ok(())
+                },
+            )
+            .unwrap();
+        }
+        let (oai_msg, _) = oai.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(oai_reasoning, vec!["think-1 ", "think-2"]);
+        assert_eq!(oai_text, vec!["answer-ok"]);
+        assert_eq!(oai_msg["content"], "answer-ok");
+        assert_eq!(oai_msg["reasoning_content"], "think-1 think-2");
+
+        // 2. Anthropic protocol decoder (`thinking` start + `thinking_delta`)
+        let anthropic_sse = concat!(
+            "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"步骤一：\"}}\n\n",
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"分析依赖\"}}\n\n",
+            "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"结论完成\"}}\n\n",
+            "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":8}}\n\n",
+            "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+        );
+        let mut ant = protocol_decoder(ProviderProtocol::Anthropic);
+        let mut ant_text = Vec::new();
+        let mut ant_reasoning = Vec::new();
+        for b in anthropic_sse.as_bytes() {
+            ant.feed_with_reasoning(
+                &[*b],
+                &mut |s| {
+                    ant_text.push(s.to_owned());
+                    Ok(())
+                },
+                &mut |r| {
+                    ant_reasoning.push(r.to_owned());
+                    Ok(())
+                },
+            )
+            .unwrap();
+        }
+        let (ant_msg, _) = ant.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(ant_reasoning, vec!["步骤一：", "分析依赖"]);
+        assert_eq!(ant_text, vec!["结论完成"]);
+        assert_eq!(ant_msg["content"], "结论完成");
+        assert_eq!(ant_msg["reasoning_content"], "步骤一：分析依赖");
+
+        // 3. Gemini protocol decoder (`"thought": true` vs regular text + thought-only fallback)
+        let gemini_sse = concat!(
+            "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"thought\":true,\"text\":\"先排查配置；\"}]}}]}\r\n\r\n",
+            "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"thought\":true,\"text\":\"确认端口\"},{\"text\":\"8080\"}]},\"finishReason\":\"STOP\"}]}\n\n"
+        );
+        let mut gem = protocol_decoder(ProviderProtocol::Gemini);
+        let mut gem_text = Vec::new();
+        let mut gem_reasoning = Vec::new();
+        for b in gemini_sse.as_bytes() {
+            gem.feed_with_reasoning(
+                &[*b],
+                &mut |s| {
+                    gem_text.push(s.to_owned());
+                    Ok(())
+                },
+                &mut |r| {
+                    gem_reasoning.push(r.to_owned());
+                    Ok(())
+                },
+            )
+            .unwrap();
+        }
+        let (gem_msg, _) = gem.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(gem_reasoning, vec!["先排查配置；", "确认端口"]);
+        assert_eq!(gem_text, vec!["8080"]);
+        assert_eq!(gem_msg["content"], "8080");
+        assert_eq!(gem_msg["reasoning_content"], "先排查配置；确认端口");
     }
 }

@@ -66,18 +66,28 @@ pub enum Command {
     Account(AccountArgs),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum InitProvider {
+    Openai,
+    Anthropic,
+    Gemini,
+}
+
 #[derive(Args)]
 pub struct InitArgs {
+    /// Provider preset for default base URL, model, and API key environment variable.
+    #[arg(long, value_enum)]
+    pub provider: Option<InitProvider>,
     /// Route ID to create or update.
     #[arg(long, default_value = "default")]
     pub route: String,
     /// Display name for the route.
     #[arg(long, default_value = "Default")]
     pub name: String,
-    /// OpenAI-compatible API base URL (defaults to OPENAI_BASE_URL or https://api.openai.com/v1).
+    /// Provider API base URL (defaults to provider's *_BASE_URL env var or preset URL).
     #[arg(long)]
     pub base_url: Option<String>,
-    /// Default model name (defaults to CODA_MODEL or gpt-4.1).
+    /// Default model name (defaults to CODA_MODEL or provider's preset model).
     #[arg(long)]
     pub model: Option<String>,
     /// Maximum output tokens per completion call (16..=65536).
@@ -1265,6 +1275,181 @@ pub async fn execute_local(
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ProviderPreset {
+    provider: InitProvider,
+    display_name: &'static str,
+    cli_flag: &'static str,
+    key_env: &'static str,
+    base_env: &'static str,
+    default_base_url: &'static str,
+    default_model: &'static str,
+}
+
+impl InitProvider {
+    fn preset(self) -> ProviderPreset {
+        match self {
+            Self::Openai => ProviderPreset {
+                provider: Self::Openai,
+                display_name: "OpenAI",
+                cli_flag: "openai",
+                key_env: "OPENAI_API_KEY",
+                base_env: "OPENAI_BASE_URL",
+                default_base_url: DEFAULT_BASE_URL,
+                default_model: DEFAULT_MODEL,
+            },
+            Self::Anthropic => ProviderPreset {
+                provider: Self::Anthropic,
+                display_name: "Anthropic",
+                cli_flag: "anthropic",
+                key_env: "ANTHROPIC_API_KEY",
+                base_env: "ANTHROPIC_BASE_URL",
+                default_base_url: "https://api.anthropic.com/v1",
+                default_model: "claude-sonnet-4-20250514",
+            },
+            Self::Gemini => ProviderPreset {
+                provider: Self::Gemini,
+                display_name: "Gemini",
+                cli_flag: "gemini",
+                key_env: "GEMINI_API_KEY",
+                base_env: "GEMINI_BASE_URL",
+                default_base_url: "https://generativelanguage.googleapis.com/v1beta",
+                default_model: "gemini-2.5-pro",
+            },
+        }
+    }
+
+    fn from_protocol(protocol: coda::provider::ProviderProtocol) -> Self {
+        match protocol {
+            coda::provider::ProviderProtocol::OpenAi => Self::Openai,
+            coda::provider::ProviderProtocol::Anthropic => Self::Anthropic,
+            coda::provider::ProviderProtocol::Gemini => Self::Gemini,
+        }
+    }
+}
+
+fn non_empty_env_with<F>(env_fn: &F, name: &str) -> Option<String>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    env_fn(name)
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+}
+
+fn resolve_init_provider<F>(
+    explicit: Option<InitProvider>,
+    base_url: Option<&str>,
+    env_fn: F,
+) -> InitProvider
+where
+    F: Fn(&str) -> Option<String>,
+{
+    if let Some(provider) = explicit {
+        return provider;
+    }
+    if let Some(url) = base_url.map(str::trim).filter(|s| !s.is_empty()) {
+        return InitProvider::from_protocol(coda::provider::ProviderProtocol::detect(url));
+    }
+    [
+        InitProvider::Openai,
+        InitProvider::Anthropic,
+        InitProvider::Gemini,
+    ]
+    .into_iter()
+    .find(|&candidate| non_empty_env_with(&env_fn, candidate.preset().key_env).is_some())
+    .unwrap_or(InitProvider::Openai)
+}
+
+struct ZeroInitPlan {
+    preset: ProviderPreset,
+    base_url: String,
+    model: String,
+    api_key: HostSecret,
+}
+
+fn resolve_zero_init_plan<F>(
+    target_id: &str,
+    requested_route: Option<&str>,
+    model_override: Option<&str>,
+    env_fn: F,
+) -> Result<ZeroInitPlan, Failure>
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let explicit_provider = match requested_route {
+        Some(r) if r.eq_ignore_ascii_case("anthropic") => Some(InitProvider::Anthropic),
+        Some(r) if r.eq_ignore_ascii_case("gemini") => Some(InitProvider::Gemini),
+        Some(r) if r.eq_ignore_ascii_case("openai") => Some(InitProvider::Openai),
+        _ => None,
+    };
+
+    let model_hint = model_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .or_else(|| non_empty_env_with(&env_fn, "CODA_MODEL"));
+
+    let hint_provider = model_hint.as_deref().and_then(|hint| {
+        let lower = hint.to_ascii_lowercase();
+        if lower.starts_with("claude") && non_empty_env_with(&env_fn, "ANTHROPIC_API_KEY").is_some()
+        {
+            Some(InitProvider::Anthropic)
+        } else if (lower.starts_with("gemini") || lower.starts_with("models/gemini"))
+            && non_empty_env_with(&env_fn, "GEMINI_API_KEY").is_some()
+        {
+            Some(InitProvider::Gemini)
+        } else if non_empty_env_with(&env_fn, "OPENAI_BASE_URL").is_some()
+            && non_empty_env_with(&env_fn, "OPENAI_API_KEY").is_some()
+        {
+            Some(InitProvider::Openai)
+        } else {
+            None
+        }
+    });
+
+    let fallback_by_env = || {
+        [
+            InitProvider::Openai,
+            InitProvider::Anthropic,
+            InitProvider::Gemini,
+        ]
+        .into_iter()
+        .find(|&candidate| non_empty_env_with(&env_fn, candidate.preset().key_env).is_some())
+    };
+
+    let Some(chosen_provider) = explicit_provider.or(hint_provider).or_else(fallback_by_env) else {
+        return Err(Failure::custom(
+            "route_not_configured",
+            format!(
+                "未找到模型路由 `{target_id}`；请先运行 `coda init` 或设置环境变量 `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`"
+            ),
+        ));
+    };
+
+    let preset = chosen_provider.preset();
+    let Some(api_key) = non_empty_env_with(&env_fn, preset.key_env) else {
+        return Err(Failure::custom(
+            "route_not_configured",
+            format!(
+                "未找到模型路由 `{target_id}` 的有效凭据（`{}` 未设置或为空）；请运行 `coda init --provider {}` 或设置环境变量 `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`",
+                preset.key_env, preset.cli_flag
+            ),
+        ));
+    };
+
+    let base_url = non_empty_env_with(&env_fn, preset.base_env)
+        .unwrap_or_else(|| preset.default_base_url.to_owned());
+    let model = model_hint.unwrap_or_else(|| preset.default_model.to_owned());
+
+    Ok(ZeroInitPlan {
+        preset,
+        base_url,
+        model,
+        api_key: HostSecret(api_key),
+    })
+}
+
 async fn run_init(
     instance_lock: &mut Option<std::fs::File>,
     top_data_dir: Option<PathBuf>,
@@ -1274,32 +1459,37 @@ async fn run_init(
     let data_dir = resolve_user_data_dir(args.data_dir.or(top_data_dir));
     let interactive = !args.api_key_stdin && io::stdin().is_terminal() && !json_output;
 
-    let env_base = std::env::var("OPENAI_BASE_URL")
+    let provider = resolve_init_provider(args.provider, args.base_url.as_deref(), |k| {
+        std::env::var(k).ok()
+    });
+    let preset = provider.preset();
+
+    let env_base = std::env::var(preset.base_env)
         .ok()
         .filter(|s| !s.trim().is_empty());
     let env_model = std::env::var("CODA_MODEL")
         .ok()
         .filter(|s| !s.trim().is_empty());
-    let env_key = std::env::var("OPENAI_API_KEY")
+    let env_key = std::env::var(preset.key_env)
         .ok()
         .filter(|s| !s.trim().is_empty());
 
     let raw_base_url = match args.base_url {
         Some(url) => url,
         None if interactive => {
-            let def = env_base.as_deref().unwrap_or(DEFAULT_BASE_URL);
-            prompt_line_with_default("API Base URL", def)?
+            let def = env_base.as_deref().unwrap_or(preset.default_base_url);
+            prompt_line_with_default(&format!("{} API Base URL", preset.display_name), def)?
         }
-        None => env_base.unwrap_or_else(|| DEFAULT_BASE_URL.to_owned()),
+        None => env_base.unwrap_or_else(|| preset.default_base_url.to_owned()),
     };
 
     let raw_model = match args.model {
         Some(m) => m,
         None if interactive => {
-            let def = env_model.as_deref().unwrap_or(DEFAULT_MODEL);
+            let def = env_model.as_deref().unwrap_or(preset.default_model);
             prompt_line_with_default("Default Model", def)?
         }
-        None => env_model.unwrap_or_else(|| DEFAULT_MODEL.to_owned()),
+        None => env_model.unwrap_or_else(|| preset.default_model.to_owned()),
     };
 
     let normalized = coda::host_configuration::RouteInput {
@@ -1325,7 +1515,8 @@ async fn run_init(
     } else if interactive {
         if env_key.is_some() {
             eprintln!(
-                "提示: 检测到环境变量 OPENAI_API_KEY，请在隐藏提示中输入要持久保存的 API Key:"
+                "提示: 检测到环境变量 {}，请在隐藏提示中输入要持久保存的 API Key:",
+                preset.key_env
             );
         }
         read_credential(CredentialInputMode::Prompt)
@@ -1333,10 +1524,12 @@ async fn run_init(
                 CredentialInputError::Cancelled => {
                     Failure::fixed("credential_cancelled", "API Key 输入已取消", false)
                 }
-                CredentialInputError::Unavailable => Failure::fixed(
+                CredentialInputError::Unavailable => Failure::custom(
                     "credential_unavailable",
-                    "无法打开安全终端输入；可使用 --api-key-stdin 或设置 OPENAI_API_KEY",
-                    false,
+                    format!(
+                        "无法打开安全终端输入；可使用 --api-key-stdin 或设置 {}",
+                        preset.key_env
+                    ),
                 ),
                 CredentialInputError::Invalid => {
                     Failure::fixed("credential_invalid", "API Key 输入无效", false)
@@ -1346,10 +1539,12 @@ async fn run_init(
     } else if let Some(key) = env_key {
         key
     } else {
-        return Err(Failure::fixed(
+        return Err(Failure::custom(
             "credential_required",
-            "需要提供 API Key：请在终端交互运行 coda init、传入 --api-key-stdin 或设置 OPENAI_API_KEY",
-            false,
+            format!(
+                "需要提供 API Key：请在终端交互运行 coda init、传入 --api-key-stdin 或设置 {}（支持 OPENAI_API_KEY / ANTHROPIC_API_KEY / GEMINI_API_KEY）",
+                preset.key_env
+            ),
         ));
     });
 
@@ -1399,7 +1594,8 @@ async fn run_init(
             );
         } else {
             println!(
-                "\x1b[32m✓\x1b[0m Coda CLI 初始化完成!\n  数据目录: {}\n  默认路由: {} ({})\n  模型名称: {}\n\n现在可以在任意代码目录直接运行 `\x1b[1mcoda chat\x1b[0m` 或 `\x1b[1mcoda ask \"...\"\x1b[0m`!",
+                "\x1b[32m✓\x1b[0m Coda CLI 初始化完成 ({})!\n  数据目录: {}\n  默认路由: {} ({})\n  模型名称: {}\n\n现在可以在任意代码目录直接运行 `\x1b[1mcoda chat\x1b[0m` 或 `\x1b[1mcoda ask \"...\"\x1b[0m`!",
+                preset.display_name,
                 data_dir.display(),
                 route.id,
                 route.base_url,
@@ -1431,48 +1627,22 @@ async fn ensure_route_ready(
         .unwrap_or_else(|| "default".to_owned());
 
     if !settings.routes.iter().any(|r| r.id == target_id) {
-        let Ok(api_key) = std::env::var("OPENAI_API_KEY") else {
-            return Err(Failure::custom(
-                "route_not_configured",
-                format!(
-                    "未找到模型路由 `{target_id}`；请先运行 `coda init` 或设置环境变量 `OPENAI_API_KEY`"
-                ),
-            ));
-        };
-        let api_key = api_key.trim().to_owned();
-        if api_key.is_empty() {
-            return Err(Failure::fixed(
-                "route_not_configured",
-                "OPENAI_API_KEY 为空；请运行 `coda init` 或设置有效的 OPENAI_API_KEY",
-                false,
-            ));
-        }
-        let base_url = std::env::var("OPENAI_BASE_URL")
-            .ok()
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| DEFAULT_BASE_URL.to_owned());
-        let model = model_override
-            .map(str::to_owned)
-            .or_else(|| {
-                std::env::var("CODA_MODEL")
-                    .ok()
-                    .filter(|s| !s.trim().is_empty())
-            })
-            .unwrap_or_else(|| DEFAULT_MODEL.to_owned());
+        let plan = resolve_zero_init_plan(&target_id, requested_route, model_override, |k| {
+            std::env::var(k).ok()
+        })?;
 
         let normalized = coda::host_configuration::RouteInput {
-            name: "Default".into(),
-            base_url,
-            model,
+            name: plan.preset.display_name.into(),
+            base_url: plan.base_url,
+            model: plan.model,
             max_tokens: 16384,
             parallel_limit: 4,
         }
         .normalized()
         .map_err(|_| {
-            Failure::fixed(
+            Failure::custom(
                 "invalid_config",
-                "环境变量 OPENAI_BASE_URL 或 CODA_MODEL 格式无效",
-                false,
+                format!("环境变量 {} 或 CODA_MODEL 格式无效", plan.preset.base_env),
             )
         })?;
 
@@ -1483,13 +1653,13 @@ async fn ensure_route_ready(
             model: normalized.model,
             max_tokens: normalized.max_tokens,
             parallel_limit: normalized.parallel_limit,
-            key_env: Some("OPENAI_API_KEY".into()),
+            key_env: Some(plan.preset.key_env.into()),
         };
         settings.routes.push(route.clone());
         engine
             .configure_with_keys(
                 settings.clone(),
-                HashMap::from([(target_id.clone(), api_key)]),
+                HashMap::from([(target_id.clone(), plan.api_key.as_str().to_owned())]),
             )
             .await
             .map_err(|e| Failure::custom("config_error", format!("自动配置路由失败: {e}")))?;
@@ -2428,8 +2598,13 @@ async fn execute_turn_and_stream(
 
     let mut handled_approvals = HashSet::new();
     let mut mid_line = false;
+    let mut in_reasoning = false;
+    let mut reasoning_ended_newline = false;
 
-    let drain_events = |cursor: &mut i64, mid_line: &mut bool| {
+    let drain_events = |cursor: &mut i64,
+                        mid_line: &mut bool,
+                        in_reasoning: &mut bool,
+                        reasoning_ended_newline: &mut bool| {
         while let Ok(events) = engine.store.events(&run_id, *cursor) {
             if events.is_empty() {
                 break;
@@ -2442,16 +2617,35 @@ async fn execute_turn_and_stream(
                     continue;
                 }
                 match ev.kind.as_str() {
+                    "reasoning_delta" => {
+                        if let Some(text) = ev.data["text"].as_str()
+                            && !text.is_empty()
+                        {
+                            if !*in_reasoning {
+                                if *mid_line {
+                                    println!();
+                                    *mid_line = false;
+                                }
+                                eprint!("\x1b[90m  💭 ");
+                                *in_reasoning = true;
+                            }
+                            eprint!("\x1b[90m{text}\x1b[0m");
+                            let _ = io::stderr().flush();
+                            *reasoning_ended_newline = text.ends_with('\n');
+                        }
+                    }
                     "delta" => {
                         if let Some(text) = ev.data["text"].as_str()
                             && !text.is_empty()
                         {
+                            finish_reasoning_line(in_reasoning, reasoning_ended_newline);
                             print!("{text}");
                             let _ = io::stdout().flush();
                             *mid_line = !text.ends_with('\n');
                         }
                     }
                     "tool_start" | "tool.started" => {
+                        finish_reasoning_line(in_reasoning, reasoning_ended_newline);
                         if *mid_line {
                             println!();
                             *mid_line = false;
@@ -2479,10 +2673,12 @@ async fn execute_turn_and_stream(
                             .unwrap_or("tool");
                         let res = &ev.data["result"];
                         if let Some(err) = res.get("error").and_then(Value::as_str) {
+                            finish_reasoning_line(in_reasoning, reasoning_ended_newline);
                             eprintln!("\x1b[33m    ↳ [{name}] error: {err}\x1b[0m");
                         } else if let Some(code) = res.get("exit_code").and_then(Value::as_i64)
                             && code != 0
                         {
+                            finish_reasoning_line(in_reasoning, reasoning_ended_newline);
                             eprintln!("\x1b[33m    ↳ [{name}] exit_code={code}\x1b[0m");
                         }
                     }
@@ -2496,13 +2692,21 @@ async fn execute_turn_and_stream(
     };
 
     loop {
-        drain_events(&mut cursor, &mut mid_line);
+        drain_events(
+            &mut cursor,
+            &mut mid_line,
+            &mut in_reasoning,
+            &mut reasoning_ended_newline,
+        );
 
         if let Ok(approvals) = engine.store.approvals_for_task(&task_id) {
             for record in approvals {
                 if record.status == ApprovalStatus::Pending
                     && handled_approvals.insert(record.id.clone())
                 {
+                    if !json_output {
+                        finish_reasoning_line(&mut in_reasoning, &mut reasoning_ended_newline);
+                    }
                     if mid_line && !json_output {
                         println!();
                         mid_line = false;
@@ -2537,7 +2741,15 @@ async fn execute_turn_and_stream(
             .map_err(|e| Failure::custom("task_error", format!("读取任务状态失败: {e}")))?;
 
         if !matches!(task.status.as_str(), "queued" | "running") && !engine.is_busy() {
-            drain_events(&mut cursor, &mut mid_line);
+            drain_events(
+                &mut cursor,
+                &mut mid_line,
+                &mut in_reasoning,
+                &mut reasoning_ended_newline,
+            );
+            if !json_output {
+                finish_reasoning_line(&mut in_reasoning, &mut reasoning_ended_newline);
+            }
             if mid_line && !json_output {
                 println!();
             }
@@ -2562,6 +2774,9 @@ async fn execute_turn_and_stream(
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_millis(25)) => {}
             _ = tokio::signal::ctrl_c() => {
+                if !json_output {
+                    finish_reasoning_line(&mut in_reasoning, &mut reasoning_ended_newline);
+                }
                 if mid_line && !json_output {
                     println!();
                     mid_line = false;
@@ -2572,6 +2787,16 @@ async fn execute_turn_and_stream(
                 let _ = engine.cancel(&task_id);
             }
         }
+    }
+}
+
+fn finish_reasoning_line(in_reasoning: &mut bool, reasoning_ended_newline: &mut bool) {
+    if *in_reasoning {
+        if !*reasoning_ended_newline {
+            eprintln!();
+        }
+        *in_reasoning = false;
+        *reasoning_ended_newline = false;
     }
 }
 
@@ -2666,23 +2891,63 @@ fn run_quick_git(workspace: &Path, args: &[&str]) -> Option<String> {
         .then(|| String::from_utf8_lossy(&out.stdout).trim_end().to_owned())
 }
 
+fn read_repl_input<R: BufRead, F: FnMut()>(
+    reader: &mut R,
+    mut on_continuation: F,
+) -> Option<String> {
+    let mut lines: Vec<String> = Vec::new();
+    loop {
+        let mut buf = String::new();
+        match reader.read_line(&mut buf) {
+            Ok(0) => {
+                if lines.is_empty() {
+                    return None;
+                }
+                break;
+            }
+            Ok(_) => {
+                let trimmed_eol = buf.trim_end_matches(['\r', '\n']);
+                if let Some(without_slash) = trimmed_eol.strip_suffix('\\') {
+                    lines.push(without_slash.to_owned());
+                    on_continuation();
+                } else {
+                    lines.push(trimmed_eol.to_owned());
+                    break;
+                }
+            }
+            Err(_) => {
+                return if lines.is_empty() {
+                    None
+                } else {
+                    Some(lines.join("\n"))
+                };
+            }
+        }
+    }
+    Some(lines.join("\n"))
+}
+
 fn print_repl_help() {
     println!(
         "\x1b[1mREPL Slash Commands:\x1b[0m\n\
          \x20 \x1b[36m/sessions\x1b[0m             List recent chat sessions in this workspace\n\
          \x20 \x1b[36m/resume <id>\x1b[0m          Switch active context to continue a previous session\n\
+         \x20 \x1b[36m/todos\x1b[0m                Show structured task checklist ([✓] / [▸] / [ ]) for the active session\n\
          \x20 \x1b[36m/checkpoint\x1b[0m           Create a durable checkpoint on the latest modified turn\n\
+         \x20 \x1b[36m/checkpoints\x1b[0m          List durable checkpoints for the active session (or project)\n\
          \x20 \x1b[36m/restore <ckpt_id>\x1b[0m    Restore workspace files from a durable checkpoint\n\
          \x20 \x1b[36m/compact\x1b[0m              Compact message history and show tokens/KB saved\n\
          \x20 \x1b[36m/diff\x1b[0m                 Show workspace Git status/diff summary & recorded task changes\n\
          \x20 \x1b[36m/undo\x1b[0m                 Restore workspace file edits from the most recent modified turn\n\
          \x20 \x1b[36m/status\x1b[0m               Show active workspace, route, model, session turns & token usage\n\
-         \x20 \x1b[36m/model <name>\x1b[0m         Switch active route model (starts a clean session on next prompt)\n\
+         \x20 \x1b[36m/routes\x1b[0m               List configured provider routes (active marked with *)\n\
+         \x20 \x1b[36m/route [id]\x1b[0m           Show routes or switch active route (resets session if changed)\n\
+         \x20 \x1b[36m/model <name>\x1b[0m         Switch active route model seamlessly while keeping session context\n\
          \x20 \x1b[36m/auto\x1b[0m                 Toggle automatic approval for file edits & shell commands\n\
          \x20 \x1b[36m/new\x1b[0m                  Start a fresh conversation session\n\
          \x20 \x1b[36m/help\x1b[0m                 Show this command reference\n\
          \x20 \x1b[36m/exit\x1b[0m                 Cleanly shut down and exit Coda CLI\n\
-         \x1b[90mTip: Reference workspace files inline with @path, @path:start-end, or @dir/\x1b[0m"
+         \x1b[90mTip: Reference files with @path, @path:start-end, or @dir/; end a line with \\ for multiline input.\x1b[0m"
     );
 }
 
@@ -2749,13 +3014,15 @@ async fn run_chat(
                 print!("\n\x1b[1;32mcoda>\x1b[0m ");
                 let _ = io::stdout().flush();
             }
-            let maybe_line = tokio::task::spawn_blocking(|| {
-                let mut buf = String::new();
-                match io::stdin().read_line(&mut buf) {
-                    Ok(0) => None,
-                    Ok(_) => Some(buf),
-                    Err(_) => None,
-                }
+            let maybe_line = tokio::task::spawn_blocking(move || {
+                let stdin = io::stdin();
+                let mut lock = stdin.lock();
+                read_repl_input(&mut lock, || {
+                    if !json_output {
+                        print!("... ");
+                        let _ = io::stdout().flush();
+                    }
+                })
             })
             .await
             .unwrap_or(None);
@@ -2768,7 +3035,9 @@ async fn run_chat(
                 continue;
             }
 
-            if let Some(cmd_rest) = input.strip_prefix('/') {
+            if !input.contains('\n')
+                && let Some(cmd_rest) = input.strip_prefix('/')
+            {
                 let (slash_cmd, arg_str) = cmd_rest
                     .split_once(char::is_whitespace)
                     .map(|(c, a)| (c, a.trim()))
@@ -2834,6 +3103,55 @@ async fn run_chat(
                             }
                         }
                     }
+                    "todos" | "todo" => {
+                        let latest_tid = session_state
+                            .as_ref()
+                            .and_then(|active| active.task_history.last())
+                            .cloned();
+                        match latest_tid {
+                            Some(tid) => match engine.store.task(&tid) {
+                                Ok(task) => {
+                                    let items = coda::workspace::todos_for_task(&task);
+                                    if items.is_empty() {
+                                        println!("当前会话暂无 Todo 任务项。");
+                                    } else {
+                                        let completed = items
+                                            .iter()
+                                            .filter(|i| i.status == "completed")
+                                            .count();
+                                        let in_progress = items
+                                            .iter()
+                                            .filter(|i| i.status == "in_progress")
+                                            .count();
+                                        let pending = items
+                                            .iter()
+                                            .filter(|i| i.status == "pending")
+                                            .count();
+                                        println!(
+                                            "\x1b[1mSession Todos\x1b[0m ({} total: \x1b[32m{} completed\x1b[0m, \x1b[36m{} in_progress\x1b[0m, {} pending):",
+                                            items.len(),
+                                            completed,
+                                            in_progress,
+                                            pending
+                                        );
+                                        for item in &items {
+                                            let badge = match item.status.as_str() {
+                                                "completed" => "\x1b[32m[✓]\x1b[0m",
+                                                "in_progress" => "\x1b[36m[▸]\x1b[0m",
+                                                _ => "\x1b[90m[ ]\x1b[0m",
+                                            };
+                                            println!(
+                                                "  {badge} {} \x1b[90m({})\x1b[0m",
+                                                item.content, item.id
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(err) => eprintln!("\x1b[31m读取会话任务失败: {err}\x1b[0m"),
+                            },
+                            None => println!("当前没有活跃会话可查看 Todo 清单。"),
+                        }
+                    }
                     "checkpoint" => {
                         let target_task = session_state.as_ref().and_then(|active| {
                             active
@@ -2871,6 +3189,53 @@ async fn run_chat(
                                 }
                             }
                             None => println!("当前会话尚无已完成任务可创建检查点。"),
+                        }
+                    }
+                    "checkpoints" => {
+                        let task_ids: Vec<String> = if let Some(active) = &session_state {
+                            active.task_history.clone()
+                        } else {
+                            list_project_chat_sessions(&engine, &project)
+                                .into_iter()
+                                .flat_map(|s| s.task_history)
+                                .collect()
+                        };
+                        if task_ids.is_empty() {
+                            println!("当前项目暂无可用检查点记录。");
+                        } else {
+                            match engine.checkpoints_for_tasks(&task_ids) {
+                                Ok(checkpoints) if checkpoints.is_empty() => {
+                                    println!(
+                                        "当前会话暂无已创建的检查点（输入 /checkpoint 创建检查点）。"
+                                    );
+                                }
+                                Ok(checkpoints) => {
+                                    println!(
+                                        "\x1b[1mCheckpoints ({}):\x1b[0m",
+                                        checkpoints.len()
+                                    );
+                                    for ckpt in checkpoints {
+                                        let paths: Vec<&str> =
+                                            ckpt.entries.iter().map(|e| e.path.as_str()).collect();
+                                        let paths_summary = if paths.is_empty() {
+                                            "(no file entries)".to_owned()
+                                        } else {
+                                            paths.join(", ")
+                                        };
+                                        println!(
+                                            "  \x1b[36m{}\x1b[0m  task={}  ({} file{})  {}",
+                                            ckpt.checkpoint_id,
+                                            ckpt.task_id,
+                                            ckpt.entries.len(),
+                                            if ckpt.entries.len() == 1 { "" } else { "s" },
+                                            paths_summary
+                                        );
+                                    }
+                                }
+                                Err(err) => {
+                                    eprintln!("\x1b[31m查询检查点列表失败: {err}\x1b[0m");
+                                }
+                            }
                         }
                     }
                     "restore" => {
@@ -2931,6 +3296,61 @@ async fn run_chat(
                             None => println!("当前没有活跃会话可压缩。"),
                         }
                     }
+                    "routes" | "route" => {
+                        if arg_str.is_empty() {
+                            match engine.store.settings() {
+                                Ok(Some(settings)) if !settings.routes.is_empty() => {
+                                    println!("\x1b[1mConfigured Routes:\x1b[0m");
+                                    for item in &settings.routes {
+                                        let marker = if item.id == route.id {
+                                            "\x1b[32m*\x1b[0m"
+                                        } else {
+                                            " "
+                                        };
+                                        println!(
+                                            " {marker} \x1b[36m{}\x1b[0m  model=\x1b[1m{}\x1b[0m  ({})",
+                                            item.id, item.model, item.base_url
+                                        );
+                                    }
+                                }
+                                Ok(_) => println!("当前尚未配置任何模型路由。"),
+                                Err(err) => eprintln!("\x1b[31m读取路由配置失败: {err}\x1b[0m"),
+                            }
+                        } else if !host_route_id_valid(arg_str) {
+                            eprintln!("无效的路由 ID `{arg_str}`。");
+                        } else {
+                            match ensure_route_ready(&engine, Some(arg_str), None).await {
+                                Ok(selected) => {
+                                    let changed = selected.id != route.id;
+                                    match ensure_project_ready(
+                                        &engine,
+                                        PathBuf::from(&project.root_path),
+                                        &selected.id,
+                                    )
+                                    .await
+                                    {
+                                        Ok(_) => {
+                                            route = selected;
+                                            if changed {
+                                                session_state = None;
+                                                println!(
+                                                    "\x1b[32m✓ 已切换到路由 `{}` (model=`{}`, base=`{}`)；已重置当前会话上下文。\x1b[0m",
+                                                    route.id, route.model, route.base_url
+                                                );
+                                            } else {
+                                                println!(
+                                                    "\x1b[32m✓ 当前已在路由 `{}` (model=`{}`, base=`{}`)\x1b[0m",
+                                                    route.id, route.model, route.base_url
+                                                );
+                                            }
+                                        }
+                                        Err(err) => err.print(false),
+                                    }
+                                }
+                                Err(err) => err.print(false),
+                            }
+                        }
+                    }
                     "model" => {
                         if arg_str.is_empty() {
                             println!("当前路由 `{}` 使用模型: \x1b[1m{}\x1b[0m", route.id, route.model);
@@ -2945,11 +3365,17 @@ async fn run_chat(
                                         &route.id,
                                     )
                                     .await;
-                                    session_state = None;
-                                    println!(
-                                        "\x1b[32m✓ 已切换模型为 `{}` (将在下一轮自动开启新会话)\x1b[0m",
-                                        route.model
-                                    );
+                                    if session_state.is_some() {
+                                        println!(
+                                            "\x1b[32m✓ 已切换模型为 `{}` (保留当前会话上下文，下一轮直接生效)\x1b[0m",
+                                            route.model
+                                        );
+                                    } else {
+                                        println!(
+                                            "\x1b[32m✓ 已切换模型为 `{}`\x1b[0m",
+                                            route.model
+                                        );
+                                    }
                                 }
                                 Err(err) => err.print(false),
                             }
@@ -5090,5 +5516,131 @@ mod workbench_unit_tests {
         assert!(!enriched.contains("4: line_four"));
         assert!(enriched.contains("<directory path=\"src/\">\nlib.rs\n</directory>"));
         assert!(!enriched.contains("SECRET=123"));
+    }
+
+    #[test]
+    fn resolve_init_provider_handles_explicit_base_url_and_env_fallbacks() {
+        let empty_env = |_: &str| -> Option<String> { None };
+        assert_eq!(
+            resolve_init_provider(Some(InitProvider::Anthropic), None, empty_env),
+            InitProvider::Anthropic
+        );
+        assert_eq!(
+            resolve_init_provider(None, Some("https://api.anthropic.com/v1"), |_| Some(
+                "sk-openai".into()
+            )),
+            InitProvider::Anthropic
+        );
+        assert_eq!(
+            resolve_init_provider(None, Some("http://127.0.0.1:9000/v1beta"), |_| Some(
+                "sk-openai".into()
+            )),
+            InitProvider::Gemini
+        );
+        assert_eq!(
+            resolve_init_provider(None, None, |k| match k {
+                "ANTHROPIC_API_KEY" => Some("sk-ant-123".into()),
+                "GEMINI_API_KEY" => Some("AIza-123".into()),
+                _ => None,
+            }),
+            InitProvider::Anthropic
+        );
+        assert_eq!(
+            resolve_init_provider(None, None, |k| match k {
+                "GEMINI_API_KEY" => Some("AIza-123".into()),
+                _ => None,
+            }),
+            InitProvider::Gemini
+        );
+        assert_eq!(
+            resolve_init_provider(None, None, empty_env),
+            InitProvider::Openai
+        );
+    }
+
+    #[test]
+    fn resolve_zero_init_plan_supports_all_three_providers_and_model_hints() {
+        // 1. Explicit route selects provider preset
+        let ant = resolve_zero_init_plan("anthropic", Some("anthropic"), None, |k| match k {
+            "OPENAI_API_KEY" => Some("sk-openai".into()),
+            "ANTHROPIC_API_KEY" => Some("sk-ant-key".into()),
+            _ => None,
+        })
+        .unwrap();
+        assert_eq!(ant.preset.provider, InitProvider::Anthropic);
+        assert_eq!(ant.preset.key_env, "ANTHROPIC_API_KEY");
+        assert_eq!(ant.base_url, "https://api.anthropic.com/v1");
+        assert_eq!(ant.model, "claude-sonnet-4-20250514");
+        assert_eq!(ant.api_key.as_str(), "sk-ant-key");
+
+        // 2. Model hint `claude-*` or `models/gemini-*` overrides OPENAI_API_KEY fallback
+        let claude_hint = resolve_zero_init_plan(
+            "default",
+            None,
+            Some("Claude-Opus-4-20250514"),
+            |k| match k {
+                "OPENAI_API_KEY" => Some("sk-openai".into()),
+                "ANTHROPIC_API_KEY" => Some("sk-ant-hint".into()),
+                "ANTHROPIC_BASE_URL" => Some("http://127.0.0.1:4100/anthropic/v1".into()),
+                _ => None,
+            },
+        )
+        .unwrap();
+        assert_eq!(claude_hint.preset.provider, InitProvider::Anthropic);
+        assert_eq!(claude_hint.base_url, "http://127.0.0.1:4100/anthropic/v1");
+        assert_eq!(claude_hint.model, "Claude-Opus-4-20250514");
+
+        let gemini_env_hint = resolve_zero_init_plan("default", None, None, |k| match k {
+            "OPENAI_API_KEY" => Some("sk-openai".into()),
+            "GEMINI_API_KEY" => Some("AIza-gem".into()),
+            "CODA_MODEL" => Some("models/gemini-2.5-flash".into()),
+            _ => None,
+        })
+        .unwrap();
+        assert_eq!(gemini_env_hint.preset.provider, InitProvider::Gemini);
+        assert_eq!(gemini_env_hint.preset.key_env, "GEMINI_API_KEY");
+        assert_eq!(
+            gemini_env_hint.base_url,
+            "https://generativelanguage.googleapis.com/v1beta"
+        );
+        assert_eq!(gemini_env_hint.model, "models/gemini-2.5-flash");
+
+        // 3. Fallback priority: OPENAI_API_KEY -> ANTHROPIC_API_KEY -> GEMINI_API_KEY
+        let fallback_gem = resolve_zero_init_plan("default", None, None, |k| match k {
+            "GEMINI_API_KEY" => Some("AIza-only".into()),
+            _ => None,
+        })
+        .unwrap();
+        assert_eq!(fallback_gem.preset.provider, InitProvider::Gemini);
+        assert_eq!(fallback_gem.model, "gemini-2.5-pro");
+
+        // 4. Missing keys produce actionable error mentioning coda init and all three env vars
+        let err = resolve_zero_init_plan("default", None, None, |_| None)
+            .err()
+            .unwrap();
+        assert_eq!(err.code, "route_not_configured");
+        assert!(err.message.contains("coda init"));
+        assert!(err.message.contains("OPENAI_API_KEY"));
+        assert!(err.message.contains("ANTHROPIC_API_KEY"));
+        assert!(err.message.contains("GEMINI_API_KEY"));
+    }
+
+    #[test]
+    fn read_repl_input_joins_backslash_multiline_continuations() {
+        let mut cursor = io::Cursor::new(
+            b"Explain this:\\\r\nfn main() {\\\n    println!(\"hi\");\n}\n" as &[u8],
+        );
+        let mut continuations = 0usize;
+        let joined = read_repl_input(&mut cursor, || {
+            continuations += 1;
+        })
+        .unwrap();
+        assert_eq!(continuations, 2);
+        assert_eq!(joined, "Explain this:\nfn main() {\n    println!(\"hi\");");
+
+        let closing = read_repl_input(&mut cursor, || {}).unwrap();
+        assert_eq!(closing, "}");
+
+        assert!(read_repl_input(&mut cursor, || {}).is_none());
     }
 }

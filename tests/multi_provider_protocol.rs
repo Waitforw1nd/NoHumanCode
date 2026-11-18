@@ -701,3 +701,111 @@ fn protocol_detection_and_grouped_parallel_tool_results() {
     assert_eq!(gem_parts[0]["functionResponse"]["name"], "read_file");
     assert_eq!(gem_parts[1]["functionResponse"]["name"], "list_files");
 }
+
+#[test]
+fn multi_provider_decoders_stream_live_reasoning_separately_from_text() {
+    use coda::provider::{AnthropicDecoder, Decoder, GeminiDecoder};
+    use std::cell::RefCell;
+
+    let mut openai = Decoder::default();
+    let openai_events = RefCell::new(Vec::new());
+    let openai_sse = concat!(
+        "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"plan A -> \"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"plan B\"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{\"content\":\"final answer\"},\"finish_reason\":\"stop\"}]}\n\n",
+        "data: [DONE]\n\n"
+    );
+    openai
+        .feed_with_reasoning(
+            openai_sse.as_bytes(),
+            &mut |t| {
+                openai_events.borrow_mut().push(("text", t.to_owned()));
+                Ok(())
+            },
+            &mut |r| {
+                openai_events.borrow_mut().push(("reasoning", r.to_owned()));
+                Ok(())
+            },
+        )
+        .unwrap();
+    let openai_msg = openai.finish(&mut |_| Ok(())).unwrap();
+    assert_eq!(
+        openai_events.into_inner(),
+        vec![
+            ("reasoning", "plan A -> ".to_owned()),
+            ("reasoning", "plan B".to_owned()),
+            ("text", "final answer".to_owned()),
+        ]
+    );
+    assert_eq!(openai_msg["content"], "final answer");
+    assert_eq!(openai_msg["reasoning_content"], "plan A -> plan B");
+
+    let mut anthropic = AnthropicDecoder::default();
+    let anthropic_events = RefCell::new(Vec::new());
+    let anthropic_sse = concat!(
+        "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n",
+        "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}\n\n",
+        "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"checking tree...\"}}\n\n",
+        "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n",
+        "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+        "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"done.\"}}\n\n",
+        "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n",
+        "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+    );
+    anthropic
+        .feed_with_reasoning(
+            anthropic_sse.as_bytes(),
+            &mut |t| {
+                anthropic_events.borrow_mut().push(("text", t.to_owned()));
+                Ok(())
+            },
+            &mut |r| {
+                anthropic_events
+                    .borrow_mut()
+                    .push(("reasoning", r.to_owned()));
+                Ok(())
+            },
+        )
+        .unwrap();
+    let anthropic_msg = anthropic.finish(&mut |_| Ok(())).unwrap();
+    assert_eq!(
+        anthropic_events.into_inner(),
+        vec![
+            ("reasoning", "checking tree...".to_owned()),
+            ("text", "done.".to_owned()),
+        ]
+    );
+    assert_eq!(anthropic_msg["content"], "done.");
+    assert_eq!(anthropic_msg["reasoning_content"], "checking tree...");
+
+    let mut gemini = GeminiDecoder::default();
+    let gemini_events = RefCell::new(Vec::new());
+    let gemini_sse = concat!(
+        "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"thought\":true,\"text\":\"evaluating options\"},{\"text\":\"selected 1\"}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"!\"}]},\"finishReason\":\"STOP\"}]}\n\n"
+    );
+    gemini
+        .feed_with_reasoning(
+            gemini_sse.as_bytes(),
+            &mut |t| {
+                gemini_events.borrow_mut().push(("text", t.to_owned()));
+                Ok(())
+            },
+            &mut |r| {
+                gemini_events.borrow_mut().push(("reasoning", r.to_owned()));
+                Ok(())
+            },
+        )
+        .unwrap();
+    let gemini_msg = gemini.finish(&mut |_| Ok(())).unwrap();
+    assert_eq!(
+        gemini_events.into_inner(),
+        vec![
+            ("reasoning", "evaluating options".to_owned()),
+            ("text", "selected 1".to_owned()),
+            ("text", "!".to_owned()),
+        ]
+    );
+    assert_eq!(gemini_msg["content"], "selected 1!");
+    assert_eq!(gemini_msg["reasoning_content"], "evaluating options");
+}
