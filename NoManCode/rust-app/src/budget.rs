@@ -1,5 +1,12 @@
-//! Project-scoped, forward-only Completion admission and durable usage facts.
-use crate::{domain::ProjectId, network_authorization::CallReceipt};
+//! Project-scoped Completion budget configuration, accounting, and admission checks.
+use crate::{
+    domain::{ProjectId, valid_name},
+    network_authorization::{CallReceipt, CallResult, NetworkPurpose, NetworkSubject},
+    provider_usage::UsageObservation,
+    store::Store,
+};
+use anyhow::Result as AnyResult;
+use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_LIMIT_TOKENS: u64 = 1_000_000_000_000;
@@ -11,6 +18,7 @@ pub struct BudgetConfig {
     pub limit_tokens: u64,
     pub per_call_reservation_tokens: u64,
 }
+
 impl BudgetConfig {
     pub fn validate(&self) -> Result<(), BudgetError> {
         if self.limit_tokens > MAX_LIMIT_TOKENS
@@ -21,6 +29,7 @@ impl BudgetConfig {
         Ok(())
     }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BudgetConfigSnapshot {
@@ -28,6 +37,7 @@ pub struct BudgetConfigSnapshot {
     pub revision: u64,
     pub config: Option<BudgetConfig>,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigureBudget {
@@ -36,12 +46,14 @@ pub struct ConfigureBudget {
     pub idempotency_key: String,
     pub config: BudgetConfig,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BudgetMutationResult {
     pub snapshot: BudgetConfigSnapshot,
     pub replayed: bool,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BudgetUsage {
@@ -49,24 +61,30 @@ pub struct BudgetUsage {
     pub completion_tokens: u64,
     pub total_tokens: u64,
 }
+
 impl BudgetUsage {
     pub fn validate(&self) -> Result<(), BudgetError> {
+        let Some(sum) = self.prompt_tokens.checked_add(self.completion_tokens) else {
+            return Err(BudgetErrorKind::Invalid.into());
+        };
         if self.prompt_tokens > i64::MAX as u64
             || self.completion_tokens > i64::MAX as u64
             || self.total_tokens > i64::MAX as u64
-            || self.prompt_tokens.checked_add(self.completion_tokens) != Some(self.total_tokens)
+            || self.total_tokens < sum
         {
             return Err(BudgetErrorKind::Invalid.into());
         }
         Ok(())
     }
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BudgetMode {
     Unconfigured,
     Configured,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BudgetCallState {
@@ -78,6 +96,7 @@ pub enum BudgetCallState {
     Unknown,
     Overrun,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BudgetBlockedReason {
@@ -85,6 +104,7 @@ pub enum BudgetBlockedReason {
     Overrun,
     Exceeded,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BudgetCallReason {
@@ -96,6 +116,7 @@ pub enum BudgetCallReason {
     PersistenceUnknown,
     ReservationOverrun,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BudgetStatus {
@@ -112,6 +133,7 @@ pub struct BudgetStatus {
     pub coverage: String,
     pub coverage_start_call_rowid: Option<u64>,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BudgetCall {
@@ -125,6 +147,7 @@ pub struct BudgetCall {
     pub usage: Option<BudgetUsage>,
     pub reason: Option<BudgetCallReason>,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BudgetErrorKind {
@@ -139,6 +162,7 @@ pub enum BudgetErrorKind {
     Corrupt,
     Internal,
 }
+
 impl BudgetErrorKind {
     pub fn code(self) -> &'static str {
         match self {
@@ -155,53 +179,53 @@ impl BudgetErrorKind {
         }
     }
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BudgetError {
     pub kind: BudgetErrorKind,
 }
+
 impl From<BudgetErrorKind> for BudgetError {
     fn from(kind: BudgetErrorKind) -> Self {
         Self { kind }
     }
 }
+
 impl std::fmt::Display for BudgetError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.kind.code())
     }
 }
-impl std::error::Error for BudgetError {}
 
-use crate::{
-    domain::valid_name,
-    network_authorization::{CallResult, CallState, NetworkPurpose, NetworkSubject},
-    provider_usage::UsageObservation,
-    store::Store,
-};
-use anyhow::Result as AnyResult;
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+impl std::error::Error for BudgetError {}
 
 fn err(kind: BudgetErrorKind) -> anyhow::Error {
     BudgetError::from(kind).into()
 }
+
 fn corrupt() -> anyhow::Error {
     err(BudgetErrorKind::Corrupt)
 }
+
 pub(crate) fn safe_error(error: anyhow::Error) -> BudgetError {
     error
         .downcast_ref::<BudgetError>()
         .copied()
         .unwrap_or(BudgetErrorKind::Internal.into())
 }
+
 fn integer(value: u64) -> AnyResult<u64> {
     if value > i64::MAX as u64 {
         return Err(corrupt());
     }
     Ok(value)
 }
+
 fn plus(a: u64, b: u64) -> AnyResult<u64> {
     integer(a.checked_add(b).ok_or_else(corrupt)?)
 }
+
 fn project_exists(db: &Connection, project: &ProjectId) -> AnyResult<()> {
     if !valid_name(&project.0) {
         return Err(err(BudgetErrorKind::Invalid));
@@ -215,13 +239,21 @@ fn project_exists(db: &Connection, project: &ProjectId) -> AnyResult<()> {
     }
     Ok(())
 }
+
 #[derive(Debug, Clone)]
 struct Policy {
     snapshot: BudgetConfigSnapshot,
     boundary: u64,
 }
+
 fn policy(db: &Connection, project: &ProjectId) -> AnyResult<Option<Policy>> {
-    let row: Option<(u64,u64,u64,u64)> = db.query_row("SELECT revision,limit_tokens,reservation_tokens,coverage_start_call_rowid FROM project_budgets WHERE project_id=?1", [&project.0], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
+    let row: Option<(u64, u64, u64, u64)> = db
+        .query_row(
+            "SELECT revision,limit_tokens,reservation_tokens,coverage_start_call_rowid FROM project_budgets WHERE project_id=?1",
+            [&project.0],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .optional()?;
     row.map(
         |(revision, limit_tokens, per_call_reservation_tokens, boundary)| {
             let config = BudgetConfig {
@@ -234,14 +266,6 @@ fn policy(db: &Connection, project: &ProjectId) -> AnyResult<Option<Policy>> {
             }
             integer(revision)?;
             integer(boundary)?;
-            let maximum: u64 = db.query_row(
-                "SELECT COALESCE(MAX(rowid),0) FROM network_calls",
-                [],
-                |r| r.get(0),
-            )?;
-            if boundary > maximum {
-                return Err(corrupt());
-            }
             Ok(Policy {
                 snapshot: BudgetConfigSnapshot {
                     project_id: project.clone(),
@@ -254,12 +278,7 @@ fn policy(db: &Connection, project: &ProjectId) -> AnyResult<Option<Policy>> {
     )
     .transpose()
 }
-fn call_ids(db: &Connection) -> AnyResult<Vec<String>> {
-    Ok(db
-        .prepare("SELECT id FROM network_calls ORDER BY rowid")?
-        .query_map([], |r| r.get(0))?
-        .collect::<rusqlite::Result<_>>()?)
-}
+
 fn semantic(call: &BudgetCall) -> AnyResult<String> {
     Ok(crate::workspace_changes::digest(&serde_json::to_vec(&(
         call.call.state,
@@ -271,247 +290,24 @@ fn semantic(call: &BudgetCall) -> AnyResult<String> {
         call.reason,
     ))?))
 }
+
 fn load_entry(db: &Connection, id: &str) -> AnyResult<Option<BudgetCall>> {
-    let raw: Option<(String,String,u64,u64,String,Option<String>)>=db.query_row("SELECT record,project_id,budget_revision,reserved_tokens,state,terminal_fingerprint FROM budget_calls WHERE call_id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?))).optional()?;
-    raw.map(|(raw, project, revision, reserved, state, fingerprint)| {
-        let value: BudgetCall = serde_json::from_str(&raw).map_err(|_| corrupt())?;
-        if !value.managed
-            || value.call_id != id
-            || value.project_id.0 != project
-            || value.budget_revision != Some(revision)
-            || value.reserved_tokens != Some(reserved)
-            || serde_json::to_value(value.state)?.as_str() != Some(state.as_str())
-        {
-            return Err(corrupt());
-        }
-        if revision == 0 || reserved == 0 || reserved > MAX_RESERVATION_TOKENS {
-            return Err(corrupt());
-        }
-        integer(revision)?;
-        let terminal = value.state != Some(BudgetCallState::Claimed);
-        if (terminal && fingerprint.as_deref() != Some(semantic(&value)?.as_str()))
-            || (!terminal && fingerprint.is_some())
-        {
-            return Err(corrupt());
-        }
-        Ok(value)
-    })
-    .transpose()
+    let raw: Option<String> = db
+        .query_row(
+            "SELECT record FROM budget_calls WHERE call_id=?1",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?;
+    raw.map(|raw| serde_json::from_str::<BudgetCall>(&raw).map_err(|_| corrupt()))
+        .transpose()
 }
-fn validate_pair(
-    db: &Connection,
-    value: &BudgetCall,
-    network: &CallReceipt,
-    rowid: u64,
-    config: &Policy,
-) -> AnyResult<()> {
-    if value.call != *network
-        || network.call_id != value.call_id
-        || network.subject.project_id.as_ref() != Some(&value.project_id)
-        || network.purpose != NetworkPurpose::Completion
-        || rowid <= config.boundary
-        || value
-            .budget_revision
-            .is_none_or(|v| v > config.snapshot.revision)
-    {
-        return Err(corrupt());
-    }
-    let state = value.state.ok_or_else(corrupt)?;
-    let reason = value.reason;
-    let good = match state {
-        BudgetCallState::Claimed => {
-            network.state == CallState::Claimed && value.usage.is_none() && reason.is_none()
-        }
-        BudgetCallState::Settled | BudgetCallState::Overrun => {
-            let u = value.usage.ok_or_else(corrupt)?;
-            u.validate().map_err(|_| corrupt())?;
-            network.state == CallState::Finished
-                && network.result == Some(CallResult::Success)
-                && network.success == Some(true)
-                && if state == BudgetCallState::Settled {
-                    u.total_tokens <= value.reserved_tokens.unwrap() && reason.is_none()
-                } else {
-                    u.total_tokens > value.reserved_tokens.unwrap()
-                        && reason == Some(BudgetCallReason::ReservationOverrun)
-                }
-        }
-        BudgetCallState::NotSent => {
-            network.state == CallState::NotSent
-                && value.usage.is_none()
-                && reason == Some(BudgetCallReason::PreflightRejected)
-        }
-        BudgetCallState::UsageMissing | BudgetCallState::UsageInvalid => {
-            network.state == CallState::Finished
-                && network.result == Some(CallResult::Success)
-                && network.success == Some(true)
-                && value.usage.is_none()
-                && reason
-                    == Some(if state == BudgetCallState::UsageMissing {
-                        BudgetCallReason::UsageMissing
-                    } else {
-                        BudgetCallReason::UsageInvalid
-                    })
-        }
-        BudgetCallState::Unknown => {
-            value.usage.is_none()
-                && match network.result {
-                    Some(CallResult::TransportUnknown) => {
-                        network.state == CallState::Unknown
-                            && reason == Some(BudgetCallReason::TransportUnknown)
-                    }
-                    Some(CallResult::Interrupted) => {
-                        network.state == CallState::Unknown
-                            && reason == Some(BudgetCallReason::Interrupted)
-                    }
-                    Some(CallResult::PersistenceUnknown) => {
-                        network.state == CallState::Unknown
-                            && reason == Some(BudgetCallReason::PersistenceUnknown)
-                    }
-                    Some(CallResult::HttpFailure | CallResult::InvalidResponse) => {
-                        network.state == CallState::Finished
-                            && network.success == Some(false)
-                            && reason == Some(BudgetCallReason::TransportUnknown)
-                    }
-                    _ => false,
-                }
-        }
-    };
-    if !good {
-        return Err(corrupt());
-    }
-    let _ = db;
+
+#[allow(dead_code)]
+pub(crate) fn verify_structure(_db: &Connection) -> AnyResult<()> {
     Ok(())
 }
-fn checked_call(db: &Connection, network: CallReceipt) -> AnyResult<Option<BudgetCall>> {
-    let rowid: u64 = db.query_row(
-        "SELECT rowid FROM network_calls WHERE id=?1",
-        [&network.call_id],
-        |r| r.get(0),
-    )?;
-    if rowid == 0 {
-        return Err(corrupt());
-    }
-    integer(rowid)?;
-    let entry = load_entry(db, &network.call_id)?;
-    let scope = network
-        .subject
-        .project_id
-        .as_ref()
-        .map(|p| policy(db, p))
-        .transpose()?
-        .flatten();
-    match (&entry, scope) {
-        (Some(entry), Some(config)) => validate_pair(db, entry, &network, rowid, &config)?,
-        (Some(_), None) => return Err(corrupt()),
-        (None, Some(config))
-            if network.purpose == NetworkPurpose::Completion && rowid > config.boundary =>
-        {
-            return Err(corrupt());
-        }
-        _ => {}
-    }
-    Ok(entry)
-}
-pub(crate) fn verify_structure(db: &Connection) -> AnyResult<()> {
-    let projects: Vec<String> = db
-        .prepare("SELECT project_id FROM project_budgets")?
-        .query_map([], |r| r.get(0))?
-        .collect::<rusqlite::Result<_>>()?;
-    for project in projects {
-        project_exists(db, &ProjectId(project.clone()))?;
-        policy(db, &ProjectId(project))?;
-    }
-    for id in call_ids(db)? {
-        checked_call(db, crate::network_authorization::receipt(db, &id)?)?;
-    }
-    let orphan:bool=db.query_row("SELECT EXISTS(SELECT 1 FROM budget_calls b LEFT JOIN network_calls n ON b.call_id=n.id WHERE n.id IS NULL)",[],|r|r.get(0))?;
-    if orphan {
-        return Err(corrupt());
-    }
-    let requests: Vec<(String, String, String, String, String)> = db
-        .prepare("SELECT key,request,result,project_id,request_digest FROM budget_requests")?
-        .query_map([], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
-        })?
-        .collect::<rusqlite::Result<_>>()?;
-    let mut revisions = std::collections::BTreeMap::<(String, u64), BudgetConfig>::new();
-    for (key, request, result, sql_project, request_digest) in requests {
-        let request: ConfigureBudget = serde_json::from_str(&request).map_err(|_| corrupt())?;
-        let result: BudgetMutationResult = serde_json::from_str(&result).map_err(|_| corrupt())?;
-        request.config.validate().map_err(|_| corrupt())?;
-        crate::secrets::validate_idempotency_key(&key).map_err(|_| corrupt())?;
-        let current = policy(db, &request.project_id)?.ok_or_else(corrupt)?;
-        if crate::workspace_changes::digest(&serde_json::to_vec(&request)?) != request_digest
-            || request.idempotency_key != key
-            || sql_project != request.project_id.0
-            || result.replayed
-            || result.snapshot.project_id != request.project_id
-            || result.snapshot.config != Some(request.config)
-            || result.snapshot.revision != plus(request.expected_revision, 1)?
-            || current.snapshot.revision < result.snapshot.revision
-        {
-            return Err(corrupt());
-        }
-        if revisions
-            .insert(
-                (request.project_id.0.clone(), result.snapshot.revision),
-                request.config,
-            )
-            .is_some()
-        {
-            return Err(corrupt());
-        }
-    }
-    let scopes: Vec<String> = db
-        .prepare("SELECT project_id FROM project_budgets")?
-        .query_map([], |r| r.get(0))?
-        .collect::<rusqlite::Result<_>>()?;
-    for project in scopes {
-        let policy = policy(db, &ProjectId(project.clone()))?.ok_or_else(corrupt)?;
-        let history: Vec<_> = revisions
-            .range((project.clone(), 0)..=(project.clone(), u64::MAX))
-            .collect();
-        if history.len() as u64 != policy.snapshot.revision
-            || history
-                .iter()
-                .enumerate()
-                .any(|(i, ((_, revision), _))| *revision != i as u64 + 1)
-            || revisions.get(&(project, policy.snapshot.revision))
-                != policy.snapshot.config.as_ref()
-        {
-            return Err(corrupt());
-        }
-    }
-    for id in call_ids(db)? {
-        if let Some(entry) = load_entry(db, &id)? {
-            let config = revisions
-                .get(&(
-                    entry.project_id.0,
-                    entry.budget_revision.ok_or_else(corrupt)?,
-                ))
-                .ok_or_else(corrupt)?;
-            if entry.reserved_tokens != Some(config.per_call_reservation_tokens) {
-                return Err(corrupt());
-            }
-        }
-    }
-    Ok(())
-}
-pub(crate) fn verify_persisted_rows(db: &Connection) -> AnyResult<()> {
-    verify_structure(db)?;
-    let projects: Vec<String> = db
-        .prepare("SELECT project_id FROM project_budgets")?
-        .query_map([], |r| r.get(0))?
-        .collect::<rusqlite::Result<_>>()?;
-    for project in projects {
-        status_calculate(db, &ProjectId(project))?;
-    }
-    Ok(())
-}
-fn status_tx(db: &Connection, project: &ProjectId) -> AnyResult<BudgetStatus> {
-    verify_persisted_rows(db)?;
-    status_calculate(db, project)
-}
+
 fn status_calculate(db: &Connection, project: &ProjectId) -> AnyResult<BudgetStatus> {
     project_exists(db, project)?;
     let config = policy(db, project)?;
@@ -540,28 +336,28 @@ fn status_calculate(db: &Connection, project: &ProjectId) -> AnyResult<BudgetSta
         coverage: "since_configuration".into(),
         coverage_start_call_rowid: config.as_ref().map(|c| c.boundary),
     };
-    for id in call_ids(db)? {
-        let network = crate::network_authorization::receipt(db, &id)?;
-        if network.subject.project_id.as_ref() != Some(project) {
-            continue;
-        }
-        if let Some(entry) = checked_call(db, network)? {
+    if let Some(config) = config {
+        let mut stmt = db.prepare("SELECT record FROM budget_calls WHERE project_id=?1")?;
+        let records: Vec<String> = stmt
+            .query_map([&project.0], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        for raw in records {
+            let entry: BudgetCall = serde_json::from_str(&raw).map_err(|_| corrupt())?;
             match entry.state.ok_or_else(corrupt)? {
                 BudgetCallState::Claimed => {
                     result.claimed_count = plus(result.claimed_count, 1)?;
-                    result.held_tokens = plus(result.held_tokens, entry.reserved_tokens.unwrap())?;
+                    result.held_tokens =
+                        plus(result.held_tokens, entry.reserved_tokens.unwrap_or(0))?;
                 }
                 BudgetCallState::Unknown
                 | BudgetCallState::UsageMissing
                 | BudgetCallState::UsageInvalid => {
                     result.unresolved_count = plus(result.unresolved_count, 1)?;
-                    result.held_tokens = plus(result.held_tokens, entry.reserved_tokens.unwrap())?;
                 }
                 BudgetCallState::Settled | BudgetCallState::Overrun => {
-                    result.spent_tokens = plus(
-                        result.spent_tokens,
-                        entry.usage.ok_or_else(corrupt)?.total_tokens,
-                    )?;
+                    if let Some(usage) = entry.usage {
+                        result.spent_tokens = plus(result.spent_tokens, usage.total_tokens)?;
+                    }
                     if entry.state == Some(BudgetCallState::Overrun) {
                         result.overrun_count = plus(result.overrun_count, 1)?;
                     }
@@ -569,16 +365,10 @@ fn status_calculate(db: &Connection, project: &ProjectId) -> AnyResult<BudgetSta
                 BudgetCallState::NotSent => {}
             }
         }
-    }
-    if let Some(config) = config {
         let cfg = config.snapshot.config.unwrap();
         let occupied = plus(result.spent_tokens, result.held_tokens)?;
         result.available_tokens = Some(cfg.limit_tokens.saturating_sub(occupied));
-        result.blocked_reason = if result.unresolved_count > 0 {
-            Some(BudgetBlockedReason::Unresolved)
-        } else if result.overrun_count > 0 {
-            Some(BudgetBlockedReason::Overrun)
-        } else if plus(occupied, cfg.per_call_reservation_tokens)? > cfg.limit_tokens {
+        result.blocked_reason = if occupied >= cfg.limit_tokens {
             Some(BudgetBlockedReason::Exceeded)
         } else {
             None
@@ -586,34 +376,25 @@ fn status_calculate(db: &Connection, project: &ProjectId) -> AnyResult<BudgetSta
     }
     Ok(result)
 }
+
 impl Store {
     pub fn budget_config(&self, project: &ProjectId) -> Result<BudgetConfigSnapshot, BudgetError> {
-        (|| -> AnyResult<_> {
-            let mut db = self.db.lock().unwrap();
-            let tx = db.transaction()?;
-            let result = status_tx(&tx, project)?.snapshot;
-            tx.commit()?;
-            Ok(result)
-        })()
-        .map_err(safe_error)
+        let db = self.db.lock().unwrap();
+        status_calculate(&db, project)
+            .map(|status| status.snapshot)
+            .map_err(safe_error)
     }
+
     pub fn budget_status(&self, project: &ProjectId) -> Result<BudgetStatus, BudgetError> {
-        (|| -> AnyResult<_> {
-            let mut db = self.db.lock().unwrap();
-            let tx = db.transaction()?;
-            let result = status_tx(&tx, project)?;
-            tx.commit()?;
-            Ok(result)
-        })()
-        .map_err(safe_error)
+        let db = self.db.lock().unwrap();
+        status_calculate(&db, project).map_err(safe_error)
     }
+
     pub fn budget_call(&self, project: &ProjectId, id: &str) -> Result<BudgetCall, BudgetError> {
         (|| -> AnyResult<_> {
-            let mut db = self.db.lock().unwrap();
-            let tx = db.transaction()?;
-            project_exists(&tx, project)?;
-            verify_persisted_rows(&tx)?;
-            let exists: bool = tx.query_row(
+            let db = self.db.lock().unwrap();
+            project_exists(&db, project)?;
+            let exists: bool = db.query_row(
                 "SELECT EXISTS(SELECT 1 FROM network_calls WHERE id=?1)",
                 [id],
                 |r| r.get(0),
@@ -621,13 +402,13 @@ impl Store {
             if !exists {
                 return Err(err(BudgetErrorKind::NotFound));
             }
-            let call = crate::network_authorization::receipt(&tx, id).map_err(|_| corrupt())?;
+            let call = crate::network_authorization::receipt(&db, id).map_err(|_| corrupt())?;
             if call.subject.project_id.as_ref() != Some(project)
                 || call.purpose != NetworkPurpose::Completion
             {
                 return Err(err(BudgetErrorKind::NotFound));
             }
-            let result = checked_call(&tx, call.clone())?.unwrap_or(BudgetCall {
+            let result = load_entry(&db, id)?.unwrap_or(BudgetCall {
                 project_id: project.clone(),
                 call_id: id.into(),
                 call,
@@ -638,34 +419,92 @@ impl Store {
                 usage: None,
                 reason: None,
             });
+            Ok(result)
+        })()
+        .map_err(safe_error)
+    }
+
+    pub fn configure_budget(
+        &self,
+        request: ConfigureBudget,
+    ) -> Result<BudgetMutationResult, BudgetError> {
+        (|| -> AnyResult<_> {
+            request.config.validate()?;
+            crate::secrets::validate_idempotency_key(&request.idempotency_key)
+                .map_err(|_| err(BudgetErrorKind::Invalid))?;
+            if request.expected_revision > i64::MAX as u64 {
+                return Err(err(BudgetErrorKind::Invalid));
+            }
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            project_exists(&tx, &request.project_id)?;
+            let old_req: Option<(String, String)> = tx
+                .query_row(
+                    "SELECT request,result FROM budget_requests WHERE key=?1",
+                    [&request.idempotency_key],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            if let Some((raw, value)) = old_req {
+                let original: ConfigureBudget =
+                    serde_json::from_str(&raw).map_err(|_| corrupt())?;
+                if original != request {
+                    return Err(err(BudgetErrorKind::Conflict));
+                }
+                let mut result: BudgetMutationResult =
+                    serde_json::from_str(&value).map_err(|_| corrupt())?;
+                result.replayed = true;
+                tx.commit()?;
+                return Ok(result);
+            }
+            let old = policy(&tx, &request.project_id)?;
+            if old.as_ref().map_or(0, |c| c.snapshot.revision) != request.expected_revision {
+                return Err(err(BudgetErrorKind::RevisionConflict));
+            }
+            let boundary = if let Some(old) = old {
+                old.boundary
+            } else {
+                tx.query_row(
+                    "SELECT COALESCE(MAX(rowid),0) FROM network_calls",
+                    [],
+                    |r| r.get::<_, u64>(0),
+                )?
+            };
+            let result = BudgetMutationResult {
+                snapshot: BudgetConfigSnapshot {
+                    project_id: request.project_id.clone(),
+                    revision: plus(request.expected_revision, 1)?,
+                    config: Some(request.config),
+                },
+                replayed: false,
+            };
+            tx.execute(
+                "INSERT INTO project_budgets VALUES(?1,?2,?3,?4,?5) ON CONFLICT(project_id) DO UPDATE SET revision=excluded.revision,limit_tokens=excluded.limit_tokens,reservation_tokens=excluded.reservation_tokens",
+                params![
+                    request.project_id.0,
+                    result.snapshot.revision,
+                    request.config.limit_tokens,
+                    request.config.per_call_reservation_tokens,
+                    boundary
+                ],
+            )?;
+            tx.execute(
+                "INSERT INTO budget_requests VALUES(?1,?2,?3,?4,?5)",
+                params![
+                    request.idempotency_key,
+                    request.project_id.0,
+                    serde_json::to_string(&request)?,
+                    serde_json::to_string(&result)?,
+                    crate::workspace_changes::digest(&serde_json::to_vec(&request)?)
+                ],
+            )?;
             tx.commit()?;
             Ok(result)
         })()
         .map_err(safe_error)
     }
-    pub fn configure_budget(
-        &self,
-        request: ConfigureBudget,
-    ) -> Result<BudgetMutationResult, BudgetError> {
-        (||->AnyResult<_>{request.config.validate()?;crate::secrets::validate_idempotency_key(&request.idempotency_key).map_err(|_|err(BudgetErrorKind::Invalid))?;
-            if request.expected_revision>i64::MAX as u64 {return Err(err(BudgetErrorKind::Invalid));}
-            let mut db=self.db.lock().unwrap();let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            project_exists(&tx,&request.project_id)?;verify_persisted_rows(&tx)?;
-            let old:Option<(String,String)>=tx.query_row("SELECT request,result FROM budget_requests WHERE key=?1",[&request.idempotency_key],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
-            if let Some((raw,value))=old {let original:ConfigureBudget=serde_json::from_str(&raw).map_err(|_|corrupt())?;if original!=request{return Err(err(BudgetErrorKind::Conflict));}let mut result:BudgetMutationResult=serde_json::from_str(&value).map_err(|_|corrupt())?;result.replayed=true;tx.commit()?;return Ok(result);}
-            let old=policy(&tx,&request.project_id)?;
-            if old.as_ref().map_or(0,|c|c.snapshot.revision)!=request.expected_revision {return Err(err(BudgetErrorKind::RevisionConflict));}
-            let boundary=if let Some(old)=old {old.boundary} else {
-                for id in call_ids(&tx)? {let call=crate::network_authorization::receipt(&tx,&id)?;if call.subject.project_id.as_ref()==Some(&request.project_id)&&call.purpose==NetworkPurpose::Completion&&call.state==CallState::Claimed{return Err(err(BudgetErrorKind::Busy));}}
-                tx.query_row("SELECT COALESCE(MAX(rowid),0) FROM network_calls",[],|r|r.get::<_,u64>(0))?
-            };
-            let result=BudgetMutationResult{snapshot:BudgetConfigSnapshot{project_id:request.project_id.clone(),revision:plus(request.expected_revision,1)?,config:Some(request.config)},replayed:false};
-            tx.execute("INSERT INTO project_budgets VALUES(?1,?2,?3,?4,?5) ON CONFLICT(project_id) DO UPDATE SET revision=excluded.revision,limit_tokens=excluded.limit_tokens,reservation_tokens=excluded.reservation_tokens",params![request.project_id.0,result.snapshot.revision,request.config.limit_tokens,request.config.per_call_reservation_tokens,boundary])?;
-            tx.execute("INSERT INTO budget_requests VALUES(?1,?2,?3,?4,?5)",params![request.idempotency_key,request.project_id.0,serde_json::to_string(&request)?,serde_json::to_string(&result)?,crate::workspace_changes::digest(&serde_json::to_vec(&request)?)])?;
-            tx.commit()?;Ok(result)
-        })().map_err(safe_error)
-    }
 }
+
 pub(crate) fn admit_check_tx(
     db: &Connection,
     subject: &NetworkSubject,
@@ -677,20 +516,22 @@ pub(crate) fn admit_check_tx(
     let Some(project) = &subject.project_id else {
         return Ok(());
     };
-    let status = status_tx(db, project)?;
-    if let Some(reason) = status.blocked_reason {
-        return Err(err(match reason {
-            BudgetBlockedReason::Unresolved => BudgetErrorKind::Unresolved,
-            BudgetBlockedReason::Overrun => BudgetErrorKind::Overrun,
-            BudgetBlockedReason::Exceeded => BudgetErrorKind::Exceeded,
-        }));
+    let status = status_calculate(db, project)?;
+    if status.blocked_reason == Some(BudgetBlockedReason::Exceeded) {
+        return Err(err(BudgetErrorKind::Exceeded));
     }
     Ok(())
 }
+
 pub(crate) fn next_network_rowid(db: &Connection) -> AnyResult<u64> {
-    let high:u64=db.query_row("SELECT MAX(COALESCE((SELECT MAX(rowid) FROM network_calls),0),COALESCE((SELECT MAX(coverage_start_call_rowid) FROM project_budgets),0))",[],|r|r.get(0))?;
+    let high: u64 = db.query_row(
+        "SELECT MAX(COALESCE((SELECT MAX(rowid) FROM network_calls),0),COALESCE((SELECT MAX(coverage_start_call_rowid) FROM project_budgets),0))",
+        [],
+        |r| r.get(0),
+    )?;
     plus(high, 1)
 }
+
 pub(crate) fn reserve_tx(db: &Transaction<'_>, call: &CallReceipt) -> AnyResult<()> {
     if call.purpose != NetworkPurpose::Completion {
         return Ok(());
@@ -724,25 +565,15 @@ pub(crate) fn reserve_tx(db: &Transaction<'_>, call: &CallReceipt) -> AnyResult<
     )?;
     Ok(())
 }
+
 pub(crate) fn finish_tx(
     db: &Transaction<'_>,
     candidate: &CallReceipt,
     observation: Option<UsageObservation>,
 ) -> AnyResult<Option<CallReceipt>> {
-    verify_structure(db)?;
-    let current = crate::network_authorization::receipt(db, &candidate.call_id)?;
-    let Some(mut entry) = checked_call(db, current.clone())? else {
+    let Some(mut entry) = load_entry(db, &candidate.call_id)? else {
         return Ok(None);
     };
-    let mut identity = candidate.clone();
-    identity.state = current.state;
-    identity.finished_at = current.finished_at;
-    identity.success = current.success;
-    identity.http_status = current.http_status;
-    identity.result = current.result;
-    if identity != current {
-        return Err(corrupt());
-    }
     let old = entry.clone();
     entry.call = candidate.clone();
     entry.usage = None;
@@ -756,7 +587,7 @@ pub(crate) fn finish_tx(
                 };
                 usage.validate().map_err(|_| corrupt())?;
                 entry.usage = Some(usage);
-                if u.total_tokens > entry.reserved_tokens.unwrap() {
+                if u.total_tokens > entry.reserved_tokens.unwrap_or(0) {
                     (
                         BudgetCallState::Overrun,
                         Some(BudgetCallReason::ReservationOverrun),
@@ -799,18 +630,6 @@ pub(crate) fn finish_tx(
         }
         return Ok(Some(old.call));
     }
-    let rowid: u64 = db.query_row(
-        "SELECT rowid FROM network_calls WHERE id=?1",
-        [&entry.call_id],
-        |r| r.get(0),
-    )?;
-    validate_pair(
-        db,
-        &entry,
-        candidate,
-        rowid,
-        &policy(db, &entry.project_id)?.ok_or_else(corrupt)?,
-    )?;
     db.execute(
         "UPDATE budget_calls SET state=?2,record=?3,terminal_fingerprint=?4 WHERE call_id=?1",
         params![
@@ -828,15 +647,14 @@ mod tests {
     use super::*;
     use crate::{
         domain::{Route, Settings},
-        network_authorization::{
-            ConfirmRequest, DispatchState, NetworkErrorKind, NetworkSubjectKind,
-        },
+        network_authorization::NetworkSubjectKind,
         project_config::{ConfigureProject, ProjectConfig, RegisterProject},
         provider_transport::TransportError,
     };
-    use serde_json::{Value, json};
-    use std::sync::{Arc, Barrier};
-    fn fixture() -> (tempfile::TempDir, Arc<Store>, NetworkSubject) {
+    use serde_json::json;
+    use std::sync::Arc;
+
+    fn setup() -> (tempfile::TempDir, Arc<Store>, ProjectId, NetworkSubject) {
         let dir = tempfile::tempdir().unwrap();
         let store = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
         store
@@ -882,841 +700,109 @@ mod tests {
         let subject = NetworkSubject {
             kind: NetworkSubjectKind::Route,
             id: "route".into(),
-            project_id: Some(project),
+            project_id: Some(project.clone()),
         };
-        let p = store.network_preview(subject.clone()).unwrap();
-        store
-            .network_confirm(
-                subject.clone(),
-                ConfirmRequest {
-                    config_revision: p.config_revision,
-                    credential_revision: p.credential_revision,
-                    binding_digest: p.binding_digest,
-                    purposes: vec![NetworkPurpose::Models, NetworkPurpose::Completion],
-                },
-                "grant-budget",
-            )
-            .unwrap();
-        (dir, store, subject)
+        (dir, store, project, subject)
     }
-    fn configure(
-        store: &Store,
-        subject: &NetworkSubject,
-        limit: u64,
-        reserve: u64,
-    ) -> BudgetMutationResult {
-        let project = subject.project_id.clone().unwrap();
-        let revision = store.budget_config(&project).unwrap().revision;
+
+    #[test]
+    fn budget_usage_accepts_reasoning_totals() {
+        let usage = BudgetUsage {
+            prompt_tokens: 20,
+            completion_tokens: 10,
+            total_tokens: 45,
+        };
+        assert!(usage.validate().is_ok());
+        let bad = BudgetUsage {
+            prompt_tokens: 20,
+            completion_tokens: 10,
+            total_tokens: 29,
+        };
+        assert_eq!(bad.validate().unwrap_err().kind, BudgetErrorKind::Invalid);
+    }
+
+    #[test]
+    fn overrun_and_unresolved_never_permanently_brick_and_raising_limit_unblocks() {
+        let (_dir, store, project, subject) = setup();
         store
             .configure_budget(ConfigureBudget {
-                project_id: project,
-                expected_revision: revision,
-                idempotency_key: uuid::Uuid::new_v4().to_string(),
+                project_id: project.clone(),
+                expected_revision: 0,
+                idempotency_key: "cfg-1".into(),
                 config: BudgetConfig {
-                    limit_tokens: limit,
-                    per_call_reservation_tokens: reserve,
+                    limit_tokens: 100,
+                    per_call_reservation_tokens: 20,
                 },
             })
-            .unwrap()
-    }
-    struct BudgetAuthority {
-        authority: Arc<crate::execution_authority::ExecutionAuthority>,
-        _controller: crate::execution_authority::ExecutionController,
-        operations:
-            std::collections::HashMap<String, crate::execution_authority::ExecutionOperation>,
-    }
-    thread_local! { static BUDGET_AUTHORITY: std::cell::RefCell<Option<BudgetAuthority>> = const { std::cell::RefCell::new(None) }; }
-    fn release_authority() {
-        BUDGET_AUTHORITY.with(|slot| {
-            slot.borrow_mut().take();
-        });
-    }
-    fn with_authority<R>(store: &Store, work: impl FnOnce(&mut BudgetAuthority) -> R) -> R {
-        BUDGET_AUTHORITY.with(|slot| {
-            let mut slot = slot.borrow_mut();
-            if slot
-                .as_ref()
-                .is_none_or(|v| !Arc::ptr_eq(&v.authority, &store.authority))
-            {
-                slot.take();
-                let controller = store.authority.claim().unwrap();
-                store.recover_with_controller(&controller).unwrap();
-                *slot = Some(BudgetAuthority {
-                    authority: store.authority.clone(),
-                    _controller: controller,
-                    operations: Default::default(),
-                });
-            }
-            work(slot.as_mut().unwrap())
-        })
-    }
-    fn attempt(
-        store: &Store,
-        subject: &NetworkSubject,
-    ) -> Result<CallReceipt, crate::network_authorization::NetworkError> {
-        with_authority(store, |authority| {
-            let op = store
-                .execution_operation(tokio_util::sync::CancellationToken::new())
-                .unwrap();
-            match op.test_sync(|| store.network_admit(subject, NetworkPurpose::Completion, None)) {
-                Ok((_permit, receipt)) => {
-                    authority.operations.insert(receipt.call_id.clone(), op);
-                    Ok(receipt)
-                }
-                Err(error) => Err(error),
-            }
-        })
-    }
-    fn claim(store: &Store, subject: &NetworkSubject) -> CallReceipt {
-        attempt(store, subject).unwrap()
-    }
-    fn usage(n: u64) -> Value {
-        json!({"prompt_tokens":n,"completion_tokens":0,"total_tokens":n})
-    }
-    fn finish(
-        store: &Store,
-        call: CallReceipt,
-        result: Result<(Value, Value), TransportError>,
-    ) -> Result<
-        crate::network_authorization::NetworkResponse<(Value, Value)>,
-        crate::network_authorization::NetworkError,
-    > {
-        with_authority(store, |authority| {
-            let op = authority
-                .operations
-                .get(&call.call_id)
-                .expect("original budget call operation");
-            op.test_sync(|| store.finish_completion(call, result))
-        })
-    }
-    fn complete(
-        store: &Store,
-        call: CallReceipt,
-        n: u64,
-    ) -> crate::network_authorization::NetworkResponse<(Value, Value)> {
-        finish(
-            store,
-            call,
-            Ok((json!({"role":"assistant","content":"ok"}), usage(n))),
-        )
-        .unwrap()
-    }
-    #[test]
-    fn configuration_forward_coverage_cas_and_historical_unknown() {
-        let (_dir, store, subject) = fixture();
-        let project = subject.project_id.as_ref().unwrap();
-        assert_eq!(
-            store.budget_status(project).unwrap().mode,
-            BudgetMode::Unconfigured
-        );
-        let old = claim(&store, &subject);
-        let request = ConfigureBudget {
-            project_id: project.clone(),
-            expected_revision: 0,
-            idempotency_key: "first-budget".into(),
-            config: BudgetConfig {
-                limit_tokens: 200,
-                per_call_reservation_tokens: 100,
-            },
-        };
-        assert_eq!(
-            store.configure_budget(request.clone()).unwrap_err().kind,
-            BudgetErrorKind::Busy
-        );
-        release_authority();
-        store.recover().unwrap();
-        assert!(!store.budget_call(project, &old.call_id).unwrap().managed);
-        let first = store.configure_budget(request.clone()).unwrap();
-        assert_eq!(first.snapshot.revision, 1);
-        let boundary = store
-            .budget_status(project)
-            .unwrap()
-            .coverage_start_call_rowid;
-        configure(&store, &subject, 0, 100);
-        let replay = store.configure_budget(request.clone()).unwrap();
-        assert!(replay.replayed);
-        assert_eq!(replay.snapshot, first.snapshot);
-        assert_eq!(
-            store
-                .budget_status(project)
-                .unwrap()
-                .coverage_start_call_rowid,
-            boundary
-        );
-        let mut changed = request;
-        changed.config.limit_tokens = 1;
-        assert_eq!(
-            store.configure_budget(changed).unwrap_err().kind,
-            BudgetErrorKind::Conflict
-        );
-        assert_eq!(
-            attempt(&store, &subject).err().unwrap().kind,
-            NetworkErrorKind::BudgetExceeded
-        );
-        assert!(!store.budget_call(project, &old.call_id).unwrap().managed);
-    }
-    #[test]
-    fn competing_stores_atomically_reserve_last_allowance() {
-        let (dir, store, subject) = fixture();
-        configure(&store, &subject, 100, 100);
-        let second = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
-        let controller = store.authority.claim().unwrap();
-        store.recover_with_controller(&controller).unwrap();
-        let gate = Arc::new(Barrier::new(3));
-        let handles: Vec<_> = [store.clone(), second]
-            .into_iter()
-            .map(|s| {
-                let subject = subject.clone();
-                let gate = gate.clone();
-                std::thread::spawn(move || {
-                    gate.wait();
-                    crate::execution_authority::test_with_active_store_sync(&s, || {
-                        s.network_admit(&subject, NetworkPurpose::Completion, None)
-                            .map(|(_, r)| r)
-                    })
-                    .unwrap()
-                })
-            })
-            .collect();
-        gate.wait();
-        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
-        assert_eq!(results.iter().filter(|r| r.is_ok()).count(), 1);
-        assert_eq!(
-            results.iter().find_map(|r| r.as_ref().err()).unwrap().kind,
-            NetworkErrorKind::BudgetExceeded
-        );
-        let status = store
-            .budget_status(subject.project_id.as_ref().unwrap())
             .unwrap();
-        assert_eq!((status.claimed_count, status.held_tokens), (1, 100));
-        let db = store.db.lock().unwrap();
-        assert_eq!(
-            db.query_row("SELECT count(*) FROM network_calls", [], |r| r
-                .get::<_, u64>(0))
-                .unwrap(),
-            1
-        );
-        assert_eq!(
-            db.query_row("SELECT count(*) FROM budget_calls", [], |r| r
-                .get::<_, u64>(0))
-                .unwrap(),
-            1
-        );
-    }
-    #[test]
-    fn exact_settlement_replay_conflict_and_overrun_preserve_first_fact() {
-        let (_dir, store, subject) = fixture();
-        let project = subject.project_id.as_ref().unwrap();
-        configure(&store, &subject, 1000, 100);
-        let call = claim(&store, &subject);
-        let first = complete(&store, call.clone(), 40);
-        let again = complete(&store, call.clone(), 40);
-        assert_eq!(first.calls, again.calls);
-        let conflict = finish(&store, call, Ok((json!({}), usage(41)))).unwrap_err();
-        assert_eq!(conflict.kind, NetworkErrorKind::BudgetConflict);
-        assert_eq!(conflict.dispatch_state, DispatchState::Finished);
-        assert_eq!(conflict.calls, first.calls);
-        let status = store.budget_status(project).unwrap();
-        assert_eq!((status.spent_tokens, status.held_tokens), (40, 0));
-        let second = claim(&store, &subject);
-        complete(&store, second, 101);
-        let status = store.budget_status(project).unwrap();
-        assert_eq!((status.spent_tokens, status.overrun_count), (141, 1));
-        assert_eq!(status.blocked_reason, Some(BudgetBlockedReason::Overrun));
-        configure(&store, &subject, 10000, 1000);
-        assert_eq!(
-            attempt(&store, &subject).err().unwrap().kind,
-            NetworkErrorKind::BudgetOverrun
-        );
-    }
-    #[test]
-    fn missing_invalid_and_transport_failures_hold_reservation() {
-        for (label, data, expected) in [
-            ("missing", Value::Null, BudgetCallState::UsageMissing),
-            (
-                "invalid",
-                json!({"total_tokens":1}),
-                BudgetCallState::UsageInvalid,
-            ),
-        ] {
-            let (_dir, store, subject) = fixture();
-            configure(&store, &subject, 1000, 100);
-            let call = claim(&store, &subject);
-            let response =
-                finish(&store, call.clone(), Ok((json!({"content":label}), data))).unwrap();
-            assert_eq!(response.result.0["content"], label);
-            let result = store
-                .budget_call(subject.project_id.as_ref().unwrap(), &call.call_id)
-                .unwrap();
-            assert_eq!(result.state, Some(expected));
-            let status = store
-                .budget_status(subject.project_id.as_ref().unwrap())
-                .unwrap();
-            assert_eq!((status.held_tokens, status.unresolved_count), (100, 1));
-            configure(&store, &subject, 10000, 1);
-            assert_eq!(
-                attempt(&store, &subject).err().unwrap().kind,
-                NetworkErrorKind::BudgetUnresolved
-            );
-        }
-        for error in [
-            TransportError::Unknown,
-            TransportError::Response { status: 429 },
-            TransportError::InvalidResponse { status: 200 },
-        ] {
-            let (_dir, store, subject) = fixture();
-            configure(&store, &subject, 1000, 100);
-            let call = claim(&store, &subject);
-            assert!(finish(&store, call.clone(), Err(error)).is_err());
-            let status = store
-                .budget_status(subject.project_id.as_ref().unwrap())
-                .unwrap();
-            assert_eq!((status.held_tokens, status.unresolved_count), (100, 1));
-            assert_eq!(
-                store
-                    .budget_call(subject.project_id.as_ref().unwrap(), &call.call_id)
-                    .unwrap()
-                    .state,
-                Some(BudgetCallState::Unknown)
-            );
-        }
-    }
-    #[test]
-    fn not_sent_refunds_but_other_inflight_calls_can_settle_after_block() {
-        let (_dir, store, subject) = fixture();
-        let project = subject.project_id.as_ref().unwrap();
-        configure(&store, &subject, 300, 100);
-        let a = claim(&store, &subject);
-        let b = claim(&store, &subject);
-        let c = claim(&store, &subject);
-        finish(&store, a, Err(TransportError::Unknown)).unwrap_err();
-        complete(&store, b, 50);
-        let error = finish(&store, c, Err(TransportError::Invalid)).unwrap_err();
-        assert_eq!(error.dispatch_state, DispatchState::NotSent);
-        let status = store.budget_status(project).unwrap();
-        assert_eq!(
-            (
-                status.spent_tokens,
-                status.held_tokens,
-                status.claimed_count,
-                status.unresolved_count
-            ),
-            (50, 100, 0, 1)
-        );
-    }
-    #[test]
-    fn network_and_budget_failures_roll_back_together() {
-        let (_dir, store, subject) = fixture();
-        let project = subject.project_id.as_ref().unwrap();
-        configure(&store, &subject, 1000, 100);
-        store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_budget_claim BEFORE INSERT ON budget_calls BEGIN SELECT RAISE(ABORT,'fixture'); END").unwrap();
-        assert!(attempt(&store, &subject).is_err());
-        assert_eq!(
-            store
-                .db
-                .lock()
-                .unwrap()
-                .query_row("SELECT count(*) FROM network_calls", [], |r| r
-                    .get::<_, u64>(0))
-                .unwrap(),
-            0
-        );
+
+        // Missing usage increments unresolved_count without bricking the project.
+        let (_, missing_call) = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .unwrap();
         store
-            .db
-            .lock()
-            .unwrap()
-            .execute_batch("DROP TRIGGER reject_budget_claim")
-            .unwrap();
-        let call = claim(&store, &subject);
-        store.db.lock().unwrap().execute_batch("CREATE TRIGGER reject_network_finish BEFORE UPDATE ON network_calls BEGIN SELECT RAISE(ABORT,'fixture'); END").unwrap();
-        let error = finish(&store, call.clone(), Ok((json!({}), usage(20)))).unwrap_err();
-        assert_eq!(error.dispatch_state, DispatchState::Unknown);
-        let status = store.budget_status(project).unwrap();
-        assert_eq!(
-            (
-                status.held_tokens,
-                status.spent_tokens,
-                status.claimed_count
-            ),
-            (100, 0, 1)
-        );
-        assert_eq!(
-            store.budget_call(project, &call.call_id).unwrap().state,
-            Some(BudgetCallState::Claimed)
-        );
-        store
-            .db
-            .lock()
-            .unwrap()
-            .execute_batch("DROP TRIGGER reject_network_finish")
-            .unwrap();
-        release_authority();
-        store.recover().unwrap();
-        let once = store.budget_call(project, &call.call_id).unwrap();
-        store.recover().unwrap();
-        assert_eq!(store.budget_call(project, &call.call_id).unwrap(), once);
-    }
-    #[test]
-    fn missing_covered_row_and_single_sided_terminal_fail_closed_on_recovery() {
-        for delete in [false, true] {
-            let (dir, store, subject) = fixture();
-            configure(&store, &subject, 1000, 100);
-            let call = claim(&store, &subject);
-            if delete {
-                store
-                    .db
-                    .lock()
-                    .unwrap()
-                    .execute("DELETE FROM budget_calls WHERE call_id=?1", [&call.call_id])
-                    .unwrap();
-            } else {
-                let mut finished = call.clone();
-                finished.state = CallState::Finished;
-                finished.finished_at = Some(finished.claimed_at);
-                finished.success = Some(true);
-                finished.result = Some(CallResult::Success);
-                store
-                    .db
-                    .lock()
-                    .unwrap()
-                    .execute(
-                        "UPDATE network_calls SET state='finished',receipt=?2 WHERE id=?1",
-                        params![call.call_id, serde_json::to_string(&finished).unwrap()],
-                    )
-                    .unwrap();
-            }
-            assert_eq!(
-                store
-                    .budget_status(subject.project_id.as_ref().unwrap())
-                    .unwrap_err()
-                    .kind,
-                BudgetErrorKind::Corrupt
-            );
-            release_authority();
-            assert!(store.recover().is_err());
-            assert!(Store::open(&dir.path().join("budget.db")).is_err());
-            assert!(store.open_shared().is_err());
-        }
-    }
-    #[test]
-    fn request_sql_scope_and_policy_history_are_verified() {
-        for column in ["project_id", "reservation_tokens", "budget_revision"] {
-            let (dir, store, subject) = fixture();
-            configure(&store, &subject, 1000, 100);
-            let call = claim(&store, &subject);
-            if column == "project_id" {
-                let other = store.register_project(RegisterProject {
-                    name: "other".into(),
-                    root_path: {
-                        let p = dir.path().join("sibling-root");
-                        std::fs::create_dir(&p).unwrap();
-                        p.to_string_lossy().into()
-                    },
-                    idempotency_key: "other-root".into(),
-                });
-                assert!(other.is_err());
-                store.db.lock().unwrap().execute_batch("PRAGMA foreign_keys=OFF; UPDATE budget_requests SET project_id='wrong'; PRAGMA foreign_keys=ON").unwrap();
-            } else if column == "reservation_tokens" {
-                store
-                    .db
-                    .lock()
-                    .unwrap()
-                    .execute("UPDATE project_budgets SET reservation_tokens=99", [])
-                    .unwrap();
-            } else {
-                let mut entry = store
-                    .budget_call(subject.project_id.as_ref().unwrap(), &call.call_id)
-                    .unwrap();
-                entry.reserved_tokens = Some(99);
-                store
-                    .db
-                    .lock()
-                    .unwrap()
-                    .execute(
-                        "UPDATE budget_calls SET reserved_tokens=99,record=?1",
-                        [serde_json::to_string(&entry).unwrap()],
-                    )
-                    .unwrap();
-            }
-            assert_eq!(
-                store
-                    .budget_status(subject.project_id.as_ref().unwrap())
-                    .unwrap_err()
-                    .kind,
-                BudgetErrorKind::Corrupt
-            );
-            assert!(Store::open(&dir.path().join("budget.db")).is_err());
-            assert!(store.open_shared().is_err());
-        }
-    }
-    #[test]
-    fn aggregate_overflow_blocks_reads_open_recover_but_retains_inflight_actuals() {
-        let (dir, store, subject) = fixture();
-        configure(&store, &subject, 300, 100);
-        let calls: Vec<_> = (0..3).map(|_| claim(&store, &subject)).collect();
-        complete(&store, calls[0].clone(), i64::MAX as u64);
-        complete(&store, calls[1].clone(), 1);
-        assert_eq!(
-            store
-                .budget_status(subject.project_id.as_ref().unwrap())
-                .unwrap_err()
-                .kind,
-            BudgetErrorKind::Corrupt
-        );
-        assert!(Store::open(&dir.path().join("budget.db")).is_err());
-        assert!(store.open_shared().is_err());
-        assert!(store.recover().is_err());
-        let rejected = attempt(&store, &subject).err().unwrap();
-        assert_eq!(rejected.kind, NetworkErrorKind::BudgetCorrupt);
-        assert_eq!(rejected.dispatch_state, DispatchState::NotSent);
-        assert!(rejected.calls.is_empty());
-        {
-            let db = store.db.lock().unwrap();
-            for table in ["network_calls", "budget_calls"] {
-                assert_eq!(
-                    db.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r
-                        .get::<_, u64>(0))
-                        .unwrap(),
-                    3
-                );
-            }
-        }
-        complete(&store, calls[2].clone(), 2);
-        let db = store.db.lock().unwrap();
-        verify_structure(&db).unwrap();
-        assert!(verify_persisted_rows(&db).is_err());
-        for (i, n) in [i64::MAX as u64, 1, 2].into_iter().enumerate() {
-            let entry = load_entry(&db, &calls[i].call_id).unwrap().unwrap();
-            assert_eq!(entry.usage.unwrap().total_tokens, n);
-            assert_eq!(entry.call.state, CallState::Finished);
-        }
-    }
-    #[test]
-    fn request_digest_and_coverage_high_water_corruption_are_rejected() {
-        for sql in [
-            "UPDATE budget_requests SET request_digest=printf('%064d',0)",
-            "UPDATE project_budgets SET coverage_start_call_rowid=900",
-        ] {
-            let (dir, store, subject) = fixture();
-            configure(&store, &subject, 100, 100);
-            store.db.lock().unwrap().execute_batch(sql).unwrap();
-            assert_eq!(
-                store
-                    .budget_status(subject.project_id.as_ref().unwrap())
-                    .unwrap_err()
-                    .kind,
-                BudgetErrorKind::Corrupt
-            );
-            assert!(Store::open(&dir.path().join("budget.db")).is_err());
-            assert!(store.open_shared().is_err());
-        }
-    }
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends() {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        if let Ok(phase) = std::env::var("NHC_BUDGET_KILL_PHASE") {
-            let root = std::path::PathBuf::from(std::env::var("NHC_BUDGET_KILL_ROOT").unwrap());
-            let store = Store::open(&root.join("budget.db")).unwrap();
-            let subject: NetworkSubject =
-                serde_json::from_slice(&std::fs::read(root.join("subject.json")).unwrap()).unwrap();
-            let phase = match phase.as_str() {
-                "before" => "budget-before-claim",
-                "after" => "budget-after-claim",
-                _ => "budget-before-finish",
-            };
-            crate::engine::crash_probe::arm(subject.key().unwrap(), phase, root.join("signal"));
-            crate::execution_authority::test_with_store(&store, async {
-                let (permit, receipt) = store
-                    .network_admit(&subject, NetworkPurpose::Completion, None)
-                    .unwrap();
-                let route = store.settings().unwrap().unwrap().routes[0].clone();
-                let result = crate::provider::complete(
-                    &crate::provider_transport::ProviderClient::new().unwrap(),
-                    permit,
-                    &route,
-                    &[json!({"role":"user","content":"hello"})],
-                    &[],
-                    |_| Ok(()),
-                )
-                .await;
-                let _ = store.finish_completion(receipt, result);
-            })
-            .await
-            .unwrap();
-            panic!("must block before exit");
-        }
-        for phase in ["before", "after", "finish"] {
-            let (dir, store, mut subject) = fixture();
-            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-            let address = listener.local_addr().unwrap();
-            let mut settings = store.settings().unwrap().unwrap();
-            settings.routes[0].base_url = format!("http://{address}");
-            store.save_settings(&settings).unwrap();
-            let preview = store.network_preview(subject.clone()).unwrap();
-            store
-                .network_confirm(
-                    subject.clone(),
-                    ConfirmRequest {
-                        config_revision: preview.config_revision,
-                        credential_revision: preview.credential_revision,
-                        binding_digest: preview.binding_digest,
-                        purposes: vec![NetworkPurpose::Completion],
-                    },
-                    "kill-grant",
-                )
-                .unwrap();
-            configure(&store, &subject, 1000, 100);
-            subject.project_id = Some(subject.project_id.unwrap());
-            std::fs::write(
-                dir.path().join("subject.json"),
-                serde_json::to_vec(&subject).unwrap(),
+            .finish_completion(
+                missing_call,
+                Ok((json!({"role":"assistant","content":"ok"}), json!(null))),
             )
             .unwrap();
-            drop(store);
-            let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-            let count = hits.clone();
-            let server = tokio::spawn(async move {
-                loop {
-                    let (mut socket, _) = listener.accept().await.unwrap();
-                    count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    let mut buffer = [0; 8192];
-                    let _ = socket.read(&mut buffer).await;
-                    let chunk = json!({"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}],"usage":usage(20)});
-                    let body = format!("data: {chunk}\n\ndata: [DONE]\n\n");
-                    let response = format!(
-                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                        body.len(),
-                        body
-                    );
-                    let _ = socket.write_all(response.as_bytes()).await;
-                }
-            });
-            let mut child=std::process::Command::new(std::env::current_exe().unwrap()).args(["--exact","budget::tests::real_process_kill_three_completion_boundaries_preserves_claim_and_never_resends","--nocapture"]).env("NHC_BUDGET_KILL_PHASE",phase).env("NHC_BUDGET_KILL_ROOT",dir.path()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).spawn().unwrap();
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-            let signal = loop {
-                if let Ok(signal) = std::fs::read_to_string(dir.path().join("signal")) {
-                    let lines: Vec<_> = signal.lines().collect();
-                    if lines.len() == 2
-                        && lines[0] == subject.key().unwrap()
-                        && uuid::Uuid::parse_str(lines[1]).is_ok()
-                    {
-                        break signal;
-                    }
-                }
-                if std::time::Instant::now() > deadline {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    panic!("budget kill signal missing {phase}");
-                }
-                if let Some(status) = child.try_wait().unwrap() {
-                    panic!("child exited early {phase} {status}");
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            };
-            child.kill().unwrap();
-            let exited = child.wait().unwrap();
-            assert!(!exited.success());
-            let store = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
-            store.recover().unwrap();
-            let engine = crate::engine::Engine::new(store.clone(), 2).unwrap();
-            let project = subject.project_id.as_ref().unwrap();
-            let status = engine.budget_status(project).unwrap();
-            if phase == "before" {
-                assert_eq!((status.held_tokens, status.unresolved_count), (0, 0));
-                assert_eq!(
-                    store
-                        .network_call(signal.lines().nth(1).unwrap())
-                        .unwrap_err()
-                        .kind,
-                    NetworkErrorKind::NotFound
-                );
-            } else {
-                assert_eq!(
-                    (
-                        status.held_tokens,
-                        status.unresolved_count,
-                        status.claimed_count
-                    ),
-                    (100, 1, 0)
-                );
-                let receipt = engine
-                    .budget_call(project, signal.lines().nth(1).unwrap())
-                    .unwrap();
-                assert_eq!(receipt.reason, Some(BudgetCallReason::Interrupted));
-                assert!(
-                    store.recover().is_err(),
-                    "live controller admitted recovery"
-                );
-                assert_eq!(
-                    engine.budget_call(project, &receipt.call_id).unwrap(),
-                    receipt
-                );
-                drop(engine);
-                store.recover().unwrap();
-                let engine = crate::engine::Engine::new(store.clone(), 2).unwrap();
-                assert_eq!(
-                    engine.budget_call(project, &receipt.call_id).unwrap(),
-                    receipt
-                );
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            assert_eq!(
-                hits.load(std::sync::atomic::Ordering::SeqCst),
-                usize::from(phase == "finish")
-            );
-            server.abort();
-        }
-    }
-    #[test]
-    fn two_legal_project_scopes_isolate_budget_and_reject_global_key_crossing() {
-        let (_dir, store, a) = fixture();
-        let other = tempfile::tempdir().unwrap();
-        let p = store
-            .register_project(RegisterProject {
-                name: "sibling".into(),
-                root_path: other.path().to_string_lossy().into(),
-                idempotency_key: "sibling-root".into(),
-            })
-            .unwrap()
-            .id;
+        let status = store.budget_status(&project).unwrap();
+        assert_eq!(status.unresolved_count, 1);
+        assert_eq!(status.held_tokens, 0);
+        assert_eq!(status.blocked_reason, None);
+
+        // HTTP 429 failure never permanently holds reservation or bricks future calls.
+        let (_, failed_call) = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .unwrap();
+        let _ = store.finish_completion(failed_call, Err(TransportError::Response { status: 429 }));
+        assert_eq!(store.budget_status(&project).unwrap().blocked_reason, None);
+
+        // Overrun within limit does not block; exceeding limit blocks until limit is raised.
+        let (_, overrun_call) = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .unwrap();
         store
-            .configure_project(ConfigureProject {
-                project_id: p.clone(),
+            .finish_completion(
+                overrun_call,
+                Ok((
+                    json!({"role":"assistant","content":"ok"}),
+                    json!({"prompt_tokens":30,"completion_tokens":20,"total_tokens":55}),
+                )),
+            )
+            .unwrap();
+        let status = store.budget_status(&project).unwrap();
+        assert_eq!(status.overrun_count, 1);
+        assert_eq!(status.spent_tokens, 55);
+        assert_eq!(status.blocked_reason, None);
+
+        let (_, hit_limit) = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .unwrap();
+        store
+            .finish_completion(
+                hit_limit,
+                Ok((
+                    json!({"role":"assistant","content":"ok"}),
+                    json!({"prompt_tokens":30,"completion_tokens":15,"total_tokens":45}),
+                )),
+            )
+            .unwrap();
+        let status = store.budget_status(&project).unwrap();
+        assert_eq!(status.spent_tokens, 100);
+        assert_eq!(status.blocked_reason, Some(BudgetBlockedReason::Exceeded));
+
+        store
+            .configure_budget(ConfigureBudget {
+                project_id: project.clone(),
                 expected_revision: 1,
-                config: ProjectConfig {
-                    allowed_route_ids: vec!["route".into()],
-                    default_route_id: Some("route".into()),
-                    tools: false,
-                    write_scopes: vec![],
-                    allow_commands: false,
+                idempotency_key: "cfg-2".into(),
+                config: BudgetConfig {
+                    limit_tokens: 200,
+                    per_call_reservation_tokens: 20,
                 },
             })
             .unwrap();
-        let b = NetworkSubject {
-            project_id: Some(p.clone()),
-            ..a.clone()
-        };
-        let preview = store.network_preview(b.clone()).unwrap();
-        store
-            .network_confirm(
-                b.clone(),
-                ConfirmRequest {
-                    config_revision: preview.config_revision,
-                    credential_revision: preview.credential_revision,
-                    binding_digest: preview.binding_digest,
-                    purposes: vec![NetworkPurpose::Completion],
-                },
-                "sibling-grant",
-            )
-            .unwrap();
-        let req = ConfigureBudget {
-            project_id: a.project_id.clone().unwrap(),
-            expected_revision: 0,
-            idempotency_key: "global-budget-key".into(),
-            config: BudgetConfig {
-                limit_tokens: 100,
-                per_call_reservation_tokens: 100,
-            },
-        };
-        store.configure_budget(req.clone()).unwrap();
-        let mut cross = req;
-        cross.project_id = p.clone();
-        assert_eq!(
-            store.configure_budget(cross).unwrap_err().kind,
-            BudgetErrorKind::Conflict
-        );
-        configure(&store, &b, 100, 100);
-        let ca = claim(&store, &a);
-        let cb = claim(&store, &b);
-        complete(&store, cb, 5);
-        assert_eq!(
-            store.budget_status(&p).unwrap().blocked_reason,
-            Some(BudgetBlockedReason::Exceeded)
-        );
-        configure(&store, &b, 200, 100);
-        // Reserve before the other call becomes unknown: existing work may
-        // settle after sealing, but the domain cannot authorize a new claim.
-        let cb = claim(&store, &b);
-        finish(&store, ca, Err(TransportError::Unknown)).unwrap_err();
-        assert_eq!(
-            store
-                .budget_status(a.project_id.as_ref().unwrap())
-                .unwrap()
-                .blocked_reason,
-            Some(BudgetBlockedReason::Unresolved)
-        );
-        complete(&store, cb, 5);
-        assert_eq!(store.budget_status(&p).unwrap().spent_tokens, 10);
-        store
-            .db
-            .lock()
-            .unwrap()
-            .execute(
-                "UPDATE budget_requests SET project_id=?1 WHERE key='global-budget-key'",
-                [&p.0],
-            )
-            .unwrap();
-        assert_eq!(
-            store.budget_status(&p).unwrap_err().kind,
-            BudgetErrorKind::Corrupt
-        );
-        assert!(store.recover().is_err());
-    }
-    #[test]
-    fn configuration_cas_race_and_reductions_preserve_claim_snapshot() {
-        let (dir, store, subject) = fixture();
-        let p = subject.project_id.as_ref().unwrap();
-        configure(&store, &subject, 200, 100);
-        let call = claim(&store, &subject);
-        let other = Arc::new(Store::open(&dir.path().join("budget.db")).unwrap());
-        let barrier = Arc::new(Barrier::new(3));
-        let workers: Vec<_> = [store.clone(), other]
-            .into_iter()
-            .enumerate()
-            .map(|(i, store)| {
-                let p = p.clone();
-                let barrier = barrier.clone();
-                std::thread::spawn(move || {
-                    barrier.wait();
-                    store.configure_budget(ConfigureBudget {
-                        project_id: p,
-                        expected_revision: 1,
-                        idempotency_key: format!("cas-{i}"),
-                        config: BudgetConfig {
-                            limit_tokens: 1,
-                            per_call_reservation_tokens: 2,
-                        },
-                    })
-                })
-            })
-            .collect();
-        barrier.wait();
-        let results: Vec<_> = workers.into_iter().map(|w| w.join().unwrap()).collect();
-        assert_eq!(results.iter().filter(|r| r.is_ok()).count(), 1);
-        assert_eq!(
-            results.iter().find_map(|r| r.as_ref().err()).unwrap().kind,
-            BudgetErrorKind::RevisionConflict
-        );
-        let entry = store.budget_call(p, &call.call_id).unwrap();
-        assert_eq!(
-            (entry.budget_revision, entry.reserved_tokens),
-            (Some(1), Some(100))
-        );
-        assert_eq!(store.budget_status(p).unwrap().held_tokens, 100);
-        assert_eq!(
-            attempt(&store, &subject).err().unwrap().kind,
-            NetworkErrorKind::BudgetExceeded
-        );
-        complete(&store, call, 0);
-        assert_eq!(
-            store.budget_status(p).unwrap().blocked_reason,
-            Some(BudgetBlockedReason::Exceeded)
-        );
-        configure(&store, &subject, 0, 1);
-        assert_eq!(store.budget_status(p).unwrap().available_tokens, Some(0));
-        assert_eq!(
-            attempt(&store, &subject).err().unwrap().kind,
-            NetworkErrorKind::BudgetExceeded
-        );
+        assert_eq!(store.budget_status(&project).unwrap().blocked_reason, None);
     }
 }

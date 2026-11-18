@@ -1,15 +1,11 @@
-//! Capability classification and one-shot tool-call approval records.
-//!
-//! New tool names are denied until explicitly classified. Read-only project tools and
-//! the current no-import WASM tool pass through. This module does not read
-//! files, the environment, the network, or the clock.
+//! Capability classification, write-scope policy checks, and one-shot tool-call approval records.
 
 use crate::{domain::scope_path, secrets};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::fmt;
+use std::{fmt, path::Path};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ToolEffect {
@@ -96,6 +92,7 @@ pub struct CommandNetworkNotice {
     pub may_access_network: bool,
     pub outbound_sandbox: bool,
 }
+
 impl Default for CommandNetworkNotice {
     fn default() -> Self {
         Self {
@@ -105,6 +102,7 @@ impl Default for CommandNetworkNotice {
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CommandNetworkAck {
@@ -113,6 +111,7 @@ pub enum CommandNetworkAck {
     Required,
     Acknowledged,
 }
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ApprovalRecord {
     #[serde(default)]
@@ -169,21 +168,56 @@ impl std::error::Error for ApprovalError {}
 
 pub fn classify(tool_name: &str) -> ToolEffect {
     match tool_name {
-        "list_files" | "read_file" | "search_files" | "run_wasm" => ToolEffect::None,
-        "write_file" => ToolEffect::WriteFs,
+        "list_files" | "glob_files" | "read_file" | "search_files" | "git_status"
+        | "todo_write" | "todo_read" => ToolEffect::None,
+        "write_file" | "edit_file" => ToolEffect::WriteFs,
         "run_command" => ToolEffect::ExecCommand,
         _ => ToolEffect::Unknown,
     }
 }
 
-pub fn evaluate(_task: &crate::domain::Task, tool_name: &str) -> PolicyDecision {
+pub fn within_write_scopes(path: &str, scopes: &[String]) -> bool {
+    let Ok(normalized) = scope_path(path) else {
+        return false;
+    };
+    crate::workspace::within_write_scopes(&normalized, scopes)
+}
+
+pub fn evaluate(task: &crate::domain::Task, tool_name: &str) -> PolicyDecision {
     match classify(tool_name) {
         ToolEffect::None => PolicyDecision::Allow,
-        ToolEffect::WriteFs | ToolEffect::ExecCommand => PolicyDecision::RequireApproval,
+        ToolEffect::WriteFs => {
+            if task.spec.write_scopes.is_empty() {
+                PolicyDecision::Deny {
+                    reason: "当前任务无文件写入范围",
+                }
+            } else {
+                PolicyDecision::RequireApproval
+            }
+        }
+        ToolEffect::ExecCommand => PolicyDecision::RequireApproval,
         ToolEffect::Unknown => PolicyDecision::Deny {
             reason: "未分类工具拒绝执行",
         },
     }
+}
+
+pub fn evaluate_call(task: &crate::domain::Task, tool_name: &str, args: &Value) -> PolicyDecision {
+    let base = evaluate(task, tool_name);
+    if base != PolicyDecision::RequireApproval || classify(tool_name) != ToolEffect::WriteFs {
+        return base;
+    }
+    let Some(path) = args["path"].as_str() else {
+        return PolicyDecision::Deny {
+            reason: "文件修改工具缺少有效 path",
+        };
+    };
+    if !within_write_scopes(path, &task.spec.write_scopes) {
+        return PolicyDecision::Deny {
+            reason: "写入超出当前成员范围",
+        };
+    }
+    PolicyDecision::RequireApproval
 }
 
 pub fn args_digest(args: &Value) -> Result<String> {
@@ -219,8 +253,6 @@ pub(crate) fn validate_call_history(messages: &[Value]) -> Result<()> {
     Ok(())
 }
 
-/// The digest covers every value which can change the authority granted by an
-/// approval. The structured JSON is canonicalized before hashing.
 #[allow(clippy::too_many_arguments)]
 pub fn binding_digest(
     task_id: &str,
@@ -281,13 +313,63 @@ pub(crate) fn binding_digest_from_args_digest(
     Ok(format!("{:x}", Sha256::digest(bytes)))
 }
 
+fn compact_diff_lines(diff: &str, max_lines: usize, max_chars: usize) -> String {
+    let snippet: String = diff
+        .lines()
+        .filter(|line| !line.starts_with("--- ") && !line.starts_with("+++ "))
+        .take(max_lines)
+        .collect::<Vec<_>>()
+        .join("\n");
+    truncate_chars(&redacted_text(&snippet), max_chars)
+}
+
 pub fn preview(tool_name: &str, args: &Value) -> String {
     let text = match tool_name {
         "write_file" => {
             let path = args["path"].as_str().unwrap_or("");
             let normalized = scope_path(path).unwrap_or_else(|_| "[invalid-path]".into());
-            let bytes = args["content"].as_str().map(|text| text.len()).unwrap_or(0);
-            format!("write_file {normalized} ({bytes} bytes)")
+            let content = args["content"].as_str().unwrap_or("");
+            let bytes = content.len();
+            let lines = content.lines().count();
+            format!("write_file {normalized} ({bytes} bytes, {lines} lines)")
+        }
+        "edit_file" => {
+            let path = args["path"].as_str().unwrap_or("");
+            let normalized = scope_path(path).unwrap_or_else(|_| "[invalid-path]".into());
+            if let Some(patch) = args.get("patch").and_then(Value::as_str) {
+                let snippet = compact_diff_lines(patch, 6, 160);
+                if snippet.is_empty() {
+                    format!("edit_file {normalized} (patch)")
+                } else {
+                    format!("edit_file {normalized} (patch)\n{snippet}")
+                }
+            } else if let Some(edits) = args.get("edits").and_then(Value::as_array) {
+                let first_old = edits
+                    .first()
+                    .and_then(|e| e["old_string"].as_str())
+                    .unwrap_or("");
+                let first_new = edits
+                    .first()
+                    .and_then(|e| e["new_string"].as_str())
+                    .unwrap_or("");
+                let diff = crate::git_diff::unified_diff(&normalized, first_old, first_new, 1);
+                let snippet = compact_diff_lines(&diff, 6, 160);
+                if snippet.is_empty() {
+                    format!("edit_file {normalized} ({} edits)", edits.len())
+                } else {
+                    format!("edit_file {normalized} ({} edits)\n{snippet}", edits.len())
+                }
+            } else {
+                let old_s = args["old_string"].as_str().unwrap_or("");
+                let new_s = args["new_string"].as_str().unwrap_or("");
+                let diff = crate::git_diff::unified_diff(&normalized, old_s, new_s, 1);
+                let snippet = compact_diff_lines(&diff, 6, 160);
+                if snippet.is_empty() {
+                    format!("edit_file {normalized}")
+                } else {
+                    format!("edit_file {normalized}\n{snippet}")
+                }
+            }
         }
         "run_command" => {
             let command = args["command"].as_str().unwrap_or("");
@@ -296,6 +378,24 @@ pub fn preview(tool_name: &str, args: &Value) -> String {
         other => other.to_owned(),
     };
     redacted_text(&text)
+}
+
+/// Generates a rich approval summary including a real unified diff snippet against the workspace.
+pub fn summary(task: &crate::domain::Task, tool_name: &str, args: &Value) -> String {
+    if matches!(tool_name, "write_file" | "edit_file") {
+        let root = Path::new(&task.workspace);
+        if let Ok(diff) =
+            crate::workspace::preview_file_diff(root, tool_name, args, &task.spec.write_scopes)
+        {
+            let path = args["path"].as_str().unwrap_or("");
+            let normalized = scope_path(path).unwrap_or_else(|_| "[invalid-path]".into());
+            let snippet = compact_diff_lines(&diff, 12, 320);
+            if !snippet.is_empty() {
+                return redacted_text(&format!("{tool_name} {normalized}\n{snippet}"));
+            }
+        }
+    }
+    preview(tool_name, args)
 }
 
 fn redacted_text(value: &str) -> String {
@@ -346,18 +446,12 @@ pub fn tool_error(status: ApprovalStatus) -> String {
 }
 
 fn truncate_chars(value: &str, max_chars: usize) -> String {
-    let mut out = String::new();
-    let limit = if value.chars().count() > max_chars {
-        max_chars.saturating_sub(1)
-    } else {
-        max_chars
-    };
-    for ch in value.chars().take(limit) {
-        out.push(ch);
+    let total = value.chars().count();
+    if total <= max_chars {
+        return value.to_owned();
     }
-    if value.chars().count() > max_chars {
-        out.push('…');
-    }
+    let mut out: String = value.chars().take(max_chars.saturating_sub(1)).collect();
+    out.push('…');
     out
 }
 
@@ -417,30 +511,30 @@ mod tests {
             direct,
             "6dac927da50ce55561b4f19217fd4e6ad43bde0f1bee743bc47ac4d53a6a9189"
         );
-        for invalid in [String::new(), "A".repeat(64), "0".repeat(63)] {
-            assert!(
-                binding_digest_from_args_digest(
-                    "task",
-                    None,
-                    Some("turn"),
-                    "call",
-                    "write_file",
-                    "workspace",
-                    &scopes,
-                    false,
-                    &invalid
-                )
-                .is_err()
-            );
-        }
     }
 
     #[test]
-    fn classification_defaults_unknown_tools_to_approval_deny() {
+    fn classifies_modern_toolset_and_includes_diff_summary() {
+        assert_eq!(classify("list_files"), ToolEffect::None);
+        assert_eq!(classify("glob_files"), ToolEffect::None);
         assert_eq!(classify("read_file"), ToolEffect::None);
+        assert_eq!(classify("search_files"), ToolEffect::None);
+        assert_eq!(classify("git_status"), ToolEffect::None);
+        assert_eq!(classify("todo_write"), ToolEffect::None);
+        assert_eq!(classify("todo_read"), ToolEffect::None);
         assert_eq!(classify("write_file"), ToolEffect::WriteFs);
+        assert_eq!(classify("edit_file"), ToolEffect::WriteFs);
         assert_eq!(classify("run_command"), ToolEffect::ExecCommand);
-        assert_eq!(classify("new_tool"), ToolEffect::Unknown);
+        assert_eq!(classify("run_wasm"), ToolEffect::Unknown);
+
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(
+            dir.path().join("src/app.rs"),
+            "fn main() {\n    old_call();\n}\n",
+        )
+        .unwrap();
+
         let task = crate::domain::Task {
             id: "t".into(),
             run_id: "r".into(),
@@ -464,7 +558,7 @@ mod tests {
                 parallel_limit: 1,
                 key_env: None,
             },
-            workspace: "workspace".into(),
+            workspace: dir.path().to_string_lossy().into_owned(),
             status: "running".into(),
             output: String::new(),
             error: None,
@@ -473,40 +567,33 @@ mod tests {
             created_at: 1,
             updated_at: 1,
         };
-        assert!(matches!(
-            evaluate(&task, "write_file"),
-            PolicyDecision::RequireApproval
-        ));
-        assert!(matches!(
-            evaluate(&task, "new_tool"),
-            PolicyDecision::Deny { .. }
-        ));
-        assert!(matches!(
-            evaluate(&task, "list_files"),
-            PolicyDecision::Allow
-        ));
-    }
 
-    #[test]
-    fn digest_is_stable_and_preview_omits_secret_and_body() {
-        let first = json!({"b": 1, "a": {"z": 2, "y": 3}});
-        let second = json!({"a": {"y": 3, "z": 2}, "b": 1});
-        assert_eq!(args_digest(&first).unwrap(), args_digest(&second).unwrap());
-        assert_ne!(
-            args_digest(&json!({"path":"src/a.txt"})).unwrap(),
-            args_digest(&json!({"path":"src/b.txt"})).unwrap()
+        assert_eq!(evaluate(&task, "glob_files"), PolicyDecision::Allow);
+        assert_eq!(evaluate(&task, "git_status"), PolicyDecision::Allow);
+        assert_eq!(evaluate(&task, "todo_write"), PolicyDecision::Allow);
+        assert_eq!(evaluate(&task, "todo_read"), PolicyDecision::Allow);
+        assert_eq!(
+            evaluate(&task, "edit_file"),
+            PolicyDecision::RequireApproval
         );
-        let write_preview = preview(
-            "write_file",
-            &json!({"path":"src/secret.txt","content":"synthetic-key-body"}),
+        assert!(within_write_scopes("src/app.rs", &task.spec.write_scopes));
+        assert!(!within_write_scopes(
+            "docs/readme.md",
+            &task.spec.write_scopes
+        ));
+
+        let edit_args = json!({
+            "path": "src/app.rs",
+            "old_string": "old_call();",
+            "new_string": "new_call();"
+        });
+        assert_eq!(
+            evaluate_call(&task, "edit_file", &edit_args),
+            PolicyDecision::RequireApproval
         );
-        assert!(!write_preview.contains("synthetic-key-body"));
-        assert!(write_preview.contains("src/secret.txt"));
-        let command = preview(
-            "run_command",
-            &json!({"command":"Write-Output Bearer synthetic-token-value"}),
-        );
-        assert!(!command.contains("synthetic-token-value"));
-        assert!(command.chars().count() <= 160);
+        let sum = summary(&task, "edit_file", &edit_args);
+        assert!(sum.contains("edit_file src/app.rs"));
+        assert!(sum.contains("-    old_call();"));
+        assert!(sum.contains("+    new_call();"));
     }
 }

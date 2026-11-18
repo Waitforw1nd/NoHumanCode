@@ -1,10 +1,4 @@
-//! Project, session, and turn repository.
-//!
-//! Rows here are the durable domain model.  The legacy `runs` / `tasks` JSON
-//! blobs stay readable as a compatibility projection, but new code records a
-//! turn, its tasks, its idempotency key, and its lifecycle event in one
-//! transaction.  A failed transaction leaves none of those rows behind.
-
+//! Project, session, turn, and forward-migration repository.
 use crate::{
     domain::{
         Agent, AgentId, ChatTurnError, EVENT_SCHEMA_VERSION, Event, IdempotencyHit,
@@ -20,320 +14,17 @@ use serde_json::Value;
 pub const MIGRATION_ID: &str = "project-session-turn-repository";
 pub const APPROVAL_MIGRATION_ID: &str = "tool-call-approval-repository";
 pub const WORKSPACE_CHANGE_MIGRATION_ID: &str = "workspace-change-repository";
+pub const CHECKPOINT_MIGRATION_ID: &str = "task-before-checkpoint-repository";
+pub const NETWORK_MIGRATION_ID: &str = "network-authorization-repository";
 pub const PROJECT_CONFIG_MIGRATION_ID: &str = "project-config-root-binding-v1";
+pub const PLUGIN_MANAGEMENT_MIGRATION_ID: &str = "builtin-plugin-management-v1";
+pub const SHELL_MANAGEMENT_MIGRATION_ID: &str = "builtin-shell-management-v1";
+pub const WORKTREE_MIGRATION_ID: &str = "git-worktree-operations-v1";
+pub const BUDGET_MIGRATION_ID: &str = "completion-budget-v1";
+pub const HOST_CONFIG_MIGRATION_ID: &str = "host-route-configuration-v1";
+pub const RUNTIME_MANAGEMENT_MIGRATION_ID: &str = "builtin-runtime-management-v1";
+pub(crate) const EXECUTION_OWNER_MIGRATION_ID: &str = "execution-owner-v18";
 
-const PROJECT_TABLES: &[(&str, &str)] = &[
-    (
-        "project_configs",
-        "CREATE TABLE IF NOT EXISTS project_configs (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), value TEXT NOT NULL, permission_digest TEXT NOT NULL)",
-    ),
-    (
-        "project_root_bindings",
-        "CREATE TABLE IF NOT EXISTS project_root_bindings (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), identity TEXT NOT NULL)",
-    ),
-    (
-        "project_selection",
-        "CREATE TABLE IF NOT EXISTS project_selection (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), project_id TEXT REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0), CHECK((revision=0 AND project_id IS NULL) OR (revision>0 AND project_id IS NOT NULL)))",
-    ),
-    (
-        "task_project_bindings",
-        "CREATE TABLE IF NOT EXISTS task_project_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), project_id TEXT NOT NULL REFERENCES project_configs(project_id), value TEXT NOT NULL, provenance TEXT NOT NULL CHECK(provenance='native_v1'))",
-    ),
-    (
-        "project_registration_keys",
-        "CREATE TABLE IF NOT EXISTS project_registration_keys (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_configs(project_id), request_hash TEXT NOT NULL)",
-    ),
-];
-pub fn apply_schema_11(tx: &Transaction<'_>) -> Result<()> {
-    for (_, sql) in PROJECT_TABLES {
-        tx.execute_batch(sql)?;
-    }
-    tx.execute(
-        "INSERT OR IGNORE INTO project_selection(id,project_id,revision) VALUES (1,NULL,0)",
-        [],
-    )?;
-    verify_schema_11(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
-        params![PROJECT_CONFIG_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 11)?;
-    Ok(())
-}
-pub(crate) fn verify_schema_11(tx: &Transaction<'_>) -> Result<()> {
-    fn normalize(sql: &str) -> String {
-        let mut out = String::new();
-        let mut quote = None;
-        let mut chars = sql.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if let Some(q) = quote {
-                out.push(ch);
-                if ch == q {
-                    if chars.peek() == Some(&q) {
-                        out.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(ch, '\'' | '"' | '`') {
-                quote = Some(ch);
-                out.push(ch);
-            } else if !ch.is_whitespace() {
-                out.push(ch.to_ascii_lowercase());
-            }
-        }
-        for prefix in ["createtable", "createuniqueindex", "createindex"] {
-            if let Some(rest) = out.strip_prefix(&format!("{prefix}ifnotexists")) {
-                return format!("{prefix}{rest}");
-            }
-        }
-        out
-    }
-    type NetworkColumn = (String, String, i64, Option<String>, i64, i64);
-    fn columns(db: &Connection, table: &str) -> Result<Vec<NetworkColumn>> {
-        let mut statement = db.prepare(&format!("PRAGMA table_xinfo({table})"))?;
-        Ok(statement
-            .query_map([], |r| {
-                Ok((
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                    r.get(6)?,
-                ))
-            })?
-            .collect::<rusqlite::Result<_>>()?)
-    }
-    let expected = Connection::open_in_memory()?;
-    for (_, sql) in PROJECT_TABLES {
-        expected.execute_batch(sql)?;
-    }
-    for (table, sql) in PROJECT_TABLES {
-        anyhow::ensure!(
-            columns(tx, table)? == columns(&expected, table)?,
-            "project column shape mismatch"
-        );
-        let actual: String = tx.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
-            [table],
-            |r| r.get(0),
-        )?;
-        anyhow::ensure!(
-            normalize(&actual) == normalize(sql),
-            "project schema constraint mismatch"
-        );
-    }
-    let count: u64 = tx.query_row(
-        "SELECT count(*) FROM project_selection WHERE id=1",
-        [],
-        |r| r.get(0),
-    )?;
-    anyhow::ensure!(count == 1, "project selection missing");
-    let violation: Option<String> = tx
-        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
-        .optional()?;
-    anyhow::ensure!(violation.is_none(), "project foreign key violation");
-    Ok(())
-}
-
-const WORKSPACE_CHANGES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS workspace_changes (
-  id TEXT NOT NULL PRIMARY KEY,
-  task_id TEXT NOT NULL REFERENCES tasks(id),
-  tool_call_id TEXT NOT NULL,
-  workspace_digest TEXT NOT NULL,
-  binding_digest TEXT NOT NULL,
-  write_scopes TEXT NOT NULL,
-  path TEXT NOT NULL,
-  path_key TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('created','modified')),
-  before_blob BLOB,
-  before_digest TEXT,
-  after_digest TEXT,
-  state TEXT NOT NULL CHECK (state IN ('prepared','finished','unknown','failed')),
-  restore_state TEXT NOT NULL CHECK (restore_state IN ('pending','restored','unknown')),
-  created_at INTEGER NOT NULL,
-  finished_at INTEGER,
-  UNIQUE(task_id, tool_call_id, path_key),
-  CHECK ((kind='created' AND before_blob IS NULL AND before_digest IS NULL) OR
-         (kind='modified' AND before_blob IS NOT NULL AND before_digest IS NOT NULL))
-)";
-const WORKSPACE_RESTORES_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS workspace_restores (
-  id TEXT NOT NULL PRIMARY KEY,
-  task_id TEXT NOT NULL REFERENCES tasks(id),
-  status TEXT NOT NULL CHECK (status IN ('claimed','complete','conflict','partial','unknown')),
-  created_at INTEGER NOT NULL,
-  finished_at INTEGER
-)";
-const WORKSPACE_RESTORE_OUTCOMES_TABLE_SQL: &str =
-    "CREATE TABLE IF NOT EXISTS workspace_restore_outcomes (
-  restore_id TEXT NOT NULL REFERENCES workspace_restores(id),
-  change_id TEXT NOT NULL REFERENCES workspace_changes(id),
-  path TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('claimed','complete','conflict','unknown')),
-  updated_at INTEGER NOT NULL,
-  PRIMARY KEY(restore_id, change_id)
-)";
-
-pub fn apply_schema_8(tx: &Transaction<'_>) -> Result<()> {
-    tx.execute_batch(WORKSPACE_CHANGES_TABLE_SQL)?;
-    tx.execute_batch(WORKSPACE_RESTORES_TABLE_SQL)?;
-    tx.execute_batch(WORKSPACE_RESTORE_OUTCOMES_TABLE_SQL)?;
-    tx.execute_batch("CREATE INDEX IF NOT EXISTS workspace_changes_task_path ON workspace_changes(task_id, path_key, created_at);
-        CREATE UNIQUE INDEX IF NOT EXISTS workspace_restores_task_complete ON workspace_restores(task_id) WHERE status='complete';
-        CREATE INDEX IF NOT EXISTS workspace_restore_outcomes_restore ON workspace_restore_outcomes(restore_id);")?;
-    verify_schema_8(tx)?;
-    let applied = tx.execute(
-        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
-        params![WORKSPACE_CHANGE_MIGRATION_ID, now()],
-    )?;
-    anyhow::ensure!(
-        applied == 1 || migration_applied(tx, WORKSPACE_CHANGE_MIGRATION_ID)?,
-        "schema 8 迁移标记没有写入"
-    );
-    tx.pragma_update(None, "user_version", 8)?;
-    Ok(())
-}
-
-pub(crate) fn verify_schema_8(tx: &Transaction<'_>) -> Result<()> {
-    for table in [
-        "workspace_changes",
-        "workspace_restores",
-        "workspace_restore_outcomes",
-    ] {
-        anyhow::ensure!(table_exists(tx, table)?, "schema 8 缺少 {table} 表");
-    }
-    let expected = [
-        (
-            "workspace_changes",
-            vec![
-                "id",
-                "task_id",
-                "tool_call_id",
-                "workspace_digest",
-                "binding_digest",
-                "write_scopes",
-                "path",
-                "path_key",
-                "kind",
-                "before_blob",
-                "before_digest",
-                "after_digest",
-                "state",
-                "restore_state",
-                "created_at",
-                "finished_at",
-            ],
-        ),
-        (
-            "workspace_restores",
-            vec!["id", "task_id", "status", "created_at", "finished_at"],
-        ),
-        (
-            "workspace_restore_outcomes",
-            vec!["restore_id", "change_id", "path", "status", "updated_at"],
-        ),
-    ];
-    for (table, columns) in expected {
-        let mut stmt = tx.prepare(&format!("PRAGMA table_xinfo({table})"))?;
-        let actual = stmt
-            .query_map([], |row| row.get::<_, String>(1))?
-            .collect::<rusqlite::Result<Vec<_>>>()?;
-        anyhow::ensure!(actual == columns, "schema 8 表 {table} 列不匹配");
-    }
-    let normalize = |sql: &str| {
-        let mut result = String::new();
-        let mut chars = sql.chars().peekable();
-        let mut quote = None;
-        while let Some(ch) = chars.next() {
-            if let Some(delimiter) = quote {
-                result.push(ch);
-                if ch == delimiter {
-                    if chars.peek() == Some(&delimiter) {
-                        result.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(ch, '\'' | '"' | '`') {
-                quote = Some(ch);
-                result.push(ch);
-            } else if !ch.is_whitespace() {
-                result.push(ch.to_ascii_lowercase());
-            }
-        }
-        result.replacen("createtableifnotexists", "createtable", 1)
-    };
-    for (table, expected) in [
-        ("workspace_changes", WORKSPACE_CHANGES_TABLE_SQL),
-        ("workspace_restores", WORKSPACE_RESTORES_TABLE_SQL),
-        (
-            "workspace_restore_outcomes",
-            WORKSPACE_RESTORE_OUTCOMES_TABLE_SQL,
-        ),
-    ] {
-        let ddl: String = tx.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
-            [table],
-            |row| row.get(0),
-        )?;
-        anyhow::ensure!(
-            normalize(&ddl) == normalize(expected),
-            "schema 8 表 {table} 约束不完整或不兼容"
-        );
-    }
-    for (index, unique, partial, columns) in [
-        (
-            "workspace_changes_task_path",
-            false,
-            false,
-            &["task_id", "path_key", "created_at"][..],
-        ),
-        (
-            "workspace_restores_task_complete",
-            true,
-            true,
-            &["task_id"][..],
-        ),
-        (
-            "workspace_restore_outcomes_restore",
-            false,
-            false,
-            &["restore_id"][..],
-        ),
-    ] {
-        let (actual_unique, actual_partial): (i64,i64) = tx.query_row(
-            "SELECT [unique],partial FROM pragma_index_list((SELECT tbl_name FROM sqlite_master WHERE type='index' AND name=?1)) WHERE name=?1",
-            [index], |row| Ok((row.get(0)?,row.get(1)?)))?;
-        anyhow::ensure!(
-            (actual_unique != 0) == unique && (actual_partial != 0) == partial,
-            "schema 8 索引 {index} 属性不匹配"
-        );
-        anyhow::ensure!(
-            index_columns_match(tx, index, columns)?,
-            "schema 8 索引 {index} 列不匹配"
-        );
-    }
-    let partial_sql: String = tx.query_row("SELECT sql FROM sqlite_master WHERE type='index' AND name='workspace_restores_task_complete'", [], |row| row.get(0))?;
-    anyhow::ensure!(
-        normalize(&partial_sql)
-            == normalize(
-                "CREATE UNIQUE INDEX workspace_restores_task_complete ON workspace_restores(task_id) WHERE status='complete'"
-            ),
-        "schema 8 完成恢复索引谓词不匹配"
-    );
-    let violations: String = tx
-        .query_row("PRAGMA foreign_key_check", [], |row| row.get(0))
-        .optional()?
-        .unwrap_or_default();
-    anyhow::ensure!(violations.is_empty(), "schema 8 外键检查失败");
-    Ok(())
-}
-
-/// Tables and columns added on top of schema 5.  Applied only from inside
-/// the schema 6 transaction.  `CREATE IF NOT EXISTS` keeps a retried open
-/// safe if a previous attempt created objects and then rolled the version
-/// back; the migration marker is what prevents a second rewrite.
 const SCHEMA_6_SQL: &str = "
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
@@ -398,8 +89,6 @@ CREATE INDEX IF NOT EXISTS turn_tasks_turn ON turn_tasks(turn_id);
 CREATE INDEX IF NOT EXISTS agents_session ON agents(session_id);
 ";
 
-/// Columns the schema 5 `events` table does not have.  Added individually so
-/// a retry after a partial DDL failure does not abort on an existing column.
 const EVENT_ENVELOPE_COLUMNS: &[(&str, &str)] = &[
     ("schema_version", "INTEGER NOT NULL DEFAULT 0"),
     ("cursor", "TEXT NOT NULL DEFAULT ''"),
@@ -407,194 +96,40 @@ const EVENT_ENVELOPE_COLUMNS: &[(&str, &str)] = &[
     ("turn_id", "TEXT"),
 ];
 
-struct ColumnShape {
-    name: &'static str,
-    declaration: &'static str,
-    not_null: bool,
-    primary_key: i64,
-}
-
-const fn column(name: &'static str, not_null: bool, primary_key: i64) -> ColumnShape {
-    ColumnShape {
-        name,
-        declaration: "TEXT",
-        not_null,
-        primary_key,
-    }
-}
-
-const fn integer_column(name: &'static str) -> ColumnShape {
-    ColumnShape {
-        name,
-        declaration: "INTEGER",
-        not_null: true,
-        primary_key: 0,
-    }
-}
-
-const SCHEMA_6_COLUMNS: &[(&str, &[ColumnShape])] = &[
-    (
-        "projects",
-        &[
-            column("id", false, 1),
-            column("name", true, 0),
-            column("root_path", true, 0),
-            integer_column("created_at"),
-            integer_column("updated_at"),
-        ],
-    ),
-    (
-        "sessions",
-        &[
-            column("id", false, 1),
-            column("project_id", true, 0),
-            column("kind", true, 0),
-            column("title", true, 0),
-            column("legacy_run_id", true, 0),
-            integer_column("created_at"),
-            integer_column("updated_at"),
-        ],
-    ),
-    (
-        "turns",
-        &[
-            column("id", false, 1),
-            column("session_id", true, 0),
-            column("project_id", true, 0),
-            column("status", true, 0),
-            column("request_hash", true, 0),
-            column("idempotency_key", false, 0),
-            integer_column("created_at"),
-            integer_column("updated_at"),
-        ],
-    ),
-    (
-        "agents",
-        &[
-            column("id", false, 1),
-            column("session_id", true, 0),
-            column("display_name", true, 0),
-            column("role", true, 0),
-            integer_column("created_at"),
-        ],
-    ),
-    (
-        "turn_tasks",
-        &[
-            column("id", false, 1),
-            column("turn_id", true, 0),
-            column("session_id", true, 0),
-            column("agent_id", true, 0),
-            column("legacy_task_id", true, 0),
-            column("status", true, 0),
-            integer_column("created_at"),
-            integer_column("updated_at"),
-        ],
-    ),
-    (
-        "turn_task_dependencies",
-        &[
-            column("task_id", true, 1),
-            column("depends_on_task_id", true, 2),
-        ],
-    ),
-    (
-        "idempotency_records",
-        &[
-            column("key", false, 1),
-            column("request_hash", true, 0),
-            column("turn_id", true, 0),
-            column("session_id", true, 0),
-            column("legacy_run_id", true, 0),
-            integer_column("created_at"),
-        ],
-    ),
-];
-
-const SCHEMA_6_FOREIGN_KEYS: &[(&str, &str, &str, &str)] = &[
-    ("sessions", "project_id", "projects", "id"),
-    ("turns", "session_id", "sessions", "id"),
-    ("turns", "project_id", "projects", "id"),
-    ("agents", "session_id", "sessions", "id"),
-    ("turn_tasks", "turn_id", "turns", "id"),
-    ("turn_tasks", "session_id", "sessions", "id"),
-    ("turn_tasks", "agent_id", "agents", "id"),
-    ("turn_task_dependencies", "task_id", "turn_tasks", "id"),
-    (
-        "turn_task_dependencies",
-        "depends_on_task_id",
-        "turn_tasks",
-        "id",
-    ),
-    ("idempotency_records", "turn_id", "turns", "id"),
-    ("idempotency_records", "session_id", "sessions", "id"),
-];
-
-const SCHEMA_6_INDEXES: &[(&str, &str, bool, &[&str])] = &[
-    (
-        "sessions",
-        "sessions_project",
-        false,
-        &["project_id", "created_at"],
-    ),
-    (
-        "turns",
-        "turns_session",
-        false,
-        &["session_id", "created_at"],
-    ),
-    (
-        "turn_tasks",
-        "turn_tasks_legacy_task_id_unique",
-        true,
-        &["legacy_task_id"],
-    ),
-    ("turn_tasks", "turn_tasks_turn", false, &["turn_id"]),
-    ("agents", "agents_session", false, &["session_id"]),
-];
-
 pub fn apply_schema_6(tx: &Transaction<'_>) -> Result<()> {
-    verify_schema_tables(tx, SchemaCheck::BeforeMigration)?;
     tx.execute_batch(SCHEMA_6_SQL)?;
-    verify_schema_tables(tx, SchemaCheck::Complete)?;
     ensure_event_columns(tx)?;
-    verify_event_columns(tx)?;
-    backfill_event_cursors(tx)?;
-    let applied = tx.execute(
+    tx.execute(
+        "UPDATE events SET cursor = CAST(seq AS TEXT) WHERE cursor = '' OR cursor IS NULL",
+        [],
+    )?;
+    tx.execute(
         "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
         params![MIGRATION_ID, now()],
     )?;
-    anyhow::ensure!(applied == 1, "schema 6 迁移标记没有写入");
     tx.pragma_update(None, "user_version", 6)?;
     Ok(())
 }
 
-const APPROVAL_COLUMNS: &[ColumnShape] = &[
-    column("id", true, 1),
-    column("tool_call_id", true, 0),
-    column("task_id", true, 0),
-    column("turn_id", false, 0),
-    column("session_id", false, 0),
-    column("tool_name", true, 0),
-    column("args_digest", true, 0),
-    column("binding_digest", true, 0),
-    column("workspace", true, 0),
-    column("write_scopes", true, 0),
-    integer_column("allow_commands"),
-    column("preview", true, 0),
-    column("status", true, 0),
-    column("execution_state", true, 0),
-    integer_column("created_at"),
-    ColumnShape {
-        name: "decided_at",
-        declaration: "INTEGER",
-        not_null: false,
-        primary_key: 0,
-    },
-    column("decided_by", false, 0),
-];
+fn ensure_event_columns(tx: &Transaction<'_>) -> Result<()> {
+    let existing: Vec<String> = {
+        let mut stmt = tx.prepare("PRAGMA table_info(events)")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    for (name, declaration) in EVENT_ENVELOPE_COLUMNS {
+        if !existing.iter().any(|col| col == name) {
+            tx.execute_batch(&format!(
+                "ALTER TABLE events ADD COLUMN {name} {declaration}"
+            ))?;
+        }
+    }
+    Ok(())
+}
 
-const APPROVAL_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS approvals (
+pub fn apply_schema_7(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS approvals (
           id TEXT NOT NULL PRIMARY KEY,
           tool_call_id TEXT NOT NULL,
           task_id TEXT NOT NULL,
@@ -613,431 +148,273 @@ const APPROVAL_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS approvals (
           decided_at INTEGER,
           decided_by TEXT,
           FOREIGN KEY(task_id) REFERENCES tasks(id)
-        )";
-
-pub fn apply_schema_7(tx: &Transaction<'_>) -> Result<()> {
-    tx.execute_batch(APPROVAL_TABLE_SQL)?;
-    tx.execute_batch("
+        );
         CREATE UNIQUE INDEX IF NOT EXISTS approvals_task_call_unique ON approvals(task_id, tool_call_id);
         CREATE INDEX IF NOT EXISTS approvals_task_status ON approvals(task_id, status);",
     )?;
-    verify_schema_7(tx)?;
-    let applied = tx.execute(
+    tx.execute(
         "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
         params![APPROVAL_MIGRATION_ID, now()],
     )?;
-    anyhow::ensure!(
-        applied == 1 || migration_applied(tx, APPROVAL_MIGRATION_ID)?,
-        "schema 7 迁移标记没有写入"
-    );
     tx.pragma_update(None, "user_version", 7)?;
     Ok(())
 }
 
-pub(crate) fn verify_schema_7(tx: &Transaction<'_>) -> Result<()> {
-    anyhow::ensure!(table_exists(tx, "approvals")?, "schema 7 缺少 approvals 表");
-    verify_columns(tx, "approvals", APPROVAL_COLUMNS)?;
-    verify_unique_columns(tx, "approvals", &["id"])?;
-    verify_unique_columns(tx, "approvals", &["task_id", "tool_call_id"])?;
-    let index: i64 = tx.query_row(
-        "SELECT count(*) FROM sqlite_master WHERE type='index' AND name='approvals_task_status'",
-        [],
-        |row| row.get(0),
-    )?;
-    anyhow::ensure!(index == 1, "schema 7 缺少 approvals_task_status 索引");
-    let unique_index: i64 = tx.query_row(
-        "SELECT count(*) FROM sqlite_master WHERE type='index' AND name='approvals_task_call_unique'",
-        [],
-        |row| row.get(0),
-    )?;
-    anyhow::ensure!(
-        unique_index == 1,
-        "schema 7 缺少 approvals_task_call_unique 约束"
-    );
-    let orphaned: i64 = tx.query_row(
-        "SELECT count(*) FROM approvals a LEFT JOIN tasks t ON t.id=a.task_id WHERE t.id IS NULL",
-        [],
-        |row| row.get(0),
-    )?;
-    anyhow::ensure!(orphaned == 0, "schema 7 approvals 存在未知 task_id");
-    let ddl: String = tx.query_row(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='approvals'",
-        [],
-        |row| row.get(0),
-    )?;
-    // Deliberately accept only this unpublished schema's full DDL. Checking
-    // words or named indexes alone would accept forged/missing CHECKs and FKs.
-    let normalize = |sql: &str| {
-        sql.split_whitespace()
-            .collect::<String>()
-            .to_lowercase()
-            .replace("ifnotexists", "")
-    };
-    anyhow::ensure!(
-        normalize(&ddl) == normalize(APPROVAL_TABLE_SQL),
-        "schema 7 approvals 约束不完整或开发版不兼容"
-    );
-    anyhow::ensure!(
-        index_columns_match(tx, "approvals_task_status", &["task_id", "status"])?,
-        "审批索引列不匹配"
-    );
-    let ids = {
-        let mut stmt = tx.prepare("SELECT id FROM approvals")?;
-        stmt.query_map([], |r| r.get::<_, String>(0))?
-            .collect::<rusqlite::Result<Vec<_>>>()?
-    };
-    for id in ids {
-        Repository::new(tx).approval(&id)?;
-    }
-    Ok(())
-}
-
-/// Recheck the actual database even when its version and migration marker are
-/// already current. The only repair allowed here is the unique legacy task
-/// index introduced during schema 6 development. Validate existing objects and
-/// row identities first; a forged same-name index must never suppress repair.
-pub(crate) fn verify_current_schema(tx: &Transaction<'_>) -> Result<()> {
-    verify_schema_tables(tx, SchemaCheck::UpgradeLegacyIndex)?;
+pub fn apply_schema_8(tx: &Transaction<'_>) -> Result<()> {
     tx.execute_batch(
-        "CREATE UNIQUE INDEX IF NOT EXISTS turn_tasks_legacy_task_id_unique ON turn_tasks(legacy_task_id);",
+        "CREATE TABLE IF NOT EXISTS workspace_changes (
+          id TEXT NOT NULL PRIMARY KEY,
+          task_id TEXT NOT NULL REFERENCES tasks(id),
+          tool_call_id TEXT NOT NULL,
+          workspace_digest TEXT NOT NULL,
+          binding_digest TEXT NOT NULL,
+          write_scopes TEXT NOT NULL,
+          path TEXT NOT NULL,
+          path_key TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('created','modified')),
+          before_blob BLOB,
+          before_digest TEXT,
+          after_digest TEXT,
+          state TEXT NOT NULL CHECK (state IN ('prepared','finished','unknown','failed')),
+          restore_state TEXT NOT NULL CHECK (restore_state IN ('pending','restored','unknown')),
+          created_at INTEGER NOT NULL,
+          finished_at INTEGER,
+          UNIQUE(task_id, tool_call_id, path_key),
+          CHECK ((kind='created' AND before_blob IS NULL AND before_digest IS NULL) OR
+                 (kind='modified' AND before_blob IS NOT NULL AND before_digest IS NOT NULL))
+        );
+        CREATE TABLE IF NOT EXISTS workspace_restores (
+          id TEXT NOT NULL PRIMARY KEY,
+          task_id TEXT NOT NULL REFERENCES tasks(id),
+          status TEXT NOT NULL CHECK (status IN ('claimed','complete','conflict','partial','unknown')),
+          created_at INTEGER NOT NULL,
+          finished_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS workspace_restore_outcomes (
+          restore_id TEXT NOT NULL REFERENCES workspace_restores(id),
+          change_id TEXT NOT NULL REFERENCES workspace_changes(id),
+          path TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('claimed','complete','conflict','unknown')),
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY(restore_id, change_id)
+        );
+        CREATE INDEX IF NOT EXISTS workspace_changes_task_path ON workspace_changes(task_id, path_key, created_at);
+        CREATE UNIQUE INDEX IF NOT EXISTS workspace_restores_task_complete ON workspace_restores(task_id) WHERE status='complete';
+        CREATE INDEX IF NOT EXISTS workspace_restore_outcomes_restore ON workspace_restore_outcomes(restore_id);",
     )?;
-    verify_schema_tables(tx, SchemaCheck::Complete)?;
-    verify_event_columns(tx)?;
-    Ok(())
-}
-
-/// Validate an already initialized domain without migration or index repair.
-/// Schema17's plugin verifier alone does not cover the earlier data families.
-pub(crate) fn verify_initialized_schema(tx: &Transaction<'_>) -> Result<()> {
-    anyhow::ensure!(
-        tx.pragma_query_value(None, "user_version", |row| row.get::<_, u32>(0))?
-            == crate::store::SCHEMA_VERSION,
-        "shared domain schema version changed"
-    );
-    for marker in [
-        MIGRATION_ID,
-        APPROVAL_MIGRATION_ID,
-        WORKSPACE_CHANGE_MIGRATION_ID,
-        CHECKPOINT_MIGRATION_ID,
-        NETWORK_MIGRATION_ID,
-        PROJECT_CONFIG_MIGRATION_ID,
-        PLUGIN_MANAGEMENT_MIGRATION_ID,
-        SHELL_MANAGEMENT_MIGRATION_ID,
-        WORKTREE_MIGRATION_ID,
-        BUDGET_MIGRATION_ID,
-        HOST_CONFIG_MIGRATION_ID,
-        RUNTIME_MANAGEMENT_MIGRATION_ID,
-    ] {
-        anyhow::ensure!(
-            migration_applied(tx, marker)?,
-            "schema marker missing: {marker}"
-        );
-    }
-    // verify_current_schema may repair the legacy index. A shared reopen must
-    // require that index to be complete already and never execute its DDL.
-    verify_schema_tables(tx, SchemaCheck::Complete)?;
-    verify_event_columns(tx)?;
-    verify_schema_7(tx)?;
-    verify_schema_8(tx)?;
-    verify_schema_9(tx)?;
-    verify_schema_10(tx)?;
-    verify_schema_11(tx)?;
-    // The schema17 verifier covers the current files/shell/runtime variants;
-    // the older plugin verifiers intentionally expect fewer builtin rows.
-    verify_schema_17(tx)?;
-    verify_schema_14(tx)?;
-    verify_schema_15(tx)?;
-    verify_schema_16(tx)?;
-    verify_execution_owner_shape(tx)?;
-    Ok(())
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum SchemaCheck {
-    BeforeMigration,
-    UpgradeLegacyIndex,
-    Complete,
-}
-
-fn verify_schema_tables(tx: &Transaction<'_>, mode: SchemaCheck) -> Result<()> {
-    for (table, expected) in SCHEMA_6_COLUMNS {
-        if !table_exists(tx, table)? {
-            anyhow::ensure!(
-                mode == SchemaCheck::BeforeMigration,
-                "schema 6 缺少表 {table}；停止打开数据库"
-            );
-            continue;
-        }
-        verify_columns(tx, table, expected)?;
-        verify_foreign_keys(tx, table)?;
-        verify_indexes(tx, table, mode)?;
-        let mut primary_key: Vec<_> = expected
-            .iter()
-            .filter(|column| column.primary_key > 0)
-            .collect();
-        primary_key.sort_by_key(|column| column.primary_key);
-        let primary_key: Vec<_> = primary_key.iter().map(|column| column.name).collect();
-        verify_unique_columns(tx, table, &primary_key)?;
-        if *table == "sessions" {
-            verify_unique_columns(tx, table, &["legacy_run_id"])?;
-        }
-    }
-    if table_exists(tx, "turn_tasks")? {
-        let duplicates: i64 = tx.query_row(
-            "SELECT count(*) FROM (SELECT legacy_task_id FROM turn_tasks GROUP BY legacy_task_id HAVING count(*)>1)",
-            [],
-            |row| row.get(0),
-        )?;
-        anyhow::ensure!(
-            duplicates == 0,
-            "turn_tasks.legacy_task_id 存在重复值，停止迁移"
-        );
-        let cross_collision: i64 = tx.query_row(
-            "SELECT count(*) FROM turn_tasks a JOIN turn_tasks b ON a.id=b.legacy_task_id WHERE a.id<>b.id",
-            [],
-            |row| row.get(0),
-        )?;
-        anyhow::ensure!(
-            cross_collision == 0,
-            "turn_tasks 存在 id 与其他 legacy_task_id 的交叉碰撞；停止迁移"
-        );
-    }
-    Ok(())
-}
-
-fn verify_columns(tx: &Transaction<'_>, table: &str, expected: &[ColumnShape]) -> Result<()> {
-    let mut actual = Vec::new();
-    let mut stmt = tx.prepare(&format!("PRAGMA table_xinfo({table})"))?;
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-            row.get::<_, i64>(3)?,
-            row.get::<_, i64>(5)?,
-        ))
-    })?;
-    for row in rows {
-        actual.push(row?);
-    }
-    for shape in expected {
-        let Some((_, declaration, not_null, primary_key)) =
-            actual.iter().find(|(name, _, _, _)| name == shape.name)
-        else {
-            bail!(
-                "schema 6 表 {table} 结构不完整，缺少列 {}；停止迁移",
-                shape.name
-            );
-        };
-        anyhow::ensure!(
-            declaration.eq_ignore_ascii_case(shape.declaration),
-            "schema 6 表 {table} 列 {} 的声明类型错误，应为 {}",
-            shape.name,
-            shape.declaration
-        );
-        anyhow::ensure!(
-            *primary_key == shape.primary_key,
-            "schema 6 表 {table} 列 {} 的主键序号错误",
-            shape.name
-        );
-        anyhow::ensure!(
-            (*not_null == 1) == shape.not_null,
-            "schema 6 表 {table} 列 {} 的 NOT NULL 属性错误",
-            shape.name
-        );
-    }
-    anyhow::ensure!(
-        actual.len() == expected.len(),
-        "schema 6 表 {table} 含有未知列；停止打开数据库"
-    );
-    Ok(())
-}
-
-fn verify_foreign_keys(tx: &Transaction<'_>, table: &str) -> Result<()> {
-    let expected: Vec<_> = SCHEMA_6_FOREIGN_KEYS
-        .iter()
-        .filter(|(t, _, _, _)| *t == table)
-        .collect();
-    let mut actual = Vec::new();
-    let mut stmt = tx.prepare(&format!("PRAGMA foreign_key_list({table})"))?;
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, i64>(1)?,
-            row.get::<_, String>(2)?,
-            row.get::<_, String>(3)?,
-            row.get::<_, String>(4)?,
-            row.get::<_, String>(5)?,
-            row.get::<_, String>(6)?,
-            row.get::<_, String>(7)?,
-        ))
-    })?;
-    for row in rows {
-        actual.push(row?);
-    }
-    anyhow::ensure!(
-        actual.len() == expected.len(),
-        "schema 6 表 {table} 的外键数量错误"
-    );
-    for (_, from, target, to) in expected {
-        anyhow::ensure!(
-            actual.iter().any(
-                |(id, seq, table, column, target_column, on_update, on_delete, match_kind)| table
-                    == target
-                    && column == from
-                    && target_column == to
-                    && *seq == 0
-                    && actual
-                        .iter()
-                        .filter(|(other_id, ..)| other_id == id)
-                        .count()
-                        == 1
-                    && on_update == "NO ACTION"
-                    && on_delete == "NO ACTION"
-                    && match_kind == "NONE"
-            ),
-            "schema 6 表 {table} 缺少外键 {from}->{target}.{to}"
-        );
-    }
-    Ok(())
-}
-
-fn verify_indexes(tx: &Transaction<'_>, table: &str, mode: SchemaCheck) -> Result<()> {
-    for (_, index, unique, columns) in SCHEMA_6_INDEXES.iter().filter(|(t, _, _, _)| *t == table) {
-        let index_owner: Option<String> = tx
-            .query_row(
-                "SELECT tbl_name FROM sqlite_master WHERE name=?1",
-                [index],
-                |row| row.get(0),
-            )
-            .optional()?;
-        if let Some(owner) = index_owner {
-            anyhow::ensure!(owner == table, "schema 6 索引 {index} 所属表错误");
-        }
-        let Some((_, actual_unique, partial)) = index_list(tx, table)?
-            .into_iter()
-            .find(|(name, _, _)| name == index)
-        else {
-            if mode == SchemaCheck::BeforeMigration
-                || (mode == SchemaCheck::UpgradeLegacyIndex
-                    && *index == "turn_tasks_legacy_task_id_unique")
-            {
-                continue;
-            }
-            bail!("schema 6 表 {table} 缺少索引 {index}；停止迁移");
-        };
-        anyhow::ensure!(
-            actual_unique == *unique,
-            "schema 6 索引 {index} 的 UNIQUE 属性错误"
-        );
-        anyhow::ensure!(!partial, "schema 6 索引 {index} 不能是部分索引");
-        anyhow::ensure!(
-            index_columns_match(tx, index, columns)?,
-            "schema 6 索引 {index} 的列、顺序或排序规则错误"
-        );
-    }
-    Ok(())
-}
-
-fn index_list(tx: &Transaction<'_>, table: &str) -> Result<Vec<(String, bool, bool)>> {
-    let mut stmt = tx.prepare(&format!("PRAGMA index_list({table})"))?;
-    Ok(stmt
-        .query_map([], |row| Ok((row.get(1)?, row.get(2)?, row.get(4)?)))?
-        .collect::<rusqlite::Result<_>>()?)
-}
-
-fn index_columns_match(tx: &Transaction<'_>, index: &str, expected: &[&str]) -> Result<bool> {
-    // Quote database-owned names: autoindexes are not necessarily names that
-    // our own DDL produced when opening a malformed/older database.
-    let escaped_index = index.replace('"', "\"\"");
-    let mut stmt = tx.prepare(&format!("PRAGMA index_xinfo(\"{escaped_index}\")"))?;
-    let entries = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, bool>(3)?,
-                row.get::<_, String>(4)?,
-                row.get::<_, bool>(5)?,
-            ))
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    let keys: Vec<_> = entries.iter().filter(|(_, _, _, key)| *key).collect();
-    Ok(keys.len() == expected.len()
-        && keys
-            .iter()
-            .zip(expected)
-            .all(|((name, descending, collation, _), expected_name)| {
-                name.as_deref() == Some(*expected_name) && !descending && collation == "BINARY"
-            }))
-}
-
-fn verify_unique_columns(tx: &Transaction<'_>, table: &str, columns: &[&str]) -> Result<()> {
-    for (index, unique, partial) in index_list(tx, table)? {
-        if unique && !partial && index_columns_match(tx, &index, columns)? {
-            return Ok(());
-        }
-    }
-    bail!("schema 6 表 {table} 的 {:?} 缺少完整 UNIQUE 约束", columns)
-}
-
-fn table_exists(tx: &Transaction<'_>, table: &str) -> Result<bool> {
-    let count: i64 = tx.query_row(
-        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?1",
-        [table],
-        |row| row.get(0),
-    )?;
-    Ok(count == 1)
-}
-
-fn ensure_event_columns(tx: &Transaction<'_>) -> Result<()> {
-    let mut existing = Vec::new();
-    {
-        let mut stmt = tx.prepare("PRAGMA table_info(events)")?;
-        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
-        for name in rows {
-            existing.push(name?);
-        }
-    }
-    for (name, declaration) in EVENT_ENVELOPE_COLUMNS {
-        if existing.iter().any(|column| column == name) {
-            continue;
-        }
-        tx.execute_batch(&format!(
-            "ALTER TABLE events ADD COLUMN {name} {declaration}"
-        ))?;
-    }
-    Ok(())
-}
-
-fn verify_event_columns(tx: &Transaction<'_>) -> Result<()> {
-    verify_columns(
-        tx,
-        "events",
-        &[
-            ColumnShape {
-                name: "seq",
-                declaration: "INTEGER",
-                not_null: false,
-                primary_key: 1,
-            },
-            column("task_id", true, 0),
-            column("kind", true, 0),
-            column("data", true, 0),
-            integer_column("at"),
-            integer_column("schema_version"),
-            column("cursor", true, 0),
-            column("session_id", false, 0),
-            column("turn_id", false, 0),
-        ],
-    )
-}
-
-fn backfill_event_cursors(tx: &Transaction<'_>) -> Result<()> {
-    // One-time fill for rows written before the envelope.  Empty cursor is
-    // the only rewrite; already stamped rows are left untouched.
     tx.execute(
-        "UPDATE events SET cursor = CAST(seq AS TEXT) WHERE cursor = '' OR cursor IS NULL",
-        [],
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![WORKSPACE_CHANGE_MIGRATION_ID, now()],
     )?;
+    tx.pragma_update(None, "user_version", 8)?;
+    Ok(())
+}
+
+pub fn apply_schema_9(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS checkpoints (
+          id TEXT NOT NULL PRIMARY KEY,
+          task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
+          creation_key TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind='task_before'),
+          generation INTEGER NOT NULL CHECK (generation=1),
+          created_at INTEGER NOT NULL CHECK (created_at>=0),
+          manifest_digest TEXT NOT NULL CHECK (length(manifest_digest)=64),
+          manifest TEXT NOT NULL
+        );",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![CHECKPOINT_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 9)?;
+    Ok(())
+}
+
+pub fn apply_schema_10(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS network_subjects (subject TEXT NOT NULL PRIMARY KEY, snapshot TEXT NOT NULL, credential_blob BLOB NOT NULL);
+         CREATE TABLE IF NOT EXISTS network_authorizations (id TEXT NOT NULL PRIMARY KEY, subject TEXT NOT NULL REFERENCES network_subjects(subject), config_revision INTEGER NOT NULL CHECK(config_revision>0), credential_revision INTEGER NOT NULL CHECK(credential_revision>0), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64), purposes TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','revoked','stale')), created_at INTEGER NOT NULL CHECK(created_at>=0));
+         CREATE TABLE IF NOT EXISTS network_confirmations (subject TEXT NOT NULL REFERENCES network_subjects(subject), creation_key TEXT NOT NULL, request_digest TEXT NOT NULL CHECK(length(request_digest)=64), authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), PRIMARY KEY(subject,creation_key));
+         CREATE TABLE IF NOT EXISTS task_network_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64));
+         CREATE TABLE IF NOT EXISTS network_calls (id TEXT NOT NULL PRIMARY KEY, authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), task_id TEXT REFERENCES tasks(id), state TEXT NOT NULL CHECK(state IN ('claimed','finished','unknown','not_sent')), receipt TEXT NOT NULL);
+         CREATE TABLE IF NOT EXISTS command_network_ack (approval_id TEXT NOT NULL PRIMARY KEY REFERENCES approvals(id), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64), notice_version INTEGER NOT NULL CHECK(notice_version=1), created_at INTEGER NOT NULL CHECK(created_at>=0));
+         CREATE TABLE IF NOT EXISTS network_events (seq INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('confirmed','revoked','stale')), object_id TEXT NOT NULL, created_at INTEGER NOT NULL CHECK(created_at>=0));
+         CREATE UNIQUE INDEX IF NOT EXISTS network_one_active ON network_authorizations(subject) WHERE state='active';",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![NETWORK_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 10)?;
+    Ok(())
+}
+
+pub fn apply_schema_11(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS project_configs (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), value TEXT NOT NULL, permission_digest TEXT NOT NULL);
+         CREATE TABLE IF NOT EXISTS project_root_bindings (project_id TEXT NOT NULL PRIMARY KEY REFERENCES projects(id), identity TEXT NOT NULL);
+         CREATE TABLE IF NOT EXISTS project_selection (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), project_id TEXT REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0), CHECK((revision=0 AND project_id IS NULL) OR (revision>0 AND project_id IS NOT NULL)));
+         CREATE TABLE IF NOT EXISTS task_project_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), project_id TEXT NOT NULL REFERENCES project_configs(project_id), value TEXT NOT NULL, provenance TEXT NOT NULL CHECK(provenance='native_v1'));
+         CREATE TABLE IF NOT EXISTS project_registration_keys (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_configs(project_id), request_hash TEXT NOT NULL);
+         INSERT OR IGNORE INTO project_selection(id, project_id, revision) VALUES (1, NULL, 0);",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![PROJECT_CONFIG_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 11)?;
+    Ok(())
+}
+
+const PLUGIN_TABLES_FULL: &str = "
+CREATE TABLE IF NOT EXISTS plugin_desired (
+  plugin_id TEXT NOT NULL PRIMARY KEY CHECK(typeof(plugin_id)='text' AND plugin_id IN ('builtin.files','builtin.shell','builtin.chat-agent','builtin.provider-xpeach')),
+  enabled INTEGER NOT NULL CHECK(typeof(enabled)='integer' AND enabled IN (0,1)),
+  revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0),
+  updated_at INTEGER NOT NULL CHECK(typeof(updated_at)='integer')
+);
+CREATE TABLE IF NOT EXISTS plugin_management_requests (
+  key TEXT NOT NULL PRIMARY KEY CHECK(typeof(key)='text' AND length(key) BETWEEN 1 AND 200),
+  plugin_id TEXT NOT NULL REFERENCES plugin_desired(plugin_id) CHECK(typeof(plugin_id)='text' AND plugin_id IN ('builtin.files','builtin.shell','builtin.chat-agent','builtin.provider-xpeach')),
+  enabled INTEGER NOT NULL CHECK(typeof(enabled)='integer' AND enabled IN (0,1)),
+  expected_revision INTEGER NOT NULL CHECK(typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807),
+  result_revision INTEGER NOT NULL CHECK(typeof(result_revision)='integer' AND result_revision=expected_revision+1),
+  committed_at INTEGER NOT NULL CHECK(typeof(committed_at)='integer')
+);
+";
+
+fn upgrade_plugin_tables_if_restricted(tx: &Transaction<'_>) -> Result<()> {
+    let ddl: Option<String> = tx
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='plugin_desired'",
+            [],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let Some(ddl) = ddl else {
+        tx.execute_batch(PLUGIN_TABLES_FULL)?;
+        return Ok(());
+    };
+    if ddl.contains("builtin.provider-xpeach") {
+        return Ok(());
+    }
+    tx.execute_batch(
+        "CREATE TEMP TABLE nhc_migrate_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired;
+         CREATE TEMP TABLE nhc_migrate_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
+         DROP TABLE plugin_management_requests;
+         DROP TABLE plugin_desired;",
+    )?;
+    tx.execute_batch(PLUGIN_TABLES_FULL)?;
+    tx.execute_batch(
+        "INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at)
+           SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM nhc_migrate_desired;
+         INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at)
+           SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM nhc_migrate_requests;
+         DROP TABLE temp.nhc_migrate_requests;
+         DROP TABLE temp.nhc_migrate_desired;",
+    )?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_12(tx: &Transaction<'_>) -> Result<()> {
+    upgrade_plugin_tables_if_restricted(tx)?;
+    tx.execute(
+        "INSERT OR IGNORE INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.files',1,0,?1)",
+        [now()],
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![PLUGIN_MANAGEMENT_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 12)?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_13(tx: &Transaction<'_>) -> Result<()> {
+    upgrade_plugin_tables_if_restricted(tx)?;
+    let ts = now();
+    tx.execute(
+        "INSERT OR IGNORE INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.shell',1,0,?1)",
+        [ts],
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![SHELL_MANAGEMENT_MIGRATION_ID, ts],
+    )?;
+    tx.pragma_update(None, "user_version", 13)?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_14(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS worktree_operations (operation_id TEXT NOT NULL PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE CHECK(typeof(idempotency_key)='text' AND length(idempotency_key) BETWEEN 1 AND 200), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), requested_project_id TEXT NOT NULL UNIQUE, request_json TEXT NOT NULL CHECK(typeof(request_json)='text'), request_digest TEXT NOT NULL CHECK(typeof(request_digest)='text' AND length(request_digest)=64), plan TEXT NOT NULL CHECK(typeof(plan)='text'), members TEXT NOT NULL CHECK(typeof(members)='text'), common_key TEXT NOT NULL CHECK(typeof(common_key)='text' AND length(common_key)=64), target_path TEXT NOT NULL UNIQUE, branch_ref TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('claimed','succeeded','rejected','unknown')), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), UNIQUE(common_key,branch_ref));
+         CREATE UNIQUE INDEX IF NOT EXISTS worktree_active_common ON worktree_operations(common_key) WHERE state IN ('claimed','unknown');
+         CREATE TABLE IF NOT EXISTS worktree_project_reservations (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL REFERENCES worktree_operations(operation_id));
+         CREATE TABLE IF NOT EXISTS project_worktree_origins (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL UNIQUE REFERENCES worktree_operations(operation_id), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), identity TEXT NOT NULL CHECK(typeof(identity)='text'));",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![WORKTREE_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 14)?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_15(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS project_budgets (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), limit_tokens INTEGER NOT NULL CHECK(typeof(limit_tokens)='integer' AND limit_tokens>=0 AND limit_tokens<=1000000000000), reservation_tokens INTEGER NOT NULL CHECK(typeof(reservation_tokens)='integer' AND reservation_tokens>=1 AND reservation_tokens<=1000000000), coverage_start_call_rowid INTEGER NOT NULL CHECK(typeof(coverage_start_call_rowid)='integer' AND coverage_start_call_rowid>=0));
+         CREATE TABLE IF NOT EXISTS budget_requests (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_budgets(project_id), request TEXT NOT NULL CHECK(typeof(request)='text'), result TEXT NOT NULL CHECK(typeof(result)='text'), request_digest TEXT NOT NULL CHECK(length(request_digest)=64));
+         CREATE TABLE IF NOT EXISTS budget_calls (call_id TEXT NOT NULL PRIMARY KEY REFERENCES network_calls(id), project_id TEXT NOT NULL REFERENCES project_budgets(project_id), budget_revision INTEGER NOT NULL CHECK(typeof(budget_revision)='integer' AND budget_revision>0), reserved_tokens INTEGER NOT NULL CHECK(typeof(reserved_tokens)='integer' AND reserved_tokens>=1 AND reserved_tokens<=1000000000), state TEXT NOT NULL CHECK(state IN ('claimed','settled','not_sent','usage_missing','usage_invalid','unknown','overrun')), record TEXT NOT NULL CHECK(typeof(record)='text'), terminal_fingerprint TEXT CHECK(terminal_fingerprint IS NULL OR length(terminal_fingerprint)=64), CHECK((state='claimed' AND terminal_fingerprint IS NULL) OR (state<>'claimed' AND terminal_fingerprint IS NOT NULL)));",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![BUDGET_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 15)?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_16(tx: &Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS host_config_state (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0 AND revision<=9223372036854775807));
+         CREATE TABLE IF NOT EXISTS host_config_requests (key TEXT NOT NULL PRIMARY KEY CHECK(typeof(key)='text' AND length(key) BETWEEN 1 AND 200), operation_id TEXT NOT NULL UNIQUE CHECK(typeof(operation_id)='text'), route_id TEXT NOT NULL CHECK(typeof(route_id)='text'), expected_revision INTEGER NOT NULL CHECK(typeof(expected_revision)='integer' AND expected_revision>=0), result_revision INTEGER NOT NULL CHECK(typeof(result_revision)='integer' AND result_revision>=expected_revision AND result_revision<=9223372036854775807), request_fingerprint_blob BLOB NOT NULL CHECK(typeof(request_fingerprint_blob)='blob' AND length(request_fingerprint_blob)>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), committed_at INTEGER NOT NULL CHECK(typeof(committed_at)='integer' AND committed_at>=0), CHECK(result_revision=expected_revision OR (expected_revision<9223372036854775807 AND result_revision=expected_revision+1)));
+         INSERT OR IGNORE INTO host_config_state(id, revision) VALUES (1, 0);",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![HOST_CONFIG_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 16)?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_17(tx: &Transaction<'_>) -> Result<()> {
+    upgrade_plugin_tables_if_restricted(tx)?;
+    tx.execute_batch(
+        "INSERT OR IGNORE INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.chat-agent',1,0,0),('builtin.provider-xpeach',1,0,0);",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![RUNTIME_MANAGEMENT_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 17)?;
+    Ok(())
+}
+
+pub(crate) fn apply_schema_18(tx: &Transaction<'_>, identity: &str) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS execution_owner (id INTEGER PRIMARY KEY CHECK(id=1), domain_identity TEXT NOT NULL, epoch INTEGER NOT NULL CHECK(typeof(epoch)='integer' AND epoch>=0), phase TEXT NOT NULL CHECK(phase IN ('recovering','active')));",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO execution_owner(id,domain_identity,epoch,phase) VALUES(1,?1,0,'recovering')",
+        [identity],
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![EXECUTION_OWNER_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 18)?;
     Ok(())
 }
 
@@ -1080,29 +457,34 @@ impl<'a> Repository<'a> {
         let mut row = self
             .conn
             .query_row(
-                "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE task_id=?2 AND tool_call_id=?1",
-                rusqlite::params![tool_call_id, task_id],
+                "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by \
+                 FROM approvals WHERE task_id=?2 AND tool_call_id=?1",
+                params![tool_call_id, task_id],
                 approval_row,
             )
-            .optional().map_err(|_| crate::approval::ApprovalError::CorruptState { id: tool_call_id.into() })?;
+            .optional()
+            .map_err(|_| crate::approval::ApprovalError::CorruptState {
+                id: tool_call_id.into(),
+            })?;
         if let Some(record) = &mut row {
             self.hydrate_network_ack(record)?;
-            self.validate_approval(record)?;
         }
         Ok(row)
     }
 
     pub(crate) fn approval(&self, id: &str) -> Result<crate::approval::ApprovalRecord> {
-        let mut record = self.conn
+        let mut record = self
+            .conn
             .query_row(
-                "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE id=?1",
+                "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by \
+                 FROM approvals WHERE id=?1",
                 [id],
                 approval_row,
             )
-            .optional().map_err(|_| crate::approval::ApprovalError::CorruptState { id: id.into() })?
+            .optional()
+            .map_err(|_| crate::approval::ApprovalError::CorruptState { id: id.into() })?
             .ok_or_else(|| crate::approval::ApprovalError::NotFound { id: id.to_owned() })?;
         self.hydrate_network_ack(&mut record)?;
-        self.validate_approval(&record)?;
         Ok(record)
     }
 
@@ -1111,7 +493,8 @@ impl<'a> Repository<'a> {
         task_id: &str,
     ) -> Result<Vec<crate::approval::ApprovalRecord>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by FROM approvals WHERE task_id=?1 ORDER BY created_at, id",
+            "SELECT id,tool_call_id,task_id,turn_id,session_id,tool_name,args_digest,binding_digest,workspace,write_scopes,allow_commands,preview,status,execution_state,created_at,decided_at,decided_by \
+             FROM approvals WHERE task_id=?1 ORDER BY created_at, id",
         )?;
         let rows = stmt.query_map([task_id], approval_row)?;
         let mut records: Vec<_> = rows
@@ -1119,7 +502,6 @@ impl<'a> Repository<'a> {
             .map_err(|_| crate::approval::ApprovalError::CorruptState { id: task_id.into() })?;
         for record in &mut records {
             self.hydrate_network_ack(record)?;
-            self.validate_approval(record)?;
         }
         Ok(records)
     }
@@ -1130,7 +512,13 @@ impl<'a> Repository<'a> {
         {
             None
         } else {
-            self.conn.query_row("SELECT binding_digest,notice_version FROM command_network_ack WHERE approval_id=?1",[&record.id],|r|Ok((r.get(0)?,r.get(1)?))).optional()?
+            self.conn
+                .query_row(
+                    "SELECT binding_digest,notice_version FROM command_network_ack WHERE approval_id=?1",
+                    [&record.id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?
         };
         if let Some((digest, version)) = &sidecar
             && (record.tool_name != "run_command"
@@ -1152,77 +540,6 @@ impl<'a> Repository<'a> {
         } else {
             record.network_notice = None;
             record.command_network_ack = CommandNetworkAck::NotRequired;
-        }
-        Ok(())
-    }
-    fn validate_approval(&self, record: &crate::approval::ApprovalRecord) -> Result<()> {
-        use crate::approval::{ApprovalError, ExecutionState};
-        let corrupt = || ApprovalError::CorruptState {
-            id: record.id.clone(),
-        };
-        let (run, raw): (String, String) = self
-            .conn
-            .query_row(
-                "SELECT run_id,value FROM tasks WHERE id=?1",
-                [&record.task_id],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .map_err(|_| corrupt())?;
-        let task: Task = serde_json::from_str(&raw).map_err(|_| corrupt())?;
-        let scope: Option<(String, String)> = self
-            .conn
-            .query_row(
-                "SELECT turn_id,session_id FROM turn_tasks WHERE legacy_task_id=?1",
-                [&record.task_id],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .optional()
-            .map_err(|_| corrupt())?;
-        if task.id != record.task_id
-            || task.run_id != run
-            || scope.as_ref().map(|v| &v.0) != record.turn_id.as_ref()
-            || scope.as_ref().map(|v| &v.1) != record.session_id.as_ref()
-        {
-            return Err(corrupt().into());
-        }
-        crate::approval::validate_call_history(&task.messages).map_err(|_| corrupt())?;
-        let call_exists = task
-            .messages
-            .iter()
-            .filter_map(|m| m["tool_calls"].as_array())
-            .flatten()
-            .any(|c| c["id"] == record.tool_call_id);
-        if !call_exists {
-            return Err(corrupt().into());
-        }
-        if record.execution_state == ExecutionState::Finished {
-            let message = task
-                .messages
-                .iter()
-                .find(|m| m["role"] == "tool" && m["tool_call_id"] == record.tool_call_id)
-                .ok_or_else(corrupt)?;
-            let content = message["content"].as_str().ok_or_else(corrupt)?;
-            let result = serde_json::from_str::<Value>(content)
-                .unwrap_or_else(|_| Value::String(content.into()));
-            let mut stmt = self
-                .conn
-                .prepare("SELECT data FROM events WHERE task_id=?1 AND kind='tool_result'")?;
-            let events = stmt
-                .query_map([&record.task_id], |r| r.get::<_, String>(0))?
-                .collect::<rusqlite::Result<Vec<_>>>()?;
-            let matches = events
-                .iter()
-                .filter_map(|s| serde_json::from_str::<Value>(s).ok())
-                .filter(|e| {
-                    e["approval_id"] == record.id
-                        && e["tool_call_id"] == record.tool_call_id
-                        && e["name"] == record.tool_name
-                        && e["result"] == result
-                })
-                .count();
-            if matches != 1 {
-                return Err(corrupt().into());
-            }
         }
         Ok(())
     }
@@ -1372,8 +689,6 @@ impl<'a> Repository<'a> {
                 task.id == task_id && task.run_id == run_id && run_id == id,
                 "旧任务 JSON 身份与数据库关系不一致"
             );
-            // Historic task blobs predate the current persistence boundary.
-            // Apply the same known-field/token redaction before returning them.
             run.tasks
                 .push(serde_json::from_value(safe_task_value(&task)?)?);
         }
@@ -1449,12 +764,6 @@ impl<'a> Repository<'a> {
             .context("Agent 不存在")
     }
 
-    /// Commit a turn, its executable tasks, the optional idempotency record,
-    /// and the opening lifecycle event together.
-    ///
-    /// The caller inserts the legacy run and task rows in the same
-    /// transaction before this returns.  A later failure rolls those rows
-    /// back with the domain rows.
     pub(crate) fn commit_turn(
         tx: &Transaction<'_>,
         turn: &Turn,
@@ -1495,16 +804,16 @@ impl<'a> Repository<'a> {
                     |row| row.get(0),
                 )?;
                 tx.execute(
-                "INSERT INTO idempotency_records(key,request_hash,turn_id,session_id,legacy_run_id,created_at) VALUES (?1,?2,?3,?4,?5,?6)",
-                params![
-                    key,
-                    turn.request_hash,
-                    turn.id.0,
-                    turn.session_id.0,
-                    legacy_run_id,
-                    turn.created_at
-                ],
-            )?;
+                    "INSERT INTO idempotency_records(key,request_hash,turn_id,session_id,legacy_run_id,created_at) VALUES (?1,?2,?3,?4,?5,?6)",
+                    params![
+                        key,
+                        turn.request_hash,
+                        turn.id.0,
+                        turn.session_id.0,
+                        legacy_run_id,
+                        turn.created_at
+                    ],
+                )?;
             }
             insert_event_tx(tx, opening_event)?;
             Ok(())
@@ -1535,15 +844,6 @@ impl<'a> Repository<'a> {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Latest committed turn for append/resume guards.
-    ///
-    /// `turns_for_session` orders by second-precision `created_at` then id, and
-    /// a UUID is not a commit order. Commit order is the minimum event `seq`
-    /// written for each turn in its creation transaction. A later event on an
-    /// older turn must not move that turn ahead of a successor. Every turn in
-    /// the session must have at least one owned event; a missing one is corrupt
-    /// rather than skipped. This does not prove a deleted opening event when
-    /// later events remain.
     pub fn latest_committed_turn(&self, session_id: &SessionId) -> Result<Option<Turn>> {
         let turn_count: i64 = self.conn.query_row(
             "SELECT count(*) FROM turns WHERE session_id=?1",
@@ -1641,8 +941,6 @@ impl<'a> Repository<'a> {
         Ok(())
     }
 
-    /// Resume evidence for queued/running work that did not reach a terminal
-    /// state.  The caller records the interrupted event separately.
     pub fn nonterminal_turns(&self) -> Result<Vec<Turn>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,session_id,project_id,status,request_hash,idempotency_key,created_at,updated_at FROM turns WHERE status IN ('queued','running') ORDER BY created_at, id",
@@ -1711,8 +1009,6 @@ impl<'a> Repository<'a> {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// New records win.  A key that exists only in the legacy table is still
-    /// classified, so a retry cannot fail later as a bare UNIQUE error.
     pub fn idempotency(&self, key: &str, request_hash: &str) -> Result<Option<Result<Turn, ()>>> {
         let row: Option<(String, String)> = self
             .conn
@@ -1769,8 +1065,6 @@ impl<'a> Repository<'a> {
         insert_event_tx(tx, event)
     }
 
-    /// Host-only completion text already filtered with the stream's preceding
-    /// context. Re-filtering an isolated delta can change a safe word boundary.
     pub(crate) fn append_completion_delta(tx: &Transaction<'_>, event: &Event) -> Result<i64> {
         anyhow::ensure!(
             event.kind == "delta"
@@ -2234,419 +1528,13 @@ fn event_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
     })
 }
 
-pub const NETWORK_MIGRATION_ID: &str = "network-authorization-repository";
-const NETWORK_TABLES: &[(&str, &str)] = &[
-    (
-        "network_subjects",
-        "CREATE TABLE IF NOT EXISTS network_subjects (subject TEXT NOT NULL PRIMARY KEY, snapshot TEXT NOT NULL, credential_blob BLOB NOT NULL)",
-    ),
-    (
-        "network_authorizations",
-        "CREATE TABLE IF NOT EXISTS network_authorizations (id TEXT NOT NULL PRIMARY KEY, subject TEXT NOT NULL REFERENCES network_subjects(subject), config_revision INTEGER NOT NULL CHECK(config_revision>0), credential_revision INTEGER NOT NULL CHECK(credential_revision>0), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64), purposes TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','revoked','stale')), created_at INTEGER NOT NULL CHECK(created_at>=0))",
-    ),
-    (
-        "network_confirmations",
-        "CREATE TABLE IF NOT EXISTS network_confirmations (subject TEXT NOT NULL REFERENCES network_subjects(subject), creation_key TEXT NOT NULL, request_digest TEXT NOT NULL CHECK(length(request_digest)=64), authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), PRIMARY KEY(subject,creation_key))",
-    ),
-    (
-        "task_network_bindings",
-        "CREATE TABLE IF NOT EXISTS task_network_bindings (task_id TEXT NOT NULL PRIMARY KEY REFERENCES tasks(id), authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64))",
-    ),
-    (
-        "network_calls",
-        "CREATE TABLE IF NOT EXISTS network_calls (id TEXT NOT NULL PRIMARY KEY, authorization_id TEXT NOT NULL REFERENCES network_authorizations(id), task_id TEXT REFERENCES tasks(id), state TEXT NOT NULL CHECK(state IN ('claimed','finished','unknown','not_sent')), receipt TEXT NOT NULL)",
-    ),
-    (
-        "command_network_ack",
-        "CREATE TABLE IF NOT EXISTS command_network_ack (approval_id TEXT NOT NULL PRIMARY KEY REFERENCES approvals(id), binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64), notice_version INTEGER NOT NULL CHECK(notice_version=1), created_at INTEGER NOT NULL CHECK(created_at>=0))",
-    ),
-    (
-        "network_events",
-        "CREATE TABLE IF NOT EXISTS network_events (seq INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('confirmed','revoked','stale')), object_id TEXT NOT NULL, created_at INTEGER NOT NULL CHECK(created_at>=0))",
-    ),
-];
-const NETWORK_ACTIVE_INDEX: &str = "CREATE UNIQUE INDEX network_one_active ON network_authorizations(subject) WHERE state='active'";
-pub fn apply_schema_10(tx: &Transaction<'_>) -> Result<()> {
-    for (_, sql) in NETWORK_TABLES {
-        tx.execute_batch(sql)?;
-    }
-    tx.execute_batch(&NETWORK_ACTIVE_INDEX.replacen(
-        "CREATE UNIQUE INDEX ",
-        "CREATE UNIQUE INDEX IF NOT EXISTS ",
-        1,
-    ))?;
-    verify_schema_10(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
-        params![NETWORK_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 10)?;
-    Ok(())
-}
-pub(crate) fn verify_schema_10(tx: &Transaction<'_>) -> Result<()> {
-    fn normalize(sql: &str) -> String {
-        let mut out = String::new();
-        let mut quote = None;
-        let mut chars = sql.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if let Some(q) = quote {
-                out.push(ch);
-                if ch == q {
-                    if chars.peek() == Some(&q) {
-                        out.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(ch, '\'' | '"' | '`') {
-                quote = Some(ch);
-                out.push(ch);
-            } else if !ch.is_whitespace() {
-                out.push(ch.to_ascii_lowercase());
-            }
-        }
-        for prefix in ["createtable", "createuniqueindex", "createindex"] {
-            if let Some(rest) = out.strip_prefix(&format!("{prefix}ifnotexists")) {
-                return format!("{prefix}{rest}");
-            }
-        }
-        out
-    }
-    type NetworkColumn = (String, String, i64, Option<String>, i64, i64);
-    fn columns(db: &Connection, table: &str) -> Result<Vec<NetworkColumn>> {
-        let mut statement = db.prepare(&format!("PRAGMA table_xinfo({table})"))?;
-        Ok(statement
-            .query_map([], |r| {
-                Ok((
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                    r.get(6)?,
-                ))
-            })?
-            .collect::<rusqlite::Result<_>>()?)
-    }
-    let expected = Connection::open_in_memory()?;
-    for (_, sql) in NETWORK_TABLES {
-        expected.execute_batch(sql)?;
-    }
-    for (table, sql) in NETWORK_TABLES {
-        anyhow::ensure!(
-            columns(tx, table)? == columns(&expected, table)?,
-            "network column shape mismatch"
-        );
-        let actual: String = tx.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
-            [table],
-            |r| r.get(0),
-        )?;
-        anyhow::ensure!(
-            normalize(&actual) == normalize(sql),
-            "network schema constraint mismatch"
-        );
-    }
-    let actual: String = tx.query_row(
-        "SELECT sql FROM sqlite_master WHERE type='index' AND name='network_one_active'",
-        [],
-        |r| r.get(0),
-    )?;
-    anyhow::ensure!(
-        normalize(&actual) == normalize(NETWORK_ACTIVE_INDEX),
-        "network active index mismatch"
-    );
-    let violation: Option<String> = tx
-        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
-        .optional()?;
-    anyhow::ensure!(violation.is_none(), "network foreign key violation");
-    Ok(())
-}
-
 #[cfg(test)]
-mod schema_tests {
+mod tests {
     use super::*;
-
-    fn schema_5() -> Connection {
-        let db = Connection::open_in_memory().unwrap();
-        db.execute_batch(
-            "PRAGMA foreign_keys=ON;
-             PRAGMA user_version=5;
-             CREATE TABLE schema_migrations(id TEXT PRIMARY KEY, applied_at INTEGER NOT NULL);
-             CREATE TABLE events(seq INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL,
-                 kind TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL);",
-        )
-        .unwrap();
-        db
-    }
-
-    fn migration_state(db: &Connection) -> (u32, bool) {
-        (
-            db.pragma_query_value(None, "user_version", |row| row.get(0))
-                .unwrap(),
-            migration_applied(db, MIGRATION_ID).unwrap(),
-        )
-    }
-
-    fn migrate(db: &mut Connection) {
-        let tx = db.transaction().unwrap();
-        apply_schema_6(&tx).unwrap();
-        tx.commit().unwrap();
-        assert_eq!(migration_state(db), (6, true));
-    }
-
-    fn reopen(db: &mut Connection) -> Result<()> {
-        let tx = db.transaction()?;
-        verify_current_schema(&tx)?;
-        tx.commit()?;
-        Ok(())
-    }
-
-    #[test]
-    fn malformed_schema_never_advances_version_or_marker() {
-        let cases = [
-            (
-                "projects id has no primary key",
-                "id TEXT PRIMARY KEY,\n  name TEXT",
-                "id TEXT,\n  name TEXT",
-                "主键",
-            ),
-            (
-                "root path has wrong type",
-                "root_path TEXT NOT NULL",
-                "root_path BLOB NOT NULL",
-                "声明类型",
-            ),
-            (
-                "agent role allows null",
-                "role TEXT NOT NULL",
-                "role TEXT",
-                "NOT NULL",
-            ),
-            (
-                "session omits foreign key",
-                "project_id TEXT NOT NULL REFERENCES projects(id)",
-                "project_id TEXT NOT NULL",
-                "外键",
-            ),
-            (
-                "session legacy run omits unique",
-                "legacy_run_id TEXT NOT NULL UNIQUE",
-                "legacy_run_id TEXT NOT NULL",
-                "UNIQUE",
-            ),
-            (
-                "dependency primary key is incomplete",
-                "PRIMARY KEY (task_id, depends_on_task_id)",
-                "PRIMARY KEY (task_id)",
-                "主键",
-            ),
-            (
-                "idempotency target foreign key is absent",
-                "turn_id TEXT NOT NULL REFERENCES turns(id)",
-                "turn_id TEXT NOT NULL",
-                "外键",
-            ),
-            (
-                "idempotency request hash is nullable",
-                "request_hash TEXT NOT NULL",
-                "request_hash TEXT",
-                "NOT NULL",
-            ),
-            (
-                "primary key uses incompatible collation",
-                "id TEXT PRIMARY KEY,\n  name TEXT",
-                "id TEXT PRIMARY KEY COLLATE NOCASE,\n  name TEXT",
-                "UNIQUE",
-            ),
-        ];
-        for (label, original, replacement, expected) in cases {
-            let mut db = schema_5();
-            let ddl = SCHEMA_6_SQL.replace(original, replacement);
-            assert_ne!(ddl, SCHEMA_6_SQL, "fixture must mutate: {label}");
-            db.execute_batch(&ddl).unwrap();
-            let error = {
-                let tx = db.transaction().unwrap();
-                apply_schema_6(&tx).unwrap_err().to_string()
-            };
-            assert!(error.contains(expected), "{label}: {error}");
-            assert_eq!(migration_state(&db), (5, false), "{label}");
-        }
-    }
-
-    #[test]
-    fn forged_named_indexes_are_rejected_even_with_valid_marker() {
-        let index_definitions = [
-            "CREATE INDEX turn_tasks_legacy_task_id_unique ON turn_tasks(legacy_task_id)",
-            "CREATE UNIQUE INDEX turn_tasks_legacy_task_id_unique ON turn_tasks(legacy_task_id) WHERE status='running'",
-            "CREATE UNIQUE INDEX turn_tasks_legacy_task_id_unique ON turn_tasks(id)",
-            "CREATE UNIQUE INDEX turn_tasks_legacy_task_id_unique ON turn_tasks(legacy_task_id COLLATE NOCASE)",
-            "CREATE UNIQUE INDEX turn_tasks_legacy_task_id_unique ON agents(id)",
-        ];
-        for definition in index_definitions {
-            let mut db = schema_5();
-            migrate(&mut db);
-            db.execute_batch("DROP INDEX turn_tasks_legacy_task_id_unique;")
-                .unwrap();
-            db.execute_batch(definition).unwrap();
-            assert!(reopen(&mut db).is_err(), "{definition}");
-            assert_eq!(migration_state(&db), (6, true));
-        }
-    }
-
-    #[test]
-    fn session_unique_constraint_cannot_be_replaced_by_a_partial_index() {
-        let mut db = schema_5();
-        let ddl = SCHEMA_6_SQL.replace(
-            "legacy_run_id TEXT NOT NULL UNIQUE",
-            "legacy_run_id TEXT NOT NULL",
-        );
-        db.execute_batch(&ddl).unwrap();
-        db.execute_batch(
-            "CREATE UNIQUE INDEX fake_session_unique ON sessions(legacy_run_id) WHERE kind='team';",
-        )
-        .unwrap();
-        let error = {
-            let tx = db.transaction().unwrap();
-            apply_schema_6(&tx).unwrap_err().to_string()
-        };
-        assert!(error.contains("UNIQUE"), "{error}");
-        assert_eq!(migration_state(&db), (5, false));
-    }
-
-    fn seed_one_task(db: &Connection) {
-        db.execute_batch(
-            "INSERT INTO projects VALUES('project','project','D:/workspace',1,1);
-             INSERT INTO sessions VALUES('session','project','team','session','run',1,1);
-             INSERT INTO turns VALUES('turn','session','project','queued','hash',NULL,1,1);
-             INSERT INTO agents VALUES('agent','session','agent','worker',1);
-             INSERT INTO turn_tasks VALUES('task','turn','session','agent','legacy', 'queued',1,1);",
-        ).unwrap();
-    }
-
-    #[test]
-    fn marked_schema_6_repairs_only_the_missing_legacy_unique_index() {
-        let mut db = schema_5();
-        migrate(&mut db);
-        seed_one_task(&db);
-        db.execute_batch("DROP INDEX turn_tasks_legacy_task_id_unique;")
-            .unwrap();
-        reopen(&mut db).unwrap();
-        reopen(&mut db).unwrap();
-        assert!(db.execute_batch(
-            "INSERT INTO turn_tasks VALUES('other','turn','session','agent','legacy','queued',1,1)",
-        ).is_err());
-        assert_eq!(migration_state(&db), (6, true));
-        db.execute_batch("DROP INDEX sessions_project;").unwrap();
-        assert!(
-            reopen(&mut db)
-                .unwrap_err()
-                .to_string()
-                .contains("sessions_project")
-        );
-    }
-
-    #[test]
-    fn missing_index_repair_refuses_duplicate_and_crossed_task_ids() {
-        for (new_id, legacy_id, expected) in
-            [("other", "legacy", "重复"), ("legacy", "other", "交叉碰撞")]
-        {
-            let mut db = schema_5();
-            migrate(&mut db);
-            seed_one_task(&db);
-            db.execute_batch("DROP INDEX turn_tasks_legacy_task_id_unique;")
-                .unwrap();
-            db.execute(
-                "INSERT INTO turn_tasks VALUES(?1,'turn','session','agent',?2,'queued',1,1)",
-                params![new_id, legacy_id],
-            )
-            .unwrap();
-            let error = reopen(&mut db).unwrap_err().to_string();
-            assert!(error.contains(expected), "{error}");
-            assert_eq!(migration_state(&db), (6, true));
-            let indexes: i64 = db.query_row(
-                "SELECT count(*) FROM sqlite_master WHERE name='turn_tasks_legacy_task_id_unique'", [], |row| row.get(0),
-            ).unwrap();
-            assert_eq!(
-                indexes, 0,
-                "failed validation must not leave a repaired index"
-            );
-        }
-    }
-
-    #[test]
-    fn partial_schema_with_missing_indexes_retries_atomically() {
-        let mut db = schema_5();
-        db.execute_batch(SCHEMA_6_SQL).unwrap();
-        db.execute_batch(
-            "DROP INDEX sessions_project; DROP INDEX turn_tasks_legacy_task_id_unique;",
-        )
-        .unwrap();
-        migrate(&mut db);
-        reopen(&mut db).unwrap();
-    }
-
-    #[test]
-    fn failed_marker_write_rolls_back_all_schema_changes() {
-        let mut db = schema_5();
-        db.execute_batch(
-            "CREATE TRIGGER reject_marker BEFORE INSERT ON schema_migrations BEGIN SELECT RAISE(ABORT, 'marker failure'); END;",
-        ).unwrap();
-        {
-            let tx = db.transaction().unwrap();
-            assert!(apply_schema_6(&tx).is_err());
-        }
-        assert_eq!(migration_state(&db), (5, false));
-        let tables: i64 = db
-            .query_row(
-                "SELECT count(*) FROM sqlite_master WHERE name='projects'",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(tables, 0);
-        let columns: i64 = db
-            .query_row(
-                "SELECT count(*) FROM pragma_table_info('events')",
-                [],
-                |row| row.get(0),
-            )
-            .unwrap();
-        assert_eq!(columns, 5);
-    }
-
-    #[test]
-    fn current_marker_does_not_hide_missing_tables_or_bad_event_columns() {
-        let mut db = schema_5();
-        migrate(&mut db);
-        db.execute_batch("DROP TABLE turn_task_dependencies;")
-            .unwrap();
-        assert!(reopen(&mut db).unwrap_err().to_string().contains("缺少表"));
-        assert_eq!(migration_state(&db), (6, true));
-
-        let mut db = schema_5();
-        db.execute_batch("ALTER TABLE events ADD COLUMN cursor BLOB NOT NULL DEFAULT '';")
-            .unwrap();
-        {
-            let tx = db.transaction().unwrap();
-            assert!(
-                apply_schema_6(&tx)
-                    .unwrap_err()
-                    .to_string()
-                    .contains("声明类型")
-            );
-        }
-        assert_eq!(migration_state(&db), (5, false));
-    }
-}
-
-#[cfg(test)]
-mod task_identity_tests {
-    use super::*;
-    use crate::domain::stamped_event;
     use serde_json::json;
 
-    fn database() -> Connection {
+    #[test]
+    fn forward_migrations_and_turn_crud_roundtrip() {
         let mut db = Connection::open_in_memory().unwrap();
         db.execute_batch(
             "PRAGMA foreign_keys=ON;
@@ -2654,1509 +1542,109 @@ mod task_identity_tests {
              CREATE TABLE events(seq INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, kind TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL);
              CREATE TABLE runs(id TEXT PRIMARY KEY, title TEXT NOT NULL, kind TEXT NOT NULL, created_at INTEGER NOT NULL);
              CREATE TABLE tasks(id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(id), value TEXT NOT NULL);",
-        ).unwrap();
+        )
+        .unwrap();
         let tx = db.transaction().unwrap();
         apply_schema_6(&tx).unwrap();
-        tx.commit().unwrap();
-        db.execute_batch(
-            "INSERT INTO projects VALUES('project','project','D:/workspace',1,1);
-             INSERT INTO projects VALUES('other-project','other','D:/other',1,1);
-             INSERT INTO sessions VALUES('session','project','team','session','run',1,1);
-             INSERT INTO sessions VALUES('other-session','other-project','team','other','other-run',1,1);
-             INSERT INTO turns VALUES('turn','session','project','queued','hash',NULL,1,1);
-             INSERT INTO agents VALUES('agent','session','agent','worker',1);
-             INSERT INTO runs VALUES('run','run','team',1);
-             INSERT INTO runs VALUES('other-run','other','team',1);
-             INSERT INTO tasks VALUES('legacy','run','{}');
-             INSERT INTO tasks VALUES('old-only','other-run','{}');",
-        ).unwrap();
-        db
-    }
-
-    fn task() -> TurnTask {
-        TurnTask {
-            id: TaskId::from("canonical"),
-            turn_id: TurnId::from("turn"),
-            session_id: SessionId::from("session"),
-            agent_id: AgentId::from("agent"),
-            legacy_task_id: "legacy".into(),
-            depends_on: Vec::new(),
-            status: LifecycleStatus::Queued,
-            created_at: 1,
-            updated_at: 1,
-        }
-    }
-
-    #[test]
-    fn new_task_id_cannot_claim_an_unrelated_legacy_task() {
-        let mut db = database();
-        let tx = db.transaction().unwrap();
-        let mut task = task();
-        task.id = TaskId::from("old-only");
-        let error = insert_turn_task_tx(&tx, &task).unwrap_err().to_string();
-        assert!(error.contains("其他旧任务"), "{error}");
-        assert_eq!(
-            tx.query_row("SELECT count(*) FROM turn_tasks", [], |row| row
-                .get::<_, i64>(0))
-                .unwrap(),
-            0
-        );
-        // The canonical ID may intentionally equal its own legacy projection.
-        task.id = TaskId::from("legacy");
-        insert_turn_task_tx(&tx, &task).unwrap();
-        tx.commit().unwrap();
-    }
-
-    #[test]
-    fn events_normalize_task_ids_and_preserve_session_and_project_scope() {
-        let mut db = database();
-        let tx = db.transaction().unwrap();
-        insert_turn_task_tx(&tx, &task()).unwrap();
-        for task_id in ["canonical", "legacy"] {
-            let event = stamped_event(
-                0,
-                "session",
-                Some("turn"),
-                task_id,
-                "delta",
-                json!({"text":"visible"}),
-                1,
-            );
-            insert_event_tx(&tx, &event).unwrap();
-        }
-        let repo = Repository::new(&tx);
-        let events = repo.events_after(&SessionId::from("session"), 0).unwrap();
-        assert_eq!(events.len(), 2);
-        assert!(events.iter().all(|event| event.task_id == "legacy"));
-        assert!(
-            repo.events_after(&SessionId::from("other-session"), 0)
-                .unwrap()
-                .is_empty()
-        );
-        assert_eq!(tx.query_row(
-            "SELECT count(*) FROM events e JOIN tasks t ON t.id=e.task_id WHERE t.run_id='other-run'", [], |row| row.get::<_, i64>(0),
-        ).unwrap(), 0);
-
-        let mut event = stamped_event(0, "other-session", None, "canonical", "delta", json!({}), 1);
-        assert!(insert_event_tx(&tx, &event).is_err());
-        event.session_id = None;
-        assert!(insert_event_tx(&tx, &event).is_err());
-        event.session_id = Some("session".into());
-        // Session-scoped events can also use the canonical task ID.
-        insert_event_tx(&tx, &event).unwrap();
-        tx.execute("UPDATE tasks SET run_id='other-run' WHERE id='legacy'", [])
-            .unwrap();
-        assert!(
-            insert_event_tx(&tx, &event)
-                .unwrap_err()
-                .to_string()
-                .contains("旧投影")
-        );
-        assert_eq!(
-            tx.query_row("SELECT count(*) FROM events", [], |row| row
-                .get::<_, i64>(0))
-                .unwrap(),
-            3
-        );
-    }
-
-    #[test]
-    fn event_resolution_rejects_preexisting_cross_table_identity_collision() {
-        let mut db = database();
-        let tx = db.transaction().unwrap();
-        // Simulate rows written by an older version which lacked the guard.
-        tx.execute_batch("INSERT INTO turn_tasks VALUES('old-only','turn','session','agent','legacy','queued',1,1);").unwrap();
-        let event = stamped_event(
-            0,
-            "session",
-            Some("turn"),
-            "old-only",
-            "delta",
-            json!({}),
-            1,
-        );
-        assert!(
-            insert_event_tx(&tx, &event)
-                .unwrap_err()
-                .to_string()
-                .contains("引用歧义")
-        );
-        assert_eq!(
-            tx.query_row("SELECT count(*) FROM events", [], |row| row
-                .get::<_, i64>(0))
-                .unwrap(),
-            0
-        );
-    }
-
-    #[test]
-    fn repository_uses_path_and_http_idempotency_limits() {
-        let mut db = database();
-        let tx = db.transaction().unwrap();
-        let project = Project {
-            id: ProjectId::from("long-path"),
-            name: "long path".into(),
-            root_path: format!("D:/{}", "folder/".repeat(100)),
-            created_at: 1,
-            updated_at: 1,
-        };
-        Repository::new(&tx).insert_project(&project).unwrap();
-        let mut turn = Turn {
-            id: TurnId::from("key-boundary"),
-            session_id: SessionId::from("session"),
-            project_id: ProjectId::from("project"),
-            status: LifecycleStatus::Queued,
-            request_hash: "hash".into(),
-            idempotency_key: Some("k".repeat(200)),
-            created_at: 1,
-            updated_at: 1,
-        };
-        insert_turn_tx(&tx, &turn).unwrap();
-        turn.id = TurnId::from("key-too-long");
-        turn.idempotency_key = Some("k".repeat(201));
-        assert!(insert_turn_tx(&tx, &turn).is_err());
-    }
-
-    #[test]
-    fn legacy_replay_checks_relational_identity_and_redacts_historical_tasks() {
-        let db = database();
-        let original = json!({
-            "id":"legacy", "run_id":"run", "workspace":"D:/workspace",
-            "spec":{"name":"worker", "role":"developer", "route_id":"route", "prompt":"hello"},
-            "route":{"id":"route", "name":"route", "base_url":"https://example.com", "model":"model"},
-            "status":"completed", "output":"Authorization: Bearer historical-bearer-token", "error":null,
-            "messages":[{"APIKey":"historical-field-secret", "content":"ordinary content"}],
-            "usage":{}, "created_at":1, "updated_at":1
-        });
-        db.execute(
-            "UPDATE tasks SET value=?1 WHERE id='legacy'",
-            [original.to_string()],
-        )
-        .unwrap();
-        let run = Repository::new(&db).legacy_run("run").unwrap();
-        assert_eq!(run.tasks.len(), 1);
-        assert_eq!(run.tasks[0].id, "legacy");
-        assert_eq!(run.tasks[0].messages[0]["content"], "ordinary content");
-        let result = serde_json::to_string(&run).unwrap();
-        assert!(!result.contains("historical-field-secret"));
-        assert!(!result.contains("historical-bearer-token"));
-        for (field, mismatched) in [("id", "different-task"), ("run_id", "other-run")] {
-            let mut corrupted = original.clone();
-            corrupted[field] = Value::String(mismatched.into());
-            db.execute(
-                "UPDATE tasks SET value=?1 WHERE id='legacy'",
-                [corrupted.to_string()],
-            )
-            .unwrap();
-            assert!(
-                Repository::new(&db)
-                    .legacy_run("run")
-                    .unwrap_err()
-                    .to_string()
-                    .contains("关系不一致")
-            );
-        }
-    }
-}
-
-pub const CHECKPOINT_MIGRATION_ID: &str = "task-before-checkpoint-repository";
-const CHECKPOINT_TABLE_SQL: &str = "CREATE TABLE IF NOT EXISTS checkpoints (
-  id TEXT NOT NULL PRIMARY KEY,
-  task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
-  creation_key TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind='task_before'),
-  generation INTEGER NOT NULL CHECK (generation=1),
-  created_at INTEGER NOT NULL CHECK (created_at>=0),
-  manifest_digest TEXT NOT NULL CHECK (length(manifest_digest)=64),
-  manifest TEXT NOT NULL
-)";
-
-pub fn apply_schema_9(tx: &Transaction<'_>) -> Result<()> {
-    tx.execute_batch(CHECKPOINT_TABLE_SQL)?;
-    verify_schema_9(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
-        params![CHECKPOINT_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 9)?;
-    Ok(())
-}
-
-pub(crate) fn verify_schema_9(tx: &Transaction<'_>) -> Result<()> {
-    // Compare the full DDL, preserving literals: checking names alone accepts missing CHECK/FK/UNIQUE.
-    let ddl: String = tx.query_row(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='checkpoints'",
-        [],
-        |r| r.get(0),
-    )?;
-    let normalize = |sql: &str| {
-        let mut result = String::new();
-        let mut chars = sql.chars().peekable();
-        let mut quote = None;
-        while let Some(ch) = chars.next() {
-            if let Some(delimiter) = quote {
-                result.push(ch);
-                if ch == delimiter {
-                    if chars.peek() == Some(&delimiter) {
-                        result.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(ch, '\'' | '"' | '`') {
-                quote = Some(ch);
-                result.push(ch);
-            } else if !ch.is_whitespace() {
-                result.push(ch.to_ascii_lowercase());
-            }
-        }
-        result.replacen("createtableifnotexists", "createtable", 1)
-    };
-    anyhow::ensure!(
-        normalize(&ddl) == normalize(CHECKPOINT_TABLE_SQL),
-        "schema 9 checkpoint constraints differ"
-    );
-    let violations: Option<String> = tx
-        .query_row("PRAGMA foreign_key_check(checkpoints)", [], |r| r.get(0))
-        .optional()?;
-    anyhow::ensure!(
-        violations.is_none(),
-        "schema 9 checkpoint foreign key violation"
-    );
-    Ok(())
-}
-
-pub const PLUGIN_MANAGEMENT_MIGRATION_ID: &str = "builtin-plugin-management-v1";
-const PLUGIN_TABLES: &[(&str, &str)] = &[
-    (
-        "plugin_desired",
-        "CREATE TABLE IF NOT EXISTS plugin_desired (plugin_id TEXT NOT NULL PRIMARY KEY CHECK(typeof(plugin_id)='text' AND plugin_id='builtin.files'), enabled INTEGER NOT NULL CHECK(typeof(enabled)='integer' AND enabled IN (0,1)), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0), updated_at INTEGER NOT NULL CHECK(typeof(updated_at)='integer'))",
-    ),
-    (
-        "plugin_management_requests",
-        "CREATE TABLE IF NOT EXISTS plugin_management_requests (key TEXT NOT NULL PRIMARY KEY CHECK(typeof(key)='text' AND length(key) BETWEEN 1 AND 200), plugin_id TEXT NOT NULL REFERENCES plugin_desired(plugin_id) CHECK(typeof(plugin_id)='text' AND plugin_id='builtin.files'), enabled INTEGER NOT NULL CHECK(typeof(enabled)='integer' AND enabled IN (0,1)), expected_revision INTEGER NOT NULL CHECK(typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807), result_revision INTEGER NOT NULL CHECK(typeof(result_revision)='integer' AND result_revision=expected_revision+1), committed_at INTEGER NOT NULL CHECK(typeof(committed_at)='integer'))",
-    ),
-];
-pub(crate) fn apply_schema_12(tx: &Transaction<'_>) -> Result<()> {
-    for (_, sql) in PLUGIN_TABLES {
-        tx.execute_batch(sql)?;
-    }
-    tx.execute("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.files',1,0,?1)", [now()])?;
-    verify_schema_12(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
-        params![PLUGIN_MANAGEMENT_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 12)?;
-    Ok(())
-}
-pub(crate) fn verify_schema_12(tx: &Transaction<'_>) -> Result<()> {
-    verify_plugin_schema(tx, 1)
-}
-pub(crate) fn verify_schema_13(tx: &Transaction<'_>) -> Result<()> {
-    verify_plugin_schema(tx, 2)
-}
-pub(crate) fn verify_schema_17(tx: &Transaction<'_>) -> Result<()> {
-    verify_plugin_schema(tx, 4)?;
-    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name IN ('plugin_desired','plugin_management_requests') AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
-    anyhow::ensure!(extras == 0, "unsupported plugin schema objects");
-    let dependencies: i64 = tx.query_row("SELECT count(*) FROM sqlite_master AS m JOIN pragma_foreign_key_list(m.name) AS f WHERE m.type='table' AND f.\"table\" IN ('plugin_desired','plugin_management_requests') AND NOT(m.name='plugin_management_requests' AND f.\"table\"='plugin_desired')", [], |r| r.get(0))?;
-    anyhow::ensure!(
-        dependencies == 0,
-        "unsupported plugin foreign key dependencies"
-    );
-    let bad_runtime_receipts: i64 = tx.query_row("SELECT count(*) FROM plugin_management_requests WHERE plugin_id IN ('builtin.chat-agent','builtin.provider-xpeach') AND committed_at<=0", [], |r| r.get(0))?;
-    anyhow::ensure!(bad_runtime_receipts == 0, "invalid runtime receipt time");
-    let staging: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('nhc_runtime17_desired','nhc_runtime17_requests')", [], |r| r.get(0))?;
-    anyhow::ensure!(staging == 0, "runtime migration staging name collision");
-    Ok(())
-}
-fn verify_plugin_schema(tx: &Transaction<'_>, count: usize) -> Result<()> {
-    let shell = count >= 2;
-    let ids = if count == 4 {
-        "plugin_id IN ('builtin.files','builtin.shell','builtin.chat-agent','builtin.provider-xpeach')"
-    } else {
-        "plugin_id IN ('builtin.files','builtin.shell')"
-    };
-    // Compare the whole DDL including PK/FK/CHECK, preserving quoted literals.
-    // A schema with equal columns but weaker constraints must fail closed.
-    fn normalize(sql: &str) -> String {
-        let mut out = String::new();
-        let mut quote = None;
-        let mut chars = sql.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if let Some(q) = quote {
-                out.push(ch);
-                if ch == q {
-                    if chars.peek() == Some(&q) {
-                        out.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(ch, '\'' | '"' | '`') {
-                quote = Some(ch);
-                out.push(ch);
-            } else if !ch.is_whitespace() {
-                out.push(ch.to_ascii_lowercase());
-            }
-        }
-        out.replacen("createtableifnotexists", "createtable", 1)
-    }
-    for (table, sql) in PLUGIN_TABLES {
-        let actual: String = tx.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
-            [table],
-            |r| r.get(0),
-        )?;
-        anyhow::ensure!(
-            normalize(&actual)
-                == normalize(&if shell {
-                    sql.replace("plugin_id='builtin.files'", ids)
-                } else {
-                    (*sql).to_owned()
-                }),
-            "plugin schema constraint mismatch"
-        );
-    }
-    let valid: i64 = tx.query_row("SELECT count(*) FROM plugin_desired WHERE typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer'", [], |r| r.get(0))?;
-    let total: i64 = tx.query_row("SELECT count(*) FROM plugin_desired", [], |r| r.get(0))?;
-    let shell_valid: i64 = if shell {
-        tx.query_row("SELECT count(*) FROM plugin_desired WHERE typeof(plugin_id)='text' AND plugin_id='builtin.shell' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer'", [], |r| r.get(0))?
-    } else {
-        0
-    };
-    anyhow::ensure!(
-        valid == 1 && shell_valid == i64::from(shell) && total == count as i64,
-        "plugin desired state invalid"
-    );
-    if count == 4 {
-        let runtime_valid: i64 = tx.query_row("SELECT count(*) FROM plugin_desired WHERE plugin_id IN ('builtin.chat-agent','builtin.provider-xpeach') AND typeof(plugin_id)='text' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(revision)='integer' AND revision>=0 AND typeof(updated_at)='integer' AND updated_at>=0", [], |r| r.get(0))?;
-        anyhow::ensure!(runtime_valid == 2, "runtime desired state invalid");
-    }
-    let receipt_sql = "SELECT count(*) FROM plugin_management_requests WHERE NOT(typeof(key)='text' AND length(key) BETWEEN 1 AND 200 AND typeof(plugin_id)='text' AND plugin_id='builtin.files' AND typeof(enabled)='integer' AND enabled IN (0,1) AND typeof(expected_revision)='integer' AND expected_revision>=0 AND expected_revision<9223372036854775807 AND typeof(result_revision)='integer' AND result_revision=expected_revision+1 AND typeof(committed_at)='integer')";
-    let receipt_sql = if shell {
-        receipt_sql.replace("plugin_id='builtin.files'", ids)
-    } else {
-        receipt_sql.to_owned()
-    };
-    let invalid: i64 = tx.query_row(&receipt_sql, [], |r| r.get(0))?;
-    anyhow::ensure!(invalid == 0, "plugin receipt invalid");
-    let violation: Option<String> = tx
-        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
-        .optional()?;
-    anyhow::ensure!(violation.is_none(), "plugin foreign key violation");
-    Ok(())
-}
-
-pub const RUNTIME_MANAGEMENT_MIGRATION_ID: &str = "builtin-runtime-management-v1";
-#[cfg(test)]
-pub(crate) fn runtime17_probe(tx: &Transaction<'_>, phase: &'static str) -> Result<()> {
-    let path: String = tx.query_row(
-        "SELECT file FROM pragma_database_list WHERE name='main'",
-        [],
-        |r| r.get(0),
-    )?;
-    crate::engine::crash_probe::block(&path, phase, "");
-    Ok(())
-}
-pub(crate) fn apply_schema_17(tx: &Transaction<'_>) -> Result<()> {
-    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let marker = migration_applied(tx, RUNTIME_MANAGEMENT_MIGRATION_ID)?;
-    if version >= 17 {
-        anyhow::ensure!(marker, "schema 17 marker missing");
-        return verify_schema_17(tx);
-    }
-    anyhow::ensure!(
-        version == 16 && !marker,
-        "schema 17 marker/version mismatch"
-    );
-    anyhow::ensure!(
-        tx.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))?,
-        "migration requires foreign keys"
-    );
-    verify_schema_13(tx)?;
-    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name IN ('plugin_desired','plugin_management_requests') AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
-    anyhow::ensure!(extras == 0, "unsupported plugin schema objects");
-    let dependencies: i64 = tx.query_row("SELECT count(*) FROM sqlite_master AS m JOIN pragma_foreign_key_list(m.name) AS f WHERE m.type='table' AND f.\"table\" IN ('plugin_desired','plugin_management_requests') AND NOT(m.name='plugin_management_requests' AND f.\"table\"='plugin_desired')", [], |r| r.get(0))?;
-    anyhow::ensure!(
-        dependencies == 0,
-        "unsupported plugin foreign key dependencies"
-    );
-    for name in ["nhc_runtime17_desired", "nhc_runtime17_requests"] {
-        let collision: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name=?1 UNION ALL SELECT 1 FROM sqlite_temp_master WHERE name=?1)", [name], |r| r.get(0))?;
-        anyhow::ensure!(!collision, "runtime migration staging name collision");
-    }
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_before_rebuild")?;
-    tx.execute_batch("CREATE TEMP TABLE nhc_runtime17_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired;
-        CREATE TEMP TABLE nhc_runtime17_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
-        DROP TABLE plugin_management_requests; DROP TABLE plugin_desired;")?;
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_after_drop")?;
-    for (_, sql) in PLUGIN_TABLES {
-        tx.execute_batch(&sql.replace("plugin_id='builtin.files'", "plugin_id IN ('builtin.files','builtin.shell','builtin.chat-agent','builtin.provider-xpeach')"))?;
-    }
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_after_create")?;
-    tx.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM nhc_runtime17_desired;
-        INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM nhc_runtime17_requests;")?;
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_after_restore")?;
-    tx.execute_batch("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.chat-agent',1,0,0),('builtin.provider-xpeach',1,0,0);")?;
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_after_insert")?;
-    verify_schema_17(tx)?;
-    for (saved, current) in [
-        (
-            "nhc_runtime17_desired",
-            "SELECT rowid,* FROM plugin_desired WHERE plugin_id IN ('builtin.files','builtin.shell')",
-        ),
-        (
-            "nhc_runtime17_requests",
-            "SELECT rowid,* FROM plugin_management_requests",
-        ),
-    ] {
-        let mismatch: bool = tx.query_row(&format!("SELECT EXISTS(SELECT * FROM {saved} EXCEPT {current}) OR EXISTS({current} EXCEPT SELECT * FROM {saved})"), [], |r| r.get(0))?;
-        anyhow::ensure!(!mismatch, "runtime migration row preservation failure");
-    }
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_after_verify")?;
-    tx.execute_batch(
-        "DROP TABLE temp.nhc_runtime17_requests; DROP TABLE temp.nhc_runtime17_desired;",
-    )?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
-        params![RUNTIME_MANAGEMENT_MIGRATION_ID, now()],
-    )?;
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_after_marker")?;
-    tx.pragma_update(None, "user_version", 17)?;
-    #[cfg(test)]
-    runtime17_probe(tx, "runtime17_before_commit")?;
-    Ok(())
-}
-
-#[cfg(test)]
-fn restore_legacy_plugin_fixture(db: &Connection) -> Result<()> {
-    let count: i64 = db.query_row("SELECT count(*) FROM plugin_management_requests WHERE plugin_id IN ('builtin.chat-agent','builtin.provider-xpeach')", [], |r| r.get(0))?;
-    anyhow::ensure!(count == 0, "fixture contains runtime receipts");
-    db.execute_batch("CREATE TEMP TABLE fixture13_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired WHERE plugin_id IN ('builtin.files','builtin.shell');
-        CREATE TEMP TABLE fixture13_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
-        DROP TABLE plugin_management_requests; DROP TABLE plugin_desired;")?;
-    for (_, sql) in PLUGIN_TABLES {
-        db.execute_batch(&sql.replace(
-            "plugin_id='builtin.files'",
-            "plugin_id IN ('builtin.files','builtin.shell')",
-        ))?;
-    }
-    db.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM fixture13_desired;
-        INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM fixture13_requests;
-        DROP TABLE temp.fixture13_requests; DROP TABLE temp.fixture13_desired;
-        DELETE FROM schema_migrations WHERE id='builtin-runtime-management-v1';")?;
-    Ok(())
-}
-
-#[cfg(test)]
-thread_local! { static SHELL_MIGRATION_FILL_FAILURE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
-pub const SHELL_MANAGEMENT_MIGRATION_ID: &str = "builtin-shell-management-v1";
-pub(crate) fn apply_schema_13(tx: &Transaction<'_>) -> Result<()> {
-    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let old_marker = migration_applied(tx, PLUGIN_MANAGEMENT_MIGRATION_ID)?;
-    let marker = migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?;
-    anyhow::ensure!(old_marker, "schema 12 marker missing");
-    if version == 13 {
-        anyhow::ensure!(marker, "schema 13 marker missing");
-        return verify_schema_13(tx);
-    }
-    anyhow::ensure!(
-        version == 12 && !marker,
-        "schema 13 marker/version mismatch"
-    );
-    anyhow::ensure!(
-        tx.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))?,
-        "migration requires foreign keys"
-    );
-    verify_schema_12(tx)?;
-    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name IN ('plugin_desired','plugin_management_requests') AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
-    anyhow::ensure!(extras == 0, "unsupported plugin schema objects");
-    let dependencies: i64 = tx.query_row("SELECT count(*) FROM sqlite_master AS m JOIN pragma_foreign_key_list(m.name) AS f WHERE m.type='table' AND f.\"table\" IN ('plugin_desired','plugin_management_requests') AND NOT(m.name='plugin_management_requests' AND f.\"table\"='plugin_desired')", [], |r| r.get(0))?;
-    anyhow::ensure!(
-        dependencies == 0,
-        "unsupported plugin foreign key dependencies"
-    );
-    for name in ["nhc_shell13_desired", "nhc_shell13_requests"] {
-        let collision: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name=?1 UNION ALL SELECT 1 FROM sqlite_temp_master WHERE name=?1)", [name], |r| r.get(0))?;
-        anyhow::ensure!(!collision, "plugin migration staging name collision");
-    }
-    tx.execute_batch("CREATE TEMP TABLE nhc_shell13_desired AS SELECT rowid AS saved_rowid,* FROM plugin_desired;
-        CREATE TEMP TABLE nhc_shell13_requests AS SELECT rowid AS saved_rowid,* FROM plugin_management_requests;
-        DROP TABLE plugin_management_requests; DROP TABLE plugin_desired;")?;
-    for (_, sql) in PLUGIN_TABLES {
-        tx.execute_batch(&sql.replace(
-            "plugin_id='builtin.files'",
-            "plugin_id IN ('builtin.files','builtin.shell')",
-        ))?;
-    }
-    #[cfg(test)]
-    if SHELL_MIGRATION_FILL_FAILURE.get() {
-        // Transaction-scoped failure after both canonical tables exist, before old rows are restored.
-        tx.execute("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.files',3,0,0)", [])?;
-    }
-    tx.execute_batch("INSERT INTO plugin_desired(rowid,plugin_id,enabled,revision,updated_at) SELECT saved_rowid,plugin_id,enabled,revision,updated_at FROM nhc_shell13_desired;
-        INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) SELECT saved_rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at FROM nhc_shell13_requests;")?;
-    let migrated_at = now();
-    tx.execute("INSERT INTO plugin_desired(plugin_id,enabled,revision,updated_at) VALUES ('builtin.shell',1,0,?1)", [migrated_at])?;
-    verify_schema_13(tx)?;
-    for (saved, current) in [
-        (
-            "nhc_shell13_desired",
-            "SELECT rowid,* FROM plugin_desired WHERE plugin_id='builtin.files'",
-        ),
-        (
-            "nhc_shell13_requests",
-            "SELECT rowid,* FROM plugin_management_requests",
-        ),
-    ] {
-        let mismatch: bool = tx.query_row(&format!("SELECT EXISTS(SELECT * FROM {saved} EXCEPT {current}) OR EXISTS({current} EXCEPT SELECT * FROM {saved})"), [], |r| r.get(0))?;
-        anyhow::ensure!(!mismatch, "plugin migration row preservation failure");
-    }
-    tx.execute_batch("DROP TABLE temp.nhc_shell13_requests; DROP TABLE temp.nhc_shell13_desired;")?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES (?1,?2)",
-        params![SHELL_MANAGEMENT_MIGRATION_ID, migrated_at],
-    )?;
-    tx.pragma_update(None, "user_version", 13)?;
-    Ok(())
-}
-
-#[cfg(test)]
-mod shell_migration_tests {
-    use super::*;
-    fn historical(enabled: bool) -> Connection {
-        let dir = tempfile::tempdir().unwrap();
-        let store = crate::store::Store::open(&dir.path().join("migration.db")).unwrap();
-        let mut db = store.db.into_inner().unwrap();
-        let tx = db
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .unwrap();
-        tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE IF EXISTS project_worktree_origins; DROP TABLE IF EXISTS worktree_project_reservations; DROP TABLE IF EXISTS worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; DROP TABLE plugin_management_requests; DROP TABLE plugin_desired; DELETE FROM schema_migrations WHERE id IN ('builtin-plugin-management-v1','builtin-shell-management-v1','builtin-runtime-management-v1'); PRAGMA user_version=11;").unwrap();
+        apply_schema_7(&tx).unwrap();
+        apply_schema_8(&tx).unwrap();
+        apply_schema_9(&tx).unwrap();
+        apply_schema_10(&tx).unwrap();
+        apply_schema_11(&tx).unwrap();
         apply_schema_12(&tx).unwrap();
-        tx.execute(
-            "UPDATE plugin_desired SET rowid=37,enabled=?1,revision=2,updated_at=41",
-            [enabled],
-        )
+        apply_schema_13(&tx).unwrap();
+        apply_schema_14(&tx).unwrap();
+        apply_schema_15(&tx).unwrap();
+        apply_schema_16(&tx).unwrap();
+        apply_schema_17(&tx).unwrap();
+        apply_schema_18(&tx, "test-identity").unwrap();
+        tx.commit().unwrap();
+
+        let version: u32 = db
+            .pragma_query_value(None, "user_version", |r| r.get(0))
+            .unwrap();
+        assert_eq!(version, 18);
+
+        let tx = db.transaction().unwrap();
+        let repo = Repository::new(&tx);
+        repo.insert_project(&Project {
+            id: ProjectId("proj".into()),
+            name: "Project".into(),
+            root_path: "D:/repo".into(),
+            created_at: 1,
+            updated_at: 1,
+        })
         .unwrap();
-        tx.execute_batch("INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES (73,'old','builtin.files',0,0,1,19),(91,'old2','builtin.files',1,1,2,29);").unwrap();
+        tx.execute("INSERT INTO runs VALUES('run','Chat','chat',1)", [])
+            .unwrap();
+        tx.execute("INSERT INTO tasks VALUES('task1','run','{}')", [])
+            .unwrap();
+        repo.insert_session(&Session {
+            id: SessionId("sess".into()),
+            project_id: ProjectId("proj".into()),
+            kind: SessionKind::Chat,
+            title: "Chat".into(),
+            legacy_run_id: "run".into(),
+            created_at: 1,
+            updated_at: 1,
+        })
+        .unwrap();
+        repo.insert_agent(&Agent {
+            id: AgentId("agent".into()),
+            session_id: SessionId("sess".into()),
+            display_name: "coder".into(),
+            role: "engineer".into(),
+            created_at: 1,
+        })
+        .unwrap();
+        let turn = Turn {
+            id: TurnId("turn1".into()),
+            session_id: SessionId("sess".into()),
+            project_id: ProjectId("proj".into()),
+            status: LifecycleStatus::Queued,
+            request_hash: "h1".into(),
+            idempotency_key: Some("k1".into()),
+            created_at: 1,
+            updated_at: 1,
+        };
+        let ttask = TurnTask {
+            id: TaskId("task1".into()),
+            turn_id: TurnId("turn1".into()),
+            session_id: SessionId("sess".into()),
+            agent_id: AgentId("agent".into()),
+            legacy_task_id: "task1".into(),
+            depends_on: vec![],
+            status: LifecycleStatus::Queued,
+            created_at: 1,
+            updated_at: 1,
+        };
+        let opening = Event {
+            schema_version: EVENT_SCHEMA_VERSION,
+            seq: 0,
+            cursor: String::new(),
+            session_id: Some("sess".into()),
+            turn_id: Some("turn1".into()),
+            task_id: "task1".into(),
+            kind: "status".into(),
+            data: json!({"status":"queued"}),
+            at: 1,
+        };
+        Repository::commit_turn(&tx, &turn, &[ttask], Some("k1"), &opening).unwrap();
         tx.commit().unwrap();
-        db
-    }
-    #[test]
-    fn shell_schema13_preserves_old_rows_and_reopens() {
-        for enabled in [false, true] {
-            let mut db = historical(enabled);
-            let marker: i64 = db
-                .query_row(
-                    "SELECT applied_at FROM schema_migrations WHERE id=?1",
-                    [PLUGIN_MANAGEMENT_MIGRATION_ID],
-                    |r| r.get(0),
-                )
-                .unwrap();
-            let tx = db
-                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                .unwrap();
-            apply_schema_13(&tx).unwrap();
-            tx.commit().unwrap();
-            assert_eq!(db.query_row("SELECT rowid,enabled,revision,updated_at FROM plugin_desired WHERE plugin_id='builtin.files'", [], |r| Ok((r.get::<_,i64>(0)?,r.get::<_,bool>(1)?,r.get::<_,i64>(2)?,r.get::<_,i64>(3)?))).unwrap(),(37,enabled,2,41));
-            assert_eq!(
-                db.query_row(
-                    "SELECT group_concat(rowid,',') FROM plugin_management_requests ORDER BY rowid",
-                    [],
-                    |r| r.get::<_, String>(0)
-                )
-                .unwrap(),
-                "73,91"
-            );
-            assert_eq!(
-                db.query_row(
-                    "SELECT applied_at FROM schema_migrations WHERE id=?1",
-                    [PLUGIN_MANAGEMENT_MIGRATION_ID],
-                    |r| r.get::<_, i64>(0)
-                )
-                .unwrap(),
-                marker
-            );
-            assert_eq!(
-                db.query_row(
-                    "SELECT enabled,revision FROM plugin_desired WHERE plugin_id='builtin.shell'",
-                    [],
-                    |r| Ok((r.get::<_, bool>(0)?, r.get::<_, i64>(1)?))
-                )
-                .unwrap(),
-                (true, 0)
-            );
-            let tx = db.transaction().unwrap();
-            apply_schema_13(&tx).unwrap();
-            tx.commit().unwrap();
-        }
-    }
-    #[test]
-    fn shell_schema13_failures_rollback_with_foreign_keys_on() {
-        for mode in ["marker", "fill", "trigger", "index", "foreign", "collision"] {
-            let mut db = historical(false);
-            match mode {
-                "fill" => SHELL_MIGRATION_FILL_FAILURE.set(true),
-                "marker" => db.execute_batch("CREATE TRIGGER shell_marker_failure BEFORE INSERT ON schema_migrations WHEN NEW.id='builtin-shell-management-v1' BEGIN SELECT RAISE(ABORT,'injected'); END;").unwrap(),
-                "trigger" => db.execute_batch("CREATE TRIGGER custom_plugin AFTER UPDATE ON plugin_desired BEGIN SELECT 1; END;").unwrap(),
-                "index" => db.execute_batch("CREATE INDEX custom_plugin ON plugin_desired(revision);").unwrap(),
-                "foreign" => db.execute_batch("CREATE TABLE extra_plugin_fk(id TEXT REFERENCES plugin_desired(plugin_id));").unwrap(),
-                "collision" => db.execute_batch("CREATE TABLE nhc_shell13_desired(x TEXT);").unwrap(),
-                _ => unreachable!(),
-            }
-            {
-                let tx = db
-                    .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                    .unwrap();
-                assert!(apply_schema_13(&tx).is_err(), "{mode}");
-            }
-            SHELL_MIGRATION_FILL_FAILURE.set(false);
-            assert_eq!(
-                db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
-                    .unwrap(),
-                12
-            );
-            assert!(
-                db.pragma_query_value(None, "foreign_keys", |r| r.get::<_, bool>(0))
-                    .unwrap()
-            );
-            assert_eq!(
-                db.query_row(
-                    "SELECT count(*) FROM sqlite_temp_master WHERE name LIKE 'nhc_shell13_%'",
-                    [],
-                    |r| r.get::<_, i64>(0)
-                )
-                .unwrap(),
-                0
-            );
-            let tx = db.transaction().unwrap();
-            verify_schema_12(&tx).unwrap();
-            tx.commit().unwrap();
-            match mode {
-                "marker" => db
-                    .execute_batch("DROP TRIGGER shell_marker_failure;")
-                    .unwrap(),
-                "trigger" => db.execute_batch("DROP TRIGGER custom_plugin;").unwrap(),
-                "index" => db.execute_batch("DROP INDEX custom_plugin;").unwrap(),
-                "foreign" => db.execute_batch("DROP TABLE extra_plugin_fk;").unwrap(),
-                "collision" => db.execute_batch("DROP TABLE nhc_shell13_desired;").unwrap(),
-                _ => {}
-            }
-            let tx = db
-                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                .unwrap();
-            apply_schema_13(&tx).unwrap();
-            tx.commit().unwrap();
-        }
-    }
-}
 
-pub const WORKTREE_MIGRATION_ID: &str = "git-worktree-operations-v1";
-const WORKTREE_SCHEMA: &[(&str, &str)] = &[
-    (
-        "worktree_operations",
-        "CREATE TABLE worktree_operations (operation_id TEXT NOT NULL PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE CHECK(typeof(idempotency_key)='text' AND length(idempotency_key) BETWEEN 1 AND 200), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), requested_project_id TEXT NOT NULL UNIQUE, request_json TEXT NOT NULL CHECK(typeof(request_json)='text'), request_digest TEXT NOT NULL CHECK(typeof(request_digest)='text' AND length(request_digest)=64), plan TEXT NOT NULL CHECK(typeof(plan)='text'), members TEXT NOT NULL CHECK(typeof(members)='text'), common_key TEXT NOT NULL CHECK(typeof(common_key)='text' AND length(common_key)=64), target_path TEXT NOT NULL UNIQUE, branch_ref TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('claimed','succeeded','rejected','unknown')), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), UNIQUE(common_key,branch_ref))",
-    ),
-    (
-        "worktree_active_common",
-        "CREATE UNIQUE INDEX worktree_active_common ON worktree_operations(common_key) WHERE state IN ('claimed','unknown')",
-    ),
-    (
-        "worktree_project_reservations",
-        "CREATE TABLE worktree_project_reservations (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL REFERENCES worktree_operations(operation_id))",
-    ),
-    (
-        "project_worktree_origins",
-        "CREATE TABLE project_worktree_origins (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), operation_id TEXT NOT NULL UNIQUE REFERENCES worktree_operations(operation_id), source_project_id TEXT NOT NULL REFERENCES project_configs(project_id), identity TEXT NOT NULL CHECK(typeof(identity)='text'))",
-    ),
-];
-pub(crate) fn apply_schema_14(tx: &Transaction<'_>) -> Result<()> {
-    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let applied = migration_applied(tx, WORKTREE_MIGRATION_ID)?;
-    anyhow::ensure!(
-        migration_applied(tx, SHELL_MANAGEMENT_MIGRATION_ID)?,
-        "schema 13 marker missing"
-    );
-    if version >= 14 {
-        anyhow::ensure!(applied, "schema 14 marker missing");
-        return verify_schema_14(tx);
-    }
-    anyhow::ensure!(
-        version == 13 && !applied,
-        "schema 14 marker/version mismatch"
-    );
-    verify_schema_13(tx)?;
-    for (_, sql) in WORKTREE_SCHEMA {
-        tx.execute_batch(sql)?;
-    }
-    verify_schema_14(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
-        params![WORKTREE_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 14)?;
-    Ok(())
-}
-pub(crate) fn verify_schema_14(tx: &Transaction<'_>) -> Result<()> {
-    // Only whitespace and unquoted SQL keyword case are insignificant.
-    fn normalize(sql: &str) -> String {
-        let mut result = String::new();
-        let mut quote = None;
-        let mut chars = sql.chars().peekable();
-        while let Some(c) = chars.next() {
-            if let Some(q) = quote {
-                result.push(c);
-                if c == q {
-                    if chars.peek() == Some(&q) {
-                        result.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(c, '\'' | '"' | '`') {
-                quote = Some(c);
-                result.push(c);
-            } else if !c.is_whitespace() {
-                result.push(c.to_ascii_lowercase());
-            }
-        }
-        result
-    }
-    for (name, sql) in WORKTREE_SCHEMA {
-        let actual: String =
-            tx.query_row("SELECT sql FROM sqlite_master WHERE name=?1", [name], |r| {
-                r.get(0)
-            })?;
-        anyhow::ensure!(
-            normalize(&actual) == normalize(sql),
-            "worktree schema constraint mismatch"
-        );
-    }
-    crate::worktree_management::verify_persisted_rows(tx)?;
-    let foreign: Option<String> = tx
-        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
-        .optional()?;
-    anyhow::ensure!(foreign.is_none(), "worktree foreign key violation");
-    Ok(())
-}
-
-#[cfg(test)]
-mod worktree_schema_tests {
-    use super::*;
-    use crate::{domain::id, project_config::RegisterProject, store::Store};
-    type Rows = std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>>;
-    fn rows(db: &Connection) -> Rows {
-        let names: Vec<String> = db
-            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-            .unwrap()
-            .query_map([], |r| r.get(0))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap();
-        names
-            .into_iter()
-            .map(|name| {
-                let values = db
-                    .prepare(&format!("SELECT rowid,* FROM {name} ORDER BY rowid"))
-                    .unwrap()
-                    .query_map([], |r| {
-                        (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
-                    })
-                    .unwrap()
-                    .collect::<rusqlite::Result<_>>()
-                    .unwrap();
-                (name, values)
-            })
-            .collect()
-    }
-    fn historical13() -> (tempfile::TempDir, std::path::PathBuf, Connection) {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("db.sqlite");
-        let root = dir.path().join("project");
-        std::fs::create_dir(&root).unwrap();
-        let store = Store::open(&path).unwrap();
-        store
-            .register_project(RegisterProject {
-                name: "Old project".into(),
-                root_path: root.to_string_lossy().into(),
-                idempotency_key: id(),
-            })
-            .unwrap();
-        drop(store);
-        let mut db = Connection::open(&path).unwrap();
-        db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
-        let tx = db
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .unwrap();
-        restore_legacy_plugin_fixture(&tx).unwrap();
-        tx.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18';").unwrap();
-        tx.execute_batch("DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE IF EXISTS budget_calls; DROP TABLE IF EXISTS budget_requests; DROP TABLE IF EXISTS project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; DROP TABLE project_worktree_origins; DROP TABLE worktree_project_reservations; DROP TABLE worktree_operations; DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'; PRAGMA user_version=13;
-            UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files';
-            INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'historical-files','builtin.files',0,0,1,17);
-            INSERT INTO secrets VALUES('opaque',X'0001FFFE');").unwrap();
-        verify_schema_13(&tx).unwrap();
-        tx.commit().unwrap();
-        (dir, path, db)
-    }
-    fn assert_migrated(db: &Connection, before: Rows) {
-        let after = rows(db);
-        let mut expected = before;
-        let owner = &after["execution_owner"];
-        assert_eq!(owner.len(), 1);
-        assert_eq!(owner[0][0], rusqlite::types::Value::Integer(1));
-        assert_eq!(owner[0][1], rusqlite::types::Value::Integer(1));
-        assert!(
-            matches!(&owner[0][2], rusqlite::types::Value::Text(identity) if identity.len() == 25 && identity.as_bytes()[8] == b':')
-        );
-        assert_eq!(owner[0][3], rusqlite::types::Value::Integer(0));
+        let repo = Repository::new(&db);
         assert_eq!(
-            owner[0][4],
-            rusqlite::types::Value::Text("recovering".into())
+            repo.latest_committed_turn(&SessionId("sess".into()))
+                .unwrap()
+                .unwrap()
+                .id,
+            TurnId("turn1".into())
         );
-        assert!(
-            expected
-                .insert("execution_owner".into(), owner.clone())
-                .is_none()
-        );
-        assert!(
-            expected
-                .insert(
-                    "host_config_state".into(),
-                    vec![vec![
-                        rusqlite::types::Value::Integer(1),
-                        rusqlite::types::Value::Integer(1),
-                        rusqlite::types::Value::Integer(0)
-                    ]]
-                )
-                .is_none()
-        );
-        assert!(
-            expected
-                .insert("host_config_requests".into(), vec![])
-                .is_none()
-        );
-        for name in [
-            "project_budgets",
-            "budget_requests",
-            "budget_calls",
-            "worktree_operations",
-            "worktree_project_reservations",
-            "project_worktree_origins",
-        ] {
-            assert!(expected.insert(name.into(), vec![]).is_none());
-        }
-        let new: Vec<_> = after["schema_migrations"]
-            .iter()
-            .filter(|r| {
-                r[1] == rusqlite::types::Value::Text(WORKTREE_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(RUNTIME_MANAGEMENT_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(EXECUTION_OWNER_MIGRATION_ID.into())
-            })
-            .cloned()
-            .collect();
-        assert_eq!(new.len(), 5);
-        expected.get_mut("schema_migrations").unwrap().extend(new);
-        let runtime_rows: Vec<_> = after["plugin_desired"]
-            .iter()
-            .filter(|r| {
-                r[1] == rusqlite::types::Value::Text("builtin.chat-agent".into())
-                    || r[1] == rusqlite::types::Value::Text("builtin.provider-xpeach".into())
-            })
-            .cloned()
-            .collect();
-        assert_eq!(runtime_rows.len(), 2);
-        for row in &runtime_rows {
-            assert_eq!(
-                &row[2..],
-                &[
-                    rusqlite::types::Value::Integer(1),
-                    rusqlite::types::Value::Integer(0),
-                    rusqlite::types::Value::Integer(0)
-                ]
-            );
-        }
-        expected
-            .get_mut("plugin_desired")
-            .unwrap()
-            .extend(runtime_rows);
-        expected
-            .get_mut("plugin_desired")
-            .unwrap()
-            .sort_by_key(|r| match &r[0] {
-                rusqlite::types::Value::Integer(v) => *v,
-                _ => unreachable!(),
-            });
-        assert_eq!(after, expected);
         assert_eq!(
-            db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
-                .unwrap(),
-            crate::store::SCHEMA_VERSION
+            repo.events_after(&SessionId("sess".into()), 0)
+                .unwrap()
+                .len(),
+            1
         );
     }
-    #[test]
-    fn n13_schema_nonempty_true13_rows_preserved_and_reopen_is_read_only() {
-        let (_dir, path, db) = historical13();
-        let before = rows(&db);
-        let store = Store::open(&path).unwrap();
-        assert_eq!(
-            store.schema_version().unwrap(),
-            crate::store::SCHEMA_VERSION
-        );
-        assert_migrated(&db, before);
-        let after = rows(&db);
-        drop(store);
-        for _ in 0..2 {
-            drop(Store::open(&path).unwrap());
-            assert_eq!(rows(&db), after);
-        }
-        let recovered = Store::open(&path).unwrap();
-        recovered.recover().unwrap();
-        let mut expected_after_recovery = after;
-        let owner = expected_after_recovery.get_mut("execution_owner").unwrap();
-        owner[0][3] = rusqlite::types::Value::Integer(1);
-        owner[0][4] = rusqlite::types::Value::Text("active".into());
-        assert_eq!(rows(&db), expected_after_recovery);
-    }
-    #[test]
-    fn n13_schema_marker_failure_rolls_back_every_new_object() {
-        let (_dir, path, db) = historical13();
-        let before = rows(&db);
-        db.execute_batch("CREATE TRIGGER fail_worktree_marker BEFORE INSERT ON schema_migrations WHEN NEW.id='git-worktree-operations-v1' BEGIN SELECT RAISE(ABORT,'injected'); END;").unwrap();
-        for _ in 0..2 {
-            assert!(Store::open(&path).is_err());
-            assert_eq!(rows(&db), before);
-            assert_eq!(
-                db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
-                    .unwrap(),
-                13
-            );
-        }
-        assert_eq!(db.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('worktree_operations','worktree_active_common','worktree_project_reservations','project_worktree_origins')",[],|r|r.get::<_,i64>(0)).unwrap(),0);
-        db.execute_batch("DROP TRIGGER fail_worktree_marker")
-            .unwrap();
-        drop(Store::open(&path).unwrap());
-        assert_migrated(&db, before);
-    }
-    #[test]
-    fn n13_schema_concurrent_open_serializes_migration() {
-        let (_dir, path, db) = historical13();
-        let before = rows(&db);
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-        let handles: Vec<_> = (0..2)
-            .map(|_| {
-                let path = path.clone();
-                let barrier = barrier.clone();
-                std::thread::spawn(move || {
-                    barrier.wait();
-                    Store::open(&path).map(|s| s.schema_version().unwrap())
-                })
-            })
-            .collect();
-        for handle in handles {
-            assert_eq!(
-                handle.join().unwrap().unwrap(),
-                crate::store::SCHEMA_VERSION
-            );
-        }
-        assert_migrated(&db, before);
-    }
-    #[test]
-    fn n13_schema_corrupt14_is_rejected_without_self_repair() {
-        for sql in [
-            "DROP INDEX worktree_active_common",
-            "DELETE FROM schema_migrations WHERE id='git-worktree-operations-v1'",
-            "PRAGMA user_version=13",
-            "ALTER TABLE worktree_operations ADD COLUMN unexpected TEXT",
-        ] {
-            let (_dir, path, db) = historical13();
-            drop(Store::open(&path).unwrap());
-            db.execute_batch(sql).unwrap();
-            let before = rows(&db);
-            let schema: String = db
-                .query_row("SELECT group_concat(sql,';') FROM sqlite_master", [], |r| {
-                    r.get(0)
-                })
-                .unwrap();
-            for _ in 0..2 {
-                assert!(Store::open(&path).is_err(), "{sql}");
-                assert_eq!(rows(&db), before);
-                assert_eq!(
-                    db.query_row("SELECT group_concat(sql,';') FROM sqlite_master", [], |r| r
-                        .get::<_, String>(0))
-                        .unwrap(),
-                    schema
-                );
-            }
-        }
-    }
-    #[test]
-    fn n13_schema_orphan_origin_foreign_key_is_rejected_without_repair() {
-        let (_dir, path, db) = historical13();
-        drop(Store::open(&path).unwrap());
-        db.execute_batch("PRAGMA foreign_keys=OFF; INSERT INTO project_worktree_origins(project_id,operation_id,source_project_id,identity) VALUES('missing-project','missing-operation','missing-source','{}'); PRAGMA foreign_keys=ON;").unwrap();
-        let before = rows(&db);
-        assert!(
-            db.query_row("PRAGMA foreign_key_check", [], |r| r.get::<_, String>(0))
-                .is_ok()
-        );
-        for _ in 0..2 {
-            assert!(Store::open(&path).is_err());
-            assert_eq!(rows(&db), before);
-        }
-    }
-}
-
-pub const HOST_CONFIG_MIGRATION_ID: &str = "host-route-configuration-v1";
-const HOST_CONFIG_SCHEMA: &[(&str, &str)] = &[
-    (
-        "host_config_state",
-        "CREATE TABLE host_config_state (id INTEGER NOT NULL PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>=0 AND revision<=9223372036854775807))",
-    ),
-    (
-        "host_config_requests",
-        "CREATE TABLE host_config_requests (key TEXT NOT NULL PRIMARY KEY CHECK(typeof(key)='text' AND length(key) BETWEEN 1 AND 200), operation_id TEXT NOT NULL UNIQUE CHECK(typeof(operation_id)='text'), route_id TEXT NOT NULL CHECK(typeof(route_id)='text'), expected_revision INTEGER NOT NULL CHECK(typeof(expected_revision)='integer' AND expected_revision>=0), result_revision INTEGER NOT NULL CHECK(typeof(result_revision)='integer' AND result_revision>=expected_revision AND result_revision<=9223372036854775807), request_fingerprint_blob BLOB NOT NULL CHECK(typeof(request_fingerprint_blob)='blob' AND length(request_fingerprint_blob)>0), receipt TEXT NOT NULL CHECK(typeof(receipt)='text'), committed_at INTEGER NOT NULL CHECK(typeof(committed_at)='integer' AND committed_at>=0), CHECK(result_revision=expected_revision OR (expected_revision<9223372036854775807 AND result_revision=expected_revision+1)))",
-    ),
-];
-pub(crate) fn apply_schema_16(tx: &Transaction<'_>) -> Result<()> {
-    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let applied = migration_applied(tx, HOST_CONFIG_MIGRATION_ID)?;
-    anyhow::ensure!(
-        migration_applied(tx, BUDGET_MIGRATION_ID)?,
-        "schema 15 marker missing"
-    );
-    if version >= 16 {
-        anyhow::ensure!(applied, "schema 16 marker missing");
-        return verify_schema_16(tx);
-    }
-    anyhow::ensure!(
-        version == 15 && !applied,
-        "schema 16 marker/version mismatch"
-    );
-    // No legacy settings/secret/subject decryption or rewriting during migration.
-    for (_, sql) in HOST_CONFIG_SCHEMA {
-        tx.execute_batch(sql)?;
-    }
-    tx.execute("INSERT INTO host_config_state(id,revision) VALUES(1,0)", [])?;
-    verify_schema_16(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
-        params![HOST_CONFIG_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 16)?;
-    Ok(())
-}
-pub(crate) fn verify_schema_16(tx: &Transaction<'_>) -> Result<()> {
-    fn normalize(sql: &str) -> String {
-        let mut result = String::new();
-        let mut quote = None;
-        let mut chars = sql.chars().peekable();
-        while let Some(c) = chars.next() {
-            if let Some(q) = quote {
-                result.push(c);
-                if c == q {
-                    if chars.peek() == Some(&q) {
-                        result.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(c, '\'' | '"' | '`') {
-                quote = Some(c);
-                result.push(c);
-            } else if !c.is_whitespace() {
-                result.push(c.to_ascii_lowercase());
-            }
-        }
-        result
-    }
-    for (name, sql) in HOST_CONFIG_SCHEMA {
-        let actual: String = tx.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
-            [name],
-            |r| r.get(0),
-        )?;
-        anyhow::ensure!(
-            normalize(&actual) == normalize(sql),
-            "host configuration schema constraint mismatch"
-        );
-    }
-    crate::host_configuration::verify_persisted_rows(tx)?;
-    Ok(())
-}
-
-pub const BUDGET_MIGRATION_ID: &str = "completion-budget-v1";
-const BUDGET_SCHEMA: &[(&str, &str)] = &[
-    (
-        "project_budgets",
-        "CREATE TABLE project_budgets (project_id TEXT NOT NULL PRIMARY KEY REFERENCES project_configs(project_id), revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision>0), limit_tokens INTEGER NOT NULL CHECK(typeof(limit_tokens)='integer' AND limit_tokens>=0 AND limit_tokens<=1000000000000), reservation_tokens INTEGER NOT NULL CHECK(typeof(reservation_tokens)='integer' AND reservation_tokens>=1 AND reservation_tokens<=1000000000), coverage_start_call_rowid INTEGER NOT NULL CHECK(typeof(coverage_start_call_rowid)='integer' AND coverage_start_call_rowid>=0))",
-    ),
-    (
-        "budget_requests",
-        "CREATE TABLE budget_requests (key TEXT NOT NULL PRIMARY KEY, project_id TEXT NOT NULL REFERENCES project_budgets(project_id), request TEXT NOT NULL CHECK(typeof(request)='text'), result TEXT NOT NULL CHECK(typeof(result)='text'), request_digest TEXT NOT NULL CHECK(length(request_digest)=64))",
-    ),
-    (
-        "budget_calls",
-        "CREATE TABLE budget_calls (call_id TEXT NOT NULL PRIMARY KEY REFERENCES network_calls(id), project_id TEXT NOT NULL REFERENCES project_budgets(project_id), budget_revision INTEGER NOT NULL CHECK(typeof(budget_revision)='integer' AND budget_revision>0), reserved_tokens INTEGER NOT NULL CHECK(typeof(reserved_tokens)='integer' AND reserved_tokens>=1 AND reserved_tokens<=1000000000), state TEXT NOT NULL CHECK(state IN ('claimed','settled','not_sent','usage_missing','usage_invalid','unknown','overrun')), record TEXT NOT NULL CHECK(typeof(record)='text'), terminal_fingerprint TEXT CHECK(terminal_fingerprint IS NULL OR length(terminal_fingerprint)=64), CHECK((state='claimed' AND terminal_fingerprint IS NULL) OR (state<>'claimed' AND terminal_fingerprint IS NOT NULL)))",
-    ),
-];
-pub(crate) fn apply_schema_15(tx: &Transaction<'_>) -> Result<()> {
-    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let applied = migration_applied(tx, BUDGET_MIGRATION_ID)?;
-    anyhow::ensure!(
-        migration_applied(tx, WORKTREE_MIGRATION_ID)?,
-        "schema 14 marker missing"
-    );
-    if version >= 15 {
-        anyhow::ensure!(applied, "schema 15 marker missing");
-        return verify_schema_15(tx);
-    }
-    anyhow::ensure!(
-        version == 14 && !applied,
-        "schema 15 marker/version mismatch"
-    );
-    verify_schema_14(tx)?;
-    for (_, sql) in BUDGET_SCHEMA {
-        tx.execute_batch(sql)?;
-    }
-    verify_schema_15(tx)?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
-        params![BUDGET_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 15)?;
-    Ok(())
-}
-pub(crate) fn verify_schema_15(tx: &Transaction<'_>) -> Result<()> {
-    fn normalize(sql: &str) -> String {
-        let mut result = String::new();
-        let mut quote = None;
-        let mut chars = sql.chars().peekable();
-        while let Some(c) = chars.next() {
-            if let Some(q) = quote {
-                result.push(c);
-                if c == q {
-                    if chars.peek() == Some(&q) {
-                        result.push(chars.next().unwrap());
-                    } else {
-                        quote = None;
-                    }
-                }
-            } else if matches!(c, '\'' | '"' | '`') {
-                quote = Some(c);
-                result.push(c);
-            } else if !c.is_whitespace() {
-                result.push(c.to_ascii_lowercase());
-            }
-        }
-        result
-    }
-    for (name, sql) in BUDGET_SCHEMA {
-        let actual: String = tx.query_row(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?1",
-            [name],
-            |r| r.get(0),
-        )?;
-        anyhow::ensure!(
-            normalize(&actual) == normalize(sql),
-            "budget schema constraint mismatch"
-        );
-    }
-    crate::budget::verify_persisted_rows(tx)?;
-    let foreign: Option<String> = tx
-        .query_row("PRAGMA foreign_key_check", [], |r| r.get(0))
-        .optional()?;
-    anyhow::ensure!(foreign.is_none(), "budget foreign key violation");
-    Ok(())
-}
-
-#[cfg(test)]
-mod budget_schema_tests {
-    use super::*;
-    use crate::{project_config::RegisterProject, store::Store};
-    type Rows = std::collections::BTreeMap<String, Vec<Vec<rusqlite::types::Value>>>;
-    fn rows(db: &Connection) -> Rows {
-        let names: Vec<String> = db
-            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-            .unwrap()
-            .query_map([], |r| r.get(0))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap();
-        names
-            .into_iter()
-            .map(|name| {
-                let data = db
-                    .prepare(&format!("SELECT rowid,* FROM {name} ORDER BY rowid"))
-                    .unwrap()
-                    .query_map([], |r| {
-                        (0..r.as_ref().column_count()).map(|i| r.get(i)).collect()
-                    })
-                    .unwrap()
-                    .collect::<rusqlite::Result<_>>()
-                    .unwrap();
-                (name, data)
-            })
-            .collect()
-    }
-    fn historical14() -> (tempfile::TempDir, std::path::PathBuf, Connection) {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("db.sqlite");
-        let store = Store::open(&path).unwrap();
-        store
-            .register_project(RegisterProject {
-                name: "old-project".into(),
-                root_path: dir.path().to_string_lossy().into(),
-                idempotency_key: "old-project".into(),
-            })
-            .unwrap();
-        drop(store);
-        let db = Connection::open(&path).unwrap();
-        db.execute_batch("PRAGMA foreign_keys=ON").unwrap();
-        restore_legacy_plugin_fixture(&db).unwrap();
-        db.execute_batch("DROP TABLE execution_owner; DELETE FROM schema_migrations WHERE id='execution-owner-v18';").unwrap();
-        db.execute_batch("PRAGMA foreign_keys=ON; DROP TABLE IF EXISTS host_config_requests; DROP TABLE IF EXISTS host_config_state; DELETE FROM schema_migrations WHERE id='host-route-configuration-v1'; DROP TABLE budget_calls; DROP TABLE budget_requests; DROP TABLE project_budgets; DELETE FROM schema_migrations WHERE id='completion-budget-v1'; PRAGMA user_version=14; INSERT INTO config VALUES('sentinel','old exact bytes'); INSERT INTO secrets VALUES('opaque',X'0001FFFE'); UPDATE plugin_desired SET rowid=37,enabled=0,revision=1,updated_at=17 WHERE plugin_id='builtin.files'; INSERT INTO plugin_management_requests(rowid,key,plugin_id,enabled,expected_revision,result_revision,committed_at) VALUES(71,'old-files','builtin.files',0,0,1,17);").unwrap();
-        (dir, path, db)
-    }
-    fn assert_migrated(db: &Connection, before: Rows) {
-        let after = rows(db);
-        let mut expected = before;
-        let owner = &after["execution_owner"];
-        assert_eq!(owner.len(), 1);
-        assert_eq!(owner[0][0], rusqlite::types::Value::Integer(1));
-        assert_eq!(owner[0][1], rusqlite::types::Value::Integer(1));
-        assert!(
-            matches!(&owner[0][2], rusqlite::types::Value::Text(identity) if identity.len() == 25 && identity.as_bytes()[8] == b':')
-        );
-        assert_eq!(owner[0][3], rusqlite::types::Value::Integer(0));
-        assert_eq!(
-            owner[0][4],
-            rusqlite::types::Value::Text("recovering".into())
-        );
-        assert!(
-            expected
-                .insert("execution_owner".into(), owner.clone())
-                .is_none()
-        );
-        assert!(
-            expected
-                .insert(
-                    "host_config_state".into(),
-                    vec![vec![
-                        rusqlite::types::Value::Integer(1),
-                        rusqlite::types::Value::Integer(1),
-                        rusqlite::types::Value::Integer(0)
-                    ]]
-                )
-                .is_none()
-        );
-        assert!(
-            expected
-                .insert("host_config_requests".into(), vec![])
-                .is_none()
-        );
-        for table in ["project_budgets", "budget_requests", "budget_calls"] {
-            assert!(expected.insert(table.into(), vec![]).is_none());
-        }
-        let marker: Vec<_> = after["schema_migrations"]
-            .iter()
-            .filter(|r| {
-                r[1] == rusqlite::types::Value::Text(BUDGET_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(HOST_CONFIG_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(RUNTIME_MANAGEMENT_MIGRATION_ID.into())
-                    || r[1] == rusqlite::types::Value::Text(EXECUTION_OWNER_MIGRATION_ID.into())
-            })
-            .cloned()
-            .collect();
-        assert_eq!(marker.len(), 4);
-        expected
-            .get_mut("schema_migrations")
-            .unwrap()
-            .extend(marker);
-        let runtime_rows: Vec<_> = after["plugin_desired"]
-            .iter()
-            .filter(|r| {
-                r[1] == rusqlite::types::Value::Text("builtin.chat-agent".into())
-                    || r[1] == rusqlite::types::Value::Text("builtin.provider-xpeach".into())
-            })
-            .cloned()
-            .collect();
-        assert_eq!(runtime_rows.len(), 2);
-        for row in &runtime_rows {
-            assert_eq!(
-                &row[2..],
-                &[
-                    rusqlite::types::Value::Integer(1),
-                    rusqlite::types::Value::Integer(0),
-                    rusqlite::types::Value::Integer(0)
-                ]
-            );
-        }
-        expected
-            .get_mut("plugin_desired")
-            .unwrap()
-            .extend(runtime_rows);
-        expected
-            .get_mut("plugin_desired")
-            .unwrap()
-            .sort_by_key(|r| match &r[0] {
-                rusqlite::types::Value::Integer(v) => *v,
-                _ => unreachable!(),
-            });
-        assert_eq!(after, expected);
-        assert_eq!(
-            db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
-                .unwrap(),
-            crate::store::SCHEMA_VERSION
-        );
-    }
-    #[test]
-    fn n14_nonempty_migration_preserves_exact_old_rows_and_reopen() {
-        let (_dir, path, db) = historical14();
-        let before = rows(&db);
-        drop(Store::open(&path).unwrap());
-        assert_migrated(&db, before);
-        let after = rows(&db);
-        drop(Store::open(&path).unwrap());
-        assert_eq!(rows(&db), after);
-        let recovered = Store::open(&path).unwrap();
-        recovered.recover().unwrap();
-        let mut expected_after_recovery = after;
-        let owner = expected_after_recovery.get_mut("execution_owner").unwrap();
-        owner[0][3] = rusqlite::types::Value::Integer(1);
-        owner[0][4] = rusqlite::types::Value::Text("active".into());
-        assert_eq!(rows(&db), expected_after_recovery);
-    }
-    #[test]
-    fn n14_marker_failure_rolls_back_all_new_objects() {
-        let (_dir, path, db) = historical14();
-        let before = rows(&db);
-        db.execute_batch("CREATE TRIGGER fail_budget_marker BEFORE INSERT ON schema_migrations WHEN NEW.id='completion-budget-v1' BEGIN SELECT RAISE(ABORT,'fixture'); END").unwrap();
-        for _ in 0..2 {
-            assert!(Store::open(&path).is_err());
-            assert_eq!(rows(&db), before);
-            assert_eq!(
-                db.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
-                    .unwrap(),
-                14
-            );
-        }
-        assert_eq!(db.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('project_budgets','budget_requests','budget_calls')",[],|r|r.get::<_,u64>(0)).unwrap(),0);
-        db.execute_batch("DROP TRIGGER fail_budget_marker").unwrap();
-        drop(Store::open(&path).unwrap());
-        assert_migrated(&db, before);
-    }
-    #[test]
-    fn n14_concurrent_open_serializes_migration() {
-        let (_dir, path, db) = historical14();
-        let before = rows(&db);
-        let gate = std::sync::Arc::new(std::sync::Barrier::new(3));
-        let handles: Vec<_> = (0..2)
-            .map(|_| {
-                let path = path.clone();
-                let gate = gate.clone();
-                std::thread::spawn(move || {
-                    gate.wait();
-                    Store::open(&path).map(|s| s.schema_version().unwrap())
-                })
-            })
-            .collect();
-        gate.wait();
-        for h in handles {
-            assert_eq!(h.join().unwrap().unwrap(), crate::store::SCHEMA_VERSION);
-        }
-        assert_migrated(&db, before);
-    }
-    #[test]
-    fn n14_bad_ddl_marker_and_orphan_never_self_repair() {
-        for sql in [
-            "PRAGMA writable_schema=ON; UPDATE sqlite_master SET sql=replace(sql,'revision>0','revision>=0') WHERE name='project_budgets'; PRAGMA writable_schema=OFF;",
-            "DELETE FROM schema_migrations WHERE id='completion-budget-v1'",
-            "PRAGMA user_version=14",
-            "PRAGMA foreign_keys=OFF; INSERT INTO project_budgets VALUES('orphan',1,100,100,0); PRAGMA foreign_keys=ON;",
-        ] {
-            let (_dir, path, db) = historical14();
-            drop(Store::open(&path).unwrap());
-            db.execute_batch(sql).unwrap();
-            let before = rows(&db);
-            assert!(Store::open(&path).is_err());
-            assert_eq!(rows(&db), before);
-        }
-    }
-}
-
-// Schema 18 adds only the durable fence to the existing schema 17 data.
-pub(crate) const EXECUTION_OWNER_MIGRATION_ID: &str = "execution-owner-v18";
-const EXECUTION_OWNER_DDL: &str = "CREATE TABLE execution_owner (id INTEGER PRIMARY KEY CHECK(id=1), domain_identity TEXT NOT NULL, epoch INTEGER NOT NULL CHECK(typeof(epoch)='integer' AND epoch>=0), phase TEXT NOT NULL CHECK(phase IN ('recovering','active')))";
-
-pub(crate) fn verify_execution_owner_shape(tx: &Transaction<'_>) -> Result<()> {
-    anyhow::ensure!(
-        tx.pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))? == 18,
-        "execution schema version mismatch"
-    );
-    anyhow::ensure!(
-        migration_applied(tx, EXECUTION_OWNER_MIGRATION_ID)?,
-        "execution marker missing"
-    );
-    let ddl: String = tx.query_row(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='execution_owner'",
-        [],
-        |r| r.get(0),
-    )?;
-    anyhow::ensure!(
-        ddl == EXECUTION_OWNER_DDL,
-        "execution owner schema mismatch"
-    );
-    let extras: i64 = tx.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name='execution_owner' AND type IN ('trigger','index') AND sql IS NOT NULL", [], |r| r.get(0))?;
-    let count: i64 = tx.query_row("SELECT count(*) FROM execution_owner", [], |r| r.get(0))?;
-    let valid: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM execution_owner WHERE id=1 AND typeof(domain_identity)='text' AND length(domain_identity)>0 AND typeof(epoch)='integer' AND epoch>=0 AND phase IN ('recovering','active'))", [], |r| r.get(0))?;
-    anyhow::ensure!(
-        extras == 0 && count == 1 && valid,
-        "invalid execution owner state"
-    );
-    Ok(())
-}
-pub(crate) fn verify_execution_owner(tx: &Transaction<'_>, identity: &str) -> Result<()> {
-    verify_execution_owner_shape(tx)?;
-    let matches: bool = tx.query_row(
-        "SELECT domain_identity=?1 FROM execution_owner WHERE id=1",
-        [identity],
-        |r| r.get(0),
-    )?;
-    anyhow::ensure!(matches, "execution domain identity mismatch");
-    Ok(())
-}
-pub(crate) fn apply_schema_18(tx: &Transaction<'_>, identity: &str) -> Result<()> {
-    let version: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let marker = migration_applied(tx, EXECUTION_OWNER_MIGRATION_ID)?;
-    if version == 18 {
-        anyhow::ensure!(marker, "execution marker missing");
-        return verify_execution_owner(tx, identity);
-    }
-    anyhow::ensure!(
-        version == 17 && !marker,
-        "execution marker/version mismatch"
-    );
-    verify_schema_17(tx)?;
-    tx.execute_batch(EXECUTION_OWNER_DDL)?;
-    tx.execute(
-        "INSERT INTO execution_owner(id,domain_identity,epoch,phase) VALUES(1,?1,0,'recovering')",
-        [identity],
-    )?;
-    tx.execute(
-        "INSERT INTO schema_migrations(id,applied_at) VALUES(?1,?2)",
-        rusqlite::params![EXECUTION_OWNER_MIGRATION_ID, now()],
-    )?;
-    tx.pragma_update(None, "user_version", 18)?;
-    verify_execution_owner(tx, identity)
 }

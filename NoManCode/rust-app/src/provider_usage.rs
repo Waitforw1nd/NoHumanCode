@@ -1,4 +1,4 @@
-//! Strict observations of Provider-reported tokens, not a bound on actual usage or cost.
+//! Observations of Provider-reported token usage, supporting reasoning and cached token totals.
 
 use serde_json::{Value, json};
 
@@ -54,9 +54,6 @@ impl UsageInvalidReason {
     }
 }
 
-/// Null is missing; every non-null observation must contain all three integers.
-/// Optional Provider details are ignored and never included in the normalized value.
-/// JSON object duplicate keys have already been resolved by `serde_json::Value`.
 pub fn classify_usage(value: &Value) -> UsageObservation {
     use UsageInvalidReason as Reason;
     use UsageObservation::{Invalid, Missing, Valid};
@@ -67,8 +64,6 @@ pub fn classify_usage(value: &Value) -> UsageObservation {
     let Some(object) = value.as_object() else {
         return Invalid(Reason::InvalidShape);
     };
-    // This fixed marker preserves a latched decoder failure across the existing
-    // complete() tuple. Arbitrary Provider strings never become diagnostics.
     if let Some(marker) = object.get(INVALID_MARKER) {
         return Invalid(if object.len() == 1 {
             marker
@@ -90,8 +85,17 @@ pub fn classify_usage(value: &Value) -> UsageObservation {
     let parse = || -> Result<TokenUsage, Reason> {
         let prompt_tokens = read("prompt_tokens")?;
         let completion_tokens = read("completion_tokens")?;
-        let total_tokens = read("total_tokens")?;
-        if prompt_tokens.checked_add(completion_tokens) != Some(total_tokens) {
+        let raw_total = read("total_tokens")?;
+        let sum = prompt_tokens
+            .checked_add(completion_tokens)
+            .filter(|&s| s <= i64::MAX as u64)
+            .ok_or(Reason::InconsistentTotal)?;
+        let total_tokens = if raw_total == 0 && sum > 0 {
+            sum
+        } else {
+            raw_total
+        };
+        if total_tokens < sum {
             return Err(Reason::InconsistentTotal);
         }
         Ok(TokenUsage {
@@ -107,7 +111,6 @@ pub fn classify_usage(value: &Value) -> UsageObservation {
 }
 
 impl UsageObservation {
-    /// Repeated snapshots are not additive. Once invalid, later data cannot repair them.
     pub(crate) fn observe(&mut self, value: &Value) {
         use UsageObservation::{Invalid, Missing, Valid};
         if matches!(self, Invalid(_)) {
@@ -133,5 +136,40 @@ impl UsageObservation {
             }),
             Self::Invalid(reason) => json!({INVALID_MARKER: reason.code()}),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_reasoning_overhead_and_computes_zero_total() {
+        assert_eq!(
+            classify_usage(
+                &json!({"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 25})
+            ),
+            UsageObservation::Valid(TokenUsage {
+                prompt_tokens: 10,
+                completion_tokens: 5,
+                total_tokens: 25,
+            })
+        );
+        assert_eq!(
+            classify_usage(
+                &json!({"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 0})
+            ),
+            UsageObservation::Valid(TokenUsage {
+                prompt_tokens: 10,
+                completion_tokens: 5,
+                total_tokens: 15,
+            })
+        );
+        assert_eq!(
+            classify_usage(
+                &json!({"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 14})
+            ),
+            UsageObservation::Invalid(UsageInvalidReason::InconsistentTotal)
+        );
     }
 }

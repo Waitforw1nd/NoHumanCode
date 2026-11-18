@@ -12,7 +12,7 @@ use peachsh::{
     engine::Engine,
     server::{self, App},
     store::Store,
-    wasm, workspace,
+    workspace,
 };
 use serde_json::{Value, json};
 use std::{
@@ -705,35 +705,16 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
 }
 
 #[tokio::test]
-async fn wasm_echo_runs_locally_but_public_tool_boundary_rejects() {
+async fn coding_tools_expose_edit_and_glob_and_reject_removed_wasm() {
     let temp = tempfile::tempdir().unwrap();
     let (base, _, server) = mock_server().await;
     let engine = setup(temp.path(), &base);
-    let plugin_dir = temp.path().join(".peachsh/plugins/echo");
-    std::fs::create_dir_all(&plugin_dir).unwrap();
-    let wat = r#"(module (memory (export "memory") 1 1) (func (export "alloc") (param i32) (result i32) (i32.const 0)) (func (export "run_json") (param i32 i32) (result i64) (i64.extend_i32_u (local.get 1))))"#;
-    let wasm_bytes = wat::parse_str(wat).unwrap();
-    let manifest = wasm::Manifest {
-        abi: wasm::ABI_VERSION.into(),
-        id: "echo".into(),
-        name: "Echo".into(),
-        version: "1".into(),
-        capabilities: vec!["json".into()],
-        fuel: wasm::DEFAULT_FUEL,
-        memory_pages: 1,
-        sha256: wasm::sha256_hex(&wasm_bytes),
-    };
-    std::fs::write(plugin_dir.join("plugin.wasm"), &wasm_bytes).unwrap();
-    std::fs::write(
-        plugin_dir.join("manifest.json"),
-        serde_json::to_vec_pretty(&manifest).unwrap(),
-    )
-    .unwrap();
-    let mut spec = task("wasm-worker", "key-1", "hello", &[]);
+    let mut spec = task("tool-worker", "key-1", "hello", &[]);
     spec.tools = true;
+    spec.write_scopes = vec!["*".into()];
     let task = Task {
-        id: "wasm-task".into(),
-        run_id: "wasm-run".into(),
+        id: "tool-task".into(),
+        run_id: "tool-run".into(),
         spec,
         route: engine.store.settings().unwrap().unwrap().routes[0].clone(),
         workspace: temp.path().to_string_lossy().into(),
@@ -745,21 +726,21 @@ async fn wasm_echo_runs_locally_but_public_tool_boundary_rejects() {
         created_at: now(),
         updated_at: now(),
     };
-    let input = json!({"message":"边界测试"});
-    let plugin = wasm::load(&temp.path().join(".peachsh/plugins"), "echo").unwrap();
-    let result = wasm::run(&plugin, &input).unwrap();
-    assert_eq!(result.output["message"], "边界测试");
-    let error = workspace::execute(&task, "run_wasm", &json!({"plugin":"echo","input":input}))
-        .await
-        .unwrap_err();
-    assert!(format!("{error:#}").contains("run_wasm is not available"));
-    assert_eq!(
-        workspace::definitions(&task)
-            .iter()
-            .filter_map(|v| v.pointer("/function/name").and_then(Value::as_str))
-            .filter(|name| *name == "run_wasm")
-            .count(),
-        1
+    let names: Vec<String> = workspace::definitions(&task)
+        .iter()
+        .filter_map(|v| {
+            v.pointer("/function/name")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        })
+        .collect();
+    assert!(names.iter().any(|n| n == "edit_file"));
+    assert!(names.iter().any(|n| n == "glob_files"));
+    assert!(!names.iter().any(|n| n == "run_wasm"));
+    assert!(
+        workspace::execute(&task, "run_wasm", &json!({}))
+            .await
+            .is_err()
     );
     server.abort();
 }

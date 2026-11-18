@@ -10,7 +10,11 @@ use std::{future::IntoFuture, path::PathBuf, sync::Arc, time::Duration};
 mod cli;
 
 #[derive(Parser)]
-#[command(name = "peachsh", version, about = "🍑sh harness · Rust")]
+#[command(
+    name = "peachsh",
+    version,
+    about = "🍑sh AI Coding Workbench & Harness · Rust"
+)]
 struct Args {
     #[arg(long, default_value_t = 3090, value_parser = nonzero_port)]
     port: u16,
@@ -39,6 +43,7 @@ fn nonzero_port(value: &str) -> std::result::Result<u16, String> {
         .filter(|port| *port != 0)
         .ok_or_else(|| "端口必须在 1..=65535".to_owned())
 }
+
 fn main() -> Result<()> {
     // Declare the lock before the runtime so unwinding also tears the runtime
     // down first. Startup/run errors must not admit another Host while old
@@ -48,13 +53,9 @@ fn main() -> Result<()> {
         .enable_all()
         .build()?;
     let result = runtime.block_on(run(&mut instance_lock));
-    // An unknown shutdown must not silently become an unbounded runtime Drop.
-    // This bounds runtime teardown; it does not certify external process exit.
+    // Bound runtime teardown on exit.
     let instance_lock = teardown_runtime(runtime, instance_lock, Duration::from_secs(1));
     if result.is_err() {
-        // Only on main's final error/unknown exit: a timed-out blocking worker
-        // may still write until the process dies. Let the OS release this handle
-        // at process termination, not while Rust prints the returned error.
         std::mem::forget(instance_lock);
     }
     result
@@ -71,8 +72,6 @@ fn teardown_runtime(
 
 async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
     let args = Args::try_parse().unwrap_or_else(|error| {
-        // Clap may echo invalid argument values. The Host setup namespace never
-        // echoes untrusted input, including an accidentally pasted credential.
         if error.use_stderr() && std::env::args_os().any(|arg| arg == "host") {
             clap::Error::raw(
                 clap::error::ErrorKind::ValueValidation,
@@ -82,7 +81,10 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         }
         error.exit()
     });
-    if let Some(command) = args.command {
+
+    if let Some(command) = args.command
+        && !matches!(command, cli::Command::Serve)
+    {
         if args.check {
             clap::Error::raw(
                 clap::error::ErrorKind::ArgumentConflict,
@@ -90,6 +92,32 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
             )
             .exit();
         }
+        if command.is_local_workbench() {
+            if args.legacy_data.is_some() {
+                clap::Error::raw(
+                    clap::error::ErrorKind::ArgumentConflict,
+                    "--legacy-data 不能与本地工作台子命令同时使用",
+                )
+                .exit();
+            }
+            if !command.valid_ids() {
+                clap::Error::raw(clap::error::ErrorKind::ValueValidation, "命令参数无效").exit();
+            }
+            if let Err(error) = cli::execute_local(
+                instance_lock,
+                args.data_dir,
+                args.workspace,
+                args.json,
+                command,
+            )
+            .await
+            {
+                error.print(args.json);
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
+
         if args.data_dir.is_some() || args.legacy_data.is_some() || args.workspace.is_some() {
             clap::Error::raw(
                 clap::error::ErrorKind::ArgumentConflict,
@@ -106,6 +134,7 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         }
         return Ok(());
     }
+
     if args.json {
         clap::Error::raw(
             clap::error::ErrorKind::MissingSubcommand,
@@ -113,6 +142,7 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         )
         .exit();
     }
+
     let data_dir = args
         .data_dir
         .unwrap_or_else(|| PathBuf::from("../data-rust"));
@@ -121,16 +151,8 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         .unwrap_or_else(|| PathBuf::from("../workspace"));
     std::fs::create_dir_all(&data_dir).context("无法创建数据目录")?;
     let store = Arc::new(Store::open(&data_dir.join("peachsh.sqlite3"))?);
-    // Duplicate the same held file object; the Domain and all process tickets
-    // retain the original beyond Engine/Store or main's runtime teardown.
     *instance_lock = Some(store.instance_lock_handle()?);
-    // This is the sole consumer of the Host build's packaged-worker digest.
-    // The bootstrap selects only the fixed sibling of this executable; no
-    // request, command line, or runtime environment can select an image.
-    let packaged_worker = peachsh::worker_bootstrap::bootstrap_from_packaged_digest(option_env!(
-        "NHC_PACKAGED_WORKER_SHA256"
-    ))
-    .map_err(|error| anyhow::anyhow!("可信 WASM worker 初始化失败: {error:?}"))?;
+
     let settings = match store.settings()? {
         Some(s) => s,
         None => match args.legacy_data.as_deref() {
@@ -148,8 +170,8 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         );
         return Ok(());
     }
+
     let (engine, interrupted) = Engine::new_recovered(store, settings.max_concurrency)?;
-    engine.install_packaged_worker(packaged_worker)?;
     let origin = format!("http://127.0.0.1:{}", args.port);
     let app = server::router(App {
         engine: engine.clone(),
@@ -248,7 +270,6 @@ mod audit_shutdown_tests {
         let (finished_tx, finished_rx) = mpsc::channel();
         let blocking = runtime.spawn_blocking(move || {
             let _ = started_tx.send(());
-            // A bounded synthetic database writer; no child process is involved.
             let _ = release_rx.recv_timeout(Duration::from_secs(5));
             let _ = finished_tx.send(());
         });
@@ -257,13 +278,9 @@ mod audit_shutdown_tests {
         let teardown = std::thread::spawn(move || {
             let result: Result<()> = Err(anyhow::anyhow!("synthetic run failure"));
             let lock = teardown_runtime(runtime, Some(lock), Duration::from_secs(5));
-            // This synthetic writer has drained; the test deliberately releases
-            // its handle instead of taking main's process-lifetime error path.
             drop(lock);
             let _ = stopped_tx.send(result);
         });
-        // The cancelled async guard proves teardown has actually begun, rather
-        // than merely racing a thread that has not entered shutdown yet.
         teardown_rx.recv_timeout(Duration::from_secs(2)).unwrap();
         let during_teardown = contender.try_lock();
         let still_draining = stopped_rx.try_recv().is_err();

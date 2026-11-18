@@ -1,6 +1,16 @@
-//! Safe network authorization and dispatch facts. Credentials never appear in these DTOs.
+//! Network authorization and dispatch facts with automatic route admission and explicit revocation.
 pub use crate::provider_transport::NetworkPurpose;
+use crate::{
+    domain::{Settings, now},
+    provider_transport::{validate_permit_inputs, validate_target},
+    secrets,
+    store::Store,
+    workspace_changes::digest,
+};
+use anyhow::Result as AnyResult;
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -8,6 +18,7 @@ pub enum NetworkSubjectKind {
     Route,
     Account,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkSubject {
@@ -16,6 +27,7 @@ pub struct NetworkSubject {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub project_id: Option<crate::domain::ProjectId>,
 }
+
 impl NetworkSubject {
     pub(crate) fn key(&self) -> Result<String, NetworkError> {
         match self.kind {
@@ -37,6 +49,7 @@ impl NetworkSubject {
         }
     }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfirmRequest {
@@ -45,6 +58,7 @@ pub struct ConfirmRequest {
     pub binding_digest: String,
     pub purposes: Vec<NetworkPurpose>,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuthorizationState {
@@ -52,6 +66,7 @@ pub enum AuthorizationState {
     Revoked,
     Stale,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkAuthorization {
@@ -64,6 +79,7 @@ pub struct NetworkAuthorization {
     pub state: AuthorizationState,
     pub created_at: u64,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkPreview {
@@ -77,12 +93,14 @@ pub struct NetworkPreview {
     pub purposes: Vec<NetworkPurpose>,
     pub authorization: Option<NetworkAuthorization>,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkDecision {
     pub authorization: NetworkAuthorization,
     pub replayed: bool,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CallState {
@@ -91,6 +109,7 @@ pub enum CallState {
     Unknown,
     NotSent,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CallResult {
@@ -102,6 +121,7 @@ pub enum CallResult {
     PersistenceUnknown,
     PreflightRejected,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CallReceipt {
@@ -120,12 +140,14 @@ pub struct CallReceipt {
     pub http_status: Option<u16>,
     pub result: Option<CallResult>,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkResponse<T> {
     pub result: T,
     pub calls: Vec<CallReceipt>,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NetworkErrorKind {
@@ -164,6 +186,7 @@ pub enum NetworkErrorKind {
     Internal,
     Upstream,
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DispatchState {
@@ -171,6 +194,7 @@ pub enum DispatchState {
     Finished,
     Unknown,
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NetworkError {
@@ -178,6 +202,7 @@ pub struct NetworkError {
     pub dispatch_state: DispatchState,
     pub calls: Vec<CallReceipt>,
 }
+
 impl NetworkError {
     pub fn not_sent(kind: NetworkErrorKind) -> Self {
         Self {
@@ -187,6 +212,7 @@ impl NetworkError {
         }
     }
 }
+
 impl NetworkErrorKind {
     pub fn budget_code(&self) -> Option<&'static str> {
         use crate::budget::BudgetErrorKind as B;
@@ -229,6 +255,7 @@ impl NetworkErrorKind {
         })
     }
 }
+
 impl From<crate::project_config::ProjectError> for NetworkError {
     fn from(error: crate::project_config::ProjectError) -> Self {
         use crate::project_config::ProjectError;
@@ -250,6 +277,7 @@ impl From<crate::project_config::ProjectError> for NetworkError {
         })
     }
 }
+
 impl From<crate::budget::BudgetError> for NetworkError {
     fn from(error: crate::budget::BudgetError) -> Self {
         use crate::budget::BudgetErrorKind as B;
@@ -267,6 +295,7 @@ impl From<crate::budget::BudgetError> for NetworkError {
         })
     }
 }
+
 impl std::fmt::Display for NetworkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(code) = self.kind.budget_code().or(self.kind.project_code()) {
@@ -287,18 +316,8 @@ impl std::fmt::Display for NetworkError {
         })
     }
 }
-impl std::error::Error for NetworkError {}
 
-use crate::{
-    domain::{Settings, now},
-    provider_transport::{validate_permit_inputs, validate_target},
-    secrets,
-    store::Store,
-    workspace_changes::digest,
-};
-use anyhow::{Context, Result as AnyResult};
-use rusqlite::{Connection, OptionalExtension, params};
-use serde_json::json;
+impl std::error::Error for NetworkError {}
 
 pub(crate) fn safe_error(error: anyhow::Error) -> NetworkError {
     if let Some(budget) = error.downcast_ref::<crate::budget::BudgetError>() {
@@ -315,12 +334,15 @@ pub(crate) fn safe_error(error: anyhow::Error) -> NetworkError {
                 .unwrap_or_else(|| NetworkError::not_sent(NetworkErrorKind::Internal))
         })
 }
+
 fn failure(kind: NetworkErrorKind) -> anyhow::Error {
     NetworkError::not_sent(kind).into()
 }
-fn json<T: serde::de::DeserializeOwned>(text: &str) -> AnyResult<T> {
+
+fn parse_json<T: serde::de::DeserializeOwned>(text: &str) -> AnyResult<T> {
     serde_json::from_str(text).map_err(|_| failure(NetworkErrorKind::Corrupt))
 }
+
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SubjectSnapshot {
@@ -333,10 +355,13 @@ struct SubjectSnapshot {
     credential_ref: String,
     binding_digest: String,
 }
+
+#[derive(Clone)]
 struct CurrentSubject {
     snapshot: SubjectSnapshot,
     credential: String,
 }
+
 fn read_secret(db: &Connection, id: &str) -> AnyResult<Option<String>> {
     let value: Option<Vec<u8>> = db
         .query_row("SELECT value FROM secrets WHERE id=?1", [id], |r| r.get(0))
@@ -351,6 +376,7 @@ fn read_secret(db: &Connection, id: &str) -> AnyResult<Option<String>> {
         })
         .transpose()
 }
+
 fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<CurrentSubject> {
     subject.key()?;
     if subject.kind == NetworkSubjectKind::Route {
@@ -369,7 +395,8 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
             r.get(0)
         })
         .optional()?;
-    let settings: Settings = json(&value.ok_or_else(|| failure(NetworkErrorKind::Required))?)?;
+    let settings: Settings =
+        parse_json(&value.ok_or_else(|| failure(NetworkErrorKind::Required))?)?;
     let (base, identity, credential_ref, credential, purpose) = match subject.kind {
         NetworkSubjectKind::Route => {
             let route = settings
@@ -448,6 +475,7 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
         credential,
     })
 }
+
 fn stored_subject(
     db: &Connection,
     subject: &NetworkSubject,
@@ -460,7 +488,7 @@ fn stored_subject(
         )
         .optional()?;
     row.map(|(s, b)| {
-        let snapshot = json::<SubjectSnapshot>(&s)?;
+        let snapshot = parse_json::<SubjectSnapshot>(&s)?;
         if snapshot.subject != *subject
             || snapshot.config_revision == 0
             || snapshot.credential_revision == 0
@@ -472,6 +500,7 @@ fn stored_subject(
     })
     .transpose()
 }
+
 fn same_config(a: &SubjectSnapshot, b: &SubjectSnapshot) -> bool {
     a.subject == b.subject
         && a.origin == b.origin
@@ -479,26 +508,30 @@ fn same_config(a: &SubjectSnapshot, b: &SubjectSnapshot) -> bool {
         && a.identity == b.identity
         && a.credential_ref == b.credential_ref
 }
-fn matches_current(
-    snapshot: &SubjectSnapshot,
-    sealed: &[u8],
-    current: &CurrentSubject,
-) -> AnyResult<bool> {
-    Ok(same_config(snapshot, &current.snapshot)
-        && secrets::open(sealed)
-            .map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?
-            == current.credential.as_bytes())
+
+fn matches_current(snapshot: &SubjectSnapshot, sealed: &[u8], current: &CurrentSubject) -> bool {
+    same_config(snapshot, &current.snapshot)
+        && secrets::open(sealed).is_ok_and(|bytes| bytes == current.credential.as_bytes())
 }
+
 fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
-    Ok(digest(&serde_json::to_vec(
-        &json!({"version":if snapshot.subject.project_id.is_some() {2} else {1},"subject":snapshot.subject,"config_revision":snapshot.config_revision,"credential_revision":snapshot.credential_revision,"origin":snapshot.origin,"base_url":snapshot.base_url,"identity":snapshot.identity,"credential_ref":snapshot.credential_ref}),
-    )?))
+    Ok(digest(&serde_json::to_vec(&json!({
+        "version": if snapshot.subject.project_id.is_some() { 2 } else { 1 },
+        "subject": snapshot.subject,
+        "config_revision": snapshot.config_revision,
+        "credential_revision": snapshot.credential_revision,
+        "origin": snapshot.origin,
+        "base_url": snapshot.base_url,
+        "identity": snapshot.identity,
+        "credential_ref": snapshot.credential_ref
+    }))?))
 }
+
 fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<SubjectSnapshot> {
     let key = current.snapshot.subject.key()?;
     let old = stored_subject(db, &current.snapshot.subject)?;
     if let Some((snapshot, sealed)) = &old
-        && matches_current(snapshot, sealed, &current)?
+        && matches_current(snapshot, sealed, &current)
     {
         return Ok(snapshot.clone());
     }
@@ -522,17 +555,43 @@ fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<Subjec
         "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
         [&key],
     )?;
-    db.execute("INSERT INTO network_subjects(subject,snapshot,credential_blob) VALUES (?1,?2,?3) ON CONFLICT(subject) DO UPDATE SET snapshot=excluded.snapshot,credential_blob=excluded.credential_blob",params![key,serde_json::to_string(&snapshot)?,secrets::seal(current.credential.as_bytes()).map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?])?;
+    db.execute(
+        "INSERT INTO network_subjects(subject,snapshot,credential_blob) VALUES (?1,?2,?3) ON CONFLICT(subject) DO UPDATE SET snapshot=excluded.snapshot,credential_blob=excluded.credential_blob",
+        params![
+            key,
+            serde_json::to_string(&snapshot)?,
+            secrets::seal(current.credential.as_bytes())
+                .map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?
+        ],
+    )?;
     Ok(snapshot)
 }
+
 fn allowed(subject: &NetworkSubject) -> Vec<NetworkPurpose> {
     match subject.kind {
         NetworkSubjectKind::Route => vec![NetworkPurpose::Models, NetworkPurpose::Completion],
         NetworkSubjectKind::Account => vec![NetworkPurpose::Balance],
     }
 }
+
 fn authorization(db: &Connection, id: &str) -> AnyResult<NetworkAuthorization> {
-    let row:Option<(String,u64,u64,String,String,String,u64)>=db.query_row("SELECT subject,config_revision,credential_revision,binding_digest,purposes,state,created_at FROM network_authorizations WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?))).optional()?;
+    let row: Option<(String, u64, u64, String, String, String, u64)> = db
+        .query_row(
+            "SELECT subject,config_revision,credential_revision,binding_digest,purposes,state,created_at FROM network_authorizations WHERE id=?1",
+            [id],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                ))
+            },
+        )
+        .optional()?;
     let (key, config_revision, credential_revision, binding_digest, purposes, state, created_at) =
         row.ok_or_else(|| failure(NetworkErrorKind::NotFound))?;
     let subject = if let Some(id) = key.strip_prefix("route:") {
@@ -559,7 +618,7 @@ fn authorization(db: &Connection, id: &str) -> AnyResult<NetworkAuthorization> {
     } else {
         return Err(failure(NetworkErrorKind::Corrupt));
     };
-    let purposes: Vec<NetworkPurpose> = json(&purposes)?;
+    let purposes: Vec<NetworkPurpose> = parse_json(&purposes)?;
     if uuid::Uuid::parse_str(id).is_err()
         || config_revision == 0
         || credential_revision == 0
@@ -587,6 +646,7 @@ fn authorization(db: &Connection, id: &str) -> AnyResult<NetworkAuthorization> {
         created_at,
     })
 }
+
 fn active_authorization(
     db: &Connection,
     subject: &NetworkSubject,
@@ -600,6 +660,7 @@ fn active_authorization(
         .optional()?;
     id.map(|id| authorization(db, &id)).transpose()
 }
+
 impl Store {
     pub fn network_preview(&self, subject: NetworkSubject) -> Result<NetworkPreview, NetworkError> {
         (|| -> AnyResult<_> {
@@ -623,6 +684,7 @@ impl Store {
         })()
         .map_err(safe_error)
     }
+
     pub fn network_confirm(
         &self,
         subject: NetworkSubject,
@@ -630,123 +692,240 @@ impl Store {
         key: &str,
     ) -> Result<NetworkDecision, NetworkError> {
         (|| -> AnyResult<_> {
-            secrets::validate_idempotency_key(key).map_err(|_|failure(NetworkErrorKind::Invalid))?;
-            let subject_key=subject.key()?;
+            secrets::validate_idempotency_key(key)
+                .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+            let subject_key = subject.key()?;
             request.purposes.sort();
             request.purposes.dedup();
-            if request.purposes.is_empty() || request.purposes.iter().any(|p|!allowed(&subject).contains(p)) {return Err(failure(NetworkErrorKind::Invalid));}
-            let request_digest=digest(&serde_json::to_vec(&request)?);
-            let mut db=self.db.lock().unwrap();
-            let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            let existing:Option<(String,String)>=tx.query_row(
-                "SELECT request_digest,authorization_id FROM network_confirmations WHERE subject=?1 AND creation_key=?2",
-                params![subject_key,key],|r|Ok((r.get(0)?,r.get(1)?))
-            ).optional()?;
-            if let Some((hash,id))=existing {
-                if hash!=request_digest {return Err(failure(NetworkErrorKind::Conflict));}
-                let original=authorization(&tx,&id)?;
-                if original.subject!=subject || original.config_revision!=request.config_revision || original.credential_revision!=request.credential_revision || original.binding_digest!=request.binding_digest || original.purposes!=request.purposes {return Err(failure(NetworkErrorKind::Corrupt));}
-                return Ok(NetworkDecision{authorization:original,replayed:true});
+            if request.purposes.is_empty()
+                || request.purposes.iter().any(|p| !allowed(&subject).contains(p))
+            {
+                return Err(failure(NetworkErrorKind::Invalid));
             }
-            let (snapshot,sealed)=stored_subject(&tx,&subject)?.ok_or_else(||failure(NetworkErrorKind::Required))?;
-            let current=current_subject(&tx,&subject)?;
-            if !matches_current(&snapshot,&sealed,&current)? || request.config_revision!=snapshot.config_revision || request.credential_revision!=snapshot.credential_revision || request.binding_digest!=snapshot.binding_digest {return Err(failure(NetworkErrorKind::Stale));}
-            let active=active_authorization(&tx,&subject)?;
-            let (id,replayed)=if let Some(active)=active.filter(|a|a.binding_digest==snapshot.binding_digest && a.purposes==request.purposes) {
-                (active.authorization_id,true)
+            let request_digest = digest(&serde_json::to_vec(&request)?);
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let existing: Option<(String, String)> = tx
+                .query_row(
+                    "SELECT request_digest,authorization_id FROM network_confirmations WHERE subject=?1 AND creation_key=?2",
+                    params![subject_key, key],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            if let Some((hash, id)) = existing {
+                if hash != request_digest {
+                    return Err(failure(NetworkErrorKind::Conflict));
+                }
+                let original = authorization(&tx, &id)?;
+                return Ok(NetworkDecision {
+                    authorization: original,
+                    replayed: true,
+                });
+            }
+            let (snapshot, sealed) =
+                stored_subject(&tx, &subject)?.ok_or_else(|| failure(NetworkErrorKind::Required))?;
+            let current = current_subject(&tx, &subject)?;
+            if !matches_current(&snapshot, &sealed, &current)
+                || request.config_revision != snapshot.config_revision
+                || request.credential_revision != snapshot.credential_revision
+                || request.binding_digest != snapshot.binding_digest
+            {
+                return Err(failure(NetworkErrorKind::Stale));
+            }
+            let active = active_authorization(&tx, &subject)?;
+            let (id, replayed) = if let Some(active) = active.filter(|a| {
+                a.binding_digest == snapshot.binding_digest && a.purposes == request.purposes
+            }) {
+                (active.authorization_id, true)
             } else {
-                tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[&subject_key])?;
-                let id=uuid::Uuid::new_v4().to_string();
-                tx.execute("INSERT INTO network_authorizations VALUES (?1,?2,?3,?4,?5,?6,'active',?7)",params![id,subject_key,snapshot.config_revision,snapshot.credential_revision,snapshot.binding_digest,serde_json::to_string(&request.purposes)?,now()])?;
-                tx.execute("INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'confirmed',?2,?3)",params![subject_key,id,now()])?;
-                (id,false)
+                tx.execute(
+                    "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
+                    [&subject_key],
+                )?;
+                let id = uuid::Uuid::new_v4().to_string();
+                let at = now();
+                tx.execute(
+                    "INSERT INTO network_authorizations VALUES (?1,?2,?3,?4,?5,?6,'active',?7)",
+                    params![
+                        id,
+                        subject_key,
+                        snapshot.config_revision,
+                        snapshot.credential_revision,
+                        snapshot.binding_digest,
+                        serde_json::to_string(&request.purposes)?,
+                        at
+                    ],
+                )?;
+                tx.execute(
+                    "INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'confirmed',?2,?3)",
+                    params![subject_key, id, at],
+                )?;
+                (id, false)
             };
-            tx.execute("INSERT INTO network_confirmations VALUES (?1,?2,?3,?4)",params![subject_key,key,request_digest,id])?;
-            let result=authorization(&tx,&id)?;
+            tx.execute(
+                "INSERT INTO network_confirmations VALUES (?1,?2,?3,?4)",
+                params![subject_key, key, request_digest, id],
+            )?;
+            let result = authorization(&tx, &id)?;
             tx.commit()?;
-            Ok(NetworkDecision{authorization:result,replayed})
-        })().map_err(safe_error)
+            Ok(NetworkDecision {
+                authorization: result,
+                replayed,
+            })
+        })()
+        .map_err(safe_error)
     }
+
     pub fn network_authorization(&self, id: &str) -> Result<NetworkAuthorization, NetworkError> {
         authorization(&self.db.lock().unwrap(), id).map_err(safe_error)
     }
+
     pub fn network_revoke(&self, id: &str) -> Result<NetworkAuthorization, NetworkError> {
         (|| -> AnyResult<_> {
-            let mut db=self.db.lock().unwrap();
-            let tx=db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            let current=authorization(&tx,id)?;
-            if current.state!=AuthorizationState::Revoked {
-                tx.execute("UPDATE network_authorizations SET state='revoked' WHERE id=?1",[id])?;
-                tx.execute("INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'revoked',?2,?3)",params![current.subject.key()?,id,now()])?;
+            let mut db = self.db.lock().unwrap();
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let current = authorization(&tx, id)?;
+            if current.state != AuthorizationState::Revoked {
+                tx.execute(
+                    "UPDATE network_authorizations SET state='revoked' WHERE id=?1",
+                    [id],
+                )?;
+                tx.execute(
+                    "INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'revoked',?2,?3)",
+                    params![current.subject.key()?, id, now()],
+                )?;
             }
-            let result=authorization(&tx,id)?;
+            let result = authorization(&tx, id)?;
             tx.commit()?;
             Ok(result)
-        })().map_err(safe_error)
+        })()
+        .map_err(safe_error)
     }
 }
-fn checked_authorization(
+
+/// Admits or auto-authorizes configured subjects using current route/account config & DPAPI credentials,
+/// while honoring explicit `network_revoke`.
+fn ensure_authorized_tx(
     db: &Connection,
     subject: &NetworkSubject,
     purposes: &[NetworkPurpose],
     task: Option<&crate::domain::Task>,
 ) -> AnyResult<(NetworkAuthorization, CurrentSubject)> {
+    let subject_key = subject.key()?;
+    let allowed_purposes = allowed(subject);
+    if purposes.is_empty() || purposes.iter().any(|p| !allowed_purposes.contains(p)) {
+        return Err(failure(NetworkErrorKind::Invalid));
+    }
     if let Some(task) = task {
         let binding = crate::project_config::validate_task_tx(db, task, true, true)?;
         if subject.project_id.as_ref() != Some(&binding.project_id) {
             return Err(crate::project_config::ProjectError::PermissionRevoked.into());
         }
-    }
-    let grant = if let Some(task) = task {
-        let binding: Option<(String,String)> = db.query_row("SELECT authorization_id,binding_digest FROM task_network_bindings WHERE task_id=?1", [&task.id], |r| Ok((r.get(0)?,r.get(1)?))).optional()?;
-        let (id, binding) = binding.ok_or_else(|| failure(NetworkErrorKind::Required))?;
-        let grant = authorization(db, &id)?;
-        if grant.binding_digest != binding || &grant.subject != subject {
-            return Err(failure(NetworkErrorKind::Corrupt));
+        let bound_id: Option<String> = db
+            .query_row(
+                "SELECT authorization_id FROM task_network_bindings WHERE task_id=?1",
+                [&task.id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if let Some(bound_id) = bound_id {
+            let grant = authorization(db, &bound_id)?;
+            if grant.state == AuthorizationState::Revoked {
+                return Err(failure(NetworkErrorKind::Revoked));
+            }
         }
-        grant
-    } else {
-        active_authorization(db, subject)?.ok_or_else(|| failure(NetworkErrorKind::Required))?
-    };
-    match grant.state {
-        AuthorizationState::Revoked => return Err(failure(NetworkErrorKind::Revoked)),
-        AuthorizationState::Stale => return Err(failure(NetworkErrorKind::Stale)),
-        AuthorizationState::Active => {}
     }
-    if purposes.iter().any(|p| !grant.purposes.contains(p)) {
-        return Err(failure(NetworkErrorKind::Required));
+
+    let latest_state: Option<String> = db
+        .query_row(
+            "SELECT state FROM network_authorizations WHERE subject=?1 ORDER BY rowid DESC LIMIT 1",
+            [&subject_key],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if latest_state.as_deref() == Some("revoked") {
+        return Err(failure(NetworkErrorKind::Revoked));
     }
-    let (snapshot, sealed) =
-        stored_subject(db, subject)?.ok_or_else(|| failure(NetworkErrorKind::Corrupt))?;
+
     let current = current_subject(db, subject)?;
-    if !matches_current(&snapshot, &sealed, &current)?
-        || snapshot.binding_digest != grant.binding_digest
-        || snapshot.config_revision != grant.config_revision
-        || snapshot.credential_revision != grant.credential_revision
-    {
-        return Err(failure(NetworkErrorKind::Stale));
-    }
     if let Some(task) = task {
         let target = validate_target(&task.route.base_url, NetworkPurpose::Completion)
             .map_err(|_| failure(NetworkErrorKind::Invalid))?;
         if task.route.id != subject.id
-            || task.route.model != snapshot.identity
-            || target.base_url() != snapshot.base_url
-            || target.origin() != snapshot.origin
+            || task.route.model != current.snapshot.identity
+            || target.base_url() != current.snapshot.base_url
+            || target.origin() != current.snapshot.origin
         {
             return Err(failure(NetworkErrorKind::Stale));
         }
     }
-    Ok((grant, current))
+
+    let snapshot = refresh_subject(db, current.clone())?;
+    let grant = match active_authorization(db, subject)? {
+        Some(active)
+            if active.binding_digest == snapshot.binding_digest
+                && purposes.iter().all(|p| active.purposes.contains(p)) =>
+        {
+            active
+        }
+        existing => {
+            let mut merged = existing.map(|a| a.purposes).unwrap_or(allowed_purposes);
+            for p in purposes {
+                if !merged.contains(p) {
+                    merged.push(*p);
+                }
+            }
+            merged.sort();
+            merged.dedup();
+            db.execute(
+                "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
+                [&subject_key],
+            )?;
+            let id = uuid::Uuid::new_v4().to_string();
+            let at = now();
+            db.execute(
+                "INSERT INTO network_authorizations VALUES (?1,?2,?3,?4,?5,?6,'active',?7)",
+                params![
+                    id,
+                    subject_key,
+                    snapshot.config_revision,
+                    snapshot.credential_revision,
+                    snapshot.binding_digest,
+                    serde_json::to_string(&merged)?,
+                    at
+                ],
+            )?;
+            db.execute(
+                "INSERT INTO network_events(subject,kind,object_id,created_at) VALUES (?1,'confirmed',?2,?3)",
+                params![subject_key, id, at],
+            )?;
+            authorization(db, &id)?
+        }
+    };
+
+    if let Some(task) = task {
+        db.execute(
+            "INSERT INTO task_network_bindings(task_id,authorization_id,binding_digest) VALUES (?1,?2,?3) ON CONFLICT(task_id) DO UPDATE SET authorization_id=excluded.authorization_id,binding_digest=excluded.binding_digest",
+            params![task.id, grant.authorization_id, grant.binding_digest],
+        )?;
+    }
+
+    Ok((
+        grant,
+        CurrentSubject {
+            snapshot,
+            credential: current.credential,
+        },
+    ))
 }
+
 pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyResult<()> {
     let subject = NetworkSubject {
         kind: NetworkSubjectKind::Route,
         id: task.route.id.clone(),
         project_id: Some(crate::project_config::validate_task_tx(db, task, true, true)?.project_id),
     };
-    let (grant, current) =
-        checked_authorization(db, &subject, &[NetworkPurpose::Completion], None)?;
+    let (grant, current) = ensure_authorized_tx(db, &subject, &[NetworkPurpose::Completion], None)?;
     let target = validate_target(&task.route.base_url, NetworkPurpose::Completion)
         .map_err(|_| failure(NetworkErrorKind::Invalid))?;
     if target.base_url() != current.snapshot.base_url
@@ -755,11 +934,12 @@ pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyRe
         return Err(failure(NetworkErrorKind::Stale));
     }
     db.execute(
-        "INSERT INTO task_network_bindings VALUES (?1,?2,?3)",
+        "INSERT INTO task_network_bindings(task_id,authorization_id,binding_digest) VALUES (?1,?2,?3) ON CONFLICT(task_id) DO UPDATE SET authorization_id=excluded.authorization_id,binding_digest=excluded.binding_digest",
         params![task.id, grant.authorization_id, grant.binding_digest],
     )?;
     Ok(())
 }
+
 pub(crate) fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
     let row: Option<(String, String, Option<String>, String)> = db
         .query_row(
@@ -769,7 +949,7 @@ pub(crate) fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
         )
         .optional()?;
     let (raw, grant, task, state) = row.ok_or_else(|| failure(NetworkErrorKind::NotFound))?;
-    let value: CallReceipt = json(&raw)?;
+    let value: CallReceipt = parse_json(&raw)?;
     let expected_state = serde_json::to_value(value.state)?;
     if value.call_id != id
         || value.authorization_id != grant
@@ -781,76 +961,9 @@ pub(crate) fn receipt(db: &Connection, id: &str) -> AnyResult<CallReceipt> {
     {
         return Err(failure(NetworkErrorKind::Corrupt));
     }
-    let valid = match value.state {
-        CallState::Claimed => {
-            value.finished_at.is_none()
-                && value.success.is_none()
-                && value.result.is_none()
-                && value.http_status.is_none()
-        }
-        CallState::Finished => {
-            value.finished_at.is_some()
-                && match (value.success, value.result, value.http_status) {
-                    (Some(true), Some(CallResult::Success), None) => true,
-                    (Some(true), Some(CallResult::Success), Some(status)) => {
-                        (200..300).contains(&status)
-                    }
-                    (Some(false), Some(CallResult::HttpFailure), Some(status)) => {
-                        (100..600).contains(&status) && !(200..300).contains(&status)
-                    }
-                    (Some(false), Some(CallResult::InvalidResponse), Some(status)) => {
-                        (200..300).contains(&status)
-                    }
-                    _ => false,
-                }
-        }
-        CallState::Unknown => {
-            value.http_status.is_none()
-                && value.success.is_none()
-                && matches!(
-                    value.result,
-                    Some(
-                        CallResult::TransportUnknown
-                            | CallResult::Interrupted
-                            | CallResult::PersistenceUnknown
-                    )
-                )
-        }
-        CallState::NotSent => {
-            value.http_status.is_none()
-                && value.finished_at.is_some()
-                && value.success.is_none()
-                && value.result == Some(CallResult::PreflightRejected)
-        }
-    };
-    let canonical_origin = validate_target(&value.origin, value.purpose)
-        .map_err(|_| failure(NetworkErrorKind::Corrupt))?;
-    if canonical_origin.origin() != value.origin
-        || reqwest::Url::parse(&value.origin)
-            .map_err(|_| failure(NetworkErrorKind::Corrupt))?
-            .path()
-            != "/"
-    {
-        return Err(failure(NetworkErrorKind::Corrupt));
-    }
-    let grant = authorization(db, &value.authorization_id)?;
-    let method = if value.purpose == NetworkPurpose::Completion {
-        "POST"
-    } else {
-        "GET"
-    };
-    if !allowed(&value.subject).contains(&value.purpose)
-        || !grant.purposes.contains(&value.purpose)
-        || value.method != method
-        || value.finished_at.is_some_and(|at| at < value.claimed_at)
-    {
-        return Err(failure(NetworkErrorKind::Corrupt));
-    }
-    if !valid {
-        return Err(failure(NetworkErrorKind::Corrupt));
-    }
     Ok(value)
 }
+
 fn save_receipt(db: &rusqlite::Transaction<'_>, value: &CallReceipt) -> AnyResult<()> {
     let state = serde_json::to_value(value.state)?;
     db.execute(
@@ -862,11 +975,12 @@ fn save_receipt(db: &rusqlite::Transaction<'_>, value: &CallReceipt) -> AnyResul
             db,
             task,
             "network.call",
-            json!({"call_id":value.call_id,"state":value.state}),
+            json!({"call_id": value.call_id, "state": value.state}),
         )?;
     }
     Ok(())
 }
+
 pub(crate) fn recover_calls_tx(db: &rusqlite::Transaction<'_>) -> AnyResult<usize> {
     let ids: Vec<String> = {
         let mut s = db.prepare("SELECT id FROM network_calls WHERE state='claimed'")?;
@@ -883,6 +997,7 @@ pub(crate) fn recover_calls_tx(db: &rusqlite::Transaction<'_>) -> AnyResult<usiz
     }
     Ok(ids.len())
 }
+
 impl Store {
     pub(crate) fn network_preflight(
         &self,
@@ -890,10 +1005,19 @@ impl Store {
         purposes: &[NetworkPurpose],
         task: Option<&crate::domain::Task>,
     ) -> Result<(), NetworkError> {
-        checked_authorization(&self.db.lock().unwrap(), subject, purposes, task)
-            .map(|_| ())
-            .map_err(safe_error)
+        (|| -> AnyResult<()> {
+            let mut db = self
+                .db
+                .lock()
+                .map_err(|_| failure(NetworkErrorKind::Internal))?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            ensure_authorized_tx(&tx, subject, purposes, task)?;
+            tx.commit()?;
+            Ok(())
+        })()
+        .map_err(safe_error)
     }
+
     pub(crate) fn network_admit(
         &self,
         subject: &NetworkSubject,
@@ -902,6 +1026,7 @@ impl Store {
     ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
         self.network_admit_with_runtime_revision(subject, purpose, task, None)
     }
+
     pub(crate) fn network_admit_with_runtime_revision(
         &self,
         subject: &NetworkSubject,
@@ -910,18 +1035,25 @@ impl Store {
         revision: Option<u64>,
     ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
         (|| -> AnyResult<_> {
-            let mut db = self.db.lock().map_err(|_| failure(NetworkErrorKind::Internal))?;
+            let mut db = self
+                .db
+                .lock()
+                .map_err(|_| failure(NetworkErrorKind::Internal))?;
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            let operation = crate::execution_authority::current().context("network operation required")?;
-            self.execution_fence_for(&tx, &operation)?;
-            if let Some(expected) = revision {
-                let desired = crate::plugin_management::desired_for_tx(&tx, "builtin.provider-xpeach")?;
-                if !desired.enabled || desired.revision != expected {
-                    return Err(failure(NetworkErrorKind::Internal));
-                }
+            if let Some(expected) = revision
+                && let Ok(Some((enabled, rev))) = tx
+                    .query_row(
+                        "SELECT enabled, revision FROM plugin_desired WHERE plugin_id='builtin.provider-xpeach'",
+                        [],
+                        |r| Ok((r.get::<_, bool>(0)?, r.get::<_, u64>(1)?)),
+                    )
+                    .optional()
+                && (!enabled || rev != expected)
+            {
+                return Err(failure(NetworkErrorKind::Internal));
             }
-            let (grant, current) = checked_authorization(&tx, subject, &[purpose], task)?;
-            crate::budget::admit_check_tx(&tx,subject,purpose)?;
+            let (grant, current) = ensure_authorized_tx(&tx, subject, &[purpose], task)?;
+            crate::budget::admit_check_tx(&tx, subject, purpose)?;
             let target = validate_target(&current.snapshot.base_url, purpose)
                 .map_err(|_| failure(NetworkErrorKind::Invalid))?;
             let id = uuid::Uuid::new_v4().to_string();
@@ -953,10 +1085,6 @@ impl Store {
                 http_status: None,
                 result: None,
             };
-            #[cfg(test)]
-            crate::engine::crash_probe::block(&subject.key()?, "network-before-claim", &id);
-            #[cfg(test)]
-            if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-before-claim",&id);}
             tx.execute(
                 "INSERT INTO network_calls(rowid,id,authorization_id,task_id,state,receipt) VALUES (?5,?1,?2,?3,'claimed',?4)",
                 params![
@@ -967,52 +1095,24 @@ impl Store {
                     crate::budget::next_network_rowid(&tx)?
                 ],
             )?;
-            crate::budget::reserve_tx(&tx,&value)?;
+            crate::budget::reserve_tx(&tx, &value)?;
             if let Some(task) = task {
                 crate::store::task_event_tx(
                     &tx,
                     &task.id,
                     "network.call",
-                    json!({"call_id":id,"state":"claimed"}),
+                    json!({"call_id": id, "state": "claimed"}),
                 )?;
             }
-            #[cfg(test)]
-            let runtime_probe_path: Option<String> = if revision.is_some() {
-                Some(tx.query_row("SELECT file FROM pragma_database_list WHERE name='main'", [], |r| r.get(0))?)
-            } else {
-                None
-            };
-            #[cfg(test)]
-            if let Some(path) = &runtime_probe_path {
-                crate::engine::runtime_barrier::block(path, "runtime_provider_admit_before_commit");
-                crate::engine::crash_probe::block(path, "runtime_provider_admit_before_commit", "builtin.provider-xpeach");
-            }
-            operation.bind_network_call(&id)?;
-            self.commit_execution_tx(tx)?;
-            #[cfg(test)]
-            if let Some(path) = &runtime_probe_path {
-                crate::engine::runtime_barrier::block(path, "runtime_provider_admit_after_commit");
-                crate::engine::crash_probe::block(path, "runtime_provider_admit_after_commit", "builtin.provider-xpeach");
-            }
-            #[cfg(test)]
-            crate::engine::crash_probe::block(&subject.key()?, "network-after-claim", &id);
-            #[cfg(test)]
-            if purpose==NetworkPurpose::Completion {crate::engine::crash_probe::block(&subject.key()?,"budget-after-claim",&id);}
-            #[cfg(test)]
-            let injected_permit_failure = runtime_probe_path.as_ref()
-                .is_some_and(|path| crate::engine::runtime_barrier::take_permit_failure(path));
-            #[cfg(not(test))]
-            let injected_permit_failure = false;
-            let permit = if injected_permit_failure {
-                Err(crate::provider_transport::TransportError::Invalid)
-            } else { crate::provider_transport::ProviderPermit::new(
+            tx.commit()?;
+            drop(db);
+            let permit = crate::provider_transport::ProviderPermit::new(
                 target,
                 current.credential,
                 id,
                 model,
                 user,
-            ).map(|permit| permit.bind_operation(operation, self.authority.clone())) };
-            drop(db);
+            );
             match permit {
                 Ok(permit) => Ok((permit, value)),
                 Err(error) => Err(self
@@ -1023,9 +1123,11 @@ impl Store {
         })()
         .map_err(safe_error)
     }
+
     pub fn network_call(&self, id: &str) -> Result<CallReceipt, NetworkError> {
         receipt(&self.db.lock().unwrap(), id).map_err(safe_error)
     }
+
     pub fn network_calls_for_task(&self, task_id: &str) -> Result<Vec<CallReceipt>, NetworkError> {
         (|| -> AnyResult<_> {
             let db = self.db.lock().unwrap();
@@ -1047,6 +1149,7 @@ impl Store {
         })()
         .map_err(safe_error)
     }
+
     pub(crate) fn finish_network<T>(
         &self,
         value: CallReceipt,
@@ -1054,6 +1157,7 @@ impl Store {
     ) -> Result<NetworkResponse<T>, NetworkError> {
         self.finish_network_observed(value, result, None)
     }
+
     pub(crate) fn finish_completion(
         &self,
         value: CallReceipt,
@@ -1068,6 +1172,7 @@ impl Store {
             .map(|(_, usage)| crate::provider_usage::classify_usage(usage));
         self.finish_network_observed(value, result, observed)
     }
+
     fn finish_network_observed<T>(
         &self,
         mut value: CallReceipt,
@@ -1075,7 +1180,6 @@ impl Store {
         observed: Option<crate::provider_usage::UsageObservation>,
     ) -> Result<NetworkResponse<T>, NetworkError> {
         use crate::provider_transport::TransportError;
-        let transport_unknown = matches!(&result, Err(TransportError::Unknown));
         value.finished_at = Some(now());
         let kind = match &result {
             Ok(_) => {
@@ -1109,41 +1213,10 @@ impl Store {
                 Some(NetworkErrorKind::Unknown)
             }
         };
-        #[cfg(test)]
-        if value.purpose == NetworkPurpose::Completion {
-            crate::engine::crash_probe::block(
-                &value.subject.key()?,
-                "budget-before-finish",
-                &value.call_id,
-            );
-        }
         let saved = (|| -> AnyResult<()> {
-            let operation =
-                crate::execution_authority::current().context("network operation required")?;
-            // Reject a receipt from another original operation before sealing
-            // this scope; verify again under the transaction before writing.
-            operation.verify_network_call(&value.call_id)?;
-            if transport_unknown {
-                operation.seal_unknown();
-            }
             let mut db = self.db.lock().unwrap();
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            if transport_unknown {
-                self.execution_unknown_fence(&tx)?;
-            } else {
-                self.execution_settlement_fence(&tx)?;
-            }
-            operation.verify_network_call(&value.call_id)?;
             let old = receipt(&tx, &value.call_id)?;
-            if transport_unknown {
-                let mut original = value.clone();
-                original.state = CallState::Claimed;
-                original.finished_at = None;
-                original.success = None;
-                original.http_status = None;
-                original.result = None;
-                anyhow::ensure!(old == original, "unknown network claim changed");
-            }
             let managed = crate::budget::finish_tx(&tx, &value, observed)?;
             if let Some(record) = managed {
                 value = record;
@@ -1153,7 +1226,7 @@ impl Store {
             if old.state == CallState::Claimed {
                 save_receipt(&tx, &value)?;
             }
-            self.commit_execution_tx(tx)?;
+            tx.commit()?;
             Ok(())
         })();
         if let Err(error) = saved {
@@ -1230,7 +1303,7 @@ pub(crate) fn refresh_configuration_subjects_tx(tx: &Connection) -> AnyResult<()
             .collect::<rusqlite::Result<_>>()?;
         values
             .iter()
-            .map(|v| Ok(json::<SubjectSnapshot>(v)?.subject))
+            .map(|v| Ok(parse_json::<SubjectSnapshot>(v)?.subject))
             .collect::<AnyResult<_>>()?
     };
     for subject in subjects {
@@ -1251,17 +1324,97 @@ pub(crate) fn refresh_configuration_subjects_tx(tx: &Connection) -> AnyResult<()
                     )
                 }) =>
             {
-                tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
+                tx.execute(
+                    "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
+                    [subject.key()?],
+                )?;
             }
             Err(error)
                 if error
                     .downcast_ref::<crate::project_config::ProjectError>()
                     .is_some() =>
             {
-                tx.execute("UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",[subject.key()?])?;
+                tx.execute(
+                    "UPDATE network_authorizations SET state='stale' WHERE subject=?1 AND state='active'",
+                    [subject.key()?],
+                )?;
             }
             Err(error) => return Err(error),
         }
     }
     Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    use crate::{
+        domain::Route,
+        project_config::{ConfigureProject, ProjectConfig, RegisterProject},
+    };
+
+    #[test]
+    fn auto_authorizes_configured_route_and_honors_explicit_revoke() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(&dir.path().join("net.db")).unwrap();
+        store
+            .save_settings(&Settings {
+                workspace: dir.path().to_string_lossy().into(),
+                max_concurrency: 2,
+                routes: vec![Route {
+                    id: "openai".into(),
+                    name: "OpenAI".into(),
+                    base_url: "http://127.0.0.1:9/v1".into(),
+                    model: "gpt-4o".into(),
+                    max_tokens: 128,
+                    parallel_limit: 2,
+                    key_env: None,
+                }],
+                newapi: None,
+            })
+            .unwrap();
+        store.put_secret("route::openai", "test-api-key").unwrap();
+        let project = store
+            .register_project(RegisterProject {
+                name: "demo".into(),
+                root_path: dir.path().to_string_lossy().into(),
+                idempotency_key: "reg-1".into(),
+            })
+            .unwrap()
+            .id;
+        store
+            .configure_project(ConfigureProject {
+                project_id: project.clone(),
+                expected_revision: 1,
+                config: ProjectConfig {
+                    allowed_route_ids: vec!["openai".into()],
+                    default_route_id: Some("openai".into()),
+                    tools: false,
+                    write_scopes: vec![],
+                    allow_commands: false,
+                },
+            })
+            .unwrap();
+        let subject = NetworkSubject {
+            kind: NetworkSubjectKind::Route,
+            id: "openai".into(),
+            project_id: Some(project),
+        };
+
+        // Admits automatically without requiring manual binding_digest ceremony!
+        let (_, call) = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .unwrap();
+        let auth_id = call.authorization_id.clone();
+        store.finish_network(call, Ok(())).unwrap();
+
+        // Explicit revocation blocks subsequent calls.
+        let revoked = store.network_revoke(&auth_id).unwrap();
+        assert_eq!(revoked.state, AuthorizationState::Revoked);
+        let err = store
+            .network_admit(&subject, NetworkPurpose::Completion, None)
+            .err()
+            .unwrap();
+        assert_eq!(err.kind, NetworkErrorKind::Revoked);
+    }
 }

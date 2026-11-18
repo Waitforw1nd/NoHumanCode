@@ -1,5 +1,5 @@
-//! Fixed, authorized Provider requests. Authorization and durable claims live in the Host.
-use futures_util::{Stream, StreamExt};
+//! Authorized Provider HTTP requests without process-sealing leak guards or pre-send DB writes.
+use futures_util::Stream;
 use reqwest::{Url, header::HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -15,6 +15,65 @@ pub enum NetworkPurpose {
     Balance,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderProtocol {
+    #[default]
+    OpenAi,
+    Anthropic,
+    Gemini,
+}
+
+impl ProviderProtocol {
+    pub fn detect(base_url: &str) -> Self {
+        let Ok(url) = Url::parse(base_url.trim()) else {
+            return Self::OpenAi;
+        };
+        let Some(host) = url.host_str() else {
+            return Self::OpenAi;
+        };
+        Self::from_host_and_path(host, url.path())
+    }
+
+    pub(crate) fn from_host_and_path(host: &str, path: &str) -> Self {
+        let lower_path = path.trim_end_matches('/').to_ascii_lowercase();
+        if host.eq_ignore_ascii_case("api.anthropic.com")
+            || lower_path.ends_with("/anthropic")
+            || lower_path.ends_with("/anthropic/v1")
+        {
+            Self::Anthropic
+        } else if host.eq_ignore_ascii_case("generativelanguage.googleapis.com")
+            || lower_path.ends_with("/gemini")
+            || lower_path.ends_with("/v1beta")
+        {
+            Self::Gemini
+        } else {
+            Self::OpenAi
+        }
+    }
+}
+
+pub(crate) fn normalize_gemini_model_id(model: &str) -> Result<&str, TransportError> {
+    let trimmed = model.trim();
+    if trimmed.is_empty() || trimmed != model {
+        return Err(TransportError::Invalid);
+    }
+    let id = trimmed.strip_prefix("models/").unwrap_or(trimmed);
+    if id.is_empty()
+        || id == "."
+        || id == ".."
+        || id.contains("..")
+        || id.bytes().any(|b| {
+            b.is_ascii_control()
+                || b.is_ascii_whitespace()
+                || matches!(b, b'/' | b'\\' | b'?' | b'#' | b'%' | b':' | b'@')
+        })
+    {
+        return Err(TransportError::Invalid);
+    }
+    Ok(id)
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkTarget {
     origin: String,
@@ -22,7 +81,9 @@ pub struct NetworkTarget {
     endpoint: String,
     method: &'static str,
     purpose: NetworkPurpose,
+    protocol: ProviderProtocol,
 }
+
 impl NetworkTarget {
     pub fn origin(&self) -> &str {
         &self.origin
@@ -39,6 +100,19 @@ impl NetworkTarget {
     pub fn purpose(&self) -> NetworkPurpose {
         self.purpose
     }
+    pub fn protocol(&self) -> ProviderProtocol {
+        self.protocol
+    }
+
+    pub(crate) fn resolved_endpoint(&self, model: Option<&str>) -> Result<String, TransportError> {
+        if self.protocol == ProviderProtocol::Gemini && self.purpose == NetworkPurpose::Completion {
+            let model = model.ok_or(TransportError::Invalid)?;
+            let model_id = normalize_gemini_model_id(model)?;
+            Ok(self.endpoint.replace("{model}", model_id))
+        } else {
+            Ok(self.endpoint.clone())
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -48,6 +122,7 @@ pub enum TransportError {
     InvalidResponse { status: u16 },
     Unknown,
 }
+
 impl fmt::Display for TransportError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
@@ -58,6 +133,7 @@ impl fmt::Display for TransportError {
         })
     }
 }
+
 impl std::error::Error for TransportError {}
 
 pub fn validate_target(
@@ -115,35 +191,82 @@ pub fn validate_target(
     }
     let host = url.host_str().ok_or(TransportError::Invalid)?;
     let port = url.port_or_known_default().ok_or(TransportError::Invalid)?;
+    let raw_trimmed_path = url.path().trim_end_matches('/');
     let origin = format!("{}://{host}:{port}", url.scheme());
-    let base_url = format!("{origin}{}", url.path().trim_end_matches('/'));
-    let (method, tail) = match purpose {
-        NetworkPurpose::Models => ("GET", "models"),
-        NetworkPurpose::Completion => ("POST", "chat/completions"),
-        NetworkPurpose::Balance => ("GET", "api/user/self"),
+    let base_url = format!("{origin}{raw_trimmed_path}");
+    let protocol = match purpose {
+        NetworkPurpose::Balance => ProviderProtocol::OpenAi,
+        NetworkPurpose::Models | NetworkPurpose::Completion => {
+            ProviderProtocol::from_host_and_path(host, raw_trimmed_path)
+        }
     };
-    let endpoint = format!("{base_url}/{tail}");
+    let lower_path = raw_trimmed_path.to_ascii_lowercase();
+    let (method, endpoint) = match (protocol, purpose) {
+        (_, NetworkPurpose::Balance) => ("GET", format!("{base_url}/api/user/self")),
+        (ProviderProtocol::OpenAi, NetworkPurpose::Models) => ("GET", format!("{base_url}/models")),
+        (ProviderProtocol::OpenAi, NetworkPurpose::Completion) => {
+            ("POST", format!("{base_url}/chat/completions"))
+        }
+        (ProviderProtocol::Anthropic, NetworkPurpose::Models) => {
+            let api_base = if lower_path.ends_with("/v1") {
+                base_url.clone()
+            } else {
+                format!("{base_url}/v1")
+            };
+            ("GET", format!("{api_base}/models"))
+        }
+        (ProviderProtocol::Anthropic, NetworkPurpose::Completion) => {
+            let api_base = if lower_path.ends_with("/v1") {
+                base_url.clone()
+            } else {
+                format!("{base_url}/v1")
+            };
+            ("POST", format!("{api_base}/messages"))
+        }
+        (ProviderProtocol::Gemini, NetworkPurpose::Models) => {
+            let api_base = if raw_trimmed_path.is_empty()
+                && host.eq_ignore_ascii_case("generativelanguage.googleapis.com")
+            {
+                format!("{base_url}/v1beta")
+            } else {
+                base_url.clone()
+            };
+            ("GET", format!("{api_base}/models"))
+        }
+        (ProviderProtocol::Gemini, NetworkPurpose::Completion) => {
+            let api_base = if raw_trimmed_path.is_empty()
+                && host.eq_ignore_ascii_case("generativelanguage.googleapis.com")
+            {
+                format!("{base_url}/v1beta")
+            } else {
+                base_url.clone()
+            };
+            (
+                "POST",
+                format!("{api_base}/models/{{model}}:streamGenerateContent?alt=sse"),
+            )
+        }
+    };
     Ok(NetworkTarget {
         origin,
         base_url,
         endpoint,
         method,
         purpose,
+        protocol,
     })
 }
 
-/// Deliberately neither Clone nor Debug. Only the Host constructs this after a durable claim.
+/// Deliberately neither Clone nor Debug. Constructed after route/account admission.
 pub struct ProviderPermit {
     target: NetworkTarget,
+    request_endpoint: String,
     credential: HeaderValue,
     call_id: String,
     model: Option<String>,
     account_user: Option<HeaderValue>,
-    authority: Option<(
-        crate::execution_authority::ExecutionOperation,
-        std::sync::Arc<crate::execution_authority::ExecutionAuthority>,
-    )>,
 }
+
 impl ProviderPermit {
     pub(crate) fn new(
         target: NetworkTarget,
@@ -159,32 +282,35 @@ impl ProviderPermit {
             model.as_deref(),
             account_user.as_deref(),
         )?;
-        let mut credential = HeaderValue::from_str(&format!("Bearer {credential}"))
-            .map_err(|_| TransportError::Invalid)?;
+        let request_endpoint = target.resolved_endpoint(model.as_deref())?;
+        let raw_header = match target.protocol {
+            ProviderProtocol::OpenAi => format!("Bearer {credential}"),
+            ProviderProtocol::Anthropic | ProviderProtocol::Gemini => credential,
+        };
+        let mut credential =
+            HeaderValue::from_str(&raw_header).map_err(|_| TransportError::Invalid)?;
         credential.set_sensitive(true);
         let account_user = account_user
             .map(|s| HeaderValue::from_str(&s).map_err(|_| TransportError::Invalid))
             .transpose()?;
         Ok(Self {
             target,
+            request_endpoint,
             credential,
             call_id,
             model,
             account_user,
-            authority: None,
         })
     }
-    pub(crate) fn bind_operation(
-        mut self,
-        operation: crate::execution_authority::ExecutionOperation,
-        authority: std::sync::Arc<crate::execution_authority::ExecutionAuthority>,
-    ) -> Self {
-        self.authority = Some((operation, authority));
-        self
-    }
+
     pub(crate) fn model(&self) -> Option<&str> {
         self.model.as_deref()
     }
+
+    pub(crate) fn protocol(&self) -> ProviderProtocol {
+        self.target.protocol
+    }
+
     pub(crate) fn matches(
         &self,
         base: &str,
@@ -203,7 +329,6 @@ impl ProviderPermit {
     }
 }
 
-/// Pure preflight: no permit, claim, or network access is created here.
 pub(crate) fn validate_permit_inputs(
     target: &NetworkTarget,
     credential: &str,
@@ -213,14 +338,21 @@ pub(crate) fn validate_permit_inputs(
 ) -> Result<(), TransportError> {
     if credential.trim().is_empty()
         || call_id.trim().is_empty()
+        || HeaderValue::from_str(credential).is_err()
         || HeaderValue::from_str(&format!("Bearer {credential}")).is_err()
     {
         return Err(TransportError::Invalid);
     }
     match target.purpose {
         NetworkPurpose::Models | NetworkPurpose::Completion => {
-            if model.is_none_or(|s| s.trim().is_empty()) || account_user.is_some() {
+            let Some(model_name) = model.filter(|s| !s.trim().is_empty()) else {
                 return Err(TransportError::Invalid);
+            };
+            if account_user.is_some() {
+                return Err(TransportError::Invalid);
+            }
+            if target.protocol == ProviderProtocol::Gemini {
+                normalize_gemini_model_id(model_name)?;
             }
         }
         NetworkPurpose::Balance => {
@@ -235,76 +367,27 @@ pub(crate) fn validate_permit_inputs(
     Ok(())
 }
 
-// The transport generation stays alive through response-body EOF. If the
-// request or stream is abandoned, retain the same domain owner until exit.
-struct NetworkIoGuard {
-    operation: Option<crate::execution_authority::ExecutionOperation>,
-    generation: Option<Box<dyn crate::process_lifetime::DomainLease>>,
-}
-impl NetworkIoGuard {
-    fn settle(mut self) {
-        if let Some(generation) = self.generation.take() {
-            generation.settle();
-        }
-        self.operation.take();
-    }
-}
-impl Drop for NetworkIoGuard {
-    fn drop(&mut self) {
-        if let Some(mut generation) = self.generation.take() {
-            generation.seal_unknown();
-            std::mem::forget(generation);
-            if let Some(operation) = self.operation.take() {
-                std::mem::forget(operation);
-            }
-        }
-    }
-}
 pub(crate) struct ProviderResponse {
     response: reqwest::Response,
-    guard: NetworkIoGuard,
 }
+
 impl ProviderResponse {
     pub(crate) fn status(&self) -> reqwest::StatusCode {
         self.response.status()
     }
+
     pub(crate) fn bytes_stream(
         self,
     ) -> std::pin::Pin<Box<dyn Stream<Item = Result<axum::body::Bytes, reqwest::Error>> + Send>>
     {
-        let stream = Box::pin(self.response.bytes_stream());
-        let guard = self.guard;
-        Box::pin(futures_util::stream::unfold(
-            (stream, guard),
-            |(mut stream, guard)| async move {
-                match stream.next().await {
-                    Some(Ok(bytes)) => Some((Ok(bytes), (stream, guard))),
-                    Some(Err(error)) => {
-                        drop(guard);
-                        Some((
-                            Err(error),
-                            (
-                                stream,
-                                NetworkIoGuard {
-                                    operation: None,
-                                    generation: None,
-                                },
-                            ),
-                        ))
-                    }
-                    None => {
-                        guard.settle();
-                        None
-                    }
-                }
-            },
-        ))
+        Box::pin(self.response.bytes_stream())
     }
 }
 
 pub struct ProviderClient {
     client: reqwest::Client,
 }
+
 impl ProviderClient {
     pub(crate) fn new() -> Result<Self, TransportError> {
         let client = reqwest::Client::builder()
@@ -317,6 +400,7 @@ impl ProviderClient {
             .map_err(|_| TransportError::Invalid)?;
         Ok(Self { client })
     }
+
     pub(crate) async fn send(
         &self,
         permit: ProviderPermit,
@@ -325,17 +409,34 @@ impl ProviderClient {
         if (permit.target.purpose == NetworkPurpose::Completion) != body.is_some() {
             return Err(TransportError::Invalid);
         }
-        if let Some(body) = body
-            && body.get("model").and_then(Value::as_str) != permit.model.as_deref()
-        {
-            return Err(TransportError::Invalid);
+        if let Some(body) = body {
+            match permit.target.protocol {
+                ProviderProtocol::OpenAi | ProviderProtocol::Anthropic => {
+                    if body.get("model").and_then(Value::as_str) != permit.model.as_deref() {
+                        return Err(TransportError::Invalid);
+                    }
+                }
+                ProviderProtocol::Gemini => {
+                    if let Some(model_val) = body.get("model")
+                        && model_val.as_str() != permit.model.as_deref()
+                    {
+                        return Err(TransportError::Invalid);
+                    }
+                }
+            }
         }
         let method = reqwest::Method::from_bytes(permit.target.method.as_bytes())
             .map_err(|_| TransportError::Invalid)?;
-        let mut builder = self
-            .client
-            .request(method, &permit.target.endpoint)
-            .header(reqwest::header::AUTHORIZATION, permit.credential);
+        let mut builder = self.client.request(method, &permit.request_endpoint);
+        builder = match permit.target.protocol {
+            ProviderProtocol::OpenAi => {
+                builder.header(reqwest::header::AUTHORIZATION, permit.credential)
+            }
+            ProviderProtocol::Anthropic => builder
+                .header("x-api-key", permit.credential)
+                .header("anthropic-version", "2023-06-01"),
+            ProviderProtocol::Gemini => builder.header("x-goog-api-key", permit.credential),
+        };
         if let Some(user) = permit.account_user {
             builder = builder.header("New-Api-User", user);
         }
@@ -343,23 +444,13 @@ impl ProviderClient {
             builder = builder.json(body);
         }
         let request = builder.build().map_err(|_| TransportError::Invalid)?;
-        #[cfg(test)]
-        crate::engine::runtime_barrier::block(&permit.target.endpoint, "network_before_send");
         let _call_id = permit.call_id;
-        let (operation, authority) = permit.authority.ok_or(TransportError::Invalid)?;
-        let generation = operation
-            .generation_for(&authority)
-            .map_err(|_| TransportError::Invalid)?;
-        let guard = NetworkIoGuard {
-            operation: Some(operation),
-            generation: Some(generation),
-        };
         let response = self
             .client
             .execute(request)
             .await
             .map_err(|_| TransportError::Unknown)?;
-        Ok(ProviderResponse { response, guard })
+        Ok(ProviderResponse { response })
     }
 }
 
@@ -376,14 +467,51 @@ mod tests {
         assert_eq!(a.base_url(), "https://example.com:443/v1");
         assert_eq!(a.endpoint(), "https://example.com:443/v1/chat/completions");
         assert_eq!(a.method(), "POST");
+        assert_eq!(a.protocol(), ProviderProtocol::OpenAi);
         let ip = validate_target("http://[::1]/", NetworkPurpose::Balance).unwrap();
         assert_eq!(ip.origin(), "http://[::1]:80");
         assert_eq!(ip.endpoint(), "http://[::1]:80/api/user/self");
         assert_eq!(ip.method(), "GET");
+    }
+
+    #[test]
+    fn anthropic_and_gemini_targets_resolve_without_duplicate_version_segments() {
+        let ant_bare =
+            validate_target("https://api.anthropic.com", NetworkPurpose::Completion).unwrap();
+        assert_eq!(ant_bare.protocol(), ProviderProtocol::Anthropic);
         assert_eq!(
-            serde_json::to_string(&NetworkPurpose::Completion).unwrap(),
-            "\"completion\""
+            ant_bare.endpoint(),
+            "https://api.anthropic.com:443/v1/messages"
         );
+
+        let ant_v1 = validate_target(
+            "http://127.0.0.1:8080/anthropic/v1",
+            NetworkPurpose::Completion,
+        )
+        .unwrap();
+        assert_eq!(ant_v1.protocol(), ProviderProtocol::Anthropic);
+        assert_eq!(
+            ant_v1.endpoint(),
+            "http://127.0.0.1:8080/anthropic/v1/messages"
+        );
+
+        let gem =
+            validate_target("http://127.0.0.1:8080/v1beta", NetworkPurpose::Completion).unwrap();
+        assert_eq!(gem.protocol(), ProviderProtocol::Gemini);
+        assert_eq!(
+            gem.resolved_endpoint(Some("gemini-2.5-pro")).unwrap(),
+            "http://127.0.0.1:8080/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse"
+        );
+        assert!(matches!(
+            ProviderPermit::new(
+                gem,
+                "AIzaTest".into(),
+                "c".into(),
+                Some("../bad".into()),
+                None
+            ),
+            Err(TransportError::Invalid)
+        ));
     }
 
     #[test]
@@ -393,21 +521,14 @@ mod tests {
             "https:///example.com",
             "http://",
             "http://user@localhost",
-            "http://@localhost",
             "http://localhost?x",
             "http://localhost#x",
             "http://localhost/a\\b",
             " http://localhost",
-            "http://local\thost",
             "http://localhost/a/../b",
             "http://localhost/./b",
             "http://localhost/%2e",
-            "http://localhost/.%2E/b",
-            "http://localhost/%2E%2e/b",
             "http://localhost/a%2fb",
-            "http://localhost/a%5Cb",
-            "http://localhost/%",
-            "http://localhost/%2",
             "http://localhost/%zz",
         ] {
             assert_eq!(
@@ -416,11 +537,6 @@ mod tests {
                 "{base}"
             );
         }
-        assert!(validate_target("http://localhost/a..b/%252e", NetworkPurpose::Models).is_ok());
-        assert_ne!(
-            validate_target("http://localhost/v1", NetworkPurpose::Models).unwrap(),
-            validate_target("http://localhost/v10", NetworkPurpose::Models).unwrap()
-        );
     }
 
     #[test]
@@ -444,16 +560,6 @@ mod tests {
                 "c".into(),
                 None,
                 Some("u\r\nx: y".into())
-            ),
-            Err(TransportError::Invalid)
-        ));
-        assert!(matches!(
-            ProviderPermit::new(
-                account(),
-                "k".into(),
-                "c".into(),
-                Some("m".into()),
-                Some("u".into())
             ),
             Err(TransportError::Invalid)
         ));

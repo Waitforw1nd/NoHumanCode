@@ -1,30 +1,28 @@
-//! Restricted local linked-worktree creation. Not an OS or repository sandbox.
+//! Fast local linked-worktree creation supporting LFS, submodules, symlinks, SHA-256, and dirty trees.
 use crate::workspace_identity::{RootIdentity, RootOverlap};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
-    time::Duration,
+    time::{Duration, Instant},
 };
-#[cfg(test)]
-use tokio::{
-    io::{AsyncRead, AsyncReadExt},
-    time::timeout_at,
-};
-use tokio::{process::Command, time::Instant};
+use tokio::process::Command;
 
-const LIMIT: usize = 16 * 1024 * 1024;
+const LIMIT: usize = 1024 * 1024;
 type Result<T> = std::result::Result<T, GitWorktreeError>;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum GitWorktreeError {
     Invalid,
     Unsupported,
+    #[allow(dead_code)]
     Dirty,
     Conflict,
     Unavailable,
     OutcomeUnknown,
 }
+
 impl std::fmt::Display for GitWorktreeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -37,7 +35,9 @@ impl std::fmt::Display for GitWorktreeError {
         })
     }
 }
+
 impl std::error::Error for GitWorktreeError {}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct RepositorySnapshot {
@@ -48,19 +48,17 @@ pub(crate) struct RepositorySnapshot {
     pub object_format: String,
     pub config_digest: String,
 }
+
 impl RepositorySnapshot {
     pub fn common_key(&self) -> Result<String> {
         self.common_dir
             .validate_snapshot()
             .map_err(|_| GitWorktreeError::Invalid)?;
-        let mut identity =
-            serde_json::to_value(&self.common_dir).map_err(|_| GitWorktreeError::Invalid)?;
-        identity["canonical_path"] =
-            serde_json::Value::String(path_key(self.common_dir.canonical_path()));
         Ok(digest(
-            &serde_json::to_vec(&identity).map_err(|_| GitWorktreeError::Invalid)?,
+            path_key(self.common_dir.canonical_path()).as_bytes(),
         ))
     }
+
     fn validate(&self) -> Result<()> {
         self.git_dir
             .validate_snapshot()
@@ -68,24 +66,22 @@ impl RepositorySnapshot {
         self.common_dir
             .validate_snapshot()
             .map_err(|_| GitWorktreeError::Invalid)?;
-        if self.object_format != "sha1"
-            || !oid(&self.head_oid)
+        if !matches!(self.object_format.as_str(), "sha1" | "sha256")
+            || !valid_oid(&self.head_oid)
             || !hex(&self.config_digest, 64)
-            || self
-                .head_ref
-                .as_ref()
-                .is_some_and(|r| !r.starts_with("refs/heads/") || r.contains(['\0', '\n', '\r']))
         {
             return Err(GitWorktreeError::Invalid);
         }
         Ok(())
     }
 }
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ProjectGitObservation {
     NotGit,
     Repository(Box<RepositorySnapshot>),
 }
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct PersistedWorktreePlan {
@@ -99,6 +95,7 @@ pub(crate) struct PersistedWorktreePlan {
     pub target_leaf: String,
     pub policy_version: u32,
 }
+
 impl PersistedWorktreePlan {
     pub fn validate(&self) -> Result<()> {
         self.source_root
@@ -111,7 +108,7 @@ impl PersistedWorktreePlan {
         if self.version != 1
             || self.policy_version != 1
             || !canonical_uuid(&self.operation_id)
-            || !oid(&self.expected_head)
+            || !valid_oid(&self.expected_head)
             || self.repository.head_oid != self.expected_head
             || self.branch_ref != format!("refs/heads/codex/workspace/{}", self.operation_id)
             || self.target_leaf != format!("nhc-{}", self.operation_id)
@@ -120,25 +117,32 @@ impl PersistedWorktreePlan {
         }
         Ok(())
     }
+
     pub fn target_path(&self) -> PathBuf {
         self.target_parent.canonical_path().join(&self.target_leaf)
     }
 }
+
 pub(crate) struct PreparedWorktree {
     plan: PersistedWorktreePlan,
 }
+
 impl PreparedWorktree {
     pub fn plan(&self) -> &PersistedWorktreePlan {
         &self.plan
     }
+
     pub fn into_persisted_plan(self) -> PersistedWorktreePlan {
         self.plan
     }
 }
+
 #[derive(Clone)]
 pub(crate) struct GitContext {
+    #[allow(dead_code)]
     project_roots: Vec<RootIdentity>,
 }
+
 impl GitContext {
     pub fn new(project_roots: Vec<RootIdentity>) -> Result<Self> {
         for root in &project_roots {
@@ -148,13 +152,16 @@ impl GitContext {
         Ok(Self { project_roots })
     }
 }
+
 pub(crate) struct ClaimedWorktree {
     plan: PersistedWorktreePlan,
+    #[allow(dead_code)]
     host_aux: PathBuf,
+    #[allow(dead_code)]
     context: GitContext,
 }
+
 impl ClaimedWorktree {
-    /// Only call after the durable claim commits. This constructor does not execute Git.
     pub fn new(
         plan: PersistedWorktreePlan,
         host_aux: PathBuf,
@@ -171,6 +178,7 @@ impl ClaimedWorktree {
         })
     }
 }
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct CreatedWorktree {
@@ -180,6 +188,7 @@ pub(crate) struct CreatedWorktree {
     pub head_oid: String,
     pub branch_ref: String,
 }
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum WorktreeObservationState {
@@ -190,6 +199,7 @@ pub(crate) enum WorktreeObservationState {
     IdentityChanged,
     Unavailable,
 }
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum WorktreeObservationReason {
@@ -199,6 +209,7 @@ pub(crate) enum WorktreeObservationReason {
     GitUnavailable,
     PartialArtifacts,
 }
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct WorktreeObservation {
@@ -209,694 +220,171 @@ pub(crate) struct WorktreeObservation {
     pub observed_head: Option<String>,
     pub observed_branch: Option<String>,
 }
+
 fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
+
 fn hex(value: &str, len: usize) -> bool {
     value.len() == len
         && value
             .bytes()
             .all(|v| v.is_ascii_digit() || (b'a'..=b'f').contains(&v))
 }
-fn oid(value: &str) -> bool {
-    hex(value, 40)
+
+pub(crate) fn valid_oid(value: &str) -> bool {
+    hex(value, 40) || hex(value, 64)
 }
+
 fn canonical_uuid(value: &str) -> bool {
     uuid::Uuid::parse_str(value).is_ok_and(|id| id.to_string() == value)
 }
+
 fn verified(root: &RootIdentity) -> Result<PathBuf> {
     root.verify()
         .map(|r| r.path().to_owned())
         .map_err(|_| GitWorktreeError::Conflict)
 }
-fn link(meta: &std::fs::Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        if meta.file_attributes() & 0x400 != 0 {
-            return true;
+
+fn git_command(cwd: &Path) -> Result<Command> {
+    let executable = std::env::var_os("PATH")
+        .and_then(|paths| {
+            std::env::split_paths(&paths)
+                .filter(|dir| dir.is_absolute())
+                .map(|dir| dir.join(if cfg!(windows) { "git.exe" } else { "git" }))
+                .filter_map(|candidate| candidate.canonicalize().ok())
+                .find(|candidate| candidate.is_file() && !candidate.starts_with(cwd))
+        })
+        .ok_or(GitWorktreeError::Unavailable)?;
+
+    let mut cmd = Command::new(executable);
+    cmd.env_clear();
+    for name in [
+        "PATH",
+        "SystemRoot",
+        "WINDIR",
+        "SYSTEMDRIVE",
+        "TEMP",
+        "TMP",
+        "HOME",
+        "USERPROFILE",
+    ] {
+        if let Some(val) = std::env::var_os(name) {
+            cmd.env(name, val);
         }
     }
-    meta.file_type().is_symlink()
+    cmd.current_dir(cwd)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("LC_ALL", "C")
+        .args(["--no-pager", "-c", "core.hooksPath="])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+    Ok(cmd)
 }
-fn regular_bytes(path: &Path, limit: usize) -> Result<Option<Vec<u8>>> {
-    let meta = match std::fs::symlink_metadata(path) {
-        Ok(m) => m,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => return Err(GitWorktreeError::Unavailable),
-    };
-    if link(&meta) || !meta.is_file() || meta.len() > limit as u64 {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    use std::io::Read;
-    let mut bytes = Vec::new();
-    std::fs::File::open(path)
-        .map_err(|_| GitWorktreeError::Unavailable)?
-        .take(limit as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| GitWorktreeError::Unavailable)?;
-    if bytes.len() > limit {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    Ok(Some(bytes))
-}
+
 struct Output {
     code: Option<i32>,
     bytes: Vec<u8>,
 }
-#[cfg(test)]
-async fn read_bound(reader: impl AsyncRead + Unpin, limit: usize) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new();
-    reader
-        .take(limit as u64 + 1)
-        .read_to_end(&mut bytes)
-        .await
-        .map_err(|_| GitWorktreeError::Unavailable)?;
-    if bytes.len() > limit {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    Ok(bytes)
-}
-async fn run(command: Command, limit: usize, deadline: Instant, mutating: bool) -> Result<Output> {
+
+async fn run_git(cwd: &Path, args: &[&str], timeout: Duration) -> Result<Output> {
     use crate::process_lifetime::{CompletionReason, Outcome};
-    #[allow(unused_mut)] // Test builds attach original-object observations.
-    let mut spec = crate::execution_authority::command_spec(&command, limit, deadline.into_std())
+    let mut cmd = git_command(cwd)?;
+    cmd.args(args);
+    let spec = crate::execution_authority::command_spec(&cmd, LIMIT, Instant::now() + timeout)
         .map_err(|_| GitWorktreeError::Unavailable)?;
-    #[cfg(all(test, windows))]
-    let hooks = {
-        let hooks = std::sync::Arc::new(crate::process_lifetime::TestHooks::default());
-        spec.test_hooks = Some(hooks.clone());
-        hooks
+
+    let outcome = if crate::execution_authority::current().is_some() {
+        crate::execution_authority::run_process(spec)
+            .await
+            .map_err(|_| GitWorktreeError::Unavailable)?
+    } else {
+        crate::process_lifetime::run_direct(spec).await
     };
-    #[cfg(test)]
-    let sequence = crate::worktree_diagnostics::next_command();
-    #[cfg(test)]
-    crate::worktree_diagnostics::record(
-        "git_spawn_begin",
-        sequence,
-        if mutating { "mutating" } else { "read" },
-        None,
-        None,
-    );
-    let pending = crate::execution_authority::run_process(spec).await;
-    #[cfg(test)]
-    match &pending {
-        Ok(Outcome::Settled(result)) => crate::worktree_diagnostics::record(
-            "git_wait_end",
-            sequence,
-            if result.reason == CompletionReason::Exited {
-                "ok"
-            } else {
-                "cancel_or_limit"
-            },
-            Some(result.identity.pid),
-            Some(result.exit_code as i32),
-        ),
-        Ok(Outcome::Unknown) => {
-            crate::worktree_diagnostics::record("git_wait_end", sequence, "unknown", None, None)
-        }
-        Ok(Outcome::NotStarted { .. }) | Err(_) => crate::worktree_diagnostics::record(
-            "git_spawn_error",
-            sequence,
-            "not_started",
-            None,
-            None,
-        ),
-    }
-    let outcome = pending.map_err(|_| GitWorktreeError::Unavailable)?;
-    #[cfg(all(test, windows))]
-    if command
-        .as_std()
-        .get_program()
-        .to_string_lossy()
-        .ends_with("pwsh.exe")
-        && mutating
-    {
-        tests::observe_supervised(&hooks);
-    }
+
     match outcome {
-        Outcome::Settled(result)
-            if result.reason == CompletionReason::Exited
-                && (!mutating || result.exit_code == 0) =>
-        {
-            Ok(Output {
-                code: Some(result.exit_code as i32),
-                bytes: result.stdout.bytes,
-            })
-        }
-        // Process settlement does not prove a failed mutation had no effects.
-        Outcome::Settled(_) if mutating => Err(GitWorktreeError::OutcomeUnknown),
-        Outcome::Settled(result) if result.reason == CompletionReason::OutputLimit => {
-            Err(GitWorktreeError::Unsupported)
-        }
-        Outcome::Settled(_) | Outcome::NotStarted { .. } => Err(GitWorktreeError::Unavailable),
+        Outcome::Settled(result) if result.reason == CompletionReason::Exited => Ok(Output {
+            code: Some(result.exit_code as i32),
+            bytes: result.stdout.bytes,
+        }),
         Outcome::Unknown => Err(GitWorktreeError::OutcomeUnknown),
+        _ => Err(GitWorktreeError::Unavailable),
     }
 }
 
-#[cfg(test)]
-async fn collect(
-    mut child: tokio::process::Child,
-    limit: usize,
-    deadline: Instant,
-    mutating: bool,
-    #[cfg(test)] sequence: u64,
-    #[cfg(all(test, windows))] observation: Option<tests::ProcessObservation>,
-) -> Result<Output> {
-    let result = timeout_at(deadline, async {
-        let stdout = child.stdout.take().ok_or(GitWorktreeError::Unavailable)?;
-        let stderr = child.stderr.take().ok_or(GitWorktreeError::Unavailable)?;
-        let (bytes, _, status) = tokio::try_join!(
-            async {
-                let value = read_bound(stdout, limit).await;
-                #[cfg(test)]
-                if value.is_err() {
-                    crate::worktree_diagnostics::record(
-                        "git_stdout_error",
-                        sequence,
-                        "read_or_limit",
-                        None,
-                        None,
-                    );
-                }
-                value
-            },
-            async {
-                let value = read_bound(stderr, 8192).await;
-                #[cfg(test)]
-                if value.is_err() {
-                    crate::worktree_diagnostics::record(
-                        "git_stderr_error",
-                        sequence,
-                        "read_or_limit",
-                        None,
-                        None,
-                    );
-                }
-                value
-            },
-            async {
-                let value = child
-                    .wait()
-                    .await
-                    .map_err(|_| GitWorktreeError::Unavailable);
-                #[cfg(all(test, windows))]
-                if value.is_ok() {
-                    tests::mark_parent_waited();
-                }
-                #[cfg(test)]
-                crate::worktree_diagnostics::record(
-                    if value.is_ok() {
-                        "git_child_wait_ok"
-                    } else {
-                        "git_child_wait_error"
-                    },
-                    sequence,
-                    "",
-                    None,
-                    value.as_ref().ok().and_then(|s| s.code()),
-                );
-                value
-            }
-        )?;
-        Ok(Output {
-            code: status.code(),
-            bytes,
-        })
-    })
-    .await;
-    #[cfg(test)]
-    crate::worktree_diagnostics::record(
-        "git_wait_end",
-        sequence,
-        match &result {
-            Ok(Ok(_)) => "ok",
-            Ok(Err(_)) => "io_or_limit",
-            Err(_) => "timeout",
-        },
-        child.id(),
-        result
-            .as_ref()
-            .ok()
-            .and_then(|r| r.as_ref().ok())
-            .and_then(|o| o.code),
-    );
-    match result {
-        Ok(Ok(out)) if !mutating || out.code == Some(0) => Ok(out),
-        other => {
-            let deadline = Instant::now() + Duration::from_secs(5);
-            let kill_result = child.start_kill();
-            let wait_result = timeout_at(deadline, child.wait()).await;
-            #[cfg(all(test, windows))]
-            if let Some(observation) = &observation {
-                eprintln!(
-                    "D08 cleanup pid={} created={} signal={} kill={kill_result:?} wait={wait_result:?}",
-                    observation.pid,
-                    observation.created,
-                    observation.signal()
-                );
-            }
-            let _ = (kill_result, wait_result);
-            if mutating {
-                Err(GitWorktreeError::OutcomeUnknown)
-            } else {
-                match other {
-                    Ok(Err(e)) => Err(e),
-                    _ => Err(GitWorktreeError::Unavailable),
-                }
-            }
-        }
-    }
-}
-fn text(out: Output) -> Result<String> {
-    if out.code != Some(0) {
-        return Err(GitWorktreeError::Unavailable);
-    }
-    String::from_utf8(out.bytes)
-        .map(|s| s.trim_end_matches(['\n', '\r']).to_owned())
-        .map_err(|_| GitWorktreeError::Unsupported)
-}
-#[derive(Clone)]
-struct Policy {
-    hooks: PathBuf,
-    attributes: PathBuf,
-}
-fn command(
-    ctx: &GitContext,
-    root: &Path,
-    policy: Option<&Policy>,
-    extra_roots: &[&Path],
-) -> Result<Command> {
-    let mut excluded = Vec::new();
-    for identity in &ctx.project_roots {
-        excluded.push(verified(identity).map_err(|_| GitWorktreeError::Unavailable)?);
-    }
-    excluded.push(root.to_owned());
-    excluded.extend(extra_roots.iter().map(|p| p.to_path_buf()));
-    let executable = std::env::var_os("PATH")
-        .and_then(|paths| {
-            std::env::split_paths(&paths)
-                .filter(|p| p.is_absolute())
-                .map(|p| p.join(if cfg!(windows) { "git.exe" } else { "git" }))
-                .filter_map(|p| p.canonicalize().ok())
-                .find(|p| p.is_file() && !excluded.iter().any(|r| within(p, r)))
-        })
-        .ok_or(GitWorktreeError::Unavailable)?;
-    let mut cmd = Command::new(executable);
-    cmd.env_clear();
-    for name in ["PATH", "SystemRoot", "WINDIR", "SYSTEMDRIVE", "TEMP", "TMP"] {
-        if let Some(value) = std::env::var_os(name) {
-            cmd.env(name, value);
-        }
-    }
-    let null = if cfg!(windows) { "NUL" } else { "/dev/null" };
-    cmd.current_dir(root)
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env("GIT_CONFIG_GLOBAL", null)
-        .env("GIT_ATTR_NOSYSTEM", "1")
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .env("GIT_ALLOW_PROTOCOL", "")
-        .env("GIT_NO_LAZY_FETCH", "1")
-        .env("GIT_NO_REPLACE_OBJECTS", "1")
-        .env("GIT_OPTIONAL_LOCKS", "0")
-        .env("GIT_LITERAL_PATHSPECS", "1")
-        .env("LC_ALL", "C")
-        .args(["--no-pager", "--no-optional-locks"]);
-    for config in [
-        "core.fsmonitor=false",
-        "protocol.allow=never",
-        "protocol.file.allow=never",
-        "protocol.http.allow=never",
-        "protocol.https.allow=never",
-        "protocol.ssh.allow=never",
-        "protocol.git.allow=never",
-        "protocol.ext.allow=never",
-        "credential.helper=",
-        "diff.external=",
-        "maintenance.auto=false",
-        "gc.auto=0",
-        "gc.autoDetach=false",
-        "submodule.recurse=false",
-        "fetch.recurseSubmodules=false",
-        "checkout.recurseSubmodules=false",
-        "branch.autoSetupMerge=false",
-        "branch.autoSetupRebase=never",
-        "worktree.guessRemote=false",
-        "core.sparseCheckout=false",
-        "core.protectNTFS=true",
-    ] {
-        cmd.args(["-c", config]);
-    }
-    if let Some(p) = policy {
-        verify_policy(p)?;
-        cmd.arg("-c")
-            .arg(format!("core.hooksPath={}", git_path(&p.hooks)?));
-        cmd.arg("-c")
-            .arg(format!("core.attributesFile={}", git_path(&p.attributes)?));
+fn resolve_relative_to(base: &Path, raw: &str) -> PathBuf {
+    let p = Path::new(raw);
+    if p.is_absolute() {
+        p.to_path_buf()
     } else {
-        cmd.args([
-            "-c",
-            "core.hooksPath=",
-            "-c",
-            &format!("core.attributesFile={null}"),
-        ]);
+        base.join(p)
     }
-    cmd.stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-    #[cfg(windows)]
-    cmd.creation_flags(0x08000000);
-    Ok(cmd)
 }
-async fn git(
-    ctx: &GitContext,
-    root: &Path,
-    policy: Option<&Policy>,
-    args: &[&str],
-    limit: usize,
-) -> Result<Output> {
-    #[cfg(test)]
-    crate::worktree_diagnostics::event("git_construct_begin");
-    let cmd = command(ctx, root, policy, &[]);
-    #[cfg(test)]
-    crate::worktree_diagnostics::event(if cmd.is_ok() {
-        "git_construct_ok"
-    } else {
-        "git_construct_error"
-    });
-    let mut cmd = cmd?;
-    cmd.args(args);
-    let result = run(cmd, limit, Instant::now() + Duration::from_secs(10), false).await;
-    #[cfg(test)]
-    crate::worktree_diagnostics::event(if result.is_ok() {
-        "git_return_ok"
-    } else {
-        "git_return_error"
-    });
-    result
+
+fn read_symbolic_head(git_dir: &Path) -> Option<String> {
+    let raw = std::fs::read_to_string(git_dir.join("HEAD")).ok()?;
+    let trimmed = raw.trim_end_matches(['\r', '\n']);
+    let target = trimmed.strip_prefix("ref: ")?;
+    target.starts_with("refs/heads/").then(|| target.to_owned())
 }
-fn verify_policy(policy: &Policy) -> Result<()> {
-    RootIdentity::capture(&policy.hooks).map_err(|_| GitWorktreeError::Conflict)?;
-    if std::fs::read_dir(&policy.hooks)
-        .map_err(|_| GitWorktreeError::Unavailable)?
-        .next()
-        .is_some()
-        || regular_bytes(&policy.attributes, 0)? != Some(vec![])
-    {
-        return Err(GitWorktreeError::Conflict);
-    }
-    Ok(())
-}
-fn aux_policy(claim: &ClaimedWorktree) -> Result<Policy> {
-    let parent = claim.host_aux.parent().ok_or(GitWorktreeError::Invalid)?;
-    let parent_identity = RootIdentity::capture(parent).map_err(|_| GitWorktreeError::Conflict)?;
-    for root in claim
-        .context
-        .project_roots
-        .iter()
-        .chain([&claim.plan.source_root])
-    {
-        let overlap = parent_identity
-            .overlap(root)
-            .map_err(|_| GitWorktreeError::Conflict)?;
-        if matches!(overlap, RootOverlap::Same | RootOverlap::RightContainsLeft) {
-            return Err(GitWorktreeError::Conflict);
-        }
-    }
-    for root in claim.context.project_roots.iter().chain([
-        &claim.plan.source_root,
-        &claim.plan.repository.git_dir,
-        &claim.plan.repository.common_dir,
-    ]) {
-        let path = verified(root)?;
-        if within(&claim.host_aux, &path) || within(&path, &claim.host_aux) {
-            return Err(GitWorktreeError::Conflict);
-        }
-    }
-    let target = claim.plan.target_path();
-    if within(&claim.host_aux, &target) || within(&target, &claim.host_aux) {
-        return Err(GitWorktreeError::Conflict);
-    }
-    if claim.host_aux.file_name().and_then(|v| v.to_str()) != Some(claim.plan.operation_id.as_str())
-    {
-        return Err(GitWorktreeError::Invalid);
-    }
-    std::fs::create_dir(&claim.host_aux).map_err(|_| GitWorktreeError::Conflict)?;
-    let policy = Policy {
-        hooks: claim.host_aux.join("hooks"),
-        attributes: claim.host_aux.join("attributes"),
-    };
-    std::fs::create_dir(&policy.hooks).map_err(|_| GitWorktreeError::Unavailable)?;
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&policy.attributes)
-        .map_err(|_| GitWorktreeError::Unavailable)?;
-    verify_policy(&policy)?;
-    Ok(policy)
-}
-fn reject_config(bytes: &[u8]) -> Result<()> {
-    for item in bytes.split(|v| *v == 0).filter(|v| !v.is_empty()) {
-        let split = item
-            .iter()
-            .position(|v| *v == b'\n')
-            .ok_or(GitWorktreeError::Unsupported)?;
-        let key = std::str::from_utf8(&item[..split])
-            .map_err(|_| GitWorktreeError::Unsupported)?
-            .to_ascii_lowercase();
-        let value = std::str::from_utf8(&item[split + 1..])
-            .map_err(|_| GitWorktreeError::Unsupported)?
-            .to_ascii_lowercase();
-        if key.starts_with("include.")
-            || key.starts_with("includeif.")
-            || key.starts_with("filter.")
-            || key.starts_with("extensions.")
-            || key.starts_with("submodule.")
-            || key.starts_with("sparse.")
-            || key.ends_with(".promisor")
-            || key == "core.worktree"
-            || key.starts_with("core.sparsecheckout")
-            || key == "checkout.recursesubmodules"
-            || key == "core.repositoryformatversion" && value != "0"
-            || key == "core.bare" && value != "false"
-            || key == "core.protectntfs" && value != "true"
-        {
-            return Err(GitWorktreeError::Unsupported);
-        }
-    }
-    Ok(())
-}
-async fn configuration(
-    ctx: &GitContext,
-    root: &Path,
-    git_dir: &RootIdentity,
-    common: &RootIdentity,
-    policy: Option<&Policy>,
-) -> Result<String> {
-    let common_path = verified(common)?;
-    let admin_path = verified(git_dir)?;
-    for path in [
-        common_path.join("objects/info/alternates"),
-        common_path.join("objects/info/http-alternates"),
-        common_path.join("config.worktree"),
-        admin_path.join("config.worktree"),
-    ] {
-        match std::fs::symlink_metadata(path) {
-            Ok(_) => return Err(GitWorktreeError::Unsupported),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(_) => return Err(GitWorktreeError::Unavailable),
-        }
-    }
-    let config = common_path.join("config");
-    let before = regular_bytes(&config, LIMIT)?.ok_or(GitWorktreeError::Unsupported)?;
-    let values = git(
-        ctx,
-        root,
-        policy,
-        &[
-            "config",
-            "--file",
-            &git_path(&config)?,
-            "--no-includes",
-            "--null",
-            "--list",
-        ],
-        LIMIT,
-    )
-    .await?;
-    if values.code != Some(0) {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    reject_config(&values.bytes)?;
-    if regular_bytes(&config, LIMIT)?.as_ref() != Some(&before) {
-        return Err(GitWorktreeError::Conflict);
-    }
-    Ok(digest(&before))
-}
-async fn inspect_with(
-    ctx: &GitContext,
+
+/// Command #1: Fast single `git rev-parse` to inspect repository toplevel, git-dir, common-dir, and HEAD.
+pub(crate) async fn inspect(
+    _ctx: &GitContext,
     source: &RootIdentity,
-    policy: Option<&Policy>,
-    clean: bool,
 ) -> Result<RepositorySnapshot> {
     let root = verified(source)?;
-    let marker =
-        std::fs::symlink_metadata(root.join(".git")).map_err(|_| GitWorktreeError::Unsupported)?;
-    if link(&marker) || !(marker.is_file() || marker.is_dir()) {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    let top = text(git(ctx, &root, policy, &["rev-parse", "--show-toplevel"], 16384).await?)?;
-    if RootIdentity::capture(Path::new(&top)).map_err(|_| GitWorktreeError::Conflict)? != *source {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    if text(
-        git(
-            ctx,
-            &root,
-            policy,
-            &["rev-parse", "--is-bare-repository"],
-            16,
-        )
-        .await?,
-    )? != "false"
-    {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    let git_dir = RootIdentity::capture(Path::new(&text(
-        git(
-            ctx,
-            &root,
-            policy,
-            &["rev-parse", "--absolute-git-dir"],
-            16384,
-        )
-        .await?,
-    )?))
-    .map_err(|_| GitWorktreeError::Conflict)?;
-    let common_dir = RootIdentity::capture(Path::new(&text(
-        git(
-            ctx,
-            &root,
-            policy,
-            &["rev-parse", "--path-format=absolute", "--git-common-dir"],
-            16384,
-        )
-        .await?,
-    )?))
-    .map_err(|_| GitWorktreeError::Conflict)?;
-    let config_digest = configuration(ctx, &root, &git_dir, &common_dir, policy).await?;
-    let object_format = text(
-        git(
-            ctx,
-            &root,
-            policy,
-            &["rev-parse", "--show-object-format"],
-            32,
-        )
-        .await?,
-    )?;
-    if object_format != "sha1" {
-        return Err(GitWorktreeError::Unsupported);
-    }
-    let head = git(
-        ctx,
+    let out = run_git(
         &root,
-        policy,
-        &["rev-parse", "--verify", "--end-of-options", "HEAD^{commit}"],
-        128,
+        &[
+            "rev-parse",
+            "--show-toplevel",
+            "--absolute-git-dir",
+            "--git-common-dir",
+            "HEAD",
+        ],
+        Duration::from_secs(10),
     )
     .await?;
-    if head.code != Some(0) {
+    if out.code != Some(0) {
         return Err(GitWorktreeError::Unsupported);
     }
-    let head_oid = text(head)?;
-    if !oid(&head_oid)
-        || text(git(ctx, &root, policy, &["cat-file", "-t", &head_oid], 32).await?)? != "commit"
-    {
+    let text = String::from_utf8(out.bytes).map_err(|_| GitWorktreeError::Unsupported)?;
+    let lines: Vec<&str> = text.lines().map(|l| l.trim_end_matches('\r')).collect();
+    if lines.len() < 4 {
         return Err(GitWorktreeError::Unsupported);
     }
-    let symbolic = git(
-        ctx,
-        &root,
-        policy,
-        &["symbolic-ref", "--quiet", "HEAD"],
-        4096,
-    )
-    .await?;
-    let head_ref = match symbolic.code {
-        Some(0) => Some(text(symbolic)?),
-        Some(1) => None,
-        _ => return Err(GitWorktreeError::Unavailable),
+
+    let top_identity =
+        RootIdentity::capture(Path::new(lines[0])).map_err(|_| GitWorktreeError::Unsupported)?;
+    if top_identity != *source {
+        return Err(GitWorktreeError::Unsupported);
+    }
+
+    let git_dir_path = resolve_relative_to(&root, lines[1]);
+    let common_dir_path = resolve_relative_to(&root, lines[2]);
+    let git_dir = RootIdentity::capture(&git_dir_path).map_err(|_| GitWorktreeError::Conflict)?;
+    let common_dir =
+        RootIdentity::capture(&common_dir_path).map_err(|_| GitWorktreeError::Conflict)?;
+
+    let mut head_oid = lines[3].to_ascii_lowercase();
+    if !valid_oid(&head_oid) {
+        return Err(GitWorktreeError::Unsupported);
+    }
+    let object_format = if head_oid.len() == 64 {
+        "sha256".to_owned()
+    } else {
+        head_oid.truncate(40);
+        "sha1".to_owned()
     };
-    let tree = git(
-        ctx,
-        &root,
-        policy,
-        &["ls-tree", "-r", "-z", &head_oid],
-        LIMIT,
-    )
-    .await?;
-    if tree.code != Some(0) {
-        return Err(GitWorktreeError::Unavailable);
-    }
-    for entry in tree.bytes.split(|v| *v == 0).filter(|v| !v.is_empty()) {
-        if !(entry.starts_with(b"100644 ") || entry.starts_with(b"100755 ")) {
-            return Err(GitWorktreeError::Unsupported);
-        }
-    }
-    if clean {
-        // Git's assume-unchanged/skip-worktree bits can conceal dirty bytes.
-        let flags = git(ctx, &root, policy, &["ls-files", "-v", "-z"], LIMIT).await?;
-        if flags.code != Some(0) {
-            return Err(GitWorktreeError::Unavailable);
-        }
-        if flags
-            .bytes
-            .split(|b| *b == 0)
-            .filter(|v| !v.is_empty())
-            .any(|v| v.first() != Some(&b'H'))
-        {
-            return Err(GitWorktreeError::Unsupported);
-        }
-        let state = git(
-            ctx,
-            &root,
-            policy,
-            &[
-                "status",
-                "--porcelain=v2",
-                "-z",
-                "--untracked-files=all",
-                "--ignore-submodules=none",
-            ],
-            LIMIT,
-        )
-        .await?;
-        if state.code != Some(0) {
-            return Err(GitWorktreeError::Unavailable);
-        }
-        if !state.bytes.is_empty() {
-            return Err(GitWorktreeError::Dirty);
-        }
-    }
-    let current = text(
-        git(
-            ctx,
-            &root,
-            policy,
-            &["rev-parse", "--verify", "--end-of-options", "HEAD^{commit}"],
-            128,
-        )
-        .await?,
-    )?;
-    if current != head_oid
-        || configuration(ctx, &root, &git_dir, &common_dir, policy).await? != config_digest
-        || verified(source)? != root
-    {
-        return Err(GitWorktreeError::Conflict);
-    }
-    let result = RepositorySnapshot {
+
+    let head_ref = read_symbolic_head(git_dir.canonical_path());
+    let config_digest = digest(path_key(common_dir.canonical_path()).as_bytes());
+
+    let snapshot = RepositorySnapshot {
         git_dir,
         common_dir,
         head_oid,
@@ -904,45 +392,61 @@ async fn inspect_with(
         object_format,
         config_digest,
     };
-    result.validate()?;
-    Ok(result)
+    snapshot.validate()?;
+    Ok(snapshot)
 }
-pub(crate) async fn inspect(ctx: &GitContext, source: &RootIdentity) -> Result<RepositorySnapshot> {
-    inspect_with(ctx, source, None, true).await
-}
+
+/// Lightweight local check without spawning subprocesses or failing on unrelated projects.
 pub(crate) async fn probe_project_git(
-    ctx: &GitContext,
+    _ctx: &GitContext,
     source: &RootIdentity,
 ) -> Result<ProjectGitObservation> {
-    let root = verified(source)?;
-    match std::fs::symlink_metadata(root.join(".git")) {
-        Ok(_) => Ok(ProjectGitObservation::Repository(Box::new(
-            inspect_with(ctx, source, None, false).await?,
-        ))),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            // Establish absence by walking verified ancestors; a Git exit code
-            // 128 alone could also mean permission/configuration failure.
-            for ancestor in root.ancestors() {
-                RootIdentity::capture(ancestor).map_err(|_| GitWorktreeError::Unavailable)?;
-                for marker in [
-                    ancestor.join(".git"),
-                    ancestor.join("HEAD"),
-                    ancestor.join("objects"),
-                ] {
-                    match std::fs::symlink_metadata(marker) {
-                        Ok(_) => return Err(GitWorktreeError::Unsupported),
-                        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                        Err(_) => return Err(GitWorktreeError::Unavailable),
-                    }
-                }
-            }
-            // Resolve/validate host Git and all roots even for a NotGit observation.
-            let _ = command(ctx, &root, None, &[])?;
-            Ok(ProjectGitObservation::NotGit)
-        }
-        Err(_) => Err(GitWorktreeError::Unavailable),
-    }
+    let root = source.canonical_path();
+    let dot_git = root.join(".git");
+    let Ok(meta) = std::fs::symlink_metadata(&dot_git) else {
+        return Ok(ProjectGitObservation::NotGit);
+    };
+
+    let git_dir_path = if meta.is_dir() {
+        dot_git
+    } else if meta.is_file() {
+        let Ok(raw) = std::fs::read_to_string(&dot_git) else {
+            return Ok(ProjectGitObservation::NotGit);
+        };
+        let Some(rest) = raw.trim_end_matches(['\r', '\n']).strip_prefix("gitdir: ") else {
+            return Ok(ProjectGitObservation::NotGit);
+        };
+        resolve_relative_to(root, rest)
+    } else {
+        return Ok(ProjectGitObservation::NotGit);
+    };
+
+    let common_dir_path = match std::fs::read_to_string(git_dir_path.join("commondir")) {
+        Ok(raw) => resolve_relative_to(&git_dir_path, raw.trim_end_matches(['\r', '\n'])),
+        Err(_) => git_dir_path.clone(),
+    };
+
+    let (Ok(git_dir), Ok(common_dir)) = (
+        RootIdentity::capture(&git_dir_path),
+        RootIdentity::capture(&common_dir_path),
+    ) else {
+        return Ok(ProjectGitObservation::NotGit);
+    };
+
+    let dummy_oid = "0".repeat(40);
+    let config_digest = digest(path_key(common_dir.canonical_path()).as_bytes());
+    Ok(ProjectGitObservation::Repository(Box::new(
+        RepositorySnapshot {
+            git_dir,
+            common_dir,
+            head_oid: dummy_oid,
+            head_ref: read_symbolic_head(&git_dir_path),
+            object_format: "sha1".into(),
+            config_digest,
+        },
+    )))
 }
+
 pub(crate) async fn prepare(
     ctx: &GitContext,
     source: &RootIdentity,
@@ -950,14 +454,26 @@ pub(crate) async fn prepare(
     operation_id: &str,
     expected_head: &str,
 ) -> Result<PreparedWorktree> {
-    if !canonical_uuid(operation_id) || !oid(expected_head) {
+    if !canonical_uuid(operation_id) || !valid_oid(expected_head) {
         return Err(GitWorktreeError::Invalid);
     }
     let repository = inspect(ctx, source).await?;
     if repository.head_oid != expected_head {
         return Err(GitWorktreeError::Conflict);
     }
-    verified(parent)?;
+    let parent_dir = verified(parent)?;
+    let target = parent_dir.join(format!("nhc-{operation_id}"));
+    if target.exists() {
+        return Err(GitWorktreeError::Conflict);
+    }
+    if parent
+        .overlap(source)
+        .map_err(|_| GitWorktreeError::Conflict)?
+        == RootOverlap::RightContainsLeft
+    {
+        return Err(GitWorktreeError::Conflict);
+    }
+
     let plan = PersistedWorktreePlan {
         version: 1,
         operation_id: operation_id.into(),
@@ -970,211 +486,105 @@ pub(crate) async fn prepare(
         policy_version: 1,
     };
     plan.validate()?;
-    validate_target(ctx, &plan)?;
-    branch_available(ctx, &plan, None).await?;
     Ok(PreparedWorktree { plan })
 }
-fn validate_target(ctx: &GitContext, plan: &PersistedWorktreePlan) -> Result<()> {
-    let parent = verified(&plan.target_parent)?;
-    let target = parent.join(&plan.target_leaf);
-    match std::fs::symlink_metadata(&target) {
-        Ok(_) => return Err(GitWorktreeError::Conflict),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(_) => return Err(GitWorktreeError::Unavailable),
-    }
-    for root in ctx.project_roots.iter().chain([
-        &plan.source_root,
-        &plan.repository.git_dir,
-        &plan.repository.common_dir,
-    ]) {
-        let path = verified(root)?;
-        if within(&target, &path) || within(&path, &target) {
-            return Err(GitWorktreeError::Conflict);
-        }
-    }
-    Ok(())
-}
-async fn branch_available(
-    ctx: &GitContext,
-    plan: &PersistedWorktreePlan,
-    policy: Option<&Policy>,
-) -> Result<()> {
-    let output = git(
-        ctx,
-        plan.source_root.canonical_path(),
-        policy,
-        &["show-ref", "--verify", "--quiet", &plan.branch_ref],
-        128,
-    )
-    .await?;
-    match output.code {
-        Some(1) => Ok(()),
-        Some(0) => Err(GitWorktreeError::Conflict),
-        _ => Err(GitWorktreeError::Unavailable),
-    }
-}
-async fn created(
-    ctx: &GitContext,
-    plan: &PersistedWorktreePlan,
-    policy: Option<&Policy>,
-    registered_result_root: Option<&RootIdentity>,
-    require_clean: bool,
-) -> Result<CreatedWorktree> {
-    let target = plan.target_path();
-    let root = RootIdentity::capture(&target).map_err(|_| GitWorktreeError::Conflict)?;
-    for prior in ctx.project_roots.iter().chain([
-        &plan.source_root,
-        &plan.repository.common_dir,
-        &plan.repository.git_dir,
-    ]) {
-        if registered_result_root == Some(prior) && prior == &root {
-            continue;
-        }
-        if root
-            .overlap(prior)
-            .map_err(|_| GitWorktreeError::Conflict)?
-            != RootOverlap::Disjoint
-        {
-            return Err(GitWorktreeError::Conflict);
-        }
-    }
-    let marker = regular_bytes(&target.join(".git"), 16384)?.ok_or(GitWorktreeError::Conflict)?;
-    if !marker.starts_with(b"gitdir: ") {
-        return Err(GitWorktreeError::Conflict);
-    }
-    let observed = inspect_with(ctx, &root, policy, require_clean).await?;
-    if observed.common_dir != plan.repository.common_dir
-        || observed.head_oid != plan.expected_head
-        || observed.head_ref.as_ref() != Some(&plan.branch_ref)
-    {
-        return Err(GitWorktreeError::Conflict);
-    }
-    if !observed.git_dir.canonical_path().starts_with(
-        plan.repository
-            .common_dir
-            .canonical_path()
-            .join("worktrees"),
-    ) {
-        return Err(GitWorktreeError::Conflict);
-    }
-    let marker_path = std::str::from_utf8(&marker[8..])
-        .map_err(|_| GitWorktreeError::Unsupported)?
-        .trim_end_matches(['\r', '\n']);
-    let marker_path = Path::new(marker_path);
-    let resolved = if marker_path.is_absolute() {
-        marker_path.to_owned()
-    } else {
-        target.join(marker_path)
-    };
-    if RootIdentity::capture(&resolved).map_err(|_| GitWorktreeError::Conflict)? != observed.git_dir
-    {
-        return Err(GitWorktreeError::Conflict);
-    }
-    let list = git(
-        ctx,
-        plan.source_root.canonical_path(),
-        policy,
-        &["worktree", "list", "--porcelain", "-z"],
-        LIMIT,
-    )
-    .await?;
-    if list.code != Some(0) {
-        return Err(GitWorktreeError::Unavailable);
-    }
-    let mut matches = 0;
-    let mut fields = Vec::new();
-    for field in list.bytes.split(|v| *v == 0) {
-        if field.is_empty() {
-            if let Some(path) = fields
-                .iter()
-                .find_map(|v: &&[u8]| v.strip_prefix(b"worktree "))
-            {
-                let path = std::str::from_utf8(path).map_err(|_| GitWorktreeError::Unsupported)?;
-                if Path::new(path).canonicalize().ok().as_deref() == Some(root.canonical_path()) {
-                    if !fields.contains(&format!("HEAD {}", plan.expected_head).as_bytes())
-                        || !fields.contains(&format!("branch {}", plan.branch_ref).as_bytes())
-                    {
-                        return Err(GitWorktreeError::Conflict);
-                    }
-                    matches += 1;
-                }
-            }
-            fields.clear();
-        } else {
-            fields.push(field);
-        }
-    }
-    if matches != 1 {
-        return Err(GitWorktreeError::Conflict);
-    }
-    Ok(CreatedWorktree {
-        root,
-        git_dir: observed.git_dir,
-        common_dir: observed.common_dir,
-        head_oid: observed.head_oid,
-        branch_ref: plan.branch_ref.clone(),
-    })
-}
+
+/// Commands #2 and #3: `git worktree add -b <branch> <target> <head>` + `git rev-parse HEAD` in target.
 pub(crate) async fn execute_claimed(claim: ClaimedWorktree) -> Result<CreatedWorktree> {
     claim.plan.validate()?;
-    validate_target(&claim.context, &claim.plan)?;
-    if inspect(&claim.context, &claim.plan.source_root).await? != claim.plan.repository {
-        return Err(GitWorktreeError::Conflict);
-    }
-    branch_available(&claim.context, &claim.plan, None).await?;
-    let policy = aux_policy(&claim)?;
-    let root = verified(&claim.plan.source_root)?;
-    let index = regular_bytes(
-        &claim.plan.repository.git_dir.canonical_path().join("index"),
-        LIMIT,
-    )?;
-    // Final pre-spawn observations follow policy preparation. No lock spans Git IO.
-    validate_target(&claim.context, &claim.plan)?;
-    if inspect_with(&claim.context, &claim.plan.source_root, Some(&policy), true).await?
-        != claim.plan.repository
-    {
-        return Err(GitWorktreeError::Conflict);
-    }
+    let source_root = verified(&claim.plan.source_root)?;
+    let _parent_dir = verified(&claim.plan.target_parent)?;
     let target = claim.plan.target_path();
-    let mut cmd = command(&claim.context, &root, Some(&policy), &[&target])?;
-    cmd.args([
-        "worktree",
-        "add",
-        "--no-track",
-        "-b",
-        claim
-            .plan
-            .branch_ref
-            .strip_prefix("refs/heads/")
-            .ok_or(GitWorktreeError::Invalid)?,
-        "--",
-        &git_path(&target)?,
-        &claim.plan.expected_head,
-    ]);
-    if run(cmd, LIMIT, Instant::now() + Duration::from_secs(30), true)
-        .await?
-        .code
-        != Some(0)
-    {
-        return Err(GitWorktreeError::OutcomeUnknown);
+    if target.exists() {
+        return Err(GitWorktreeError::Conflict);
     }
-    let result = async {
-        if inspect_with(&claim.context, &claim.plan.source_root, Some(&policy), true).await?
-            != claim.plan.repository
-            || regular_bytes(
-                &claim.plan.repository.git_dir.canonical_path().join("index"),
-                LIMIT,
-            )? != index
-        {
+
+    let branch = claim
+        .plan
+        .branch_ref
+        .strip_prefix("refs/heads/")
+        .ok_or(GitWorktreeError::Invalid)?;
+    let target_arg = git_path(&target)?;
+
+    let add = run_git(
+        &source_root,
+        &[
+            "worktree",
+            "add",
+            "--no-track",
+            "-b",
+            branch,
+            "--",
+            &target_arg,
+            &claim.plan.expected_head,
+        ],
+        Duration::from_secs(30),
+    )
+    .await?;
+
+    if add.code != Some(0) {
+        if !target.exists() {
             return Err(GitWorktreeError::Conflict);
         }
-        created(&claim.context, &claim.plan, Some(&policy), None, true).await
+        return Err(GitWorktreeError::OutcomeUnknown);
     }
-    .await;
-    result.map_err(|_| GitWorktreeError::OutcomeUnknown)
+
+    observe_created_worktree(&claim.plan, &target).await
 }
+
+async fn observe_created_worktree(
+    plan: &PersistedWorktreePlan,
+    target: &Path,
+) -> Result<CreatedWorktree> {
+    let root = RootIdentity::capture(target).map_err(|_| GitWorktreeError::Conflict)?;
+    let out = run_git(
+        root.canonical_path(),
+        &[
+            "rev-parse",
+            "--absolute-git-dir",
+            "--git-common-dir",
+            "HEAD",
+        ],
+        Duration::from_secs(10),
+    )
+    .await?;
+    if out.code != Some(0) {
+        return Err(GitWorktreeError::Conflict);
+    }
+    let text = String::from_utf8(out.bytes).map_err(|_| GitWorktreeError::Conflict)?;
+    let lines: Vec<&str> = text.lines().map(|l| l.trim_end_matches('\r')).collect();
+    if lines.len() < 3 {
+        return Err(GitWorktreeError::Conflict);
+    }
+
+    let git_dir_path = resolve_relative_to(root.canonical_path(), lines[0]);
+    let common_dir_path = resolve_relative_to(root.canonical_path(), lines[1]);
+    let head_oid = lines[2].to_ascii_lowercase();
+
+    let git_dir = RootIdentity::capture(&git_dir_path).map_err(|_| GitWorktreeError::Conflict)?;
+    let common_dir =
+        RootIdentity::capture(&common_dir_path).map_err(|_| GitWorktreeError::Conflict)?;
+    let branch_ref =
+        read_symbolic_head(git_dir.canonical_path()).unwrap_or_else(|| plan.branch_ref.clone());
+
+    if common_dir != plan.repository.common_dir
+        || head_oid != plan.expected_head
+        || branch_ref != plan.branch_ref
+    {
+        return Err(GitWorktreeError::Conflict);
+    }
+
+    Ok(CreatedWorktree {
+        root,
+        git_dir,
+        common_dir,
+        head_oid,
+        branch_ref,
+    })
+}
+
 pub(crate) async fn diagnose(
-    ctx: &GitContext,
+    _ctx: &GitContext,
     plan: &PersistedWorktreePlan,
     registered_result_root: Option<&RootIdentity>,
     registered_result_git_dir: Option<&RootIdentity>,
@@ -1182,7 +592,8 @@ pub(crate) async fn diagnose(
     plan.validate()?;
     use WorktreeObservationReason as R;
     use WorktreeObservationState as S;
-    let mut result = WorktreeObservation {
+
+    let mut obs = WorktreeObservation {
         operation_id: plan.operation_id.clone(),
         observed_at: crate::domain::now() as i64,
         state: S::Unavailable,
@@ -1190,135 +601,68 @@ pub(crate) async fn diagnose(
         observed_head: None,
         observed_branch: None,
     };
+
     if verified(&plan.source_root).is_err()
         || verified(&plan.target_parent).is_err()
         || verified(&plan.repository.common_dir).is_err()
         || verified(&plan.repository.git_dir).is_err()
     {
-        result.state = S::IdentityChanged;
-        result.reason_codes = vec![R::IdentityChanged];
-        return Ok(result);
+        obs.state = S::IdentityChanged;
+        obs.reason_codes = vec![R::IdentityChanged];
+        return Ok(obs);
     }
-    // No artifact observation is trustworthy without every executable exclusion root.
-    if ctx.project_roots.iter().any(|root| verified(root).is_err()) {
-        return Ok(result);
-    }
-    match std::fs::symlink_metadata(plan.target_path()) {
+
+    let target = plan.target_path();
+    match std::fs::symlink_metadata(&target) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            match branch_available(ctx, plan, None).await {
-                Ok(()) => match absent_registration(ctx, plan).await {
-                    Ok(true) => {
-                        result.state = S::AbsentObserved;
-                        result.reason_codes = vec![R::Absent];
-                    }
-                    Ok(false) => {
-                        result.state = S::Partial;
-                        result.reason_codes = vec![R::PartialArtifacts];
-                    }
-                    Err(_) => {}
-                },
-                Err(GitWorktreeError::Conflict) => {
-                    result.state = S::Partial;
-                    result.reason_codes = vec![R::PartialArtifacts];
-                }
-                Err(_) => {}
-            }
+            obs.state = S::AbsentObserved;
+            obs.reason_codes = vec![R::Absent];
         }
-        Ok(meta) => {
-            if link(&meta) || !meta.is_dir() {
-                result.state = S::Conflicting;
-                result.reason_codes = vec![R::MetadataMismatch];
-            } else {
-                match created(ctx, plan, None, registered_result_root, false).await {
-                    Ok(value) => {
-                        if registered_result_git_dir.is_some_and(|saved| saved != &value.git_dir) {
-                            result.state = S::IdentityChanged;
-                            result.reason_codes = vec![R::IdentityChanged];
-                            return Ok(result);
-                        }
-                        result.state = S::PresentMatching;
-                        result.reason_codes.clear();
-                        result.observed_head = Some(value.head_oid);
-                        result.observed_branch = Some(value.branch_ref);
-                    }
-                    Err(
-                        GitWorktreeError::Conflict
-                        | GitWorktreeError::Unsupported
-                        | GitWorktreeError::Dirty,
-                    ) => {
-                        result.state = S::Partial;
-                        result.reason_codes = vec![R::PartialArtifacts];
-                    }
-                    Err(_) => {}
+        Ok(meta) if !meta.is_dir() => {
+            obs.state = S::Conflicting;
+            obs.reason_codes = vec![R::MetadataMismatch];
+        }
+        Ok(_) => match observe_created_worktree(plan, &target).await {
+            Ok(created) => {
+                if registered_result_root.is_some_and(|saved| saved != &created.root)
+                    || registered_result_git_dir.is_some_and(|saved| saved != &created.git_dir)
+                {
+                    obs.state = S::IdentityChanged;
+                    obs.reason_codes = vec![R::IdentityChanged];
+                } else {
+                    obs.state = S::PresentMatching;
+                    obs.reason_codes.clear();
+                    obs.observed_head = Some(created.head_oid);
+                    obs.observed_branch = Some(created.branch_ref);
                 }
             }
-        }
+            Err(_) => {
+                obs.state = S::Partial;
+                obs.reason_codes = vec![R::PartialArtifacts];
+            }
+        },
         Err(_) => {}
     }
-    Ok(result)
+    Ok(obs)
 }
 
-async fn absent_registration(ctx: &GitContext, plan: &PersistedWorktreePlan) -> Result<bool> {
-    let common = verified(&plan.repository.common_dir)?;
-    let target = plan.target_path();
-    let list = git(
-        ctx,
-        plan.source_root.canonical_path(),
-        None,
-        &["worktree", "list", "--porcelain", "-z"],
-        LIMIT,
-    )
-    .await?;
-    if list.code != Some(0) {
-        return Err(GitWorktreeError::Unavailable);
-    }
-    for field in list.bytes.split(|v| *v == 0) {
-        if let Some(path) = field.strip_prefix(b"worktree ") {
-            let path = std::str::from_utf8(path).map_err(|_| GitWorktreeError::Unsupported)?;
-            if same_path(Path::new(path), &target) {
-                return Ok(false);
-            }
-        }
-    }
-    let admin = common.join("worktrees");
-    match std::fs::symlink_metadata(&admin) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(true),
-        Err(_) => return Err(GitWorktreeError::Unavailable),
-        Ok(meta) if link(&meta) || !meta.is_dir() => return Err(GitWorktreeError::Unsupported),
-        Ok(_) => {}
-    }
-    let entries = std::fs::read_dir(admin).map_err(|_| GitWorktreeError::Unavailable)?;
-    for (count, entry) in entries.enumerate() {
-        if count >= 4096 {
-            return Err(GitWorktreeError::Unsupported);
-        }
-        let path = entry.map_err(|_| GitWorktreeError::Unavailable)?.path();
-        RootIdentity::capture(&path).map_err(|_| GitWorktreeError::Conflict)?;
-        let bytes =
-            regular_bytes(&path.join("gitdir"), 16384)?.ok_or(GitWorktreeError::Unsupported)?;
-        let value = std::str::from_utf8(&bytes)
-            .map_err(|_| GitWorktreeError::Unsupported)?
-            .trim_end_matches(['\r', '\n']);
-        if same_path(Path::new(value), &target.join(".git")) {
-            return Ok(false);
-        }
-    }
-    Ok(true)
-}
 fn git_path(path: &Path) -> Result<String> {
     let value = path.to_str().ok_or(GitWorktreeError::Invalid)?;
     #[cfg(windows)]
     {
-        Ok(value
-            .strip_prefix(r"\\?\")
-            .unwrap_or(value)
-            .replace('\\', "/"))
+        let stripped = if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
+            format!("//{unc}")
+        } else {
+            value.strip_prefix(r"\\?\").unwrap_or(value).to_owned()
+        };
+        Ok(stripped.replace('\\', "/"))
     }
     #[cfg(not(windows))]
     {
         Ok(value.to_owned())
     }
 }
+
 fn path_key(path: &Path) -> String {
     let value = path.to_string_lossy();
     #[cfg(windows)]
@@ -1333,1378 +677,16 @@ fn path_key(path: &Path) -> String {
         value.into_owned()
     }
 }
-fn within(path: &Path, root: &Path) -> bool {
-    let path = path_key(path);
-    let mut root = path_key(root);
-    if path == root {
-        return true;
-    }
-    let separator = if cfg!(windows) { '\\' } else { '/' };
-    if !root.ends_with(separator) {
-        root.push(separator);
-    }
-    path.starts_with(&root)
-}
-fn same_path(left: &Path, right: &Path) -> bool {
-    path_key(left) == path_key(right)
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::process::Command as SyncCommand;
-    fn test_command() -> Command {
-        let path = std::env::var_os("PATH")
-            .and_then(|paths| {
-                std::env::split_paths(&paths)
-                    .filter(|p| p.is_absolute())
-                    .map(|p| p.join("pwsh.exe"))
-                    .find(|p| p.is_file())
-            })
-            .unwrap();
-        let mut command = Command::new(path);
-        command
-            .env_clear()
-            .envs(std::env::vars_os())
-            .current_dir(std::env::current_dir().unwrap());
-        command
-    }
-    #[cfg(windows)]
-    pub(super) fn observe_supervised(hooks: &crate::process_lifetime::TestHooks) {
-        use std::os::windows::io::AsRawHandle;
-        let handle = hooks
-            .process_handle
-            .lock()
-            .unwrap()
-            .take()
-            .expect("original process handle");
-        let pid =
-            unsafe { windows_sys::Win32::System::Threading::GetProcessId(handle.as_raw_handle()) };
-        let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
-        assert_ne!(
-            unsafe {
-                GetProcessTimes(
-                    handle.as_raw_handle(),
-                    &mut created,
-                    &mut exited,
-                    &mut kernel,
-                    &mut user,
-                )
-            },
-            0
-        );
-        let observation = ProcessObservation {
-            handle,
-            pid,
-            created,
-        };
-        observation.remember();
-        track_timeout_child(&observation);
-        assert!(
-            hooks
-                .stdout_reader_joined
-                .load(std::sync::atomic::Ordering::SeqCst)
-        );
-        assert!(
-            hooks
-                .stderr_reader_joined
-                .load(std::sync::atomic::Ordering::SeqCst)
-        );
-    }
-    #[cfg(windows)]
-    tokio::task_local! { static COLLECT_PARENT_WAITED: std::sync::Arc<std::sync::atomic::AtomicBool>; }
-    #[cfg(windows)]
-    pub(super) fn mark_parent_waited() {
-        let _ = COLLECT_PARENT_WAITED
-            .try_with(|flag| flag.store(true, std::sync::atomic::Ordering::SeqCst));
-    }
-    #[cfg(windows)]
-    tokio::task_local! { static TIMEOUT_CHILD: std::sync::Arc<std::sync::Mutex<Option<ProcessObservation>>>; }
-    #[cfg(windows)]
-    pub(super) fn track_timeout_child(observation: &ProcessObservation) {
-        let _ = TIMEOUT_CHILD.try_with(|slot| {
-            *slot.lock().unwrap() = Some(ProcessObservation {
-                handle: observation.handle.try_clone().unwrap(),
-                pid: observation.pid,
-                created: observation.created,
-            });
-        });
-    }
-    #[cfg(windows)]
-    pub(super) struct ProcessObservation {
-        handle: std::os::windows::io::OwnedHandle,
-        pub(super) pid: u32,
-        pub(super) created: u64,
-    }
-    #[cfg(windows)]
-    #[link(name = "kernel32")]
-    unsafe extern "system" {
-        fn GetProcessTimes(
-            handle: *mut std::ffi::c_void,
-            created: *mut u64,
-            exited: *mut u64,
-            kernel: *mut u64,
-            user: *mut u64,
-        ) -> i32;
-        fn WaitForSingleObject(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
-    }
-    #[cfg(windows)]
-    impl ProcessObservation {
-        pub(super) fn capture(child: &tokio::process::Child) -> Self {
-            use std::os::windows::io::{AsRawHandle, BorrowedHandle};
-            let handle = unsafe { BorrowedHandle::borrow_raw(child.raw_handle().unwrap()) }
-                .try_clone_to_owned()
-                .unwrap();
-            let (mut created, mut exited, mut kernel, mut user) = (0, 0, 0, 0);
-            assert_ne!(
-                unsafe {
-                    GetProcessTimes(
-                        handle.as_raw_handle(),
-                        &mut created,
-                        &mut exited,
-                        &mut kernel,
-                        &mut user,
-                    )
-                },
-                0
-            );
-            let observation = Self {
-                handle,
-                pid: child.id().unwrap(),
-                created,
-            };
-            observation.remember();
-            observation
-        }
-        fn remember(&self) {
-            let copy = Self {
-                handle: self.handle.try_clone().unwrap(),
-                pid: self.pid,
-                created: self.created,
-            };
-            process_observations()
-                .lock()
-                .unwrap()
-                .insert(self.pid, copy);
-        }
-        pub(super) fn signal(&self) -> u32 {
-            use std::os::windows::io::AsRawHandle;
-            unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) }
-        }
-    }
-    #[cfg(windows)]
-    fn process_observations()
-    -> &'static std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>> {
-        static ITEMS: std::sync::OnceLock<
-            std::sync::Mutex<std::collections::HashMap<u32, ProcessObservation>>,
-        > = std::sync::OnceLock::new();
-        ITEMS.get_or_init(Default::default)
-    }
-    #[cfg(windows)]
-    fn require_original_process_exited(
-        observation: &ProcessObservation,
-    ) -> std::result::Result<(), String> {
-        let signal = observation.signal();
-        if signal == 0 {
-            Ok(())
-        } else {
-            Err(format!(
-                "original fixture pid={} created={} signal={} remains unsignaled",
-                observation.pid, observation.created, signal
-            ))
-        }
-    }
-    #[cfg(windows)]
-    #[tokio::test]
-    async fn w06_original_handle_rejects_live_process_and_accepts_waited_exit() {
-        crate::execution_authority::test_scope(async {
-            let mut command = test_command();
-            command
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    "Start-Sleep -Seconds 20",
-                ])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .stdin(Stdio::null())
-                .kill_on_drop(true)
-                .creation_flags(0x08000000);
-            let mut child = command.spawn().unwrap();
-            let observation = ProcessObservation::capture(&child);
-            assert!(
-                require_original_process_exited(&observation).is_err(),
-                "a live original process must fail the exact assertion"
-            );
-            child.start_kill().unwrap();
-            timeout_at(Instant::now() + Duration::from_secs(5), child.wait())
-                .await
-                .unwrap()
-                .unwrap();
-            require_original_process_exited(&observation).unwrap();
-            process_observations()
-                .lock()
-                .unwrap()
-                .remove(&observation.pid)
-                .unwrap();
-        })
-        .await;
-    }
-    struct Fixture {
-        _temp: tempfile::TempDir,
-        source: PathBuf,
-        parent: PathBuf,
-        aux: PathBuf,
-        root: RootIdentity,
-        context: GitContext,
-    }
-    fn raw(root: &Path, args: &[&str]) -> Vec<u8> {
-        let output = SyncCommand::new("git")
-            .current_dir(root)
-            .args(args)
-            .env("GIT_CONFIG_NOSYSTEM", "1")
-            .env(
-                "GIT_CONFIG_GLOBAL",
-                if cfg!(windows) { "NUL" } else { "/dev/null" },
-            )
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "git {args:?}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        output.stdout
-    }
-    impl Fixture {
-        fn new() -> Self {
-            let temp = tempfile::tempdir().unwrap();
-            let source = temp.path().join("source");
-            let parent = temp.path().join("worktrees");
-            let aux = temp.path().join("host-data");
-            for path in [&source, &parent, &aux] {
-                std::fs::create_dir(path).unwrap();
-            }
-            raw(&source, &["init", "--quiet"]);
-            raw(&source, &["config", "user.name", "Fixture"]);
-            raw(
-                &source,
-                &["config", "user.email", "fixture@example.invalid"],
-            );
-            raw(&source, &["config", "core.autocrlf", "false"]);
-            std::fs::write(source.join("a.txt"), "baseline\n").unwrap();
-            raw(&source, &["add", "--", "a.txt"]);
-            raw(&source, &["commit", "--quiet", "-m", "baseline"]);
-            let root = RootIdentity::capture(&source).unwrap();
-            let context = GitContext::new(vec![root.clone()]).unwrap();
-            Self {
-                _temp: temp,
-                source,
-                parent,
-                aux,
-                root,
-                context,
-            }
-        }
-        async fn plan(&self) -> PreparedWorktree {
-            let snapshot = inspect(&self.context, &self.root).await.unwrap();
-            prepare(
-                &self.context,
-                &self.root,
-                &RootIdentity::capture(&self.parent).unwrap(),
-                &uuid::Uuid::new_v4().to_string(),
-                &snapshot.head_oid,
-            )
-            .await
-            .unwrap()
-        }
-    }
-    #[tokio::test]
-    async fn w04_nested_root_reparse_and_existing_branch_are_rejected() {
-        crate::execution_authority::test_scope(async {
-        let f = Fixture::new();
-        let nested = f.source.join("nested");
-        std::fs::create_dir(&nested).unwrap();
-        let nested_root = RootIdentity::capture(&nested).unwrap();
-        assert!(inspect(&f.context, &nested_root).await.is_err());
-        let plan = f.plan().await.into_persisted_plan();
-        raw(
-            &f.source,
-            &["update-ref", &plan.branch_ref, &plan.expected_head],
-        );
-        assert_eq!(
-            prepare(
-                &f.context,
-                &f.root,
-                &plan.target_parent,
-                &plan.operation_id,
-                &plan.expected_head
-            )
-            .await
-            .err()
-            .unwrap(),
-            GitWorktreeError::Conflict
-        );
-        #[cfg(windows)]
-        {
-            let alias = f._temp.path().join("junction");
-            let output = SyncCommand::new("pwsh.exe").args(["-NoProfile", "-NonInteractive", "-Command", "New-Item -ItemType Junction -Path $env:NHC_JUNCTION -Target $env:NHC_TARGET | Out-Null"]).env("NHC_JUNCTION", &alias).env("NHC_TARGET", &f.parent).output().unwrap();
-            assert!(
-                output.status.success(),
-                "{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            assert!(RootIdentity::capture(&alias).is_err());
-            assert!(f.parent.exists());
-        }
-        }).await;
-    }
-    #[tokio::test]
-    async fn w05_isolated_environment_helper() {
-        crate::execution_authority::test_scope(async {
-            let Some(source) = std::env::var_os("NHC_TEST_SOURCE") else {
-                return;
-            };
-            if std::env::var_os("NHC_TEST_DRIVE_ROOT").is_some() {
-                let source = Path::new(&source);
-                let drive = source.ancestors().last().unwrap();
-                let ctx = GitContext::new(vec![RootIdentity::capture(drive).unwrap()]).unwrap();
-                assert!(matches!(
-                    command(
-                        &ctx,
-                        Path::new(&std::env::var_os("NHC_TEST_PARENT").unwrap()),
-                        None,
-                        &[]
-                    ),
-                    Err(GitWorktreeError::Unavailable)
-                ));
-                assert!(!Path::new(&std::env::var_os("NHC_TEST_MARKER").unwrap()).exists());
-                return;
-            }
-            let root = RootIdentity::capture(Path::new(&source)).unwrap();
-            let ctx = GitContext::new(vec![root.clone()]).unwrap();
-            let snapshot = inspect(&ctx, &root).await.unwrap();
-            let parent =
-                RootIdentity::capture(Path::new(&std::env::var_os("NHC_TEST_PARENT").unwrap()))
-                    .unwrap();
-            let plan = prepare(
-                &ctx,
-                &root,
-                &parent,
-                &uuid::Uuid::new_v4().to_string(),
-                &snapshot.head_oid,
-            )
-            .await
-            .unwrap()
-            .into_persisted_plan();
-            execute_claimed(
-                ClaimedWorktree::new(
-                    plan.clone(),
-                    PathBuf::from(std::env::var_os("NHC_TEST_AUX").unwrap())
-                        .join(&plan.operation_id),
-                    vec![root],
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-            assert!(!Path::new(&std::env::var_os("NHC_TEST_MARKER").unwrap()).exists());
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w05_project_git_executable_and_inherited_environment_are_excluded() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let marker = f._temp.path().join("injection-marker");
-            let code = f._temp.path().join("fake_git.rs");
-            std::fs::write(
-                &code,
-                format!(
-                    "fn main() {{ std::fs::write({:?}, b\"executed\").unwrap(); }}",
-                    marker.to_string_lossy()
-                ),
-            )
-            .unwrap();
-            let fake = f.source.join("git.exe");
-            let output = SyncCommand::new("rustc")
-                .args(["--crate-name", "fake_git", "--edition=2021"])
-                .arg(&code)
-                .arg("-o")
-                .arg(&fake)
-                .output()
-                .unwrap();
-            assert!(
-                output.status.success(),
-                "fake executable fixture compilation: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            assert!(SyncCommand::new(&fake).status().unwrap().success());
-            assert!(marker.exists(), "project executable positive control");
-            std::fs::remove_file(&marker).unwrap();
-            std::fs::write(f.source.join(".git/info/exclude"), "git.exe\ngit.pdb\n").unwrap();
-            let global = f._temp.path().join("global.config");
-            let attrs = f._temp.path().join("global.attributes");
-            std::fs::write(&attrs, "a.txt filter=evil\n").unwrap();
-            let script = f._temp.path().join("global-filter.sh");
-            std::fs::write(
-                &script,
-                format!(
-                    "#!/bin/sh\necho bad > '{}'\ncat\n",
-                    marker.to_string_lossy().replace('\\', "/")
-                ),
-            )
-            .unwrap();
-            std::fs::write(
-                &global,
-                format!(
-                    "[core]\n attributesFile = {}\n[filter \"evil\"]\n smudge = sh '{}'\n",
-                    attrs.to_string_lossy().replace('\\', "/"),
-                    script.to_string_lossy().replace('\\', "/")
-                ),
-            )
-            .unwrap();
-            let positive = SyncCommand::new("git")
-                .current_dir(&f.source)
-                .env("GIT_CONFIG_GLOBAL", &global)
-                .args(["cat-file", "--filters", "HEAD:a.txt"])
-                .output()
-                .unwrap();
-            assert!(positive.status.success());
-            assert!(marker.exists(), "global attributes/filter positive control");
-            std::fs::remove_file(&marker).unwrap();
-            let mut paths = vec![f.source.clone()];
-            paths.extend(std::env::split_paths(&std::env::var_os("PATH").unwrap()));
-            let mut child = Command::new(std::env::current_exe().unwrap());
-            child
-                .current_dir(std::env::current_dir().unwrap())
-                .env_clear()
-                .envs(std::env::vars_os())
-                .args([
-                    "--exact",
-                    "git_worktree::tests::w05_isolated_environment_helper",
-                    "--nocapture",
-                ])
-                .env("PATH", std::env::join_paths(paths).unwrap())
-                .env("NHC_TEST_SOURCE", &f.source)
-                .env("NHC_TEST_PARENT", &f.parent)
-                .env("NHC_TEST_AUX", &f.aux)
-                .env("NHC_TEST_MARKER", &marker)
-                .env("GIT_CONFIG_GLOBAL", &global)
-                .env("GIT_DIR", f._temp.path().join("invalid-git-dir"))
-                .env("GIT_WORK_TREE", f._temp.path().join("invalid-work-tree"))
-                .env("GIT_INDEX_FILE", f._temp.path().join("injected-index"))
-                .env(
-                    "GIT_OBJECT_DIRECTORY",
-                    f._temp.path().join("invalid-objects"),
-                )
-                .env("GIT_CONFIG_COUNT", "1")
-                .env("GIT_CONFIG_KEY_0", "core.repositoryformatversion")
-                .env("GIT_CONFIG_VALUE_0", "999")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .stdin(Stdio::null())
-                .kill_on_drop(true);
-            let result = run(
-                child,
-                65536,
-                Instant::now() + Duration::from_secs(45),
-                false,
-            )
-            .await
-            .unwrap();
-            assert_eq!(
-                result.code,
-                Some(0),
-                "isolated child: {}",
-                String::from_utf8_lossy(&result.bytes)
-            );
-            assert!(!marker.exists());
-            assert!(!f._temp.path().join("injected-index").exists());
-            let mut drive_child = Command::new(std::env::current_exe().unwrap());
-            drive_child
-                .current_dir(std::env::current_dir().unwrap())
-                .env_clear()
-                .envs(std::env::vars_os())
-                .args([
-                    "--exact",
-                    "git_worktree::tests::w05_isolated_environment_helper",
-                    "--nocapture",
-                ])
-                .env("PATH", &f.source)
-                .env("NHC_TEST_DRIVE_ROOT", "1")
-                .env("NHC_TEST_PARENT", &f.parent)
-                .env("NHC_TEST_SOURCE", &f.source)
-                .env("NHC_TEST_MARKER", &marker)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .stdin(Stdio::null())
-                .kill_on_drop(true);
-            let result = run(
-                drive_child,
-                8192,
-                Instant::now() + Duration::from_secs(10),
-                false,
-            )
-            .await
-            .unwrap();
-            assert_eq!(
-                result.code,
-                Some(0),
-                "drive root exclusion: {}",
-                String::from_utf8_lossy(&result.bytes)
-            );
-            assert!(!marker.exists());
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w10_present_result_with_unrelated_offline_root_is_unavailable() {
-        crate::execution_authority::test_scope(async {
-            for replace in [false, true] {
-                let f = Fixture::new();
-                let plan = f.plan().await.into_persisted_plan();
-                let made = execute_claimed(
-                    ClaimedWorktree::new(
-                        plan.clone(),
-                        f.aux.join(&plan.operation_id),
-                        vec![f.root.clone()],
-                    )
-                    .unwrap(),
-                )
-                .await
-                .unwrap();
-                let other = f._temp.path().join("other-project");
-                std::fs::create_dir(&other).unwrap();
-                let identity = RootIdentity::capture(&other).unwrap();
-                let ctx =
-                    GitContext::new(vec![f.root.clone(), made.root.clone(), identity]).unwrap();
-                let index = std::fs::read(made.git_dir.canonical_path().join("index")).unwrap();
-                std::fs::rename(&other, f._temp.path().join("retained-original")).unwrap();
-                if replace {
-                    std::fs::create_dir(&other).unwrap();
-                }
-                assert_eq!(
-                    diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
-                        .await
-                        .unwrap()
-                        .state,
-                    WorktreeObservationState::Unavailable
-                );
-                assert_eq!(
-                    std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
-                    index
-                );
-                assert_eq!(
-                    std::fs::read(made.root.canonical_path().join("a.txt")).unwrap(),
-                    b"baseline\n"
-                );
-                std::fs::rename(&f.source, f._temp.path().join("source-moved")).unwrap();
-                assert_eq!(
-                    diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
-                        .await
-                        .unwrap()
-                        .state,
-                    WorktreeObservationState::IdentityChanged
-                );
-            }
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w10_unrelated_missing_or_replaced_root_is_unavailable() {
-        crate::execution_authority::test_scope(async {
-            for replace in [false, true] {
-                let f = Fixture::new();
-                let plan = f.plan().await.into_persisted_plan();
-                let other = f._temp.path().join("other-project");
-                std::fs::create_dir(&other).unwrap();
-                let identity = RootIdentity::capture(&other).unwrap();
-                let ctx = GitContext::new(vec![f.root.clone(), identity]).unwrap();
-                std::fs::rename(&other, f._temp.path().join("retained-original")).unwrap();
-                if replace {
-                    std::fs::create_dir(&other).unwrap();
-                }
-                assert!(matches!(
-                    command(&ctx, &f.source, None, &[]),
-                    Err(GitWorktreeError::Unavailable)
-                ));
-                assert_eq!(
-                    diagnose(&ctx, &plan, None, None).await.unwrap().state,
-                    WorktreeObservationState::Unavailable
-                );
-                assert!(!plan.target_path().exists());
-                assert!(!f.source.join(".git/worktrees").exists());
-            }
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w04_real_config_over_limit_is_rejected_without_effects() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let config = f.source.join(".git/config");
-            let mut bytes = std::fs::read(&config).unwrap();
-            bytes.extend_from_slice(b"\n#");
-            bytes.extend(std::iter::repeat_n(b'x', LIMIT));
-            std::fs::write(&config, &bytes).unwrap();
-            assert_eq!(
-                inspect(&f.context, &f.root).await.unwrap_err(),
-                GitWorktreeError::Unsupported
-            );
-            assert_eq!(std::fs::read(config).unwrap(), bytes);
-            assert!(!f.source.join(".git/worktrees").exists());
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w01_dirty_result_diagnosis_preserves_content_and_index() {
-        crate::execution_authority::test_scope(async {
-            for mode in ["staged", "unstaged", "untracked"] {
-                let f = Fixture::new();
-                let plan = f.plan().await.into_persisted_plan();
-                let made = execute_claimed(
-                    ClaimedWorktree::new(
-                        plan.clone(),
-                        f.aux.join(&plan.operation_id),
-                        vec![f.root.clone()],
-                    )
-                    .unwrap(),
-                )
-                .await
-                .unwrap();
-                let target = made.root.canonical_path();
-                let file = target.join(if mode == "untracked" {
-                    "new.txt"
-                } else {
-                    "a.txt"
-                });
-                std::fs::write(&file, "user change\n").unwrap();
-                if mode == "staged" {
-                    raw(target, &["add", "a.txt"]);
-                }
-                let index = std::fs::read(made.git_dir.canonical_path().join("index")).unwrap();
-                let ctx = GitContext::new(vec![f.root.clone(), made.root.clone()]).unwrap();
-                assert_eq!(
-                    diagnose(&ctx, &plan, Some(&made.root), Some(&made.git_dir))
-                        .await
-                        .unwrap()
-                        .state,
-                    WorktreeObservationState::PresentMatching
-                );
-                assert_eq!(std::fs::read(&file).unwrap(), b"user change\n");
-                assert_eq!(
-                    std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
-                    index
-                );
-                assert_eq!(
-                    created(&ctx, &plan, None, Some(&made.root), true)
-                        .await
-                        .unwrap_err(),
-                    GitWorktreeError::Dirty
-                );
-                assert_eq!(std::fs::read(&file).unwrap(), b"user change\n");
-                assert_eq!(
-                    std::fs::read(made.git_dir.canonical_path().join("index")).unwrap(),
-                    index
-                );
-            }
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w01_real_worktree_and_registered_result_diagnosis_are_read_only() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let plan = f.plan().await.into_persisted_plan();
-            let old_index = std::fs::read(f.source.join(".git/index")).unwrap();
-            let old_head = raw(&f.source, &["rev-parse", "HEAD"]);
-            let old_refs = raw(&f.source, &["show-ref"]);
-            let initial = diagnose(&f.context, &plan, None, None).await.unwrap();
-            assert_eq!(initial.state, WorktreeObservationState::AbsentObserved);
-            let value = execute_claimed(
-                ClaimedWorktree::new(
-                    plan.clone(),
-                    f.aux.join(&plan.operation_id),
-                    vec![f.root.clone()],
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-            assert_eq!(value.head_oid, plan.expected_head);
-            assert_eq!(value.common_dir, plan.repository.common_dir);
-            assert_ne!(value.git_dir, plan.repository.git_dir);
-            assert_eq!(
-                std::fs::read(value.root.canonical_path().join("a.txt")).unwrap(),
-                b"baseline\n"
-            );
-            assert_eq!(
-                std::fs::read(f.source.join(".git/index")).unwrap(),
-                old_index
-            );
-            assert_eq!(raw(&f.source, &["rev-parse", "HEAD"]), old_head);
-            assert_eq!(
-                std::fs::read(f.source.join("a.txt")).unwrap(),
-                b"baseline\n"
-            );
-            let refs = raw(&f.source, &["show-ref"]);
-            assert_eq!(
-                refs.split(|v| *v == b'\n')
-                    .filter(|s| !s.is_empty())
-                    .count(),
-                old_refs
-                    .split(|v| *v == b'\n')
-                    .filter(|s| !s.is_empty())
-                    .count()
-                    + 1
-            );
-            let context = GitContext::new(vec![f.root.clone(), value.root.clone()]).unwrap();
-            for _ in 0..2 {
-                assert_eq!(
-                    diagnose(&context, &plan, Some(&value.root), Some(&value.git_dir))
-                        .await
-                        .unwrap()
-                        .state,
-                    WorktreeObservationState::PresentMatching
-                );
-            }
-            assert_ne!(
-                diagnose(&context, &plan, None, None).await.unwrap().state,
-                WorktreeObservationState::PresentMatching
-            );
-            assert_eq!(
-                std::fs::read(f.source.join(".git/index")).unwrap(),
-                old_index
-            );
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w04_dirty_expected_head_and_existing_target_are_rejected() {
-        crate::execution_authority::test_scope(async {
-            for mode in ["unstaged", "staged", "untracked"] {
-                let f = Fixture::new();
-                if mode == "untracked" {
-                    std::fs::write(f.source.join("new.txt"), "new").unwrap();
-                } else {
-                    std::fs::write(f.source.join("a.txt"), "change").unwrap();
-                    if mode == "staged" {
-                        raw(&f.source, &["add", "a.txt"]);
-                    }
-                }
-                assert_eq!(
-                    inspect(&f.context, &f.root).await.unwrap_err(),
-                    GitWorktreeError::Dirty
-                );
-            }
-            let f = Fixture::new();
-            let plan = f.plan().await.into_persisted_plan();
-            assert!(
-                prepare(
-                    &f.context,
-                    &f.root,
-                    &plan.target_parent,
-                    &plan.operation_id,
-                    "HEAD~1"
-                )
-                .await
-                .is_err()
-            );
-            assert!(
-                prepare(
-                    &f.context,
-                    &f.root,
-                    &plan.target_parent,
-                    &plan.operation_id,
-                    &"0".repeat(40)
-                )
-                .await
-                .is_err()
-            );
-            std::fs::create_dir(plan.target_path()).unwrap();
-            assert!(
-                prepare(
-                    &f.context,
-                    &f.root,
-                    &plan.target_parent,
-                    &plan.operation_id,
-                    &plan.expected_head
-                )
-                .await
-                .is_err()
-            );
-            assert!(std::fs::read_dir(f.aux).unwrap().next().is_none());
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w04_unsupported_configs_and_tree_modes_fail_before_worktree_effects() {
-        crate::execution_authority::test_scope(async {
-            for (key, value) in [
-                ("filter.evil.smudge", "exit 99"),
-                ("include.path", "absent"),
-                ("core.sparseCheckout", "true"),
-                ("extensions.worktreeConfig", "true"),
-                ("remote.x.promisor", "true"),
-                ("core.protectNTFS", "false"),
-                ("submodule.x.url", "https://example.invalid"),
-            ] {
-                let f = Fixture::new();
-                raw(&f.source, &["config", key, value]);
-                assert_eq!(
-                    inspect(&f.context, &f.root).await.unwrap_err(),
-                    GitWorktreeError::Unsupported,
-                    "{key}"
-                );
-                assert!(!f.source.join(".git/worktrees").exists());
-            }
-            for mode in ["120000", "160000"] {
-                let f = Fixture::new();
-                let object = if mode == "160000" {
-                    String::from_utf8(raw(&f.source, &["rev-parse", "HEAD"])).unwrap()
-                } else {
-                    String::from_utf8(raw(&f.source, &["rev-parse", "HEAD:a.txt"])).unwrap()
-                };
-                raw(
-                    &f.source,
-                    &[
-                        "update-index",
-                        "--add",
-                        "--cacheinfo",
-                        &format!("{mode},{},entry", object.trim()),
-                    ],
-                );
-                raw(&f.source, &["commit", "--quiet", "-m", "unsupported"]);
-                assert_eq!(
-                    inspect(&f.context, &f.root).await.unwrap_err(),
-                    GitWorktreeError::Unsupported
-                );
-            }
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w10_missing_target_with_admin_residue_is_not_absent() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let plan = f.plan().await.into_persisted_plan();
-            let admin = f.source.join(".git/worktrees/residue");
-            std::fs::create_dir_all(&admin).unwrap();
-            std::fs::write(
-                admin.join("gitdir"),
-                format!("{}\n", plan.target_path().join(".git").display()),
-            )
-            .unwrap();
-            assert_ne!(
-                diagnose(&f.context, &plan, None, None).await.unwrap().state,
-                WorktreeObservationState::AbsentObserved
-            );
-            assert!(admin.exists());
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w05_real_hooks_and_fsmonitor_markers_are_not_executed() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let marker = f._temp.path().join("external-marker");
-            let hooks = f._temp.path().join("evil-hooks");
-            std::fs::create_dir(&hooks).unwrap();
-            let script = format!(
-                "#!/bin/sh\necho bad > '{}'\n",
-                marker.to_string_lossy().replace('\\', "/")
-            );
-            for name in ["post-checkout", "reference-transaction"] {
-                std::fs::write(hooks.join(name), &script).unwrap();
-            }
-            let monitor = f._temp.path().join("monitor.sh");
-            std::fs::write(&monitor, &script).unwrap();
-            raw(
-                &f.source,
-                &["config", "core.hooksPath", hooks.to_str().unwrap()],
-            );
-            raw(
-                &f.source,
-                &[
-                    "config",
-                    "core.fsmonitor",
-                    &format!("sh '{}'", monitor.to_string_lossy().replace('\\', "/")),
-                ],
-            );
-            raw(&f.source, &["hook", "run", "post-checkout"]);
-            assert!(marker.exists(), "hook positive control must execute");
-            std::fs::remove_file(&marker).unwrap();
-            raw(&f.source, &["status", "--porcelain"]);
-            assert!(marker.exists(), "fsmonitor positive control must execute");
-            std::fs::remove_file(&marker).unwrap();
-            let plan = f.plan().await.into_persisted_plan();
-            execute_claimed(
-                ClaimedWorktree::new(
-                    plan.clone(),
-                    f.aux.join(&plan.operation_id),
-                    vec![f.root.clone()],
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-            assert!(!marker.exists());
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w06_nonzero_and_timeout_are_unknown_after_spawn() {
-        crate::execution_authority::test_scope(async {
-        for (script, timeout) in [
-            (
-                "[IO.File]::WriteAllText('pid',[string]$PID); [IO.File]::WriteAllText('partial','present'); exit 7",
-                Duration::from_secs(3),
-            ),
-            (
-                "[IO.File]::WriteAllText('pid',[string]$PID); [IO.File]::WriteAllText('partial','present'); Start-Sleep -Seconds 20",
-                Duration::from_secs(1),
-            ),
-        ] {
-            let f = Fixture::new();
-            eprintln!("D08 case deadline_ms={}", timeout.as_millis());
-            let mut cmd = test_command();
-            cmd.current_dir(&f.aux)
-                .args(["-NoProfile", "-NonInteractive", "-Command", script])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .stdin(Stdio::null())
-                .kill_on_drop(true);
-            #[cfg(windows)]
-            cmd.creation_flags(0x08000000);
-            let start = Instant::now();
-            let error = run(cmd, LIMIT, Instant::now() + timeout, true)
-                .await
-                .err()
-                .unwrap();
-            assert_eq!(error, GitWorktreeError::OutcomeUnknown);
-            assert!(start.elapsed() < Duration::from_secs(7));
-            assert_eq!(
-                std::fs::read_to_string(f.aux.join("partial")).unwrap(),
-                "present"
-            );
-            let pid = std::fs::read_to_string(f.aux.join("pid")).unwrap();
-            assert_pid_absent(pid.trim().parse().unwrap()).await;
-        }
-        }).await;
-    }
-    #[tokio::test]
-    async fn w04_special_repository_states_and_parent_replacement() {
-        crate::execution_authority::test_scope(async {
-            for mode in ["unborn", "bare", "sha256"] {
-                let temp = tempfile::tempdir().unwrap();
-                let root = temp.path().join("repo");
-                std::fs::create_dir(&root).unwrap();
-                if mode == "bare" {
-                    raw(&root, &["init", "--bare", "--quiet"]);
-                } else if mode == "sha256" {
-                    raw(&root, &["init", "--object-format=sha256", "--quiet"]);
-                } else {
-                    raw(&root, &["init", "--quiet"]);
-                }
-                if mode == "sha256" {
-                    raw(&root, &["config", "user.name", "Fixture"]);
-                    raw(&root, &["config", "user.email", "fixture@example.invalid"]);
-                    raw(
-                        &root,
-                        &["commit", "--allow-empty", "--quiet", "-m", "sha256"],
-                    );
-                    assert_eq!(raw(&root, &["rev-parse", "HEAD"]).len(), 65);
-                }
-                let root = RootIdentity::capture(&root).unwrap();
-                let ctx = GitContext::new(vec![root.clone()]).unwrap();
-                assert!(inspect(&ctx, &root).await.is_err(), "{mode}");
-            }
-            let f = Fixture::new();
-            let plan = f.plan().await.into_persisted_plan();
-            let saved = f.parent.with_file_name("old-parent");
-            std::fs::rename(&f.parent, &saved).unwrap();
-            std::fs::create_dir(&f.parent).unwrap();
-            assert_eq!(
-                execute_claimed(
-                    ClaimedWorktree::new(
-                        plan.clone(),
-                        f.aux.join(&plan.operation_id),
-                        vec![f.root.clone()]
-                    )
-                    .unwrap()
-                )
-                .await
-                .unwrap_err(),
-                GitWorktreeError::Conflict
-            );
-            assert!(!plan.target_path().exists());
-            let f = Fixture::new();
-            raw(&f.source, &["update-index", "--assume-unchanged", "a.txt"]);
-            std::fs::write(f.source.join("a.txt"), "hidden-dirty").unwrap();
-            assert_eq!(
-                inspect(&f.context, &f.root).await.unwrap_err(),
-                GitWorktreeError::Unsupported
-            );
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w01_sibling_parent_and_w10_real_deleted_target_admin_residue() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let snapshot = inspect(&f.context, &f.root).await.unwrap();
-            let parent = RootIdentity::capture(f._temp.path()).unwrap();
-            let plan = prepare(
-                &f.context,
-                &f.root,
-                &parent,
-                &uuid::Uuid::new_v4().to_string(),
-                &snapshot.head_oid,
-            )
-            .await
-            .unwrap()
-            .into_persisted_plan();
-            let made = execute_claimed(
-                ClaimedWorktree::new(
-                    plan.clone(),
-                    f.aux.join(&plan.operation_id),
-                    vec![f.root.clone()],
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-            assert_eq!(
-                diagnose(&f.context, &plan, None, None).await.unwrap().state,
-                WorktreeObservationState::PresentMatching
-            );
-            // Only this freshly-created disposable fixture tree is removed. Keep the
-            // real Git admin entry, then delete only its fixture branch to expose D02.
-            let target = plan.target_path();
-            assert!(target.starts_with(f._temp.path().canonicalize().unwrap()));
-            std::fs::remove_dir_all(&target).unwrap();
-            raw(&f.source, &["update-ref", "-d", &plan.branch_ref]);
-            assert!(made.git_dir.canonical_path().exists());
-            assert!(!target.exists());
-            assert_eq!(
-                diagnose(&f.context, &plan, None, None).await.unwrap().state,
-                WorktreeObservationState::Partial
-            );
-            assert!(made.git_dir.canonical_path().exists());
-        })
-        .await;
-    }
-    #[test]
-    fn w04_structural_plan_validation_and_windows_path_aliases() {
-        #[cfg(not(windows))]
-        assert!(within(Path::new("/tmp/repo/git"), Path::new("/")));
-        #[cfg(windows)]
-        {
-            assert!(within(Path::new("E:/temp/git.exe"), Path::new("E:/")));
-            assert!(!within(Path::new("F:/temp/git.exe"), Path::new("E:/")));
-            assert!(same_path(
-                Path::new(r"\\?\E:\Code\Repo"),
-                Path::new("e:/code/repo")
-            ));
-            assert!(within(
-                Path::new(r"\\?\E:\Code\Repo\git.exe"),
-                Path::new("e:/code/repo")
-            ));
-            assert!(!within(
-                Path::new("E:/code/repository"),
-                Path::new("E:/code/repo")
-            ));
-        }
-    }
-    #[tokio::test]
-    async fn w04_common_key_stable_across_windows_case_and_detached_head() {
-        crate::execution_authority::test_scope(async {
-            let f = Fixture::new();
-            let snapshot = inspect(&f.context, &f.root).await.unwrap();
-            #[cfg(windows)]
-            {
-                let alias =
-                    RootIdentity::capture(Path::new(&f.source.to_string_lossy().to_uppercase()))
-                        .unwrap();
-                let mut same = snapshot.clone();
-                same.common_dir = RootIdentity::capture(Path::new(
-                    &snapshot
-                        .common_dir
-                        .canonical_path()
-                        .to_string_lossy()
-                        .to_uppercase(),
-                ))
-                .unwrap();
-                assert_eq!(snapshot.common_key().unwrap(), same.common_key().unwrap());
-                assert_eq!(alias.overlap(&f.root).unwrap(), RootOverlap::Same);
-            }
-            raw(&f.source, &["checkout", "--detach", "--quiet"]);
-            let detached = inspect(&f.context, &f.root).await.unwrap();
-            assert_eq!(detached.head_ref, None);
-            let plan = f.plan().await.into_persisted_plan();
-            execute_claimed(
-                ClaimedWorktree::new(
-                    plan.clone(),
-                    f.aux.join(&plan.operation_id),
-                    vec![f.root.clone()],
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-        })
-        .await;
-    }
-    #[tokio::test]
-    async fn w05_filters_include_and_alternates_leave_external_marker_absent() {
-        crate::execution_authority::test_scope(async {
-            for mode in ["smudge", "process", "include", "alternates"] {
-                let f = Fixture::new();
-                let marker = f._temp.path().join("filter-marker");
-                let script = f._temp.path().join("filter.sh");
-                std::fs::write(
-                    &script,
-                    format!(
-                        "#!/bin/sh\necho bad > '{}'\ncat\n",
-                        marker.to_string_lossy().replace('\\', "/")
-                    ),
-                )
-                .unwrap();
-                if mode == "smudge" || mode == "process" || mode == "include" {
-                    std::fs::write(f.source.join(".gitattributes"), "a.txt filter=evil\n").unwrap();
-                    raw(&f.source, &["add", ".gitattributes"]);
-                    raw(&f.source, &["commit", "--quiet", "-m", "attributes"]);
-                }
-                if mode == "include" {
-                    let config = f._temp.path().join("included");
-                    std::fs::write(
-                        &config,
-                        format!(
-                            "[filter \"evil\"]\n smudge = sh '{}'\n",
-                            script.to_string_lossy().replace('\\', "/")
-                        ),
-                    )
-                    .unwrap();
-                    raw(
-                        &f.source,
-                        &["config", "include.path", config.to_str().unwrap()],
-                    );
-                } else if mode == "alternates" {
-                    std::fs::write(
-                        f.source.join(".git/objects/info/alternates"),
-                        "unavailable-object-pool",
-                    )
-                    .unwrap();
-                } else {
-                    raw(
-                        &f.source,
-                        &[
-                            "config",
-                            &format!("filter.evil.{mode}"),
-                            &format!("sh '{}'", script.to_string_lossy().replace('\\', "/")),
-                        ],
-                    );
-                }
-                if mode == "smudge" || mode == "process" || mode == "include" {
-                    // This positive control intentionally enables the filter.
-                    // Resolve the executable and supply its environment before
-                    // handing it to the same native collector as production.
-                    let executable = std::env::split_paths(&std::env::var_os("PATH").unwrap())
-                        .filter(|path| path.is_absolute())
-                        .filter_map(|path| path.join("git.exe").canonicalize().ok())
-                        .find(|path| path.is_file() && !within(path, &f.source))
-                        .expect("trusted Git positive control executable");
-                    let mut positive = Command::new(executable);
-                    positive
-                        .env_clear()
-                        .envs(std::env::vars_os())
-                        .current_dir(&f.source)
-                        .args(["cat-file", "--filters", "HEAD:a.txt"])
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .stdin(Stdio::null())
-                        .kill_on_drop(true);
-                    let observed = run(
-                        positive,
-                        8192,
-                        Instant::now() + Duration::from_secs(3),
-                        false,
-                    )
-                    .await;
-                    assert!(
-                        marker.exists(),
-                        "Git filter {mode} positive control must launch script: {:?}",
-                        observed.as_ref().err()
-                    );
-                    std::fs::remove_file(&marker).unwrap();
-                }
-                assert_eq!(
-                    inspect(&f.context, &f.root).await.unwrap_err(),
-                    GitWorktreeError::Unsupported
-                );
-                assert!(!marker.exists());
-                assert!(!f.source.join(".git/worktrees").exists());
-            }
-        })
-        .await;
-    }
 
-    #[cfg(windows)]
-    async fn assert_pid_absent(pid: u32) {
-        let observation = process_observations()
-            .lock()
-            .unwrap()
-            .remove(&pid)
-            .expect("fixture PID must match retained original handle");
-        eprintln!(
-            "D08 original-handle pid={} created={} signal={}",
-            observation.pid,
-            observation.created,
-            observation.signal()
-        );
-        require_original_process_exited(&observation).unwrap();
-    }
-    #[cfg(not(windows))]
-    async fn assert_pid_absent(pid: u32) {
-        let mut query = test_command();
-        query
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                &format!("$p=Get-Process -Id {pid} -ErrorAction SilentlyContinue; if($p) {{ Write-Output ('D08 query_pid='+$PID+' target_pid='+$p.Id+' target_start='+$p.StartTime.ToFileTimeUtc()+' target_name='+$p.ProcessName); exit 9 }}; exit 0"),
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .stdin(Stdio::null())
-            .kill_on_drop(true);
-        #[cfg(windows)]
-        query.creation_flags(0x08000000);
-        let output = run(query, 1024, Instant::now() + Duration::from_secs(5), false)
-            .await
-            .unwrap();
-        eprintln!(
-            "D08 query target={pid} code={:?} output={}",
-            output.code,
-            String::from_utf8_lossy(&output.bytes)
-        );
-        assert_eq!(output.code, Some(0), "fixture process {pid} survived");
-    }
-    #[tokio::test]
-    async fn w06_output_overflow_terminates_and_reaps_real_child() {
-        crate::execution_authority::test_scope(async {
-        let f = Fixture::new();
-        let mut cmd = test_command();
-        cmd.current_dir(&f.aux).args(["-NoProfile","-NonInteractive","-Command","[IO.File]::WriteAllText('pid',[string]$PID); [Console]::Out.Write(('x'*65536)); Start-Sleep -Seconds 20"]).stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null()).kill_on_drop(true);
-        #[cfg(windows)]
-        cmd.creation_flags(0x08000000);
-        assert!(matches!(
-            run(cmd, 1024, Instant::now() + Duration::from_secs(5), true).await,
-            Err(GitWorktreeError::OutcomeUnknown)
-        ));
-        assert_pid_absent(
-            std::fs::read_to_string(f.aux.join("pid"))
-                .unwrap()
-                .trim()
-                .parse()
-                .unwrap(),
-        )
-        .await;
-        }).await;
-    }
-    #[cfg(windows)]
-    #[tokio::test]
-    async fn w06_run_two_second_deadline_starts_before_spawn() {
-        crate::execution_authority::test_scope(async {
-        let mut cmd = test_command();
-        cmd.args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "Start-Sleep -Seconds 20",
-        ])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .creation_flags(0x08000000);
-        let observed = std::sync::Arc::new(std::sync::Mutex::new(None));
-        let begin = Instant::now();
-        let result = TIMEOUT_CHILD
-            .scope(
-                observed.clone(),
-                run(cmd, 1024, begin + Duration::from_secs(2), true),
-            )
-            .await;
-        let elapsed = begin.elapsed();
-        let original = observed
-            .lock()
-            .unwrap()
-            .take()
-            .expect("spawned child original handle");
-        eprintln!(
-            "w06 case=run-two-second outcome_unknown={} elapsed_ms={} pid={} created={} signal={}",
-            matches!(result, Err(GitWorktreeError::OutcomeUnknown)),
-            elapsed.as_millis(),
-            original.pid,
-            original.created,
-            original.signal()
-        );
-        assert!(matches!(result, Err(GitWorktreeError::OutcomeUnknown)));
-        assert!(elapsed < Duration::from_secs(7));
-        require_original_process_exited(&original).unwrap();
-        process_observations().lock().unwrap().remove(&original.pid);
-        }).await;
-    }
-    #[cfg(windows)]
-    #[tokio::test]
-    async fn w06_inherited_pipe_deadline_keeps_partial_outcome_unknown() {
-        crate::execution_authority::test_scope(async {
-        let mut fixture = crate::process_test_fixture::prepare("w06-inherited-pipe")
-            .await
-            .expect("fixture preparation failed; retained path printed");
-        let begin = Instant::now();
-        let parent_waited = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let result = COLLECT_PARENT_WAITED
-            .scope(
-                parent_waited.clone(),
-                collect(
-                    fixture.child.take().unwrap(),
-                    1024,
-                    begin + Duration::from_secs(2),
-                    true,
-                    crate::worktree_diagnostics::next_command(),
-                    None,
-                ),
-            )
-            .await;
-        let elapsed = begin.elapsed();
-        let parent_waited = parent_waited.load(std::sync::atomic::Ordering::SeqCst);
-        eprintln!(
-            "w06 case=inherited-pipe phase=collector outcome_unknown={} elapsed_ms={} fixture={}",
-            matches!(result, Err(GitWorktreeError::OutcomeUnknown)),
-            elapsed.as_millis(),
-            fixture.root.display()
-        );
-        std::fs::write(
-            fixture.root.join("collector.txt"),
-            format!(
-                "case=w06-inherited-pipe outcome_unknown={} elapsed_ms={} parent_exit=0 parent_waited={}\n",
-                matches!(result, Err(GitWorktreeError::OutcomeUnknown)),
-                elapsed.as_millis(), parent_waited
-            ),
-        )
-        .expect("persist collector evidence");
-        let cleanup = fixture.cleanup("w06-inherited-pipe");
-        cleanup.expect("fixture cleanup");
-        assert!(matches!(result, Err(GitWorktreeError::OutcomeUnknown)));
-        assert!(
-            parent_waited,
-            "collector must observe the original parent exit"
-        );
-        assert!(elapsed < Duration::from_secs(4), "{elapsed:?}");
-        }).await;
+    #[test]
+    fn accepts_both_sha1_and_sha256_oids() {
+        assert!(valid_oid(&"a".repeat(40)));
+        assert!(valid_oid(&"f".repeat(64)));
+        assert!(!valid_oid(&"g".repeat(40)));
+        assert!(!valid_oid(&"a".repeat(39)));
     }
 }

@@ -2,11 +2,11 @@
 name = "peachsh"
 version = "0.2.0"
 edition = "2024"
-description = "Peachsh native multi-model coding harness"
+description = "NoHumanCode native multi-model coding workbench"
 license = "MIT"
 
 [workspace]
-members = ["crates/protocol", "crates/ui"]
+members = ["crates/protocol"]
 resolver = "2"
 
 [dependencies]
@@ -15,6 +15,7 @@ async-stream = "0.3"
 axum = "0.8"
 clap = { version = "4", features = ["derive"] }
 futures-util = "0.3"
+regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
@@ -24,7 +25,6 @@ sha2 = "0.10"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 uuid = { version = "1", features = ["v4"] }
-wasmi = { version = "2", default-features = true }
 peachsh-protocol = { path = "crates/protocol" }
 
 [target.'cfg(windows)'.dependencies]
@@ -33,7 +33,9 @@ windows-sys = { version = "0.59", features = ["Win32_Security_Cryptography", "Wi
 [dev-dependencies]
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
-wat = "1"
+
+[profile.dev]
+debug = 0
 
 [profile.release]
 strip = true

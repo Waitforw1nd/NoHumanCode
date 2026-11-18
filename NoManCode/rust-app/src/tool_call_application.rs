@@ -1,6 +1,4 @@
 //! Host application service for tool admission, approval, execution and recovery.
-#[cfg(test)]
-use crate::engine::crash_probe;
 use crate::{
     approval::{self, ApprovalStatus, PolicyDecision},
     domain::*,
@@ -17,13 +15,65 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-#[cfg(test)]
-use tokio::sync::Mutex as AsyncMutex;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
-#[cfg(test)]
-pub(crate) type ShellClaimProbe = (String, Arc<dyn Fn() + Send + Sync>);
+const TOOL_OUTPUT_MAX_CHARS: usize = 32_000;
+const TOOL_OUTPUT_HEAD_CHARS: usize = 16_000;
+const TOOL_OUTPUT_TAIL_CHARS: usize = 8_000;
+
+pub(crate) fn truncate_tool_text(text: &str) -> String {
+    let total = text.chars().count();
+    if total <= TOOL_OUTPUT_MAX_CHARS {
+        return text.to_owned();
+    }
+    let head_end = text
+        .char_indices()
+        .nth(TOOL_OUTPUT_HEAD_CHARS)
+        .map(|(idx, _)| idx)
+        .unwrap_or(text.len());
+    let tail_start = text
+        .char_indices()
+        .nth(total.saturating_sub(TOOL_OUTPUT_TAIL_CHARS))
+        .map(|(idx, _)| idx)
+        .unwrap_or(head_end)
+        .max(head_end);
+    let omitted = total.saturating_sub(TOOL_OUTPUT_HEAD_CHARS + TOOL_OUTPUT_TAIL_CHARS);
+    format!(
+        "{}\n[... truncated {} chars ...]\n{}",
+        &text[..head_end],
+        omitted,
+        &text[tail_start..]
+    )
+}
+
+pub(crate) fn truncate_tool_value(value: Value) -> Value {
+    let truncated = truncate_value_strings(value);
+    let serialized = truncated.to_string();
+    if serialized.chars().count() <= TOOL_OUTPUT_MAX_CHARS {
+        return truncated;
+    }
+    json!({
+        "truncated": true,
+        "output": truncate_tool_text(&serialized),
+    })
+}
+
+fn truncate_value_strings(value: Value) -> Value {
+    match value {
+        Value::String(text) => Value::String(truncate_tool_text(&text)),
+        Value::Array(items) => {
+            Value::Array(items.into_iter().map(truncate_value_strings).collect())
+        }
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .map(|(k, v)| (k, truncate_value_strings(v)))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
 pub(crate) struct ToolCallApplication {
     store: Arc<Store>,
     project: Arc<crate::host_services::ProjectService>,
@@ -31,39 +81,15 @@ pub(crate) struct ToolCallApplication {
     tool_runtime: Arc<ToolRuntime>,
     workspace: Arc<crate::host_services::WorkspaceSafety>,
     approval_waiters: Mutex<HashMap<String, oneshot::Sender<ApprovalStatus>>>,
-    #[cfg(test)]
-    shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
 }
+
 impl ToolCallApplication {
-    #[cfg(test)]
-    pub(crate) fn new(
-        store: Arc<Store>,
-        tool_runtime: Arc<ToolRuntime>,
-        gate: Arc<AsyncMutex<()>>,
-        #[cfg(test)] shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
-    ) -> Self {
-        let project = Arc::new(crate::host_services::ProjectService::new(
-            store.clone(),
-            gate.clone(),
-        ));
-        let approval = Arc::new(crate::host_services::ApprovalService::new(store.clone()));
-        let workspace = Arc::new(crate::host_services::WorkspaceSafety::new(gate));
-        Self::new_with_services(
-            store,
-            project,
-            approval,
-            tool_runtime,
-            workspace,
-            shell_claim_probe,
-        )
-    }
     pub(crate) fn new_with_services(
         store: Arc<Store>,
         project: Arc<crate::host_services::ProjectService>,
         approval: Arc<crate::host_services::ApprovalService>,
         tool_runtime: Arc<ToolRuntime>,
         workspace: Arc<crate::host_services::WorkspaceSafety>,
-        #[cfg(test)] shell_claim_probe: Arc<Mutex<Option<ShellClaimProbe>>>,
     ) -> Self {
         Self {
             store,
@@ -72,10 +98,9 @@ impl ToolCallApplication {
             tool_runtime,
             workspace,
             approval_waiters: Mutex::new(HashMap::new()),
-            #[cfg(test)]
-            shell_claim_probe,
         }
     }
+
     pub(crate) fn decide_approval_with_network_ack(
         &self,
         op: &crate::execution_authority::ExecutionOperation,
@@ -96,6 +121,7 @@ impl ToolCallApplication {
         }
         Ok(record)
     }
+
     pub(crate) async fn reconcile_open_tools(
         &self,
         task: &mut Task,
@@ -115,7 +141,9 @@ impl ToolCallApplication {
                         *task = recovered;
                         continue;
                     }
-                    if let PolicyDecision::Deny { reason } = self.approval.evaluate(task, name) {
+                    if let PolicyDecision::Deny { reason } =
+                        crate::store::evaluate_tool_policy(task, name)
+                    {
                         self.record_tool_result(
                             task,
                             call_id,
@@ -126,7 +154,14 @@ impl ToolCallApplication {
                         )?;
                         continue;
                     }
-                    self.record_tool_result(task, call_id, name, "Execution was interrupted. Inspect files before repeating a write or command.", key, Origin::InterruptedWithoutClaim)?;
+                    self.record_tool_result(
+                        task,
+                        call_id,
+                        name,
+                        "Execution was interrupted. Inspect files before repeating a write or command.",
+                        key,
+                        Origin::InterruptedWithoutClaim,
+                    )?;
                     continue;
                 }
                 Some(record)
@@ -174,7 +209,7 @@ impl ToolCallApplication {
         name: &str,
         key: &str,
     ) -> Result<()> {
-        if let PolicyDecision::Deny { reason } = self.approval.evaluate(task, name) {
+        if let PolicyDecision::Deny { reason } = crate::store::evaluate_tool_policy(task, name) {
             let call_id = call["id"].as_str().context("工具调用缺少 id")?;
             self.record_tool_result(task, call_id, name, reason, key, Origin::HostDenied)?;
         }
@@ -195,6 +230,7 @@ impl ToolCallApplication {
         self.execute_or_wait_in_domain(task, call, name, args, key, cancel)
             .await
     }
+
     #[allow(clippy::too_many_arguments)]
     async fn execute_or_wait_in_domain(
         &self,
@@ -210,6 +246,91 @@ impl ToolCallApplication {
             return Err(ProjectError::OperationUnsupported.into());
         }
         self.project.validate_task(task, true, false)?;
+        if name.starts_with("mcp__") {
+            ensure!(
+                crate::mcp::is_valid_qualified_name(name)
+                    && task.spec.tools
+                    && task.spec.allow_commands,
+                "模型请求了未授权的工具"
+            );
+            let shell_open = self
+                .tool_runtime
+                .with_shell_control(|c| Ok(c.snapshot().admission_open))?;
+            ensure!(
+                shell_open
+                    && self
+                        .store
+                        .plugin_desired_for(crate::plugin_management::BUILTIN_SHELL_ID)?
+                        .enabled,
+                "tool runtime unavailable"
+            );
+            ensure!(
+                crate::mcp::has_configured_server(std::path::Path::new(&task.workspace), name),
+                "模型请求了未授权的工具"
+            );
+            ensure!(
+                self.store.task(&task.id)?.status != "cancelled" && !cancel.is_cancelled(),
+                "任务已停止"
+            );
+            let approval_task = transient_approval_task(task, call, name, args)?;
+            let (record, _) = self
+                .approval
+                .ensure(&approval_task, tool_call_id, name, args)?;
+            drop(approval_task);
+            let status = self.wait_for_approval(&record, cancel).await?;
+            return match status {
+                ApprovalStatus::Approved => {
+                    let approval_task = transient_approval_task(task, call, name, args)?;
+                    let claimed = self
+                        .approval
+                        .claim(&approval_task, tool_call_id, name, args)?;
+                    drop(approval_task);
+                    self.perform_mcp_tool(task, tool_call_id, name, args, key, &claimed.id)
+                        .await
+                }
+                ApprovalStatus::Denied | ApprovalStatus::Cancelled => {
+                    let mut approval_task = transient_approval_task(task, call, name, args)?;
+                    self.record_tool_result(
+                        &mut approval_task,
+                        tool_call_id,
+                        name,
+                        &approval::tool_error(status),
+                        key,
+                        if status == ApprovalStatus::Denied {
+                            Origin::ApprovalDenied
+                        } else {
+                            Origin::ApprovalCancelled
+                        },
+                    )?;
+                    *task = approval_task;
+                    if status == ApprovalStatus::Cancelled || cancel.is_cancelled() {
+                        anyhow::bail!("任务已停止");
+                    }
+                    Ok(())
+                }
+                ApprovalStatus::Pending => anyhow::bail!("审批仍在等待"),
+            };
+        }
+        if matches!(name, "git_status" | "todo_write" | "todo_read") {
+            let files_open = self
+                .tool_runtime
+                .with_files_control(|c| Ok(c.snapshot().admission_open))?;
+            ensure!(files_open, "tool runtime unavailable");
+            ensure!(
+                crate::workspace::definitions(task)
+                    .iter()
+                    .any(|t| t["function"]["name"] == name),
+                "模型请求了未授权的工具"
+            );
+            self.project.validate_files_read(task)?;
+            ensure!(
+                self.store.task(&task.id)?.status != "cancelled" && !cancel.is_cancelled(),
+                "任务已停止"
+            );
+            return self
+                .perform_direct_workspace_tool(task, tool_call_id, name, args, key)
+                .await;
+        }
         ensure!(
             self.tool_runtime
                 .definitions(task)?
@@ -224,10 +345,19 @@ impl ToolCallApplication {
         match self.approval.evaluate(task, name) {
             PolicyDecision::Allow => {
                 let (lease, _) = self.tool_runtime.acquire(task, name, || {
-                    if matches!(name, "read_file" | "list_files" | "search_files") {
+                    if matches!(
+                        name,
+                        "read_file"
+                            | "list_files"
+                            | "search_files"
+                            | "glob_files"
+                            | "git_status"
+                            | "todo_write"
+                            | "todo_read"
+                    ) {
                         self.project.validate_files_read(task)
                     } else {
-                        self.project.validate_task(task, true, false).map(|_| ())
+                        Ok(())
                     }
                 })?;
                 self.perform_tool(task, tool_call_id, name, args, key, None, lease)
@@ -252,19 +382,6 @@ impl ToolCallApplication {
                                 .claim(&approval_task, tool_call_id, name, args)
                         })?;
                         drop(approval_task);
-                        #[cfg(test)]
-                        if name == "run_command" {
-                            let probe = self
-                                .shell_claim_probe
-                                .lock()
-                                .unwrap()
-                                .as_ref()
-                                .filter(|(id, _)| id == &task.id)
-                                .map(|(_, f)| f.clone());
-                            if let Some(probe) = probe {
-                                probe();
-                            }
-                        }
                         self.perform_tool(
                             task,
                             tool_call_id,
@@ -323,12 +440,17 @@ impl ToolCallApplication {
             }
             tokio::select! {
                 biased;
-                _=cancel.cancelled()=>{self.approval_waiters.lock().unwrap().remove(&record.id);self.store.cancel_pending_approvals(&record.task_id)?;anyhow::bail!("任务已停止")},
-                _=&mut receiver=>{},
-                _=tokio::time::sleep(std::time::Duration::from_millis(100))=>{},
+                _ = cancel.cancelled() => {
+                    self.approval_waiters.lock().unwrap().remove(&record.id);
+                    self.store.cancel_pending_approvals(&record.task_id)?;
+                    anyhow::bail!("任务已停止")
+                },
+                _ = &mut receiver => {},
+                _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {},
             }
         }
     }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn perform_tool(
         &self,
@@ -340,50 +462,32 @@ impl ToolCallApplication {
         approval_id: Option<&str>,
         lease: ToolLease,
     ) -> Result<()> {
-        let _workspace_gate = if name == "write_file" {
+        let is_file_mutation = matches!(name, "write_file" | "edit_file");
+        let _workspace_gate = if is_file_mutation {
             Some(self.workspace.gate.lock().await)
         } else {
             None
         };
-        self.project.validate_task(task, false, false)?;
-        let mut prepared = None;
-        if name == "write_file" {
-            let approval_id = approval_id.context("write_file 缺少审批执行权")?;
-            let preflight = (|| -> Result<PreparedChange> {
-                let args_text = args.to_string();
-                ensure!(
-                    secrets::redact_persisted(args) == *args
-                        && secrets::redact_persisted(&Value::String(args_text.clone()))
-                            == Value::String(args_text),
-                    "write_file 参数脱敏后无法安全绑定"
-                );
-                let path = args["path"].as_str().context("缺少 path")?;
-                let (target, path, path_key) = self.workspace.change_target(
-                    std::path::Path::new(&task.workspace),
-                    path,
-                    &task.spec.write_scopes,
-                )?;
-                let before = self.workspace.read_safe_file(&target)?;
+        let mut prepared: Option<(String, PreparedChange, Vec<u8>)> = None;
+        if is_file_mutation {
+            let approval_id = approval_id.context("文件写入工具缺少审批执行权")?;
+            let preflight = (|| -> Result<(PreparedChange, Vec<u8>)> {
+                let (target, before, expected_after, display_path) =
+                    crate::workspace::preview_file_mutation(
+                        std::path::Path::new(&task.workspace),
+                        name,
+                        args,
+                        &task.spec.write_scopes,
+                    )?;
+                let path_key = display_path.to_lowercase();
                 let change = self.store.prepare_workspace_change(
                     task,
                     tool_call_id,
-                    &path,
+                    &display_path,
                     &path_key,
                     before.as_deref(),
                 )?;
-                #[cfg(test)]
-                let recheck = if crash_probe::take_recheck_failure(&task.id) {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::PermissionDenied,
-                        "test recheck failure",
-                    )
-                    .into())
-                } else {
-                    self.workspace.read_safe_file(&target)
-                };
-                #[cfg(not(test))]
-                let recheck = self.workspace.read_safe_file(&target);
-                let rechecked = match recheck {
+                let rechecked = match self.workspace.read_safe_file(&target) {
                     Ok(value) => value,
                     Err(error) => {
                         self.store.mark_workspace_change_failed(&change.id)?;
@@ -396,28 +500,21 @@ impl ToolCallApplication {
                     self.store.mark_workspace_change_failed(&change.id)?;
                     return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
                 }
-                Ok(change)
+                Ok((change, expected_after))
             })();
             match preflight {
-                Ok(change) => prepared = Some((approval_id.to_owned(), change)),
+                Ok((change, expected_after)) => {
+                    prepared = Some((approval_id.to_owned(), change, expected_after));
+                }
                 Err(error) => {
                     if error.chain().any(|cause| cause.is::<rusqlite::Error>()) {
                         return Err(error);
                     }
-                    let message = if error.chain().any(|cause| {
-                        matches!(
-                            cause.downcast_ref::<WorkspaceChangeError>(),
-                            Some(WorkspaceChangeError::Unknown { .. })
-                        )
-                    }) {
-                        "write_file 结果未知；请检查文件后创建新任务"
-                    } else {
-                        "write_file 拒绝执行；文件未修改"
-                    };
+                    let message = secrets::scrub(&error.to_string(), key);
                     let serialized = self.store.finish_approval_with_change(
                         task,
                         approval_id,
-                        &json!({"error":message}).to_string(),
+                        &json!({"error": message}).to_string(),
                         name,
                         tool_call_id,
                         None,
@@ -431,69 +528,24 @@ impl ToolCallApplication {
             }
         }
         let start_data = if let Some(approval_id) = approval_id {
-            json!({"name":name,"tool_call_id":tool_call_id,"approval_id":approval_id,"args_digest":approval::args_digest(args)?})
+            json!({
+                "name": name,
+                "tool_call_id": tool_call_id,
+                "approval_id": approval_id,
+                "args_digest": approval::args_digest(args)?
+            })
         } else {
-            json!({"name":name,"arguments":args})
+            json!({"name": name, "arguments": args})
         };
         if let Err(error) = self.store.event(&task.id, "tool_start", start_data) {
-            if let Some((_, change)) = &prepared {
+            if let Some((_, change, _)) = &prepared {
                 let _ = self.store.mark_workspace_change_failed(&change.id);
             }
             return Err(error);
         }
-        #[cfg(test)]
-        if name == "write_file" {
-            crash_probe::block(&task.id, "write_pre_fs", &prepared.as_ref().unwrap().1.id);
-        }
-        let file_effect = if name == "write_file" {
-            match crate::workspace::FileEffectGuard::begin(&self.store) {
-                Ok(effect) => Some(std::sync::Arc::new(effect)),
-                Err(error) => {
-                    // Admission closed before the write began. Settle the
-                    // already prepared claim with the original operation.
-                    let (approval_id, change) = prepared.as_ref().context("write claim missing")?;
-                    self.store.mark_workspace_change_failed(&change.id)?;
-                    let content = json!({"error":"write_file 未执行；执行域已关闭"}).to_string();
-                    let serialized = self.store.finish_approval_with_change(
-                        task,
-                        approval_id,
-                        &content,
-                        name,
-                        tool_call_id,
-                        None,
-                    )?;
-                    task.messages.push(
-                        json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}),
-                    );
-                    task.updated_at = now();
-                    return Err(error);
-                }
-            }
-        } else {
-            None
-        };
-        let execution = if file_effect.is_some() {
-            crate::workspace::with_write_authority(
-                file_effect.as_ref().unwrap().clone(),
-                self.store.clone(),
-                lease.execute(task, args),
-            )
-            .await
-        } else {
-            lease.execute(task, args).await
-        };
-        if file_effect.is_some()
-            && execution
-                .as_ref()
-                .err()
-                .is_some_and(|error| !error.is::<crate::workspace::WriteNotStarted>())
-        {
-            // A filesystem error can follow a partial effect. The guard seals
-            // and retains the original operation rather than asserting no write.
-            anyhow::bail!("write_file outcome unknown");
-        }
+        let execution = lease.execute(task, args).await;
         let (result, succeeded) = match execution {
-            Ok(value) => (value, true),
+            Ok(value) => (truncate_tool_value(value), true),
             Err(error)
                 if name == "run_command"
                     && error.chain().any(|cause| {
@@ -505,23 +557,18 @@ impl ToolCallApplication {
                 return Err(approval::ApprovalError::UnknownResult { id: id.to_owned() }.into());
             }
             Err(error) => (
-                json!({"error":secrets::scrub(&error.to_string(), key)}),
+                json!({"error": truncate_tool_text(&secrets::scrub(&error.to_string(), key))}),
                 false,
             ),
         };
         let serialized = result.to_string().replace(key, "[redacted]");
         if let Some(approval_id) = approval_id {
-            let after = if succeeded && name == "write_file" {
-                args["content"].as_str().map(str::as_bytes)
-            } else {
-                None
-            };
-            if !succeeded && let Some((_, change)) = &prepared {
+            if !succeeded && let Some((_, change, _)) = &prepared {
                 self.store.mark_workspace_change_failed(&change.id)?;
             }
-            let change = prepared
-                .as_ref()
-                .and_then(|(_, change)| after.map(|bytes| (change.id.as_str(), bytes)));
+            let change = prepared.as_ref().and_then(|(_, change, expected_after)| {
+                succeeded.then_some((change.id.as_str(), expected_after.as_slice()))
+            });
             let serialized = self
                 .store
                 .finish_approval_with_change(
@@ -533,18 +580,13 @@ impl ToolCallApplication {
                     change,
                 )
                 .inspect_err(|_| {
-                    if succeeded && let Some((_, change)) = &prepared {
+                    if succeeded && let Some((_, change, _)) = &prepared {
                         let _ = self.store.mark_workspace_change_unknown(&change.id);
                     }
                 })?;
             task.messages
                 .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
             task.updated_at = now();
-            if let Some(effect) = file_effect {
-                std::sync::Arc::try_unwrap(effect)
-                    .map_err(|_| anyhow::anyhow!("file authority still in use"))?
-                    .settle();
-            }
             Ok(())
         } else {
             self.record_tool_result(
@@ -558,6 +600,74 @@ impl ToolCallApplication {
         }
     }
 
+    async fn perform_mcp_tool(
+        &self,
+        task: &mut Task,
+        tool_call_id: &str,
+        name: &str,
+        args: &Value,
+        key: &str,
+        approval_id: &str,
+    ) -> Result<()> {
+        self.store.event(
+            &task.id,
+            "tool_start",
+            json!({
+                "name": name,
+                "tool_call_id": tool_call_id,
+                "approval_id": approval_id,
+                "args_digest": approval::args_digest(args)?
+            }),
+        )?;
+        let execution =
+            crate::mcp::call_tool(std::path::Path::new(&task.workspace), name, args).await;
+        let result = match execution {
+            Ok(value) => truncate_tool_value(value),
+            Err(error) => {
+                json!({"error": truncate_tool_text(&secrets::scrub(&error.to_string(), key))})
+            }
+        };
+        let serialized = result.to_string().replace(key, "[redacted]");
+        let serialized =
+            self.store
+                .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
+        task.messages
+            .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
+        task.updated_at = now();
+        Ok(())
+    }
+
+    async fn perform_direct_workspace_tool(
+        &self,
+        task: &mut Task,
+        tool_call_id: &str,
+        name: &str,
+        args: &Value,
+        key: &str,
+    ) -> Result<()> {
+        self.store.event(
+            &task.id,
+            "tool_start",
+            json!({"name": name, "arguments": args}),
+        )?;
+        let execution = crate::workspace::execute(task, name, args).await;
+        let result = match execution {
+            Ok(value) => truncate_tool_value(value),
+            Err(error) => {
+                json!({"error": truncate_tool_text(&secrets::scrub(&error.to_string(), key))})
+            }
+        };
+        let serialized = result.to_string().replace(key, "[redacted]");
+        self.record_tool_result(
+            task,
+            tool_call_id,
+            name,
+            &serialized,
+            key,
+            Origin::ReadCompleted,
+        )
+    }
+
     pub(crate) fn record_tool_result(
         &self,
         task: &mut Task,
@@ -567,7 +677,7 @@ impl ToolCallApplication {
         key: &str,
         origin: Origin,
     ) -> Result<()> {
-        let content = content.replace(key, "[redacted]");
+        let content = truncate_tool_text(&content.replace(key, "[redacted]"));
         let (updated, _) =
             self.store
                 .commit_tool_result(task, tool_call_id, name, &content, origin)?;
@@ -637,4 +747,22 @@ pub(crate) fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
         }
     }
     calls
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncates_oversized_tool_text_preserving_head_and_tail() {
+        let head = "H".repeat(TOOL_OUTPUT_HEAD_CHARS);
+        let middle = "M".repeat(20_000);
+        let tail = "T".repeat(TOOL_OUTPUT_TAIL_CHARS);
+        let raw = format!("{head}{middle}{tail}");
+        let out = truncate_tool_text(&raw);
+        assert!(out.starts_with(&head));
+        assert!(out.ends_with(&tail));
+        assert!(out.contains("[... truncated 20000 chars ...]"));
+        assert!(out.chars().count() < TOOL_OUTPUT_MAX_CHARS);
+    }
 }

@@ -246,14 +246,17 @@ pub(crate) fn root_tx(db: &Connection, id: &ProjectId) -> Result<RootIdentity> {
 }
 pub(crate) fn workspace_tx(db: &Connection, id: &ProjectId) -> Result<PathBuf> {
     let root = root_tx(db, id)?;
-    let verified = root.verify().map_err(root_error)?;
+    root.validate_snapshot().map_err(root_error)?;
     let project = Repository::new(db).project(id)?;
     let current =
         std::fs::canonicalize(&project.root_path).map_err(|_| ProjectError::RootUnavailable)?;
-    if current != verified.path() {
+    if !current.is_dir() {
+        return Err(ProjectError::RootUnavailable.into());
+    }
+    if current != root.canonical_path() {
         return Err(ProjectError::RootChanged.into());
     }
-    Ok(verified.path().to_owned())
+    Ok(current)
 }
 pub(crate) fn binding_tx(db: &Connection, task_id: &str) -> Result<Option<TaskProjectBinding>> {
     let row: Option<(String, String)> = db
@@ -284,11 +287,16 @@ pub(crate) fn validate_task_tx(
     model: bool,
 ) -> Result<TaskProjectBinding> {
     let binding = binding_tx(db, &task.id)?.ok_or(ProjectError::LegacyUnbound)?;
-    let mapped: Option<String> = db.query_row("SELECT s.project_id FROM turn_tasks tt JOIN sessions s ON s.id=tt.session_id JOIN turns tr ON tr.id=tt.turn_id WHERE tt.legacy_task_id=?1 AND tr.project_id=s.project_id AND tr.session_id=s.id",[&task.id],|r|r.get(0)).optional()?;
+    let mapped: Option<String> = db
+        .query_row(
+            "SELECT s.project_id FROM turn_tasks tt JOIN sessions s ON s.id=tt.session_id JOIN turns tr ON tr.id=tt.turn_id WHERE tt.legacy_task_id=?1 AND tr.project_id=s.project_id AND tr.session_id=s.id",
+            [&task.id],
+            |r| r.get(0),
+        )
+        .optional()?;
     if mapped.as_deref() != Some(&binding.project_id.0)
         || binding.permission_digest != task_digest(&task.spec)?
-        || serde_json::to_value(&binding.root_identity)?
-            != serde_json::to_value(root_tx(db, &binding.project_id)?)?
+        || binding.root_identity != root_tx(db, &binding.project_id)?
     {
         return Err(ProjectError::Corrupt.into());
     }
@@ -332,8 +340,10 @@ pub(crate) fn bind_task_tx(
         config_revision: expected,
         permission_digest: task_digest(&task.spec)?,
     };
-    db.execute("INSERT INTO task_project_bindings(task_id,project_id,value,provenance) VALUES (?1,?2,?3,'native_v1')",params![task.id,project.0,serde_json::to_string(&binding)?])?;
-    validate_task_tx(db, task, true, true)?;
+    db.execute(
+        "INSERT INTO task_project_bindings(task_id,project_id,value,provenance) VALUES (?1,?2,?3,'native_v1')",
+        params![task.id, project.0, serde_json::to_string(&binding)?],
+    )?;
     Ok(())
 }
 impl Store {
@@ -371,7 +381,9 @@ impl Store {
         self.project(id)?;
         let ids: Vec<String> = {
             let db = self.db.lock().unwrap();
-            let mut s=db.prepare("SELECT legacy_run_id FROM sessions WHERE project_id=?1 ORDER BY created_at DESC,id LIMIT 100")?;
+            let mut s = db.prepare(
+                "SELECT legacy_run_id FROM sessions WHERE project_id=?1 ORDER BY created_at DESC,id LIMIT 100",
+            )?;
             s.query_map([&id.0], |r| r.get(0))?
                 .collect::<rusqlite::Result<_>>()?
         };
@@ -405,12 +417,7 @@ impl Store {
         }
         crate::worktree_management::ensure_registration_unreserved_tx(&tx)?;
         let root = RootIdentity::capture(Path::new(&request.root_path)).map_err(root_error)?;
-        let path = root
-            .verify()
-            .map_err(root_error)?
-            .path()
-            .to_string_lossy()
-            .into_owned();
+        let path = root.canonical_path().to_string_lossy().into_owned();
         let projects = Repository::new(&tx).projects()?;
         let mut legacy = None;
         for project in projects {
@@ -474,7 +481,15 @@ impl Store {
             .filter(|r| *r <= i64::MAX as u64)
             .ok_or(ProjectError::Corrupt)?;
         let permission_digest = digest("project-config-v1", &config)?;
-        tx.execute("UPDATE project_configs SET revision=?1,value=?2,permission_digest=?3 WHERE project_id=?4",params![revision,serde_json::to_string(&config)?,permission_digest,request.project_id.0])?;
+        tx.execute(
+            "UPDATE project_configs SET revision=?1,value=?2,permission_digest=?3 WHERE project_id=?4",
+            params![
+                revision,
+                serde_json::to_string(&config)?,
+                permission_digest,
+                request.project_id.0
+            ],
+        )?;
         tx.commit()?;
         Ok(ProjectConfigSnapshot {
             project_id: request.project_id,
@@ -524,7 +539,14 @@ fn insert_bound_project_tx(tx: &Connection, project: &Project, root: &RootIdenti
         "INSERT INTO project_root_bindings(project_id,identity) VALUES (?1,?2)",
         params![project.id.0, serde_json::to_string(root)?],
     )?;
-    tx.execute("INSERT INTO project_configs(project_id,revision,value,permission_digest) VALUES (?1,1,?2,?3)",params![project.id.0,serde_json::to_string(&config)?,digest("project-config-v1",&config)?])?;
+    tx.execute(
+        "INSERT INTO project_configs(project_id,revision,value,permission_digest) VALUES (?1,1,?2,?3)",
+        params![
+            project.id.0,
+            serde_json::to_string(&config)?,
+            digest("project-config-v1", &config)?
+        ],
+    )?;
     Ok(())
 }
 pub(crate) fn register_worktree_project_tx(
@@ -532,8 +554,10 @@ pub(crate) fn register_worktree_project_tx(
     project: &Project,
     root: &RootIdentity,
 ) -> Result<()> {
-    let verified = root.verify().map_err(root_error)?;
-    if verified.path() != Path::new(&project.root_path) {
+    root.validate_snapshot().map_err(root_error)?;
+    let canonical =
+        std::fs::canonicalize(&project.root_path).map_err(|_| ProjectError::RootUnavailable)?;
+    if canonical != root.canonical_path() {
         return Err(ProjectError::RootChanged.into());
     }
     secrets::safe_metadata_text("project_name", &project.name)?;
@@ -541,7 +565,6 @@ pub(crate) fn register_worktree_project_tx(
         return Err(ProjectError::Invalid.into());
     }
     for existing in Repository::new(tx).projects()? {
-        // Managed creation never adopts legacy roots or ignores offline identity.
         let identity = root_tx(tx, &existing.id)?;
         match root.overlap(&identity).map_err(root_error)? {
             RootOverlap::Disjoint => {}

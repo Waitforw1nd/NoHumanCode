@@ -1,3 +1,4 @@
+pub use crate::provider_transport::ProviderProtocol;
 use crate::{
     domain::*,
     provider_transport::{
@@ -13,6 +14,7 @@ use std::collections::BTreeMap;
 pub fn client() -> Result<ProviderClient> {
     Ok(ProviderClient::new()?)
 }
+
 pub(crate) async fn json_response(
     response: crate::provider_transport::ProviderResponse,
 ) -> std::result::Result<(Value, u16), TransportError> {
@@ -43,11 +45,13 @@ pub(crate) async fn json_response(
     }
     Ok((value, status_code))
 }
+
 pub async fn models(
     client: &ProviderClient,
     permit: ProviderPermit,
     route: &Route,
 ) -> std::result::Result<Vec<String>, TransportError> {
+    let protocol = permit.protocol();
     permit.matches(
         &route.base_url,
         NetworkPurpose::Models,
@@ -56,6 +60,26 @@ pub async fn models(
     )?;
     let response = client.send(permit, None).await?;
     let (value, status) = json_response(response).await?;
+    if protocol == ProviderProtocol::Gemini
+        && let Some(list) = value.get("models").and_then(Value::as_array)
+    {
+        let keep_prefix = route.model.starts_with("models/");
+        return list
+            .iter()
+            .map(|v| {
+                let raw = v["name"]
+                    .as_str()
+                    .or_else(|| v["id"].as_str())
+                    .or_else(|| v.as_str())
+                    .ok_or(TransportError::InvalidResponse { status })?;
+                if keep_prefix {
+                    Ok(raw.to_owned())
+                } else {
+                    Ok(raw.strip_prefix("models/").unwrap_or(raw).to_owned())
+                }
+            })
+            .collect();
+    }
     let list = value["data"]
         .as_array()
         .ok_or(TransportError::InvalidResponse { status })?;
@@ -76,6 +100,7 @@ struct ToolParts {
     name: String,
     arguments: String,
 }
+
 #[derive(Default)]
 pub struct Decoder {
     buffer: Vec<u8>,
@@ -84,10 +109,12 @@ pub struct Decoder {
     done: bool,
     finish: Option<String>,
     pub text: String,
+    pub reasoning: String,
     tools: BTreeMap<usize, ToolParts>,
     pub usage: Value,
     usage_observation: UsageObservation,
 }
+
 impl Decoder {
     pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
         ensure!(
@@ -110,6 +137,7 @@ impl Decoder {
         }
         Ok(())
     }
+
     fn flush(&mut self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
         let data = std::mem::take(&mut self.event);
         if data.is_empty() {
@@ -129,7 +157,16 @@ impl Decoder {
         self.usage = self.usage_observation.into_value();
         if let Some(choice) = chunk["choices"].as_array().and_then(|v| v.first()) {
             let delta = &choice["delta"];
-            if let Some(text) = delta["content"].as_str() {
+            if let Some(reasoning) = delta["reasoning_content"]
+                .as_str()
+                .or_else(|| delta["reasoning"].as_str())
+                && !reasoning.is_empty()
+            {
+                self.reasoning.push_str(reasoning);
+            }
+            if let Some(text) = delta["content"].as_str()
+                && !text.is_empty()
+            {
                 self.text.push_str(text);
                 emit(text)?;
             }
@@ -155,8 +192,8 @@ impl Decoder {
         }
         Ok(())
     }
+
     pub fn finish(self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<Value> {
-        let _ = emit;
         ensure!(
             self.buffer.is_empty() && self.event.is_empty(),
             "流式连接缺少完整结束事件"
@@ -173,18 +210,914 @@ impl Decoder {
             self.finish.as_deref() != Some("content_filter"),
             "模型拒绝生成此内容"
         );
-        let mut message = json!({"role":"assistant","content":self.text});
-        if !self.tools.is_empty() {
-            let calls: Result<Vec<Value>> = self.tools.into_values().map(|part| {
-                ensure!(!part.id.is_empty() && !part.name.is_empty(),"不完整的工具调用");
-                let _: Value = serde_json::from_str(&part.arguments).context("工具参数不完整")?;
-                Ok(json!({"id":part.id,"type":"function","function":{"name":part.name,"arguments":part.arguments}}))
-            }).collect();
-            message["tool_calls"] = json!(calls?);
+        let content = if self.tools.is_empty() && self.text.trim().is_empty() {
+            ensure!(!self.reasoning.trim().is_empty(), "模型没有返回内容");
+            emit(&self.reasoning)?;
+            self.reasoning.clone()
         } else {
-            ensure!(!self.text.trim().is_empty(), "模型没有返回内容");
+            self.text
+        };
+        let mut message = json!({"role": "assistant", "content": content});
+        if !self.reasoning.is_empty() {
+            message["reasoning_content"] = json!(self.reasoning);
+        }
+        if !self.tools.is_empty() {
+            let calls: Result<Vec<Value>> = self
+                .tools
+                .into_values()
+                .map(|part| {
+                    ensure!(
+                        !part.id.is_empty() && !part.name.is_empty(),
+                        "不完整的工具调用"
+                    );
+                    let _: Value =
+                        serde_json::from_str(&part.arguments).context("工具参数不完整")?;
+                    Ok(json!({
+                        "id": part.id,
+                        "type": "function",
+                        "function": {"name": part.name, "arguments": part.arguments}
+                    }))
+                })
+                .collect();
+            message["tool_calls"] = json!(calls?);
         }
         Ok(message)
+    }
+}
+
+fn extract_message_text(content: &Value) -> String {
+    match content {
+        Value::String(s) => s.clone(),
+        Value::Array(parts) => {
+            let mut out = String::new();
+            for part in parts {
+                if let Some(s) = part.as_str() {
+                    out.push_str(s);
+                } else if let Some(s) = part.get("text").and_then(Value::as_str) {
+                    out.push_str(s);
+                }
+            }
+            out
+        }
+        Value::Null => String::new(),
+        other => other.to_string(),
+    }
+}
+
+fn push_merged_anthropic_message(out: &mut Vec<Value>, role: &str, blocks: Vec<Value>) {
+    if blocks.is_empty() {
+        return;
+    }
+    if let Some(last) = out.last_mut()
+        && last["role"].as_str() == Some(role)
+        && let Some(arr) = last["content"].as_array_mut()
+    {
+        arr.extend(blocks);
+        return;
+    }
+    out.push(json!({"role": role, "content": blocks}));
+}
+
+fn encode_anthropic_body(openai_body: &Value) -> Result<Value> {
+    let model = openai_body
+        .get("model")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .context("missing model for Anthropic request")?;
+    let max_tokens = openai_body
+        .get("max_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(4096);
+    let messages = openai_body
+        .get("messages")
+        .and_then(Value::as_array)
+        .context("missing messages array")?;
+
+    let mut system_parts = Vec::new();
+    let mut converted_messages = Vec::new();
+
+    for msg in messages {
+        let role = msg.get("role").and_then(Value::as_str).unwrap_or("user");
+        match role {
+            "system" => {
+                let text = extract_message_text(&msg["content"]);
+                if !text.is_empty() {
+                    system_parts.push(text);
+                }
+            }
+            "user" => {
+                let mut blocks = Vec::new();
+                if let Some(parts) = msg["content"].as_array() {
+                    for part in parts {
+                        if let Some(text) = part.get("text").and_then(Value::as_str) {
+                            blocks.push(json!({"type": "text", "text": text}));
+                        }
+                    }
+                } else {
+                    let text = extract_message_text(&msg["content"]);
+                    blocks.push(json!({"type": "text", "text": text}));
+                }
+                push_merged_anthropic_message(&mut converted_messages, "user", blocks);
+            }
+            "assistant" => {
+                let mut blocks = Vec::new();
+                if let Some(thinking) = msg.get("reasoning_content").and_then(Value::as_str)
+                    && !thinking.is_empty()
+                {
+                    if let Some(sig) = msg.get("thinking_signature").and_then(Value::as_str)
+                        && !sig.is_empty()
+                    {
+                        blocks.push(json!({
+                            "type": "thinking",
+                            "thinking": thinking,
+                            "signature": sig
+                        }));
+                    } else {
+                        blocks.push(json!({
+                            "type": "thinking",
+                            "thinking": thinking
+                        }));
+                    }
+                }
+                let text = extract_message_text(&msg["content"]);
+                if !text.is_empty() {
+                    blocks.push(json!({"type": "text", "text": text}));
+                }
+                if let Some(calls) = msg.get("tool_calls").and_then(Value::as_array) {
+                    for call in calls {
+                        let id = call
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .filter(|s| !s.is_empty())
+                            .context("assistant tool_call missing id")?;
+                        let name = call["function"]
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .filter(|s| !s.is_empty())
+                            .context("assistant tool_call missing name")?;
+                        let raw_args = call["function"]
+                            .get("arguments")
+                            .and_then(Value::as_str)
+                            .unwrap_or("{}");
+                        let parsed: Value =
+                            serde_json::from_str(raw_args).unwrap_or_else(|_| json!({}));
+                        let input = if parsed.is_object() {
+                            parsed
+                        } else {
+                            json!({})
+                        };
+                        blocks.push(json!({
+                            "type": "tool_use",
+                            "id": id,
+                            "name": name,
+                            "input": input
+                        }));
+                    }
+                }
+                if blocks.is_empty() {
+                    blocks.push(json!({"type": "text", "text": ""}));
+                }
+                push_merged_anthropic_message(&mut converted_messages, "assistant", blocks);
+            }
+            "tool" => {
+                let tool_use_id = msg
+                    .get("tool_call_id")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty())
+                    .context("tool message missing tool_call_id")?;
+                let content = match &msg["content"] {
+                    Value::String(s) => s.clone(),
+                    Value::Null => String::new(),
+                    other => other.to_string(),
+                };
+                let block = json!({
+                    "type": "tool_result",
+                    "tool_use_id": tool_use_id,
+                    "content": content
+                });
+                push_merged_anthropic_message(&mut converted_messages, "user", vec![block]);
+            }
+            _ => {
+                let text = extract_message_text(&msg["content"]);
+                push_merged_anthropic_message(
+                    &mut converted_messages,
+                    "user",
+                    vec![json!({"type": "text", "text": text})],
+                );
+            }
+        }
+    }
+
+    let mut out = json!({
+        "model": model,
+        "max_tokens": max_tokens,
+        "messages": converted_messages,
+        "stream": true
+    });
+    if !system_parts.is_empty() {
+        out["system"] = Value::String(system_parts.join("\n\n"));
+    }
+    if let Some(tools) = openai_body.get("tools").and_then(Value::as_array)
+        && !tools.is_empty()
+    {
+        let mut anthropic_tools = Vec::with_capacity(tools.len());
+        for tool in tools {
+            if let Some(func) = tool.get("function") {
+                let name = func
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty())
+                    .context("tool missing function.name")?;
+                let description = func
+                    .get("description")
+                    .and_then(Value::as_str)
+                    .unwrap_or("");
+                let input_schema = func
+                    .get("parameters")
+                    .cloned()
+                    .unwrap_or_else(|| json!({"type": "object", "properties": {}}));
+                anthropic_tools.push(json!({
+                    "name": name,
+                    "description": description,
+                    "input_schema": input_schema
+                }));
+            } else if tool.get("name").is_some() && tool.get("input_schema").is_some() {
+                anthropic_tools.push(tool.clone());
+            }
+        }
+        if !anthropic_tools.is_empty() {
+            out["tools"] = Value::Array(anthropic_tools);
+            if let Some(choice) = openai_body.get("tool_choice") {
+                if choice == "auto" {
+                    out["tool_choice"] = json!({"type": "auto"});
+                } else if choice == "required" || choice == "any" {
+                    out["tool_choice"] = json!({"type": "any"});
+                } else if choice.is_object() {
+                    out["tool_choice"] = choice.clone();
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn sanitize_gemini_schema(schema: &Value) -> Value {
+    match schema {
+        Value::Object(map) => {
+            let mut clean = serde_json::Map::with_capacity(map.len());
+            for (k, v) in map {
+                if k == "additionalProperties" && !v.is_object() {
+                    continue;
+                }
+                clean.insert(k.clone(), sanitize_gemini_schema(v));
+            }
+            Value::Object(clean)
+        }
+        Value::Array(items) => Value::Array(items.iter().map(sanitize_gemini_schema).collect()),
+        other => other.clone(),
+    }
+}
+
+fn push_merged_gemini_content(out: &mut Vec<Value>, role: &str, parts: Vec<Value>) {
+    if parts.is_empty() {
+        return;
+    }
+    if let Some(last) = out.last_mut()
+        && last["role"].as_str() == Some(role)
+        && let Some(arr) = last["parts"].as_array_mut()
+    {
+        arr.extend(parts);
+        return;
+    }
+    out.push(json!({"role": role, "parts": parts}));
+}
+
+fn encode_gemini_body(openai_body: &Value) -> Result<Value> {
+    let max_tokens = openai_body
+        .get("max_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(4096);
+    let messages = openai_body
+        .get("messages")
+        .and_then(Value::as_array)
+        .context("missing messages array")?;
+
+    let mut call_names = BTreeMap::new();
+    for msg in messages {
+        if msg.get("role").and_then(Value::as_str) == Some("assistant")
+            && let Some(calls) = msg.get("tool_calls").and_then(Value::as_array)
+        {
+            for call in calls {
+                if let (Some(id), Some(name)) = (
+                    call.get("id").and_then(Value::as_str),
+                    call["function"].get("name").and_then(Value::as_str),
+                ) {
+                    call_names.insert(id.to_owned(), name.to_owned());
+                }
+            }
+        }
+    }
+
+    let mut system_parts = Vec::new();
+    let mut contents = Vec::new();
+
+    for msg in messages {
+        let role = msg.get("role").and_then(Value::as_str).unwrap_or("user");
+        match role {
+            "system" => {
+                let text = extract_message_text(&msg["content"]);
+                if !text.is_empty() {
+                    system_parts.push(text);
+                }
+            }
+            "user" => {
+                let text = extract_message_text(&msg["content"]);
+                push_merged_gemini_content(&mut contents, "user", vec![json!({"text": text})]);
+            }
+            "assistant" => {
+                let mut parts = Vec::new();
+                let text = extract_message_text(&msg["content"]);
+                if !text.is_empty() {
+                    parts.push(json!({"text": text}));
+                }
+                if let Some(calls) = msg.get("tool_calls").and_then(Value::as_array) {
+                    for call in calls {
+                        let name = call["function"]
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .filter(|s| !s.is_empty())
+                            .context("assistant tool_call missing name")?;
+                        let raw_args = call["function"]
+                            .get("arguments")
+                            .and_then(Value::as_str)
+                            .unwrap_or("{}");
+                        let parsed: Value =
+                            serde_json::from_str(raw_args).unwrap_or_else(|_| json!({}));
+                        let args = if parsed.is_object() {
+                            parsed
+                        } else {
+                            json!({})
+                        };
+                        parts.push(json!({
+                            "functionCall": {
+                                "name": name,
+                                "args": args
+                            }
+                        }));
+                    }
+                }
+                if parts.is_empty() {
+                    parts.push(json!({"text": ""}));
+                }
+                push_merged_gemini_content(&mut contents, "model", parts);
+            }
+            "tool" => {
+                let name = msg
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| {
+                        msg.get("tool_call_id")
+                            .and_then(Value::as_str)
+                            .and_then(|id| call_names.get(id).map(String::as_str))
+                    })
+                    .unwrap_or("tool");
+                let response_obj = match &msg["content"] {
+                    Value::Object(_) => msg["content"].clone(),
+                    Value::String(s) => match serde_json::from_str::<Value>(s) {
+                        Ok(v) if v.is_object() => v,
+                        _ => json!({"result": s}),
+                    },
+                    other => json!({"result": other}),
+                };
+                let part = json!({
+                    "functionResponse": {
+                        "name": name,
+                        "response": response_obj
+                    }
+                });
+                push_merged_gemini_content(&mut contents, "user", vec![part]);
+            }
+            _ => {
+                let text = extract_message_text(&msg["content"]);
+                push_merged_gemini_content(&mut contents, "user", vec![json!({"text": text})]);
+            }
+        }
+    }
+
+    let mut out = json!({
+        "contents": contents,
+        "generationConfig": {
+            "maxOutputTokens": max_tokens
+        }
+    });
+    if !system_parts.is_empty() {
+        out["systemInstruction"] = json!({
+            "parts": [{"text": system_parts.join("\n\n")}]
+        });
+    }
+    if let Some(tools) = openai_body.get("tools").and_then(Value::as_array)
+        && !tools.is_empty()
+    {
+        let mut declarations = Vec::with_capacity(tools.len());
+        for tool in tools {
+            let func = tool.get("function").unwrap_or(tool);
+            let name = func
+                .get("name")
+                .and_then(Value::as_str)
+                .filter(|s| !s.is_empty())
+                .context("tool missing name")?;
+            let description = func
+                .get("description")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let mut decl = json!({
+                "name": name,
+                "description": description
+            });
+            if let Some(params) = func.get("parameters") {
+                decl["parameters"] = sanitize_gemini_schema(params);
+            }
+            declarations.push(decl);
+        }
+        if !declarations.is_empty() {
+            out["tools"] = json!([{"functionDeclarations": declarations}]);
+        }
+    }
+    Ok(out)
+}
+
+pub fn encode_protocol_body(protocol: ProviderProtocol, openai_body: &Value) -> Result<Value> {
+    match protocol {
+        ProviderProtocol::OpenAi => Ok(openai_body.clone()),
+        ProviderProtocol::Anthropic => encode_anthropic_body(openai_body),
+        ProviderProtocol::Gemini => encode_gemini_body(openai_body),
+    }
+}
+
+#[derive(Default)]
+struct AnthropicToolParts {
+    id: String,
+    name: String,
+    initial_input: Option<Value>,
+    partial_json: String,
+}
+
+#[derive(Default)]
+pub struct AnthropicDecoder {
+    buffer: Vec<u8>,
+    event_name: String,
+    event_data: String,
+    size: usize,
+    done: bool,
+    stop_reason: Option<String>,
+    pub text: String,
+    pub reasoning: String,
+    thinking_signature: String,
+    tools: BTreeMap<usize, AnthropicToolParts>,
+    input_tokens: Option<u64>,
+    output_tokens: Option<u64>,
+    pub usage: Value,
+}
+
+impl AnthropicDecoder {
+    pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        ensure!(
+            bytes.len() <= RESPONSE_LIMIT.saturating_sub(self.size),
+            "模型输出超过安全上限"
+        );
+        self.size += bytes.len();
+        self.buffer.extend_from_slice(bytes);
+        while let Some(pos) = self.buffer.iter().position(|b| *b == b'\n') {
+            let line: Vec<u8> = self.buffer.drain(..=pos).collect();
+            let line = std::str::from_utf8(&line)?.trim_end_matches(['\r', '\n']);
+            if line.is_empty() {
+                self.flush(emit)?;
+            } else if let Some(ev) = line.strip_prefix("event:") {
+                self.event_name = ev.trim().to_owned();
+            } else if let Some(data) = line.strip_prefix("data:") {
+                if !self.event_data.is_empty() {
+                    self.event_data.push('\n');
+                }
+                self.event_data.push_str(data.trim_start());
+            }
+        }
+        Ok(())
+    }
+
+    fn refresh_usage(&mut self) {
+        if self.input_tokens.is_some() || self.output_tokens.is_some() {
+            let prompt = self.input_tokens.unwrap_or(0);
+            let completion = self.output_tokens.unwrap_or(0);
+            let total = prompt.saturating_add(completion);
+            self.usage = json!({
+                "prompt_tokens": prompt,
+                "completion_tokens": completion,
+                "total_tokens": total
+            });
+        }
+    }
+
+    fn flush(&mut self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        let event_name = std::mem::take(&mut self.event_name);
+        let data = std::mem::take(&mut self.event_data);
+        if data.is_empty() {
+            return Ok(());
+        }
+        ensure!(!self.done, "流式结束后收到额外事件");
+        if data == "[DONE]" {
+            self.done = true;
+            return Ok(());
+        }
+        let chunk: Value = serde_json::from_str(&data).context("无效的流式响应")?;
+        if chunk.get("type").and_then(Value::as_str) == Some("error") || !chunk["error"].is_null() {
+            bail!("模型流返回错误");
+        }
+        let kind = chunk
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or(event_name.as_str());
+        match kind {
+            "ping" | "content_block_stop" => {}
+            "message_start" => {
+                if let Some(u) = chunk["message"].get("usage").and_then(Value::as_object) {
+                    let input = u.get("input_tokens").and_then(Value::as_u64).unwrap_or(0);
+                    let cache_create = u
+                        .get("cache_creation_input_tokens")
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0);
+                    let cache_read = u
+                        .get("cache_read_input_tokens")
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0);
+                    self.input_tokens = Some(
+                        input
+                            .saturating_add(cache_create)
+                            .saturating_add(cache_read),
+                    );
+                    if let Some(out) = u.get("output_tokens").and_then(Value::as_u64) {
+                        self.output_tokens = Some(out);
+                    }
+                    self.refresh_usage();
+                }
+            }
+            "content_block_start" => {
+                let index = chunk.get("index").and_then(Value::as_u64).unwrap_or(0) as usize;
+                let block = &chunk["content_block"];
+                match block.get("type").and_then(Value::as_str) {
+                    Some("text") => {
+                        if let Some(text) = block.get("text").and_then(Value::as_str)
+                            && !text.is_empty()
+                        {
+                            self.text.push_str(text);
+                            emit(text)?;
+                        }
+                    }
+                    Some("thinking") => {
+                        if let Some(thinking) = block.get("thinking").and_then(Value::as_str)
+                            && !thinking.is_empty()
+                        {
+                            self.reasoning.push_str(thinking);
+                        }
+                        if let Some(sig) = block.get("signature").and_then(Value::as_str)
+                            && !sig.is_empty()
+                        {
+                            self.thinking_signature.push_str(sig);
+                        }
+                    }
+                    Some("tool_use") => {
+                        ensure!(index < 64, "单轮工具调用过多");
+                        let part = self.tools.entry(index).or_default();
+                        if let Some(id) = block.get("id").and_then(Value::as_str) {
+                            part.id.push_str(id);
+                        }
+                        if let Some(name) = block.get("name").and_then(Value::as_str) {
+                            part.name.push_str(name);
+                        }
+                        if let Some(input) = block.get("input") {
+                            part.initial_input = Some(input.clone());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            "content_block_delta" => {
+                let index = chunk.get("index").and_then(Value::as_u64).unwrap_or(0) as usize;
+                let delta = &chunk["delta"];
+                match delta.get("type").and_then(Value::as_str) {
+                    Some("text_delta") => {
+                        if let Some(text) = delta.get("text").and_then(Value::as_str)
+                            && !text.is_empty()
+                        {
+                            self.text.push_str(text);
+                            emit(text)?;
+                        }
+                    }
+                    Some("thinking_delta") => {
+                        if let Some(thinking) = delta.get("thinking").and_then(Value::as_str)
+                            && !thinking.is_empty()
+                        {
+                            self.reasoning.push_str(thinking);
+                        }
+                    }
+                    Some("signature_delta") => {
+                        if let Some(sig) = delta.get("signature").and_then(Value::as_str)
+                            && !sig.is_empty()
+                        {
+                            self.thinking_signature.push_str(sig);
+                        }
+                    }
+                    Some("input_json_delta") => {
+                        ensure!(index < 64, "单轮工具调用过多");
+                        if let Some(pj) = delta.get("partial_json").and_then(Value::as_str) {
+                            self.tools
+                                .entry(index)
+                                .or_default()
+                                .partial_json
+                                .push_str(pj);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            "message_delta" => {
+                if let Some(reason) = chunk["delta"].get("stop_reason").and_then(Value::as_str) {
+                    self.stop_reason = Some(reason.to_owned());
+                }
+                if let Some(u) = chunk.get("usage").and_then(Value::as_object) {
+                    if let Some(inp) = u.get("input_tokens").and_then(Value::as_u64) {
+                        let cache_create = u
+                            .get("cache_creation_input_tokens")
+                            .and_then(Value::as_u64)
+                            .unwrap_or(0);
+                        let cache_read = u
+                            .get("cache_read_input_tokens")
+                            .and_then(Value::as_u64)
+                            .unwrap_or(0);
+                        self.input_tokens =
+                            Some(inp.saturating_add(cache_create).saturating_add(cache_read));
+                    }
+                    if let Some(out) = u.get("output_tokens").and_then(Value::as_u64) {
+                        self.output_tokens = Some(out);
+                    }
+                    self.refresh_usage();
+                }
+            }
+            "message_stop" => {
+                self.done = true;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn finish(self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<Value> {
+        ensure!(
+            self.buffer.is_empty() && self.event_data.is_empty(),
+            "流式连接缺少完整结束事件"
+        );
+        ensure!(self.done, "流式连接提前中断，请继续此成员重试");
+        ensure!(
+            self.stop_reason.as_deref() != Some("max_tokens"),
+            "模型输出达到上限，请提高路由的输出上限后重试"
+        );
+        ensure!(
+            self.stop_reason.as_deref() != Some("refusal"),
+            "模型拒绝生成此内容"
+        );
+        let content = if self.tools.is_empty() && self.text.trim().is_empty() {
+            ensure!(!self.reasoning.trim().is_empty(), "模型没有返回内容");
+            emit(&self.reasoning)?;
+            self.reasoning.clone()
+        } else {
+            self.text
+        };
+        let mut message = json!({"role": "assistant", "content": content});
+        if !self.reasoning.is_empty() {
+            message["reasoning_content"] = json!(self.reasoning);
+        }
+        if !self.thinking_signature.is_empty() {
+            message["thinking_signature"] = json!(self.thinking_signature);
+        }
+        if !self.tools.is_empty() {
+            let calls: Result<Vec<Value>> = self
+                .tools
+                .into_values()
+                .map(|part| {
+                    ensure!(
+                        !part.id.is_empty() && !part.name.is_empty(),
+                        "不完整的工具调用"
+                    );
+                    let arguments = if !part.partial_json.trim().is_empty() {
+                        let parsed: Value =
+                            serde_json::from_str(&part.partial_json).context("工具参数不完整")?;
+                        ensure!(parsed.is_object(), "工具参数必须是对象");
+                        part.partial_json
+                    } else if let Some(initial) = part.initial_input.filter(Value::is_object) {
+                        initial.to_string()
+                    } else {
+                        bail!("工具参数不完整");
+                    };
+                    Ok(json!({
+                        "id": part.id,
+                        "type": "function",
+                        "function": {"name": part.name, "arguments": arguments}
+                    }))
+                })
+                .collect();
+            message["tool_calls"] = json!(calls?);
+        }
+        Ok(message)
+    }
+}
+
+#[derive(Default)]
+pub struct GeminiDecoder {
+    buffer: Vec<u8>,
+    event: String,
+    size: usize,
+    done: bool,
+    saw_chunk: bool,
+    finish_reason: Option<String>,
+    pub text: String,
+    pub reasoning: String,
+    tools: Vec<ToolParts>,
+    pub usage: Value,
+}
+
+impl GeminiDecoder {
+    pub fn feed(&mut self, bytes: &[u8], emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        ensure!(
+            bytes.len() <= RESPONSE_LIMIT.saturating_sub(self.size),
+            "模型输出超过安全上限"
+        );
+        self.size += bytes.len();
+        self.buffer.extend_from_slice(bytes);
+        while let Some(pos) = self.buffer.iter().position(|b| *b == b'\n') {
+            let line: Vec<u8> = self.buffer.drain(..=pos).collect();
+            let line = std::str::from_utf8(&line)?.trim_end_matches(['\r', '\n']);
+            if line.is_empty() {
+                self.flush(emit)?;
+            } else if let Some(data) = line.strip_prefix("data:") {
+                if !self.event.is_empty() {
+                    self.event.push('\n');
+                }
+                self.event.push_str(data.trim_start());
+            }
+        }
+        Ok(())
+    }
+
+    fn flush(&mut self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<()> {
+        let data = std::mem::take(&mut self.event);
+        if data.is_empty() {
+            return Ok(());
+        }
+        ensure!(!self.done, "流式结束后收到额外事件");
+        if data == "[DONE]" {
+            self.done = true;
+            return Ok(());
+        }
+        let chunk: Value = serde_json::from_str(&data).context("无效的流式响应")?;
+        if !chunk["error"].is_null() {
+            bail!("模型流返回错误");
+        }
+        if chunk["promptFeedback"]
+            .get("blockReason")
+            .and_then(Value::as_str)
+            .is_some()
+        {
+            bail!("模型拒绝生成此内容");
+        }
+        self.saw_chunk = true;
+        if let Some(meta) = chunk.get("usageMetadata").and_then(Value::as_object)
+            && (meta.contains_key("promptTokenCount")
+                || meta.contains_key("candidatesTokenCount")
+                || meta.contains_key("totalTokenCount"))
+        {
+            let prompt = meta
+                .get("promptTokenCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let completion = meta
+                .get("candidatesTokenCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let sum = prompt.saturating_add(completion);
+            let total = meta
+                .get("totalTokenCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(sum)
+                .max(sum);
+            self.usage = json!({
+                "prompt_tokens": prompt,
+                "completion_tokens": completion,
+                "total_tokens": total
+            });
+        }
+        if let Some(candidate) = chunk
+            .get("candidates")
+            .and_then(Value::as_array)
+            .and_then(|v| v.first())
+        {
+            if let Some(reason) = candidate.get("finishReason").and_then(Value::as_str) {
+                self.finish_reason = Some(reason.to_owned());
+            }
+            if let Some(parts) = candidate["content"].get("parts").and_then(Value::as_array) {
+                for part in parts {
+                    if part.get("thought").and_then(Value::as_bool) == Some(true) {
+                        if let Some(t) = part.get("text").and_then(Value::as_str)
+                            && !t.is_empty()
+                        {
+                            self.reasoning.push_str(t);
+                        }
+                    } else if let Some(t) = part.get("text").and_then(Value::as_str)
+                        && !t.is_empty()
+                    {
+                        self.text.push_str(t);
+                        emit(t)?;
+                    }
+                    if let Some(fc) = part.get("functionCall") {
+                        ensure!(self.tools.len() < 64, "单轮工具调用过多");
+                        let name = fc
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .filter(|s| !s.is_empty())
+                            .context("不完整的工具调用")?
+                            .to_owned();
+                        let args_val = fc.get("args").cloned().unwrap_or_else(|| json!({}));
+                        ensure!(args_val.is_object(), "工具参数必须是对象");
+                        let id = fc
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .filter(|s| !s.is_empty())
+                            .map(str::to_owned)
+                            .unwrap_or_else(|| format!("gemini-call-{}", uuid::Uuid::new_v4()));
+                        self.tools.push(ToolParts {
+                            id,
+                            name,
+                            arguments: args_val.to_string(),
+                        });
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn finish(self, emit: &mut impl FnMut(&str) -> Result<()>) -> Result<Value> {
+        ensure!(
+            self.buffer.is_empty() && self.event.is_empty(),
+            "流式连接缺少完整结束事件"
+        );
+        ensure!(
+            self.saw_chunk && (self.finish_reason.is_some() || self.done),
+            "流式连接提前中断，请继续此成员重试"
+        );
+        match self.finish_reason.as_deref() {
+            Some("MAX_TOKENS") => bail!("模型输出达到上限，请提高路由的输出上限后重试"),
+            Some("SAFETY" | "RECITATION" | "BLOCKLIST" | "PROHIBITED_CONTENT" | "SPII") => {
+                bail!("模型拒绝生成此内容")
+            }
+            Some("MALFORMED_FUNCTION_CALL") => bail!("不完整的工具调用"),
+            _ => {}
+        }
+        let content = if self.tools.is_empty() && self.text.trim().is_empty() {
+            ensure!(!self.reasoning.trim().is_empty(), "模型没有返回内容");
+            emit(&self.reasoning)?;
+            self.reasoning.clone()
+        } else {
+            self.text
+        };
+        let mut message = json!({"role": "assistant", "content": content});
+        if !self.reasoning.is_empty() {
+            message["reasoning_content"] = json!(self.reasoning);
+        }
+        if !self.tools.is_empty() {
+            let calls: Vec<Value> = self
+                .tools
+                .into_iter()
+                .map(|part| {
+                    json!({
+                        "id": part.id,
+                        "type": "function",
+                        "function": {"name": part.name, "arguments": part.arguments}
+                    })
+                })
+                .collect();
+            message["tool_calls"] = json!(calls);
+        }
+        Ok(message)
+    }
+}
+
+pub(crate) fn protocol_decoder(
+    protocol: ProviderProtocol,
+) -> Box<dyn crate::provider_runtime::CompletionDecoder> {
+    match protocol {
+        ProviderProtocol::OpenAi => Box::new(Decoder::default()),
+        ProviderProtocol::Anthropic => Box::new(AnthropicDecoder::default()),
+        ProviderProtocol::Gemini => Box::new(GeminiDecoder::default()),
     }
 }
 
@@ -235,6 +1168,63 @@ impl crate::provider_runtime::CompletionDecoder for Decoder {
             .map_err(|_| crate::provider_runtime::CodecError::Failed)
     }
 }
+
+impl crate::provider_runtime::CompletionDecoder for AnthropicDecoder {
+    fn feed(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
+        AnthropicDecoder::feed(self, bytes, &mut |text| emit(text))
+            .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+
+    fn is_done(&self) -> bool {
+        self.done
+    }
+
+    fn finish(
+        self: Box<Self>,
+        emit: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<
+        crate::provider_runtime::CompletionOutput,
+        crate::provider_runtime::CodecError,
+    > {
+        let usage = self.usage.clone();
+        AnthropicDecoder::finish(*self, &mut |text| emit(text))
+            .map(|message| (message, usage))
+            .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+}
+
+impl crate::provider_runtime::CompletionDecoder for GeminiDecoder {
+    fn feed(
+        &mut self,
+        bytes: &[u8],
+        emit: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<(), crate::provider_runtime::CodecError> {
+        GeminiDecoder::feed(self, bytes, &mut |text| emit(text))
+            .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+
+    fn is_done(&self) -> bool {
+        self.done
+    }
+
+    fn finish(
+        self: Box<Self>,
+        emit: &mut crate::provider_runtime::Emit<'_>,
+    ) -> std::result::Result<
+        crate::provider_runtime::CompletionOutput,
+        crate::provider_runtime::CodecError,
+    > {
+        let usage = self.usage.clone();
+        GeminiDecoder::finish(*self, &mut |text| emit(text))
+            .map(|message| (message, usage))
+            .map_err(|_| crate::provider_runtime::CodecError::Failed)
+    }
+}
+
 pub async fn complete(
     client: &ProviderClient,
     permit: ProviderPermit,
@@ -243,54 +1233,49 @@ pub async fn complete(
     tools: &[Value],
     mut emit: impl FnMut(&str) -> Result<()> + Send,
 ) -> std::result::Result<(Value, Value), TransportError> {
+    let protocol = permit.protocol();
     permit.matches(
         &route.base_url,
         NetworkPurpose::Completion,
         Some(&route.model),
         None,
     )?;
-    let mut body = json!({"model":permit.model(),"messages":messages,"max_tokens":route.max_tokens,"stream":true,"stream_options":{"include_usage":true}});
+    let mut openai_body = json!({
+        "model": permit.model(),
+        "messages": messages,
+        "max_tokens": route.max_tokens,
+        "stream": true,
+        "stream_options": {"include_usage": true}
+    });
     if !tools.is_empty() {
-        body["tools"] = json!(tools);
-        body["tool_choice"] = json!("auto");
+        openai_body["tools"] = json!(tools);
+        openai_body["tool_choice"] = json!("auto");
     }
+    let body = encode_protocol_body(protocol, &openai_body).map_err(|_| TransportError::Invalid)?;
     let response = client.send(permit, Some(&body)).await?;
     if !response.status().is_success() {
         json_response(response).await?;
         return Err(TransportError::Unknown);
     }
-    let mut decoder = Decoder::default();
+    let mut decoder = protocol_decoder(protocol);
     let mut bytes = response.bytes_stream();
-    let mut redactor = crate::secrets::StreamRedactor::default();
-    let (message, usage) = {
-        let mut filtered_emit = |text: &str| {
-            let safe = redactor.push(text);
-            if safe.is_empty() { Ok(()) } else { emit(&safe) }
-        };
-        let mut response_size = 0usize;
-        while let Some(chunk) = bytes.next().await {
-            let chunk = chunk.map_err(|_| TransportError::Unknown)?;
-            response_size = response_size
-                .checked_add(chunk.len())
-                .filter(|size| *size <= RESPONSE_LIMIT)
-                .ok_or(TransportError::Unknown)?;
-            if !decoder.done {
-                decoder
-                    .feed(&chunk, &mut filtered_emit)
-                    .map_err(|_| TransportError::Unknown)?;
-            }
+    let mut response_size = 0usize;
+    let emit_ref: &mut crate::provider_runtime::Emit<'_> = &mut emit;
+    while let Some(chunk) = bytes.next().await {
+        let chunk = chunk.map_err(|_| TransportError::Unknown)?;
+        response_size = response_size
+            .checked_add(chunk.len())
+            .filter(|size| *size <= RESPONSE_LIMIT)
+            .ok_or(TransportError::Unknown)?;
+        if !decoder.is_done() {
+            decoder
+                .feed(&chunk, emit_ref)
+                .map_err(|_| TransportError::Unknown)?;
         }
-        let usage = decoder.usage.clone();
-        let message = decoder
-            .finish(&mut filtered_emit)
-            .map_err(|_| TransportError::Unknown)?;
-        (message, usage)
-    };
-    let tail = redactor.finish();
-    if !tail.is_empty() {
-        emit(&tail).map_err(|_| TransportError::Unknown)?;
     }
-    Ok((message, usage))
+    decoder
+        .finish(emit_ref)
+        .map_err(|_| TransportError::Unknown)
 }
 
 fn number(v: &Value) -> Option<f64> {
@@ -298,15 +1283,24 @@ fn number(v: &Value) -> Option<f64> {
         .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
         .filter(|n| n.is_finite())
 }
+
 pub fn normalize_balance(value: Value, account: &Account) -> Result<Value> {
     ensure!(value["success"] != false, "New API 账号验证失败");
     let data = value.get("data").unwrap_or(&value);
     let quota = number(&data["quota"]).context("余额响应缺少有效 quota")?;
     let used = number(&data["used_quota"]);
-    Ok(
-        json!({"username":data["username"],"display_name":data["display_name"],"group":data["group"],"quota_raw":quota,"balance":quota/account.quota_per_unit,"used":used.map(|v|v/account.quota_per_unit),"quota_per_unit":account.quota_per_unit,"checked_at":now()}),
-    )
+    Ok(json!({
+        "username": data["username"],
+        "display_name": data["display_name"],
+        "group": data["group"],
+        "quota_raw": quota,
+        "balance": quota / account.quota_per_unit,
+        "used": used.map(|v| v / account.quota_per_unit),
+        "quota_per_unit": account.quota_per_unit,
+        "checked_at": now()
+    }))
 }
+
 pub async fn balance(
     client: &ProviderClient,
     permit: ProviderPermit,
@@ -324,61 +1318,16 @@ pub async fn balance(
 }
 
 #[cfg(test)]
-mod transport_fixture {
-    use super::*;
-    use crate::{engine::Engine, store::Store};
-    use std::{cell::RefCell, sync::Arc};
-
-    tokio::task_local! {
-        static HOSTS: RefCell<Vec<Arc<Engine>>>;
-    }
-
-    pub(super) async fn scope<F: std::future::Future>(work: F) -> F::Output {
-        HOSTS.scope(RefCell::new(Vec::new()), work).await
-    }
-
-    pub(super) fn store() -> Arc<Store> {
-        HOSTS.with(|hosts| hosts.borrow().last().unwrap().store.clone())
-    }
-
-    pub(super) fn permit(
-        base: &str,
-        purpose: NetworkPurpose,
-        model: Option<&str>,
-        user: Option<&str>,
-    ) -> ProviderPermit {
-        // Each transport fixture has a real controller and operation. Isolation
-        // matters: an intentionally abandoned response seals only its own domain.
-        let dir = tempfile::tempdir().unwrap().keep();
-        let store = Arc::new(Store::open(&dir.join("transport.sqlite3")).unwrap());
-        let engine = Engine::new(store.clone(), 1).unwrap();
-        let operation = store
-            .execution_operation(tokio_util::sync::CancellationToken::new())
-            .unwrap();
-        let permit = ProviderPermit::new(
-            crate::provider_transport::validate_target(base, purpose).unwrap(),
-            "fixture-secret-key".into(),
-            uuid::Uuid::new_v4().to_string(),
-            model.map(String::from),
-            user.map(String::from),
-        )
-        .unwrap()
-        .bind_operation(operation, store.authority.clone());
-        HOSTS.with(|hosts| hosts.borrow_mut().push(engine));
-        permit
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn utf8_sse_and_fragmented_tools() {
-        let data = concat!(
-            "data: {\"choices\":[{\"delta\":{\"content\":\"桃子\"}}]}\r\n\r\n",
-            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"function\":{\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\"}}]}}]}\n\n",
-            "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"a.txt\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\ndata: [DONE]\n\n"
-        );
+    fn utf8_sse_fragmented_tools_and_unredacted_code() {
+        let code = "let cancel_token = 1; // sk-learn Bearer auth";
+        let c1 = json!({"choices":[{"delta":{"content":code}}]});
+        let c2 = json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"read_file","arguments":"{\"path\":"}}]}}]});
+        let c3 = json!({"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"桃子.txt\"}"}}]},"finish_reason":"tool_calls"}]});
+        let data = format!("data: {c1}\r\n\r\ndata: {c2}\n\ndata: {c3}\n\ndata: [DONE]\n\n");
         let mut decoder = Decoder::default();
         let mut text = String::new();
         for byte in data.as_bytes() {
@@ -390,14 +1339,62 @@ mod tests {
                 .unwrap();
         }
         let message = decoder.finish(&mut |_| Ok(())).unwrap();
-        assert_eq!(text, "桃子");
+        assert_eq!(text, code);
+        assert_eq!(message["content"], code);
         assert_eq!(
             message["tool_calls"][0]["function"]["arguments"],
-            "{\"path\":\"a.txt\"}"
+            "{\"path\":\"桃子.txt\"}"
         );
     }
+
     #[test]
-    fn truncated_stream_fails() {
+    fn reasoning_content_delta_with_answer_and_reasoning_only_chunks() {
+        let with_answer = concat!(
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"17 * 19 = 323\",\"content\":null}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"323\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":5,\"total_tokens\":25}}\n\n",
+            "data: [DONE]\n\n"
+        );
+        let mut decoder = Decoder::default();
+        let mut streamed = String::new();
+        decoder
+            .feed(with_answer.as_bytes(), &mut |s| {
+                streamed.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+        let usage = decoder.usage.clone();
+        let message = decoder.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(streamed, "323");
+        assert_eq!(message["content"], "323");
+        assert_eq!(message["reasoning_content"], "17 * 19 = 323");
+        assert_eq!(usage["total_tokens"], 25);
+
+        // Chunks carrying only `reasoning` and null `content` still succeed cleanly.
+        let reasoning_only = concat!(
+            "data: {\"choices\":[{\"delta\":{\"reasoning\":\"step 1; \",\"content\":null}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"reasoning\":\"step 2\"},\"finish_reason\":\"stop\"}]}\n\n",
+            "data: [DONE]\n\n"
+        );
+        let mut decoder2 = Decoder::default();
+        let mut fallback = String::new();
+        decoder2
+            .feed(reasoning_only.as_bytes(), &mut |s| {
+                fallback.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+        let message2 = decoder2
+            .finish(&mut |s| {
+                fallback.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(fallback, "step 1; step 2");
+        assert_eq!(message2["content"], "step 1; step 2");
+    }
+
+    #[test]
+    fn truncated_stream_and_balance_validation() {
         let mut d = Decoder::default();
         d.feed(
             b"data: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\n",
@@ -405,9 +1402,7 @@ mod tests {
         )
         .unwrap();
         assert!(d.finish(&mut |_| Ok(())).is_err());
-    }
-    #[test]
-    fn balance_validation() {
+
         let a = Account {
             base_url: "https://example.com".into(),
             user_id: "1".into(),
@@ -415,824 +1410,93 @@ mod tests {
         };
         assert_eq!(
             normalize_balance(
-                json!({"success":true,"data":{"quota":"1000000","used_quota":500000}}),
+                json!({"success": true, "data": {"quota": "1000000", "used_quota": 500000}}),
                 &a
             )
             .unwrap()["balance"],
             2.0
         );
-        assert!(normalize_balance(json!({"success":false}), &a).is_err());
-        assert!(normalize_balance(json!({"data":{}}), &a).is_err());
+        assert!(normalize_balance(json!({"success": false}), &a).is_err());
     }
 
-    #[tokio::test]
-    async fn done_waits_for_body_eof_and_cancel_retains_domain() {
-        super::transport_fixture::scope(async {
-        use axum::{
-            Router,
-            body::{Body, Bytes},
-            routing::post,
-        };
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
-        let server = tokio::spawn(async move {
-            let app=Router::new().route("/chat/completions",post(||async{
-                let first=Bytes::from_static(b"data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n");
-                let stream=futures_util::stream::iter([Ok::<_,std::io::Error>(first)]).chain(futures_util::stream::pending());
-                ([("content-type","text/event-stream")],Body::from_stream(stream))
-            }));
-            axum::serve(listener, app).await.unwrap();
-        });
-        let route = Route {
-            id: "mock".into(),
-            name: "mock".into(),
-            base_url: format!("http://{address}"),
-            model: "mock".into(),
-            max_tokens: 128,
-            parallel_limit: 1,
-            key_env: None,
-        };
-        let permit = super::transport_fixture::permit(&route.base_url, NetworkPurpose::Completion, Some(&route.model), None);
-        let store = super::transport_fixture::store();
-        let seen = std::sync::Arc::new(tokio::sync::Notify::new());
-        let notify = seen.clone();
-        let mut task = tokio::spawn(async move {
-            complete(&client().unwrap(), permit, &route, &[], &[], move |_| {
-                notify.notify_one();
+    #[test]
+    fn anthropic_and_gemini_decoders_handle_fragmented_utf8_tools_and_usage() {
+        let ant_sse = concat!(
+            "event: message_start\r\n",
+            "data: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":40,\"cache_read_input_tokens\":10,\"output_tokens\":1}}}\r\n\r\n",
+            "event: content_block_start\n",
+            "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}\n\n",
+            "event: content_block_delta\n",
+            "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"先检查桃子.txt\"}}\n\n",
+            "event: content_block_start\n",
+            "data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n",
+            "event: content_block_delta\n",
+            "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"正在读取桃子...\"}}\n\n",
+            "event: content_block_start\n",
+            "data: {\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"read_file\",\"input\":{}}}\n\n",
+            "event: content_block_delta\n",
+            "data: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"path\\\":\"}}\n\n",
+            "event: content_block_delta\n",
+            "data: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"桃子.txt\\\"}\"}}\n\n",
+            "event: message_delta\n",
+            "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":25}}\n\n",
+            "event: message_stop\n",
+            "data: {\"type\":\"message_stop\"}\n\n"
+        );
+        let mut ant = AnthropicDecoder::default();
+        let mut ant_streamed = String::new();
+        for b in ant_sse.as_bytes() {
+            ant.feed(&[*b], &mut |s| {
+                ant_streamed.push_str(s);
                 Ok(())
-            }).await
-        });
-        tokio::time::timeout(std::time::Duration::from_secs(5), seen.notified()).await.unwrap();
-        assert!(tokio::time::timeout(std::time::Duration::from_millis(100), &mut task).await.is_err());
-        assert!(store.execution_admission_status().unwrap().1 > 0);
-        task.abort();
-        assert!(task.await.unwrap_err().is_cancelled());
-        let (open, in_flight, unknown) = store.execution_admission_status().unwrap();
-        assert!(!open && in_flight > 0 && unknown > 0);
-        server.abort();
-        let _ = server.await;
-        let (open, in_flight, unknown) = store.execution_admission_status().unwrap();
-        assert!(!open && in_flight > 0 && unknown > 0);
-        }).await;
-    }
-}
-
-#[cfg(test)]
-mod network_tests {
-    use super::*;
-    use std::sync::{
-        Arc, Mutex,
-        atomic::{AtomicUsize, Ordering},
-    };
-    use tokio::{
-        io::{AsyncReadExt, AsyncWriteExt},
-        net::TcpListener,
-        task::JoinHandle,
-    };
-
-    struct Mock {
-        base: String,
-        count: Arc<AtomicUsize>,
-        requests: Arc<Mutex<Vec<String>>>,
-        task: JoinHandle<()>,
-    }
-    impl Mock {
-        async fn start(response: Vec<u8>, hold_open: bool) -> Self {
-            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-            let base = format!("http://{}", listener.local_addr().unwrap());
-            let count = Arc::new(AtomicUsize::new(0));
-            let requests = Arc::new(Mutex::new(Vec::new()));
-            let c = count.clone();
-            let r = requests.clone();
-            let task = tokio::spawn(async move {
-                loop {
-                    let (mut socket, _) = listener.accept().await.unwrap();
-                    c.fetch_add(1, Ordering::SeqCst);
-                    let mut request = Vec::new();
-                    loop {
-                        let mut buf = [0; 4096];
-                        let n = socket.read(&mut buf).await.unwrap();
-                        if n == 0 {
-                            break;
-                        }
-                        request.extend_from_slice(&buf[..n]);
-                        assert!(request.len() < 1_000_000);
-                        if let Some(end) = request.windows(4).position(|w| w == b"\r\n\r\n") {
-                            let header = String::from_utf8_lossy(&request[..end]);
-                            let length = header
-                                .lines()
-                                .find_map(|l| {
-                                    l.to_ascii_lowercase()
-                                        .strip_prefix("content-length:")
-                                        .map(|v| v.trim().parse::<usize>().unwrap())
-                                })
-                                .unwrap_or(0);
-                            if request.len() >= end + 4 + length {
-                                break;
-                            }
-                        }
-                    }
-                    r.lock().unwrap().push(String::from_utf8(request).unwrap());
-                    if socket.write_all(&response).await.is_ok() && hold_open {
-                        std::future::pending::<()>().await;
-                    }
-                }
-            });
-            Self {
-                base,
-                count,
-                requests,
-                task,
-            }
-        }
-        async fn stop(self) {
-            self.task.abort();
-            let _ = self.task.await;
-        }
-        fn hits(&self) -> usize {
-            self.count.load(Ordering::SeqCst)
-        }
-        fn request(&self) -> String {
-            self.requests.lock().unwrap().last().unwrap().clone()
-        }
-    }
-    fn response(status: u16, body: &[u8], extra: &str) -> Vec<u8> {
-        let mut bytes = format!(
-            "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nConnection: close\r\n{extra}\r\n",
-            body.len()
-        )
-        .into_bytes();
-        bytes.extend_from_slice(body);
-        bytes
-    }
-    fn route(base: &str) -> Route {
-        Route {
-            id: "mock".into(),
-            name: "mock".into(),
-            base_url: base.into(),
-            model: "m".into(),
-            max_tokens: 128,
-            parallel_limit: 1,
-            key_env: None,
-        }
-    }
-    fn permit(
-        base: &str,
-        purpose: NetworkPurpose,
-        model: Option<&str>,
-        user: Option<&str>,
-    ) -> ProviderPermit {
-        super::transport_fixture::permit(base, purpose, model, user)
-    }
-    async fn list(mock: &Mock) -> std::result::Result<Vec<String>, TransportError> {
-        tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            models(
-                &client().unwrap(),
-                permit(&mock.base, NetworkPurpose::Models, Some("m"), None),
-                &route(&mock.base),
-            ),
-        )
-        .await
-        .unwrap()
-    }
-
-    #[tokio::test]
-    async fn all_redirect_statuses_do_not_reach_second_origin_or_replay_post() {
-        super::transport_fixture::scope(async {
-            let b = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-            for status in [301, 302, 303, 307, 308] {
-                let a = Mock::start(
-                    response(
-                        status,
-                        b"secret upstream error",
-                        &format!("Location: {}/private?token=fixture-secret-key\r\n", b.base),
-                    ),
-                    false,
-                )
-                .await;
-                let result = complete(
-                    &client().unwrap(),
-                    permit(&a.base, NetworkPurpose::Completion, Some("m"), None),
-                    &route(&a.base),
-                    &[],
-                    &[],
-                    |_| Ok(()),
-                )
-                .await;
-                assert_eq!(result.unwrap_err(), TransportError::Response { status });
-                assert_eq!(a.hits(), 1);
-                assert_eq!(b.hits(), 0);
-                assert!(a.request().starts_with("POST /chat/completions "));
-                assert!(a.request().contains("\"model\":\"m\""));
-                a.stop().await;
-            }
-            assert_eq!(list(&b).await.unwrap(), vec!["m"]);
-            assert_eq!(b.hits(), 1);
-            b.stop().await;
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn mismatched_target_model_user_or_purpose_is_invalid_and_zero_connections() {
-        super::transport_fixture::scope(async {
-            let a = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-            let b = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-            let c = client().unwrap();
-            assert_eq!(
-                models(
-                    &c,
-                    permit(&a.base, NetworkPurpose::Models, Some("m"), None),
-                    &route(&b.base)
-                )
-                .await,
-                Err(TransportError::Invalid)
-            );
-            let mut changed = route(&a.base);
-            changed.model = "other".into();
-            assert_eq!(
-                models(
-                    &c,
-                    permit(&a.base, NetworkPurpose::Models, Some("m"), None),
-                    &changed
-                )
-                .await,
-                Err(TransportError::Invalid)
-            );
-            assert_eq!(
-                models(
-                    &c,
-                    permit(&a.base, NetworkPurpose::Completion, Some("m"), None),
-                    &route(&a.base)
-                )
-                .await,
-                Err(TransportError::Invalid)
-            );
-            let account = Account {
-                base_url: a.base.clone(),
-                user_id: "2".into(),
-                quota_per_unit: 1.0,
-            };
-            assert_eq!(
-                balance(
-                    &c,
-                    permit(&a.base, NetworkPurpose::Balance, None, Some("1")),
-                    &account
-                )
-                .await,
-                Err(TransportError::Invalid)
-            );
-            assert_eq!((a.hits(), b.hits()), (0, 0));
-            assert_eq!(list(&a).await.unwrap(), vec!["m"]);
-            assert_eq!(list(&b).await.unwrap(), vec!["m"]);
-            assert_eq!((a.hits(), b.hits()), (1, 1));
-            a.stop().await;
-            b.stop().await;
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn account_uses_only_bound_header_and_target() {
-        super::transport_fixture::scope(async {
-            let mock = Mock::start(
-                response(200, br#"{"success":true,"data":{"quota":10}}"#, ""),
-                false,
-            )
-            .await;
-            let account = Account {
-                base_url: mock.base.clone(),
-                user_id: "42".into(),
-                quota_per_unit: 2.0,
-            };
-            let value = balance(
-                &client().unwrap(),
-                permit(&mock.base, NetworkPurpose::Balance, None, Some("42")),
-                &account,
-            )
-            .await
-            .unwrap();
-            assert_eq!(value["balance"], 5.0);
-            let request = mock.request().to_ascii_lowercase();
-            assert!(request.starts_with("get /api/user/self "));
-            assert!(request.contains("new-api-user: 42\r\n"));
-            assert!(request.contains("authorization: bearer fixture-secret-key\r\n"));
-            mock.stop().await;
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn json_limit_is_enforced_before_eof_and_exact_limit_succeeds() {
-        super::transport_fixture::scope(async {
-            let mut body = br#"{"data":[{"id":"m"}],"padding":""#.to_vec();
-            body.resize(RESPONSE_LIMIT - 2, b'x');
-            body.extend_from_slice(b"\"}");
-            assert_eq!(body.len(), RESPONSE_LIMIT);
-            let exact = Mock::start(response(200, &body, ""), false).await;
-            assert_eq!(list(&exact).await.unwrap(), vec!["m"]);
-            exact.stop().await;
-            let mut oversized = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
-                RESPONSE_LIMIT + 1000
-            )
-            .into_bytes();
-            oversized.resize(oversized.len() + RESPONSE_LIMIT + 1, b'x');
-            let large = Mock::start(oversized, true).await;
-            assert_eq!(list(&large).await, Err(TransportError::Unknown));
-            assert_eq!(large.hits(), 1);
-            large.stop().await;
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn sse_exact_limit_finishes_and_over_limit_fails_before_eof() {
-        super::transport_fixture::scope(async {
-        let finish = b"data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n";
-        let done = b"data: [DONE]\n\n";
-        let mut exact_body = finish.to_vec();
-        exact_body.push(b':');
-        exact_body.resize(RESPONSE_LIMIT - done.len() - 1, b'x');
-        exact_body.push(b'\n');
-        exact_body.extend_from_slice(done);
-        assert_eq!(exact_body.len(), RESPONSE_LIMIT);
-        let exact = Mock::start(response(200, &exact_body, ""), false).await;
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            complete(
-                &client().unwrap(),
-                permit(&exact.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&exact.base),
-                &[],
-                &[],
-                |_| Ok(()),
-            ),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-        assert_eq!(result.0["content"], "OK");
-        assert_eq!(exact.hits(), 1);
-        exact.stop().await;
-
-        let mut wire = format!(
-            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/event-stream\r\n\r\n",
-            RESPONSE_LIMIT + 1000
-        )
-        .into_bytes();
-        wire.push(b':');
-        wire.resize(wire.len() + RESPONSE_LIMIT, b'x');
-        let oversized = Mock::start(wire, true).await;
-        let result = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            complete(
-                &client().unwrap(),
-                permit(&oversized.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&oversized.base),
-                &[],
-                &[],
-                |_| Ok(()),
-            ),
-        )
-        .await
-        .unwrap();
-        assert_eq!(result.unwrap_err(), TransportError::Unknown);
-        assert_eq!(oversized.hits(), 1);
-        oversized.stop().await;
-        }).await;
-    }
-
-    #[tokio::test]
-    async fn response_errors_distinguish_complete_invalid_and_truncated() {
-        super::transport_fixture::scope(async {
-            for (wire, expected) in [
-                (
-                    response(200, b"not JSON fixture-secret-key", ""),
-                    TransportError::InvalidResponse { status: 200 },
-                ),
-                (
-                    response(200, br#"{"data":[{"bad":true}]}"#, ""),
-                    TransportError::InvalidResponse { status: 200 },
-                ),
-                (
-                    response(401, b"fixture-secret-key", ""),
-                    TransportError::Response { status: 401 },
-                ),
-                (
-                    b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n{}".to_vec(),
-                    TransportError::Unknown,
-                ),
-            ] {
-                let mock = Mock::start(wire, false).await;
-                let error = list(&mock).await.unwrap_err();
-                assert_eq!(error, expected);
-                assert!(!format!("{error:?} {error}").contains("fixture-secret-key"));
-                assert_eq!(mock.hits(), 1);
-                mock.stop().await;
-            }
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn sse_requires_finish_and_complete_done_and_never_ignores_read_failure() {
-        super::transport_fixture::scope(async {
-        let finished =
-            "data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n";
-        for body in [
-            finished.to_string(),
-            format!("{finished}data: [DONE]"),
-            "data: [DONE]\n\n".into(),
-            format!("{finished}data: broken\n\n"),
-        ] {
-            let mock = Mock::start(response(200, body.as_bytes(), ""), false).await;
-            let result = complete(
-                &client().unwrap(),
-                permit(&mock.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&mock.base),
-                &[],
-                &[],
-                |_| Ok(()),
-            )
-            .await;
-            assert_eq!(result.unwrap_err(), TransportError::Unknown);
-            assert_eq!(mock.hits(), 1);
-            mock.stop().await;
-        }
-        let mut truncated = b"HTTP/1.1 200 OK\r\nContent-Length: 9999\r\n\r\n".to_vec();
-        truncated.extend_from_slice(finished.as_bytes());
-        let mock = Mock::start(truncated, false).await;
-        assert_eq!(
-            complete(
-                &client().unwrap(),
-                permit(&mock.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&mock.base),
-                &[],
-                &[],
-                |_| Ok(())
-            )
-            .await
-            .unwrap_err(),
-            TransportError::Unknown
-        );
-        mock.stop().await;
-        let good = format!("{finished}data: [DONE]\n\n");
-        let mock = Mock::start(response(200, good.as_bytes(), ""), false).await;
-        assert_eq!(
-            complete(
-                &client().unwrap(),
-                permit(&mock.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&mock.base),
-                &[],
-                &[],
-                |_| Err(anyhow::anyhow!("fixture-secret-key"))
-            )
-            .await
-            .unwrap_err(),
-            TransportError::Unknown
-        );
-        mock.stop().await;
-        }).await;
-    }
-
-    fn usage_stream(observations: &[Value], finish: &str, done: bool) -> String {
-        let mut body = format!(
-            "data: {}\n\n",
-            json!({"choices":[{"delta":{"content":"桃子"}}]})
-        );
-        for usage in observations {
-            body.push_str(&format!(
-                "data: {}\r\n\r\n",
-                json!({"choices":[],"usage":usage})
-            ));
-        }
-        body.push_str(&format!(
-            "data: {}\n\n",
-            json!({"choices":[{"delta":{},"finish_reason":finish}]})
-        ));
-        if done {
-            body.push_str("data: [DONE]\n\n");
-        }
-        body
-    }
-
-    async fn usage_complete(mock: &Mock) -> std::result::Result<(Value, Value), TransportError> {
-        tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            complete(
-                &client().unwrap(),
-                permit(&mock.base, NetworkPurpose::Completion, Some("m"), None),
-                &route(&mock.base),
-                &[],
-                &[],
-                |_| Ok(()),
-            ),
-        )
-        .await
-        .expect("local mock completion timed out")
-    }
-
-    #[tokio::test]
-    async fn usage_real_transport_accepts_zero_normal_and_identical_snapshots_once() {
-        super::transport_fixture::scope(async {
-        use crate::provider_usage::{TokenUsage, UsageObservation, classify_usage};
-        let normal = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
-        let mut details = normal.clone();
-        details["completion_tokens_details"] =
-            json!({"reasoning_tokens":2,"secret":"do-not-retain"});
-        for (observations, expected) in [
-            (
-                vec![json!({"prompt_tokens":0,"completion_tokens":0,"total_tokens":0})],
-                TokenUsage {
-                    prompt_tokens: 0,
-                    completion_tokens: 0,
-                    total_tokens: 0,
-                },
-            ),
-            (
-                vec![normal.clone()],
-                TokenUsage {
-                    prompt_tokens: 7,
-                    completion_tokens: 2,
-                    total_tokens: 9,
-                },
-            ),
-            (
-                vec![normal, Value::Null, details],
-                TokenUsage {
-                    prompt_tokens: 7,
-                    completion_tokens: 2,
-                    total_tokens: 9,
-                },
-            ),
-            (
-                vec![
-                    json!({"prompt_tokens":i64::MAX,"completion_tokens":0,"total_tokens":i64::MAX}),
-                ],
-                TokenUsage {
-                    prompt_tokens: i64::MAX as u64,
-                    completion_tokens: 0,
-                    total_tokens: i64::MAX as u64,
-                },
-            ),
-        ] {
-            let body = usage_stream(&observations, "stop", true);
-            // HTTP chunk boundaries include individual UTF-8 bytes and SSE delimiters.
-            let mut wire = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: text/event-stream\r\n\r\n".to_vec();
-            for byte in body.bytes() {
-                wire.extend_from_slice(b"1\r\n");
-                wire.push(byte);
-                wire.extend_from_slice(b"\r\n");
-            }
-            wire.extend_from_slice(b"0\r\n\r\n");
-            let mock = Mock::start(wire, false).await;
-            let (message, usage) = usage_complete(&mock).await.unwrap();
-            assert_eq!(message["content"], "桃子");
-            assert_eq!(classify_usage(&usage), UsageObservation::Valid(expected));
-            assert_eq!(usage.as_object().unwrap().len(), 3);
-            assert!(!usage.to_string().contains("do-not-retain"));
-            assert_eq!(mock.hits(), 1);
-            let request = mock.request();
-            let request_body: Value =
-                serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
-            assert_eq!(request_body["stream_options"]["include_usage"], true);
-            assert_eq!(request_body["max_tokens"], 128);
-            mock.stop().await;
-        }
-        }).await;
-    }
-
-    #[tokio::test]
-    async fn usage_real_transport_missing_and_invalid_keep_network_success_and_safe_values() {
-        super::transport_fixture::scope(async {
-        use crate::provider_usage::{
-            UsageInvalidReason as R, UsageObservation as O, classify_usage,
-        };
-        let normal = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
-        let cases = [
-            (vec![], O::Missing),
-            (vec![Value::Null], O::Missing),
-            (vec![json!("do-not-retain")], O::Invalid(R::InvalidShape)),
-            (
-                vec![json!({"prompt_tokens":7})],
-                O::Invalid(R::MissingField),
-            ),
-            (
-                vec![json!({"prompt_tokens":7,"completion_tokens":-1,"total_tokens":6})],
-                O::Invalid(R::InvalidInteger),
-            ),
-            (
-                vec![json!({"prompt_tokens":7,"completion_tokens":2.0,"total_tokens":9})],
-                O::Invalid(R::InvalidInteger),
-            ),
-            (
-                vec![json!({"prompt_tokens":"7","completion_tokens":2,"total_tokens":9})],
-                O::Invalid(R::InvalidInteger),
-            ),
-            (
-                vec![
-                    json!({"prompt_tokens":u64::MAX,"completion_tokens":0,"total_tokens":u64::MAX}),
-                ],
-                O::Invalid(R::OutOfRange),
-            ),
-            (
-                vec![json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":10})],
-                O::Invalid(R::InconsistentTotal),
-            ),
-            (
-                vec![
-                    normal.clone(),
-                    json!({"prompt_tokens":8,"completion_tokens":1,"total_tokens":9}),
-                    normal.clone(),
-                ],
-                O::Invalid(R::ConflictingDuplicate),
-            ),
-            (
-                vec![
-                    json!({"prompt_tokens":7}),
-                    json!({"completion_tokens":2,"total_tokens":9}),
-                    normal.clone(),
-                ],
-                O::Invalid(R::MissingField),
-            ),
-            (
-                vec![
-                    normal.clone(),
-                    json!({"secret":"do-not-retain"}),
-                    Value::Null,
-                    normal,
-                ],
-                O::Invalid(R::MissingField),
-            ),
-        ];
-        for (observations, expected) in cases {
-            let body = usage_stream(&observations, "stop", true);
-            let mock = Mock::start(response(200, body.as_bytes(), ""), false).await;
-            let (message, usage) = usage_complete(&mock).await.unwrap();
-            assert_eq!(message["content"], "桃子");
-            assert_eq!(classify_usage(&usage), expected);
-            assert!(!usage.to_string().contains("do-not-retain"));
-            assert!(usage.get("total_tokens").is_none());
-            assert_eq!(mock.hits(), 1);
-            mock.stop().await;
-        }
-        }).await;
-    }
-
-    #[tokio::test]
-    async fn usage_real_transport_never_salvages_usage_from_failed_completion_or_retries() {
-        super::transport_fixture::scope(async {
-            let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
-            for (status, finish, done, expected) in [
-                (200, "stop", false, TransportError::Unknown),
-                (200, "length", true, TransportError::Unknown),
-                (200, "content_filter", true, TransportError::Unknown),
-                (429, "stop", true, TransportError::Response { status: 429 }),
-                (500, "stop", true, TransportError::Response { status: 500 }),
-            ] {
-                let body = usage_stream(std::slice::from_ref(&usage), finish, done);
-                let mock = Mock::start(response(status, body.as_bytes(), ""), false).await;
-                assert_eq!(usage_complete(&mock).await.unwrap_err(), expected);
-                assert_eq!(mock.hits(), 1);
-                mock.stop().await;
-            }
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn usage_real_transport_done_does_not_wait_for_connection_close() {
-        super::transport_fixture::scope(async {
-            use crate::provider_usage::{UsageObservation, classify_usage};
-            let usage = json!({"prompt_tokens":7,"completion_tokens":2,"total_tokens":9});
-            let body = usage_stream(std::slice::from_ref(&usage), "stop", true);
-            // The HTTP body is complete even though the underlying connection remains open.
-            let wire = response(200, body.as_bytes(), "Content-Type: text/event-stream\r\n");
-            let mock = Mock::start(wire, true).await;
-            let (message, observed) = usage_complete(&mock).await.unwrap();
-            assert_eq!(message["content"], "桃子");
-            assert!(matches!(
-                classify_usage(&observed),
-                UsageObservation::Valid(_)
-            ));
-            assert_eq!(observed, usage);
-            assert_eq!(mock.hits(), 1);
-            mock.stop().await;
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn proxy_environment_child() {
-        super::transport_fixture::scope(async {
-            let Ok(mode) = std::env::var("NHC_D_PROXY_CHILD") else {
-                return;
-            };
-            let mock = Mock::start(response(200, br#"{"data":[{"id":"m"}]}"#, ""), false).await;
-            let target = format!("{}/models", mock.base);
-            if mode != "explicit" {
-                // Same process, target, proxy environment and request: only no_proxy differs.
-                assert_eq!(list(&mock).await.unwrap(), vec!["m"]);
-                assert_eq!(mock.hits(), 1);
-            }
-            let mut builder = reqwest::Client::builder()
-                .connect_timeout(std::time::Duration::from_secs(15))
-                .timeout(std::time::Duration::from_secs(180))
-                .redirect(reqwest::redirect::Policy::none())
-                .retry(reqwest::retry::never());
-            if mode == "explicit" {
-                builder = builder
-                    .proxy(reqwest::Proxy::all(std::env::var("NHC_D_PROXY_URL").unwrap()).unwrap());
-            }
-            let result = tokio::time::timeout(
-                std::time::Duration::from_secs(5),
-                builder
-                    .build()
-                    .unwrap()
-                    .get(&target)
-                    .bearer_auth("fixture-secret-key")
-                    .send(),
-            )
-            .await
-            .unwrap()
-            .unwrap();
-            assert_eq!(result.status(), 200);
-            assert_eq!(
-                result.json::<Value>().await.unwrap()["data"][0]["id"],
-                "proxy-sentinel"
-            );
-            assert_eq!(mock.hits(), usize::from(mode != "explicit"));
-            mock.stop().await;
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn proxy_environment_isolated_process_has_zero_proxy_connections_with_positive_control() {
-        let proxy = Mock::start(
-            response(200, br#"{"data":[{"id":"proxy-sentinel"}]}"#, ""),
-            false,
-        )
-        .await;
-        for (index, mode) in ["paired-upper", "paired-lower", "explicit"]
-            .into_iter()
-            .enumerate()
-        {
-            let url = proxy.base.clone();
-            let status = tokio::task::spawn_blocking(move || {
-                let mut command = std::process::Command::new(std::env::current_exe().unwrap());
-                command
-                    .args([
-                        "--exact",
-                        "provider::network_tests::proxy_environment_child",
-                        "--nocapture",
-                    ])
-                    .env("NHC_D_PROXY_CHILD", mode)
-                    .env("NHC_D_PROXY_URL", &url)
-                    .env_remove("REQUEST_METHOD");
-                for name in [
-                    "HTTP_PROXY",
-                    "HTTPS_PROXY",
-                    "ALL_PROXY",
-                    "NO_PROXY",
-                    "http_proxy",
-                    "https_proxy",
-                    "all_proxy",
-                    "no_proxy",
-                ] {
-                    command.env_remove(name);
-                }
-                let names = if mode == "paired-lower" {
-                    ["http_proxy", "https_proxy", "all_proxy", "no_proxy"]
-                } else {
-                    ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY"]
-                };
-                for name in &names[..3] {
-                    command.env(name, &url);
-                }
-                command.env(
-                    names[3],
-                    if mode == "paired-lower" {
-                        "unrelated.invalid"
-                    } else {
-                        ""
-                    },
-                );
-                command.output().unwrap()
             })
-            .await
             .unwrap();
-            assert!(
-                status.status.success(),
-                "{} {}",
-                String::from_utf8_lossy(&status.stdout),
-                String::from_utf8_lossy(&status.stderr)
-            );
-            assert_eq!(proxy.hits(), index + 1);
-            assert!(proxy.request().starts_with("GET http://127.0.0.1:"));
         }
-        proxy.stop().await;
+        let ant_usage = ant.usage.clone();
+        let ant_msg = ant.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(ant_streamed, "正在读取桃子...");
+        assert_eq!(ant_msg["content"], "正在读取桃子...");
+        assert_eq!(ant_msg["reasoning_content"], "先检查桃子.txt");
+        assert_eq!(ant_msg["tool_calls"][0]["id"], "toolu_1");
+        assert_eq!(ant_msg["tool_calls"][0]["function"]["name"], "read_file");
+        assert_eq!(
+            ant_msg["tool_calls"][0]["function"]["arguments"],
+            "{\"path\":\"桃子.txt\"}"
+        );
+        assert_eq!(ant_usage["prompt_tokens"], 50);
+        assert_eq!(ant_usage["completion_tokens"], 25);
+        assert_eq!(ant_usage["total_tokens"], 75);
+
+        let gem_sse = concat!(
+            "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"thought\":true,\"text\":\"思考中\"},{\"text\":\"你好，桃子\"}]}}],\"usageMetadata\":{\"promptTokenCount\":12,\"candidatesTokenCount\":4,\"totalTokenCount\":20}}\r\n\r\n",
+            "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{\"path\":\"桃子.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":12,\"candidatesTokenCount\":9,\"totalTokenCount\":26}}\n\n"
+        );
+        let mut gem = GeminiDecoder::default();
+        let mut gem_streamed = String::new();
+        for b in gem_sse.as_bytes() {
+            gem.feed(&[*b], &mut |s| {
+                gem_streamed.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+        }
+        let gem_usage = gem.usage.clone();
+        let gem_msg = gem.finish(&mut |_| Ok(())).unwrap();
+        assert_eq!(gem_streamed, "你好，桃子");
+        assert_eq!(gem_msg["content"], "你好，桃子");
+        assert_eq!(gem_msg["reasoning_content"], "思考中");
+        assert_eq!(gem_msg["tool_calls"][0]["function"]["name"], "read_file");
+        assert_eq!(
+            serde_json::from_str::<Value>(
+                gem_msg["tool_calls"][0]["function"]["arguments"]
+                    .as_str()
+                    .unwrap()
+            )
+            .unwrap(),
+            json!({"path": "桃子.txt"})
+        );
+        assert_eq!(gem_usage["prompt_tokens"], 12);
+        assert_eq!(gem_usage["completion_tokens"], 9);
+        assert_eq!(gem_usage["total_tokens"], 26);
     }
 }

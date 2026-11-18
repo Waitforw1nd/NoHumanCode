@@ -1,5 +1,3 @@
-#[cfg(test)]
-use crate::engine::restore_probe;
 use crate::{host_services, host_services::Active};
 use crate::{store::Store, tool_runtime::ToolRuntime};
 use std::{
@@ -21,9 +19,8 @@ pub(crate) struct HostComposition {
     pub(crate) workspace: Arc<host_services::WorkspaceSafety>,
     pub(crate) recovery: host_services::RecoveryService,
     pub(crate) review_recovery: host_services::ReviewRecovery,
-    #[cfg(test)]
-    pub(crate) restore_probe: Arc<Mutex<Option<restore_probe::Hook>>>,
 }
+
 impl HostComposition {
     pub(crate) fn builtin(
         store: Arc<Store>,
@@ -41,6 +38,7 @@ impl HostComposition {
             recovery,
         )
     }
+
     pub(crate) fn new(
         store: Arc<Store>,
         tools: ToolRuntime,
@@ -51,8 +49,6 @@ impl HostComposition {
         anyhow::ensure!(recovery.owns(&store), "recovery store identity mismatch");
         let gate = Arc::new(AsyncMutex::new(()));
         let active = Arc::new(Mutex::new(HashMap::new()));
-        #[cfg(test)]
-        let restore_probe = Arc::new(Mutex::new(None));
         let workspace = Arc::new(host_services::WorkspaceSafety::new(gate.clone()));
         let projects = Arc::new(host_services::ProjectService::new(
             store.clone(),
@@ -65,8 +61,6 @@ impl HostComposition {
             workspace.clone(),
             projects.clone(),
             active.clone(),
-            #[cfg(test)]
-            restore_probe.clone(),
         );
         Ok(Self {
             store,
@@ -81,8 +75,6 @@ impl HostComposition {
             workspace,
             recovery,
             review_recovery,
-            #[cfg(test)]
-            restore_probe,
         })
     }
 }
@@ -92,6 +84,7 @@ pub struct CompositionInterface {
     pub name: String,
     pub version: String,
 }
+
 #[derive(serde::Serialize)]
 pub struct CompositionCapability {
     pub id: &'static str,
@@ -102,6 +95,7 @@ pub struct CompositionCapability {
     pub lifecycle: &'static str,
     pub dependencies: Vec<&'static str>,
 }
+
 #[derive(serde::Serialize)]
 pub struct CompositionSnapshot {
     pub version: u8,
@@ -110,6 +104,7 @@ pub struct CompositionSnapshot {
     pub plugins: Vec<crate::plugin_management::PluginStatus>,
     pub runtimes: Vec<crate::runtime_management::RuntimeComponentStatus>,
 }
+
 fn host(
     id: &'static str,
     provider: &str,
@@ -129,41 +124,31 @@ fn host(
         dependencies: dependencies.to_vec(),
     }
 }
-fn plugin(
+
+fn managed(
     id: &'static str,
-    manifest: crate::plugin_catalog::CatalogManifestV1,
+    provider: &str,
+    version: &str,
     names: &[&str],
     dependencies: &[&'static str],
-) -> anyhow::Result<CompositionCapability> {
-    let interfaces: Vec<_> = manifest
-        .provides
-        .into_iter()
-        .filter(|k| {
-            k.kind == crate::plugin_catalog::InterfaceKind::Service
-                && names.contains(&k.name.as_str())
-        })
-        .map(|k| CompositionInterface {
-            name: k.name,
-            version: k.version.to_string(),
-        })
-        .collect();
-    anyhow::ensure!(
-        interfaces.len() == names.len()
-            && interfaces
-                .iter()
-                .all(|interface| interface.version == "1.0.0"),
-        "runtime interface binding mismatch"
-    );
-    Ok(CompositionCapability {
+) -> CompositionCapability {
+    CompositionCapability {
         id,
         binding_kind: "plugin_runtime",
-        provider_id: manifest.id,
-        provider_version: manifest.version.to_string(),
-        interfaces,
+        provider_id: provider.into(),
+        provider_version: version.into(),
+        interfaces: names
+            .iter()
+            .map(|name| CompositionInterface {
+                name: (*name).into(),
+                version: "1.0.0".into(),
+            })
+            .collect(),
         lifecycle: "managed",
         dependencies: dependencies.to_vec(),
-    })
+    }
 }
+
 impl HostComposition {
     pub(crate) fn snapshot(
         &self,
@@ -179,36 +164,40 @@ impl HostComposition {
             host("session-log", S::ID, S::VERSION, &["core"]),
             host("local-project", P::ID, P::VERSION, &["core", "workspace"]),
             host("workspace", W::ID, W::VERSION, &["core"]),
-            plugin(
+            managed(
                 "provider-xpeach",
-                self.provider.composition_manifest()?,
+                "builtin.provider-xpeach",
+                self.provider.version(),
                 &["provider.completion-codec"],
                 &["core"],
-            )?,
-            plugin(
+            ),
+            managed(
                 "file-read-search",
-                self.tools.composition_manifest("builtin.files")?,
+                "builtin.files",
+                crate::tool_runtime::FILES_PLUGIN_VERSION,
                 &["tool.read_file", "tool.list_files", "tool.search_files"],
                 &["workspace", "local-project", "approval-policy"],
-            )?,
+            ),
             host(
                 "approval-policy",
                 A::ID,
                 A::VERSION,
                 &["core", "local-project"],
             ),
-            plugin(
+            managed(
                 "file-write",
-                self.tools.composition_manifest("builtin.files")?,
+                "builtin.files",
+                crate::tool_runtime::FILES_PLUGIN_VERSION,
                 &["tool.write_file"],
                 &["workspace", "local-project", "approval-policy"],
-            )?,
-            plugin(
+            ),
+            managed(
                 "shell",
-                self.tools.composition_manifest("builtin.shell")?,
+                "builtin.shell",
+                crate::tool_runtime::SHELL_PLUGIN_VERSION,
                 &["tool.run_command"],
                 &["workspace", "local-project", "approval-policy"],
-            )?,
+            ),
             host(
                 "git-diff",
                 RR::ID,
@@ -222,12 +211,13 @@ impl HostComposition {
                 &["workspace", "local-project"],
             ),
             host("recovery", R::ID, R::VERSION, &["core"]),
-            plugin(
+            managed(
                 "chat-agent",
-                self.agent.composition_manifest()?,
+                "builtin.chat-agent",
+                "1.0.0",
                 &["agent.strategy"],
                 &["core", "approval-policy"],
-            )?,
+            ),
         ];
         Ok(CompositionSnapshot {
             version: 1,
