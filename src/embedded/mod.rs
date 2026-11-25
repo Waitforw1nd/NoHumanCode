@@ -1,4 +1,5 @@
 //! In-process model loop. All external effects are supplied by the embedding host.
+mod partial;
 mod turn;
 
 use anyhow::{Context, Result, ensure};
@@ -68,7 +69,7 @@ struct Registry {
 
 struct Active {
     id: Option<String>,
-    cancel: CancellationToken,
+    cancel: Option<CancellationToken>,
     finished: watch::Receiver<bool>,
 }
 
@@ -85,11 +86,7 @@ impl Drop for Lease {
     fn drop(&mut self) {
         let mut registry = self.engine.registry.lock().expect("run registry poisoned");
         registry.active.remove(&self.session);
-        if let Some((events, mut reason)) = self.terminal.take() {
-            // Finalize cancellation and release admission under the same registry lock.
-            if reason == DoneReason::Completed && self.cancel.is_cancelled() {
-                reason = DoneReason::Aborted;
-            }
+        if let Some((events, reason)) = self.terminal.take() {
             let _ = events.send(Event::Done { reason });
         }
         self.finished.send_replace(true);
@@ -126,7 +123,7 @@ impl EmbeddedEngine {
             session.to_owned(),
             Active {
                 id: run_id.map(str::to_owned),
-                cancel: cancel.clone(),
+                cancel: Some(cancel.clone()),
                 finished: rx,
             },
         );
@@ -175,6 +172,18 @@ impl EmbeddedEngine {
         Ok(rx)
     }
 
+    // Linearize success vs. abort under the same lock as abort(). Later callers still wait
+    // for the final history append and lease release, but cannot change the decided outcome.
+    fn close_abort_window(&self, session_id: &str) -> bool {
+        self.registry
+            .lock()
+            .expect("run registry poisoned")
+            .active
+            .get_mut(session_id)
+            .and_then(|active| active.cancel.take())
+            .is_some_and(|cancel| cancel.is_cancelled())
+    }
+
     /// Signal the matching run and wait for its callbacks, writes and session claim to finish.
     pub async fn abort(&self, session_id: &str, run_id: &str) {
         let mut done = {
@@ -186,7 +195,9 @@ impl EmbeddedEngine {
             else {
                 return;
             };
-            active.cancel.cancel();
+            if let Some(cancel) = &active.cancel {
+                cancel.cancel();
+            }
             active.finished.clone()
         };
         let _ = done.wait_for(|finished| *finished).await;

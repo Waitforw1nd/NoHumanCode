@@ -184,6 +184,7 @@ pub enum NetworkErrorKind {
     Corrupt,
     Unknown,
     Internal,
+    InvalidToolArguments,
     Upstream,
 }
 
@@ -310,6 +311,12 @@ impl std::fmt::Display for NetworkError {
             NetworkErrorKind::Conflict => "网络授权状态冲突",
             NetworkErrorKind::Corrupt => "网络授权持久状态损坏",
             NetworkErrorKind::Unknown => "网络调用结果未知",
+            NetworkErrorKind::InvalidToolArguments => {
+                return std::fmt::Display::fmt(
+                    &crate::provider_transport::TransportError::InvalidToolArguments,
+                    f,
+                );
+            }
             NetworkErrorKind::Internal => "网络授权操作失败",
             NetworkErrorKind::Upstream => "上游返回失败响应",
             _ => "项目网络请求被拒绝",
@@ -1201,6 +1208,12 @@ impl Store {
                 value.http_status = Some(*status);
                 value.result = Some(CallResult::InvalidResponse);
                 Some(NetworkErrorKind::Upstream)
+            }
+            Err(TransportError::InvalidToolArguments) => {
+                value.state = CallState::Finished;
+                value.success = Some(false);
+                value.result = Some(CallResult::InvalidResponse);
+                Some(NetworkErrorKind::InvalidToolArguments)
             }
             Err(TransportError::Invalid) => {
                 value.state = CallState::NotSent;

@@ -55,6 +55,11 @@ pub enum Message {
     Assistant {
         blocks: Vec<Block>,
     },
+    /// An assistant message closed by the user. Partial blocks are archival only.
+    Aborted {
+        run_id: String,
+        partial: Vec<Block>,
+    },
     Tool {
         call_id: String,
         name: String,

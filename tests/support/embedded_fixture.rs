@@ -61,6 +61,7 @@ pub(super) struct Transport {
     pub(super) requests: Mutex<Vec<ModelRequest>>,
     pub(super) reject: bool,
     pub(super) pending: bool,
+    pub(super) partial: Vec<ModelDelta>,
     pub(super) usage: Option<Usage>,
     pub(super) started: Notify,
     pub(super) release: Notify,
@@ -80,6 +81,9 @@ impl ModelTransport for Transport {
     ) -> BoxFuture<'a, Result<ModelReply>> {
         Box::pin(async move {
             self.requests.lock().unwrap().push(request.clone());
+            for delta in &self.partial {
+                emit(delta.clone())?;
+            }
             self.started.notify_one();
             if self.pending {
                 tokio::select! {
@@ -202,6 +206,7 @@ pub(super) enum WriteKind {
     User,
     Intent,
     Result,
+    Abort,
 }
 fn write_kind(entry: &Entry) -> Option<WriteKind> {
     match entry {
@@ -212,6 +217,7 @@ fn write_kind(entry: &Entry) -> Option<WriteKind> {
             Some(WriteKind::Intent)
         }
         Entry::Message(Message::Tool { .. }) => Some(WriteKind::Result),
+        Entry::Message(Message::Aborted { .. }) => Some(WriteKind::Abort),
         _ => None,
     }
 }
@@ -222,6 +228,8 @@ pub(super) struct Store {
     pub(super) rejected: Mutex<usize>,
     pub(super) assistant_saved: Notify,
     pub(super) pause_final_reply: bool,
+    pub(super) pause_user_append: bool,
+    pub(super) pause_load: bool,
     pub(super) append_started: Notify,
     pub(super) release_append: Notify,
 }
@@ -229,6 +237,10 @@ impl SessionStore for Store {
     fn load<'a>(&'a self, session_id: &'a str) -> BoxFuture<'a, Result<Snapshot>> {
         Box::pin(async move {
             assert_eq!(session_id, "session");
+            if self.pause_load {
+                self.append_started.notify_one();
+                self.release_append.notified().await;
+            }
             let entries = self.entries.lock().unwrap();
             let mut messages = vec![];
             for entry in entries.iter() {
@@ -256,6 +268,10 @@ impl SessionStore for Store {
     ) -> BoxFuture<'a, Result<String>> {
         Box::pin(async move {
             assert_eq!(session_id, "session");
+            if self.pause_user_append && matches!(entries, [Entry::Message(Message::User { .. })]) {
+                self.append_started.notify_one();
+                self.release_append.notified().await;
+            }
             if self.pause_final_reply && entries.iter().any(|entry| matches!(entry,Entry::Message(Message::Assistant{blocks}) if blocks.iter().all(|block| matches!(block,Block::Text{..})))) {
                 self.append_started.notify_one();
                 self.release_append.notified().await;

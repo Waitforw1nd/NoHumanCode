@@ -1,3 +1,7 @@
+#[path = "support/embedded_abort.rs"]
+mod abort_history;
+use abort_history::assert_reloaded_abort_projection;
+
 #[path = "support/embedded_fixture.rs"]
 mod fixture;
 
@@ -401,11 +405,15 @@ async fn abort_during_final_reply_append_waits_and_persists_reply_once() -> Resu
             },
             Message::Assistant {
                 blocks: vec![answer("reply")]
+            },
+            Message::Aborted {
+                run_id: "run".into(),
+                partial: vec![]
             }
         ]
     );
     assert_eq!(f.transport.requests.lock().unwrap().len(), 1);
-    Ok(())
+    assert_reloaded_abort_projection(&f).await
 }
 
 async fn abort_during_tool_callback(id: &str, expected_actions: &[&str]) -> Result<()> {
@@ -436,7 +444,10 @@ async fn abort_during_tool_callback(id: &str, expected_actions: &[&str]) -> Resu
         assert!(result.is_error);
         assert_eq!(result.content, [text("ABORTED")]);
     }
-    Ok(())
+    assert!(
+        matches!(saved.messages.last(), Some(Message::Aborted { run_id, partial }) if run_id == "run" && partial.is_empty())
+    );
+    assert_reloaded_abort_projection(&f).await
 }
 
 #[tokio::test]

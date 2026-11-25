@@ -120,6 +120,7 @@ pub enum TransportError {
     Invalid,
     Response { status: u16 },
     InvalidResponse { status: u16 },
+    InvalidToolArguments,
     Unknown,
 }
 
@@ -129,6 +130,9 @@ impl fmt::Display for TransportError {
             Self::Invalid => "invalid provider request",
             Self::Response { .. } => "provider HTTP failure",
             Self::InvalidResponse { .. } => "invalid provider response",
+            Self::InvalidToolArguments => {
+                "模型返回的工具参数不是有效 JSON，请重试或检查提供商的工具调用兼容性"
+            }
             Self::Unknown => "provider result unknown",
         })
     }

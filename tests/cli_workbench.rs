@@ -16,6 +16,10 @@ use std::{
 };
 
 #[cfg(unix)]
+#[path = "support/cli_approval.rs"]
+mod cli_approval;
+
+#[cfg(unix)]
 #[test]
 fn host_check_uses_per_user_data_dir_and_respects_overrides() {
     let temp = tempfile::tempdir().unwrap();

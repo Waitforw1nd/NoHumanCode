@@ -1,4 +1,4 @@
-use super::*;
+use super::{partial::PartialReply, *};
 
 pub(super) enum Failure {
     Aborted,
@@ -90,7 +90,23 @@ fn projected(mut message: Message) -> Message {
     message
 }
 pub(super) fn model_projection(history: Vec<Message>) -> Vec<Message> {
-    history.into_iter().map(projected).collect()
+    let mut messages = Vec::with_capacity(history.len());
+    for message in history {
+        if let Message::Aborted { .. } = message {
+            let marker = Block::Text { text: "The user cancelled the previous task. Do not resume it unless the user explicitly asks again.".into() };
+            // A late abort can arrive while a complete assistant message is being committed.
+            if let Some(Message::Assistant { blocks }) = messages.last_mut() {
+                blocks.push(marker);
+            } else {
+                messages.push(Message::Assistant {
+                    blocks: vec![marker],
+                });
+            }
+        } else {
+            messages.push(projected(message));
+        }
+    }
+    messages
 }
 
 impl EmbeddedEngine {
@@ -106,7 +122,7 @@ impl EmbeddedEngine {
             .load(&opts.session_id)
             .await
             .map_err(|_| Failed("SESSION_LOAD"))?;
-        let mut seen = validate_history(&snapshot.messages)?;
+        let seen = validate_history(&snapshot.messages)?;
         let tools = self
             .tools
             .definitions(&opts.session_id, &opts.run_id)
@@ -135,35 +151,77 @@ impl EmbeddedEngine {
             engine: self,
             opts,
             revision: snapshot.revision,
+            user_saved: false,
+            partial: Mutex::default(),
             events,
             cancel,
         };
-        let mut rounds = crate::model_loop::ModelLoop::new(opts.max_requests);
+        let result = turn.drive(request, user, seen).await;
+        if matches!(result, Ok(()) | Err(Aborted)) && self.close_abort_window(&opts.session_id) {
+            if turn.user_saved {
+                let partial =
+                    std::mem::take(turn.partial.get_mut().expect("partial reply poisoned"))
+                        .into_blocks();
+                turn.save(&[Entry::Message(Message::Aborted {
+                    run_id: opts.run_id.clone(),
+                    partial,
+                })])
+                .await?;
+            }
+            return Err(Aborted);
+        }
+        result
+    }
+}
+
+impl Turn<'_> {
+    async fn drive(
+        &mut self,
+        mut request: ModelRequest,
+        user: Message,
+        mut seen: HashSet<String>,
+    ) -> TurnResult<()> {
+        let cancel = self.cancel;
+        let events = self.events;
+        let mut rounds = crate::model_loop::ModelLoop::new(self.opts.max_requests);
         loop {
             let round = rounds.next(cancel).map_err(|reason| match reason {
                 crate::model_loop::Stop::Cancelled => Aborted,
                 crate::model_loop::Stop::Limit => Failed("REQUEST_LIMIT"),
             })?;
-            self.model
+            self.engine
+                .model
                 .preflight(&request)
                 .map_err(|_| Failed("MODEL_PREFLIGHT"))?;
             running(cancel)?;
             if round == 0 {
-                turn.save(&[Entry::Message(user.clone())]).await?;
+                self.save(&[Entry::Message(user.clone())]).await?;
+                self.user_saved = true;
             }
             running(cancel)?;
             let emit = |delta| {
                 anyhow::ensure!(!cancel.is_cancelled(), "cancelled");
-                let event = match delta {
-                    ModelDelta::Text { block_id, delta } => Event::Text { block_id, delta },
-                    ModelDelta::Thinking { block_id, delta } => Event::Thinking { block_id, delta },
+                // Serialize concurrent emits so the archive follows the same order as the stream.
+                let mut draft = self.partial.lock().expect("partial reply poisoned");
+                let event = match &delta {
+                    ModelDelta::Text { block_id, delta } => Event::Text {
+                        block_id: block_id.clone(),
+                        delta: delta.clone(),
+                    },
+                    ModelDelta::Thinking { block_id, delta } => Event::Thinking {
+                        block_id: block_id.clone(),
+                        delta: delta.clone(),
+                    },
                 };
                 events.send(event);
                 events
                     .check_budget()
-                    .map_err(|_| anyhow::anyhow!("event budget exceeded"))
+                    .map_err(|_| anyhow::anyhow!("event budget exceeded"))?;
+                draft.push(&delta);
+                Ok(())
             };
             let reply = self
+                .engine
                 .model
                 .complete(&request, &emit, cancel.child_token())
                 .await;
@@ -178,7 +236,8 @@ impl EmbeddedEngine {
             if let Some(usage) = reply.usage {
                 entries.push(Entry::Usage(usage));
             }
-            turn.save(&entries).await?;
+            self.save(&entries).await?;
+            *self.partial.get_mut().expect("partial reply poisoned") = PartialReply::default();
             request.messages.push(projected(assistant));
             if let Some(usage) = reply.usage {
                 events.send(Event::Usage { usage });
@@ -188,7 +247,7 @@ impl EmbeddedEngine {
                 return events.check_budget();
             }
             let failure = (!rounds.can_continue()).then_some("REQUEST_LIMIT");
-            turn.dispatch(calls, failure, &mut request.messages).await?;
+            self.dispatch(calls, failure, &mut request.messages).await?;
         }
     }
 }
@@ -217,6 +276,8 @@ struct Turn<'a> {
     engine: &'a EmbeddedEngine,
     opts: &'a RunOptions,
     revision: String,
+    user_saved: bool,
+    partial: Mutex<PartialReply>,
     events: &'a Events<'a>,
     cancel: &'a CancellationToken,
 }
