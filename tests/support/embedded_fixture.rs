@@ -149,6 +149,7 @@ impl ToolHost for Tools {
                 cancel.cancelled().await;
                 bail!("review interrupted");
             }
+            ensure!(invocation.call.id != "broken-review", "review unavailable");
             Ok(invocation.call.id != "denied")
         })
     }

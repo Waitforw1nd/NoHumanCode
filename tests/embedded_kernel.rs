@@ -220,13 +220,19 @@ async fn rejected_revision_fails_run_and_leaves_store_intact() -> Result<()> {
     Ok(())
 }
 
-async fn failed_batch(id: &str, actions: &[&str]) -> Result<()> {
+async fn failed_batch(id: &str, expected_code: &str, actions: &[&str]) -> Result<()> {
     let f = Fixture::new(
         scripted(vec![vec![call(id), call("skipped")]]),
         Store::default(),
     );
     let events = collect(f.engine.run(options())?).await;
     assert_failed(&events);
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, Event::Error { code, .. } if code == expected_code)),
+        "unexpected events {events:?}"
+    );
     assert_eq!(f.tools.actions.lock().unwrap().as_slice(), actions);
     assert_eq!(f.transport.requests.lock().unwrap().len(), 1);
     let saved = f.store.load("session").await?;
@@ -238,22 +244,37 @@ async fn failed_batch(id: &str, actions: &[&str]) -> Result<()> {
                 call_id, result, ..
             } = m
             {
-                Some((call_id.as_str(), result.is_error))
+                Some((call_id.as_str(), result.is_error, result.content.as_slice()))
             } else {
                 None
             }
         })
         .collect();
-    assert_eq!(results, [(id, true), ("skipped", true)]);
+    assert_eq!(
+        results,
+        [
+            (id, true, [text(expected_code)].as_slice()),
+            ("skipped", true, [text("TOOL_NOT_EXECUTED")].as_slice()),
+        ]
+    );
     Ok(())
 }
 #[tokio::test]
 async fn denial_skips_remaining_calls() -> Result<()> {
-    failed_batch("denied", &["review denied"]).await
+    failed_batch("denied", "TOOL_DENIED", &["review denied"]).await
+}
+#[tokio::test]
+async fn review_failure_skips_remaining_calls() -> Result<()> {
+    failed_batch("broken-review", "TOOL_REVIEW", &["review broken-review"]).await
 }
 #[tokio::test]
 async fn execution_failure_skips_remaining_calls() -> Result<()> {
-    failed_batch("broken", &["review broken", "execute broken"]).await
+    failed_batch(
+        "broken",
+        "TOOL_EXECUTION",
+        &["review broken", "execute broken"],
+    )
+    .await
 }
 
 #[tokio::test]
@@ -545,21 +566,75 @@ async fn final_request_records_tool_intent_and_skips_dispatch() -> Result<()> {
 }
 
 #[tokio::test]
-async fn returned_tool_error_preserves_result_and_stops_batch() -> Result<()> {
+async fn reported_tool_error_reaches_model_and_batch_completes() -> Result<()> {
+    let calls = vec![call("reported-error"), call("later")];
+    let reply = vec![answer("finished")];
     let f = Fixture::new(
-        scripted(vec![vec![call("reported-error"), call("later")]]),
+        scripted(vec![calls.clone(), reply.clone()]),
         Store::default(),
     );
-    assert_failed(&collect(f.engine.run(options())?).await);
+    let events = collect(f.engine.run(options())?).await;
     assert_eq!(
         f.tools.actions.lock().unwrap().as_slice(),
-        ["review reported-error", "execute reported-error"]
+        [
+            "review reported-error",
+            "execute reported-error",
+            "review later",
+            "execute later"
+        ],
+        "run events {events:?}"
     );
-    assert_eq!(f.transport.requests.lock().unwrap().len(), 1);
-    let saved = f.store.load("session").await?;
+    let expected = [
+        ("reported-error", true, vec![text("tool reported an error")]),
+        ("later", false, vec![text("found")]),
+    ];
+    let results: Vec<_> = events
+        .iter()
+        .filter_map(|event| match event {
+            Event::ToolResult { call_id, result } => {
+                Some((call_id.as_str(), result.is_error, result.content.clone()))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(results, expected);
+    assert!(matches!(
+        events.last(),
+        Some(Event::Done {
+            reason: DoneReason::Completed
+        })
+    ));
     assert!(
-        matches!(saved.messages.as_slice(),[Message::User{..}, Message::Assistant{..},Message::Tool{call_id,result,..},Message::Tool{call_id:later,result:skipped,..}] if call_id == "reported-error" && result.is_error && result.content == [text("tool reported an error")] && later == "later" && skipped.is_error)
+        !events
+            .iter()
+            .any(|event| matches!(event, Event::Error { .. }))
     );
+
+    let mut history = vec![
+        Message::User {
+            content: vec![text("question")],
+        },
+        Message::Assistant { blocks: calls },
+    ];
+    history.extend(
+        expected
+            .into_iter()
+            .map(|(id, is_error, content)| Message::Tool {
+                call_id: id.into(),
+                name: "lookup".into(),
+                result: ToolResult {
+                    is_error,
+                    content,
+                    details: Default::default(),
+                },
+            }),
+    );
+    let saved = f.store.load("session").await?;
+    let requests = f.transport.requests.lock().unwrap();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[1].messages, history);
+    history.push(Message::Assistant { blocks: reply });
+    assert_eq!(saved.messages, history);
     Ok(())
 }
 

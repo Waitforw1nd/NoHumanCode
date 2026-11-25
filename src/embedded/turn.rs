@@ -322,9 +322,6 @@ impl Turn<'_> {
                     is_error: true,
                 }
             });
-            if result.is_error {
-                failure.get_or_insert("TOOL_FAILED");
-            }
             let id = invocation.call.id;
             let message = Message::Tool {
                 call_id: id.clone(),

@@ -33,6 +33,8 @@ pub trait ToolHost: Send + Sync {
         call: &'a Invocation,
         cancel: CancellationToken,
     ) -> BoxFuture<'a, Result<bool>>;
+    /// Return tool failures as `Ok` with `is_error` and diagnostic content for the model.
+    /// Return `Err` if the host cannot deliver a tool result and the turn must stop.
     fn execute<'a>(
         &'a self,
         call: &'a Invocation,

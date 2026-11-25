@@ -37,10 +37,12 @@ while let Some(event) = events.recv().await {
 | `createSession`、`resumeSession` | 宿主分配会话 ID、选存储、验证 JSONL 和 leaf，之后将 `session_id` 传给内核。同一工作区复用一个 `EmbeddedEngine` 或它的 `clone()`。 |
 | `run` | `run(RunOptions) -> Result<UnboundedReceiver<Event>>`。模型、system prompt、文字/图片、思考与输出限制随本轮传入。活动会话拒绝第二个回合；提交过的 run ID 在该实例生命周期内不可复用。 |
 | `start`、`text`、`thinking`、`usage` | 分别映射 `Event::Start`、`Text`、`Thinking`、`Usage`。将 Rust 字段映射到 C3 的 `modelId`、`customProviderId`、`blockId`、`cacheRead`、`cacheWrite`。历史思考只用于存档，模型输入投影移除它。 |
-| `toolCall`、`toolUpdate`、`toolResult` | 意图整批持久化，逐项发送 `ToolCall`、审查、执行；保存结果后才发送 `ToolResult`。拒绝、审查/执行错误或 `is_error` 会结束派发；剩余意图各保存一个错误结果。没有续轮预算也不会执行副作用。 |
+| `toolCall`、`toolUpdate`、`toolResult` | 内核先保存整批工具意图，再逐项发送 `ToolCall`、审查、执行，保存结果后发送 `ToolResult`。工具自身失败（如命令非零退出）时，宿主应返回 `Ok(ToolResult { is_error: true, .. })`，在 `content` 中提供错误信息。同批后续调用照常审查和执行，下一次模型请求按顺序收到所有工具结果。 |
 | `error`、`done` | 失败按序发送固定代码和 `Done(Failed)`，成功为 `Completed`，显式中止为 `Aborted`。独立消费每轮的事件通道；丢弃观察者后仍会完成执行与存储。 |
 | `abortRun` | `abort(session_id, run_id).await` 等待匹配回合的宿主清理、存储追加与会话占用结束。用户消息已提交时，成功的中止先保存 `Entry::Message(Message::Aborted { run_id, partial })`，再发送 `Done(Aborted)`。工具批次会先保存每个意图的结果。中止行写入冲突发出 `SESSION_APPEND` 和 `Done(Failed)`。开始首次用户追加前观察到中止时保持原 leaf。如果追加正在进行，先等待其结果；成功后再追加中止行。 |
 | `compactSession` | `compact(session_id, model, instructions).await -> Result<String>`。对完整选中投影做一次无工具摘要，在同一会话独占下追加 `Entry::Compaction`。返回的 leaf 即 compaction 的 `entryId`。宿主应将此全量摘要的 `firstKeptEntryId` 指向摘要自身，并在后续 `load` 投影中引用它，保留原始分支。 |
+
+审查拒绝（`Ok(false)`）、审查出错（`Err`）和宿主执行接口出错（`Err`）分别以 `TOOL_DENIED`、`TOOL_REVIEW` 和 `TOOL_EXECUTION` 结束回合。同批剩余调用各保存一个 `TOOL_NOT_EXECUTED` 结果。取消或事件预算耗尽会停止后续派发。没有下一次模型请求的预算时，内核记录工具意图和跳过结果，以 `REQUEST_LIMIT` 收尾。
 
 ### 中止消息的存档与回放
 
