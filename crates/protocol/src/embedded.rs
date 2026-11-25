@@ -15,6 +15,40 @@ pub enum Content {
     Image { mime_type: String, data: String },
 }
 
+/// Archival form of a host message. Only `content` is projected into the model request.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CustomMessage {
+    pub custom_type: String,
+    pub content: Vec<Content>,
+    pub display: bool,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_value"
+    )]
+    pub details: Option<Value>,
+}
+
+// A present JSON null is meaningful in the host's session file.
+fn present_value<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Value>, D::Error> {
+    Value::deserialize(d).map(Some)
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum SteeringMessage {
+    User { content: Vec<Content> },
+    Custom(CustomMessage),
+}
+
+impl From<SteeringMessage> for Message {
+    fn from(input: SteeringMessage) -> Self {
+        match input {
+            SteeringMessage::User { content } => Self::User { content },
+            SteeringMessage::Custom(custom) => Self::Custom(custom),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ToolDefinition {
     pub name: String,
@@ -52,6 +86,7 @@ pub enum Message {
     User {
         content: Vec<Content>,
     },
+    Custom(CustomMessage),
     Assistant {
         blocks: Vec<Block>,
     },
@@ -154,13 +189,69 @@ pub enum DoneReason {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Event {
-    Start { model: Model },
-    Text { block_id: String, delta: String },
-    Thinking { block_id: String, delta: String },
-    ToolCall { call: ToolCall },
-    ToolUpdate { call_id: String, result: ToolResult },
-    ToolResult { call_id: String, result: ToolResult },
-    Usage { usage: Usage },
-    Error { code: String, message: String },
-    Done { reason: DoneReason },
+    Start {
+        model: Model,
+    },
+    /// Emitted once per queued input, after its batch was committed to the session.
+    InputDelivered {
+        message: SteeringMessage,
+    },
+    Text {
+        block_id: String,
+        delta: String,
+    },
+    Thinking {
+        block_id: String,
+        delta: String,
+    },
+    ToolCall {
+        call: ToolCall,
+    },
+    ToolUpdate {
+        call_id: String,
+        result: ToolResult,
+    },
+    ToolResult {
+        call_id: String,
+        result: ToolResult,
+    },
+    Usage {
+        usage: Usage,
+    },
+    Error {
+        code: String,
+        message: String,
+    },
+    Done {
+        reason: DoneReason,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn custom_details_round_trip_missing_null_and_structured_json() {
+        for details in [
+            None,
+            Some(Value::Null),
+            Some(serde_json::json!({"count": 2})),
+        ] {
+            let message = CustomMessage {
+                custom_type: "report".into(),
+                content: vec![Content::Text {
+                    text: "done".into(),
+                }],
+                display: false,
+                details,
+            };
+            let json = serde_json::to_value(&message).unwrap();
+            assert_eq!(json.get("details"), message.details.as_ref());
+            assert_eq!(
+                serde_json::from_value::<CustomMessage>(json).unwrap(),
+                message
+            );
+        }
+    }
 }

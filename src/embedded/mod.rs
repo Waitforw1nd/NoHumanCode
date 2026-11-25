@@ -1,6 +1,9 @@
 //! In-process model loop. All external effects are supplied by the embedding host.
+mod input;
 mod partial;
 mod turn;
+
+pub use input::{EnqueueError, RunningTurn, TurnInput, UnconfirmedInput};
 
 use anyhow::{Context, Result, ensure};
 pub use coda_protocol::embedded::*;
@@ -47,6 +50,7 @@ pub trait SessionStore: Send + Sync {
     /// Load the selected branch projection, including tool errors and the latest summary.
     fn load<'a>(&'a self, session_id: &'a str) -> BoxFuture<'a, Result<Snapshot>>;
     /// Atomically append the entire batch iff the revision still matches. Return the new leaf.
+    /// An `Err` confirms the batch did not commit; resolve ambiguous storage errors inside the host.
     fn append<'a>(
         &'a self,
         session_id: &'a str,
@@ -81,11 +85,15 @@ struct Lease {
     session: String,
     cancel: CancellationToken,
     finished: watch::Sender<bool>,
+    input: Option<TurnInput>,
     terminal: Option<(mpsc::UnboundedSender<Event>, DoneReason)>,
 }
 
 impl Drop for Lease {
     fn drop(&mut self) {
+        if let Some(input) = &self.input {
+            input.close();
+        }
         let mut registry = self.engine.registry.lock().expect("run registry poisoned");
         registry.active.remove(&self.session);
         if let Some((events, reason)) = self.terminal.take() {
@@ -134,25 +142,38 @@ impl EmbeddedEngine {
             session: session.into(),
             cancel,
             finished: tx,
+            input: None,
             terminal: None,
         })
     }
 
     /// Start on the calling Tokio runtime. Dropping the event receiver does not cancel the run.
     pub fn run(&self, options: RunOptions) -> Result<mpsc::UnboundedReceiver<Event>> {
+        Ok(self.run_with_input(options)?.events)
+    }
+
+    /// Start a run and retain its steering queue independently of the event subscription.
+    pub fn run_with_input(&self, options: RunOptions) -> Result<RunningTurn> {
         let runtime =
             tokio::runtime::Handle::try_current().context("a Tokio runtime is required")?;
         ensure!(options.max_requests > 0, "max_requests must be positive");
         let mut lease = self.claim(&options.session_id, Some(&options.run_id))?;
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, events) = mpsc::unbounded_channel();
+        let input = TurnInput::new(lease.finished.subscribe());
+        let running = RunningTurn {
+            input: input.clone(),
+            events,
+        };
+        lease.input = Some(input.clone());
         runtime.spawn(async move {
             let _ = tx.send(Event::Start {
                 model: options.model.clone(),
             });
             let events = turn::Events::new(&tx);
-            let outcome = AssertUnwindSafe(lease.engine.turn(&options, &events, &lease.cancel))
-                .catch_unwind()
-                .await;
+            let outcome =
+                AssertUnwindSafe(lease.engine.turn(&options, &events, &lease.cancel, &input))
+                    .catch_unwind()
+                    .await;
             let reason = match outcome {
                 Ok(Ok(())) => DoneReason::Completed,
                 Ok(Err(turn::Failure::Aborted)) => DoneReason::Aborted,
@@ -171,7 +192,7 @@ impl EmbeddedEngine {
             lease.terminal = Some((tx, reason));
             drop(lease);
         });
-        Ok(rx)
+        Ok(running)
     }
 
     // Linearize success vs. abort under the same lock as abort(). Later callers still wait

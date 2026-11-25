@@ -5,6 +5,11 @@ use abort_history::assert_reloaded_abort_projection;
 #[path = "support/embedded_fixture.rs"]
 mod fixture;
 
+#[path = "support/embedded_steering.rs"]
+mod steering;
+#[path = "support/steering_transactions.rs"]
+mod steering_transactions;
+
 use anyhow::Result;
 use coda::embedded::*;
 use fixture::*;

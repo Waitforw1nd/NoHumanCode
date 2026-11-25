@@ -27,14 +27,20 @@ impl<'a> Events<'a> {
             Ok(())
         }
     }
-    fn send(&self, event: Event) {
+    fn reserve(&self, event: &Event) -> TurnResult<()> {
         let mut total = self.bytes.lock().expect("event budget poisoned");
-        if *total > EVENT_BUDGET {
-            return;
-        }
-        let len = serde_json::to_vec(&event).map_or(EVENT_BUDGET, |bytes| bytes.len());
-        *total = total.saturating_add(len).saturating_add(128);
         if *total <= EVENT_BUDGET {
+            let len = serde_json::to_vec(event).map_or(EVENT_BUDGET, |bytes| bytes.len());
+            *total = total.saturating_add(len).saturating_add(128);
+        }
+        if *total > EVENT_BUDGET {
+            Err(Failed("EVENT_LIMIT"))
+        } else {
+            Ok(())
+        }
+    }
+    fn send(&self, event: Event) {
+        if self.reserve(&event).is_ok() {
             let _ = self.channel.send(event);
         }
     }
@@ -83,11 +89,17 @@ pub(super) fn validate_history(history: &[Message]) -> TurnResult<HashSet<String
     }
 }
 
-fn projected(mut message: Message) -> Message {
-    if let Message::Assistant { blocks } = &mut message {
-        blocks.retain(|b| !matches!(b, Block::Thinking { .. }));
+fn projected(message: Message) -> Message {
+    match message {
+        Message::Assistant { mut blocks } => {
+            blocks.retain(|b| !matches!(b, Block::Thinking { .. }));
+            Message::Assistant { blocks }
+        }
+        Message::Custom(custom) => Message::User {
+            content: custom.content,
+        },
+        other => other,
     }
-    message
 }
 pub(super) fn model_projection(history: Vec<Message>) -> Vec<Message> {
     let mut messages = Vec::with_capacity(history.len());
@@ -115,6 +127,7 @@ impl EmbeddedEngine {
         opts: &RunOptions,
         events: &Events<'_>,
         cancel: &CancellationToken,
+        input: &TurnInput,
     ) -> TurnResult<()> {
         running(cancel)?;
         let snapshot = self
@@ -123,17 +136,6 @@ impl EmbeddedEngine {
             .await
             .map_err(|_| Failed("SESSION_LOAD"))?;
         let seen = validate_history(&snapshot.messages)?;
-        let tools = self
-            .tools
-            .definitions(&opts.session_id, &opts.run_id)
-            .map_err(|_| Failed("TOOL_DEFINITIONS"))?;
-        let mut names = HashSet::new();
-        if tools
-            .iter()
-            .any(|t| t.name.trim().is_empty() || !names.insert(&t.name))
-        {
-            return Err(Failed("INVALID_TOOL_DEFINITIONS"));
-        }
         let user = Message::User {
             content: opts.content.clone(),
         };
@@ -143,7 +145,7 @@ impl EmbeddedEngine {
             settings: opts.settings.clone(),
             model: opts.model.clone(),
             system_prompt: opts.system_prompt.clone(),
-            tools,
+            tools: Vec::new(),
             messages: model_projection(snapshot.messages),
         };
         request.messages.push(user.clone());
@@ -156,7 +158,7 @@ impl EmbeddedEngine {
             events,
             cancel,
         };
-        let result = turn.drive(request, user, seen).await;
+        let result = turn.drive(request, user, seen, input).await;
         if matches!(result, Ok(()) | Err(Aborted)) && self.close_abort_window(&opts.session_id) {
             if turn.user_saved {
                 let partial =
@@ -180,24 +182,18 @@ impl Turn<'_> {
         mut request: ModelRequest,
         user: Message,
         mut seen: HashSet<String>,
+        input: &TurnInput,
     ) -> TurnResult<()> {
         let cancel = self.cancel;
         let events = self.events;
         let mut rounds = crate::model_loop::ModelLoop::new(self.opts.max_requests);
-        loop {
-            let round = rounds.next(cancel).map_err(|reason| match reason {
+        let mut request_required = true;
+        while let Some(batch) = input.claim(request_required) {
+            rounds.next(cancel).map_err(|reason| match reason {
                 crate::model_loop::Stop::Cancelled => Aborted,
                 crate::model_loop::Stop::Limit => Failed("REQUEST_LIMIT"),
             })?;
-            self.engine
-                .model
-                .preflight(&request)
-                .map_err(|_| Failed("MODEL_PREFLIGHT"))?;
-            running(cancel)?;
-            if round == 0 {
-                self.save(&[Entry::Message(user.clone())]).await?;
-                self.user_saved = true;
-            }
+            self.prepare_request(&mut request, &user, batch).await?;
             running(cancel)?;
             let emit = |delta| {
                 anyhow::ensure!(!cancel.is_cancelled(), "cancelled");
@@ -242,13 +238,70 @@ impl Turn<'_> {
             if let Some(usage) = reply.usage {
                 events.send(Event::Usage { usage });
             }
-            if calls.is_empty() {
+            request_required = !calls.is_empty();
+            if request_required {
+                let failure = (!rounds.can_continue()).then_some("REQUEST_LIMIT");
+                self.dispatch(calls, failure, &mut request.messages).await?;
+            } else {
                 running(cancel)?;
-                return events.check_budget();
+                events.check_budget()?;
+                if !rounds.can_continue() {
+                    break;
+                }
             }
-            let failure = (!rounds.can_continue()).then_some("REQUEST_LIMIT");
-            self.dispatch(calls, failure, &mut request.messages).await?;
         }
+        Ok(())
+    }
+
+    async fn prepare_request(
+        &mut self,
+        request: &mut ModelRequest,
+        user: &Message,
+        mut batch: input::InputBatch<'_>,
+    ) -> TurnResult<()> {
+        let definitions = self
+            .engine
+            .tools
+            .definitions(&self.opts.session_id, &self.opts.run_id);
+        running(self.cancel)?;
+        request.tools = definitions.map_err(|_| Failed("TOOL_DEFINITIONS"))?;
+        let mut names = HashSet::new();
+        if request
+            .tools
+            .iter()
+            .any(|t| t.name.trim().is_empty() || !names.insert(&t.name))
+        {
+            return Err(Failed("INVALID_TOOL_DEFINITIONS"));
+        }
+
+        let mut entries = Vec::new();
+        if !self.user_saved {
+            entries.push(Entry::Message(user.clone()));
+        }
+        for message in &batch.messages {
+            let archived = Message::from(message.clone());
+            request.messages.push(projected(archived.clone()));
+            entries.push(Entry::Message(archived));
+            self.events.reserve(&Event::InputDelivered {
+                message: message.clone(),
+            })?;
+        }
+        let preflight = self.engine.model.preflight(request);
+        running(self.cancel)?;
+        preflight.map_err(|_| Failed("MODEL_PREFLIGHT"))?;
+        if !entries.is_empty() {
+            batch.begin_append(&self.revision);
+            if let Err(failure) = self.save(&entries).await {
+                batch.not_committed();
+                return Err(failure);
+            }
+            self.user_saved = true;
+        }
+        // The CAS is the delivery receipt even if abort raced with the store callback.
+        for message in batch.commit() {
+            let _ = self.events.channel.send(Event::InputDelivered { message });
+        }
+        Ok(())
     }
 }
 

@@ -25,7 +25,7 @@ while let Some(event) = events.recv().await {
 | --- | --- |
 | `ModelTransport::preflight(&ModelRequest) -> Result<()>` | 使用本轮 `session_id`、`run_id`、`model.id`、`model.provider` 和 `settings` 做本地权限、路由、能力及 token 预算检查。`provider` 承接 C3 的 `customProviderId`。计入系统指令、工具和完整输入，确认传输能执行相同的请求。 |
 | `async complete(&ModelRequest, emit, CancellationToken) -> ModelReply` | 在线经 SSO，离线交给选中的提供商。以 `emit(ModelDelta)` 报告有 `block_id` 的文本或思考；每次检查回调结果。正常返回完整块及可选用量；连接异常、截断、解析失败作为错误返回。 |
-| `ToolHost::definitions(session_id, run_id) -> Result<Vec<ToolDefinition>>` | 返回本轮已过滤的工具 `name`、`description`、`parameters`。 |
+| `ToolHost::definitions(session_id, run_id) -> Result<Vec<ToolDefinition>>` | 每次生成请求预检前读取一次当前工具集。宿主处理 `setActiveTools()` 时更新自己的工具注册表，下次读取即可反映新增、移除或参数变动。内核检查调用 ID，并按该次请求的工具名称集合校验回复。宿主校验参数及当前权限。已提交的工具批次保留原调用 ID 和结果。 |
 | `async review(&Invocation, CancellationToken) -> bool`、`async execute(&Invocation, update, CancellationToken) -> ToolResult` | 以 `(session_id, run_id, call.id)` 关联 `reviewToolCall()`、执行和进度。宿主缺少授权时拒绝；执行只接收已审查的调用。审查、执行与模型传输须在取消后结束子工作并返回。 |
 | `async SessionStore::load(session_id) -> Snapshot` | 在宿主的会话锁、工作区租约和 codec 下选择 leaf，返回对应分支的消息投影与修订号。恢复时保留未完成意图，内核会拒绝重派。 |
 | `async append(session_id, expected_revision, &[Entry]) -> String` | 在同一次原子提交中校验旧修订、追加整批条目并返回新 leaf。快照修订须能检测跨写入者冲突。保留原始条目、其他分支与宿主 metadata。失败时宿主不得推进内存 leaf。 |
@@ -43,6 +43,43 @@ while let Some(event) = events.recv().await {
 | `compactSession` | `compact(session_id, model, instructions).await -> Result<String>`。对完整选中投影做一次无工具摘要，在同一会话独占下追加 `Entry::Compaction`。返回的 leaf 即 compaction 的 `entryId`。宿主应将此全量摘要的 `firstKeptEntryId` 指向摘要自身，并在后续 `load` 投影中引用它，保留原始分支。 |
 
 审查拒绝（`Ok(false)`）、审查出错（`Err`）和宿主执行接口出错（`Err`）分别以 `TOOL_DENIED`、`TOOL_REVIEW` 和 `TOOL_EXECUTION` 结束回合。同批剩余调用各保存一个 `TOOL_NOT_EXECUTED` 结果。取消或事件预算耗尽会停止后续派发。没有下一次模型请求的预算时，内核记录工具意图和跳过结果，以 `REQUEST_LIMIT` 收尾。
+
+### 回合中插话与取回
+
+需要接收插话时，使用 `engine.run_with_input(options)?`。返回值 `RunningTurn` 包含原有的事件接收端 `events` 和可克隆的 `TurnInput`。宿主按 `(session_id, run_id)` 保存句柄，并在回合收尾时取回余项。只消费事件的调用方仍可使用 `run(options)`。
+
+| 宿主操作 | Rust 接口和所有权 |
+| --- | --- |
+| `steer(text)` | 构造 `SteeringMessage::User { content }`，调用 `input.enqueue(message)`。`Ok(())` 表示进入本回合队列。`EnqueueError::Closed`（回合已关闭）和 `Full`（超过容量）均保留原值，可用 `into_message()` 取回。每个回合最多容纳 1024 项、合计 64 MiB 序列化 JSON，包含选中且仍在写入的批次。 |
+| `sendCustomMessage(..., { deliverAs: "steer" })` | 使用 `SteeringMessage::Custom(CustomMessage { custom_type, content, display, details })`，和用户消息共用一个先进先出队列。 |
+| `getSteeringMessages()`、`hasQueuedCustomMessage(type)` | `input.pending()` 返回可取回消息的快照。宿主可按变体提取用户文本或匹配 `custom_type`。 |
+| `clearQueue()` | `input.clear_queue()` 立即移出并返回当前待投递项。已经选入当前请求的消息由该次写入决定归属。 |
+| 完成、失败、取消后收尾 | `input.take_remaining().await` 等待本回合释放会话占用，按顺序移出余项。所有克隆共享这次取回，后续再取为空。宿主即使关闭了事件订阅，也可用保留的句柄取回。 |
+
+```rust,ignore
+let mut turn = engine.run_with_input(options)?;
+register_input(session_id, run_id, turn.input.clone()); // 供宿主的插话入口调用
+while let Some(event) = turn.events.recv().await {
+    relay(event);
+}
+if let Some(batch) = turn.input.take_unconfirmed().await {
+    reconcile_with_store(batch); // 仅在宿主写入回执中断时需要
+}
+return_to_host(turn.input.take_remaining().await);
+```
+
+**交付边界。** 每次准备生成请求时，内核选取当时排队的全部消息，用最新工具声明和包含插话的完整请求做预检。预检通过后，以一次修订号校验和原子追加写入整批消息，再按原顺序逐条发出 `Event::InputDelivered { message }`。宿主可据此更新排队标记及显示历史，存档只由 `SessionStore::append` 写一次。交付事件确认消息已进入会话历史。若取消发生在追加期间，内核等待结果；追加成功的消息仍确认交付，模型请求可能因取消而没有发出。存储返回 `Err` 须表示整批未提交；宿主负责在返回前核实存在歧义的写入结果。预检或追加明确失败时，选中的消息重新排在后来入队的消息之前。若写入回调在给出回执前 panic，或运行时丢弃了正在写入的任务，`take_unconfirmed().await` 单独交还该批原始插话与写入时的 `expected_revision`，仅可取一次。宿主应按本回合的写入记录核对该修订上的提交结果，然后处理后续 `take_remaining()` 中明确未提交的余项。待核实批次不会自动重投。进程退出后的队列恢复由宿主持久化策略负责。
+
+**与 pi 的时序。** 对照 Coda 桌面主聊天所用 `@earendil-works/pi-agent-core` 与 `pi-coding-agent` 1.5.0：
+
+| 情形 | pi 与嵌入内核的行为 |
+| --- | --- |
+| 工具执行时收到插话 | 两者都等待同一回复中的整批串行工具结束。A 执行时收到插话，顺序为 A 结果、B 结果、插话、下一次请求。 |
+| 一次投递几条 | pi 默认 `one-at-a-time`，Coda 主聊天设置 `steeringMode = "all"`。嵌入接口固定一次取全部，保留用户消息与自定义消息的相对顺序。选批之后抵达的消息留给下一个请求边界。 |
+| 无工具的回复结束 | 两者都检查待处理的插话，有消息即可续轮。嵌入内核受本回合 `max_requests` 约束；最后一次请求已给出完整答复时正常完成，剩余插话退回宿主。空队列的终止判定与入队互斥，关闭后的入队直接返回原消息。 |
+| 取消和退回 | pi SDK 的 `abort()` 等待空闲，Coda 在 `finally` 调 `clearQueue()`，其返回值列出 steering / follow-up 文本。嵌入内核的 `take_remaining()` 也保留自定义消息的完整值。本入口只处理 `deliverAs: "steer"`，余项由宿主决定保存或在新回合提交。 |
+
+**自定义消息的 C3 v2 映射。** `Message::Custom` 对应 `type: "customMessage"`，`custom_type` 映射到 `name`，保留 `content` 与 `display`。`details: None` 省略字段，`Some(Value::Null)` 对应 `"details":{"value":null}`，其他 JSON 同样包装为 `{"value": ...}`。`load` 应恢复 `Message::Custom`。生成和显式压缩均只把正文投影为普通 `User` 消息，包括 `display: false` 的消息。穷举匹配的宿主须处理新增的 `Message::Custom` 与 `Event::InputDelivered`。
 
 ### 中止消息的存档与回放
 
