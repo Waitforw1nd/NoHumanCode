@@ -1053,6 +1053,11 @@ fn network_error(error: NetworkError) -> Response {
             "internal",
             "网络服务处理失败",
         ),
+        NetworkErrorKind::InvalidToolArguments => (
+            StatusCode::BAD_GATEWAY,
+            "invalid_tool_arguments",
+            "模型返回了无效的工具参数 JSON",
+        ),
         NetworkErrorKind::Upstream => (StatusCode::BAD_GATEWAY, "upstream", "上游请求未成功完成"),
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,

@@ -394,7 +394,8 @@ fn resolve_mcp_program_and_args(
                 }
             }
         }
-        if let Ok(fallback) = crate::command_execution::resolve_powershell(&workspace_canon) {
+        #[cfg(windows)]
+        if let Ok(fallback) = crate::command_execution::resolve_shell(&workspace_canon) {
             return (strip_verbatim_prefix(fallback), effective_args);
         }
     }
@@ -596,6 +597,10 @@ async fn read_bounded_line<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<Op
 }
 
 #[cfg(test)]
+#[path = "../tests/support/mcp_fixture.rs"]
+mod mcp_fixture;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -613,57 +618,16 @@ mod tests {
 
     #[tokio::test]
     async fn stdio_discover_and_call_tool_with_env_filtering() {
+        if mcp_fixture::serve_if_child() {
+            return;
+        }
         let dir = tempfile::tempdir().unwrap();
-        let script = r#"
-try {
-    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
-while ($null -ne ($line = [Console]::In.ReadLine())) {
-    if ([string]::IsNullOrWhiteSpace($line)) { continue }
-    $req = $line | ConvertFrom-Json
-    if ($req.method -eq 'initialize') {
-        $r = '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"demo","version":"0.1.0"}}}'
-        [Console]::Out.WriteLine($r)
-        [Console]::Out.Flush()
-    } elseif ($req.method -eq 'tools/list') {
-        $r = '{"jsonrpc":"2.0","id":' + $req.id + ',"result":{"tools":[{"name":"echo_tool","description":"Echoes input","inputSchema":{"type":"object","properties":{"msg":{"type":"string"}},"required":["msg"]}}]}}'
-        [Console]::Out.WriteLine($r)
-        [Console]::Out.Flush()
-    } elseif ($req.method -eq 'tools/call') {
-        $m = $req.params.arguments.msg
-        $f = $env:FOO
-        $t = $env:EXPLICIT_TOKEN
-        $out = @{
-            jsonrpc = '2.0'
-            id = $req.id
-            result = @{
-                content = @( @{ type = 'text'; text = "echo:${m}|foo=${f}|token=${t}" } )
-                isError = $false
-            }
-        } | ConvertTo-Json -Compress -Depth 8
-        [Console]::Out.WriteLine($out)
-        [Console]::Out.Flush()
-    }
-}
-"#;
+        let server =
+            mcp_fixture::server("mcp::tests::stdio_discover_and_call_tool_with_env_filtering");
         std::fs::create_dir_all(dir.path().join(".coda")).unwrap();
-        std::fs::write(dir.path().join("mock_mcp.ps1"), script).unwrap();
         std::fs::write(
-            dir.path().join(".coda").join("mcp.json"),
-            serde_json::to_string_pretty(&json!({
-                "mcpServers": {
-                    "demo": {
-                        "command": "pwsh",
-                        "args": ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "mock_mcp.ps1"],
-                        "env": {
-                            "FOO": "bar",
-                            "EXPLICIT_TOKEN": "allowed-explicit"
-                        }
-                    }
-                }
-            }))
-            .unwrap(),
+            dir.path().join(".coda/mcp.json"),
+            json!({"mcpServers": {"demo": server}}).to_string(),
         )
         .unwrap();
 
@@ -679,12 +643,12 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
         assert_eq!(discovered[0]["function"]["name"], "mcp__demo__echo_tool");
         assert_eq!(discovered[0]["function"]["description"], "Echoes input");
 
-        let result = call_tool(dir.path(), "mcp__demo__echo_tool", &json!({"msg": "ping"}))
+        let result = call_tool(dir.path(), "mcp__demo__echo_tool", &json!({"text": "ping"}))
             .await
             .unwrap();
         assert_eq!(
             result["content"][0]["text"],
-            "echo:ping|foo=bar|token=allowed-explicit"
+            "mcp-echo:ping|foo=bar|token=allowed-explicit"
         );
     }
 }

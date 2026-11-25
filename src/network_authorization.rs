@@ -184,6 +184,7 @@ pub enum NetworkErrorKind {
     Corrupt,
     Unknown,
     Internal,
+    InvalidToolArguments,
     Upstream,
 }
 
@@ -310,6 +311,12 @@ impl std::fmt::Display for NetworkError {
             NetworkErrorKind::Conflict => "网络授权状态冲突",
             NetworkErrorKind::Corrupt => "网络授权持久状态损坏",
             NetworkErrorKind::Unknown => "网络调用结果未知",
+            NetworkErrorKind::InvalidToolArguments => {
+                return std::fmt::Display::fmt(
+                    &crate::provider_transport::TransportError::InvalidToolArguments,
+                    f,
+                );
+            }
             NetworkErrorKind::Internal => "网络授权操作失败",
             NetworkErrorKind::Upstream => "上游返回失败响应",
             _ => "项目网络请求被拒绝",
@@ -511,7 +518,7 @@ fn same_config(a: &SubjectSnapshot, b: &SubjectSnapshot) -> bool {
 
 fn matches_current(snapshot: &SubjectSnapshot, sealed: &[u8], current: &CurrentSubject) -> bool {
     same_config(snapshot, &current.snapshot)
-        && secrets::open(sealed).is_ok_and(|bytes| bytes == current.credential.as_bytes())
+        && secrets::matches_credential_snapshot(sealed, current.credential.as_bytes())
 }
 
 fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
@@ -560,7 +567,7 @@ fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<Subjec
         params![
             key,
             serde_json::to_string(&snapshot)?,
-            secrets::seal(current.credential.as_bytes())
+            secrets::credential_snapshot(current.credential.as_bytes())
                 .map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?
         ],
     )?;
@@ -1202,6 +1209,12 @@ impl Store {
                 value.result = Some(CallResult::InvalidResponse);
                 Some(NetworkErrorKind::Upstream)
             }
+            Err(TransportError::InvalidToolArguments) => {
+                value.state = CallState::Finished;
+                value.success = Some(false);
+                value.result = Some(CallResult::InvalidResponse);
+                Some(NetworkErrorKind::InvalidToolArguments)
+            }
             Err(TransportError::Invalid) => {
                 value.state = CallState::NotSent;
                 value.result = Some(CallResult::PreflightRejected);
@@ -1288,10 +1301,10 @@ impl Store {
     ) -> AnyResult<()> {
         settings.validate()?;
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        crate::host_configuration::save_configuration_tx(&tx, Some(settings), keys, true)?;
-        tx.commit()?;
-        Ok(())
+        secrets::credential_transaction(&mut db, |tx| {
+            crate::host_configuration::save_configuration_tx(tx, Some(settings), keys, true)?;
+            Ok(())
+        })
     }
 }
 

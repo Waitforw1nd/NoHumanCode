@@ -9,30 +9,115 @@ license = "MIT"
 members = ["crates/protocol"]
 resolver = "2"
 
+[[bin]]
+name = "coda"
+path = "src/main.rs"
+required-features = ["standalone"]
+
+[features]
+default = ["standalone"]
+standalone = [
+    "dep:async-stream", "dep:axum", "dep:clap", "dep:regex", "dep:reqwest",
+    "dep:rusqlite", "dep:serde", "dep:serde_yaml", "dep:sha2", "dep:uuid",
+    "dep:windows-sys", "dep:libc", "dep:ring", "dep:rpassword", "dep:zeroize",
+    "dep:security-framework", "dep:core-foundation", "dep:secret-service", "tokio/full",
+]
+
 [dependencies]
 anyhow = "1"
-async-stream = "0.3"
-axum = "0.8"
-clap = { version = "4", features = ["derive"] }
+async-stream = { version = "0.3", optional = true }
+axum = { version = "0.8", optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
 futures-util = "0.3"
-regex = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
-rusqlite = { version = "0.37", features = ["bundled"] }
-serde = { version = "1", features = ["derive"] }
+regex = { version = "1", optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"], optional = true }
+rusqlite = { version = "0.37", features = ["bundled"], optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 serde_json = "1"
-serde_yaml = "0.9"
-sha2 = "0.10"
-tokio = { version = "1", features = ["full"] }
+serde_yaml = { version = "0.9", optional = true }
+sha2 = { version = "0.10", optional = true }
+tokio = { version = "1", features = ["rt", "sync", "macros"] }
 tokio-util = "0.7"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4"], optional = true }
 coda-protocol = { path = "crates/protocol" }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Security_Cryptography", "Win32_Foundation", "Win32_Globalization", "Win32_System_Memory", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_System_JobObjects", "Win32_System_Pipes", "Win32_System_IO"] }
+windows-sys = { version = "0.59", optional = true, features = ["Win32_Security_Cryptography", "Win32_Foundation", "Win32_Globalization", "Win32_System_Memory", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_System_JobObjects", "Win32_System_Pipes", "Win32_System_IO"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", optional = true }
+rpassword = { version = "7.5", optional = true }
+
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "android"))'.dependencies]
+ring = { version = "0.17", optional = true }
+zeroize = { version = "1", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = { version = "0.10", optional = true }
+security-framework ={ version = "3", optional = true }
+
+[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
+secret-service = { version = "5.2", features = ["rt-async-io-crypto-rust"], optional = true }
 
 [dev-dependencies]
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
+
+[[test]]
+name = "cli_workbench"
+required-features = ["standalone"]
+
+[[test]]
+name = "credential_lifecycle"
+required-features = ["standalone"]
+
+[[test]]
+name = "final_acceptance"
+required-features = ["standalone"]
+
+[[test]]
+name = "first_user_workflow"
+required-features = ["standalone"]
+
+[[test]]
+name = "git_diff"
+required-features = ["standalone"]
+
+[[test]]
+name = "host_configuration_http"
+required-features = ["standalone"]
+
+[[test]]
+name = "host_initialization_workflow"
+required-features = ["standalone"]
+
+[[test]]
+name = "http_contract"
+required-features = ["standalone"]
+
+[[test]]
+name = "live"
+required-features = ["standalone"]
+
+[[test]]
+name = "multi_provider_protocol"
+required-features = ["standalone"]
+
+[[test]]
+name = "provider_usage"
+required-features = ["standalone"]
+
+[[test]]
+name = "runtime"
+required-features = ["standalone"]
+
+[[test]]
+name = "subsystems_e2e"
+required-features = ["standalone"]
+
+[[test]]
+name = "tool_call_workflow"
+required-features = ["standalone"]
 
 [profile.dev]
 debug = 0

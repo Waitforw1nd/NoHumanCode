@@ -15,7 +15,7 @@
 | **包名与二进制标识** | 宿主库与 CLI 二进制名为 **`coda`**（[Cargo.toml](Cargo.toml)），共享协议包为 **`coda-protocol`**（[crates/protocol](crates/protocol)） |
 | **数据目录与 Schema** | 默认本机数据目录 `%LOCALAPPDATA%\coda`（可通过 `CODA_DATA_DIR` 或 `--data-dir` 指定），SQLite 数据库 `coda.sqlite3`（WAL 模式，`SCHEMA_VERSION = 18`） |
 | **核心环境变量与配置** | `CODA_MODEL`、`CODA_DATA_DIR`、`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`；工作区配置 `.coda/`、MCP 配置 `.mcp.json` 与 `.coda/mcp.json`；本地 HTTP 鉴权头 `x-coda-token` |
-| **Rust 代码规模** | 共约 **4.2 万行** Rust 代码：`src/*.rs`（38 个文件）、`crates/protocol/src/lib.rs`（1 个文件）、`tests/**/*.rs`（17 个文件：13 个集成测试目标 + 4 个夹具模块） |
+| **Rust 代码规模** | 2026-11-18 基线共约 **4.2 万行** Rust 代码：`src/*.rs`（38 个文件）、`crates/protocol/src/lib.rs`（1 个文件）、`tests/**/*.rs`（17 个文件：13 个集成测试目标 + 4 个夹具模块） |
 | **质量门禁状态** | `cargo fmt --check`、`cargo clippy --workspace --all-targets -- -D warnings`、`cargo test --workspace`、`cargo build --release` 全量门禁覆盖 |
 | **历史包袱清理与归档** | 旧子目录包装层、空壳 `crates/ui`、死代码 `src/wasm*`、伪插件金字塔与早期多角色文书均已从 `main` 清理；历史快照归档于分支 `archive/gpt-era-20261118`、`archive/old-c35-20261118`、`archive/u18-consolidated-20261118` |
 
@@ -43,7 +43,7 @@
 
 ---
 
-## 2. 核心架构与两条执行主链
+## 2. CLI、HTTP 与嵌入宿主的执行链
 
 Coda CLI 以单一进程内的 `Store`（SQLite 持久化中心）与 `Engine`（生命周期、工具循环与并发调度核心）为底座，向上提供**两条清晰分离的执行主链**：
 
@@ -104,9 +104,26 @@ flowchart TD
 
 ---
 
+### 2.3 链 C　进程内库宿主（M3 前置 B）
+
+宿主将模型网关、工具审查与执行、分支会话存储注入 `coda::EmbeddedEngine`。`default-features = false` 只链接嵌入模块及其协议。宿主按事件驱动界面，内核持有回合任务；关闭界面后，已开始的回合继续落盘。CLI 与 HTTP 入口使用默认 `standalone` 特性和 SQLite。
+
+| 模块 | 职责 |
+| --- | --- |
+| [src/embedded/mod.rs](src/embedded/mod.rs) | 宿主 traits、会话独占、定向取消、显式压缩 |
+| [src/embedded/turn.rs](src/embedded/turn.rs) | 模型循环、流式回调、持久化工具意图、审查与批次收尾 |
+| [src/embedded/turn/prepare.rs](src/embedded/turn/prepare.rs) | 生成预检前的宿主压缩决策、重载分支、刷新工具和交付插话 |
+| [src/embedded/compaction.rs](src/embedded/compaction.rs) | 显式压缩和回合内压缩共用的摘要请求、用量及原子追加 |
+| [src/model_loop.rs](src/model_loop.rs) | 独立与嵌入模式共用的请求轮数与取消检查 |
+| [crates/protocol/src/embedded.rs](crates/protocol/src/embedded.rs) | 零 I/O 的消息、工具、用量和回合事件类型 |
+| [tests/embedded_kernel.rs](tests/embedded_kernel.rs) | 纯宿主回调驱动的模型回合、工具、取消、压缩与冲突恢复 |
+| [tests/credential_lifecycle.rs](tests/credential_lifecycle.rs) | 独立 CLI 的系统钥匙串写入、轮换、回滚、重开与删除 |
+
+构建目标为 Windows x64、macOS arm64、Linux x64 和 Android arm64。独立 CLI 在 Windows 使用 DPAPI，在 macOS 使用 Keychain，在 Linux 和具备 D-Bus Secret Service 的 Android 终端使用登录用户的钥匙串。APK 的宿主提供自己的密钥管理。参见[跨平台构建](README.md#跨平台构建)和[Coda 宿主接入说明](docs/EMBEDDING.md)。
+
 ## 3. Rust 源码模块全景表
 
-以下完整覆盖 `src/` 下的 **全部 38 个源码文件** 以及 `crates/protocol` 共享协议包。
+以下按职责列出独立 CLI 模块；嵌入宿主通过第 2.3 节的模块和契约接入。
 
 ### ① 入口与交互层（5 个文件）
 
@@ -181,7 +198,7 @@ flowchart TD
 
 ## 4. 自动化测试矩阵地图
 
-集成测试位于 [tests/](tests)，共包含 **13 个 Rust 集成测试目标**（配合 `tests/support/` 下 [network_fixture.rs](tests/support/network_fixture.rs)、[owned_child.rs](tests/support/owned_child.rs)、[project_fixture.rs](tests/support/project_fixture.rs)、[schema_fixture.rs](tests/support/schema_fixture.rs) 4 个测试夹具模块）。
+集成测试位于 [tests/](tests)，包含原有的 **13 个集成测试目标**，另有嵌入接口及系统钥匙串回归测试（配合 `tests/support/` 下 [network_fixture.rs](tests/support/network_fixture.rs)、[owned_child.rs](tests/support/owned_child.rs)、[project_fixture.rs](tests/support/project_fixture.rs)、[schema_fixture.rs](tests/support/schema_fixture.rs) 4 个测试夹具模块）。
 
 ### 4.1 集成测试目标一览
 

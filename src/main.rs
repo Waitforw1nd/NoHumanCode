@@ -143,12 +143,19 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         .exit();
     }
 
+    #[cfg(windows)]
     let data_dir = args
         .data_dir
         .unwrap_or_else(|| PathBuf::from("../data-rust"));
-    let workspace = args
-        .workspace
-        .unwrap_or_else(|| PathBuf::from("../workspace"));
+    #[cfg(not(windows))]
+    let data_dir = cli::resolve_user_data_dir(args.data_dir);
+    let workspace = args.workspace.unwrap_or_else(|| {
+        if cfg!(windows) {
+            PathBuf::from("../workspace")
+        } else {
+            data_dir.join("workspace")
+        }
+    });
     std::fs::create_dir_all(&data_dir).context("无法创建数据目录")?;
     let store = Arc::new(Store::open(&data_dir.join("coda.sqlite3"))?);
     *instance_lock = Some(store.instance_lock_handle()?);

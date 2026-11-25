@@ -46,7 +46,7 @@ async fn llm_handler(State(state): State<ScriptedLlm>, Json(body): Json<Value>) 
     let sse = match (state.mode, idx) {
         ("edit_and_restore", 0) => {
             let args = json!({
-                "path": "src/main.rs",
+                "path": "src/Main.rs",
                 "old_string": "fn version() -> &'static str {\n    \"v1\"\n}",
                 "new_string": "fn version() -> &'static str {\n    \"v2-Bearer-token\"\n}"
             })
@@ -376,7 +376,7 @@ async fn edit_file_approval_checkpoint_and_restore_roundtrip() {
     let ws = temp.path().join("pat_workspace");
     std::fs::create_dir_all(ws.join("src")).unwrap();
     let original = "fn version() -> &'static str {\n    \"v1\"\n}\n";
-    std::fs::write(ws.join("src/main.rs"), original).unwrap();
+    std::fs::write(ws.join("src/Main.rs"), original).unwrap();
 
     let (engine, project_id) =
         setup_engine_with_project(&temp.path().join("data"), &ws, &base_url).await;
@@ -394,7 +394,7 @@ async fn edit_file_approval_checkpoint_and_restore_roundtrip() {
                     route_id: "default".into(),
                     prompt: "Bump version to v2".into(),
                     depends_on: vec![],
-                    write_scopes: vec!["*".into()],
+                    write_scopes: vec!["src/Main.rs".into()],
                     tools: true,
                     allow_commands: false,
                     max_rounds: 8,
@@ -438,9 +438,28 @@ async fn edit_file_approval_checkpoint_and_restore_roundtrip() {
     .await
     .unwrap();
 
-    let modified = std::fs::read_to_string(ws.join("src/main.rs")).unwrap();
+    let modified = std::fs::read_to_string(ws.join("src/Main.rs")).unwrap();
     assert!(modified.contains("v2-Bearer-token"));
 
+    #[cfg(unix)]
+    {
+        let db = rusqlite::Connection::open(temp.path().join("data/coda.sqlite3")).unwrap();
+        use sha2::{Digest, Sha256};
+        let v1 = json!([
+            "task-project-permissions-v1",
+            ["default", true, ["src/main.rs"], false]
+        ]);
+        let digest = format!("{:x}", Sha256::digest(v1.to_string()));
+        assert_eq!(db.execute(
+            "UPDATE task_project_bindings SET value=json_set(value,'$.permission_digest',?2) WHERE task_id=?1",
+            (&task_id, digest),
+        ).unwrap(), 1);
+        // Older records kept the mixed-case display path but folded the lookup key.
+        assert_eq!(db.execute(
+            "UPDATE workspace_changes SET path_key=lower(path) WHERE task_id=?1 AND path_key='src/Main.rs'",
+            [&task_id],
+        ).unwrap(), 1);
+    }
     // Create a checkpoint and restore the `edit_file` mutation back to original v1!
     let cp = engine.create_checkpoint(&task_id, "cp-1").await.unwrap();
     let receipt = engine
@@ -449,7 +468,7 @@ async fn edit_file_approval_checkpoint_and_restore_roundtrip() {
         .unwrap();
     assert!(receipt.ok());
 
-    let restored = std::fs::read_to_string(ws.join("src/main.rs")).unwrap();
+    let restored = std::fs::read_to_string(ws.join("src/Main.rs")).unwrap();
     assert_eq!(restored, original);
     server.abort();
 }
@@ -675,7 +694,12 @@ async fn fast_worktree_creation_succeeds_even_with_untracked_files_in_source_rep
     let (base_url, server) = start_mock_llm("chat").await;
     let temp = tempfile::tempdir().unwrap();
     let ws = temp.path().join("repo");
-    let wt_parent = temp.path().join("worktrees");
+    // A backslash in a Unix directory name must survive receipt validation.
+    let wt_parent = temp.path().join(if cfg!(unix) {
+        "worktrees\\"
+    } else {
+        "worktrees"
+    });
     std::fs::create_dir_all(&ws).unwrap();
     std::fs::create_dir_all(&wt_parent).unwrap();
 
@@ -745,72 +769,23 @@ async fn fast_worktree_creation_succeeds_even_with_untracked_files_in_source_rep
     server.abort();
 }
 
+#[path = "support/mcp_fixture.rs"]
+mod mcp_fixture;
+
 #[tokio::test]
 async fn mcp_stdio_discovery_approval_and_execution_end_to_end() {
+    if mcp_fixture::serve_if_child() {
+        return;
+    }
     let (base_url, server) = start_mock_llm("mcp_echo").await;
     let temp = tempfile::tempdir().unwrap();
     let ws = temp.path().join("mcp_ws");
     std::fs::create_dir_all(&ws).unwrap();
 
-    let mock_mcp_ps1 = r#"
-try {
-    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
-while ($null -ne ($line = [Console]::In.ReadLine())) {
-    if ([string]::IsNullOrWhiteSpace($line)) { continue }
-    $req = $line | ConvertFrom-Json
-    if ($req.method -eq 'initialize') {
-        $resp = '{"jsonrpc":"2.0","id":' + $req.id + ',"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"demo","version":"0.2.0"}}}'
-        [Console]::Out.WriteLine($resp)
-        [Console]::Out.Flush()
-    } elseif ($req.method -eq 'tools/list') {
-        $resp = '{"jsonrpc":"2.0","id":' + $req.id + ',"result":{"tools":[{"name":"echo_tool","description":"Echoes text via MCP stdio","inputSchema":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}}]}}'
-        [Console]::Out.WriteLine($resp)
-        [Console]::Out.Flush()
-    } elseif ($req.method -eq 'tools/call') {
-        $txt = $req.params.arguments.text
-        $foo = $env:FOO
-        $resp = @{
-            jsonrpc = '2.0'
-            id = $req.id
-            result = @{
-                content = @(
-                    @{
-                        type = 'text'
-                        text = "mcp-echo:$txt|foo=$foo"
-                    }
-                )
-                isError = $false
-            }
-        } | ConvertTo-Json -Compress -Depth 8
-        [Console]::Out.WriteLine($resp)
-        [Console]::Out.Flush()
-    }
-}
-"#;
-    std::fs::write(ws.join("mock_mcp.ps1"), mock_mcp_ps1).unwrap();
+    let mcp = mcp_fixture::server("mcp_stdio_discovery_approval_and_execution_end_to_end");
     std::fs::write(
         ws.join(".mcp.json"),
-        serde_json::to_string_pretty(&json!({
-            "mcpServers": {
-                "demo": {
-                    "command": "pwsh",
-                    "args": [
-                        "-NoLogo",
-                        "-NoProfile",
-                        "-ExecutionPolicy",
-                        "Bypass",
-                        "-File",
-                        "mock_mcp.ps1"
-                    ],
-                    "env": {
-                        "FOO": "bar"
-                    }
-                }
-            }
-        }))
-        .unwrap(),
+        json!({"mcpServers": {"demo": mcp}}).to_string(),
     )
     .unwrap();
 

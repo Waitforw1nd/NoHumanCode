@@ -479,7 +479,7 @@ impl ToolCallApplication {
                         args,
                         &task.spec.write_scopes,
                     )?;
-                let path_key = display_path.to_lowercase();
+                let path_key = crate::domain::scope_path(&display_path)?;
                 let change = self.store.prepare_workspace_change(
                     task,
                     tool_call_id,

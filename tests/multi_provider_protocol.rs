@@ -52,6 +52,58 @@ async fn wait_for_run(engine: &Engine, run_id: &str) -> Run {
     .expect("timed out waiting for multi-provider task to finish")
 }
 
+#[tokio::test]
+async fn malformed_chat_tool_arguments_reach_cli_task_error_without_argument_values() {
+    const PRIVATE_VALUE: &str = "private-argument-fixture";
+    let chunk = json!({"choices": [{"delta": {"tool_calls": [{
+        "index": 0, "id": "call-1", "type": "function",
+        "function": {"name": "todo_read", "arguments": format!("{{\"{PRIVATE_VALUE}\":")}
+    }]}, "finish_reason": "tool_calls"}]});
+    let app = Router::new().route(
+        "/v1/chat/completions",
+        post(move || async move {
+            (
+                [("content-type", "text/event-stream")],
+                format!("data: {chunk}\n\ndata: [DONE]\n\n"),
+            )
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let temp = tempfile::tempdir().unwrap();
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir(&workspace).unwrap();
+    let output = tokio::process::Command::new(env!("CARGO_BIN_EXE_coda"))
+        .env("OPENAI_API_KEY", "synthetic-chat-test-key")
+        .env("OPENAI_BASE_URL", format!("http://{addr}/v1"))
+        .env("CODA_MODEL", "gpt-test")
+        .args(["--json", "ask", "--route", "openai", "--dir"])
+        .arg(workspace)
+        .arg("--data-dir")
+        .arg(temp.path().join("data"))
+        .arg("Read the task list")
+        .output()
+        .await
+        .unwrap();
+    server.abort();
+    assert!(!output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(!stdout.contains(PRIVATE_VALUE) && !stderr.contains(PRIVATE_VALUE));
+    let task = stdout
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|value| value.get("task_id").is_some())
+        .expect("missing CLI task result");
+    assert_eq!(task["status"], "failed");
+    let error = task["error"].as_str().unwrap();
+    assert!(
+        error.contains("工具参数") && error.contains("JSON"),
+        "{error}"
+    );
+}
+
 async fn anthropic_models(headers: HeaderMap) -> Json<Value> {
     assert_eq!(
         headers.get("x-api-key").and_then(|v| v.to_str().ok()),

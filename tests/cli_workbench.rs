@@ -15,6 +15,58 @@ use std::{
     },
 };
 
+#[cfg(unix)]
+#[path = "support/cli_approval.rs"]
+mod cli_approval;
+
+#[cfg(unix)]
+#[test]
+fn host_check_uses_per_user_data_dir_and_respects_overrides() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path();
+    let default = if cfg!(target_os = "macos") {
+        root.join("home/Library/Application Support/coda")
+    } else {
+        root.join("xdg/coda")
+    };
+    let current_dir = root.join("cwd");
+    std::fs::create_dir(&current_dir).unwrap();
+    for (env_override, flag, expected) in [
+        (None, None, default),
+        (Some("from-env"), None, root.join("from-env")),
+        (Some("unused"), Some("from-flag"), root.join("from-flag")),
+    ] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_coda"));
+        command
+            .current_dir(&current_dir)
+            .arg("--check")
+            .env_remove("CODA_DATA_DIR")
+            .env("HOME", root.join("home"))
+            .env("XDG_DATA_HOME", root.join("xdg"))
+            .env("LOCALAPPDATA", root.join("unused-windows-dir"));
+        if let Some(dir) = env_override {
+            command.env("CODA_DATA_DIR", root.join(dir));
+        }
+        if let Some(dir) = flag {
+            command.arg("--data-dir").arg(root.join(dir));
+        }
+        let output = command.output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            expected.join("coda.sqlite3").is_file(),
+            "{}",
+            expected.display()
+        );
+        assert!(expected.join("workspace").is_dir());
+    }
+    assert!(!root.join("unused").exists());
+    assert!(!root.join("unused-windows-dir").exists());
+}
+
 #[derive(Clone)]
 struct MockLlm {
     turn: Arc<AtomicUsize>,

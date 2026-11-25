@@ -102,7 +102,7 @@ impl RootIdentity {
         self.validate_snapshot()?;
         let observed = resolve_directory(&self.canonical_path)?;
         let observed_key = canonical_identity_key(&observed)?;
-        if observed_key != self.identity_key {
+        if observed_key != self.identity_key || (cfg!(unix) && observed != self.canonical_path) {
             return Err(RootIdentityError::IdentityChanged);
         }
         Ok(VerifiedRoot {
@@ -111,13 +111,26 @@ impl RootIdentity {
     }
 
     pub fn overlap(&self, other: &Self) -> Result<RootOverlap> {
-        let _left = self.verify()?;
-        let _right = other.verify()?;
-        if self.identity_key == other.identity_key {
+        self.verify()?;
+        other.verify()?;
+        let (left, right) = if cfg!(windows) {
+            (self.identity_key.as_str(), other.identity_key.as_str())
+        } else {
+            (
+                self.canonical_path
+                    .to_str()
+                    .ok_or(RootIdentityError::InvalidPath)?,
+                other
+                    .canonical_path
+                    .to_str()
+                    .ok_or(RootIdentityError::InvalidPath)?,
+            )
+        };
+        if left == right {
             Ok(RootOverlap::Same)
-        } else if is_ancestor_key(&self.identity_key, &other.identity_key) {
+        } else if is_ancestor_key(left, right) {
             Ok(RootOverlap::LeftContainsRight)
-        } else if is_ancestor_key(&other.identity_key, &self.identity_key) {
+        } else if is_ancestor_key(right, left) {
             Ok(RootOverlap::RightContainsLeft)
         } else {
             Ok(RootOverlap::Disjoint)
@@ -154,6 +167,19 @@ fn resolve_directory(path: &Path) -> Result<PathBuf> {
 
 fn canonical_identity_key(canonical: &Path) -> Result<String> {
     let raw = canonical.to_str().ok_or(RootIdentityError::InvalidPath)?;
+    // Keep the v1 persisted key readable even when a Unix name contains a literal backslash.
+    Ok(snapshot_key(raw))
+}
+
+pub(crate) fn path_comparison_key(raw: &str) -> String {
+    if cfg!(windows) {
+        snapshot_key(raw)
+    } else {
+        raw.to_owned()
+    }
+}
+
+fn snapshot_key(raw: &str) -> String {
     let normalized = raw.replace('\\', "/");
     let stripped = if let Some(unc) = normalized.strip_prefix("//?/UNC/") {
         format!("//{unc}")
@@ -168,9 +194,9 @@ fn canonical_identity_key(canonical: &Path) -> Result<String> {
         stripped.trim_end_matches('/').to_owned()
     };
     if cfg!(windows) {
-        Ok(trimmed.to_lowercase())
+        trimmed.to_lowercase()
     } else {
-        Ok(trimmed)
+        trimmed
     }
 }
 
@@ -205,6 +231,19 @@ mod tests {
         assert_eq!(p_id.overlap(&c_id).unwrap(), RootOverlap::LeftContainsRight);
         assert_eq!(c_id.overlap(&p_id).unwrap(), RootOverlap::RightContainsLeft);
         assert_eq!(p_id.overlap(&s_id).unwrap(), RootOverlap::Disjoint);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn backslash_in_root_name_is_not_a_directory_separator() {
+        let temp = tempfile::tempdir().unwrap();
+        let literal = temp.path().join(r"parent\child");
+        let nested = temp.path().join("parent/child");
+        std::fs::create_dir(&literal).unwrap();
+        std::fs::create_dir_all(&nested).unwrap();
+        let left = RootIdentity::capture(&literal).unwrap();
+        let right = RootIdentity::capture(&nested).unwrap();
+        assert_eq!(left.overlap(&right).unwrap(), RootOverlap::Disjoint);
     }
 
     #[test]

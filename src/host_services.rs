@@ -243,7 +243,11 @@ impl ReviewRecovery {
                     &task.spec.write_scopes,
                 )
                 .map_err(|_| WorkspaceChangeError::Corrupt)?;
-            if path != record.path || path_key != record.path_key {
+            // Older Unix records folded the key just like Windows. The exact display
+            // path is still available to identify the file and must always match.
+            let key_matches = path_key == record.path_key
+                || (cfg!(unix) && path_key.to_lowercase() == record.path_key);
+            if path != record.path || !key_matches {
                 return Err(WorkspaceChangeError::Corrupt.into());
             }
             if let Some(call) = task
@@ -268,7 +272,7 @@ impl ReviewRecovery {
                             &task.spec.write_scopes,
                         )
                         .map_err(|_| WorkspaceChangeError::Corrupt)?;
-                    if arg_path != record.path || arg_key != record.path_key {
+                    if arg_path != path || arg_key != path_key {
                         return Err(WorkspaceChangeError::Corrupt.into());
                     }
                     if approval.tool_name == "write_file"

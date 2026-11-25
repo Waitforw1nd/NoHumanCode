@@ -98,7 +98,7 @@ pub async fn models(
 struct ToolParts {
     id: String,
     name: String,
-    arguments: String,
+    arguments: Option<String>,
 }
 
 #[derive(Default)]
@@ -111,6 +111,7 @@ pub struct Decoder {
     pub text: String,
     pub reasoning: String,
     tools: BTreeMap<usize, ToolParts>,
+    invalid_argument_fragment: bool,
     pub usage: Value,
     usage_observation: UsageObservation,
 }
@@ -198,8 +199,12 @@ impl Decoder {
                     if let Some(s) = call["function"]["name"].as_str() {
                         part.name.push_str(s);
                     }
-                    if let Some(s) = call["function"]["arguments"].as_str() {
-                        part.arguments.push_str(s);
+                    match call["function"].get("arguments") {
+                        Some(Value::String(fragment)) => {
+                            part.arguments.get_or_insert_default().push_str(fragment)
+                        }
+                        Some(_) => self.invalid_argument_fragment = true,
+                        None => (),
                     }
                 }
             }
@@ -224,6 +229,9 @@ impl Decoder {
             self.finish.as_deref() != Some("content_filter"),
             "模型拒绝生成此内容"
         );
+        if self.invalid_argument_fragment {
+            return Err(TransportError::InvalidToolArguments.into());
+        }
         let content = if self.tools.is_empty() && self.text.trim().is_empty() {
             ensure!(!self.reasoning.trim().is_empty(), "模型没有返回内容");
             emit(&self.reasoning)?;
@@ -244,12 +252,18 @@ impl Decoder {
                         !part.id.is_empty() && !part.name.is_empty(),
                         "不完整的工具调用"
                     );
-                    let _: Value =
-                        serde_json::from_str(&part.arguments).context("工具参数不完整")?;
+                    let arguments = part.arguments.ok_or(TransportError::InvalidToolArguments)?;
+                    let arguments = if arguments.is_empty() {
+                        "{}".into()
+                    } else {
+                        serde_json::from_str::<Value>(&arguments)
+                            .map_err(|_| TransportError::InvalidToolArguments)?;
+                        arguments
+                    };
                     Ok(json!({
                         "id": part.id,
                         "type": "function",
-                        "function": {"name": part.name, "arguments": part.arguments}
+                        "function": {"name": part.name, "arguments": arguments}
                     }))
                 })
                 .collect();
@@ -1099,7 +1113,7 @@ impl GeminiDecoder {
                         self.tools.push(ToolParts {
                             id,
                             name,
-                            arguments: args_val.to_string(),
+                            arguments: Some(args_val.to_string()),
                         });
                     }
                 }
@@ -1220,7 +1234,12 @@ impl crate::provider_runtime::CompletionDecoder for Decoder {
         let usage = self.usage.clone();
         Decoder::finish(*self, &mut |text| emit(text))
             .map(|message| (message, usage))
-            .map_err(|_| crate::provider_runtime::CodecError::Failed)
+            .map_err(|error| match error.downcast_ref::<TransportError>() {
+                Some(TransportError::InvalidToolArguments) => {
+                    crate::provider_runtime::CodecError::InvalidToolArguments
+                }
+                _ => crate::provider_runtime::CodecError::Failed,
+            })
     }
 }
 
@@ -1355,9 +1374,7 @@ pub async fn complete(
                 .map_err(|_| TransportError::Unknown)?;
         }
     }
-    decoder
-        .finish(emit_ref)
-        .map_err(|_| TransportError::Unknown)
+    decoder.finish(emit_ref).map_err(TransportError::from)
 }
 
 fn number(v: &Value) -> Option<f64> {
@@ -1427,6 +1444,66 @@ mod tests {
             message["tool_calls"][0]["function"]["arguments"],
             "{\"path\":\"桃子.txt\"}"
         );
+    }
+
+    fn finish_chat_tool(function: Value) -> Result<Value> {
+        let chunk = json!({"choices": [{"delta": {"tool_calls": [{
+            "index": 0, "id": "call-1", "function": function
+        }]}, "finish_reason": "tool_calls"}]});
+        let mut decoder = Decoder::default();
+        let stream = format!("data: {chunk}\n\ndata: [DONE]\n\n");
+        decoder.feed(stream.as_bytes(), &mut |_| Ok(()))?;
+        decoder.finish(&mut |_| Ok(()))
+    }
+
+    #[test]
+    fn chat_tool_accepts_only_explicit_empty_arguments_as_an_empty_object() {
+        let message = finish_chat_tool(json!({"name": "todo_read", "arguments": ""})).unwrap();
+        assert_eq!(message["tool_calls"][0]["function"]["arguments"], "{}");
+        for function in [
+            json!({"name": "todo_read"}),
+            json!({"name": "todo_read", "arguments": null}),
+            json!({"name": "todo_read", "arguments": " \t"}),
+            json!({"name": "", "arguments": ""}),
+        ] {
+            assert!(finish_chat_tool(function).is_err());
+        }
+    }
+
+    #[test]
+    fn non_string_argument_fragment_cannot_be_normalized_to_empty_object() {
+        for (first, second) in [
+            (json!(""), json!({"path":"ignored"})),
+            (Value::Null, json!("")),
+        ] {
+            let mut decoder = Decoder::default();
+            let declaration =
+                json!({"index": 0, "id": "id", "function": {"name": "lookup", "arguments": first}});
+            let continuation = json!({"index": 0, "function": {"arguments": second}});
+            for (call, finish) in [(declaration, None), (continuation, Some("tool_calls"))] {
+                let chunk = json!({"choices": [{"delta": {"tool_calls": [call]}, "finish_reason": finish}]});
+                decoder
+                    .feed(format!("data: {chunk}\n\n").as_bytes(), &mut |_| Ok(()))
+                    .unwrap();
+            }
+            decoder.feed(b"data: [DONE]\n\n", &mut |_| Ok(())).unwrap();
+            let error = decoder.finish(&mut |_| Ok(())).unwrap_err();
+            assert_eq!(
+                error.downcast_ref::<TransportError>(),
+                Some(&TransportError::InvalidToolArguments)
+            );
+        }
+    }
+
+    #[test]
+    fn chat_tool_rejects_malformed_arguments_with_safe_json_diagnostic() {
+        let error = finish_chat_tool(json!({
+            "name": "todo_read", "arguments": "{\"fixture-private-value\":"
+        }))
+        .unwrap_err();
+        let diagnostic = format!("{error:#}");
+        assert!(diagnostic.contains("JSON"), "{diagnostic}");
+        assert!(!diagnostic.contains("fixture-private-value"));
     }
 
     #[test]

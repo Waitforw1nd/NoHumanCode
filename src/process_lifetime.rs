@@ -1,4 +1,4 @@
-//! Async subprocess supervision with Windows JobObject process-tree containment.
+//! Async subprocess supervision using Windows job objects or Unix process groups.
 
 use std::{
     ffi::OsString,
@@ -307,6 +307,72 @@ async fn read_pipe<R: AsyncRead + Unpin>(
     Capture { bytes, truncated }
 }
 
+async fn collect_pipe(mut reader: tokio::task::JoinHandle<Capture>, budget: Duration) -> Capture {
+    if let Ok(Ok(capture)) = tokio::time::timeout(budget, &mut reader).await {
+        return capture;
+    }
+    reader.abort();
+    Capture {
+        bytes: Vec::new(),
+        truncated: true,
+    }
+}
+
+#[cfg(unix)]
+struct ProcessGroup(std::num::NonZeroI32);
+
+#[cfg(unix)]
+impl ProcessGroup {
+    fn leader_has_exited(&self) -> std::io::Result<bool> {
+        let mut info = std::mem::MaybeUninit::<libc::siginfo_t>::zeroed();
+        // SAFETY: waitid writes into a valid siginfo_t for this positive child PID.
+        // WNOWAIT leaves even an exited group leader owned by Child until explicit reaping.
+        loop {
+            let result = unsafe {
+                libc::waitid(
+                    libc::P_PID,
+                    self.0.get() as libc::id_t,
+                    info.as_mut_ptr(),
+                    libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
+                )
+            };
+            if result == 0 {
+                break;
+            }
+            let error = std::io::Error::last_os_error();
+            if error.kind() != std::io::ErrorKind::Interrupted {
+                return Err(error);
+            }
+        }
+        // SAFETY: waitid succeeded; the zero-initialized PID field is zero if still running.
+        Ok(unsafe { info.assume_init().si_pid() } == self.0.get())
+    }
+
+    async fn wait_for_exit(&self) -> std::io::Result<()> {
+        use tokio::signal::unix::{SignalKind, signal};
+        let mut notifications = signal(SignalKind::child())?;
+        loop {
+            if self.leader_has_exited()? {
+                return Ok(());
+            }
+            if notifications.recv().await.is_none() {
+                return Err(std::io::Error::other("SIGCHLD stream closed"));
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+impl Drop for ProcessGroup {
+    fn drop(&mut self) {
+        // The guard is declared after Child and dropped before its first reaping wait.
+        if self.leader_has_exited().is_ok() {
+            // SAFETY: our unreaped child reserves this positive process group ID.
+            unsafe { libc::killpg(self.0.get(), libc::SIGKILL) };
+        }
+    }
+}
+
 async fn execute_process(spec: ProcessSpec, cancel: CancellationToken) -> Outcome {
     #[cfg(windows)]
     let job = match win_job::JobGuard::create() {
@@ -334,6 +400,9 @@ async fn execute_process(spec: ProcessSpec, cancel: CancellationToken) -> Outcom
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
+    #[cfg(unix)]
+    cmd.process_group(0);
+
     let mut child = match cmd.spawn() {
         Ok(child) => child,
         Err(err) => {
@@ -345,6 +414,14 @@ async fn execute_process(spec: ProcessSpec, cancel: CancellationToken) -> Outcom
     };
 
     let pid = child.id().unwrap_or(0);
+    #[cfg(unix)]
+    let Some(group) = i32::try_from(pid)
+        .ok()
+        .and_then(std::num::NonZeroI32::new)
+        .map(ProcessGroup)
+    else {
+        return Outcome::Unknown;
+    };
     #[cfg(windows)]
     let creation_filetime = win_job::creation_time(&child);
     #[cfg(not(windows))]
@@ -392,27 +469,23 @@ async fn execute_process(spec: ProcessSpec, cancel: CancellationToken) -> Outcom
     });
 
     let deadline_instant = tokio::time::Instant::from_std(spec.deadline);
-    let (mut reason, mut exit_code) = tokio::select! {
-        biased;
-        _ = cancel.cancelled() => (CompletionReason::Cancelled, 1u32),
-        _ = overflow_signal.cancelled() => (CompletionReason::OutputLimit, 1u32),
-        _ = tokio::time::sleep_until(deadline_instant) => (CompletionReason::Deadline, 1u32),
-        status = child.wait() => match status {
-            Ok(status) => (CompletionReason::Exited, status.code().unwrap_or(1) as u32),
-            Err(_) => (CompletionReason::Exited, 1u32),
-        },
-    };
-
-    if reason != CompletionReason::Exited {
-        #[cfg(windows)]
-        drop(job);
-        let _ = child.start_kill();
-        if let Ok(Ok(status)) = tokio::time::timeout(spec.cleanup_budget, child.wait()).await
-            && let Some(code) = status.code()
-        {
-            exit_code = code as u32;
+    let mut reason = {
+        #[cfg(unix)]
+        let exited = group.wait_for_exit();
+        #[cfg(not(unix))]
+        let exited = async { child.wait().await.map(drop) };
+        tokio::select! {
+            biased;
+            _ = cancel.cancelled() => CompletionReason::Cancelled,
+            _ = overflow_signal.cancelled() => CompletionReason::OutputLimit,
+            _ = tokio::time::sleep_until(deadline_instant) => CompletionReason::Deadline,
+            status = exited => match status {
+                Ok(()) => CompletionReason::Exited,
+                Err(_) => return Outcome::Unknown,
+            },
         }
-    } else {
+    };
+    if reason == CompletionReason::Exited {
         // Ensure pipes finish before deadline; if a descendant kept pipes open past deadline,
         // dropping the JobObject kills the remaining process tree cleanly.
         let remaining = spec.deadline.saturating_duration_since(Instant::now());
@@ -438,24 +511,22 @@ async fn execute_process(spec: ProcessSpec, cancel: CancellationToken) -> Outcom
                 } => {}
             }
         }
-        #[cfg(windows)]
-        drop(job);
     }
-
-    let stdout = match tokio::time::timeout(spec.cleanup_budget, stdout_task).await {
-        Ok(Ok(capture)) => capture,
-        _ => Capture {
-            bytes: Vec::new(),
-            truncated: true,
-        },
+    #[cfg(unix)]
+    drop(group);
+    #[cfg(windows)]
+    drop(job);
+    if reason != CompletionReason::Exited {
+        let _ = child.start_kill();
+    }
+    let exit_code = match tokio::time::timeout(spec.cleanup_budget, child.wait()).await {
+        Ok(Ok(status)) => status.code().unwrap_or(1) as u32,
+        _ => return Outcome::Unknown,
     };
-    let stderr = match tokio::time::timeout(spec.cleanup_budget, stderr_task).await {
-        Ok(Ok(capture)) => capture,
-        _ => Capture {
-            bytes: Vec::new(),
-            truncated: true,
-        },
-    };
+    let (stdout, stderr) = tokio::join!(
+        collect_pipe(stdout_task, spec.cleanup_budget),
+        collect_pipe(stderr_task, spec.cleanup_budget),
+    );
 
     Outcome::Settled(Settled {
         reason,
@@ -565,6 +636,30 @@ mod win_job {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn deadline_closes_inherited_pipes_and_preserves_output() {
+        // Check both a live group leader and one that has exited with an open pipe in its child.
+        for script in ["sleep 3 & printf started; wait", "sleep 3 & printf started"] {
+            let mut spec = ProcessSpec::new(
+                "/bin/sh".into(),
+                std::env::current_dir().unwrap(),
+                std::env::vars_os().collect(),
+                (4096, 4096),
+                OverflowPolicy::TruncateAndDrain,
+                Instant::now() + Duration::from_millis(300),
+                Duration::from_millis(500),
+            );
+            spec.args = ["-c", script].map(Into::into).to_vec();
+            let Outcome::Settled(result) = run_direct(spec).await else {
+                panic!("shell did not start");
+            };
+            assert_eq!(result.reason, CompletionReason::Deadline);
+            assert_eq!(result.stdout.bytes, b"started");
+            assert!(!result.stdout.truncated && !result.stderr.truncated);
+        }
+    }
 
     #[tokio::test]
     async fn runs_and_kills_timed_out_process_cleanly() {

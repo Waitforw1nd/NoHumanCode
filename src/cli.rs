@@ -99,7 +99,7 @@ pub struct InitArgs {
     /// Read the API key as a single line from stdin.
     #[arg(long)]
     pub api_key_stdin: bool,
-    /// Override user data directory (defaults to %LOCALAPPDATA%\coda).
+    /// Override the platform's user data directory or CODA_DATA_DIR.
     #[arg(long)]
     pub data_dir: Option<PathBuf>,
 }
@@ -127,10 +127,10 @@ pub struct ChatArgs {
         conflicts_with = "continue_session"
     )]
     pub resume: Option<String>,
-    /// Automatically approve file edits and shell commands in this session.
+    /// Automatically approve file edits and shell commands throughout this CLI process.
     #[arg(short = 'y', long = "auto-approve")]
     pub auto_approve: bool,
-    /// Override user data directory (defaults to %LOCALAPPDATA%\coda).
+    /// Override the platform's user data directory or CODA_DATA_DIR.
     #[arg(long)]
     pub data_dir: Option<PathBuf>,
 }
@@ -162,7 +162,7 @@ pub struct AskArgs {
     /// Automatically approve file edits and shell commands without prompting.
     #[arg(short = 'y', long = "auto-approve")]
     pub auto_approve: bool,
-    /// Override user data directory (defaults to %LOCALAPPDATA%\coda).
+    /// Override the platform's user data directory or CODA_DATA_DIR.
     #[arg(long)]
     pub data_dir: Option<PathBuf>,
 }
@@ -1150,17 +1150,26 @@ fn enable_windows_ansi() {
     }
 }
 
-fn resolve_user_data_dir(explicit: Option<PathBuf>) -> PathBuf {
+pub(super) fn resolve_user_data_dir(explicit: Option<PathBuf>) -> PathBuf {
     if let Some(dir) = explicit {
         return dir;
     }
     if let Some(env_dir) = std::env::var_os("CODA_DATA_DIR").filter(|v| !v.is_empty()) {
         return PathBuf::from(env_dir);
     }
-    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()) {
-        return PathBuf::from(local_app_data).join("coda");
-    }
-    PathBuf::from(".coda-data")
+    #[cfg(windows)]
+    let base = std::env::var_os("LOCALAPPDATA")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from);
+    #[cfg(target_os = "macos")]
+    let base = std::env::home_dir().map(|home| home.join("Library/Application Support"));
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let base = std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .filter(|dir| dir.is_absolute())
+        .or_else(|| std::env::home_dir().map(|home| home.join(".local/share")));
+    base.map(|dir| dir.join("coda"))
+        .unwrap_or_else(|| PathBuf::from(".coda-data"))
 }
 
 fn open_local_engine(
@@ -1222,23 +1231,21 @@ fn prompt_line_with_default(label: &str, default_val: &str) -> Result<String, Fa
 }
 
 fn read_secret_from_stdin_line() -> Result<String, Failure> {
-    let mut line = String::new();
-    let mut reader = io::BufReader::new(io::stdin());
-    reader.read_line(&mut line).map_err(|e| {
-        Failure::custom(
-            "credential_invalid",
-            format!("读取 stdin API Key 失败: {e}"),
-        )
-    })?;
-    let key = line.trim_end_matches(['\r', '\n']).trim().to_owned();
-    if key.is_empty() || key.len() >= 4096 || key.chars().any(char::is_control) {
-        return Err(Failure::fixed(
-            "credential_invalid",
-            "API Key 为空或包含无效控制字符",
-            false,
-        ));
-    }
-    Ok(key)
+    read_credential(CredentialInputMode::Stdin)
+        .map(Into::into)
+        .map_err(|err| match err {
+            CredentialInputError::Cancelled => {
+                Failure::fixed("credential_cancelled", "API Key 输入已取消", false)
+            }
+            CredentialInputError::Unavailable => Failure::fixed(
+                "credential_unavailable",
+                "--api-key-stdin 需要通过管道或文件输入",
+                false,
+            ),
+            CredentialInputError::Invalid => {
+                Failure::fixed("credential_invalid", "API Key 输入无效", false)
+            }
+        })
 }
 
 pub async fn execute_local(
@@ -1691,11 +1698,10 @@ async fn ensure_route_ready(
         .ok_or_else(|| Failure::fixed("route_not_found", "未找到指定模型路由", false))
 }
 
-async fn ensure_project_ready(
+async fn resolve_workbench_project(
     engine: &Arc<Engine>,
     target_dir: PathBuf,
-    route_id: &str,
-) -> Result<(Project, ProjectConfigSnapshot), Failure> {
+) -> Result<Project, Failure> {
     if !target_dir.is_dir() {
         return Err(Failure::custom(
             "invalid_workspace",
@@ -1742,7 +1748,15 @@ async fn ensure_project_ready(
             .map_err(|e| Failure::custom("project_error", format!("注册工作目录失败: {e}")))?
     };
 
-    let mut snap = engine
+    Ok(project)
+}
+
+async fn ensure_project_route_ready(
+    engine: &Arc<Engine>,
+    project: &Project,
+    route_id: &str,
+) -> Result<(), Failure> {
+    let snap = engine
         .project_config(&project.id)
         .map_err(|e| Failure::custom("project_error", format!("读取项目配置失败: {e}")))?;
 
@@ -1761,7 +1775,7 @@ async fn ensure_project_ready(
         if !scopes.iter().any(|s| s == "*") {
             scopes = vec!["*".to_owned()];
         }
-        snap = engine
+        engine
             .configure_project(ConfigureProject {
                 project_id: project.id.clone(),
                 expected_revision: snap.revision,
@@ -1816,7 +1830,7 @@ async fn ensure_project_ready(
             .await;
     }
 
-    Ok((project, snap))
+    Ok(())
 }
 
 const MENTION_MAX_FILE_BYTES: usize = 64 * 1024;
@@ -1834,6 +1848,7 @@ struct ActiveChatSession {
 }
 
 struct ProjectSessionSummary {
+    latest_task_id: String,
     session_id: SessionId,
     run_id: String,
     title: String,
@@ -1847,6 +1862,21 @@ struct ProjectSessionSummary {
 }
 
 impl ProjectSessionSummary {
+    fn effective_route(&self, engine: &Engine) -> Result<Route, Failure> {
+        // Match Engine::send_chat_turn: the configured route supersedes the task snapshot.
+        let task = engine
+            .store
+            .task(&self.latest_task_id)
+            .map_err(|e| Failure::custom("task_error", e.to_string()))?;
+        let settings = engine
+            .store
+            .settings()
+            .map_err(|e| Failure::custom("storage_error", e.to_string()))?;
+        Ok(settings
+            .and_then(|s| s.routes.into_iter().find(|r| r.id == task.spec.route_id))
+            .unwrap_or(task.route))
+    }
+
     fn into_active(self) -> ActiveChatSession {
         ActiveChatSession {
             session_id: self.session_id,
@@ -1861,7 +1891,7 @@ impl ProjectSessionSummary {
 }
 
 fn same_workspace_path(left: &str, right: &str) -> bool {
-    if left.eq_ignore_ascii_case(right) {
+    if left == right || (cfg!(windows) && left.eq_ignore_ascii_case(right)) {
         return true;
     }
     match (std::fs::canonicalize(left), std::fs::canonicalize(right)) {
@@ -1932,6 +1962,7 @@ fn list_project_chat_sessions(engine: &Engine, project: &Project) -> Vec<Project
         let updated_at = ctx.latest_turn.updated_at.max(ctx.session.updated_at);
         let turn_count = turns.len().max(1);
         summaries.push(ProjectSessionSummary {
+            latest_task_id: latest_task.legacy_task_id.clone(),
             session_id: ctx.session.id,
             run_id: ctx.run_id,
             title: ctx.session.title,
@@ -1992,7 +2023,7 @@ fn resolve_initial_session(
     continue_session: bool,
     resume_id: Option<&str>,
     json_output: bool,
-) -> Result<Option<ActiveChatSession>, Failure> {
+) -> Result<Option<ProjectSessionSummary>, Failure> {
     if let Some(target) = resume_id {
         let summary = resolve_session_by_id(engine, project, target)?;
         if !json_output {
@@ -2001,7 +2032,7 @@ fn resolve_initial_session(
                 summary.session_id.0, summary.turn_count, summary.title
             );
         }
-        return Ok(Some(summary.into_active()));
+        return Ok(Some(summary));
     }
     if continue_session {
         let Some(summary) = list_project_chat_sessions(engine, project)
@@ -2020,9 +2051,44 @@ fn resolve_initial_session(
                 summary.session_id.0, summary.turn_count, summary.title
             );
         }
-        return Ok(Some(summary.into_active()));
+        return Ok(Some(summary));
     }
     Ok(None)
+}
+
+async fn open_workbench_context(
+    engine: &Arc<Engine>,
+    target_dir: PathBuf,
+    requested_route: Option<&str>,
+    model: Option<&str>,
+    continue_session: bool,
+    resume_id: Option<&str>,
+    json_output: bool,
+) -> Result<(Project, Route, Option<ActiveChatSession>), Failure> {
+    let resuming = continue_session || resume_id.is_some();
+    let startup_model = if resuming { None } else { model };
+    let startup_route = ensure_route_ready(engine, requested_route, startup_model).await?;
+    let project = resolve_workbench_project(engine, target_dir).await?;
+    // As on a fresh launch, project/network grants follow the selected startup route.
+    // Restoring history may change the effective conversation route but cannot grant it.
+    ensure_project_route_ready(engine, &project, &startup_route.id).await?;
+    let session =
+        resolve_initial_session(engine, &project, continue_session, resume_id, json_output)?;
+    let route = if let Some(summary) = &session {
+        let effective = summary.effective_route(engine)?;
+        if model.is_some() {
+            ensure_route_ready(engine, Some(&effective.id), model).await?
+        } else {
+            effective
+        }
+    } else {
+        startup_route
+    };
+    Ok((
+        project,
+        route,
+        session.map(ProjectSessionSummary::into_active),
+    ))
 }
 
 fn is_skipped_context_entry(name: &str) -> bool {
@@ -2497,7 +2563,8 @@ fn display_approval_preview(engine: &Engine, record: &coda::approval::ApprovalRe
             .as_ref()
             .and_then(|a| a["command"].as_str())
             .unwrap_or(&record.preview);
-        eprintln!("\n\x1b[1;33m● run_command\x1b[0m (PowerShell):\n  \x1b[1m{cmd}\x1b[0m");
+        let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
+        eprintln!("\n\x1b[1;33m● run_command\x1b[0m ({shell}):\n  \x1b[1m{cmd}\x1b[0m");
         return;
     }
 
@@ -2507,9 +2574,40 @@ fn display_approval_preview(engine: &Engine, record: &coda::approval::ApprovalRe
     );
 }
 
-async fn prompt_inline_approval(session_auto_approve: &mut bool) -> bool {
+struct AutoApproval {
+    process_default: bool,
+    session_override: Option<bool>,
+}
+
+impl AutoApproval {
+    fn new(process_default: bool) -> Self {
+        Self {
+            process_default,
+            session_override: None,
+        }
+    }
+
+    fn enabled(&self) -> bool {
+        self.session_override.unwrap_or(self.process_default)
+    }
+
+    fn status(&self) -> &'static str {
+        match (self.session_override, self.process_default) {
+            (Some(true), _) => "ON (session)",
+            (Some(false), _) => "OFF (session)",
+            (None, true) => "ON (process -y)",
+            (None, false) => "OFF",
+        }
+    }
+
+    fn reset_session(&mut self) {
+        self.session_override = None;
+    }
+}
+
+async fn prompt_inline_approval(auto_approve: &mut AutoApproval) -> bool {
     if !io::stdin().is_terminal() {
-        eprintln!("非交互终端且未开启 --auto-approve (-y)，自动拒绝待审批操作。");
+        eprintln!("非交互终端且当前自动批准已关闭，自动拒绝待审批操作。");
         return false;
     }
     eprint!("\x1b[1;36mApprove? [y]es / [n]o / [a]llow-session:\x1b[0m ");
@@ -2525,7 +2623,7 @@ async fn prompt_inline_approval(session_auto_approve: &mut bool) -> bool {
     match answer.trim().to_ascii_lowercase().as_str() {
         "y" | "yes" => true,
         "a" | "allow" | "allow-session" | "all" => {
-            *session_auto_approve = true;
+            auto_approve.session_override = Some(true);
             eprintln!("\x1b[32m✓ 已开启当前会话自动批准 (输入 /auto 可随时切换)\x1b[0m");
             true
         }
@@ -2539,7 +2637,7 @@ async fn execute_turn_and_stream(
     route: &Route,
     session_state: &mut Option<ActiveChatSession>,
     prompt: &str,
-    auto_approve: &mut bool,
+    auto_approve: &mut AutoApproval,
     json_output: bool,
 ) -> Result<Task, Failure> {
     let enriched_prompt =
@@ -2572,6 +2670,7 @@ async fn execute_turn_and_stream(
                 if !json_output {
                     eprintln!("\x1b[33m  ! 无法继续原会话 ({err})，已开启新会话\x1b[0m");
                 }
+                auto_approve.reset_session();
                 *session_state = None;
                 start_fresh_session(
                     engine,
@@ -2714,7 +2813,8 @@ async fn execute_turn_and_stream(
                     if !json_output {
                         display_approval_preview(engine, &record);
                     }
-                    let approve = if *auto_approve {
+                    let automatic = auto_approve.enabled();
+                    let approve = if automatic {
                         if !json_output {
                             eprintln!("\x1b[90m  ✓ [auto-approved] {}\x1b[0m", record.tool_name);
                         }
@@ -2728,7 +2828,7 @@ async fn execute_turn_and_stream(
                     let _ = engine.decide_approval_with_network_ack(
                         &record.id,
                         approve,
-                        Some(if *auto_approve { "cli-auto" } else { "user" }),
+                        Some(if automatic { "cli-auto" } else { "user" }),
                         ack_net,
                     );
                 }
@@ -2767,6 +2867,8 @@ async fn execute_turn_and_stream(
             }
             if let Some(active) = session_state.as_mut() {
                 active.event_cursor = cursor;
+            } else {
+                auto_approve.reset_session();
             }
             return Ok(task);
         }
@@ -2943,7 +3045,7 @@ fn print_repl_help() {
          \x20 \x1b[36m/routes\x1b[0m               List configured provider routes (active marked with *)\n\
          \x20 \x1b[36m/route [id]\x1b[0m           Show routes or switch active route (resets session if changed)\n\
          \x20 \x1b[36m/model <name>\x1b[0m         Switch active route model seamlessly while keeping session context\n\
-         \x20 \x1b[36m/auto\x1b[0m                 Toggle automatic approval for file edits & shell commands\n\
+         \x20 \x1b[36m/auto\x1b[0m                 Toggle automatic approval for this session (switching restores the process default)\n\
          \x20 \x1b[36m/new\x1b[0m                  Start a fresh conversation session\n\
          \x20 \x1b[36m/help\x1b[0m                 Show this command reference\n\
          \x20 \x1b[36m/exit\x1b[0m                 Cleanly shut down and exit Coda CLI\n\
@@ -2967,17 +3069,11 @@ async fn run_chat(
 
     let engine = open_local_engine(instance_lock, &data_dir)?;
     let result = async {
-        let mut route =
-            ensure_route_ready(&engine, args.route.as_deref(), args.model.as_deref()).await?;
-        let (project, _) = ensure_project_ready(&engine, target_dir, &route.id).await?;
-        let mut auto_approve = args.auto_approve;
-        let mut session_state = resolve_initial_session(
-            &engine,
-            &project,
-            args.continue_session,
-            args.resume.as_deref(),
-            json_output,
-        )?;
+        let (project, mut route, mut session_state) = open_workbench_context(
+            &engine, target_dir, args.route.as_deref(), args.model.as_deref(),
+            args.continue_session, args.resume.as_deref(), json_output,
+        ).await?;
+        let mut auto_approve = AutoApproval::new(args.auto_approve);
 
         if !json_output {
             println!(
@@ -2985,7 +3081,7 @@ async fn run_chat(
                  \x1b[90mWorkspace: {}  (type /help for commands, /exit to quit)\x1b[0m",
                 route.model,
                 route.id,
-                if auto_approve { "\x1b[32mON\x1b[0m" } else { "off" },
+                auto_approve.status(),
                 project.root_path
             );
         }
@@ -3046,17 +3142,11 @@ async fn run_chat(
                     "exit" | "quit" | "q" => break,
                     "help" | "h" | "?" => print_repl_help(),
                     "auto" => {
-                        auto_approve = !auto_approve;
-                        println!(
-                            "Auto-approve is now {}",
-                            if auto_approve {
-                                "\x1b[32mON\x1b[0m"
-                            } else {
-                                "\x1b[33mOFF\x1b[0m"
-                            }
-                        );
+                        auto_approve.session_override = Some(!auto_approve.enabled());
+                        println!("Auto-approve is now {}", auto_approve.status());
                     }
                     "new" | "clear" => {
+                        auto_approve.reset_session();
                         session_state = None;
                         println!("\x1b[32m✓ 已重置上下文；下一条消息将开启全新会话。\x1b[0m");
                     }
@@ -3088,8 +3178,12 @@ async fn run_chat(
                         if arg_str.is_empty() {
                             println!("用法: /resume <session_id_or_run_id> (输入 /sessions 查看列表)");
                         } else {
-                            match resolve_session_by_id(&engine, &project, arg_str) {
-                                Ok(summary) => {
+                            match resolve_session_by_id(&engine, &project, arg_str).and_then(|summary| {
+                                let effective = summary.effective_route(&engine)?;
+                                Ok((summary, effective))
+                            }) {
+                                Ok((summary, effective)) => {
+                                    route = effective;
                                     println!(
                                         "\x1b[32m✓ 已切换到会话 {} ({} turns, status={}): {}\x1b[0m",
                                         summary.session_id.0,
@@ -3097,6 +3191,9 @@ async fn run_chat(
                                         summary.latest_status,
                                         summary.title
                                     );
+                                    if session_state.as_ref().map(|s| &s.session_id) != Some(&summary.session_id) {
+                                        auto_approve.reset_session();
+                                    }
                                     session_state = Some(summary.into_active());
                                 }
                                 Err(err) => err.print(false),
@@ -3322,9 +3419,9 @@ async fn run_chat(
                             match ensure_route_ready(&engine, Some(arg_str), None).await {
                                 Ok(selected) => {
                                     let changed = selected.id != route.id;
-                                    match ensure_project_ready(
+                                    match ensure_project_route_ready(
                                         &engine,
-                                        PathBuf::from(&project.root_path),
+                                        &project,
                                         &selected.id,
                                     )
                                     .await
@@ -3332,6 +3429,7 @@ async fn run_chat(
                                         Ok(_) => {
                                             route = selected;
                                             if changed {
+                                                auto_approve.reset_session();
                                                 session_state = None;
                                                 println!(
                                                     "\x1b[32m✓ 已切换到路由 `{}` (model=`{}`, base=`{}`)；已重置当前会话上下文。\x1b[0m",
@@ -3359,9 +3457,9 @@ async fn run_chat(
                             {
                                 Ok(updated) => {
                                     route = updated;
-                                    let _ = ensure_project_ready(
+                                    let _ = ensure_project_route_ready(
                                         &engine,
-                                        PathBuf::from(&project.root_path),
+                                        &project,
                                         &route.id,
                                     )
                                     .await;
@@ -3385,7 +3483,7 @@ async fn run_chat(
                         println!("Workspace   : {}", project.root_path);
                         println!("Project ID  : {}", project.id.0);
                         println!("Route/Model : {} / {}", route.id, route.model);
-                        println!("Auto-Approve: {}", if auto_approve { "ON" } else { "OFF" });
+                        println!("Auto-Approve: {}", auto_approve.status());
                         if let Some(active) = &session_state {
                             let mut total_tokens = 0u64;
                             for tid in &active.task_history {
@@ -3503,17 +3601,17 @@ async fn run_ask(
 
     let engine = open_local_engine(instance_lock, &data_dir)?;
     let outcome = async {
-        let route =
-            ensure_route_ready(&engine, args.route.as_deref(), args.model.as_deref()).await?;
-        let (project, _) = ensure_project_ready(&engine, target_dir, &route.id).await?;
-        let mut auto_approve = args.auto_approve;
-        let mut session_state = resolve_initial_session(
+        let (project, route, mut session_state) = open_workbench_context(
             &engine,
-            &project,
+            target_dir,
+            args.route.as_deref(),
+            args.model.as_deref(),
             args.continue_session,
             args.resume.as_deref(),
             json_output,
-        )?;
+        )
+        .await?;
+        let mut auto_approve = AutoApproval::new(args.auto_approve);
 
         let task = execute_turn_and_stream(
             &engine,
@@ -4377,6 +4475,7 @@ fn network_http_failure(value: Value) -> Result<Failure, Failure> {
         "unknown" => "unknown",
         "internal" => "internal",
         "upstream" => "upstream",
+        "invalid_tool_arguments" => "invalid_tool_arguments",
         other => budget_error_code(other)
             .map(|(code, _)| code)
             .or_else(|| project_error_code(other))

@@ -123,7 +123,23 @@ fn read_redirected(reader: &mut impl Read) -> Result<SecretInput, CredentialInpu
     validate(SecretInput(text.to_owned()))
 }
 
-#[cfg(not(windows))]
+#[cfg(unix)]
+fn read_prompt() -> Result<SecretInput, CredentialInputError> {
+    let value = rpassword::prompt_password("Credential (hidden): ").map_err(|error| match error
+        .kind()
+    {
+        io::ErrorKind::Interrupted | io::ErrorKind::UnexpectedEof => {
+            CredentialInputError::Cancelled
+        }
+        _ => CredentialInputError::Unavailable,
+    })?;
+    if value.is_empty() {
+        return Err(CredentialInputError::Cancelled);
+    }
+    validate(SecretInput(value))
+}
+
+#[cfg(not(any(windows, unix)))]
 fn read_prompt() -> Result<SecretInput, CredentialInputError> {
     Err(CredentialInputError::Unavailable)
 }

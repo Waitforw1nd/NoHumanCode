@@ -57,7 +57,7 @@ async fn chat(
     let chunk = if last["content"] == "write-test" {
         json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-1","type":"function","function":{"name":"write_file","arguments":"{\"path\":\"src/result.txt\",\"content\":\"rust-native-ok\"}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}})
     } else if last["content"] == "native-command-test" {
-        json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"native-command-1","type":"function","function":{"name":"run_command","arguments":"{\"command\":\"Write-Output 'native-command-ok'\",\"timeout_seconds\":5}"}}]},"finish_reason":"tool_calls"}]})
+        json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"native-command-1","type":"function","function":{"name":"run_command","arguments":"{\"command\":\"echo 'native-command-ok'\",\"timeout_seconds\":5}"}}]},"finish_reason":"tool_calls"}]})
     } else if last["content"] == "escape-test" {
         json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"write-escape","type":"function","function":{"name":"write_file","arguments":"{\"path\":\"../outside.txt\",\"content\":\"bad\"}"}}]},"finish_reason":"tool_calls"}]})
     } else {
@@ -663,7 +663,7 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
                 && e.data.get("previous").is_none())
     );
     let command_task = r.tasks[0].clone();
-    let args = json!({"command":"Write-Output 'native-command-ok'"});
+    let args = json!({"command":"echo 'native-command-ok'"});
     let denied = coda::workspace::execute(&command_task, "run_command", &args)
         .await
         .unwrap_err();

@@ -30,6 +30,16 @@ pub(crate) enum CodecError {
     #[allow(dead_code)]
     Limit,
     Failed,
+    InvalidToolArguments,
+}
+
+impl From<CodecError> for TransportError {
+    fn from(error: CodecError) -> Self {
+        match error {
+            CodecError::InvalidToolArguments => Self::InvalidToolArguments,
+            CodecError::Invalid | CodecError::Limit | CodecError::Failed => Self::Unknown,
+        }
+    }
 }
 
 pub(crate) type CompletionOutput = (Value, Value);
@@ -412,9 +422,7 @@ impl CompletionLease {
                     .map_err(|_| TransportError::Unknown)?;
             }
         }
-        let mut output = decoder
-            .finish(&mut safe_emit)
-            .map_err(|_| TransportError::Unknown)?;
+        let mut output = decoder.finish(&mut safe_emit)?;
         if emission_failed || reasoning_emission_failed {
             return Err(TransportError::Unknown);
         }
