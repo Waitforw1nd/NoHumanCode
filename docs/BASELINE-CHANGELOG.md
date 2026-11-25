@@ -4,6 +4,13 @@
 
 ---
 
+## M3 前置 B 分支验收（2026-11-25）
+
+- 基于 `fd7d4b9b`，分支 `feat/embedded-kernel-platforms`。Coda 宿主使用 `default-features = false` 和进程内 `EmbeddedEngine`；独立 CLI 使用默认特性。契约见[接入说明](EMBEDDING.md)。
+- macOS arm64、Linux x64 和 Windows x64 均通过全目标检查、工作区测试和 release 构建。macOS 实测 `--help`、`init`、重启后 `/sessions`。macOS Keychain 和 Linux GNOME Keyring 均实测复制库轮换、回滚、重开和删除，Windows 上用 `fd7d4b9b` 的 CLI 写入合成 DPAPI 凭据，新版 CLI 在新进程内用同一凭据通过本机模拟模型鉴权。
+- Android arm64 使用 NDK 28 和 API 24 交叉链接了 release CLI、纯内核库与嵌入测试程序。设备运行、Coda 产品接线与真实模型端到端回合待验。
+- 21 项公开嵌入契约测试通过。LLVM 对 `embedded/mod.rs`、`embedded/turn.rs`、`model_loop.rs` 的合计行覆盖率为 96.65%。付费 live 用例保持手动执行。
+
 ## [Baseline 0 — 初始盘点基线] `108459ba` (2026-11-18)
 
 - **基线提交**：`108459ba` (`refactor!: rename project to Coda CLI (coda) and promote workspace to root`)

@@ -99,7 +99,7 @@ pub struct InitArgs {
     /// Read the API key as a single line from stdin.
     #[arg(long)]
     pub api_key_stdin: bool,
-    /// Override user data directory (defaults to %LOCALAPPDATA%\coda).
+    /// Override the platform's user data directory or CODA_DATA_DIR.
     #[arg(long)]
     pub data_dir: Option<PathBuf>,
 }
@@ -130,7 +130,7 @@ pub struct ChatArgs {
     /// Automatically approve file edits and shell commands in this session.
     #[arg(short = 'y', long = "auto-approve")]
     pub auto_approve: bool,
-    /// Override user data directory (defaults to %LOCALAPPDATA%\coda).
+    /// Override the platform's user data directory or CODA_DATA_DIR.
     #[arg(long)]
     pub data_dir: Option<PathBuf>,
 }
@@ -162,7 +162,7 @@ pub struct AskArgs {
     /// Automatically approve file edits and shell commands without prompting.
     #[arg(short = 'y', long = "auto-approve")]
     pub auto_approve: bool,
-    /// Override user data directory (defaults to %LOCALAPPDATA%\coda).
+    /// Override the platform's user data directory or CODA_DATA_DIR.
     #[arg(long)]
     pub data_dir: Option<PathBuf>,
 }
@@ -1150,17 +1150,26 @@ fn enable_windows_ansi() {
     }
 }
 
-fn resolve_user_data_dir(explicit: Option<PathBuf>) -> PathBuf {
+pub(super) fn resolve_user_data_dir(explicit: Option<PathBuf>) -> PathBuf {
     if let Some(dir) = explicit {
         return dir;
     }
     if let Some(env_dir) = std::env::var_os("CODA_DATA_DIR").filter(|v| !v.is_empty()) {
         return PathBuf::from(env_dir);
     }
-    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()) {
-        return PathBuf::from(local_app_data).join("coda");
-    }
-    PathBuf::from(".coda-data")
+    #[cfg(windows)]
+    let base = std::env::var_os("LOCALAPPDATA")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from);
+    #[cfg(target_os = "macos")]
+    let base = std::env::home_dir().map(|home| home.join("Library/Application Support"));
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let base = std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .filter(|dir| dir.is_absolute())
+        .or_else(|| std::env::home_dir().map(|home| home.join(".local/share")));
+    base.map(|dir| dir.join("coda"))
+        .unwrap_or_else(|| PathBuf::from(".coda-data"))
 }
 
 fn open_local_engine(
@@ -1222,23 +1231,21 @@ fn prompt_line_with_default(label: &str, default_val: &str) -> Result<String, Fa
 }
 
 fn read_secret_from_stdin_line() -> Result<String, Failure> {
-    let mut line = String::new();
-    let mut reader = io::BufReader::new(io::stdin());
-    reader.read_line(&mut line).map_err(|e| {
-        Failure::custom(
-            "credential_invalid",
-            format!("读取 stdin API Key 失败: {e}"),
-        )
-    })?;
-    let key = line.trim_end_matches(['\r', '\n']).trim().to_owned();
-    if key.is_empty() || key.len() >= 4096 || key.chars().any(char::is_control) {
-        return Err(Failure::fixed(
-            "credential_invalid",
-            "API Key 为空或包含无效控制字符",
-            false,
-        ));
-    }
-    Ok(key)
+    read_credential(CredentialInputMode::Stdin)
+        .map(Into::into)
+        .map_err(|err| match err {
+            CredentialInputError::Cancelled => {
+                Failure::fixed("credential_cancelled", "API Key 输入已取消", false)
+            }
+            CredentialInputError::Unavailable => Failure::fixed(
+                "credential_unavailable",
+                "--api-key-stdin 需要通过管道或文件输入",
+                false,
+            ),
+            CredentialInputError::Invalid => {
+                Failure::fixed("credential_invalid", "API Key 输入无效", false)
+            }
+        })
 }
 
 pub async fn execute_local(
@@ -1861,7 +1868,7 @@ impl ProjectSessionSummary {
 }
 
 fn same_workspace_path(left: &str, right: &str) -> bool {
-    if left.eq_ignore_ascii_case(right) {
+    if left == right || (cfg!(windows) && left.eq_ignore_ascii_case(right)) {
         return true;
     }
     match (std::fs::canonicalize(left), std::fs::canonicalize(right)) {
@@ -2497,7 +2504,8 @@ fn display_approval_preview(engine: &Engine, record: &coda::approval::ApprovalRe
             .as_ref()
             .and_then(|a| a["command"].as_str())
             .unwrap_or(&record.preview);
-        eprintln!("\n\x1b[1;33m● run_command\x1b[0m (PowerShell):\n  \x1b[1m{cmd}\x1b[0m");
+        let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
+        eprintln!("\n\x1b[1;33m● run_command\x1b[0m ({shell}):\n  \x1b[1m{cmd}\x1b[0m");
         return;
     }
 

@@ -188,6 +188,19 @@ impl HostConfigError {
             Self::Busy => "Host configuration is busy",
             Self::CredentialRequired => "A replacement credential is required",
             Self::Corrupt => "Host configuration state is corrupt",
+            #[cfg(target_os = "android")]
+            Self::Unavailable => {
+                "Android CLI credentials require a user D-Bus session with an unlocked org.freedesktop.secrets service. Native Android Keystore requires an app UID and JVM/JNI Context supplied by the APK host."
+            }
+            #[cfg(target_os = "linux")]
+            Self::Unavailable => {
+                "Credential access requires a user D-Bus session with an unlocked org.freedesktop.secrets keyring."
+            }
+            #[cfg(target_os = "macos")]
+            Self::Unavailable => {
+                "Credential access requires an accessible, unlocked macOS Keychain."
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "android")))]
             Self::Unavailable => "Host credential protection or access is unavailable",
             Self::Internal => "Host configuration operation failed",
         }
@@ -480,6 +493,11 @@ fn fingerprint(route_id: &str, request: &ConfigureHostRoute, route: &RouteInput)
     hash.finalize().into()
 }
 
+fn remove_secret_tx(db: &Connection, id: &str) -> AnyResult<()> {
+    db.execute("DELETE FROM secrets WHERE id=?1", [id])?;
+    Ok(())
+}
+
 pub(crate) fn save_configuration_tx(
     db: &Connection,
     settings: Option<&Settings>,
@@ -509,7 +527,7 @@ pub(crate) fn save_configuration_tx(
         if !unchanged {
             sealed.push((
                 id,
-                secrets::seal(value.as_bytes()).map_err(|_| HostConfigError::Unavailable)?,
+                secrets::stage(db, value.as_bytes()).map_err(|_| HostConfigError::Unavailable)?,
             ));
         }
     }
@@ -524,12 +542,32 @@ pub(crate) fn save_configuration_tx(
         .filter(|v| *v <= i64::MAX as u64)
         .ok_or(HostConfigError::Corrupt)?;
     if settings_changed {
+        if let (Some(old), Some(new)) = (old, settings) {
+            let old: Settings = serde_json::from_value(old)?;
+            for route in old
+                .routes
+                .iter()
+                .filter(|r| !new.routes.iter().any(|n| n.id == r.id))
+            {
+                remove_secret_tx(db, &format!("route::{}", route.id))?;
+                remove_secret_tx(db, &route.id)?;
+            }
+            if old.newapi.is_some() && new.newapi.is_none() {
+                remove_secret_tx(db, "newapi-account")?;
+            }
+        }
         db.execute(
             "INSERT INTO config(id,value) VALUES('settings',?1) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
             [serde_json::to_string(&encoded)?],
         )?;
     }
     for (id, blob) in sealed {
+        if let Some(legacy_id) = id.strip_prefix("route::")
+            && domain::valid_name(legacy_id)
+            && legacy_id != "newapi-account"
+        {
+            remove_secret_tx(db, legacy_id)?;
+        }
         db.execute(
             "INSERT INTO secrets(id,value) VALUES(?1,?2) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
             params![id, blob],
@@ -604,17 +642,15 @@ impl Store {
     ) -> Result<RouteConfigResult, HostConfigError> {
         let input = request.validate(route_id, key)?;
         let digest = fingerprint(route_id, &request, &input);
-        (|| -> AnyResult<_> {
-            let mut db = self.db.lock().map_err(|_| HostConfigError::Internal)?;
-            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            let revision = revision_tx(&tx)?;
-            if let Some(saved) = saved_tx(&tx, key)? {
+        let mut db = self.db.lock().map_err(|_| HostConfigError::Internal)?;
+        secrets::credential_transaction(&mut db, |tx| {
+            let revision = revision_tx(tx)?;
+            if let Some(saved) = saved_tx(tx, key)? {
                 if saved.fingerprint != digest {
                     return Err(HostConfigError::IdempotencyConflict.into());
                 }
                 let receipt: RouteConfigReceipt =
                     serde_json::from_str(&saved.receipt).map_err(|_| HostConfigError::Corrupt)?;
-                tx.commit()?;
                 return Ok(RouteConfigResult {
                     receipt,
                     replayed: true,
@@ -623,7 +659,7 @@ impl Store {
             if request.expected_revision != revision {
                 return Err(HostConfigError::RevisionConflict.into());
             }
-            let mut settings = settings_tx(&tx)?.ok_or(HostConfigError::Corrupt)?;
+            let mut settings = settings_tx(tx)?.ok_or(HostConfigError::Corrupt)?;
             let old = settings.routes.iter().find(|r| r.id == route_id).cloned();
             let mut keys = HashMap::new();
             let key_env = match &request.credential {
@@ -637,7 +673,7 @@ impl Store {
                     if target.base_url() != input.base_url {
                         return Err(HostConfigError::CredentialRequired.into());
                     }
-                    let (_, selected) = credential_tx(&tx, old)?;
+                    let (_, selected) = credential_tx(tx, old)?;
                     if selected.is_none() {
                         return Err(HostConfigError::CredentialRequired.into());
                     }
@@ -663,8 +699,8 @@ impl Store {
                 settings.routes.push(route.clone());
             }
             settings.validate().map_err(|_| HostConfigError::Invalid)?;
-            let changed = save_configuration_tx(&tx, Some(&settings), &keys, true)?;
-            let view = view_tx(&tx, &route)?;
+            let changed = save_configuration_tx(tx, Some(&settings), &keys, true)?;
+            let view = view_tx(tx, &route)?;
             if matches!(
                 view.credential_source,
                 CredentialSource::Missing | CredentialSource::Unavailable
@@ -674,7 +710,7 @@ impl Store {
             let receipt = RouteConfigReceipt {
                 operation_id: domain::id(),
                 route_id: route_id.to_owned(),
-                revision: revision_tx(&tx)?,
+                revision: revision_tx(tx)?,
                 route: view,
                 changed,
                 committed_at: domain::now(),
@@ -692,12 +728,11 @@ impl Store {
                     receipt.committed_at
                 ],
             )?;
-            tx.commit()?;
             Ok(RouteConfigResult {
                 receipt,
                 replayed: false,
             })
-        })()
+        })
         .map_err(safe_error)
     }
 }

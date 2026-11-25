@@ -4,13 +4,13 @@
 
 **Coda CLI** 是 Windows 本机优先的 AI 编程工作台（Rust Workspace 直接位于仓库根目录 `./`，主库与 CLI 二进制为 `coda`，共享协议包为 `coda-protocol`）。当前阶段**专注后端 Host 与 CLI 交互式编码体验，暂不开发图形界面**。
 
-- **全局架构与模块导航**：修改代码前请查阅 [PROJECT-MAP.md](PROJECT-MAP.md)，了解两条核心执行主链（进程内 CLI 工作台链与本地 HTTP/SSE Host 链）、[src/](src) 全部 38 个模块职责边界以及 [tests/](tests) 测试矩阵。
+- **全局架构与模块导航**：修改代码前请查阅 [PROJECT-MAP.md](PROJECT-MAP.md)，了解进程内 CLI、本地 HTTP/SSE 和嵌入宿主的执行链、[src/](src) 模块边界以及 [tests/](tests) 测试矩阵。宿主接入签名与 C3 v2 映射见 [docs/EMBEDDING.md](docs/EMBEDDING.md)，各平台构建见 [README.md](README.md#跨平台构建)。
 - **研发节奏与持久化基线看板**：跨窗口续接开发或分工协作前，请先查阅 [docs/PM-BOARD.md](docs/PM-BOARD.md)（总控看板）、[docs/TEAM-CHARTER.md](docs/TEAM-CHARTER.md)（团队领地归属）与 [docs/ARCHITECTURE-DECISIONS.md](docs/ARCHITECTURE-DECISIONS.md)（架构决策录）。
 - **长期产品理念**：参见 [PROJECT-BOOK.md](PROJECT-BOOK.md)。
 
 核心工程准则：
 1. **实用与简洁优先**：拒绝过度工程化、拒绝进程内模块“零信任互防”、拒绝遇到单次 I/O 或上游异常就永久锁死用户项目/数据库的自残式防守。
-2. **保护用户源码原貌**：凭据保护使用 Windows DPAPI（`secrets::seal` / `open`）与精确已知密钥脱敏（`secrets::scrub`），严禁用宽泛启发式正则篡改模型输出或拦截合法业务代码写入。
+2. **保护用户源码原貌**：独立 CLI 在 Windows 使用 DPAPI，在 macOS 使用 Keychain，在具备 Secret Service 的 Linux/Android 终端使用系统钥匙串。嵌入内核的凭据归宿主。输出使用精确已知密钥脱敏（`secrets::scrub`），严禁用宽泛启发式正则篡改模型输出或拦截合法业务代码写入。
 3. **可审阅与可恢复**：文件修改（`edit_file` / `write_file`）前记录原文件快照并展示真实行级 Unified Diff；启动恢复将未决运行态重置为 `interrupted` 并允许用户无缝继续或回滚。
 4. **直接编译与并行测试**：修改代码后直接运行 `cargo check --workspace --all-targets` 与 `cargo test`，无需重型窗口锁或双哈希账本仪式。
 

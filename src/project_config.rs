@@ -195,22 +195,24 @@ pub(crate) fn scope_allowed(ceiling: &[String], requested: &str) -> bool {
         .filter_map(|s| scope_path(s).ok())
         .any(|s| requested == s || requested.starts_with(&format!("{s}/")))
 }
-pub(crate) fn task_digest(spec: &TaskSpec) -> Result<String> {
+fn task_digest(spec: &TaskSpec, fold_case: bool) -> Result<String> {
     let mut scopes = spec
         .write_scopes
         .iter()
-        .map(|s| {
-            if s == "*" {
-                Ok(s.clone())
-            } else {
-                scope_path(s)
-            }
+        .map(|scope| {
+            let path = scope_path(scope)?;
+            Ok(if fold_case { path.to_lowercase() } else { path })
         })
         .collect::<Result<Vec<_>>>()?;
     scopes.sort();
     scopes.dedup();
+    let version = if fold_case {
+        "task-project-permissions-v1"
+    } else {
+        "task-project-permissions-v2"
+    };
     digest(
-        "task-project-permissions-v1",
+        version,
         &(&spec.route_id, spec.tools, scopes, spec.allow_commands),
     )
 }
@@ -294,8 +296,13 @@ pub(crate) fn validate_task_tx(
             |r| r.get(0),
         )
         .optional()?;
+    let current_digest = task_digest(&task.spec, cfg!(windows))?;
+    // v1 snapshots folded write-scope case on every OS; active permissions are
+    // checked separately against the current project's native scopes below.
+    let digest_matches = binding.permission_digest == current_digest
+        || (cfg!(unix) && binding.permission_digest == task_digest(&task.spec, true)?);
     if mapped.as_deref() != Some(&binding.project_id.0)
-        || binding.permission_digest != task_digest(&task.spec)?
+        || !digest_matches
         || binding.root_identity != root_tx(db, &binding.project_id)?
     {
         return Err(ProjectError::Corrupt.into());
@@ -338,7 +345,7 @@ pub(crate) fn bind_task_tx(
         project_id: project.clone(),
         root_identity: root_tx(db, project)?,
         config_revision: expected,
-        permission_digest: task_digest(&task.spec)?,
+        permission_digest: task_digest(&task.spec, cfg!(windows))?,
     };
     db.execute(
         "INSERT INTO task_project_bindings(task_id,project_id,value,provenance) VALUES (?1,?2,?3,'native_v1')",

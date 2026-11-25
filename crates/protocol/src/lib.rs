@@ -4,6 +4,8 @@
 //! dependency.  It is the compatibility boundary between the host and its
 //! clients.
 
+pub mod embedded;
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

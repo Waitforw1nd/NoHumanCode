@@ -46,3 +46,15 @@
   2. `Engine` 经 `StreamRedactor` 脱敏后写入 `events` 表独立事件类型 `kind = "reasoning_delta"`（载荷 `{"text": "..."}`），不计入正文 `task.output`（仅当模型整轮无正文且无工具调用时保留原有回退行为）；
   3. CLI 工作台捕获 `reasoning_delta` 事件，在终端以轻量暗色样式实时流式渲染思考过程，进入正文或工具调用时自动换行收束。
 - **影响范围**：`src/provider_runtime.rs`、`src/provider.rs`、`src/store.rs`、`src/engine.rs`、`src/cli.rs`。
+
+## ADR-005　进程内嵌入边界（M3 前置 B，2026-11-25）
+
+`EmbeddedEngine::new` 接受宿主提供的 `ModelTransport`、`ToolHost` 和 `SessionStore`。构造仅保存依赖。独立 CLI 和本地 HTTP 服务继续通过 `Engine::new` 装配 SQLite、原生模型协议、内建工具和审批。两种构造入口允许同一进程分别管理宿主身份与独立 CLI 状态。
+
+宿主每轮交付模型选择、提示词、工具声明和当前分支历史。内核在首次追加用户消息前预检完整请求。宿主存储按修订号原子追加，内核先保存整批工具意图，按序审查、执行、保存结果，发生拒绝或失败即停止派发并记录剩余调用已跳过。取消令牌属于特定回合，显式中止等到宿主清理完成；观察者断开后执行仍可继续。压缩通过相同的会话独占与存储接口追加摘要，宿主保留原始历史与分支。
+
+## ADR-006　平台与凭据边界（2026-11-25）
+
+Windows x64 继续读取同一用户原有的 DPAPI 密文。macOS arm64 的独立 CLI 直接将 API Key 存入系统 Keychain，Linux x64 及可访问 Secret Service 的 Android arm64 终端将其存入用户钥匙串。数据库保存版本化随机引用；轮换和回滚与配置事务协调。较大的工作区快照使用钥匙串保护的独立密钥加密。嵌入构建关闭 `standalone`，密钥、身份、SSO 与 SQLite 均由宿主自行选择。
+
+Windows Job Object、PowerShell 和控制台处理按 Windows 条件编译。Unix 命令经系统 shell 执行，采用独立进程组管理取消与超时。编译目标、工具链和 Android 运行条件见[构建说明](../README.md#跨平台构建)。

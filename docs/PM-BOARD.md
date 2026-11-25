@@ -30,6 +30,10 @@
 
 ---
 
+## Coda 产品系列 M3 前置 B（2026-11-25）
+
+嵌入内核、平台构建和独立 CLI 钥匙串已在 `feat/embedded-kernel-platforms` 验证。桌面三平台运行原生工作区测试；Android arm64 已交叉链接 CLI、库与宿主契约测试程序，设备运行待验。Coda 侧 Tauri/Bun 接线与旧 pi 会话转换属于下一阶段。宿主入口、取消与持久化契约见[接入说明](EMBEDDING.md)。
+
 ## 3. 中长期迭代路线图队列 (Product Backlog)
 
 - **Sprint 02：运行时性能加固与 CLI 模块化重构**

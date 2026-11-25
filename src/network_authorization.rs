@@ -511,7 +511,7 @@ fn same_config(a: &SubjectSnapshot, b: &SubjectSnapshot) -> bool {
 
 fn matches_current(snapshot: &SubjectSnapshot, sealed: &[u8], current: &CurrentSubject) -> bool {
     same_config(snapshot, &current.snapshot)
-        && secrets::open(sealed).is_ok_and(|bytes| bytes == current.credential.as_bytes())
+        && secrets::matches_credential_snapshot(sealed, current.credential.as_bytes())
 }
 
 fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
@@ -560,7 +560,7 @@ fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<Subjec
         params![
             key,
             serde_json::to_string(&snapshot)?,
-            secrets::seal(current.credential.as_bytes())
+            secrets::credential_snapshot(current.credential.as_bytes())
                 .map_err(|_| crate::host_configuration::HostConfigError::Unavailable)?
         ],
     )?;
@@ -1288,10 +1288,10 @@ impl Store {
     ) -> AnyResult<()> {
         settings.validate()?;
         let mut db = self.db.lock().unwrap();
-        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        crate::host_configuration::save_configuration_tx(&tx, Some(settings), keys, true)?;
-        tx.commit()?;
-        Ok(())
+        secrets::credential_transaction(&mut db, |tx| {
+            crate::host_configuration::save_configuration_tx(tx, Some(settings), keys, true)?;
+            Ok(())
+        })
     }
 }
 

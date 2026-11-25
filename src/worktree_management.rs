@@ -198,28 +198,17 @@ impl WorktreeReceipt {
             self.branch == format!("codex/workspace/{}", self.operation_id),
             WorktreeError::Corrupt
         );
-        let target_key = windows_path_key(&self.target_path);
-        let direct_expected = windows_path_key(&format!(
-            "{}/coda-{}",
-            self.parent_path.trim_end_matches(['/', '\\']),
-            self.operation_id
-        ));
-        let path_matches = if target_key == direct_expected {
-            true
-        } else if let Ok(canonical_parent) =
-            std::fs::canonicalize(std::path::Path::new(&self.parent_path))
-        {
-            let canonical_expected = windows_path_key(&format!(
-                "{}/coda-{}",
-                canonical_parent
-                    .to_string_lossy()
-                    .trim_end_matches(['/', '\\']),
-                self.operation_id
-            ));
-            target_key == canonical_expected
-        } else {
-            false
+        let target_key = crate::workspace_identity::path_comparison_key(&self.target_path);
+        let matches_parent = |parent: &std::path::Path| {
+            let expected = parent.join(format!("coda-{}", self.operation_id));
+            crate::workspace_identity::path_comparison_key(&expected.to_string_lossy())
+                == target_key
         };
+        let parent = std::path::Path::new(&self.parent_path);
+        let path_matches = matches_parent(parent)
+            || parent
+                .canonicalize()
+                .is_ok_and(|canonical| matches_parent(&canonical));
         ensure!(path_matches, WorktreeError::Corrupt);
         ensure!(
             !self.name.trim().is_empty()
@@ -368,16 +357,6 @@ pub(crate) fn display_canonical_path(path: &std::path::Path) -> String {
     } else {
         raw.into_owned()
     }
-}
-
-pub(crate) fn windows_path_key(path: &str) -> String {
-    let path = path.replace('\\', "/");
-    let path = if let Some(unc) = path.strip_prefix("//?/UNC/") {
-        format!("//{unc}")
-    } else {
-        path.strip_prefix("//?/").unwrap_or(&path).to_owned()
-    };
-    path.trim_end_matches('/').to_lowercase()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

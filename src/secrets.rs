@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 
 // Secrets are bound to the current Windows account, never serialized in API responses.
 #[cfg(windows)]
@@ -51,7 +51,7 @@ fn crypt(value: &[u8], decrypt: bool) -> Result<Vec<u8>> {
             )
         };
         if ok == 0 {
-            bail!("Windows 凭据加密失败：{}", std::io::Error::last_os_error());
+            anyhow::bail!("Windows 凭据加密失败：{}", std::io::Error::last_os_error());
         }
         let bytes = std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec();
         LocalFree(output.pbData as _);
@@ -59,14 +59,128 @@ fn crypt(value: &[u8], decrypt: bool) -> Result<Vec<u8>> {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "android"))]
+mod vault;
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "android"))]
+pub use vault::{open, release, seal};
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "android"))]
+pub(crate) use vault::{reconcile, seal_snapshot, stage};
+
+#[cfg(not(any(
+    windows,
+    target_os = "macos",
+    target_os = "linux",
+    target_os = "android"
+)))]
 pub fn seal(_: &[u8]) -> Result<Vec<u8>> {
-    bail!("此构建请通过环境变量提供 Key；持久化凭据需要 Windows DPAPI")
+    anyhow::bail!("此平台没有系统凭据后端")
+}
+#[cfg(not(any(
+    windows,
+    target_os = "macos",
+    target_os = "linux",
+    target_os = "android"
+)))]
+pub fn open(value: &[u8]) -> Result<Vec<u8>> {
+    seal(value)
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "android")))]
+pub(crate) fn stage(_: &rusqlite::Connection, value: &[u8]) -> Result<Vec<u8>> {
+    seal(value)
+}
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "android")))]
+pub(crate) use stage as seal_snapshot;
+
+pub(crate) fn credential_transaction<T>(
+    db: &mut rusqlite::Connection,
+    write: impl FnOnce(&rusqlite::Transaction<'_>) -> Result<T>,
+) -> Result<T> {
+    let result = (|| {
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        #[cfg(any(target_os = "macos", target_os = "linux", target_os = "android"))]
+        vault::adopt_copy(&tx)?;
+        let value = write(&tx)?;
+        tx.commit()?;
+        Ok(value)
+    })();
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "android"))]
+    reconcile(db);
+    result
+}
+
+pub(crate) fn read_stored(db: &mut rusqlite::Connection, id: &str) -> Result<Option<String>> {
+    read_with(db, id, open)
+}
+
+fn read_with(
+    db: &mut rusqlite::Connection,
+    id: &str,
+    load: impl Fn(&[u8]) -> Result<Vec<u8>>,
+) -> Result<Option<String>> {
+    fn read_ref(db: &rusqlite::Connection, id: &str) -> Result<Option<Vec<u8>>> {
+        use rusqlite::OptionalExtension;
+        Ok(db
+            .query_row("SELECT value FROM secrets WHERE id=?1", [id], |r| r.get(0))
+            .optional()?)
+    }
+    let Some(blob) = read_ref(db, id)? else {
+        return Ok(None);
+    };
+    match load(&blob) {
+        Ok(bytes) => Ok(Some(String::from_utf8(bytes)?)),
+        Err(error) => {
+            // A writer could retire the selected item between SELECT and the OS lookup.
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let current = read_ref(&tx, id)?;
+            if current.as_ref() == Some(&blob) {
+                return Err(error);
+            }
+            current
+                .map(|v| Ok(String::from_utf8(load(&v)?)?))
+                .transpose()
+        }
+    }
+}
+
+// The authorization ledger needs only an equality check, never a second usable API key.
 #[cfg(not(windows))]
-pub fn open(_: &[u8]) -> Result<Vec<u8>> {
-    bail!("此构建不能解密 Windows 凭据")
+fn snapshot_digest(salt: &[u8], value: &[u8]) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    Sha256::new()
+        .chain_update(b"coda:credential-check:v1")
+        .chain_update(salt)
+        .chain_update(value)
+        .finalize()
+        .into()
+}
+
+pub(crate) fn credential_snapshot(value: &[u8]) -> Result<Vec<u8>> {
+    #[cfg(windows)]
+    {
+        seal(value)
+    }
+    #[cfg(not(windows))]
+    {
+        let salt = uuid::Uuid::new_v4();
+        Ok([
+            salt.as_bytes().as_slice(),
+            &snapshot_digest(salt.as_bytes(), value),
+        ]
+        .concat())
+    }
+}
+
+pub(crate) fn matches_credential_snapshot(blob: &[u8], value: &[u8]) -> bool {
+    #[cfg(windows)]
+    {
+        open(blob).is_ok_and(|old| old == value)
+    }
+    #[cfg(not(windows))]
+    {
+        blob.split_at_checked(16)
+            .is_some_and(|(salt, digest)| digest == snapshot_digest(salt, value))
+    }
 }
 
 pub fn validate_persisted_id(field: &str, value: &str) -> anyhow::Result<()> {
@@ -199,6 +313,48 @@ impl StreamRedactor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_committed_replacement_if_a_writer_retires_the_old_reference() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("race.db");
+        let mut db = rusqlite::Connection::open(&path).unwrap();
+        db.execute_batch(
+            "CREATE TABLE secrets(id TEXT,value BLOB); INSERT INTO secrets VALUES('r',X'01')",
+        )
+        .unwrap();
+        let writer = rusqlite::Connection::open(path).unwrap();
+        let got = read_with(&mut db, "r", |reference| {
+            if reference == [1] {
+                writer.execute("UPDATE secrets SET value=X'02'", [])?;
+                anyhow::bail!("old item retired");
+            }
+            Ok(b"replacement".to_vec())
+        })
+        .unwrap();
+        assert!(got.as_deref() == Some("replacement"));
+        let count = std::cell::Cell::new(0);
+        assert!(
+            read_with(&mut db, "r", |_| {
+                count.set(count.get() + 1);
+                anyhow::bail!("locked")
+            })
+            .is_err()
+        );
+        assert_eq!(count.get(), 1);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn credential_snapshot_distinguishes_rotations_without_a_recoverable_copy() {
+        let bytes = uuid::Uuid::new_v4().to_string();
+        let a = credential_snapshot(bytes.as_bytes()).unwrap();
+        let b = credential_snapshot(bytes.as_bytes()).unwrap();
+        assert!(a != b);
+        assert!(matches_credential_snapshot(&a, bytes.as_bytes()));
+        assert!(!matches_credential_snapshot(&a, b"changed"));
+        assert!(!matches_credential_snapshot(&a[..15], bytes.as_bytes()));
+    }
 
     #[cfg(windows)]
     #[test]

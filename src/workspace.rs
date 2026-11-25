@@ -176,12 +176,29 @@ pub(crate) fn atomic_replace(path: &Path, bytes: &[u8]) -> Result<()> {
     std::fs::create_dir_all(parent)?;
     let temp = parent.join(format!(".coda-{}.tmp", uuid::Uuid::new_v4()));
     let mut cleanup = TempCleanup(temp.clone());
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)?;
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    let mode = {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        match std::fs::symlink_metadata(path) {
+            Ok(meta) => {
+                let mode = meta.permissions().mode() & 0o777;
+                options.mode(mode);
+                Some(mode)
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
+            Err(err) => return Err(err.into()),
+        }
+    };
+    let mut file = options.open(&temp)?;
     use std::io::Write as _;
     file.write_all(bytes)?;
+    #[cfg(unix)]
+    if let Some(mode) = mode {
+        use std::os::unix::fs::PermissionsExt;
+        file.set_permissions(std::fs::Permissions::from_mode(mode))?;
+    }
     file.sync_all()?;
     drop(file);
     if path.exists() {
@@ -338,7 +355,7 @@ pub(crate) fn change_target(
         .trim_start_matches(['/', '\\'])
         .replace('\\', "/");
     ensure!(!display.is_empty(), "文件路径无效");
-    let key = display.to_lowercase();
+    let key = scope_path(&display)?;
     Ok((target, display, key))
 }
 
@@ -1558,7 +1575,11 @@ pub fn definitions(task: &Task) -> Vec<Value> {
     if task.spec.allow_commands {
         tools.push(definition(
             "run_command",
-            "Run a PowerShell command in the project directory (pwsh.exe or powershell.exe). Default timeout is 30s (1-600s).",
+            if cfg!(windows) {
+                "Run a PowerShell command in the project directory. Default timeout is 30s (1-600s)."
+            } else {
+                "Run a POSIX sh command in the project directory. Default timeout is 30s (1-600s)."
+            },
             json!({
                 "command": { "type": "string" },
                 "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 600 }
@@ -1886,6 +1907,28 @@ mod tests {
         assert!(resolve(temp.path(), "src/a.rs", true, &["src".into()]).is_ok());
         assert!(resolve(temp.path(), "src2/a.rs", true, &["src".into()]).is_err());
         assert!(resolve(temp.path(), "src/a.rs", true, &[]).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn atomic_edit_preserves_executable_and_private_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let file = temp.path().join("script");
+        std::fs::write(&file, "original").unwrap();
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o700)).unwrap();
+        atomic_replace(&file, b"updated").unwrap();
+        assert_eq!(file.metadata().unwrap().permissions().mode() & 0o777, 0o700);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_scopes_and_change_keys_preserve_case() {
+        let temp = tempfile::tempdir().unwrap();
+        let scopes = ["Src".to_owned()];
+        let (_, display, key) = change_target(temp.path(), "Src/ReadMe", &scopes).unwrap();
+        assert_eq!(key, display);
+        assert!(resolve(temp.path(), "src/ReadMe", true, &scopes).is_err());
     }
 
     #[tokio::test]

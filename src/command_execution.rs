@@ -1,4 +1,4 @@
-//! Bounded PowerShell command execution with `pwsh.exe` -> `powershell.exe` fallback.
+//! Bounded command execution through the platform shell.
 use crate::domain::Task;
 use anyhow::{Context, Result, bail, ensure};
 use serde_json::{Value, json};
@@ -45,7 +45,8 @@ fn shell_cwd(root: &Path) -> Result<PathBuf> {
     Ok(root.to_path_buf())
 }
 
-pub(crate) fn resolve_powershell(root: &Path) -> Result<PathBuf> {
+#[cfg(windows)]
+pub(crate) fn resolve_shell(root: &Path) -> Result<PathBuf> {
     let search_path = |binary: &str| -> Option<PathBuf> {
         let paths = std::env::var_os("PATH")?;
         std::env::split_paths(&paths)
@@ -54,41 +55,45 @@ pub(crate) fn resolve_powershell(root: &Path) -> Result<PathBuf> {
             .find(|candidate| candidate.is_file() && !candidate.starts_with(root))
     };
 
-    #[cfg(windows)]
-    {
-        if let Some(pwsh) = search_path("pwsh.exe") {
-            return Ok(pwsh);
-        }
-        if let Some(ps) = search_path("powershell.exe") {
-            return Ok(ps);
-        }
-        let mut fallbacks = Vec::new();
-        if let Some(sysroot) = std::env::var_os("SystemRoot").or_else(|| std::env::var_os("WINDIR"))
+    if let Some(pwsh) = search_path("pwsh.exe") {
+        return Ok(pwsh);
+    }
+    if let Some(ps) = search_path("powershell.exe") {
+        return Ok(ps);
+    }
+    let mut fallbacks = Vec::new();
+    if let Some(sysroot) = std::env::var_os("SystemRoot").or_else(|| std::env::var_os("WINDIR")) {
+        fallbacks
+            .push(PathBuf::from(sysroot).join(r"System32\WindowsPowerShell\v1.0\powershell.exe"));
+    }
+    fallbacks.push(PathBuf::from(
+        r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+    ));
+    for candidate in fallbacks {
+        if let Ok(canonical) = candidate.canonicalize()
+            && canonical.is_file()
+            && !canonical.starts_with(root)
         {
-            fallbacks.push(
-                PathBuf::from(sysroot).join(r"System32\WindowsPowerShell\v1.0\powershell.exe"),
-            );
+            return Ok(canonical);
         }
-        fallbacks.push(PathBuf::from(
-            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
-        ));
-        for candidate in fallbacks {
-            if let Ok(canonical) = candidate.canonicalize()
-                && canonical.is_file()
-                && !canonical.starts_with(root)
-            {
-                return Ok(canonical);
-            }
-        }
-        bail!("无法解析可信 PowerShell 程序 (pwsh.exe / powershell.exe)")
     }
+    bail!("无法解析可信 PowerShell 程序 (pwsh.exe / powershell.exe)")
+}
 
-    #[cfg(not(windows))]
-    {
-        search_path("pwsh")
-            .or_else(|| search_path("sh"))
-            .context("无法解析可信 Shell 程序")
-    }
+#[cfg(not(windows))]
+fn resolve_shell(root: &Path) -> Result<PathBuf> {
+    let shell = Path::new(if cfg!(target_os = "android") {
+        "/system/bin/sh"
+    } else {
+        "/bin/sh"
+    });
+    let canonical = shell.canonicalize().context("找不到系统 sh")?;
+    ensure!(
+        canonical.is_file() && !canonical.starts_with(root),
+        "无法解析可信 sh 程序"
+    );
+    // Keep argv[0] as sh when /bin/sh is a symlink to another shell.
+    Ok(shell.to_owned())
 }
 
 pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
@@ -105,7 +110,7 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
 
     let deadline = Instant::now() + Duration::from_secs(timeout_seconds);
     let root = std::fs::canonicalize(&task.workspace).context("命令工作区不可用")?;
-    let executable = resolve_powershell(&root)?;
+    let executable = resolve_shell(&root)?;
     let environment = std::env::vars_os()
         .filter(|(name, _)| {
             let upper = name.to_string_lossy().to_ascii_uppercase();
@@ -114,7 +119,7 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
         .collect();
 
     let mut spec = ProcessSpec::new(
-        executable.clone(),
+        executable,
         shell_cwd(&root)?,
         environment,
         (OUTPUT_LIMIT, OUTPUT_LIMIT),
@@ -124,26 +129,10 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
     );
 
     #[cfg(windows)]
-    {
-        spec.args = ["-NoProfile", "-NonInteractive", "-Command", command]
-            .into_iter()
-            .map(Into::into)
-            .collect();
-    }
+    let args = ["-NoProfile", "-NonInteractive", "-Command", command];
     #[cfg(not(windows))]
-    {
-        if executable
-            .file_name()
-            .is_some_and(|n| n.to_string_lossy().contains("pwsh"))
-        {
-            spec.args = ["-NoProfile", "-NonInteractive", "-Command", command]
-                .into_iter()
-                .map(Into::into)
-                .collect();
-        } else {
-            spec.args = ["-c", command].into_iter().map(Into::into).collect();
-        }
-    }
+    let args = ["-c", command];
+    spec.args = args.into_iter().map(Into::into).collect();
 
     let outcome = if crate::execution_authority::current().is_some() {
         crate::execution_authority::run_process(spec).await?
@@ -153,7 +142,7 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
 
     match outcome {
         Outcome::NotStarted { stage, os_error } => {
-            bail!("无法启动 PowerShell ({stage}, {os_error:?})")
+            bail!("无法启动命令解释器 ({stage}, {os_error:?})")
         }
         Outcome::Unknown => Err(CommandOutcomeUnknown.into()),
         Outcome::Settled(result) => match result.reason {
@@ -212,14 +201,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn executes_powershell_with_fallback() {
+    async fn executes_platform_shell() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().canonicalize().unwrap();
-        assert!(resolve_powershell(&root).is_ok());
+        assert!(resolve_shell(&root).is_ok());
         let task = sample_task(&root);
-        let out = execute(&task, &json!({"command": "Write-Output 'ok-42'"}))
-            .await
-            .unwrap();
+        let command = if cfg!(windows) {
+            "Write-Output 'ok-42'"
+        } else {
+            "printf '%s' 'ok-42'"
+        };
+        let out = execute(&task, &json!({"command": command})).await.unwrap();
         assert_eq!(out["exit_code"], 0);
         assert!(out["stdout"].as_str().unwrap().contains("ok-42"));
     }

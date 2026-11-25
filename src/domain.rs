@@ -179,9 +179,15 @@ pub fn scope_path(value: &str) -> Result<String> {
         }),
         "不允许使用 Windows 设备名称"
     );
-    Ok(value.trim_end_matches('/').to_lowercase())
+    Ok(if cfg!(windows) {
+        value.to_lowercase()
+    } else {
+        value
+    })
 }
 pub fn overlaps(a: &str, b: &str) -> bool {
+    // Write reservations also cover files that don't exist yet on case-insensitive volumes.
+    let (a, b) = (a.to_lowercase(), b.to_lowercase());
     a == b || a.starts_with(&format!("{b}/")) || b.starts_with(&format!("{a}/"))
 }
 
