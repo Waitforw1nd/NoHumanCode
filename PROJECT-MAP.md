@@ -111,7 +111,9 @@ flowchart TD
 | 模块 | 职责 |
 | --- | --- |
 | [src/embedded/mod.rs](src/embedded/mod.rs) | 宿主 traits、会话独占、定向取消、显式压缩 |
-| [src/embedded/turn.rs](src/embedded/turn.rs) | 预检模型请求、流式回调、持久化工具意图、审查与批次收尾 |
+| [src/embedded/turn.rs](src/embedded/turn.rs) | 模型循环、流式回调、持久化工具意图、审查与批次收尾 |
+| [src/embedded/turn/prepare.rs](src/embedded/turn/prepare.rs) | 生成预检前的宿主压缩决策、重载分支、刷新工具和交付插话 |
+| [src/embedded/compaction.rs](src/embedded/compaction.rs) | 显式压缩和回合内压缩共用的摘要请求、用量及原子追加 |
 | [src/model_loop.rs](src/model_loop.rs) | 独立与嵌入模式共用的请求轮数与取消检查 |
 | [crates/protocol/src/embedded.rs](crates/protocol/src/embedded.rs) | 零 I/O 的消息、工具、用量和回合事件类型 |
 | [tests/embedded_kernel.rs](tests/embedded_kernel.rs) | 纯宿主回调驱动的模型回合、工具、取消、压缩与冲突恢复 |

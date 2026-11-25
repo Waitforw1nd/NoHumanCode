@@ -1,3 +1,5 @@
+mod prepare;
+
 use super::{partial::PartialReply, *};
 
 pub(super) enum Failure {
@@ -130,16 +132,15 @@ impl EmbeddedEngine {
         input: &TurnInput,
     ) -> TurnResult<()> {
         running(cancel)?;
-        let snapshot = self
-            .store
-            .load(&opts.session_id)
-            .await
-            .map_err(|_| Failed("SESSION_LOAD"))?;
+        let snapshot = self.store.load(&opts.session_id).await;
+        running(cancel)?;
+        let snapshot = snapshot.map_err(|_| Failed("SESSION_LOAD"))?;
         let seen = validate_history(&snapshot.messages)?;
         let user = Message::User {
             content: opts.content.clone(),
         };
-        let mut request = ModelRequest {
+        let request = ModelRequest {
+            purpose: RequestPurpose::Generation,
             session_id: opts.session_id.clone(),
             run_id: Some(opts.run_id.clone()),
             settings: opts.settings.clone(),
@@ -148,7 +149,6 @@ impl EmbeddedEngine {
             tools: Vec::new(),
             messages: model_projection(snapshot.messages),
         };
-        request.messages.push(user.clone());
         let mut turn = Turn {
             engine: self,
             opts,
@@ -193,7 +193,8 @@ impl Turn<'_> {
                 crate::model_loop::Stop::Cancelled => Aborted,
                 crate::model_loop::Stop::Limit => Failed("REQUEST_LIMIT"),
             })?;
-            self.prepare_request(&mut request, &user, batch).await?;
+            self.prepare_request(&mut request, &user, batch, &mut seen)
+                .await?;
             running(cancel)?;
             let emit = |delta| {
                 anyhow::ensure!(!cancel.is_cancelled(), "cancelled");
@@ -249,57 +250,6 @@ impl Turn<'_> {
                     break;
                 }
             }
-        }
-        Ok(())
-    }
-
-    async fn prepare_request(
-        &mut self,
-        request: &mut ModelRequest,
-        user: &Message,
-        mut batch: input::InputBatch<'_>,
-    ) -> TurnResult<()> {
-        let definitions = self
-            .engine
-            .tools
-            .definitions(&self.opts.session_id, &self.opts.run_id);
-        running(self.cancel)?;
-        request.tools = definitions.map_err(|_| Failed("TOOL_DEFINITIONS"))?;
-        let mut names = HashSet::new();
-        if request
-            .tools
-            .iter()
-            .any(|t| t.name.trim().is_empty() || !names.insert(&t.name))
-        {
-            return Err(Failed("INVALID_TOOL_DEFINITIONS"));
-        }
-
-        let mut entries = Vec::new();
-        if !self.user_saved {
-            entries.push(Entry::Message(user.clone()));
-        }
-        for message in &batch.messages {
-            let archived = Message::from(message.clone());
-            request.messages.push(projected(archived.clone()));
-            entries.push(Entry::Message(archived));
-            self.events.reserve(&Event::InputDelivered {
-                message: message.clone(),
-            })?;
-        }
-        let preflight = self.engine.model.preflight(request);
-        running(self.cancel)?;
-        preflight.map_err(|_| Failed("MODEL_PREFLIGHT"))?;
-        if !entries.is_empty() {
-            batch.begin_append(&self.revision);
-            if let Err(failure) = self.save(&entries).await {
-                batch.not_committed();
-                return Err(failure);
-            }
-            self.user_saved = true;
-        }
-        // The CAS is the delivery receipt even if abort raced with the store callback.
-        for message in batch.commit() {
-            let _ = self.events.channel.send(Event::InputDelivered { message });
         }
         Ok(())
     }

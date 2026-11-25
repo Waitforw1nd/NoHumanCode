@@ -1,4 +1,5 @@
 //! In-process model loop. All external effects are supplied by the embedding host.
+mod compaction;
 mod input;
 mod partial;
 mod turn;
@@ -18,6 +19,15 @@ use tokio::sync::{mpsc, watch};
 pub use tokio_util::sync::CancellationToken;
 
 pub trait ModelTransport: Send + Sync {
+    /// Called once before each generation preflight, including the initial request.
+    fn before_request<'a>(
+        &'a self,
+        _request: &'a ModelRequest,
+        _cancel: CancellationToken,
+    ) -> BoxFuture<'a, Result<CompactionDecision>> {
+        Box::pin(async { Ok(CompactionDecision::Continue) })
+    }
+
     /// Local validation of the actual request, including route, capabilities and token budget.
     fn preflight(&self, request: &ModelRequest) -> Result<()>;
     /// Return after any network/stream work has stopped. Only return a complete reply on success.
@@ -249,47 +259,17 @@ async fn summarize(lease: Lease, model: Model, instructions: String) -> Result<S
     turn::validate_history(&snapshot.messages)
         .map_err(|_| anyhow::anyhow!("invalid or unfinished tool history"))?;
     ensure!(!snapshot.messages.is_empty(), "empty session");
-    let mut messages = turn::model_projection(snapshot.messages);
-    let prompt = format!(
-        "Summarize this conversation for continuation. Preserve decisions, tool outcomes and remaining work.\n{instructions}"
-    );
-    messages.push(Message::User {
-        content: vec![Content::Text { text: prompt }],
-    });
-    let request = ModelRequest {
-        session_id: lease.session.clone(),
+    let summary = compaction::Summary {
+        session_id: &lease.session,
         run_id: None,
+        model: &model,
         settings: ModelSettings::default(),
-        model,
-        system_prompt: "Produce a factual conversation summary.".into(),
-        messages,
-        tools: vec![],
+        revision: &snapshot.revision,
+        messages: turn::model_projection(snapshot.messages),
+        instructions: &instructions,
+        tokens_before: None,
     };
-    lease.engine.model.preflight(&request)?;
-    let reply = lease
-        .engine
-        .model
-        .complete(&request, &|_| Ok(()), lease.cancel.child_token())
-        .await?;
-    let mut summary = String::new();
-    for block in reply.blocks {
-        match block {
-            Block::Text { text } => summary.push_str(&text),
-            Block::Thinking { .. } => (),
-            Block::ToolCall { .. } | Block::Image { .. } => {
-                anyhow::bail!("expected a text summary")
-            }
-        }
-    }
-    ensure!(!summary.trim().is_empty(), "empty compaction summary");
-    let mut entries = Vec::new();
-    if let Some(usage) = reply.usage {
-        entries.push(Entry::Usage(usage));
-    }
-    entries.push(Entry::Compaction { summary });
-    lease
-        .engine
-        .store
-        .append(&lease.session, &snapshot.revision, &entries)
+    compaction::append_summary(&lease.engine, summary, &lease.cancel)
         .await
+        .map_err(|error| error.1)
 }

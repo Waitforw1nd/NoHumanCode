@@ -2,9 +2,14 @@
 mod abort_history;
 use abort_history::assert_reloaded_abort_projection;
 
+#[path = "support/auto_compaction.rs"]
+mod auto_compaction;
+
 #[path = "support/embedded_fixture.rs"]
 mod fixture;
 
+#[path = "support/auto_compaction_failures.rs"]
+mod auto_compaction_failures;
 #[path = "support/embedded_steering.rs"]
 mod steering;
 #[path = "support/steering_transactions.rs"]
@@ -179,7 +184,7 @@ async fn compaction_persists_model_summary_and_uses_session_history() -> Result<
     )
     .await??;
     assert!(
-        matches!(f.store.entries.lock().unwrap().last(),Some(Entry::Compaction{summary}) if summary == "summary")
+        matches!(f.store.entries.lock().unwrap().last(),Some(Entry::Compaction{summary,tokens_before:None}) if summary == "summary")
     );
     let requests = f.transport.requests.lock().unwrap();
     assert_eq!(requests.len(), 1);

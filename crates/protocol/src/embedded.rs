@@ -120,6 +120,9 @@ pub enum Entry {
     /// Summarizes the complete selected projection at the expected revision.
     Compaction {
         summary: String,
+        /// Estimate supplied by the host at a generation boundary.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tokens_before: Option<u64>,
     },
 }
 
@@ -148,10 +151,27 @@ pub struct RunOptions {
     pub settings: ModelSettings,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RequestPurpose {
+    Generation,
+    Compaction,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum CompactionDecision {
+    #[default]
+    Continue,
+    Compact {
+        instructions: String,
+        tokens_before: u64,
+    },
+}
+
 #[derive(Clone, Debug)]
 pub struct ModelRequest {
+    pub purpose: RequestPurpose,
     pub session_id: String,
-    /// Present on generation requests. Explicit compaction is a session command.
+    /// Present throughout a run, including its summaries. Explicit compaction has no run ID.
     pub run_id: Option<String>,
     pub settings: ModelSettings,
     pub model: Model,
@@ -192,6 +212,12 @@ pub enum Event {
     Start {
         model: Model,
     },
+    CompactionStart {
+        tokens_before: u64,
+    },
+    CompactionEnd {
+        reason: DoneReason,
+    },
     /// Emitted once per queued input, after its batch was committed to the session.
     InputDelivered {
         message: SteeringMessage,
@@ -230,6 +256,20 @@ pub enum Event {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_compaction_entries_keep_their_wire_shape() {
+        let legacy = serde_json::json!({"Compaction": {"summary": "earlier"}});
+        let entry: Entry = serde_json::from_value(legacy.clone()).unwrap();
+        assert!(matches!(
+            entry,
+            Entry::Compaction {
+                tokens_before: None,
+                ..
+            }
+        ));
+        assert_eq!(serde_json::to_value(entry).unwrap(), legacy);
+    }
 
     #[test]
     fn custom_details_round_trip_missing_null_and_structured_json() {

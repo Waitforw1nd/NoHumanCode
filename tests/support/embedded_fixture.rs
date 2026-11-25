@@ -247,7 +247,7 @@ impl SessionStore for Store {
             for entry in entries.iter() {
                 match entry {
                     Entry::Message(message) => messages.push(message.clone()),
-                    Entry::Compaction { summary } => {
+                    Entry::Compaction { summary, .. } => {
                         messages = vec![Message::Summary {
                             text: summary.clone(),
                         }]

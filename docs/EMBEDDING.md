@@ -23,6 +23,7 @@ while let Some(event) = events.recv().await {
 
 | 接口 | 宿主实现 |
 | --- | --- |
+| `async ModelTransport::before_request(&ModelRequest, CancellationToken) -> CompactionDecision` | 首次生成请求和每个续轮各调用一次。宿主可对完整候选请求估算 token，决定 `Continue` 或 `Compact { instructions, tokens_before }`。默认返回 `Continue`。 |
 | `ModelTransport::preflight(&ModelRequest) -> Result<()>` | 使用本轮 `session_id`、`run_id`、`model.id`、`model.provider` 和 `settings` 做本地权限、路由、能力及 token 预算检查。`provider` 承接 C3 的 `customProviderId`。计入系统指令、工具和完整输入，确认传输能执行相同的请求。 |
 | `async complete(&ModelRequest, emit, CancellationToken) -> ModelReply` | 在线经 SSO，离线交给选中的提供商。以 `emit(ModelDelta)` 报告有 `block_id` 的文本或思考；每次检查回调结果。正常返回完整块及可选用量；连接异常、截断、解析失败作为错误返回。 |
 | `ToolHost::definitions(session_id, run_id) -> Result<Vec<ToolDefinition>>` | 每次生成请求预检前读取一次当前工具集。宿主处理 `setActiveTools()` 时更新自己的工具注册表，下次读取即可反映新增、移除或参数变动。内核检查调用 ID，并按该次请求的工具名称集合校验回复。宿主校验参数及当前权限。已提交的工具批次保留原调用 ID 和结果。 |
@@ -43,6 +44,30 @@ while let Some(event) = events.recv().await {
 | `compactSession` | `compact(session_id, model, instructions).await -> Result<String>`。对完整选中投影做一次无工具摘要，在同一会话独占下追加 `Entry::Compaction`。返回的 leaf 即 compaction 的 `entryId`。宿主应将此全量摘要的 `firstKeptEntryId` 指向摘要自身，并在后续 `load` 投影中引用它，保留原始分支。 |
 
 审查拒绝（`Ok(false)`）、审查出错（`Err`）和宿主执行接口出错（`Err`）分别以 `TOOL_DENIED`、`TOOL_REVIEW` 和 `TOOL_EXECUTION` 结束回合。同批剩余调用各保存一个 `TOOL_NOT_EXECUTED` 结果。取消或事件预算耗尽会停止后续派发。没有下一次模型请求的预算时，内核记录工具意图和跳过结果，以 `REQUEST_LIMIT` 收尾。
+
+### 回合内请求前压缩
+
+`ModelTransport::before_request` 在每次**生成**请求的预检前运行，包括 round 0、工具批完成后的续轮，以及插话触发的续轮。它收到实际的模型、设置、系统提示、工具声明和消息投影，其中包含本次选中的插话。宿主在回调内使用当前模型的上下文窗口和预留额度。异步估算须响应传入的取消令牌。
+
+```rust,ignore
+let tokens_before = estimate_for_provider(request).await?;
+if tokens_before > context_window.saturating_sub(reserve_tokens) {
+    Ok(CompactionDecision::Compact { instructions, tokens_before })
+} else {
+    Ok(CompactionDecision::Continue)
+}
+```
+
+| 阶段 | 宿主可观察的行为 |
+| --- | --- |
+| 摘要请求 | `CompactionStart { tokens_before }` 后，内核沿用本回合的模型和 `ModelSettings`（含上下文窗口和输出上限），使用显式压缩的摘要提示及宿主指令，对已提交的分支历史发起无工具请求。请求标记为 `purpose: RequestPurpose::Compaction`，回合内保留 `Some(run_id)`，显式 `compact` 使用 `None`。两种摘要都执行传输预检，并跳过 `before_request`。 |
+| 提交与重载 | 摘要用量（如有）和 `Entry::Compaction { summary, tokens_before: Some(n) }` 同批追加。C3 写入 `tokensBefore = n`，摘要用量计入 `compaction`。内核重载 `SessionStore::load`，核对修订号与工具历史，再发出 `CompactionEnd { reason: Completed }`。历史分支继续保留原工具意图和结果。 |
+| 继续生成 | 内核将当前尚未落盘的问题及选中的插话原样接在重载投影后，刷新工具声明，再预检实际生成请求。通过后才提交这些输入、发出原有插话交付事件并生成。若当前没有已提交的消息可压缩，直接预检原请求。选批后抵达的插话留给下个生成边界。 |
+| 取消和失败 | 摘要生成时取消会结束摘要和回合。摘要写入期间取消会等待 CAS 的实际结果；写入成功后沿新修订收尾。摘要模型失败、非法摘要块、写入冲突或重载到不同修订均终止本轮，明确未提交的插话可取回。每个已经发出的开始事件对应一个结束事件。摘要已成功而最终生成预检拒绝时，回合发出 `MODEL_PREFLIGHT` 和 `Done(Failed)`，保留已提交的摘要。 |
+
+**与 pi 1.5.0 的差异。** pi 在 `prepareNextTurnWithContext` 中按 `contextTokens > contextWindow - reserveTokens` 检查阈值，虚拟模型也可在选路后再次检查，并可按 `keepRecentTokens` 保留近期消息。嵌入内核由宿主在每个生成边界决定一次，使用现有的全量分支摘要。压缩后只做最终预检。`max_requests` 计生成次数，每个边界至多增加一次摘要请求。运行开始前的主动检查仍可由宿主执行。
+
+**升级接线。** 现有 `ModelTransport` 实现继承 `Continue`，独立 CLI 仍走自身引擎。宿主按 `ModelRequest.purpose` 区分生成与摘要，同时用 `run_id` 关联本轮用量。穷举 `Event` 时增加压缩开始和结束分支。匹配 `Entry::Compaction` 时读取 `tokens_before` 或使用 `..`。自行构造 `ModelRequest` 的宿主需设置 `purpose`。旧压缩条目和显式 `compact` 的该字段均为 `None`，原有 C3 显式压缩估算继续由宿主提供。
 
 ### 回合中插话与取回
 
@@ -91,4 +116,4 @@ return_to_host(turn.input.take_remaining().await);
 
 实现了 `Message` 穷举匹配的宿主需要新增 `Aborted` 分支。`load` 按该元数据还原 `Message::Aborted`，`ModelRequest.messages` 使用普通 `Assistant` 文本表示取消。部分回复可能为空。如果完整助手回复或工具意图已写入，独立中止行的 `content` 为空，保留先前回复和逐项工具结果。内核为下一次模型请求（包括压缩）生成一条明确说明用户已取消旧任务的助手文本；若前一条已经是助手消息，就把说明加在末尾。半截内容只进存档，模型看到的是取消说明和新问题。旧 pi 转换继续保留 `metadata.pi.message.stopReason` 及其原始审计字段；适配器回放该字段为 `aborted` 的助手条目时可用原运行 ID，缺失时以原条目 ID 关联。历史权威数据仍由 C3 codec 完整保存。
 
-`coda-protocol::embedded` 的 Rust 数据结构需要适配后再用 `@coda/contracts` 验证。宿主自行映射压缩忙闲状态，提供 C3 `tokensBefore` 等 codec 元数据，管理身份、持久 run ID 和工作区文件租约。前置 B 支持显式摘要；pi 的自动压缩触发时机、重试事件、部分截断回复的持久化和两种内核的逐事件等价仍待产品适配。旧 pi 存档的一键转换、真实网关和 Bun 工具接线属于 Coda 侧 M3。
+`coda-protocol::embedded` 的 Rust 数据结构需要适配后再用 `@coda/contracts` 验证。宿主映射压缩忙闲状态，提供 C3 `tokensBefore` 等 codec 元数据，管理身份、持久 run ID 和工作区文件租约。pi 的 token 估算、阈值和用量分类由 Coda 接入层实现。重试事件、部分截断回复的持久化及旧 pi 存档转换同属宿主适配范围。
