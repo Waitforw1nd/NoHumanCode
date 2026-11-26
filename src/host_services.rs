@@ -225,7 +225,10 @@ impl ReviewRecovery {
             {
                 return Err(WorkspaceChangeError::Conflict { receipt: None }.into());
             }
-            if !matches!(approval.tool_name.as_str(), "write_file" | "edit_file") {
+            if !matches!(
+                approval.tool_name.as_str(),
+                "write_file" | "edit_file" | "computer_save_as"
+            ) {
                 return Err(WorkspaceChangeError::Corrupt.into());
             }
             if !record
@@ -271,9 +274,16 @@ impl ReviewRecovery {
                     if arg_path != record.path || arg_key != record.path_key {
                         return Err(WorkspaceChangeError::Corrupt.into());
                     }
-                    if approval.tool_name == "write_file"
-                        && secrets::redact_persisted(&args) == args
-                        && let Some(content) = args["content"].as_str()
+                    let content_field = if approval.tool_name == "computer_save_as" {
+                        "expected_text"
+                    } else {
+                        "content"
+                    };
+                    if matches!(
+                        approval.tool_name.as_str(),
+                        "write_file" | "computer_save_as"
+                    ) && secrets::redact_persisted(&args) == args
+                        && let Some(content) = args[content_field].as_str()
                         && Some(digest(content.as_bytes())) != record.after_digest
                     {
                         return Err(WorkspaceChangeError::Corrupt.into());

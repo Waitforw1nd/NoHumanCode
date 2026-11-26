@@ -142,6 +142,8 @@ fn truncate_value_strings(value: Value, keys: &secrets::CredentialSet) -> Value 
 }
 
 pub(crate) struct ToolCallApplication {
+    #[cfg(test)]
+    pub(crate) save_fixture: std::sync::OnceLock<fn(&std::path::Path) -> Result<()>>,
     computer: Arc<crate::computer::ComputerService>,
     pub(crate) mcp: crate::mcp::McpPool,
     store: Arc<Store>,
@@ -162,6 +164,8 @@ impl ToolCallApplication {
         computer: Arc<crate::computer::ComputerService>,
     ) -> Self {
         Self {
+            #[cfg(test)]
+            save_fixture: Default::default(),
             computer,
             mcp: crate::mcp::McpPool::with_store(store.clone()),
             store,
@@ -342,7 +346,7 @@ impl ToolCallApplication {
             return Err(ProjectError::OperationUnsupported.into());
         }
         self.project.validate_task(task, true, false)?;
-        if crate::tool_results::is_computer(name) {
+        if crate::tool_results::is_computer_read(name) {
             ensure!(self.computer_enabled(task), "当前工作区未授权使用桌面工具");
             ensure!(
                 !cancel.is_cancelled() && self.store.task(&task.id)?.status == "running",
@@ -476,11 +480,24 @@ impl ToolCallApplication {
                 .perform_direct_workspace_tool(task, tool_call_id, name, args, keys)
                 .await;
         }
+        // Save As borrows the file writer's admission/lease, not its executor.
+        let capability = if name == "computer_save_as" {
+            ensure!(
+                task.spec.tools
+                    && self
+                        .computer
+                        .save_enabled_for(std::path::Path::new(&task.workspace)),
+                "当前工作区未授权使用桌面保存工具"
+            );
+            "write_file"
+        } else {
+            name
+        };
         ensure!(
             self.tool_runtime
                 .definitions(task)?
                 .iter()
-                .any(|t| t["function"]["name"] == name),
+                .any(|t| t["function"]["name"] == capability),
             "模型请求了未授权的工具"
         );
         ensure!(
@@ -505,7 +522,7 @@ impl ToolCallApplication {
                         Ok(())
                     }
                 })?;
-                self.perform_tool(task, tool_call_id, name, args, keys, None, lease)
+                self.perform_tool(task, tool_call_id, name, args, keys, None, lease, cancel)
                     .await
             }
             PolicyDecision::Deny { reason } => {
@@ -529,10 +546,11 @@ impl ToolCallApplication {
                 match status {
                     ApprovalStatus::Approved => {
                         let approval_task = transient_approval_task(task, call, name, args)?;
-                        let (lease, claimed) = self.tool_runtime.acquire(task, name, || {
-                            self.approval
-                                .claim(&approval_task, tool_call_id, name, args)
-                        })?;
+                        let (lease, claimed) =
+                            self.tool_runtime.acquire(task, capability, || {
+                                self.approval
+                                    .claim(&approval_task, tool_call_id, name, args)
+                            })?;
                         drop(approval_task);
                         self.perform_tool(
                             task,
@@ -542,6 +560,7 @@ impl ToolCallApplication {
                             keys,
                             Some(&claimed.id),
                             lease,
+                            cancel,
                         )
                         .await
                     }
@@ -613,13 +632,15 @@ impl ToolCallApplication {
         keys: &secrets::CredentialSet,
         approval_id: Option<&str>,
         lease: ToolLease,
+        cancel: &CancellationToken,
     ) -> Result<()> {
-        let is_file_mutation = matches!(name, "write_file" | "edit_file");
+        let is_file_mutation = matches!(name, "write_file" | "edit_file" | "computer_save_as");
         let _workspace_gate = if is_file_mutation {
             Some(self.workspace.gate.lock().await)
         } else {
             None
         };
+        let mut save_target = None;
         let mut prepared: Option<(String, PreparedChange, Vec<u8>)> = None;
         if is_file_mutation {
             let approval_id = approval_id.context("文件写入工具缺少审批执行权")?;
@@ -631,6 +652,22 @@ impl ToolCallApplication {
                         args,
                         &task.spec.write_scopes,
                     )?;
+                if name == "computer_save_as" {
+                    self.project.validate_task(task, true, false)?;
+                    ensure!(
+                        self.computer
+                            .save_enabled_for(std::path::Path::new(&task.workspace))
+                            && !cancel.is_cancelled()
+                            && self.store.task(&task.id)?.status == "running",
+                        "save no longer authorized"
+                    );
+                    self.store.verify_save_snapshot(
+                        &task.id,
+                        approval_id,
+                        &approval::save_snapshot(&target, args)?,
+                    )?;
+                    save_target = Some(target.clone());
+                }
                 let path_key = display_path.to_lowercase();
                 let change = self.store.prepare_workspace_change(
                     task,
@@ -695,7 +732,30 @@ impl ToolCallApplication {
             }
             return Err(error);
         }
-        let execution = lease.execute(task, args).await;
+        let execution = if name == "computer_save_as" {
+            let target = save_target
+                .as_deref()
+                .context("missing approved save target")?;
+            let (id, change, expected) = prepared.as_ref().context("missing save preflight")?;
+            // Never retry an invocation. Only the subsequent independent disk reads may repeat.
+            let verified = async {
+                self.dispatch_save(task, args, target).await?;
+                self.verify_saved_file(task, &change.path, target, expected, cancel)
+                    .await
+            }
+            .await;
+            if verified
+                .as_ref()
+                .is_err_and(|e| !e.is::<crate::computer::SaveNotDispatched>())
+                || cancel.is_cancelled()
+            {
+                self.store.mark_workspace_change_unknown(&change.id)?;
+                return Err(approval::ApprovalError::UnknownResult { id: id.clone() }.into());
+            }
+            verified
+        } else {
+            lease.execute(task, args).await
+        };
         let (result, succeeded) = match execution {
             Ok(value) => (truncate_tool_value(value, keys), true),
             Err(error)
@@ -749,6 +809,76 @@ impl ToolCallApplication {
                 keys,
                 Origin::ReadCompleted,
             )
+        }
+    }
+
+    async fn dispatch_save(
+        &self,
+        task: &Task,
+        args: &Value,
+        target: &std::path::Path,
+    ) -> Result<()> {
+        #[cfg(test)]
+        if let Some(fixture) = self.save_fixture.get() {
+            return fixture(target);
+        }
+        self.computer
+            .save_as(
+                &task.run_id,
+                std::path::Path::new(&task.workspace),
+                args["observation_ref"]
+                    .as_str()
+                    .context("missing observation_ref")?,
+                target,
+            )
+            .await
+    }
+
+    async fn verify_saved_file(
+        &self,
+        task: &Task,
+        relative: &str,
+        target: &std::path::Path,
+        expected: &[u8],
+        cancel: &CancellationToken,
+    ) -> Result<Value> {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+        let mut previous_match = false;
+        loop {
+            ensure!(!cancel.is_cancelled(), "save interrupted");
+            self.project.validate_task(task, true, false)?;
+            let (path, _, _) = self.workspace.change_target(
+                std::path::Path::new(&task.workspace),
+                relative,
+                &task.spec.write_scopes,
+            )?;
+            ensure!(path == target, "save target changed");
+            let bytes = match self.workspace.read_safe_file(target) {
+                Ok(bytes) => bytes,
+                // Windows applications may hold a sharing/lock violation while saving.
+                Err(e)
+                    if e.downcast_ref::<std::io::Error>()
+                        .is_some_and(|e| matches!(e.raw_os_error(), Some(32 | 33))) =>
+                {
+                    None
+                }
+                Err(e) => return Err(e),
+            };
+            if let Some(actual) = bytes.filter(|actual| actual == expected) {
+                if previous_match {
+                    return Ok(
+                        json!({"path":relative,"verified":true,"bytes":actual.len(),"sha256":workspace_changes::digest(&actual)}),
+                    );
+                }
+                previous_match = true;
+            } else {
+                previous_match = false;
+            }
+            ensure!(
+                tokio::time::Instant::now() < deadline,
+                "disk readback did not match"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
     }
 

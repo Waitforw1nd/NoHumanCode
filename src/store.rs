@@ -22,7 +22,7 @@ fn is_readonly_file_tool(name: &str) -> bool {
 }
 
 fn is_file_mutation_tool(name: &str) -> bool {
-    matches!(name, "write_file" | "edit_file")
+    matches!(name, "write_file" | "edit_file" | "computer_save_as")
 }
 
 fn is_authorized_mcp_tool(task: &Task, name: &str) -> bool {
@@ -737,7 +737,7 @@ impl Store {
         }
         let valid = match origin {
             Origin::ReadCompleted => {
-                if crate::tool_results::is_computer(name) {
+                if crate::tool_results::is_computer_read(name) {
                     crate::project_config::validate_task_tx(&tx, &durable, true, false)?;
                     durable.status == "running" && record.is_none()
                 } else {
@@ -1766,6 +1766,10 @@ impl Store {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         tx.execute(
+            "UPDATE approvals SET execution_state='unknown' WHERE tool_name='computer_save_as' AND execution_state='claimed' AND EXISTS (SELECT 1 FROM workspace_changes c WHERE c.id=?1 AND c.task_id=approvals.task_id AND c.tool_call_id=approvals.tool_call_id)",
+            [id],
+        )?;
+        tx.execute(
             "UPDATE workspace_changes SET state='unknown',finished_at=?1 WHERE id=?2 AND state='prepared'",
             params![now(), id],
         )?;
@@ -1926,6 +1930,24 @@ impl Store {
         repository::Repository::new(&self.db.lock().unwrap()).approval(id)
     }
 
+    pub(crate) fn verify_save_snapshot(
+        &self,
+        task_id: &str,
+        approval_id: &str,
+        current: &Value,
+    ) -> Result<()> {
+        let db = self.db.lock().unwrap();
+        let stored: String = db.query_row(
+            "SELECT json_extract(data, '$.save_snapshot') FROM events WHERE task_id=?1 AND kind='approval.requested' AND json_extract(data, '$.approval_id')=?2 AND json_extract(data, '$.evidence_version')=1",
+            params![task_id, approval_id], |row| row.get(0),
+        )?;
+        anyhow::ensure!(
+            serde_json::from_str::<Value>(&stored)? == *current,
+            "save approval snapshot changed"
+        );
+        Ok(())
+    }
+
     pub(crate) fn approval_mcp_target(
         &self,
         record: &approval::ApprovalRecord,
@@ -2035,6 +2057,18 @@ impl Store {
             .into());
         }
         crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
+        let save_snapshot = if tool_name == "computer_save_as" {
+            crate::project_config::validate_task_tx(&tx, task, true, false)?;
+            let p = crate::workspace::preview_file_mutation_full(
+                Path::new(&task.workspace),
+                tool_name,
+                args,
+                &task.spec.write_scopes,
+            )?;
+            Some(approval::save_snapshot(&p.target, args)?)
+        } else {
+            None
+        };
         let record = approval::ApprovalRecord {
             network_notice: (tool_name == "run_command")
                 .then(approval::CommandNetworkNotice::default),
@@ -2055,7 +2089,11 @@ impl Store {
             write_scopes: task.spec.write_scopes.clone(),
             allow_commands: task.spec.allow_commands,
             preview: {
-                let arguments = approval::preview(tool_name, args);
+                let arguments = if let Some(snapshot) = &save_snapshot {
+                    format!("{}\n{}", snapshot, approval::preview(tool_name, args))
+                } else {
+                    approval::preview(tool_name, args)
+                };
                 match mcp_target.and_then(|t| t.endpoint.as_deref()) {
                     Some(endpoint) => format!("MCP HTTP {endpoint}\n{arguments}"),
                     None => arguments,
@@ -2080,6 +2118,9 @@ impl Store {
             "evidence_version": 1,
             "safe_call_digest": safe_call_digest
         });
+        if let Some(snapshot) = save_snapshot {
+            evidence["save_snapshot"] = snapshot;
+        }
         if let Some(target) = mcp_target {
             evidence["mcp_target"] = serde_json::to_value(target)?;
         }
@@ -2420,6 +2461,13 @@ impl Store {
             current.execution_state == approval::ExecutionState::Claimed,
             "审批执行状态不是 claimed"
         );
+        if name == "computer_save_as" && change.is_some() {
+            anyhow::ensure!(
+                legacy_task_row(&tx, &task.id)?.status == "running",
+                "save interrupted before verification receipt"
+            );
+            crate::project_config::validate_task_tx(&tx, task, true, false)?;
+        }
         let value = serde_json::from_str::<Value>(result)
             .unwrap_or_else(|_| Value::String(result.to_owned()));
         let value = secrets::redact_persisted(&value);
@@ -2508,12 +2556,22 @@ impl Store {
                 affected += 1;
             }
         }
+        // A dispatched UI action may complete even after the host stops. Preserve
+        // its uncertain receipt instead of fabricating a cancellation/non-write.
         affected += tx.execute(
-            "UPDATE approvals SET execution_state='cancelled' WHERE execution_state IN ('claimed','unknown')",
+            "UPDATE approvals SET execution_state='unknown' WHERE tool_name='computer_save_as' AND execution_state='claimed'",
             [],
         )?;
         affected += tx.execute(
-            "UPDATE workspace_changes SET state='failed', finished_at=COALESCE(finished_at,?1) WHERE state IN ('prepared','unknown')",
+            "UPDATE approvals SET execution_state='cancelled' WHERE tool_name!='computer_save_as' AND execution_state IN ('claimed','unknown')",
+            [],
+        )?;
+        affected += tx.execute(
+            "UPDATE workspace_changes SET state='unknown', finished_at=COALESCE(finished_at,?1) WHERE state='prepared' AND EXISTS (SELECT 1 FROM approvals a WHERE a.task_id=workspace_changes.task_id AND a.tool_call_id=workspace_changes.tool_call_id AND a.tool_name='computer_save_as')",
+            [now()],
+        )?;
+        affected += tx.execute(
+            "UPDATE workspace_changes SET state='failed', finished_at=COALESCE(finished_at,?1) WHERE state IN ('prepared','unknown') AND NOT EXISTS (SELECT 1 FROM approvals a WHERE a.task_id=workspace_changes.task_id AND a.tool_call_id=workspace_changes.tool_call_id AND a.tool_name='computer_save_as')",
             [now()],
         )?;
         tx.execute(
@@ -3224,7 +3282,7 @@ fn validate_owned_result_events(messages: &[Value], events: &[Value]) -> Result<
                 .ok_or(ToolResultError::Corrupt)?;
             let valid_semantics = match event["origin"].as_str() {
                 Some("read_completed") => {
-                    is_readonly_file_tool(name) || crate::tool_results::is_computer(name)
+                    is_readonly_file_tool(name) || crate::tool_results::is_computer_read(name)
                 }
                 Some("agent_denied") => result == json!({"error":"blocked_by_agent_policy"}),
                 Some("host_denied") => result.is_string(),

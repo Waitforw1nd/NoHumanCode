@@ -49,3 +49,13 @@
 两条回归分别从 `coda jobs` 和聊天内 `/jobs` 发起 `continue` 与 `retry`。在独立 Windows 控制台中，等回环服务实际收到请求后发送 Ctrl+C。修复前，命令行退出时任务仍为 `running`，聊天则直接退出。修复后，已完成分支不重跑；已发出请求的分支在下次启动前已写回 `unknown`，普通 `continue` 不会重发；尚未派发的分支保持 `queued`。显式 `retry` 产生独立回执，聊天中断后可以接着执行 `/jobs show`。
 
 本地集成分支 Windows/MSVC `fmt`、`check`、`clippy`、`test` 均以 0 退出，229 通过、0 失败、1 项付费在线测试忽略。此记录不改变 Baseline 8 原始验收计数。
+
+## S6-T2 · 定向另存为
+
+这里的 **Computer Use** 是能力名称，不是一个名为 `use` 的 CLI 子命令。Coda 用 `coda computer watch` 做只读诊断；模型工具的写动作必须另行审批。目标是记事本另存为，不是通用鼠标、键盘或屏幕控制。[ADR-013](../ARCHITECTURE-DECISIONS.md)
+
+作为对照，[Kimi Code CLI 插件文档](https://moonshotai.github.io/kimi-code/en/customization/plugins.html#kimi-computer-use)直接使用 **Kimi Computer Use** 这个名称，由 `/plugins` 安装。Windows 插件可能临时占用真实键鼠。[OpenAI Computer Use 文档](https://learn.chatgpt.com/docs/computer-use)介绍的是桌面应用中的 Work/Codex 功能；[Codex CLI 0.172.0 命令入口](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/cli/src/main.rs)没有独立的 `codex computer use` 子命令。模型能看录屏、CLI 能跑 shell，都不能单独证明它能驱动桌面控件。
+
+**2026-11-26 Windows 集成验证（非桌面验收）：** `fmt`、`check`、`clippy -D warnings`、`test` 均以 0 退出，工作区测试 236 通过、0 失败、1 项付费在线测试忽略。引擎回环测试覆盖拒绝、越界、新文件冲突、已批准后的独立字节核对、恢复及撤销；其中记事本的写入动作由夹具模拟。另已从实际二进制验证 `computer --help`，并通过手动验收脚本的 `--check-host-only` 设置检查。
+
+**仍未验收：** 未切换的私有测试桌面不能让测试窗口取得前台，本轮未在用户桌面执行 UI 操作。不能据此声称适配了本机实际记事本版本或已完成真实保存。请在独占测试桌面按[真实记事本验收步骤](../../tests/manual/notepad_save_as.md)验证失焦未输入、新观察后的批准保存、`read_file` 和独立字节核对，完成后再登记新基线。

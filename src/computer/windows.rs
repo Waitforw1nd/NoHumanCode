@@ -1,9 +1,12 @@
+mod save;
+
 use super::WindowState;
 use anyhow::{Context, Result, ensure};
 use std::cell::OnceCell;
 use std::io;
 use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
 use std::ptr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, mpsc};
 use std::thread;
 use tokio::sync::watch;
@@ -22,17 +25,25 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 thread_local! {
     // Out-of-context WinEvents run on the thread that registered the hooks.
     static CHANGES: OnceCell<watch::Sender<u64>> = const { OnceCell::new() };
+    static FOCUS_EPOCH: OnceCell<Arc<AtomicU64>> = const { OnceCell::new() };
 }
 
 unsafe extern "system" fn window_event(
     _: HWINEVENTHOOK,
-    _: u32,
+    event: u32,
     _: HWND,
     _: i32,
     _: i32,
     _: u32,
     _: u32,
 ) {
+    if event == EVENT_SYSTEM_FOREGROUND {
+        FOCUS_EPOCH.with(|epoch| {
+            if let Some(epoch) = epoch.get() {
+                epoch.fetch_add(1, Ordering::Release);
+            }
+        });
+    }
     notify();
 }
 
@@ -78,6 +89,7 @@ pub(super) struct NativeTarget {
     stop: Arc<OwnedHandle>,
     worker: Option<thread::JoinHandle<()>>,
     changes: watch::Receiver<u64>,
+    focus_epoch: Arc<AtomicU64>,
 }
 
 fn owned_handle(raw: HANDLE) -> io::Result<OwnedHandle> {
@@ -88,6 +100,23 @@ fn owned_handle(raw: HANDLE) -> io::Result<OwnedHandle> {
 }
 
 impl NativeTarget {
+    pub(super) fn foreground_generation(&self) -> u64 {
+        self.focus_epoch.load(Ordering::Acquire)
+    }
+
+    pub(super) fn save_controls(&self, hwnd: usize) -> Result<Option<super::SaveControls>> {
+        save::observe(self, hwnd)
+    }
+
+    pub(super) fn save_as(
+        &self,
+        hwnd: usize,
+        controls: &super::SaveControls,
+        path: &std::path::Path,
+    ) -> Result<()> {
+        save::submit(self, hwnd, controls, path)
+    }
+
     pub(super) fn open(pid: u32) -> Result<Self> {
         // GetWindowTextW can synchronously dispatch WM_GETTEXT within our own process.
         ensure!(
@@ -104,6 +133,8 @@ impl NativeTarget {
         );
         let (sender, changes) = watch::channel(0);
         let (ready, installed) = mpsc::sync_channel(1);
+        let focus_epoch = Arc::new(AtomicU64::default());
+        let worker_epoch = focus_epoch.clone();
         let worker_stop = stop.clone();
         let worker_process = process.clone();
         let worker = thread::Builder::new()
@@ -126,6 +157,9 @@ impl NativeTarget {
                 CHANGES.with(|changes| {
                     let _ = changes.set(sender);
                 });
+                FOCUS_EPOCH.with(|epoch| {
+                    let _ = epoch.set(worker_epoch);
+                });
                 if ready.send(Ok(())).is_ok() {
                     pump_events(worker_stop.as_raw_handle(), worker_process.as_raw_handle());
                 }
@@ -139,6 +173,7 @@ impl NativeTarget {
             stop,
             worker: Some(worker),
             changes,
+            focus_epoch,
         })
     }
 

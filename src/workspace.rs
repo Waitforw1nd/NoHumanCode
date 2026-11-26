@@ -833,7 +833,53 @@ pub fn preview_file_mutation_full(
     scopes: &[String],
 ) -> Result<FileMutationPreview> {
     let relative = args["path"].as_str().context("缺少 path")?;
+    if name == "computer_save_as" {
+        ensure!(
+            args.as_object().is_some_and(|o| o.len() == 3)
+                && args["observation_ref"]
+                    .as_str()
+                    .is_some_and(|r| !r.trim().is_empty())
+                && args["expected_text"].is_string(),
+            "invalid computer_save_as arguments"
+        );
+        let (stem, ext) = relative
+            .rsplit_once('.')
+            .context("expected .txt filename")?;
+        ensure!(
+            ext.eq_ignore_ascii_case("txt")
+                && !stem.trim_matches([' ', '.']).is_empty()
+                && relative.trim() == relative
+                && !relative.contains(['/', '\\', '~', '%'])
+                && relative.encode_utf16().count() <= 255,
+            "expected a single literal .txt filename"
+        );
+        let device = stem
+            .split('.')
+            .next()
+            .unwrap_or("")
+            .trim_end()
+            .to_ascii_uppercase();
+        ensure!(
+            !matches!(
+                device.as_str(),
+                "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+            ) && !["COM", "LPT"]
+                .iter()
+                .any(|p| device
+                    .strip_prefix(p)
+                    .is_some_and(|n| matches!(n, "¹" | "²" | "³")
+                        || n.len() == 1 && n.as_bytes()[0].is_ascii_digit())),
+            "reserved device name"
+        );
+    }
     let (target, display_path, _) = change_target(root, relative, scopes)?;
+    if name == "computer_save_as" {
+        ensure!(
+            display_path == relative
+                && matches!(target.symlink_metadata(), Err(e) if e.kind() == std::io::ErrorKind::NotFound),
+            "save target must be new"
+        );
+    }
     let before = read_safe_file(&target)?;
     let before_str = match &before {
         Some(bytes) => std::str::from_utf8(bytes).context("原文件不是有效 UTF-8")?,
@@ -841,8 +887,17 @@ pub fn preview_file_mutation_full(
     };
 
     match name {
-        "write_file" => {
-            let content = args["content"].as_str().context("缺少 content")?;
+        "write_file" | "computer_save_as" => {
+            let field = if name == "computer_save_as" {
+                "expected_text"
+            } else {
+                "content"
+            };
+            ensure!(
+                name != "computer_save_as" || before.is_none(),
+                "save target already exists"
+            );
+            let content = args[field].as_str().context("缺少文件内容")?;
             ensure!(content.len() <= MAX_FILE_BYTES, "单个文件写入大于 4 MiB");
             let diff = bounded_diff(&display_path, before_str, content);
             Ok(FileMutationPreview {

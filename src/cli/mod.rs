@@ -32,7 +32,10 @@ pub enum Command {
     Ask(AskArgs),
     /// Submit and inspect durable read-only exploration jobs in a chat session.
     Jobs(jobs::JobsArgs),
-    /// Inspect the registered Windows application without contacting a model.
+    /// Windows Computer Use: read-only diagnostics for a registered application.
+    ///
+    /// `watch` observes foreground and dialog changes without contacting a model.
+    /// It does not click, type, or save files.
     Computer {
         #[command(subcommand)]
         command: computer::ComputerCommand,

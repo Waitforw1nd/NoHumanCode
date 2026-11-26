@@ -1,7 +1,7 @@
 //! Capability classification, write-scope policy checks, and one-shot tool-call approval records.
 
 use crate::{domain::scope_path, secrets};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -170,8 +170,8 @@ pub fn classify(tool_name: &str) -> ToolEffect {
     match tool_name {
         "list_files" | "glob_files" | "read_file" | "explore_files" | "explore_parallel"
         | "search_files" | "git_status" | "todo_write" | "todo_read" => ToolEffect::None,
-        name if crate::tool_results::is_computer(name) => ToolEffect::None,
-        "write_file" | "edit_file" => ToolEffect::WriteFs,
+        name if crate::tool_results::is_computer_read(name) => ToolEffect::None,
+        "write_file" | "edit_file" | "computer_save_as" => ToolEffect::WriteFs,
         "run_command" => ToolEffect::ExecCommand,
         _ => ToolEffect::Unknown,
     }
@@ -329,8 +329,19 @@ fn compact_diff_lines(diff: &str, max_lines: usize, max_chars: usize) -> String 
     truncate_chars(&redacted_text(&snippet), max_chars)
 }
 
+pub(crate) fn save_snapshot(target: &Path, args: &Value) -> Result<Value> {
+    Ok(serde_json::json!({
+        "path":args["path"], "absolute_path": target.to_str().context("non-UTF8 save target")?,
+        "before":"absent", "observation_ref":args["observation_ref"], "args_digest":args_digest(args)?
+    }))
+}
+
 pub fn preview(tool_name: &str, args: &Value) -> String {
     let text = match tool_name {
+        "computer_save_as" => format!(
+            "computer_save_as; expected text (read-only):\n{}",
+            truncate_chars(args["expected_text"].as_str().unwrap_or(""), 1024)
+        ),
         "write_file" => {
             let path = args["path"].as_str().unwrap_or("");
             let normalized = scope_path(path).unwrap_or_else(|_| "[invalid-path]".into());

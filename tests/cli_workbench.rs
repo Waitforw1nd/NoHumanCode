@@ -918,6 +918,14 @@ mod durable_workbench;
 fn computer_watch_without_registration_reports_configuration_error() {
     let workspace = tempfile::tempdir().unwrap();
     let bin = env!("CARGO_BIN_EXE_coda");
+    let group = Command::new(bin)
+        .args(["computer", "--help"])
+        .output()
+        .unwrap();
+    assert!(group.status.success());
+    let group_help = String::from_utf8_lossy(&group.stdout);
+    assert!(group_help.contains("Windows Computer Use"));
+    assert!(group_help.contains("does not click, type, or save files"));
     let help = Command::new(bin)
         .args(["computer", "watch", "--help"])
         .output()

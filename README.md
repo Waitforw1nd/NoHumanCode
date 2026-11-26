@@ -134,6 +134,8 @@ coda jobs --session $session continue $c.id
 
 ### 在 Windows 等待记事本的保存框
 
+`coda computer --help` 把这组命令称为 **Windows Computer Use**。其中 `coda computer watch` 是离线、只读的诊断入口：观察已登记应用是否在前台，等待窗口变化。它不发送鼠标或键盘输入，不保存文件，也不等于通用桌面控制。命令名是 `computer watch`，不是 `computer use`。
+
 在已登录的交互桌面打开记事本。用下面的命令查看有窗口的记事本进程，再把 `$targetPid` 换成自己要观察的 PID。以下示例在工作区根目录的 PowerShell 中执行。
 
 ```powershell
@@ -146,6 +148,12 @@ coda --workspace . --json computer watch --timeout-ms 60000
 `watch` 在本机逐行输出 JSON，无需模型凭据。在 60 秒内切到记事本、手动打开“另存为”、切走再切回，可观察 `target_foreground`、`dialog_foreground`、`outside_target` 的转换。超时、目标进程退出或 Ctrl+C 会结束观察。标准对话框由登记进程的前台窗口类识别；记事本版本若使用自绘或其他进程的窗口，以实际状态为准。
 
 使用同一环境启动 `coda chat`、`coda ask` 或 `coda serve`，允许工具的任务在匹配工作区可调用 `computer_observe` 和 `computer_wait`。例如让模型“调用 computer_wait，等我手动打开目标应用的标准对话框，超时 30000 毫秒，告诉我状态”。等待由 Host 处理。目标窗口的标题和类名会进入会话并发送给当前模型。切到其他进程只报告焦点离开。观察引用限当前 Host 和会话。结束后关闭启用该能力的 Host，并在 PowerShell 运行 `Remove-Item Env:CODA_COMPUTER_TARGET`。[本轮范围与后续控件方案](docs/sprints/SPRINT-06-windows-computer.md)
+
+#### 实验性：通过已登记的记事本另存为
+
+上述登记始终只读。要测试写入，请在**独占 Windows 测试桌面**为新启动的记事本登记 `"allow_save_as": true`，再启动 Host。任务还须有目标文件的写入范围和一次具体审批。这不是给整台电脑授予点击权限：只支持在可识别的英文或简体中文标准“另存为”对话框中，新建工作区根下的 `.txt` 文件；不操作覆盖提示。
+
+单看 `dialog_foreground` 不够。先让模型调用 `computer_observe`，只有 `save_as_available: true` 才能用这次的 `observation_ref` 请求 `computer_save_as`。`expected_text` 是供审批与读回核对的预期文本，不会被当作输入键入记事本。审批时如果切离目标，旧引用就失效；切回后必须重新观察。不要为保住焦点而启用全局自动审批。独立批准、拒绝失焦动作以及最后用 `read_file` 核对实际内容的完整步骤见[真实记事本验收](tests/manual/notepad_save_as.md)。
 
 ### 接入远程 MCP 工具
 

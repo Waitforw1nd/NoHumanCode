@@ -23,8 +23,12 @@ impl Origin {
     }
 }
 
-pub(crate) fn is_computer(name: &str) -> bool {
+pub(crate) fn is_computer_read(name: &str) -> bool {
     matches!(name, "computer_observe" | "computer_wait")
+}
+
+pub(crate) fn is_computer(name: &str) -> bool {
+    is_computer_read(name) || name == "computer_save_as"
 }
 
 pub(crate) fn is_exploration(name: &str) -> bool {
@@ -32,7 +36,7 @@ pub(crate) fn is_exploration(name: &str) -> bool {
 }
 
 pub(crate) fn interrupted_message(tool_name: &str) -> &'static str {
-    if is_computer(tool_name) {
+    if is_computer_read(tool_name) {
         "Desktop observation was interrupted. Request a new observation for the current state."
     } else if tool_name == "explore_parallel" {
         "Parallel exploration was interrupted before its results were recorded. Dispatched model requests may have incurred usage."

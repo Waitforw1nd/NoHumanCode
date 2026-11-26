@@ -11,7 +11,7 @@
 | **最新基线** | [Baseline 8](BASELINE-CHANGELOG.md)，本机验收的 S6-T1 累计补丁已固定为本地集成分支的提交 `1d5ea925`；上一基线为 `b55e04e5`。 |
 | **持久化版本** | SQLite v19，事件格式 v1。 |
 | **当前阶段** | **Stage 1.5：CLI 编程工作台旗舰体验打磨与运行时加固**（Desktop GUI 暂缓至 Stage 2） |
-| **当前迭代** | [S6-T1 Windows 桌面目标观察与事件等待](sprints/SPRINT-06-windows-computer.md#windows-本机验收) 已完成服务器回归、Windows/MSVC 门禁及真实记事本观察验收。保存写入与内容核验留待后续。 |
+| **当前迭代** | [S6-T2 定向另存为](sprints/SPRINT-06-windows-computer.md#s6-t2--定向另存为) 已通过本机自动化门禁（236 通过、0 失败、1 忽略）。真实记事本另存为与读回仍待独占 Windows 交互桌面验收；未登记新基线。 |
 | **Baseline 8 门禁** | Windows/MSVC 的 `fmt`、`check`、`clippy -D warnings` 和 `test` 均以 0 退出。默认测试 227 通过、0 失败、1 忽略。 |
 | **基线后修复（本地集成分支）** | `jobs continue/retry` 与聊天内对应命令已接通 Ctrl+C。含两条真实 Windows 控制台回归，四项门禁退出码为 0，229 通过、0 失败、1 忽略。 |
 

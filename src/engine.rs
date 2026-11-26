@@ -1906,7 +1906,18 @@ impl Engine {
             let mut available = self.tool_runtime.definitions(task)?;
             if self.tool_calls.computer_enabled(task) {
                 self.composition.projects.validate_task(task, true, false)?;
-                available.extend(crate::computer::definitions());
+                let writable = self
+                    .composition
+                    .computer
+                    .save_enabled_for(Path::new(&task.workspace))
+                    && available
+                        .iter()
+                        .any(|t| t["function"]["name"] == "write_file");
+                available.extend(
+                    crate::computer::definitions()
+                        .into_iter()
+                        .filter(|t| writable || t["function"]["name"] != "computer_save_as"),
+                );
             }
             let mut mcp_targets = HashMap::new();
             if task.spec.tools
@@ -2563,10 +2574,10 @@ pub(crate) fn agent_tool_class(name: Option<&str>) -> crate::agent_runtime::Tool
     use crate::agent_runtime::ToolClass;
     match name {
         Some("read_file" | "explore_files" | "explore_parallel" | "git_status") => ToolClass::Read,
-        Some(name) if crate::tool_results::is_computer(name) => ToolClass::Read,
+        Some(name) if crate::tool_results::is_computer_read(name) => ToolClass::Read,
         Some("list_files" | "glob_files") => ToolClass::List,
         Some("search_files") => ToolClass::Search,
-        Some("write_file" | "edit_file") => ToolClass::Write,
+        Some("write_file" | "edit_file" | "computer_save_as") => ToolClass::Write,
         Some("run_command") => ToolClass::Command,
         Some(n) if n.starts_with("mcp__") => ToolClass::Command,
         Some("todo_write" | "todo_read") => ToolClass::Other,

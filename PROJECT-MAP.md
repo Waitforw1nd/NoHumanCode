@@ -16,7 +16,7 @@
 | **数据目录与 Schema** | 默认本机数据目录 `%LOCALAPPDATA%\coda`（可通过 `CODA_DATA_DIR` 或 `--data-dir` 指定），SQLite 数据库 `coda.sqlite3`（WAL 模式，`SCHEMA_VERSION = 19`） |
 | **核心环境变量与配置** | `CODA_MODEL`、`CODA_DATA_DIR`、`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`。Host 可用 `CODA_KEY_POOLS` 为路由绑定备用凭据。本地 MCP 读取 `.mcp.json` 与 `.coda/mcp.json`，远程 MCP 读取 Host 的 `CODA_MCP_HTTP_SERVERS`。本地 HTTP 鉴权头为 `x-coda-token`。 |
 | **Rust 代码规模** | Host 与 CLI 位于 `src/`，共享协议位于 `crates/protocol/src/`，集成测试与夹具位于 `tests/` |
-| **质量门禁状态** | [Baseline 7](docs/BASELINE-CHANGELOG.md) 的 Windows/MSVC 格式、全目标编译、Clippy 和工作区测试均以 0 退出。默认测试 218 通过、0 失败、1 忽略。 |
+| **质量门禁状态** | [Baseline 8](docs/BASELINE-CHANGELOG.md)（S6-T1）Windows/MSVC 四项门禁通过，227 通过、0 失败、1 忽略。基线后的 Ctrl+C 修复见[项目看板](docs/PM-BOARD.md)。 |
 | **历史包袱清理与归档** | 旧子目录包装层、空壳 `crates/ui`、死代码 `src/wasm*`、伪插件金字塔与早期多角色文书均已从 `main` 清理；历史快照归档于分支 `archive/gpt-era-20261118`、`archive/old-c35-20261118`、`archive/u18-consolidated-20261118` |
 
 ### 1.2 顶层目录结构
@@ -118,7 +118,7 @@ flowchart TD
 | [init_route.rs](src/cli/init_route.rs) | 厂商预设、初始化和路由选择 | CLI |
 | [repl.rs](src/cli/repl.rs) | `chat`、`ask`、会话续接、流式渲染与审批 | CLI |
 | [src/cli/computer.rs](src/cli/computer.rs) | `coda computer watch` 离线观察已登记 Windows 进程的前台变化 | Sprint 06 |
-| [src/computer.rs](src/computer.rs)、[Windows 后端](src/computer/windows.rs) | Host 进程目标、会话观察引用、本地 WinEvent 等待和取消；CLI 与 HTTP Host 共用 | Sprint 06 |
+| [src/computer.rs](src/computer.rs)、[Windows 后端](src/computer/windows.rs) | 共享目标进程的观察与等待；实验性[记事本另存为适配](src/computer/windows/save.rs)按控件引用执行，需独立开关和文件写入审批 | Sprint 06 |
 | [mentions.rs](src/cli/mentions.rs) | 展开 `@file`、行号和目录引用 | CLI |
 | [http_admin.rs](src/cli/http_admin.rs) | 管理命令的本地 HTTP 客户端 | CLI |
 | [src/server.rs](src/server.rs) | Axum 本地 HTTP API 与 SSE 事件流服务、同源与 `x-coda-token` 鉴权 Guard、幂等回执重放及内嵌 `web/` 兜底路由 | 稳定契约 |

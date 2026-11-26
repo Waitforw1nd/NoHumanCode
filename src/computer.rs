@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail, ensure};
@@ -11,8 +11,16 @@ use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+mod save;
+pub(crate) use save::SaveNotDispatched;
 #[cfg(windows)]
 mod windows;
+
+#[derive(Clone, PartialEq, Eq)]
+pub(super) struct SaveControls {
+    pub(super) filename_id: Vec<i32>,
+    pub(super) save_id: Vec<i32>,
+}
 
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(not(any(windows, test)), allow(dead_code))]
@@ -30,6 +38,15 @@ pub(super) enum WindowState {
 trait Target: Send + Sync {
     fn snapshot(&self) -> Result<WindowState>;
     fn subscribe(&self) -> watch::Receiver<u64>;
+    fn focus_epoch(&self) -> u64 {
+        0
+    }
+    fn save_controls(&self, _hwnd: usize) -> Result<Option<SaveControls>> {
+        Ok(None)
+    }
+    fn save_as(&self, _hwnd: usize, _controls: &SaveControls, _path: &Path) -> Result<()> {
+        bail!("saving not supported for this target")
+    }
 }
 
 #[cfg(windows)]
@@ -40,26 +57,37 @@ impl Target for windows::NativeTarget {
     fn subscribe(&self) -> watch::Receiver<u64> {
         self.subscribe()
     }
+    fn focus_epoch(&self) -> u64 {
+        windows::NativeTarget::foreground_generation(self)
+    }
+    fn save_controls(&self, hwnd: usize) -> Result<Option<SaveControls>> {
+        windows::NativeTarget::save_controls(self, hwnd)
+    }
+    fn save_as(&self, hwnd: usize, controls: &SaveControls, path: &Path) -> Result<()> {
+        windows::NativeTarget::save_as(self, hwnd, controls, path)
+    }
 }
 
 struct Observation {
     session: String,
     reference: String,
     state: WindowState,
+    save: Option<(u64, SaveControls)>,
 }
 
 struct Registration {
     workspace: PathBuf,
+    allow_save_as: bool,
     target: Box<dyn Target>,
     observations: Mutex<VecDeque<Observation>>,
 }
 
 #[derive(Default)]
 pub struct ComputerService {
-    registration: Option<Registration>,
+    registration: Option<Arc<Registration>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum Condition {
     TargetForeground,
@@ -67,7 +95,7 @@ enum Condition {
     Changed,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Wait {
     condition: Condition,
@@ -97,6 +125,8 @@ impl ComputerService {
             struct Config {
                 workspace: PathBuf,
                 pid: u32,
+                #[serde(default)]
+                allow_save_as: bool,
             }
             let config: Config = serde_json::from_str(
                 raw.to_str()
@@ -117,16 +147,17 @@ impl ComputerService {
                 "registered workspace must be a directory"
             );
             Ok(Self {
-                registration: Some(Registration {
+                registration: Some(Arc::new(Registration {
                     workspace,
+                    allow_save_as: config.allow_save_as,
                     target: Box::new(windows::NativeTarget::open(config.pid)?),
                     observations: Mutex::default(),
-                }),
+                })),
             })
         }
     }
 
-    fn for_workspace(&self, workspace: &Path) -> Option<&Registration> {
+    fn for_workspace(&self, workspace: &Path) -> Option<&Arc<Registration>> {
         let registration = self.registration.as_ref()?;
         if workspace.is_absolute() && workspace.canonicalize().ok()? == registration.workspace {
             Some(registration)
@@ -137,6 +168,11 @@ impl ComputerService {
 
     pub(crate) fn enabled_for(&self, workspace: &Path) -> bool {
         self.for_workspace(workspace).is_some()
+    }
+
+    pub(crate) fn save_enabled_for(&self, workspace: &Path) -> bool {
+        self.for_workspace(workspace)
+            .is_some_and(|r| r.allow_save_as)
     }
 
     pub async fn execute(
@@ -183,20 +219,51 @@ impl ComputerService {
         loop {
             // Mark events seen before sampling. An event during snapshot stays pending.
             events.borrow_and_update();
-            {
+            let reg = Arc::clone(reg);
+            let session = session.to_owned();
+            let wait = wait.clone();
+            let read_cancel = cancel.clone();
+            let observed = tokio::task::spawn_blocking(move || -> Result<Option<Value>> {
                 let mut history = reg
                     .observations
                     .lock()
                     .expect("computer observations poisoned");
+                ensure!(
+                    !read_cancel.is_cancelled(),
+                    "computer observation cancelled"
+                );
+                let generation = reg.target.focus_epoch();
                 let state = reg.target.snapshot()?;
-                ensure!(!cancel.is_cancelled(), "computer observation cancelled");
                 let outcome = match &wait {
-                    Some(wait) => wait.outcome(session, &history, &state, deadline)?,
+                    Some(wait) => wait.outcome(&session, &history, &state, deadline)?,
                     None => None,
                 };
                 if wait.is_none() || outcome.is_some() {
-                    return Ok(publish(session, state, outcome, &mut history));
+                    let save = match state {
+                        WindowState::Target {
+                            hwnd, dialog: true, ..
+                        } if reg.allow_save_as => reg
+                            .target
+                            // UIA unavailability disables save, not read-only observation.
+                            .save_controls(hwnd)
+                            .ok()
+                            .flatten()
+                            .filter(|_| reg.target.focus_epoch() == generation)
+                            .map(|controls| (generation, controls)),
+                        _ => None,
+                    };
+                    ensure!(
+                        !read_cancel.is_cancelled(),
+                        "computer observation cancelled"
+                    );
+                    return Ok(Some(publish(&session, state, save, outcome, &mut history)));
                 }
+                Ok(None)
+            });
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => bail!("computer observation cancelled"),
+                result = observed => if let Some(result) = result?? { return Ok(result); }
             }
             tokio::select! {
                 biased;
@@ -245,6 +312,7 @@ impl Wait {
 fn publish(
     session: &str,
     state: WindowState,
+    save: Option<(u64, SaveControls)>,
     outcome: Option<&str>,
     history: &mut VecDeque<Observation>,
 ) -> Value {
@@ -264,6 +332,9 @@ fn publish(
         }),
     };
     result["observation_ref"] = json!(reference);
+    if save.is_some() {
+        result["save_as_available"] = json!(true);
+    }
     if let Some(outcome) = outcome {
         result["outcome"] = json!(outcome);
     }
@@ -275,6 +346,7 @@ fn publish(
         session: session.to_owned(),
         reference,
         state,
+        save,
     });
     result
 }
@@ -289,7 +361,7 @@ pub(crate) fn definitions() -> Vec<Value> {
     vec![
         tool(
             "computer_observe",
-            "Read the registered application's current foreground state. Returns its title and class only while it is foreground, plus an observation_ref for the next wait.",
+            "Read the registered application's current foreground state. Returns its title and class only while it is foreground, plus an observation_ref for the next wait. Only save_as_available:true permits requesting approval to save.",
             json!({}),
             json!([]),
         ),
@@ -302,6 +374,16 @@ pub(crate) fn definitions() -> Vec<Value> {
                 "observation_ref":{"type":"string","description":"Required only for changed."}
             }),
             json!(["condition"]),
+        ),
+        tool(
+            "computer_save_as",
+            "Request approval to save the current document using the observed Save As dialog. Creates a new, explicitly named .txt file directly in the workspace; never overwrites. expected_text is for approval and read-only verification, not text to type.",
+            json!({
+                "observation_ref":{"type":"string","minLength":1,"description":"Latest observation_ref with save_as_available:true from this session."},
+                "path":{"type":"string","minLength":1,"description":"A single new .txt filename in the workspace root."},
+                "expected_text":{"type":"string","description":"Exact expected document text for read-only verification."}
+            }),
+            json!(["observation_ref", "path", "expected_text"]),
         ),
     ]
 }
@@ -359,11 +441,12 @@ mod tests {
             events: watch::channel(0).0,
         });
         let svc = ComputerService {
-            registration: Some(Registration {
+            registration: Some(Arc::new(Registration {
                 workspace: workspace.canonicalize().unwrap(),
+                allow_save_as: true,
                 target: Box::new(fake.clone()),
                 observations: Mutex::default(),
-            }),
+            })),
         };
         (svc, fake)
     }
@@ -376,12 +459,11 @@ mod tests {
         let cancel = CancellationToken::new();
         let args = json!({"condition":"dialog_foreground","timeout_ms":5000});
         for _ in 0..2 {
-            let mut call = Box::pin(svc.execute("a", root.path(), "computer_wait", &args, &cancel));
-            // Both the racing event and the subsequent level check complete without yielding.
-            let std::task::Poll::Ready(result) = futures_util::poll!(&mut call) else {
-                panic!("foreground event was missed");
-            };
-            let result = result.unwrap();
+            let call = svc.execute("a", root.path(), "computer_wait", &args, &cancel);
+            let result = tokio::time::timeout(Duration::from_secs(2), call)
+                .await
+                .unwrap()
+                .unwrap();
             assert_eq!(result["outcome"], "matched");
             assert_eq!(result["state"], "dialog_foreground");
             assert!(result.get("hwnd").is_none());
@@ -463,7 +545,9 @@ mod tests {
         }
         let root = tempfile::tempdir().unwrap();
         let mut service = ComputerService::fixture(root.path());
-        service.registration.as_mut().unwrap().target = Box::new(Disconnected);
+        Arc::get_mut(service.registration.as_mut().unwrap())
+            .unwrap()
+            .target = Box::new(Disconnected);
         let cancel = CancellationToken::new();
         for args in [
             json!({"condition":"changed"}),
