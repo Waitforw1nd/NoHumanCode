@@ -64,7 +64,6 @@ async fn execute(
         bail!("当前聊天回合没有唯一的主任务")
     };
     let parent = &parent.legacy_task_id;
-    let cancel = CancellationToken::new();
     let result = match command {
         JobsCommand::List => json!(engine.exploration_jobs(parent)?),
         JobsCommand::Submit { key, file } => {
@@ -76,30 +75,38 @@ async fn execute(
             let input: Value = serde_json::from_slice(utf8).context("批次文件 JSON 无效")?;
             json!(engine.submit_exploration(parent, &key, &input)?)
         }
-        JobsCommand::Retry { id } => {
-            json!(
-                engine
-                    .continue_exploration(parent, &id, true, &cancel)
-                    .await?
-            )
-        }
         JobsCommand::Show { id } if id.starts_with("batch-") => {
             json!(engine.exploration_batch(parent, &id)?)
         }
         JobsCommand::Show { id } => json!(engine.exploration_job(parent, &id)?),
-        JobsCommand::Continue { id } if id.starts_with("batch-") => {
-            json!(
-                engine
-                    .continue_exploration_batch(parent, &id, &cancel)
-                    .await?
-            )
-        }
-        JobsCommand::Continue { id } => {
-            json!(
-                engine
-                    .continue_exploration(parent, &id, false, &cancel)
-                    .await?
-            )
+        JobsCommand::Continue { ref id } | JobsCommand::Retry { ref id } => {
+            let retry = matches!(command, JobsCommand::Retry { .. });
+            let cancel = CancellationToken::new();
+            let work = async {
+                if !retry && id.starts_with("batch-") {
+                    engine
+                        .continue_exploration_batch(parent, id, &cancel)
+                        .await
+                        .map(|batch| json!(batch))
+                } else {
+                    engine
+                        .continue_exploration(parent, id, retry, &cancel)
+                        .await
+                        .map(|job| json!(job))
+                }
+            };
+            tokio::pin!(work);
+            tokio::select! {
+                // Arm the listener before the engine can claim or dispatch work.
+                biased;
+                signal = tokio::signal::ctrl_c() => {
+                    signal.context("无法监听 Ctrl+C")?;
+                    cancel.cancel();
+                    // Let the engine settle the attempt and project its receipts.
+                    work.await
+                }
+                result = &mut work => result,
+            }?
         }
     };
     if json_output {

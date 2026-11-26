@@ -96,6 +96,7 @@ impl Engine {
     ) -> Result<ExplorationJob> {
         let session = self.exploration_job(parent_task_id, id)?.session_id;
         if retry {
+            ensure!(!cancel.is_cancelled(), "任务已停止");
             self.store.retry_exploration(&session, id)?;
         }
         self.drive_jobs(&session, &[id.to_owned()], cancel).await?;

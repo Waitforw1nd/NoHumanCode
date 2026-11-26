@@ -1172,7 +1172,7 @@ pub(super) async fn run_chat(
                 print!("\n\x1b[1;32mcoda>\x1b[0m ");
                 let _ = io::stdout().flush();
             }
-            let maybe_line = tokio::task::spawn_blocking(move || {
+            let read = tokio::task::spawn_blocking(move || {
                 let stdin = io::stdin();
                 let mut lock = stdin.lock();
                 read_repl_input(&mut lock, || {
@@ -1181,9 +1181,21 @@ pub(super) async fn run_chat(
                         let _ = io::stdout().flush();
                     }
                 })
-            })
-            .await
-            .unwrap_or(None);
+            });
+            // On Unix, Tokio's first Ctrl+C listener replaces the default SIGINT
+            // action for the process lifetime. Keep idle Ctrl+C usable after a
+            // /jobs command. Do not race a chat turn or slash command for input:
+            // if interrupted here we leave the REPL, never start another reader.
+            #[cfg(unix)]
+            let maybe_line = tokio::select! {
+                signal = tokio::signal::ctrl_c() => {
+                    signal.map_err(|e| Failure::custom("signal_error", e.to_string()))?;
+                    break;
+                }
+                line = read => line.unwrap_or(None),
+            };
+            #[cfg(not(unix))]
+            let maybe_line = read.await.unwrap_or(None);
 
             let Some(raw_line) = maybe_line else {
                 break;

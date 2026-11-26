@@ -3,6 +3,10 @@ use rusqlite::{Connection, OpenFlags};
 use std::{path::Path, process::Stdio, time::Duration};
 use tokio::process::Command as AsyncCommand;
 
+#[cfg(windows)]
+#[path = "durable_ctrl_c.rs"]
+mod ctrl_c;
+
 const TOOL_CALL: &str = "crash-explore";
 const FIRST: &str = "Inspect the committed branch";
 const SLOW: &str = "Inspect the interrupted branch";

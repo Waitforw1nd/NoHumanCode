@@ -104,6 +104,8 @@ coda ask "请用 explore_parallel 在 src/mcp 中检索 invalid_grant，在 test
 
 在 `coda chat` 输入 `/jobs` 可列出当前会话的子任务。`/jobs show <子任务ID>` 可以查看状态、摘要、行号与发送回执。重开同一数据目录和工作区后，`/resume <会话ID>` 还可以找回这些记录。已完成和无命中的分支直接复用。排队分支的 `blocked_by` 会列出仍在等待的前置 ID 及状态。如果状态为 `unknown`，请求可能已产生用量，可查看回执后用 `/jobs retry <子任务ID>` 显式发起新尝试。
 
+`coda jobs continue`、`coda jobs retry` 和聊天内对应的 `/jobs` 命令在执行中支持 Ctrl+C。中断会停止后续派发，等待当前尝试写回状态；聊天内会返回提示符。用 `jobs show` 或 `/jobs show` 核对回执：普通 `continue` 不会重发结果未知的请求，也不会重跑已完成的分支。
+
 脚本也可以先提交批次，再决定何时运行。下面在仓库根目录执行；将 `$session` 换成 `/sessions` 显示的完整会话 ID，使用自定义数据目录时给每次调用加上相同的全局 `--data-dir`。
 
 ```powershell

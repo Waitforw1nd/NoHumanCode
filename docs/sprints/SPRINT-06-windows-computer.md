@@ -9,7 +9,7 @@
 | Host 无法判断目标窗口是否仍在前台，工具也无法等待对话框 | 先实现 `computer_observe` 和 `computer_wait`，用 `coda computer watch` 在交互桌面离线验收。 |
 | 控件操作尚无可复核的引用和动作回执 | 下一片在已观测的目标上引入 UI Automation 控件引用与审批。 |
 | 截图缺少经过模型适配层的图片通道 | 自绘应用的视觉覆盖单独实施，先验证三种模型协议发送的是图片。 |
-| `coda jobs continue/retry` 及聊天内 `/jobs` 创建了取消令牌，尚未把 Ctrl+C 接到该令牌 | 独立的 CLI 修复候选，可利用已有的子任务回执与取消测试验证。 |
+| `coda jobs continue/retry` 及聊天内 `/jobs` 原先创建了取消令牌，但未接入 Ctrl+C | 在 S6-T1 验收快照之后单独修复：中断后等待当前尝试写回，保留回执，未派发分支留待续跑。见[真实 Windows 控制台回归](../../tests/support/durable_ctrl_c.rs)。 |
 
 ### 本轮使用契约
 
@@ -43,3 +43,9 @@
 | `watch-032130737/observations.jsonl` | 从 `outside_target` 切入 `Notepad` 主窗，随后匹配 `dialog_foreground`（类 `#32770`）。两次离开对话框再切回，每次切回都有新的观察引用；之后回到主窗、失焦，最终收到 `target_exited`。 |
 
 两轮 `watch` 的退出码均为 0；失焦记录都不含标题或窗类。`#32770` 仅表明观察到目标进程的标准对话框，不能据此认定其用途或保存结果。本轮只验收观察与等待，未执行控件输入、保存写入或读回文件核对内容。
+
+### 基线后 CLI 修复：在探索任务中按 Ctrl+C（2026-11-26）
+
+两条回归分别从 `coda jobs` 和聊天内 `/jobs` 发起 `continue` 与 `retry`。在独立 Windows 控制台中，等回环服务实际收到请求后发送 Ctrl+C。修复前，命令行退出时任务仍为 `running`，聊天则直接退出。修复后，已完成分支不重跑；已发出请求的分支在下次启动前已写回 `unknown`，普通 `continue` 不会重发；尚未派发的分支保持 `queued`。显式 `retry` 产生独立回执，聊天中断后可以接着执行 `/jobs show`。
+
+本地集成分支 Windows/MSVC `fmt`、`check`、`clippy`、`test` 均以 0 退出，229 通过、0 失败、1 项付费在线测试忽略。此记录不改变 Baseline 8 原始验收计数。
