@@ -30,7 +30,7 @@ fn is_authorized_mcp_tool(task: &Task, name: &str) -> bool {
 }
 
 fn is_known_task_tool(task: &Task, name: &str) -> bool {
-    if crate::tool_results::is_exploration(name) {
+    if crate::tool_results::is_exploration(name) || crate::tool_results::is_computer(name) {
         return task.spec.tools;
     }
     crate::workspace::definitions(task)
@@ -736,7 +736,14 @@ impl Store {
             return Err(ToolResultError::Conflict.into());
         }
         let valid = match origin {
-            Origin::ReadCompleted => record.is_none() && is_readonly_file_tool(name),
+            Origin::ReadCompleted => {
+                if crate::tool_results::is_computer(name) {
+                    crate::project_config::validate_task_tx(&tx, &durable, true, false)?;
+                    durable.status == "running" && record.is_none()
+                } else {
+                    record.is_none() && is_readonly_file_tool(name)
+                }
+            }
             Origin::AgentDenied => {
                 record.is_none() && result == json!({"error":"blocked_by_agent_policy"})
             }
@@ -3216,7 +3223,9 @@ fn validate_owned_result_events(messages: &[Value], events: &[Value]) -> Result<
                 .as_str()
                 .ok_or(ToolResultError::Corrupt)?;
             let valid_semantics = match event["origin"].as_str() {
-                Some("read_completed") => is_readonly_file_tool(name),
+                Some("read_completed") => {
+                    is_readonly_file_tool(name) || crate::tool_results::is_computer(name)
+                }
                 Some("agent_denied") => result == json!({"error":"blocked_by_agent_policy"}),
                 Some("host_denied") => result.is_string(),
                 Some("approval_denied") => {

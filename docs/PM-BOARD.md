@@ -8,17 +8,17 @@
 
 | 指标 | 状态 |
 | :--- | :--- |
-| **最新基线** | [Baseline 6](BASELINE-CHANGELOG.md)，以 `baseline-1`（`7e9f36d4`）加通过 Windows 验收的 S5-T1 累计补丁定位。 |
-| **持久化版本** | Baseline 6 为 SQLite v18；S5-T2 工作区升级至 v19，事件格式仍为 v1。 |
+| **最新基线** | [Baseline 7](BASELINE-CHANGELOG.md)，验收版本为 `baseline-1`（`7e9f36d4`）加 S5-T2 累计补丁。 |
+| **持久化版本** | SQLite v19，事件格式 v1。 |
 | **当前阶段** | **Stage 1.5：CLI 编程工作台旗舰体验打磨与运行时加固**（Desktop GUI 暂缓至 Stage 2） |
-| **当前迭代** | S5-T1 并行检索已验收。下一项 [S5-T2 独立子任务持久化与跨批次编排](sprints/SPRINT-05-parallel-exploration.md#s5-t2) 已实现，等待 Windows/MSVC 本机验收。 |
-| **Baseline 6 门禁** | Windows/MSVC 的 `fmt`、`check`、`clippy -D warnings` 和 `test` 均以 0 退出。 |
+| **当前迭代** | [S6-T1 Windows 桌面目标观察与事件等待](sprints/SPRINT-06-windows-computer.md) 已完成服务器回归，待 Windows/MSVC 和真实记事本验收。 |
+| **Baseline 7 门禁** | Windows/MSVC 的 `fmt`、`check`、`clippy -D warnings` 和 `test` 均以 0 退出。默认测试 218 通过、0 失败、1 忽略。 |
 
 ---
 
 ## 2. 最近工单
 
-当前交接见 [S5-T2 验收记录](sprints/SPRINT-05-parallel-exploration.md#验收记录)，上次原生验收见 [S5-T1](sprints/SPRINT-05-parallel-exploration.md#服务器验证与-windows-本机验收)。历轮交付见 [Sprint 04](sprints/SPRINT-04-mcp-oauth.md)、[Sprint 03](sprints/SPRINT-03-readonly-exploration.md)、[Sprint 02](sprints/SPRINT-02-runtime-and-cli.md) 和 [Sprint 01](sprints/SPRINT-01-zero-init-and-repl-ux.md)。
+上一轮交付见 [S5-T2 验收记录](sprints/SPRINT-05-parallel-exploration.md#验收记录)，上次原生验收见 [S5-T1](sprints/SPRINT-05-parallel-exploration.md#服务器验证与-windows-本机验收)。历轮交付见 [Sprint 04](sprints/SPRINT-04-mcp-oauth.md)、[Sprint 03](sprints/SPRINT-03-readonly-exploration.md)、[Sprint 02](sprints/SPRINT-02-runtime-and-cli.md) 和 [Sprint 01](sprints/SPRINT-01-zero-init-and-repl-ux.md)。
 
 | 工单 | 负责组 | 交付内容 |
 | --- | --- | --- |
@@ -31,6 +31,6 @@
 
 ## 3. 中长期迭代路线图队列 (Product Backlog)
 
-- **S5-T2 待本机验收**。Windows/MSVC 四项门禁通过后登记下一条基线。[实施顺序与验收场景](sprints/SPRINT-05-parallel-exploration.md#s5-t2)
+- Windows Computer 后续按控件定向操作、记事本保存核验、图片通道分片推进。[范围和验收设计](sprints/SPRINT-06-windows-computer.md)
 - **Stage 2 储备：原生桌面审阅工作台 (Desktop GUI)**
   - 待 Stage 1.5 CLI 核心与协议事件全部稳固后，基于 `coda-protocol` 与 `coda serve` 启动多文件 Diff 审阅界面。

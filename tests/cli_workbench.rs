@@ -913,3 +913,33 @@ mod parallel_workbench;
 
 #[path = "support/durable_workbench.rs"]
 mod durable_workbench;
+
+#[test]
+fn computer_watch_without_registration_reports_configuration_error() {
+    let workspace = tempfile::tempdir().unwrap();
+    let bin = env!("CARGO_BIN_EXE_coda");
+    let help = Command::new(bin)
+        .args(["computer", "watch", "--help"])
+        .output()
+        .unwrap();
+    assert!(help.status.success());
+    assert!(String::from_utf8_lossy(&help.stdout).contains("--timeout-ms"));
+
+    let output = Command::new(bin)
+        .env_remove("CODA_COMPUTER_TARGET")
+        .args(["--json", "--workspace"])
+        .arg(workspace.path())
+        .args(["computer", "watch", "--timeout-ms", "1"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let error: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(error["code"], "computer_watch_error");
+    assert!(
+        error["message"]
+            .as_str()
+            .unwrap()
+            .contains("no computer target registered")
+    );
+}

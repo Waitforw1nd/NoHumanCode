@@ -182,6 +182,7 @@ impl Engine {
             composition.approval.clone(),
             tool_runtime.clone(),
             composition.workspace.clone(),
+            composition.computer.clone(),
         );
         let shutdown_requested = composition.workspace.stopping.clone();
         Ok(Arc::new(Self {
@@ -1903,6 +1904,10 @@ impl Engine {
         for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let mut available = self.tool_runtime.definitions(task)?;
+            if self.tool_calls.computer_enabled(task) {
+                self.composition.projects.validate_task(task, true, false)?;
+                available.extend(crate::computer::definitions());
+            }
             let mut mcp_targets = HashMap::new();
             if task.spec.tools
                 && self
@@ -2077,6 +2082,13 @@ impl Engine {
                     {
                         slot.release();
                         self.explore_parallel(task, call_id, &args, &keys, cancel)
+                            .await?;
+                        slot = self.task_slot(cancel).await?;
+                    }
+                    crate::agent_runtime::ToolVote::ApplyHostPolicy if name == "computer_wait" => {
+                        slot.release();
+                        self.tool_calls
+                            .execute_or_wait(task, call, name, &args, &keys, cancel, None)
                             .await?;
                         slot = self.task_slot(cancel).await?;
                     }
@@ -2551,6 +2563,7 @@ pub(crate) fn agent_tool_class(name: Option<&str>) -> crate::agent_runtime::Tool
     use crate::agent_runtime::ToolClass;
     match name {
         Some("read_file" | "explore_files" | "explore_parallel" | "git_status") => ToolClass::Read,
+        Some(name) if crate::tool_results::is_computer(name) => ToolClass::Read,
         Some("list_files" | "glob_files") => ToolClass::List,
         Some("search_files") => ToolClass::Search,
         Some("write_file" | "edit_file") => ToolClass::Write,
@@ -2990,6 +3003,9 @@ fn summarize_compacted_units(units: &[Vec<Value>]) -> String {
     );
     summary
 }
+
+#[cfg(all(test, windows))]
+mod computer_tests;
 
 #[cfg(test)]
 mod tests {

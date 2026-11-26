@@ -142,6 +142,7 @@ fn truncate_value_strings(value: Value, keys: &secrets::CredentialSet) -> Value 
 }
 
 pub(crate) struct ToolCallApplication {
+    computer: Arc<crate::computer::ComputerService>,
     pub(crate) mcp: crate::mcp::McpPool,
     store: Arc<Store>,
     project: Arc<crate::host_services::ProjectService>,
@@ -158,8 +159,10 @@ impl ToolCallApplication {
         approval: Arc<crate::host_services::ApprovalService>,
         tool_runtime: Arc<ToolRuntime>,
         workspace: Arc<crate::host_services::WorkspaceSafety>,
+        computer: Arc<crate::computer::ComputerService>,
     ) -> Self {
         Self {
+            computer,
             mcp: crate::mcp::McpPool::with_store(store.clone()),
             store,
             project,
@@ -168,6 +171,13 @@ impl ToolCallApplication {
             workspace,
             approval_waiters: Mutex::new(HashMap::new()),
         }
+    }
+
+    pub(crate) fn computer_enabled(&self, task: &Task) -> bool {
+        task.spec.tools
+            && self
+                .computer
+                .enabled_for(std::path::Path::new(&task.workspace))
     }
 
     pub(crate) fn decide_approval_with_network_ack(
@@ -332,6 +342,41 @@ impl ToolCallApplication {
             return Err(ProjectError::OperationUnsupported.into());
         }
         self.project.validate_task(task, true, false)?;
+        if crate::tool_results::is_computer(name) {
+            ensure!(self.computer_enabled(task), "当前工作区未授权使用桌面工具");
+            ensure!(
+                !cancel.is_cancelled() && self.store.task(&task.id)?.status == "running",
+                "任务已停止"
+            );
+            self.store.event(
+                &task.id,
+                "tool_start",
+                json!({"name":name,"tool_call_id":tool_call_id}),
+            )?;
+            let result = self
+                .computer
+                .execute(
+                    &task.run_id,
+                    std::path::Path::new(&task.workspace),
+                    name,
+                    args,
+                    cancel,
+                )
+                .await;
+            ensure!(!cancel.is_cancelled(), "任务已停止");
+            let result = match result {
+                Ok(value) => truncate_tool_value(value, keys),
+                Err(error) => json!({"error": truncate_tool_text(&keys.scrub(&error.to_string()))}),
+            };
+            return self.record_tool_result(
+                task,
+                tool_call_id,
+                name,
+                &result.to_string(),
+                keys,
+                Origin::ReadCompleted,
+            );
+        }
         if name.starts_with("mcp__") {
             ensure!(
                 crate::mcp::is_valid_qualified_name(name)

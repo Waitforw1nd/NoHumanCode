@@ -61,4 +61,4 @@ SQLite v19 将每个分支的检索参数、结果、证据和序号独立落盘
 
 真实 CLI 测试在 A 完成、B 已派发且父结果尚未写入时强杀进程。重开后继续批次，上游新增请求为 0；随后 C 使用 A 的摘要，显式重试 B 获得新回执，原父任务恢复后只写入一次工具结果。单全局名额的并发继续测试核对了发送数、预算回执和父任务用量，并验证失败的旁支只阻塞引用它的任务。[真实 CLI 恢复](../../tests/support/durable_workbench.rs) · [Engine 跨批次编排](../../tests/support/durable_exploration.rs)
 
-Windows/MSVC 本机四项门禁待验收，最近一次已验收的版本为 [Baseline 6](../BASELINE-CHANGELOG.md)。
+Windows/MSVC 原生验收已通过。用户核对了累计补丁 SHA-256，在独立 worktree 中运行 `build.ps1` 的 `fmt`、`check`、`clippy`、`test`，四项退出码均为 0。默认套件 218 通过、0 失败、1 忽略，唯一忽略项为付费在线测试 `coda_live_stream_and_coding_tool`。验收版本及本机日志位置见 [Baseline 7](../BASELINE-CHANGELOG.md)。

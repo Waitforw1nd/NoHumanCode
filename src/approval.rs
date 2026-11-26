@@ -170,6 +170,7 @@ pub fn classify(tool_name: &str) -> ToolEffect {
     match tool_name {
         "list_files" | "glob_files" | "read_file" | "explore_files" | "explore_parallel"
         | "search_files" | "git_status" | "todo_write" | "todo_read" => ToolEffect::None,
+        name if crate::tool_results::is_computer(name) => ToolEffect::None,
         "write_file" | "edit_file" => ToolEffect::WriteFs,
         "run_command" => ToolEffect::ExecCommand,
         _ => ToolEffect::Unknown,
@@ -184,6 +185,11 @@ pub fn within_write_scopes(path: &str, scopes: &[String]) -> bool {
 }
 
 pub fn evaluate(task: &crate::domain::Task, tool_name: &str) -> PolicyDecision {
+    if crate::tool_results::is_computer(tool_name) && !task.spec.tools {
+        return PolicyDecision::Deny {
+            reason: "当前任务未授权使用桌面工具",
+        };
+    }
     match classify(tool_name) {
         ToolEffect::None => PolicyDecision::Allow,
         ToolEffect::WriteFs => {

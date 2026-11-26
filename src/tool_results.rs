@@ -23,12 +23,18 @@ impl Origin {
     }
 }
 
+pub(crate) fn is_computer(name: &str) -> bool {
+    matches!(name, "computer_observe" | "computer_wait")
+}
+
 pub(crate) fn is_exploration(name: &str) -> bool {
     matches!(name, "explore_files" | "explore_parallel")
 }
 
 pub(crate) fn interrupted_message(tool_name: &str) -> &'static str {
-    if tool_name == "explore_parallel" {
+    if is_computer(tool_name) {
+        "Desktop observation was interrupted. Request a new observation for the current state."
+    } else if tool_name == "explore_parallel" {
         "Parallel exploration was interrupted before its results were recorded. Dispatched model requests may have incurred usage."
     } else if tool_name == "explore_files" {
         "Exploration was interrupted before its summary was recorded. The model request may have incurred usage."

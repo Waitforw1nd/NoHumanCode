@@ -1,5 +1,6 @@
 //! CLI argument definitions, validation, and local workbench dispatch.
 
+mod computer;
 mod http_admin;
 mod init_route;
 mod jobs;
@@ -31,6 +32,11 @@ pub enum Command {
     Ask(AskArgs),
     /// Submit and inspect durable read-only exploration jobs in a chat session.
     Jobs(jobs::JobsArgs),
+    /// Inspect the registered Windows application without contacting a model.
+    Computer {
+        #[command(subcommand)]
+        command: computer::ComputerCommand,
+    },
     /// Manage registered remote MCP servers.
     Mcp {
         #[command(subcommand)]
@@ -903,7 +909,12 @@ impl Command {
     pub fn is_local_workbench(&self) -> bool {
         matches!(
             self,
-            Self::Init(_) | Self::Chat(_) | Self::Ask(_) | Self::Jobs(_) | Self::Mcp { .. }
+            Self::Init(_)
+                | Self::Chat(_)
+                | Self::Ask(_)
+                | Self::Jobs(_)
+                | Self::Computer { .. }
+                | Self::Mcp { .. }
         )
     }
 
@@ -916,6 +927,7 @@ impl Command {
                     && (1..=8).contains(&args.parallel_limit)
             }
             Self::Jobs(args) => valid_id(&args.session),
+            Self::Computer { .. } => true,
             Self::Chat(args) => {
                 args.route.as_deref().is_none_or(host_route_id_valid)
                     && args
@@ -1225,6 +1237,7 @@ pub async fn execute_local(
 ) -> Result<(), Failure> {
     enable_windows_ansi();
     match command {
+        Command::Computer { command } => computer::run(command, top_workspace, json_output).await,
         Command::Mcp {
             command:
                 McpCommand::Login {

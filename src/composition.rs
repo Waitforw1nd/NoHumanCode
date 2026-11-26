@@ -10,6 +10,7 @@ pub(crate) struct HostComposition {
     pub(crate) store: Arc<Store>,
     pub(crate) gate: Arc<AsyncMutex<()>>,
     pub(crate) active: Arc<Mutex<HashMap<String, Active>>>,
+    pub(crate) computer: Arc<crate::computer::ComputerService>,
     pub(crate) tools: Arc<ToolRuntime>,
     pub(crate) provider: Arc<crate::provider_runtime::ProviderRuntime>,
     pub(crate) agent: Arc<crate::agent_runtime::AgentRuntime>,
@@ -66,6 +67,12 @@ impl HostComposition {
             store,
             gate,
             active,
+            computer: Arc::new(crate::computer::ComputerService::from_env().unwrap_or_else(
+                |error| {
+                    eprintln!("coda: Windows 桌面工具未启用：{error}");
+                    Default::default()
+                },
+            )),
             tools: Arc::new(tools),
             provider: Arc::new(provider),
             agent: Arc::new(agent),

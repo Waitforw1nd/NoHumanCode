@@ -7,6 +7,7 @@ pub mod budget;
 pub mod checkpoint;
 mod command_execution;
 mod composition;
+pub mod computer;
 pub mod credential_input;
 pub mod domain;
 pub mod engine;

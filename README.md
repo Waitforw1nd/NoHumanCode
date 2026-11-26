@@ -130,6 +130,21 @@ coda jobs --session $session continue $c.id
 - **副作用可审阅、可回滚与长上下文韧性**：
   - 文件写入、外部命令与 MCP 调用均支持行级预览与细粒度审批；所有文件变更具备持久化前镜像备份（`/undo` 与 Checkpoint 恢复），自动加载项目 `AGENTS.md` / `CLAUDE.md` 规范并在长链路推理中保持上下文自动压缩与中断可恢复。
 
+### 在 Windows 等待记事本的保存框
+
+在已登录的交互桌面打开记事本。用下面的命令查看有窗口的记事本进程，再把 `$targetPid` 换成自己要观察的 PID。以下示例在工作区根目录的 PowerShell 中执行。
+
+```powershell
+Get-Process notepad | Where-Object MainWindowHandle -ne 0 | Select-Object Id, MainWindowTitle
+$targetPid = 12345
+$env:CODA_COMPUTER_TARGET = @{ workspace = (Resolve-Path .).Path; pid = $targetPid } | ConvertTo-Json -Compress
+coda --workspace . --json computer watch --timeout-ms 60000
+```
+
+`watch` 在本机逐行输出 JSON，无需模型凭据。在 60 秒内切到记事本、手动打开“另存为”、切走再切回，可观察 `target_foreground`、`dialog_foreground`、`outside_target` 的转换。超时、目标进程退出或 Ctrl+C 会结束观察。标准对话框由登记进程的前台窗口类识别；记事本版本若使用自绘或其他进程的窗口，以实际状态为准。
+
+使用同一环境启动 `coda chat`、`coda ask` 或 `coda serve`，允许工具的任务在匹配工作区可调用 `computer_observe` 和 `computer_wait`。例如让模型“调用 computer_wait，等我手动打开目标应用的标准对话框，超时 30000 毫秒，告诉我状态”。等待由 Host 处理。目标窗口的标题和类名会进入会话并发送给当前模型。切到其他进程只报告焦点离开。观察引用限当前 Host 和会话。结束后关闭启用该能力的 Host，并在 PowerShell 运行 `Remove-Item Env:CODA_COMPUTER_TARGET`。[本轮范围与后续控件方案](docs/sprints/SPRINT-06-windows-computer.md)
+
 ### 接入远程 MCP 工具
 
 在启动 `coda ask`、`coda chat` 或 `coda serve` 的进程环境中设置 `CODA_MCP_HTTP_SERVERS`。每一项登记一个工作区的服务。下面的 PowerShell 示例使用当前目录，运行前将 `url` 换成服务的实际 MCP 端点。

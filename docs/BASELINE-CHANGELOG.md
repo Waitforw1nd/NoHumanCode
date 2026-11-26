@@ -4,6 +4,13 @@
 
 ---
 
+## Baseline 7 · Sprint 05/S5-T2 独立子任务持久化与跨批次编排（2026-11-19，UTC+8）
+
+- 验收版本为 `baseline-1`（`7e9f36d4`）加累计补丁 `S5-T2-from-baseline-1.patch`。Windows 本机与服务器核对的 SHA-256 均为 `0a545fbee6a9bb0f67337eae8ecbed2248cf8aaa9a65cbc391d8910d03b3fb73`。用户在新的独立 worktree 中成功执行了 `git apply --check` 和 `git apply`。
+- 据用户回传的 Windows/MSVC 原生结果，`build.ps1` 的 `fmt`、`check`、`clippy`、`test` 退出码均为 0。默认套件 218 项通过、0 项失败、1 项忽略，唯一忽略项为付费在线测试 `coda_live_stream_and_coding_tool`。
+- 本轮交付 SQLite v19 子任务持久化、按发送回执恢复与跨批次依赖编排。原生回归通过了跨会话依赖拒绝、撤权后阻止派发及并发续跑共享一次执行等用例。[Sprint 05 验收记录](sprints/SPRINT-05-parallel-exploration.md#验收记录)
+- 本机验收 worktree 为 `E:\code\.tmp\coda-s5-t2-c1da887a2e`。完整 PowerShell 日志和测试明细分别位于 `%LOCALAPPDATA%\Temp\coda-s5-t2-c1da887a2e\verification.log` 和同目录的 `test.log`。
+
 ## Baseline 6 · Sprint 05/S5-T1 多 Agent 并行检索验收（2026-11-19，UTC+8）
 
 - 验收版本为 `baseline-1`（`7e9f36d4`）加累计补丁 `S5-T1-from-baseline-1.patch`。服务器复核的 SHA-256 为 `e84305f644102312606db300e93f010478400bd195467670a80a526478ce2ae1`，用户确认 Windows 本机哈希一致。
