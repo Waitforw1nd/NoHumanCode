@@ -8,12 +8,12 @@
 
 ## 现行状态导航（2026-11-18 基线）
 
-本书维护 **Coda CLI** 的长期产品目标、核心设计理念与两阶段演进原则。现行代码位置、执行调用链、全部 38 个源码模块边界与自动化测试矩阵，统一以根目录 **[PROJECT-MAP.md](PROJECT-MAP.md)** 为唯一权威导航；日常开发与验证准则以 **[AGENTS.md](AGENTS.md)** 为准；快速上手命令见 **[README.md](README.md)**。
+本书维护 **Coda CLI** 的长期产品目标、核心设计理念与两阶段演进原则。现行代码位置、执行调用链、各源码模块的边界与自动化测试矩阵，统一以根目录 **[PROJECT-MAP.md](PROJECT-MAP.md)** 为唯一权威导航；日常开发与验证准则以 **[AGENTS.md](AGENTS.md)** 为准；快速上手命令见 **[README.md](README.md)**。
 
 当前主分支（`main`）核心基线事实：
 
 - **源码与协议结构**：Git 与 Rust Workspace 均直接位于仓库根目录 `./`（宿主库与 CLI 二进制名为 `coda`，零 I/O 共享协议 crate 为 [crates/protocol](crates/protocol) `coda-protocol`）。
-- **数据库与持久化**：默认数据目录 `%LOCALAPPDATA%\coda`（可通过 `CODA_DATA_DIR` 覆盖），SQLite WAL 数据库 `coda.sqlite3`（`SCHEMA_VERSION = 18`），完整落地 Project / Session / Turn / Agent / Checkpoint 领域仓储、事件游标流、幂等回执与中断自动恢复。
+- **数据库与持久化**：默认数据目录 `%LOCALAPPDATA%\coda`（可通过 `CODA_DATA_DIR` 覆盖），SQLite WAL 数据库 `coda.sqlite3`（`SCHEMA_VERSION = 19`），完整落地 Project / Session / Turn / Agent / Checkpoint 领域仓储、事件游标流、幂等回执与中断自动恢复。
 - **Stage 1 核心闭环已交付**：进程内零仪式感 CLI 工作台（`coda init / chat / ask`）、三大主流协议原生流式直连（OpenAI / Anthropic Messages / Google Gemini，支持 `CODA_MODEL` 路由覆盖）、行级彩色 Myers Diff 预览与 `[y/n/a]` 审批、前镜像备份回滚（`/diff` `/undo` `/checkpoint` `/restore`）、标准 MCP Stdio 工具（`.mcp.json` / `.coda/mcp.json`）动态接入及 Git Worktree 隔离管理均已稳定交付并通过全量门禁测试。
 - **架构精简与历史归档**：图形界面（Desktop GUI）明确延后至第二阶段；早期嵌套源码目录、空壳 `crates/ui`、死代码 `src/wasm*`、过度复杂的伪插件目录层以及早期多角色文书目录均已从 `main` 清理移除（保留 [web/](web) 作为 `server.rs` 内嵌静态兜底页）。早期历史归档分支 `archive/gpt-era-20261118`、`archive/old-c35-20261118` 与 `archive/u18-consolidated-20261118` 保留了重命名前的早期实验代号快照。
 
@@ -35,7 +35,7 @@
 
 ## 2. 现行事实与演进背景
 
-2026-11-18 的现行事实：仓库根 `./` 即为 Rust Workspace，代码中的 `SCHEMA_VERSION` 为 `18`，Stage 1 **Coda CLI**（`coda`）编程工作台与本地 HTTP/SSE Host 契约（含 `x-coda-token` 鉴权）已完整交付。早期原型阶段（`SCHEMA_VERSION` 5～6 时期）的基础设施已全部收敛至根目录主干。
+2026-11-18 的现行事实：仓库根 `./` 即为 Rust Workspace，代码中的 `SCHEMA_VERSION` 为 `19`，Stage 1 **Coda CLI**（`coda`）编程工作台与本地 HTTP/SSE Host 契约（含 `x-coda-token` 鉴权）已完整交付。早期原型阶段（`SCHEMA_VERSION` 5～6 时期）的基础设施已全部收敛至根目录主干。
 
 实际模块状态与测试覆盖统一依据当前代码与 [PROJECT-MAP.md](PROJECT-MAP.md) 核对。
 

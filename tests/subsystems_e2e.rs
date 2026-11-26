@@ -745,6 +745,154 @@ async fn fast_worktree_creation_succeeds_even_with_untracked_files_in_source_rep
     server.abort();
 }
 
+async fn start_approved_mcp_call(engine: &Arc<Engine>, project_id: ProjectId) -> (String, String) {
+    let run = engine
+        .start_in_project(StartInProject {
+            project_id,
+            expected_config_revision: 2,
+            request: RunRequest {
+                title: "MCP echo run".into(),
+                kind: SessionKind::Chat,
+                tasks: vec![TaskSpec {
+                    name: "coder".into(),
+                    role: "engineer".into(),
+                    route_id: "default".into(),
+                    prompt: "Call demo MCP echo_tool".into(),
+                    depends_on: vec![],
+                    write_scopes: vec!["*".into()],
+                    tools: true,
+                    allow_commands: true,
+                    max_rounds: 6,
+                }],
+            },
+            idempotency_key: "run-mcp-1".into(),
+        })
+        .await
+        .unwrap();
+    let task_id = run.tasks[0].id.clone();
+
+    let approval_id = tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            let list = engine.store.approvals_for_task(&task_id).unwrap();
+            if let Some(rec) = list.first() {
+                assert_eq!(rec.tool_name, "mcp__demo__echo_tool");
+                return rec.id.clone();
+            }
+            let t = engine.store.task(&task_id).unwrap();
+            assert_ne!(t.status, "failed", "task failed early: {:?}", t.error);
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await
+    .unwrap();
+
+    engine
+        .decide_approval_with_network_ack(&approval_id, true, Some("tester"), false)
+        .unwrap();
+
+    (task_id, approval_id)
+}
+
+#[cfg(windows)]
+#[test]
+fn blocking_stdio_fixture() {
+    use std::io::{BufRead, Write};
+    if std::env::var_os("CODA_BLOCKING_STDIO_FIXTURE").is_none() {
+        return;
+    }
+    println!();
+    for line in std::io::stdin().lock().lines() {
+        let req: Value = serde_json::from_str(&line.unwrap()).unwrap();
+        let Some(id) = req["id"].as_u64() else {
+            continue;
+        };
+        let reply = match req["method"].as_str().unwrap() {
+            "initialize" => json!({}),
+            "tools/list" => json!({"tools":[{"name":"echo_tool"}]}),
+            "tools/call" => {
+                let mut log = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open("dispatched")
+                    .unwrap();
+                writeln!(log, "{}", req["params"]["name"]).unwrap();
+                std::thread::sleep(Duration::from_secs(120));
+                return;
+            }
+            other => panic!("unexpected request {other}"),
+        };
+        println!("{}", json!({"jsonrpc":"2.0","id":id,"result":reply}));
+        std::io::stdout().flush().unwrap();
+    }
+}
+
+#[cfg(windows)]
+#[tokio::test]
+async fn cancelling_dispatched_mcp_call_preserves_unknown_approval_outcome() {
+    let (base_url, server) = start_mock_llm("mcp_echo").await;
+    let temp = tempfile::tempdir().unwrap();
+    let ws = temp.path().join("mcp_ws");
+    let (engine, project_id) =
+        setup_engine_with_project(&temp.path().join("data"), &ws, &base_url).await;
+    std::fs::write(ws.join(".mcp.json"), json!({"mcpServers":{"demo":{
+        "command":std::env::current_exe().unwrap(),"args":["--exact","blocking_stdio_fixture","--nocapture"],
+        "env":{"CODA_BLOCKING_STDIO_FIXTURE":"1"}
+    }}}).to_string()).unwrap();
+    let (task_id, approval_id) = start_approved_mcp_call(&engine, project_id).await;
+    let marker = ws.join("dispatched");
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while std::fs::read_to_string(&marker)
+            .unwrap_or_default()
+            .is_empty()
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    engine.cancel(&task_id).unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while engine.is_busy() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let task = engine.store.task(&task_id).unwrap();
+    assert_eq!(task.status, "cancelled");
+    assert!(
+        task.error
+            .as_deref()
+            .is_some_and(|e| e.contains("结果未知")),
+        "{:?}",
+        task.error
+    );
+    assert!(
+        !task
+            .messages
+            .iter()
+            .any(|m| m["role"] == "tool" && m["tool_call_id"] == "call-mcp-1")
+    );
+    let record = engine.store.approval(&approval_id).unwrap();
+    assert!(matches!(
+        record.execution_state,
+        ExecutionState::Claimed | ExecutionState::Unknown
+    ));
+    let resume_error = engine.resume(&task_id, "resume").await.unwrap_err();
+    assert!(matches!(
+        resume_error.downcast_ref::<coda::approval::ApprovalError>(),
+        Some(coda::approval::ApprovalError::UnknownResult { id }) if id == &approval_id
+    ));
+    assert_eq!(std::fs::read_to_string(marker).unwrap().lines().count(), 1);
+    assert!(
+        engine
+            .shutdown(Duration::from_secs(5))
+            .await
+            .external_outcome_unknown
+    );
+    server.abort();
+}
+
 #[tokio::test]
 async fn mcp_stdio_discovery_approval_and_execution_end_to_end() {
     let (base_url, server) = start_mock_llm("mcp_echo").await;
@@ -817,50 +965,7 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
     let (engine, project_id) =
         setup_engine_with_project(&temp.path().join("data"), &ws, &base_url).await;
 
-    let run = engine
-        .start_in_project(StartInProject {
-            project_id,
-            expected_config_revision: 2,
-            request: RunRequest {
-                title: "MCP echo run".into(),
-                kind: SessionKind::Chat,
-                tasks: vec![TaskSpec {
-                    name: "coder".into(),
-                    role: "engineer".into(),
-                    route_id: "default".into(),
-                    prompt: "Call demo MCP echo_tool".into(),
-                    depends_on: vec![],
-                    write_scopes: vec!["*".into()],
-                    tools: true,
-                    allow_commands: true,
-                    max_rounds: 6,
-                }],
-            },
-            idempotency_key: "run-mcp-1".into(),
-        })
-        .await
-        .unwrap();
-    let task_id = run.tasks[0].id.clone();
-
-    let approval_id = tokio::time::timeout(Duration::from_secs(15), async {
-        loop {
-            let list = engine.store.approvals_for_task(&task_id).unwrap();
-            if let Some(rec) = list.first() {
-                assert_eq!(rec.tool_name, "mcp__demo__echo_tool");
-                return rec.id.clone();
-            }
-            let t = engine.store.task(&task_id).unwrap();
-            assert_ne!(t.status, "failed", "task failed early: {:?}", t.error);
-            tokio::time::sleep(Duration::from_millis(25)).await;
-        }
-    })
-    .await
-    .unwrap();
-
-    engine
-        .decide_approval_with_network_ack(&approval_id, true, Some("tester"), false)
-        .unwrap();
-
+    let (task_id, approval_id) = start_approved_mcp_call(&engine, project_id).await;
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {
             let t = engine.store.task(&task_id).unwrap();

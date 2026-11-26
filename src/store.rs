@@ -4,12 +4,14 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 use std::{path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 18;
+pub const SCHEMA_VERSION: u32 = 19;
 
 fn is_readonly_file_tool(name: &str) -> bool {
     matches!(
         name,
         "read_file"
+            | "explore_files"
+            | "explore_parallel"
             | "list_files"
             | "search_files"
             | "glob_files"
@@ -28,6 +30,9 @@ fn is_authorized_mcp_tool(task: &Task, name: &str) -> bool {
 }
 
 fn is_known_task_tool(task: &Task, name: &str) -> bool {
+    if crate::tool_results::is_exploration(name) {
+        return task.spec.tools;
+    }
     crate::workspace::definitions(task)
         .iter()
         .any(|tool| tool["function"]["name"] == name)
@@ -330,11 +335,9 @@ impl Store {
             }
             if !repository::migration_applied(&tx, repository::EXECUTION_OWNER_MIGRATION_ID)? {
                 repository::apply_schema_18(&tx, &authority.identity_key()?)?;
-            } else {
-                let v: u32 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
-                if v < SCHEMA_VERSION {
-                    tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
-                }
+            }
+            if !repository::migration_applied(&tx, crate::exploration_jobs::MIGRATION_ID)? {
+                crate::exploration_jobs::migrate(&tx)?;
             }
             tx.commit()?;
         }
@@ -406,6 +409,45 @@ impl Store {
             .transpose()
     }
 
+    pub(crate) fn put_oauth_secret(&self, id: &str, record: &str) -> Result<()> {
+        let blob = secrets::seal(record.as_bytes())?;
+        self.db.lock().unwrap().execute(
+            "INSERT INTO secrets(id,value) VALUES (?1,?2) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
+            params![id, blob],
+        )?;
+        Ok(())
+    }
+
+    /// A refresh or rejection of an old grant must not overwrite a newer login.
+    pub(crate) fn compare_exchange_secret(
+        &self,
+        id: &str,
+        expected: &str,
+        replacement: Option<&str>,
+    ) -> Result<bool> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let blob: Option<Vec<u8>> = tx
+            .query_row("SELECT value FROM secrets WHERE id=?1", [id], |row| {
+                row.get(0)
+            })
+            .optional()?;
+        let Some(blob) = blob else { return Ok(false) };
+        if secrets::open(&blob)? != expected.as_bytes() {
+            return Ok(false);
+        }
+        if let Some(record) = replacement {
+            tx.execute(
+                "UPDATE secrets SET value=?2 WHERE id=?1",
+                params![id, secrets::seal(record.as_bytes())?],
+            )?;
+        } else {
+            tx.execute("DELETE FROM secrets WHERE id=?1", [id])?;
+        }
+        tx.commit()?;
+        Ok(true)
+    }
+
     pub fn create_run(&self, run: &Run) -> Result<()> {
         anyhow::ensure!(
             run.tasks.iter().all(|task| task.run_id == run.id),
@@ -464,7 +506,7 @@ impl Store {
     pub fn save_task(&self, task: &Task) -> Result<()> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        save_task_tx(&tx, task, false)?;
+        save_task_tx(&tx, task, TaskSave::Snapshot)?;
         tx.commit()?;
         Ok(())
     }
@@ -473,7 +515,7 @@ impl Store {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let protected = protect_running_projection(&tx, task)?;
-        save_task_tx(&tx, &protected, false)?;
+        save_task_tx(&tx, &protected, TaskSave::Snapshot)?;
         tx.commit()?;
         Ok(())
     }
@@ -495,7 +537,7 @@ impl Store {
         }
         durable.error = Some("执行结果未知；请检查后再继续".into());
         durable.updated_at = now();
-        save_task_tx(&tx, &durable, false)?;
+        save_task_tx(&tx, &durable, TaskSave::UnknownTerminal)?;
         tx.commit()?;
         Ok(())
     }
@@ -507,7 +549,7 @@ impl Store {
         name: &str,
     ) -> Result<Option<Task>> {
         use crate::tool_results::ToolResultError;
-        if !is_readonly_file_tool(name) {
+        if crate::tool_results::is_exploration(name) || !is_readonly_file_tool(name) {
             return Ok(None);
         }
         let mut db = self.db.lock().unwrap();
@@ -571,7 +613,7 @@ impl Store {
             .messages
             .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
         durable.updated_at = now();
-        save_task_tx(&tx, &durable, false)?;
+        save_task_tx(&tx, &durable, TaskSave::Snapshot)?;
         tx.commit()?;
         Ok(Some(durable))
     }
@@ -704,10 +746,7 @@ impl Store {
             }
             Origin::InterruptedWithoutClaim => {
                 record.is_none()
-                    && result
-                        == Value::String(
-                            "Execution was interrupted. Inspect files before repeating a write or command.".into(),
-                        )
+                    && result.as_str() == Some(crate::tool_results::interrupted_message(name))
             }
             Origin::ApprovalDenied | Origin::ApprovalCancelled => {
                 record.as_ref().is_some_and(|record| {
@@ -761,7 +800,7 @@ impl Store {
             .messages
             .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
         durable.updated_at = now();
-        save_task_tx(&tx, &durable, false)?;
+        save_task_tx(&tx, &durable, TaskSave::Snapshot)?;
         task_event_tx(
             &tx,
             &durable.id,
@@ -797,7 +836,7 @@ impl Store {
             anyhow::ensure!(!exists, "new tool call conflicts with existing approval");
         }
         let protected = protect_running_projection(&tx, task)?;
-        save_task_tx(&tx, &protected, false)?;
+        save_task_tx(&tx, &protected, TaskSave::Snapshot)?;
         tx.commit()?;
         Ok(())
     }
@@ -821,7 +860,7 @@ impl Store {
         crate::project_config::validate_task_tx(&tx, task, true, true)?;
         ensure_resume_targets_latest_chat_turn(&tx, &task.id)?;
         crate::worktree_management::ensure_task_unreserved_tx(&tx, &task.id)?;
-        save_task_tx(&tx, task, true)?;
+        save_task_tx(&tx, task, TaskSave::Resume)?;
         task_event_tx(&tx, &task.id, "delta", json!({"text": "\n\n—— 继续 ——\n"}))?;
         task_event_tx(
             &tx,
@@ -857,7 +896,7 @@ impl Store {
         }
         task.updated_at = now();
         let protected = protect_running_projection(&tx, &task)?;
-        save_task_tx(&tx, &protected, false)?;
+        save_task_tx(&tx, &protected, TaskSave::Snapshot)?;
         for (seq, _) in pending {
             task_event_tx(
                 &tx,
@@ -1880,6 +1919,30 @@ impl Store {
         repository::Repository::new(&self.db.lock().unwrap()).approval(id)
     }
 
+    pub(crate) fn approval_mcp_target(
+        &self,
+        record: &approval::ApprovalRecord,
+    ) -> Result<Option<crate::mcp::ToolTarget>> {
+        let db = self.db.lock().unwrap();
+        let target: Option<String> = db.query_row(
+            "SELECT json_extract(data, '$.mcp_target') FROM events WHERE task_id=?1 AND kind='approval.requested' AND json_extract(data, '$.approval_id')=?2 AND json_extract(data, '$.evidence_version')=1",
+            params![record.task_id, record.id], |row| row.get(0),
+        ).optional()?.flatten();
+        target
+            .map(|json| serde_json::from_str(&json).map_err(Into::into))
+            .transpose()
+    }
+
+    /// Returns the HTTP destination captured when the tool was advertised for this approval.
+    pub fn approval_mcp_http_endpoint(
+        &self,
+        record: &approval::ApprovalRecord,
+    ) -> Result<Option<String>> {
+        Ok(self
+            .approval_mcp_target(record)?
+            .and_then(|target| target.endpoint))
+    }
+
     pub fn approvals_for_task(&self, task_id: &str) -> Result<Vec<approval::ApprovalRecord>> {
         repository::Repository::new(&self.db.lock().unwrap()).approvals_for_task(task_id)
     }
@@ -1902,7 +1965,7 @@ impl Store {
         tool_name: &str,
         args: &Value,
     ) -> Result<(approval::ApprovalRecord, bool)> {
-        self.ensure_approval_inner(task, tool_call_id, tool_name, args, false)
+        self.ensure_approval_inner(task, tool_call_id, tool_name, args, false, None)
     }
 
     pub(crate) fn ensure_current_approval(
@@ -1911,8 +1974,9 @@ impl Store {
         tool_call_id: &str,
         tool_name: &str,
         args: &Value,
+        mcp_target: Option<&crate::mcp::ToolTarget>,
     ) -> Result<(approval::ApprovalRecord, bool)> {
-        self.ensure_approval_inner(task, tool_call_id, tool_name, args, true)
+        self.ensure_approval_inner(task, tool_call_id, tool_name, args, true, mcp_target)
     }
 
     fn ensure_approval_inner(
@@ -1922,6 +1986,7 @@ impl Store {
         tool_name: &str,
         args: &Value,
         require_current: bool,
+        mcp_target: Option<&crate::mcp::ToolTarget>,
     ) -> Result<(approval::ApprovalRecord, bool)> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -1982,7 +2047,13 @@ impl Store {
             workspace: task.workspace.clone(),
             write_scopes: task.spec.write_scopes.clone(),
             allow_commands: task.spec.allow_commands,
-            preview: approval::preview(tool_name, args),
+            preview: {
+                let arguments = approval::preview(tool_name, args);
+                match mcp_target.and_then(|t| t.endpoint.as_deref()) {
+                    Some(endpoint) => format!("MCP HTTP {endpoint}\n{arguments}"),
+                    None => arguments,
+                }
+            },
             status: approval::ApprovalStatus::Pending,
             execution_state: approval::ExecutionState::NotStarted,
             created_at: now(),
@@ -1991,22 +2062,21 @@ impl Store {
         };
         let safe_call_digest = safe_approval_call_digest(&tx, &durable, &record)?;
         insert_approval(&tx, &record)?;
-        approval_event(
-            &tx,
-            &record,
-            "approval.requested",
-            json!({
-                "approval_id": record.id,
-                "tool_call_id": record.tool_call_id,
-                "tool_name": record.tool_name,
-                "preview": record.preview,
-                "task_id": record.task_id,
-                "turn_id": record.turn_id,
-                "session_id": record.session_id,
-                "evidence_version": 1,
-                "safe_call_digest": safe_call_digest
-            }),
-        )?;
+        let mut evidence = json!({
+            "approval_id": record.id,
+            "tool_call_id": record.tool_call_id,
+            "tool_name": record.tool_name,
+            "preview": record.preview,
+            "task_id": record.task_id,
+            "turn_id": record.turn_id,
+            "session_id": record.session_id,
+            "evidence_version": 1,
+            "safe_call_digest": safe_call_digest
+        });
+        if let Some(target) = mcp_target {
+            evidence["mcp_target"] = serde_json::to_value(target)?;
+        }
+        approval_event(&tx, &record, "approval.requested", evidence)?;
         tx.commit()?;
         Ok((record, true))
     }
@@ -2163,7 +2233,7 @@ impl Store {
             task.status = "cancelled".into();
             task.error = Some("任务已停止".into());
             task.updated_at = now();
-            save_task_tx(&tx, &task, false)?;
+            save_task_tx(&tx, &task, TaskSave::Snapshot)?;
         }
         let pending = repository::Repository::new(&tx)
             .approvals_for_task(task_id)?
@@ -2352,7 +2422,7 @@ impl Store {
             .messages
             .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":result}));
         updated_task.updated_at = now();
-        save_task_tx(&tx, &updated_task, false)?;
+        save_task_tx(&tx, &updated_task, TaskSave::Snapshot)?;
         task_event_tx(
             &tx,
             &task.id,
@@ -2405,6 +2475,7 @@ impl Store {
                 .collect::<rusqlite::Result<_>>()?
         };
         let mut affected = crate::network_authorization::recover_calls_tx(&tx)?;
+        affected += crate::exploration_jobs::recover_tx(&tx)?;
         for value in values {
             let mut task: Task = serde_json::from_str(&value)?;
             if matches!(task.status.as_str(), "queued" | "running") {
@@ -2426,7 +2497,7 @@ impl Store {
                 task.status = "interrupted".into();
                 task.error = Some("服务曾中断；可以继续此成员，模型和身份保持不变".into());
                 task.updated_at = now();
-                save_task_tx(&tx, &task, false)?;
+                save_task_tx(&tx, &task, TaskSave::Snapshot)?;
                 affected += 1;
             }
         }
@@ -3156,10 +3227,7 @@ fn validate_owned_result_events(messages: &[Value], events: &[Value]) -> Result<
                         == Value::String(approval::tool_error(approval::ApprovalStatus::Cancelled))
                 }
                 Some("interrupted_without_claim") => {
-                    result
-                        == Value::String(
-                            "Execution was interrupted. Inspect files before repeating a write or command.".into(),
-                        )
+                    result.as_str() == Some(crate::tool_results::interrupted_message(name))
                 }
                 _ => false,
             };
@@ -3379,7 +3447,7 @@ fn protect_running_projection(tx: &rusqlite::Transaction<'_>, task: &Task) -> Re
     Ok(protected)
 }
 
-fn merge_usage(persisted: &Value, candidate: &Value) -> Result<Value> {
+pub(crate) fn merge_usage(persisted: &Value, candidate: &Value) -> Result<Value> {
     if persisted == candidate {
         return Ok(persisted.clone());
     }
@@ -3420,7 +3488,15 @@ fn merge_usage(persisted: &Value, candidate: &Value) -> Result<Value> {
     Ok(Value::Object(merged))
 }
 
-fn save_task_tx(tx: &rusqlite::Transaction<'_>, task: &Task, resume: bool) -> Result<()> {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TaskSave {
+    Snapshot,
+    Resume,
+    UnknownTerminal,
+}
+
+fn save_task_tx(tx: &rusqlite::Transaction<'_>, task: &Task, mode: TaskSave) -> Result<()> {
+    let resume = mode == TaskSave::Resume;
     secrets::validate_persisted_id("task_id", &task.id)?;
     let (run_id, previous): (String, String) = tx
         .query_row(
@@ -3433,7 +3509,11 @@ fn save_task_tx(tx: &rusqlite::Transaction<'_>, task: &Task, resume: bool) -> Re
     let mut protected = task.clone();
     if !resume && previous.status == "cancelled" {
         protected.status = "cancelled".into();
-        protected.error = previous.error.clone();
+        // The worker can learn that a dispatched effect is uncertain after the
+        // cancellation request already saved a terminal status.
+        if mode != TaskSave::UnknownTerminal {
+            protected.error = previous.error.clone();
+        }
     }
     let old_messages = safe_task_value(&previous)?["messages"]
         .as_array()

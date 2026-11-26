@@ -1,3 +1,7 @@
+mod exploration;
+mod key_pool;
+use key_pool::{CompletionOutput, RouteAttempts};
+
 pub use crate::composition::{CompositionCapability, CompositionInterface, CompositionSnapshot};
 use crate::network_authorization::*;
 use crate::project_config::{
@@ -19,8 +23,7 @@ use anyhow::{Context, Result, ensure};
 use serde_json::{Value, json};
 use sha2::Digest;
 use std::{
-    collections::{HashMap, hash_map::DefaultHasher},
-    hash::{Hash, Hasher},
+    collections::HashMap,
     path::Path,
     sync::{
         Arc, Mutex,
@@ -37,35 +40,52 @@ const CONTEXT_KEEP_RECENT_MESSAGES: usize = 16;
 const CONTEXT_RECENT_MAX_BYTES: usize = 360_000;
 const PROJECT_INSTRUCTION_MAX_BYTES: usize = 16_384;
 
-struct NetworkSlot {
+pub(crate) fn add_completion_usage(task: &mut Task, usage: &Value) -> Result<()> {
+    if let crate::provider_usage::UsageObservation::Valid(usage) =
+        crate::provider_usage::classify_usage(usage)
+    {
+        let mut projection = if task.usage.is_object() {
+            task.usage.clone()
+        } else {
+            json!({})
+        };
+        for (field, n) in [
+            ("prompt_tokens", usage.prompt_tokens),
+            ("completion_tokens", usage.completion_tokens),
+            ("total_tokens", usage.total_tokens),
+        ] {
+            let old = projection[field].as_u64().unwrap_or(0);
+            let value = old
+                .checked_add(n)
+                .filter(|v| *v <= i64::MAX as u64)
+                .context("任务用量投影超出范围；持久预算结果保持")?;
+            projection[field] = json!(value);
+        }
+        task.usage = projection;
+    }
+    Ok(())
+}
+
+pub(crate) struct NetworkSlot {
     permit: Option<tokio::sync::OwnedSemaphorePermit>,
     notify: Arc<tokio::sync::Notify>,
 }
+impl NetworkSlot {
+    pub(crate) fn release(&mut self) {
+        if let Some(permit) = self.permit.take() {
+            drop(permit);
+            self.notify.notify_waiters();
+        }
+    }
+}
 impl Drop for NetworkSlot {
     fn drop(&mut self) {
-        drop(self.permit.take());
-        self.notify.notify_waiters();
+        self.release();
     }
 }
 
 fn route_secret_id(id: &str) -> String {
     format!("route::{id}")
-}
-
-fn scrub_reasoning_delta(pending: &mut String, delta: &str, key: &str) -> String {
-    pending.push_str(delta);
-    let last_match_end = pending
-        .match_indices(key)
-        .last()
-        .map_or(0, |(index, matched)| index + matched.len());
-    // Retain only a suffix that could complete this exact key in the next delta.
-    let safe_end = pending[last_match_end..]
-        .char_indices()
-        .find(|&(index, _)| key.starts_with(&pending[last_match_end + index..]))
-        .map_or(pending.len(), |(index, _)| last_match_end + index);
-    let safe = secrets::scrub(&pending[..safe_end], key);
-    pending.replace_range(..safe_end, "");
-    safe
 }
 
 fn request_fingerprint(request: &RunRequest) -> Result<String> {
@@ -83,7 +103,8 @@ pub struct Engine {
     slots: Arc<Semaphore>,
     slot_capacity: Mutex<usize>,
     slot_notify: Arc<tokio::sync::Notify>,
-    key_slots: Mutex<HashMap<u64, Arc<Semaphore>>>,
+    key_slots: Mutex<HashMap<u64, std::sync::Weak<Semaphore>>>,
+    key_pool: crate::key_pool::KeyPool,
     shutdown_requested: CancellationToken,
     shutdown_persistence_started: AtomicBool,
     shutdown_operation: Mutex<Option<crate::execution_authority::ExecutionOperation>>,
@@ -173,6 +194,7 @@ impl Engine {
             slot_capacity: Mutex::new(max_concurrency),
             slot_notify: Arc::new(tokio::sync::Notify::new()),
             key_slots: Mutex::new(HashMap::new()),
+            key_pool: Default::default(),
             shutdown_requested,
             shutdown_persistence_started: AtomicBool::new(false),
             shutdown_operation: Mutex::new(None),
@@ -271,6 +293,14 @@ impl Engine {
                 self.provider_runtime
                     .set_management(&self.store, request, key)
             }
+        }
+    }
+
+    pub(crate) async fn task_slot(&self, cancel: &CancellationToken) -> Result<NetworkSlot> {
+        tokio::select! {
+            biased;
+            _ = cancel.cancelled() => anyhow::bail!("任务已停止"),
+            p = self.acquire_network_slot() => Ok(p?),
         }
     }
 
@@ -461,19 +491,79 @@ impl Engine {
             project_id: Some(project.clone()),
         };
         let _slot = self.acquire_network_slot().await?;
-        let (route, permit, receipt) = {
-            let _gate = self.gate.lock().await;
-            self.ensure_accepting().map_err(safe_error)?;
-            let route = self.network_route(id)?;
-            let (permit, receipt) =
-                self.store
-                    .network_admit(&subject, NetworkPurpose::Models, None)?;
-            (route, permit, receipt)
-        };
-        self.store.finish_network(
-            receipt,
-            provider::models(&self.client, permit, &route).await,
-        )
+        let response = self.route_models_with_retry(&subject, false).await?;
+        Ok(NetworkResponse {
+            result: response.result.1,
+            calls: response.calls,
+        })
+    }
+
+    async fn route_models_with_retry(
+        &self,
+        subject: &NetworkSubject,
+        check_completion: bool,
+    ) -> std::result::Result<NetworkResponse<(Route, Vec<String>)>, NetworkError> {
+        let cancel = &self.shutdown_requested;
+        let route = self.network_route(&subject.id)?;
+        let mut attempts = RouteAttempts::default();
+        loop {
+            let hint = crate::provider_transport::RetryAfter::default();
+            let attempt = async {
+                let key = attempts.acquire(self, &route, subject, NetworkPurpose::Models, None, cancel).await?;
+                let (permit, receipt) = {
+                    let _gate = self.gate.lock().await;
+                    self.ensure_accepting().map_err(safe_error)?;
+                    if check_completion {
+                        self.store.network_preflight(subject, &[NetworkPurpose::Models, NetworkPurpose::Completion], None)?;
+                    }
+                    self.store.network_admit_with_key(subject, NetworkPurpose::Models, None, None, Some(key))?
+                };
+                let call = provider::models(&self.client, permit.track_retry_after(hint.clone()), &route);
+                let result = tokio::select! {
+                    biased;
+                    _ = cancel.cancelled() => Err(crate::provider_transport::TransportError::Unknown),
+                    result = call => result,
+                };
+                self.store.finish_network(receipt, result.map(|models| (route.clone(), models)))
+            }.await;
+            if let Some(done) = attempts.after_attempt(self, attempt, hint, cancel).await {
+                return done;
+            }
+        }
+    }
+
+    async fn admit_completion(
+        &self,
+        subject: &NetworkSubject,
+        task: Option<&Task>,
+        input: &crate::provider_runtime::CompletionInput<'_>,
+        cancel: &CancellationToken,
+        key: &crate::key_pool::SelectedKey,
+    ) -> std::result::Result<
+        (
+            crate::provider_runtime::CompletionLease,
+            (crate::provider_transport::ProviderPermit, CallReceipt),
+        ),
+        NetworkError,
+    > {
+        let prepared = self
+            .provider_runtime
+            .prepare_persisted(&self.store, input)?;
+        let _gate = self.gate.lock().await;
+        self.ensure_accepting().map_err(safe_error)?;
+        if cancel.is_cancelled() {
+            return Err(NetworkError::not_sent(NetworkErrorKind::Internal));
+        }
+        self.provider_runtime
+            .acquire_persisted(prepared, |revision| {
+                self.store.network_admit_with_key(
+                    subject,
+                    NetworkPurpose::Completion,
+                    task,
+                    Some(revision),
+                    Some(key),
+                )
+            })
     }
 
     pub async fn route_check(
@@ -510,25 +600,9 @@ impl Engine {
         };
         let started = std::time::Instant::now();
         let _slot = self.acquire_network_slot().await?;
-        let (mut route, permit, receipt) = {
-            let _gate = self.gate.lock().await;
-            self.ensure_accepting().map_err(safe_error)?;
-            let route = self.network_route(id)?;
-            self.store.network_preflight(
-                &subject,
-                &[NetworkPurpose::Models, NetworkPurpose::Completion],
-                None,
-            )?;
-            let (permit, receipt) =
-                self.store
-                    .network_admit(&subject, NetworkPurpose::Models, None)?;
-            (route, permit, receipt)
-        };
-        let models = self.store.finish_network(
-            receipt,
-            provider::models(&self.client, permit, &route).await,
-        )?;
-        if !models.result.contains(&route.model) {
+        let models = self.route_models_with_retry(&subject, true).await?;
+        let (mut route, available) = models.result;
+        if !available.contains(&route.model) {
             return Err(NetworkError {
                 kind: NetworkErrorKind::Upstream,
                 dispatch_state: DispatchState::Finished,
@@ -537,46 +611,27 @@ impl Engine {
         }
         route.max_tokens = 128;
         let messages = [json!({"role":"user","content":"Return only the result of 17 * 19."})];
-        let prepared = self
-            .provider_runtime
-            .prepare_persisted(
-                &self.store,
-                &crate::provider_runtime::CompletionInput {
-                    model: &route.model,
-                    max_tokens: route.max_tokens,
-                    messages: &messages,
-                    tools: &[],
-                },
-            )
-            .map_err(|mut e| {
-                e.calls.splice(0..0, models.calls.clone());
-                e
-            })?;
-        let next = {
-            let _gate = self.gate.lock().await;
-            self.ensure_accepting().map_err(safe_error)?;
-            self.provider_runtime
-                .acquire_persisted(prepared, |revision| {
-                    self.store.network_admit_with_runtime_revision(
-                        &subject,
-                        NetworkPurpose::Completion,
-                        None,
-                        Some(revision),
-                    )
-                })
+        let route = &route;
+        let subject = &subject;
+        let input = &crate::provider_runtime::CompletionInput {
+            model: &route.model,
+            max_tokens: route.max_tokens,
+            messages: &messages,
+            tools: &[],
         };
-        let (lease, (permit, receipt)) = next.map_err(|mut e| {
-            e.calls.splice(0..0, models.calls.clone());
-            e
-        })?;
         let completion = self
-            .store
-            .finish_completion(
-                receipt,
-                lease
-                    .execute(&self.client, permit, &route, &mut |_| Ok(()))
-                    .await,
+            .complete_route(
+                subject,
+                None,
+                route,
+                input,
+                CompletionOutput::Stream {
+                    text: &mut |_| Ok(()),
+                    reasoning: &mut |_| Ok(()),
+                },
+                &self.shutdown_requested,
             )
+            .await
             .map_err(|mut e| {
                 e.calls.splice(0..0, models.calls.clone());
                 e
@@ -607,30 +662,32 @@ impl Engine {
         &self,
     ) -> std::result::Result<NetworkResponse<Value>, NetworkError> {
         let _slot = self.acquire_network_slot().await?;
-        let (account, permit, receipt) = {
-            let _gate = self.gate.lock().await;
-            self.ensure_accepting().map_err(safe_error)?;
-            let account = self
-                .store
-                .settings()
-                .map_err(safe_error)?
-                .and_then(|s| s.newapi)
-                .ok_or_else(|| NetworkError::not_sent(NetworkErrorKind::NotFound))?;
-            let (permit, receipt) = self.store.network_admit(
-                &NetworkSubject {
-                    kind: NetworkSubjectKind::Account,
-                    id: "newapi".into(),
-                    project_id: None,
-                },
-                NetworkPurpose::Balance,
-                None,
-            )?;
-            (account, permit, receipt)
-        };
-        self.store.finish_network(
-            receipt,
-            provider::balance(&self.client, permit, &account).await,
-        )
+        retry_provider(&self.shutdown_requested, |hint| async move {
+            let (account, permit, receipt) = {
+                let _gate = self.gate.lock().await;
+                self.ensure_accepting().map_err(safe_error)?;
+                let account = self
+                    .store
+                    .settings()
+                    .map_err(safe_error)?
+                    .and_then(|s| s.newapi)
+                    .ok_or_else(|| NetworkError::not_sent(NetworkErrorKind::NotFound))?;
+                let (permit, receipt) = self.store.network_admit(
+                    &NetworkSubject {
+                        kind: NetworkSubjectKind::Account,
+                        id: "newapi".into(),
+                        project_id: None,
+                    },
+                    NetworkPurpose::Balance,
+                    None,
+                )?;
+                (account, permit, receipt)
+            };
+            let result =
+                provider::balance(&self.client, permit.track_retry_after(hint), &account).await;
+            self.store.finish_network(receipt, result)
+        })
+        .await
     }
 
     pub async fn bind_account(
@@ -1743,10 +1800,14 @@ impl Engine {
                             "failed"
                         }
                         .into();
-                        task.error = Some(secrets::scrub(
-                            &format!("{error:#}"),
-                            &engine.key(&task.route).unwrap_or_default(),
-                        ));
+                        task.error = Some(
+                            crate::key_pool::scrub(
+                                &task.route,
+                                &engine.key(&task.route).unwrap_or_default(),
+                                &format!("{error:#}"),
+                            )
+                            .unwrap_or_else(|_| "任务失败，无法读取路由凭据".into()),
+                        );
                     }
                 }
                 task.updated_at = now();
@@ -1766,7 +1827,7 @@ impl Engine {
                     }
                 }
                 engine.active.lock().unwrap().remove(&task.id);
-                saved
+                saved.and_then(|()| engine.store.project_inactive_exploration_usage(&task.id))
             })
             .await
         });
@@ -1829,51 +1890,27 @@ impl Engine {
                 _ = cancel.cancelled() => anyhow::bail!("任务已停止"),
             };
         }
-        let key = self.key(&task.route)?;
-        let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
-        task.route.base_url.trim_end_matches('/').hash(&mut hasher);
-        let mut key_limit = task.route.parallel_limit;
-        if let Some(settings) = self.store.settings()? {
-            for route in &settings.routes {
-                if route.base_url.trim_end_matches('/') == task.route.base_url.trim_end_matches('/')
-                    && self.key(route).is_ok_and(|other| other == key)
-                {
-                    key_limit = key_limit.min(route.parallel_limit);
-                }
-            }
-        }
-        let key_slots = self
-            .key_slots
-            .lock()
-            .unwrap()
-            .entry(hasher.finish())
-            .or_insert_with(|| Arc::new(Semaphore::new(key_limit)))
-            .clone();
-        let _key_permit = tokio::select! {
-            p = key_slots.acquire_owned() => p?,
-            _ = cancel.cancelled() => anyhow::bail!("任务已停止"),
-        };
-        let _permit = tokio::select! {
-            p = self.acquire_network_slot() => p?,
-            _ = cancel.cancelled() => anyhow::bail!("任务已停止"),
-        };
+        let keys = crate::key_pool::credential_set(&task.route, &self.key(&task.route)?)?;
+        let mut slot = self.task_slot(cancel).await?;
         task.status = "running".into();
         task.updated_at = now();
         self.store.save_running_snapshot(task)?;
         self.tool_calls
-            .reconcile_open_tools(task, cancel, &key)
+            .reconcile_open_tools(self, task, cancel, &keys, &mut slot)
             .await?;
         *task = self.store.consume_resume_inputs(task)?;
-        let mut output_redactor = secrets::StreamRedactor;
+        let mut announced_logins = std::collections::HashSet::new();
         for round in 0..task.spec.max_rounds {
             ensure!(!cancel.is_cancelled(), "任务已停止");
             let mut available = self.tool_runtime.definitions(task)?;
+            let mut mcp_targets = HashMap::new();
             if task.spec.tools
                 && self
                     .plugin_status(crate::plugin_management::BUILTIN_FILES_ID)
                     .is_ok_and(|s| s.desired.enabled && s.runtime.admission_open)
             {
+                available.push(crate::workspace::exploration_definition());
+                available.push(crate::workspace::parallel_exploration_definition());
                 for tool in crate::workspace::definitions(task) {
                     if let Some(name) = tool["function"]["name"].as_str()
                         && matches!(name, "git_status" | "todo_write" | "todo_read")
@@ -1887,18 +1924,32 @@ impl Engine {
             }
             if task.spec.tools
                 && task.spec.allow_commands
-                && crate::mcp::has_config(Path::new(&task.workspace))
                 && self
                     .plugin_status(crate::plugin_management::BUILTIN_SHELL_ID)
                     .is_ok_and(|s| s.desired.enabled && s.runtime.admission_open)
             {
-                let mcp_tools = crate::mcp::discover_tools(Path::new(&task.workspace)).await;
-                for tool in mcp_tools {
+                let mut login_required = Vec::new();
+                let mcp_tools = tokio::select! {
+                    biased;
+                    _ = cancel.cancelled() => anyhow::bail!("任务已停止"),
+                    tools = self.tool_calls.mcp.discover_targets(&task.run_id, Path::new(&task.workspace), &mut login_required) => tools,
+                };
+                for server in login_required {
+                    if announced_logins.insert(server.clone()) {
+                        self.store.event(
+                            &task.id,
+                            "unknown:mcp_login_required",
+                            json!({"server":server}),
+                        )?;
+                    }
+                }
+                for (tool, target) in mcp_tools {
                     if let Some(name) = tool["function"]["name"].as_str()
                         && !available
                             .iter()
                             .any(|existing| existing["function"]["name"] == name)
                     {
+                        mcp_targets.insert(name.to_owned(), target);
                         available.push(tool);
                     }
                 }
@@ -1920,29 +1971,6 @@ impl Engine {
             };
             let tools: Vec<_> = indices.into_iter().map(|i| available[i].clone()).collect();
             let mut text = String::new();
-            let prepared = self.provider_runtime.prepare_persisted(
-                &self.store,
-                &crate::provider_runtime::CompletionInput {
-                    model: &task.route.model,
-                    max_tokens: task.route.max_tokens,
-                    messages: &context_messages,
-                    tools: &tools,
-                },
-            )?;
-            let (lease, (permit, receipt)) = {
-                let _gate = self.gate.lock().await;
-                self.ensure_accepting()?;
-                let subject = self.task_route_subject(task)?;
-                self.provider_runtime
-                    .acquire_persisted(prepared, |revision| {
-                        self.store.network_admit_with_runtime_revision(
-                            &subject,
-                            NetworkPurpose::Completion,
-                            Some(task),
-                            Some(revision),
-                        )
-                    })?
-            };
             let mut emit = |delta: &str| {
                 if !delta.is_empty() {
                     self.store.completion_delta(&task.id, delta)?;
@@ -1950,56 +1978,30 @@ impl Engine {
                 }
                 Ok(())
             };
-            let mut pending_reasoning = String::new();
-            let mut emit_reasoning = |delta: &str| {
-                let safe = scrub_reasoning_delta(&mut pending_reasoning, delta, &key);
-                if !safe.is_empty() {
-                    self.store.reasoning_delta(&task.id, &safe)?;
-                }
-                Ok(())
+            let mut emit_reasoning = |delta: &str| self.store.reasoning_delta(&task.id, delta);
+            let subject = self.task_route_subject(task)?;
+            let input = crate::provider_runtime::CompletionInput {
+                model: &task.route.model,
+                max_tokens: task.route.max_tokens,
+                messages: &context_messages,
+                tools: &tools,
             };
-            let mut reasoning_redactor = secrets::StreamRedactor;
-            let call = lease.execute_with_reasoning_redactors(
-                &self.client,
-                permit,
-                &task.route,
-                &mut emit,
-                &mut output_redactor,
-                &mut emit_reasoning,
-                &mut reasoning_redactor,
-            );
-            let result = tokio::select! {
-                r = call => r,
-                _ = cancel.cancelled() => Err(crate::provider_transport::TransportError::Unknown),
-            };
-            let result = self.store.finish_completion(receipt, result);
-            if !pending_reasoning.is_empty() {
-                self.store.reasoning_delta(&task.id, &pending_reasoning)?;
-            }
+            let result = self
+                .complete_route(
+                    &subject,
+                    Some(task),
+                    &task.route,
+                    &input,
+                    CompletionOutput::Stream {
+                        text: &mut emit,
+                        reasoning: &mut emit_reasoning,
+                    },
+                    cancel,
+                )
+                .await;
             task.output.push_str(&text);
             let (message, usage) = result?.result;
-            if let crate::provider_usage::UsageObservation::Valid(usage) =
-                crate::provider_usage::classify_usage(&usage)
-            {
-                let mut projection = if task.usage.is_object() {
-                    task.usage.clone()
-                } else {
-                    json!({})
-                };
-                for (field, n) in [
-                    ("prompt_tokens", usage.prompt_tokens),
-                    ("completion_tokens", usage.completion_tokens),
-                    ("total_tokens", usage.total_tokens),
-                ] {
-                    let old = projection[field].as_u64().unwrap_or(0);
-                    let value = old
-                        .checked_add(n)
-                        .filter(|v| *v <= i64::MAX as u64)
-                        .context("任务用量投影超出范围；持久预算结果保持")?;
-                    projection[field] = json!(value);
-                }
-                task.usage = projection;
-            }
+            add_completion_usage(task, &usage)?;
             let calls = match message.get("tool_calls") {
                 None => None,
                 Some(value) => Some(
@@ -2044,19 +2046,6 @@ impl Engine {
                     matches!(decision, crate::agent_runtime::StrategyAction::Finish),
                     "invalid agent decision"
                 );
-                let tail = output_redactor.finish();
-                if !tail.is_empty() {
-                    self.store.completion_delta(&task.id, &tail)?;
-                    task.output.push_str(&tail);
-                    let message = task
-                        .messages
-                        .last_mut()
-                        .context("最终 assistant 消息缺失")?;
-                    match &mut message["content"] {
-                        Value::String(content) => content.push_str(&tail),
-                        content => *content = Value::String(tail),
-                    }
-                }
                 task.updated_at = now();
                 self.store.save_running_snapshot(task)?;
                 return Ok(());
@@ -2074,14 +2063,34 @@ impl Engine {
                 )?;
                 if !tools.iter().any(|t| t["function"]["name"] == name) {
                     self.tool_calls
-                        .reject_unadvertised(task, call, name, &key)?;
+                        .reject_unadvertised(task, call, name, &keys)?;
                     anyhow::bail!("模型请求了未授权的工具");
                 }
                 let call_id = call["id"].as_str().context("工具调用缺少 id")?;
                 match vote {
+                    crate::agent_runtime::ToolVote::ApplyHostPolicy if name == "explore_files" => {
+                        self.explore_files(task, call_id, &args, &keys, cancel)
+                            .await?;
+                    }
+                    crate::agent_runtime::ToolVote::ApplyHostPolicy
+                        if name == "explore_parallel" =>
+                    {
+                        slot.release();
+                        self.explore_parallel(task, call_id, &args, &keys, cancel)
+                            .await?;
+                        slot = self.task_slot(cancel).await?;
+                    }
                     crate::agent_runtime::ToolVote::ApplyHostPolicy => {
                         self.tool_calls
-                            .execute_or_wait(task, call, name, &args, &key, cancel)
+                            .execute_or_wait(
+                                task,
+                                call,
+                                name,
+                                &args,
+                                &keys,
+                                cancel,
+                                mcp_targets.get(name),
+                            )
                             .await?;
                     }
                     crate::agent_runtime::ToolVote::Deny => {
@@ -2090,7 +2099,7 @@ impl Engine {
                             call_id,
                             name,
                             r#"{"error":"blocked_by_agent_policy"}"#,
-                            &key,
+                            &keys,
                             crate::tool_results::Origin::AgentDenied,
                         )?;
                     }
@@ -2098,6 +2107,61 @@ impl Engine {
             }
         }
         anyhow::bail!("达到工具轮数上限；请检查结果后继续此成员")
+    }
+
+    async fn explore_files(
+        &self,
+        task: &mut Task,
+        call_id: &str,
+        args: &Value,
+        keys: &secrets::CredentialSet,
+        cancel: &CancellationToken,
+    ) -> Result<()> {
+        ensure!(!cancel.is_cancelled(), "任务已停止");
+        let (lease, ()) = self.tool_runtime.acquire(task, "read_file", || {
+            self.composition.projects.validate_files_read(task)
+        })?;
+        let prepared = match crate::workspace::ExplorationRequest::parse(args) {
+            Ok(request) => {
+                self.store.event(&task.id, "tool_start", json!({
+                    "name": "explore_files", "tool_call_id": call_id,
+                    "arguments": {
+                        "paths": request.paths.iter().map(|path| keys.scrub(path)).collect::<Vec<_>>(),
+                        "question": keys.scrub(&request.question),
+                    }
+                }))?;
+                let root = std::path::PathBuf::from(&task.workspace);
+                let stop = cancel.clone();
+                let read = tokio::task::spawn_blocking(move || {
+                    let excerpts = request.read_excerpts(&root, &stop)?;
+                    Ok((request.question, excerpts, lease))
+                });
+                tokio::select! {
+                    biased;
+                    _ = cancel.cancelled() => anyhow::bail!("任务已停止"),
+                    result = read => result?,
+                }
+            }
+            Err(error) => Err(error),
+        };
+        ensure!(!cancel.is_cancelled(), "任务已停止");
+        let result = match prepared {
+            Ok((question, excerpts, _lease)) => {
+                let summary = self
+                    .summarize_exploration(task, &question, &excerpts, cancel)
+                    .await?;
+                json!({"summary":summary})
+            }
+            Err(error) => json!({"error":keys.scrub(&error.to_string())}),
+        };
+        self.tool_calls.record_tool_result(
+            task,
+            call_id,
+            "explore_files",
+            &result.to_string(),
+            keys,
+            crate::tool_results::Origin::ReadCompleted,
+        )
     }
 
     pub fn decide_approval(
@@ -2394,6 +2458,7 @@ impl Engine {
     pub async fn begin_shutdown(&self) {
         self.request_shutdown();
         let _gate = self.gate.lock().await;
+        self.tool_calls.mcp.close().await;
         self.request_shutdown();
         if !self
             .shutdown_persistence_started
@@ -2485,7 +2550,7 @@ fn same_workspace(a: &str, b: &str) -> bool {
 pub(crate) fn agent_tool_class(name: Option<&str>) -> crate::agent_runtime::ToolClass {
     use crate::agent_runtime::ToolClass;
     match name {
-        Some("read_file" | "git_status") => ToolClass::Read,
+        Some("read_file" | "explore_files" | "explore_parallel" | "git_status") => ToolClass::Read,
         Some("list_files" | "glob_files") => ToolClass::List,
         Some("search_files") => ToolClass::Search,
         Some("write_file" | "edit_file") => ToolClass::Write,

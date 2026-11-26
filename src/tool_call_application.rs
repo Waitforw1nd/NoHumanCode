@@ -22,6 +22,52 @@ const TOOL_OUTPUT_MAX_CHARS: usize = 32_000;
 const TOOL_OUTPUT_HEAD_CHARS: usize = 16_000;
 const TOOL_OUTPUT_TAIL_CHARS: usize = 8_000;
 
+/// Keep every branch identifiable even when the JSON exceeds the tool-message limit.
+pub(crate) fn parallel_result_content(batch_id: &str, mut branches: Vec<Value>) -> String {
+    let complete = json!({"batch_id":batch_id,"branches": &branches}).to_string();
+    if complete.chars().count() <= TOOL_OUTPUT_MAX_CHARS {
+        return complete;
+    }
+    let budget = (TOOL_OUTPUT_MAX_CHARS - batch_id.len() - 64) / branches.len().max(1);
+    for branch in &mut branches {
+        if branch.to_string().len() <= budget {
+            continue;
+        }
+        branch["truncated"] = json!(true);
+        if let Some(ranges) = branch["evidence"].as_array_mut() {
+            let mut remaining = budget / 2;
+            let keep = ranges
+                .iter()
+                .take_while(|range| {
+                    let bytes = range.to_string().len() + 1;
+                    if bytes > remaining {
+                        return false;
+                    }
+                    remaining -= bytes;
+                    true
+                })
+                .count();
+            ranges.truncate(keep);
+        }
+        let field = if branch["summary"].is_string() {
+            "summary"
+        } else {
+            "error"
+        };
+        if branch[field].is_string() && branch.to_string().len() > budget {
+            let original = branch[field].take();
+            let mut text = original.as_str().unwrap();
+            let room = budget.saturating_sub(branch.to_string().len() + '…'.len_utf8());
+            while serde_json::to_string(text).expect("JSON string").len() > room && !text.is_empty()
+            {
+                text = &text[..text.floor_char_boundary(text.len() / 2)];
+            }
+            branch[field] = json!(format!("{text}…"));
+        }
+    }
+    json!({"batch_id":batch_id,"branches": branches}).to_string()
+}
+
 pub(crate) fn truncate_tool_text(text: &str) -> String {
     let total = text.chars().count();
     if total <= TOOL_OUTPUT_MAX_CHARS {
@@ -47,8 +93,8 @@ pub(crate) fn truncate_tool_text(text: &str) -> String {
     )
 }
 
-pub(crate) fn truncate_tool_value(value: Value) -> Value {
-    let truncated = truncate_value_strings(value);
+fn truncate_tool_value(value: Value, keys: &secrets::CredentialSet) -> Value {
+    let truncated = truncate_value_strings(value, keys);
     let serialized = truncated.to_string();
     if serialized.chars().count() <= TOOL_OUTPUT_MAX_CHARS {
         return truncated;
@@ -59,22 +105,44 @@ pub(crate) fn truncate_tool_value(value: Value) -> Value {
     })
 }
 
-fn truncate_value_strings(value: Value) -> Value {
+fn truncate_value_strings(value: Value, keys: &secrets::CredentialSet) -> Value {
     match value {
-        Value::String(text) => Value::String(truncate_tool_text(&text)),
-        Value::Array(items) => {
-            Value::Array(items.into_iter().map(truncate_value_strings).collect())
-        }
-        Value::Object(map) => Value::Object(
-            map.into_iter()
-                .map(|(k, v)| (k, truncate_value_strings(v)))
+        Value::String(text) => Value::String(truncate_tool_text(&keys.scrub(&text))),
+        Value::Array(items) => Value::Array(
+            items
+                .into_iter()
+                .map(|item| truncate_value_strings(item, keys))
                 .collect(),
         ),
+        Value::Object(map) => {
+            let mut fields = serde_json::Map::new();
+            let mut renamed = Vec::new();
+            for (name, field) in map {
+                let safe = keys.scrub(&name);
+                let field = truncate_value_strings(field, keys);
+                if safe == name {
+                    fields.insert(name, field);
+                } else {
+                    renamed.push((safe, field));
+                }
+            }
+            let mut suffix = 2;
+            for (base, field) in renamed {
+                let mut name = base.clone();
+                while fields.contains_key(&name) {
+                    name = format!("{base} #{suffix}");
+                    suffix += 1;
+                }
+                fields.insert(name, field);
+            }
+            Value::Object(fields)
+        }
         other => other,
     }
 }
 
 pub(crate) struct ToolCallApplication {
+    pub(crate) mcp: crate::mcp::McpPool,
     store: Arc<Store>,
     project: Arc<crate::host_services::ProjectService>,
     approval: Arc<crate::host_services::ApprovalService>,
@@ -92,6 +160,7 @@ impl ToolCallApplication {
         workspace: Arc<crate::host_services::WorkspaceSafety>,
     ) -> Self {
         Self {
+            mcp: crate::mcp::McpPool::with_store(store.clone()),
             store,
             project,
             approval,
@@ -124,15 +193,29 @@ impl ToolCallApplication {
 
     pub(crate) async fn reconcile_open_tools(
         &self,
+        engine: &crate::engine::Engine,
         task: &mut Task,
         cancel: &CancellationToken,
-        key: &str,
+        keys: &secrets::CredentialSet,
+        slot: &mut crate::engine::NetworkSlot,
     ) -> Result<()> {
         approval::validate_call_history(&task.messages)?;
         let calls = unanswered_tool_calls(&task.messages);
         for call in calls {
             let name = call["function"]["name"].as_str().context("工具名称缺失")?;
             let call_id = call["id"].as_str().context("工具调用缺少 id")?;
+            if name == "explore_parallel"
+                && let Some(batch) =
+                    self.store
+                        .exploration_by_call(&task.id, &format!("tool:{call_id}"), None)?
+            {
+                slot.release();
+                engine
+                    .complete_exploration_batch(task, call_id, batch, keys, cancel)
+                    .await?;
+                *slot = engine.task_slot(cancel).await?;
+                continue;
+            }
             match self.store.approval_by_tool_call(&task.id, call_id)? {
                 None => {
                     if let Some(recovered) =
@@ -149,7 +232,7 @@ impl ToolCallApplication {
                             call_id,
                             name,
                             reason,
-                            key,
+                            keys,
                             Origin::HostDenied,
                         )?;
                         continue;
@@ -158,8 +241,8 @@ impl ToolCallApplication {
                         task,
                         call_id,
                         name,
-                        "Execution was interrupted. Inspect files before repeating a write or command.",
-                        key,
+                        crate::tool_results::interrupted_message(name),
+                        keys,
                         Origin::InterruptedWithoutClaim,
                     )?;
                     continue;
@@ -180,7 +263,7 @@ impl ToolCallApplication {
                         call_id,
                         name,
                         &approval::tool_error(status),
-                        key,
+                        keys,
                         if status == ApprovalStatus::Denied {
                             Origin::ApprovalDenied
                         } else {
@@ -196,7 +279,7 @@ impl ToolCallApplication {
                     .as_str()
                     .context("工具参数缺失")?,
             )?;
-            self.execute_or_wait(task, &call, name, &args, key, cancel)
+            self.execute_or_wait(task, &call, name, &args, keys, cancel, None)
                 .await?;
         }
         Ok(())
@@ -207,27 +290,29 @@ impl ToolCallApplication {
         task: &mut Task,
         call: &Value,
         name: &str,
-        key: &str,
+        keys: &secrets::CredentialSet,
     ) -> Result<()> {
         if let PolicyDecision::Deny { reason } = crate::store::evaluate_tool_policy(task, name) {
             let call_id = call["id"].as_str().context("工具调用缺少 id")?;
-            self.record_tool_result(task, call_id, name, reason, key, Origin::HostDenied)?;
+            self.record_tool_result(task, call_id, name, reason, keys, Origin::HostDenied)?;
         }
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn execute_or_wait(
         &self,
         task: &mut Task,
         call: &Value,
         name: &str,
         args: &Value,
-        key: &str,
+        keys: &secrets::CredentialSet,
         cancel: &CancellationToken,
+        advertised: Option<&crate::mcp::ToolTarget>,
     ) -> Result<()> {
         let _operation =
             crate::execution_authority::current().context("tool operation required")?;
-        self.execute_or_wait_in_domain(task, call, name, args, key, cancel)
+        self.execute_or_wait_in_domain(task, call, name, args, keys, cancel, advertised)
             .await
     }
 
@@ -238,8 +323,9 @@ impl ToolCallApplication {
         call: &Value,
         name: &str,
         args: &Value,
-        key: &str,
+        keys: &secrets::CredentialSet,
         cancel: &CancellationToken,
+        advertised: Option<&crate::mcp::ToolTarget>,
     ) -> Result<()> {
         let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
         if name == "run_wasm" {
@@ -273,9 +359,14 @@ impl ToolCallApplication {
                 "任务已停止"
             );
             let approval_task = transient_approval_task(task, call, name, args)?;
-            let (record, _) = self
-                .approval
-                .ensure(&approval_task, tool_call_id, name, args)?;
+            let (record, _) =
+                self.approval
+                    .ensure(&approval_task, tool_call_id, name, args, advertised)?;
+            let bound = self.store.approval_mcp_target(&record)?;
+            ensure!(
+                advertised.is_none_or(|target| Some(target) == bound.as_ref()),
+                "MCP 工具审批目标不一致"
+            );
             drop(approval_task);
             let status = self.wait_for_approval(&record, cancel).await?;
             return match status {
@@ -285,8 +376,17 @@ impl ToolCallApplication {
                         .approval
                         .claim(&approval_task, tool_call_id, name, args)?;
                     drop(approval_task);
-                    self.perform_mcp_tool(task, tool_call_id, name, args, key, &claimed.id)
-                        .await
+                    self.perform_mcp_tool(
+                        task,
+                        tool_call_id,
+                        name,
+                        args,
+                        keys,
+                        &claimed.id,
+                        cancel,
+                        bound.as_ref(),
+                    )
+                    .await
                 }
                 ApprovalStatus::Denied | ApprovalStatus::Cancelled => {
                     let mut approval_task = transient_approval_task(task, call, name, args)?;
@@ -295,7 +395,7 @@ impl ToolCallApplication {
                         tool_call_id,
                         name,
                         &approval::tool_error(status),
-                        key,
+                        keys,
                         if status == ApprovalStatus::Denied {
                             Origin::ApprovalDenied
                         } else {
@@ -328,7 +428,7 @@ impl ToolCallApplication {
                 "任务已停止"
             );
             return self
-                .perform_direct_workspace_tool(task, tool_call_id, name, args, key)
+                .perform_direct_workspace_tool(task, tool_call_id, name, args, keys)
                 .await;
         }
         ensure!(
@@ -360,18 +460,25 @@ impl ToolCallApplication {
                         Ok(())
                     }
                 })?;
-                self.perform_tool(task, tool_call_id, name, args, key, None, lease)
+                self.perform_tool(task, tool_call_id, name, args, keys, None, lease)
                     .await
             }
             PolicyDecision::Deny { reason } => {
-                self.record_tool_result(task, tool_call_id, name, reason, key, Origin::HostDenied)?;
+                self.record_tool_result(
+                    task,
+                    tool_call_id,
+                    name,
+                    reason,
+                    keys,
+                    Origin::HostDenied,
+                )?;
                 Ok(())
             }
             PolicyDecision::RequireApproval => {
                 let approval_task = transient_approval_task(task, call, name, args)?;
-                let (record, _) = self
-                    .approval
-                    .ensure(&approval_task, tool_call_id, name, args)?;
+                let (record, _) =
+                    self.approval
+                        .ensure(&approval_task, tool_call_id, name, args, None)?;
                 drop(approval_task);
                 let status = self.wait_for_approval(&record, cancel).await?;
                 match status {
@@ -387,7 +494,7 @@ impl ToolCallApplication {
                             tool_call_id,
                             name,
                             args,
-                            key,
+                            keys,
                             Some(&claimed.id),
                             lease,
                         )
@@ -400,7 +507,7 @@ impl ToolCallApplication {
                             tool_call_id,
                             name,
                             &approval::tool_error(status),
-                            key,
+                            keys,
                             if status == ApprovalStatus::Denied {
                                 Origin::ApprovalDenied
                             } else {
@@ -458,7 +565,7 @@ impl ToolCallApplication {
         tool_call_id: &str,
         name: &str,
         args: &Value,
-        key: &str,
+        keys: &secrets::CredentialSet,
         approval_id: Option<&str>,
         lease: ToolLease,
     ) -> Result<()> {
@@ -510,7 +617,7 @@ impl ToolCallApplication {
                     if error.chain().any(|cause| cause.is::<rusqlite::Error>()) {
                         return Err(error);
                     }
-                    let message = secrets::scrub(&error.to_string(), key);
+                    let message = keys.scrub(&error.to_string());
                     let serialized = self.store.finish_approval_with_change(
                         task,
                         approval_id,
@@ -545,7 +652,7 @@ impl ToolCallApplication {
         }
         let execution = lease.execute(task, args).await;
         let (result, succeeded) = match execution {
-            Ok(value) => (truncate_tool_value(value), true),
+            Ok(value) => (truncate_tool_value(value, keys), true),
             Err(error)
                 if name == "run_command"
                     && error.chain().any(|cause| {
@@ -557,11 +664,11 @@ impl ToolCallApplication {
                 return Err(approval::ApprovalError::UnknownResult { id: id.to_owned() }.into());
             }
             Err(error) => (
-                json!({"error": truncate_tool_text(&secrets::scrub(&error.to_string(), key))}),
+                json!({"error": truncate_tool_text(&keys.scrub(&error.to_string()))}),
                 false,
             ),
         };
-        let serialized = result.to_string().replace(key, "[redacted]");
+        let serialized = result.to_string();
         if let Some(approval_id) = approval_id {
             if !succeeded && let Some((_, change, _)) = &prepared {
                 self.store.mark_workspace_change_failed(&change.id)?;
@@ -594,20 +701,23 @@ impl ToolCallApplication {
                 tool_call_id,
                 name,
                 &serialized,
-                key,
+                keys,
                 Origin::ReadCompleted,
             )
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn perform_mcp_tool(
         &self,
         task: &mut Task,
         tool_call_id: &str,
         name: &str,
         args: &Value,
-        key: &str,
+        keys: &secrets::CredentialSet,
         approval_id: &str,
+        cancel: &CancellationToken,
+        bound: Option<&crate::mcp::ToolTarget>,
     ) -> Result<()> {
         self.store.event(
             &task.id,
@@ -619,15 +729,33 @@ impl ToolCallApplication {
                 "args_digest": approval::args_digest(args)?
             }),
         )?;
-        let execution =
-            crate::mcp::call_tool(std::path::Path::new(&task.workspace), name, args).await;
+        let execution = self
+            .mcp
+            .call_bound(
+                &task.run_id,
+                std::path::Path::new(&task.workspace),
+                name,
+                args,
+                cancel,
+                bound.map_or(
+                    crate::mcp::CallBinding::LegacyStdio,
+                    crate::mcp::CallBinding::Approved,
+                ),
+            )
+            .await;
         let result = match execution {
-            Ok(value) => truncate_tool_value(value),
+            Ok(value) => truncate_tool_value(value, keys),
+            Err(error) if error.is::<crate::mcp::McpOutcomeUnknown>() => {
+                return Err(approval::ApprovalError::UnknownResult {
+                    id: approval_id.to_owned(),
+                }
+                .into());
+            }
             Err(error) => {
-                json!({"error": truncate_tool_text(&secrets::scrub(&error.to_string(), key))})
+                json!({"error": truncate_tool_text(&keys.scrub(&error.to_string()))})
             }
         };
-        let serialized = result.to_string().replace(key, "[redacted]");
+        let serialized = result.to_string();
         let serialized =
             self.store
                 .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
@@ -643,7 +771,7 @@ impl ToolCallApplication {
         tool_call_id: &str,
         name: &str,
         args: &Value,
-        key: &str,
+        keys: &secrets::CredentialSet,
     ) -> Result<()> {
         self.store.event(
             &task.id,
@@ -652,18 +780,18 @@ impl ToolCallApplication {
         )?;
         let execution = crate::workspace::execute(task, name, args).await;
         let result = match execution {
-            Ok(value) => truncate_tool_value(value),
+            Ok(value) => truncate_tool_value(value, keys),
             Err(error) => {
-                json!({"error": truncate_tool_text(&secrets::scrub(&error.to_string(), key))})
+                json!({"error": truncate_tool_text(&keys.scrub(&error.to_string()))})
             }
         };
-        let serialized = result.to_string().replace(key, "[redacted]");
+        let serialized = result.to_string();
         self.record_tool_result(
             task,
             tool_call_id,
             name,
             &serialized,
-            key,
+            keys,
             Origin::ReadCompleted,
         )
     }
@@ -674,10 +802,15 @@ impl ToolCallApplication {
         tool_call_id: &str,
         name: &str,
         content: &str,
-        key: &str,
+        keys: &secrets::CredentialSet,
         origin: Origin,
     ) -> Result<()> {
-        let content = truncate_tool_text(&content.replace(key, "[redacted]"));
+        let content = if origin == Origin::ReadCompleted {
+            // Read results have already been scrubbed as JSON values before truncation.
+            truncate_tool_text(content)
+        } else {
+            truncate_tool_text(&keys.scrub(content))
+        };
         let (updated, _) =
             self.store
                 .commit_tool_result(task, tool_call_id, name, &content, origin)?;
@@ -752,6 +885,64 @@ pub(crate) fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scrubs_all_actual_members_before_json_escaping_and_truncation() {
+        let primary = r#"test\"primary"#;
+        let backup = r#"alt\"token"#;
+        let keys = secrets::CredentialSet::new(vec![primary.into(), backup.into()]);
+        let ordinary = r#"let token = "ordinary";"#;
+        let result = truncate_tool_value(
+            json!({
+                (primary): [format!("read {backup}"), ordinary]
+            }),
+            &keys,
+        );
+        assert_eq!(result, json!({"[redacted]": ["read [redacted]", ordinary]}));
+        let collisions = truncate_tool_value(
+            json!({ (primary):1, (backup):2, "[redacted]":3, "[redacted] #2":4 }),
+            &keys,
+        );
+        let fields = collisions.as_object().unwrap();
+        assert_eq!(fields.len(), 4);
+        assert_eq!(fields["[redacted]"], 3);
+        assert_eq!(fields["[redacted] #2"], 4);
+        assert!(fields.values().any(|v| *v == 1) && fields.values().any(|v| *v == 2));
+        let prefix = "x".repeat(TOOL_OUTPUT_HEAD_CHARS - 3);
+        let output = truncate_tool_value(
+            json!(format!(
+                "{prefix}{backup}{}",
+                "z".repeat(TOOL_OUTPUT_MAX_CHARS)
+            )),
+            &keys,
+        );
+        assert!(
+            output
+                .as_str()
+                .unwrap()
+                .starts_with(&format!("{prefix}[re"))
+        );
+    }
+
+    #[test]
+    fn oversized_parallel_results_keep_status_and_evidence_in_valid_json() {
+        let branches = (1..=4).map(|index| json!({
+            "index":index, "status":"ok", "summary":"\u{0002}文件".repeat(2000),
+            "evidence":(1..=150).map(|line| json!({"path":"src/main.rs","start_line":line,"end_line":line})).collect::<Vec<_>>()
+        })).collect();
+        let text = parallel_result_content("batch", branches);
+        assert!(text.chars().count() <= TOOL_OUTPUT_MAX_CHARS);
+        let result: Value = serde_json::from_str(&text).unwrap();
+        let branches = result["branches"].as_array().unwrap();
+        assert_eq!(branches.len(), 4);
+        for (index, branch) in branches.iter().enumerate() {
+            assert_eq!(branch["index"], index + 1);
+            assert_eq!(branch["status"], "ok");
+            assert_eq!(branch["truncated"], true);
+            assert_eq!(branch["evidence"][0]["start_line"], 1);
+            assert!(!branch["summary"].as_str().unwrap().is_empty());
+        }
+    }
 
     #[test]
     fn truncates_oversized_tool_text_preserving_head_and_tail() {

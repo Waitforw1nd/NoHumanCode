@@ -168,8 +168,8 @@ impl std::error::Error for ApprovalError {}
 
 pub fn classify(tool_name: &str) -> ToolEffect {
     match tool_name {
-        "list_files" | "glob_files" | "read_file" | "search_files" | "git_status"
-        | "todo_write" | "todo_read" => ToolEffect::None,
+        "list_files" | "glob_files" | "read_file" | "explore_files" | "explore_parallel"
+        | "search_files" | "git_status" | "todo_write" | "todo_read" => ToolEffect::None,
         "write_file" | "edit_file" => ToolEffect::WriteFs,
         "run_command" => ToolEffect::ExecCommand,
         _ => ToolEffect::Unknown,

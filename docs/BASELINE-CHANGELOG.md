@@ -4,6 +4,35 @@
 
 ---
 
+## Baseline 6 · Sprint 05/S5-T1 多 Agent 并行检索验收（2026-11-19，UTC+8）
+
+- 验收版本为 `baseline-1`（`7e9f36d4`）加累计补丁 `S5-T1-from-baseline-1.patch`。服务器复核的 SHA-256 为 `e84305f644102312606db300e93f010478400bd195467670a80a526478ce2ae1`，用户确认 Windows 本机哈希一致。
+- 用户回传的 Windows/MSVC 原生门禁中，`build.ps1` 的 `fmt`、`check`、`clippy`、`test` 退出码均为 0。本次回报未附原生测试用例计数。
+- 本轮交付 `explore_parallel`。主会话可拆分 1–4 个只读检索分支，最多两支并发，按原顺序汇总摘要和行号证据。服务器回归另有 Wine 103 项通过，详见 [S5-T1 验收记录](sprints/SPRINT-05-parallel-exploration.md#服务器验证与-windows-本机验收)。
+
+## Baseline 5 · Sprint 04/S4-T1 远程 MCP OAuth 验收（2026-11-19，UTC+8）
+
+- 验收版本为 `baseline-1`（`7e9f36d4`）加累计补丁 `S4-T1-from-baseline-1.patch`。服务器复核的 SHA-256 为 `7c73a1f20ef4e8543195118ba6da2533a93fcd4b01a9c8aed04773a6e20b5a70`，用户确认 Windows 本机哈希一致。
+- 用户回传 Windows/MSVC 原生门禁结果，`build.ps1` 的 `fmt`、`check`、`clippy`、`test` 退出码均为 0。本次回报未附原生测试用例计数。
+- 本轮验收覆盖远程 MCP 的独立命令与聊天内登录、按工作区加密保存凭据和令牌刷新。服务器 Wine 与 Linux 的回归数据见 [S4-T1 验收记录](sprints/SPRINT-04-mcp-oauth.md#验收状态)。
+
+## Baseline 4 · Sprint 03/S3-T3 多账号 KeyPool 验收（2026-11-19）
+
+- 验收版本为 `baseline-1`（`7e9f36d4`）加累计补丁 `S3-T3-from-baseline-1.patch`。服务器复核的 SHA-256 为 `b32039f97d39222695b179f1537adaa7c0f27312690ff3db5cb5c9d8de959854`，用户确认 Windows 本机哈希一致。
+- 用户回传的 Windows/MSVC 原生门禁中，`build.ps1` 的 `fmt`、`check`、`clippy`、`test` 退出码均为 0。本次回报未附原生测试用例计数。服务器的 Linux 与 Wine 测试明细见 [S3-T3 交付与验证](sprints/SPRINT-03-readonly-exploration.md#s3-t3-交付与验证)。
+
+## Baseline 3 · Sprint 03/S3-T2 远程 MCP 验收（2026-11-19）
+
+- 本机验证使用 `baseline-1`（`7e9f36d4`）加 `S3-T2-from-baseline-1.patch`。累计补丁 SHA-256 为 `12b7ad52b92a168a9871ccb1e37cbcb0bed5e9d7682eb2ef3bcb403e21770670`。Windows 端核对了哈希，并在独立 worktree 中成功执行 `git apply --check` 和 `git apply`。
+- 用户回传的 Windows/MSVC 原生门禁中，`build.ps1` 的 `fmt`、`check`、`clippy`、`test` 均以 0 退出。170 项通过，0 项失败，1 项忽略。忽略项为默认跳过的付费在线测试 `coda_live_stream_and_coding_tool`。
+- 本机验收 worktree 为 `E:\code\.tmp\coda-s3-t2-aa7784f9c1`。可见 PowerShell 输出和测试明细分别保存在 `%LOCALAPPDATA%\Temp\coda-s3-t2-aa7784f9c1\verification.log` 和同目录下的 `test.log`。[S3-T2 交付记录](sprints/SPRINT-03-readonly-exploration.md#s3-t2-服务器验证与原生门禁)
+
+## Baseline 2 · Sprint 02 与 Sprint 03/S3-T1 联合验收（2026-11-19）
+
+- Windows 本机从 `baseline-1`（`7e9f36d4`）创建独立 worktree，核对累计补丁 SHA-256 为 `4e78515fd92f7bf591cfc99204ae17c2cc50417c645420c4e1cc6473b0faba44`，补丁适用性检查与应用均通过。该提交加补丁是本次验收锚点。
+- 用户回传的 Windows/MSVC 验证中，`fmt`、`check`、`clippy`、`test` 均以 0 退出。工作区 160 通过、0 失败、1 忽略，忽略项为付费在线测试 `coda_live_stream_and_coding_tool`。
+- 覆盖 [Sprint 02](sprints/SPRINT-02-runtime-and-cli.md) 与 [S3-T1](sprints/SPRINT-03-readonly-exploration.md)。数据库与事件版本分别为 18 与 1。本次回报仅记录已应用补丁的验证工作树。
+
 ## Baseline 1 · Sprint 01 验收（2026-11-18）
 
 - 本地 Git 标签为 `baseline-1`，前一提交为 `fd7d4b9b`。数据库 schema 版本为 18，事件 schema 版本为 1。

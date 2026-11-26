@@ -820,3 +820,96 @@ async fn continue_with_model_override_switches_model_preserving_session_context(
 
     server.abort();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[cfg_attr(not(windows), ignore = "provider credentials require Windows DPAPI")]
+async fn exploration_progress_preserves_piped_parent_text() {
+    const EXCERPT: &str = "private file contents";
+    const THOUGHT: &str = "private child reasoning";
+    const SUMMARY: &str = "summary for parent only";
+
+    let requests = RecordingMockLlm {
+        requests: Arc::default(),
+        replies: Arc::default(),
+    };
+    let app = Router::new()
+        .route(
+            "/v1/chat/completions",
+            post(|State(state): State<RecordingMockLlm>, Json(body): Json<Value>| async move {
+                let mut calls = state.requests.lock().unwrap();
+                let (delta, finish) = match calls.len() {
+                    0 => {
+                        let args = json!({"question":"What does this file do?","paths":["sample.txt"]});
+                        (json!({"content":"Before ", "tool_calls":[{
+                            "index":0,"id":"explore-1","type":"function",
+                            "function":{"name":"explore_files","arguments":args.to_string()}
+                        }]}), "tool_calls")
+                    }
+                    1 => (json!({"content":SUMMARY,"reasoning_content":THOUGHT}), "stop"),
+                    _ => (json!({"content":"after."}), "stop"),
+                };
+                calls.push((None, body));
+                let frame = json!({"choices":[{"delta":delta,"finish_reason":finish}],
+                    "usage":{"prompt_tokens":8,"completion_tokens":4,"total_tokens":12}});
+                ([("content-type","text/event-stream")], format!("data: {frame}\n\ndata: [DONE]\n\n"))
+            }),
+        )
+        .with_state(requests.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base_url = format!("http://{}/v1", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("sample.txt"), EXCERPT).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_coda"))
+        .env("OPENAI_API_KEY", "sk-exploration-test-only")
+        .env("OPENAI_BASE_URL", base_url)
+        .env("CODA_MODEL", "gpt-explore")
+        .args(["ask", "--data-dir"])
+        .arg(temp.path().join("data"))
+        .arg("--dir")
+        .arg(project)
+        .arg("Explore the sample file")
+        .output()
+        .unwrap();
+    server.abort();
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(output.status.success(), "ask failed: {stderr}");
+    assert_eq!(stdout.trim_end_matches(['\r', '\n']), "Before after.");
+    assert!(
+        stderr
+            .lines()
+            .any(|s| s.contains(r#"[tool] explore_files Exploring "sample.txt""#))
+    );
+    assert!(
+        stderr
+            .lines()
+            .any(|s| s.contains("[explore_files] Summary ready"))
+    );
+    for private in [EXCERPT, THOUGHT, SUMMARY] {
+        assert!(!stdout.contains(private) && !stderr.contains(private));
+    }
+    let requests = requests.requests.lock().unwrap();
+    assert_eq!(requests.len(), 3);
+    assert!(requests[1].1["messages"].to_string().contains(EXCERPT));
+    assert!(requests[2].1["messages"].to_string().contains(SUMMARY));
+}
+
+#[path = "support/http_mcp_workbench.rs"]
+mod http_mcp_workbench;
+
+#[path = "support/key_pool_workbench.rs"]
+mod key_pool_workbench;
+
+#[path = "support/oauth_workbench.rs"]
+mod oauth_workbench;
+
+#[path = "support/parallel_workbench.rs"]
+mod parallel_workbench;
+
+#[path = "support/durable_workbench.rs"]
+mod durable_workbench;

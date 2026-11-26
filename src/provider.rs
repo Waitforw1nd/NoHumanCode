@@ -52,6 +52,7 @@ pub async fn models(
     route: &Route,
 ) -> std::result::Result<Vec<String>, TransportError> {
     let protocol = permit.protocol();
+    let scrub = permit.credential_scrubber();
     permit.matches(
         &route.base_url,
         NetworkPurpose::Models,
@@ -73,9 +74,9 @@ pub async fn models(
                     .or_else(|| v.as_str())
                     .ok_or(TransportError::InvalidResponse { status })?;
                 if keep_prefix {
-                    Ok(raw.to_owned())
+                    Ok(scrub(raw))
                 } else {
-                    Ok(raw.strip_prefix("models/").unwrap_or(raw).to_owned())
+                    Ok(scrub(raw.strip_prefix("models/").unwrap_or(raw)))
                 }
             })
             .collect();
@@ -88,7 +89,7 @@ pub async fn models(
             v["id"]
                 .as_str()
                 .or(v.as_str())
-                .map(String::from)
+                .map(&scrub)
                 .ok_or(TransportError::InvalidResponse { status })
         })
         .collect()

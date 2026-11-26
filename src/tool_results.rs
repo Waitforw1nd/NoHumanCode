@@ -23,6 +23,20 @@ impl Origin {
     }
 }
 
+pub(crate) fn is_exploration(name: &str) -> bool {
+    matches!(name, "explore_files" | "explore_parallel")
+}
+
+pub(crate) fn interrupted_message(tool_name: &str) -> &'static str {
+    if tool_name == "explore_parallel" {
+        "Parallel exploration was interrupted before its results were recorded. Dispatched model requests may have incurred usage."
+    } else if tool_name == "explore_files" {
+        "Exploration was interrupted before its summary was recorded. The model request may have incurred usage."
+    } else {
+        "Execution was interrupted. Inspect files before repeating a write or command."
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum ToolResultError {
     Conflict,

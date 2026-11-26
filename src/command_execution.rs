@@ -106,10 +106,16 @@ pub(crate) async fn execute(task: &Task, args: &Value) -> Result<Value> {
     let deadline = Instant::now() + Duration::from_secs(timeout_seconds);
     let root = std::fs::canonicalize(&task.workspace).context("命令工作区不可用")?;
     let executable = resolve_powershell(&root)?;
+    let mcp_credentials = crate::mcp::bearer_env_names();
+    let pool_credentials = crate::key_pool_config::credential_env_names()?;
     let environment = std::env::vars_os()
         .filter(|(name, _)| {
             let upper = name.to_string_lossy().to_ascii_uppercase();
-            !upper.contains("KEY") && !upper.contains("TOKEN") && !upper.contains("SECRET")
+            !upper.contains("KEY")
+                && !upper.contains("TOKEN")
+                && !upper.contains("SECRET")
+                && !mcp_credentials.contains(&upper)
+                && !pool_credentials.contains(&upper)
         })
         .collect();
 

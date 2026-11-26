@@ -864,8 +864,10 @@ impl ApprovalService {
         id: &str,
         name: &str,
         args: &Value,
+        mcp_target: Option<&crate::mcp::ToolTarget>,
     ) -> Result<(approval::ApprovalRecord, bool)> {
-        self.store.ensure_current_approval(task, id, name, args)
+        self.store
+            .ensure_current_approval(task, id, name, args, mcp_target)
     }
     pub(crate) fn claim(
         &self,

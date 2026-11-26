@@ -72,6 +72,7 @@ pub(crate) struct PreparedCompletion {
 }
 
 pub(crate) struct CompletionLease {
+    streamed_content_only: bool,
     body: Value,
     decoder: Option<Box<dyn CompletionDecoder>>,
     in_flight: Arc<AtomicU64>,
@@ -201,6 +202,7 @@ impl ProviderRuntime {
         self.in_flight.fetch_add(1, Ordering::SeqCst);
         Ok((
             CompletionLease {
+                streamed_content_only: false,
                 body,
                 decoder: Some(decoder),
                 in_flight: self.in_flight.clone(),
@@ -296,6 +298,35 @@ impl ProviderRuntime {
 }
 
 impl CompletionLease {
+    /// Summarizes in isolation. Only the final response is returned to the exploration caller.
+    pub(crate) async fn execute_exploration(
+        mut self,
+        client: &ProviderClient,
+        permit: ProviderPermit,
+        route: &Route,
+    ) -> Result<CompletionOutput, TransportError> {
+        self.streamed_content_only = true;
+        let scrub = permit.credential_scrubber();
+        let messages = self.body["messages"]
+            .as_array_mut()
+            .ok_or(TransportError::Invalid)?;
+        for message in messages {
+            if message["role"] == "user"
+                && let Some(Value::String(text)) = message.get_mut("content")
+            {
+                *text = scrub(text);
+            }
+        }
+        let (mut message, usage) = self.execute(client, permit, route, &mut |_| Ok(())).await?;
+        let fields = message.as_object_mut().ok_or(TransportError::Unknown)?;
+        fields.remove("reasoning_content");
+        fields.remove("thinking_signature");
+        if let Some(Value::String(text)) = fields.get_mut("content") {
+            *text = scrub(text);
+        }
+        Ok((message, usage))
+    }
+
     pub(crate) async fn execute(
         self,
         client: &ProviderClient,
@@ -303,43 +334,21 @@ impl CompletionLease {
         route: &Route,
         emit: &mut Emit<'_>,
     ) -> Result<CompletionOutput, TransportError> {
-        let mut noop = crate::secrets::StreamRedactor;
-        self.execute_with_redactor(client, permit, route, emit, &mut noop)
+        self.execute_with_reasoning(client, permit, route, emit, &mut |_| Ok(()))
             .await
     }
 
-    pub(crate) async fn execute_with_redactor(
-        self,
-        client: &ProviderClient,
-        permit: ProviderPermit,
-        route: &Route,
-        emit: &mut Emit<'_>,
-        redactor: &mut crate::secrets::StreamRedactor,
-    ) -> Result<CompletionOutput, TransportError> {
-        let mut noop_reasoning = crate::secrets::StreamRedactor;
-        self.execute_with_reasoning_redactors(
-            client,
-            permit,
-            route,
-            emit,
-            redactor,
-            &mut |_| Ok(()),
-            &mut noop_reasoning,
-        )
-        .await
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn execute_with_reasoning_redactors(
+    pub(crate) async fn execute_with_reasoning(
         mut self,
         client: &ProviderClient,
         permit: ProviderPermit,
         route: &Route,
         emit: &mut (impl FnMut(&str) -> anyhow::Result<()> + Send + ?Sized),
-        redactor: &mut crate::secrets::StreamRedactor,
         emit_reasoning: &mut (impl FnMut(&str) -> anyhow::Result<()> + Send + ?Sized),
-        reasoning_redactor: &mut crate::secrets::StreamRedactor,
     ) -> Result<CompletionOutput, TransportError> {
+        let keys = permit.credentials();
+        let mut redactor = keys.stream();
+        let mut reasoning_redactor = keys.stream();
         use crate::provider_transport::ProviderProtocol;
         let protocol = permit.protocol();
         permit.matches(
@@ -412,35 +421,164 @@ impl CompletionLease {
                     .map_err(|_| TransportError::Unknown)?;
             }
         }
-        let mut output = decoder
-            .finish(&mut safe_emit)
-            .map_err(|_| TransportError::Unknown)?;
+        // Native decoders emit real text during feed and may promote reasoning during finish.
+        // Always finish for validation and usage, but exploration consumes only wire text deltas.
+        let mut output = if self.streamed_content_only {
+            decoder.finish(&mut |_| Ok(()))
+        } else {
+            decoder.finish(&mut safe_emit)
+        }
+        .map_err(|_| TransportError::Unknown)?;
         if emission_failed || reasoning_emission_failed {
             return Err(TransportError::Unknown);
         }
-        let reasoning_tail = std::mem::take(reasoning_redactor).finish();
+        let reasoning_tail = reasoning_redactor.finish();
         if !reasoning_tail.is_empty() {
             emit_reasoning(&reasoning_tail).map_err(|_| TransportError::Unknown)?;
         }
-        if !emitted && let Some(content) = output.0.get("content").and_then(Value::as_str) {
+        if !self.streamed_content_only
+            && !emitted
+            && let Some(content) = output.0.get("content").and_then(Value::as_str)
+        {
             let safe = redactor.push(content);
             if !safe.is_empty() {
                 emit(&safe).map_err(|_| TransportError::Unknown)?;
             }
             streamed_text.push_str(&safe);
         }
-        output
-            .0
-            .as_object_mut()
-            .ok_or(TransportError::Unknown)?
-            .insert("content".into(), Value::String(streamed_text));
+        let tail = redactor.finish();
+        if !tail.is_empty() {
+            emit(&tail).map_err(|_| TransportError::Unknown)?;
+            streamed_text.push_str(&tail);
+        }
+        let fields = output.0.as_object_mut().ok_or(TransportError::Unknown)?;
+        fields.insert("content".into(), Value::String(streamed_text));
+        scrub_signed_reasoning(fields, &keys);
+        if let Some(Value::Array(calls)) = fields.get_mut("tool_calls") {
+            for call in calls {
+                for path in ["/id", "/function/name", "/function/arguments"] {
+                    if let Some(Value::String(value)) = call.pointer_mut(path) {
+                        *value = keys.scrub(value);
+                    }
+                }
+            }
+        }
         Ok(output)
+    }
+}
+
+fn scrub_signed_reasoning(
+    fields: &mut serde_json::Map<String, Value>,
+    keys: &crate::secrets::CredentialSet,
+) {
+    let mut modified = false;
+    if let Some(Value::String(reasoning)) = fields.get_mut("reasoning_content") {
+        let safe = keys.scrub(reasoning);
+        modified = safe != *reasoning;
+        *reasoning = safe;
+    }
+    // A signature is reusable only with the original thinking text.
+    if modified
+        || fields
+            .get("thinking_signature")
+            .and_then(Value::as_str)
+            .is_some_and(|s| keys.scrub(s) != s)
+    {
+        fields.remove("thinking_signature");
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pooled_credentials_preserve_only_reusable_thinking_signatures() {
+        let keys = crate::secrets::CredentialSet::new(vec!["backup-token".into()]);
+        for (thinking, signature, expected) in [
+            ("business text", "opaque", Some("opaque")),
+            ("key=backup-token", "opaque", None),
+            ("business text", "backup-token", None),
+        ] {
+            let mut message = json!({"reasoning_content":thinking, "thinking_signature":signature});
+            scrub_signed_reasoning(message.as_object_mut().unwrap(), &keys);
+            assert_eq!(message["thinking_signature"].as_str(), expected);
+            assert_eq!(message["reasoning_content"], keys.scrub(thinking));
+        }
+    }
+
+    #[tokio::test]
+    async fn exploration_uses_wire_text_even_when_reasoning_matches() {
+        use crate::provider_transport::validate_target;
+        use axum::{Json, Router, routing::post};
+
+        let app = Router::new().route(
+            "/chat/completions",
+            post(|Json(body): Json<Value>| async move {
+                let mut delta = json!({"reasoning_content":"42"});
+                match body["model"].as_str().unwrap() {
+                    "same" => delta["content"] = json!("42"),
+                    "blank" => delta["content"] = json!("  "),
+                    _ => {}
+                }
+                let frame = json!({"choices":[{"delta":delta,"finish_reason":"stop"}],
+                "usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}});
+                format!("data: {frame}\n\ndata: [DONE]\n\n")
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let runtime = ProviderRuntime::builtin_with_state(true).unwrap();
+        let client = ProviderClient::new().unwrap();
+        for (model, expected) in [
+            ("same", "42"),
+            ("only", ""),
+            ("blank", "  "),
+            ("main", "42"),
+        ] {
+            let target = validate_target(&base, NetworkPurpose::Completion).unwrap();
+            let permit = ProviderPermit::new(
+                target,
+                "key".into(),
+                "call".into(),
+                Some(model.into()),
+                None,
+            )
+            .unwrap();
+            let route = Route {
+                id: "mock".into(),
+                name: "mock".into(),
+                base_url: base.clone(),
+                model: model.into(),
+                max_tokens: 64,
+                parallel_limit: 1,
+                key_env: None,
+            };
+            let input = CompletionInput {
+                model,
+                max_tokens: 64,
+                messages: &[json!({"role":"user","content":"test"})],
+                tools: &[],
+            };
+            let prepared = runtime.prepare(&input).unwrap();
+            let (lease, ()) = runtime.acquire(prepared, || Ok(())).unwrap();
+            let (message, usage) = if model == "main" {
+                lease
+                    .execute(&client, permit, &route, &mut |_| Ok(()))
+                    .await
+            } else {
+                lease.execute_exploration(&client, permit, &route).await
+            }
+            .unwrap();
+            assert_eq!(message["content"], expected, "{model}");
+            if model != "main" {
+                assert!(message.get("reasoning_content").is_none());
+            }
+            assert_eq!(usage["total_tokens"], 3);
+        }
+        server.abort();
+    }
 
     struct CustomTempCodec;
     impl CompletionCodec for CustomTempCodec {

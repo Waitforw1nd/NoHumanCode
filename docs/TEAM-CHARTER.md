@@ -17,7 +17,7 @@
 | 部门 / 角色 | 职责定位 | 管辖源码与测试领地（相对仓库根） |
 | :--- | :--- | :--- |
 | **PM / 总架构师** | 需求排期、跨模块契约拍板、工单派发、合并冲突仲裁、门禁终审与台账维护 | `docs/*`、`AGENTS.md`、`PROJECT-MAP.md`、`PROJECT-BOOK.md`、`README.md` |
-| **Tech-CLI（CLI 与开发者体验组）** | `init / chat / ask` 开箱闭环、REPL 斜杠命令、终端流式/Diff 渲染、行输入体验与 CLI 模块解耦 | `src/cli.rs`（及 `src/cli/*`）、`src/credential_input.rs`、`src/main.rs`、`tests/cli_workbench.rs`、`tests/first_user_workflow.rs` |
+| **Tech-CLI（CLI 与开发者体验组）** | `init / chat / ask` 开箱闭环、REPL 斜杠命令、终端流式/Diff 渲染、行输入体验与 CLI 模块解耦 | `src/cli/`、`src/credential_input.rs`、`src/main.rs`、`tests/cli_workbench.rs`、`tests/first_user_workflow.rs` |
 | **Tech-Provider（模型路由与协议组）** | OpenAI / Anthropic / Gemini 原生流式协议、Thinking 增量透出、瞬态退避重试、多 Key 容灾与用量核算 | `src/provider.rs`、`src/provider_runtime.rs`、`src/provider_transport.rs`、`src/provider_usage.rs`、`src/budget.rs`、`src/network_authorization.rs`、`tests/multi_provider_protocol.rs`、`tests/provider_usage.rs` |
 | **Tech-Runtime（核心引擎与工具组）** | `Engine` 调度、`Store` / `Repository` 存储、内建工具箱、Todo/Checkpoint 持久化、Worktree 管理、MCP 会话池与 Subagent | `src/engine.rs`、`src/store.rs`、`src/repository.rs`、`src/workspace.rs`、`src/mcp.rs`、`src/checkpoint.rs`、`src/git_worktree.rs`、`src/worktree_management.rs`、`src/tool_*.rs`、`crates/protocol/`、`tests/subsystems_e2e.rs`、`tests/runtime.rs`、`tests/git_diff.rs` |
 | **QA-Gate（质量与基线门禁组）** | 全量回归验证、边界异常注入测试、Windows 环境兼容性检查、文档承诺与代码实现交叉核验 | `tests/*`、`build.ps1` |

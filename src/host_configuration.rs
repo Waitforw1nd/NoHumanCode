@@ -325,8 +325,9 @@ pub(crate) fn revision_tx(db: &Connection) -> AnyResult<u64> {
 }
 
 pub(crate) fn configuration_history_tx(db: &Connection) -> AnyResult<bool> {
+    // An MCP login can precede the first Host setup and has its own credential namespace.
     Ok(db.query_row(
-        "SELECT EXISTS(SELECT 1 FROM config) OR EXISTS(SELECT 1 FROM secrets) OR EXISTS(SELECT 1 FROM host_config_requests) OR EXISTS(SELECT 1 FROM network_subjects) OR EXISTS(SELECT 1 FROM network_authorizations) OR EXISTS(SELECT 1 FROM project_budgets) OR EXISTS(SELECT 1 FROM projects) OR EXISTS(SELECT 1 FROM tasks)",
+        "SELECT EXISTS(SELECT 1 FROM config) OR EXISTS(SELECT 1 FROM secrets WHERE id NOT GLOB 'mcp-oauth::*') OR EXISTS(SELECT 1 FROM host_config_requests) OR EXISTS(SELECT 1 FROM network_subjects) OR EXISTS(SELECT 1 FROM network_authorizations) OR EXISTS(SELECT 1 FROM project_budgets) OR EXISTS(SELECT 1 FROM projects) OR EXISTS(SELECT 1 FROM tasks)",
         [],
         |r| r.get(0),
     )?)

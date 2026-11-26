@@ -265,9 +265,18 @@ pub struct ProviderPermit {
     call_id: String,
     model: Option<String>,
     account_user: Option<HeaderValue>,
+    retry_after: Option<RetryAfter>,
+    scrub_keys: crate::secrets::CredentialSet,
 }
 
+pub(crate) type RetryAfter = std::sync::Arc<std::sync::OnceLock<Duration>>;
+
 impl ProviderPermit {
+    pub(crate) fn track_retry_after(mut self, retry_after: RetryAfter) -> Self {
+        self.retry_after = Some(retry_after);
+        self
+    }
+
     pub(crate) fn new(
         target: NetworkTarget,
         credential: String,
@@ -283,6 +292,7 @@ impl ProviderPermit {
             account_user.as_deref(),
         )?;
         let request_endpoint = target.resolved_endpoint(model.as_deref())?;
+        let scrub_keys = crate::secrets::CredentialSet::new(vec![credential.clone()]);
         let raw_header = match target.protocol {
             ProviderProtocol::OpenAi => format!("Bearer {credential}"),
             ProviderProtocol::Anthropic | ProviderProtocol::Gemini => credential,
@@ -300,7 +310,25 @@ impl ProviderPermit {
             call_id,
             model,
             account_user,
+            retry_after: None,
+            scrub_keys,
         })
+    }
+
+    pub(crate) fn with_scrub_keys(mut self, keys: Vec<String>) -> Self {
+        if !keys.is_empty() {
+            self.scrub_keys = crate::secrets::CredentialSet::new(keys);
+        }
+        self
+    }
+
+    pub(crate) fn credentials(&self) -> crate::secrets::CredentialSet {
+        self.scrub_keys.clone()
+    }
+
+    pub(crate) fn credential_scrubber(&self) -> impl Fn(&str) -> String + use<> {
+        let keys = self.credentials();
+        move |text| keys.scrub(text)
     }
 
     pub(crate) fn model(&self) -> Option<&str> {
@@ -450,13 +478,260 @@ impl ProviderClient {
             .execute(request)
             .await
             .map_err(|_| TransportError::Unknown)?;
+        let status = response.status().as_u16();
+        if transient_status(status)
+            && let Some(hint) = permit.retry_after
+        {
+            if let Some(delay) = response
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|header| header.to_str().ok())
+                .and_then(|s| parse_retry_after(s, std::time::SystemTime::now()))
+            {
+                let _ = hint.set(delay);
+            }
+            return Err(TransportError::Response { status });
+        }
         Ok(ProviderResponse { response })
     }
+}
+
+pub(crate) fn transient_status(status: u16) -> bool {
+    matches!(status, 429 | 502 | 503 | 504)
+}
+
+fn parse_retry_after(value: &str, now: std::time::SystemTime) -> Option<Duration> {
+    let value = value.trim();
+    if !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit()) {
+        return Some(Duration::from_secs(value.parse().unwrap_or(u64::MAX)));
+    }
+    let deadline = httpdate::parse_http_date(value).ok()?;
+    Some(deadline.duration_since(now).unwrap_or_default())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn retries_transient_http_failures_before_reading_the_success_body() {
+        use crate::network_authorization::*;
+        use axum::{Router, routing::get};
+        use std::sync::{Arc, Mutex};
+        use std::time::Instant;
+        let arrivals = Arc::new(Mutex::new(Vec::new()));
+        let observed = arrivals.clone();
+        let app = Router::new().route(
+            "/models",
+            get(move || {
+                let mut seen = observed.lock().unwrap();
+                seen.push(Instant::now());
+                let status = match seen.len() {
+                    1 => 502,
+                    2 => 504,
+                    _ => 200,
+                };
+                async move {
+                    (
+                        reqwest::StatusCode::from_u16(status).unwrap(),
+                        r#"{"data":[{"id":"m"}]}"#,
+                    )
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let target = validate_target(&format!("http://{addr}"), NetworkPurpose::Models).unwrap();
+        let client = ProviderClient::new().unwrap();
+        let target = &target;
+        let client = &client;
+        let response = retry_provider(
+            &tokio_util::sync::CancellationToken::new(),
+            |hint| async move {
+                let id = uuid::Uuid::new_v4().to_string();
+                let permit = ProviderPermit::new(
+                    target.clone(),
+                    "test".into(),
+                    id.clone(),
+                    Some("m".into()),
+                    None,
+                )
+                .unwrap()
+                .track_retry_after(hint);
+                let result = client.send(permit, None).await;
+                let status = match &result {
+                    Err(TransportError::Response { status }) => Some(*status),
+                    Ok(_) => None,
+                    _ => panic!("unexpected transport failure"),
+                };
+                // The Engine integration tests cover persisted receipts. This fixture isolates
+                // the HTTP transport and retry loop so it can also run on hosts without DPAPI.
+                let calls = vec![CallReceipt {
+                    credential_slot: None,
+                    call_id: id,
+                    authorization_id: "fixture".into(),
+                    subject: NetworkSubject {
+                        kind: NetworkSubjectKind::Route,
+                        id: "m".into(),
+                        project_id: None,
+                    },
+                    task_id: None,
+                    purpose: NetworkPurpose::Models,
+                    method: "GET".into(),
+                    origin: target.origin().into(),
+                    endpoint_digest: crate::workspace_changes::digest(target.endpoint().as_bytes()),
+                    claimed_at: 0,
+                    finished_at: Some(0),
+                    state: CallState::Finished,
+                    success: Some(result.is_ok()),
+                    http_status: status,
+                    result: Some(if result.is_ok() {
+                        CallResult::Success
+                    } else {
+                        CallResult::HttpFailure
+                    }),
+                }];
+                match result {
+                    Ok(response) => Ok(NetworkResponse {
+                        result: crate::provider::json_response(response).await.unwrap().0,
+                        calls,
+                    }),
+                    Err(_) => Err(NetworkError {
+                        kind: NetworkErrorKind::Upstream,
+                        dispatch_state: DispatchState::Finished,
+                        calls,
+                    }),
+                }
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(response.result["data"][0]["id"], "m");
+        assert_eq!(
+            response
+                .calls
+                .iter()
+                .map(|call| call.http_status)
+                .collect::<Vec<_>>(),
+            [Some(502), Some(504), None]
+        );
+        let seen = arrivals.lock().unwrap();
+        assert_eq!(seen.len(), 3);
+        assert!(seen[1] - seen[0] >= Duration::from_millis(250));
+        assert!(seen[2] - seen[1] >= Duration::from_millis(500));
+        server.abort();
+    }
+
+    #[test]
+    fn credential_scrubber_follows_each_permit_and_preserves_business_text() {
+        for base in [
+            "https://example.test",
+            "https://example.test/anthropic",
+            "https://example.test/v1beta",
+        ] {
+            let make = |key: &str| {
+                ProviderPermit::new(
+                    validate_target(base, NetworkPurpose::Completion).unwrap(),
+                    key.into(),
+                    "call".into(),
+                    Some("m".into()),
+                    None,
+                )
+                .unwrap()
+                .credential_scrubber()
+            };
+            let old = make("old-key-123");
+            let new = make("new-key-456");
+            let business = "Bearer authorization; password = example";
+            let text = format!("{business} old-key-123 new-key-456");
+            assert_eq!(old(&text), format!("{business} [redacted] new-key-456"));
+            assert_eq!(new(&text), format!("{business} old-key-123 [redacted]"));
+        }
+    }
+
+    #[test]
+    fn retry_after_parses_seconds_http_dates_and_invalid_values() {
+        let now = std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(1_800_000_000);
+        let second = Duration::from_secs(1);
+        assert_eq!(parse_retry_after(" 12 ", now), Some(second * 12));
+        assert_eq!(parse_retry_after("0", now), Some(Duration::ZERO));
+        assert_eq!(
+            parse_retry_after(&httpdate::fmt_http_date(now + second * 5), now),
+            Some(second * 5)
+        );
+        assert_eq!(
+            parse_retry_after(&httpdate::fmt_http_date(now - second), now),
+            Some(Duration::ZERO)
+        );
+        assert_eq!(
+            parse_retry_after("99999999999999999999999", now),
+            Some(Duration::from_secs(u64::MAX))
+        );
+        for invalid in ["", "-1", "+1", "1.2", "later"] {
+            assert_eq!(parse_retry_after(invalid, now), None);
+        }
+    }
+
+    #[tokio::test]
+    async fn retry_after_on_http_failure_is_scoped_to_its_permit() {
+        use axum::{Router, routing::get};
+        let deadline =
+            httpdate::fmt_http_date(std::time::SystemTime::now() + Duration::from_secs(60));
+        let app = Router::new()
+            .route(
+                "/first/models",
+                get(|| async {
+                    (
+                        axum::http::StatusCode::TOO_MANY_REQUESTS,
+                        [("retry-after", "3")],
+                    )
+                }),
+            )
+            .route(
+                "/second/models",
+                get(|| async move {
+                    (
+                        axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                        [("retry-after", deadline)],
+                    )
+                }),
+            );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let client = ProviderClient::new().unwrap();
+        let send = |path: &'static str| {
+            let client = &client;
+            async move {
+                let base = format!("http://{addr}/{path}");
+                let target = validate_target(&base, NetworkPurpose::Models).unwrap();
+                let hint = RetryAfter::default();
+                let permit = ProviderPermit::new(
+                    target,
+                    "fixture".into(),
+                    path.into(),
+                    Some("m".into()),
+                    None,
+                )
+                .unwrap()
+                .track_retry_after(hint.clone());
+                let result = client.send(permit, None).await.err().unwrap();
+                (result, *hint.get().unwrap())
+            }
+        };
+        let (first, second) = tokio::join!(send("first"), send("second"));
+        assert_eq!(
+            first,
+            (
+                TransportError::Response { status: 429 },
+                Duration::from_secs(3)
+            )
+        );
+        assert_eq!(second.0, TransportError::Response { status: 503 });
+        assert!(second.1 > Duration::from_secs(10) && second.1 <= Duration::from_secs(60));
+        server.abort();
+    }
 
     #[test]
     fn targets_have_one_canonical_origin_and_preserve_base_path() {

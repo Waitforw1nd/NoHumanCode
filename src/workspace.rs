@@ -1,3 +1,11 @@
+mod exploration;
+mod parallel_exploration;
+pub(crate) use exploration::{ExplorationRequest, exploration_definition};
+
+pub(crate) use parallel_exploration::{
+    ParallelExploration, SearchBranch, SearchEvidence, parallel_exploration_definition,
+};
+
 use crate::domain::{Task, scope_path};
 use anyhow::{Context, Result, bail, ensure};
 use regex::{Regex, RegexBuilder};
@@ -1155,10 +1163,28 @@ impl GitignoreMatcher {
     }
 }
 
+// Read a size-limited UTF-8 candidate even if the file grows after the metadata check.
+fn search_file_text(path: &Path) -> Result<Option<String>> {
+    use std::io::Read;
+    let meta = std::fs::symlink_metadata(path)?;
+    if !meta.is_file() || meta.len() > MAX_FILE_BYTES as u64 {
+        return Ok(None);
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)?
+        .take(MAX_FILE_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > MAX_FILE_BYTES {
+        return Ok(None);
+    }
+    Ok(String::from_utf8(bytes).ok())
+}
+
 fn collect_project_files(
     root: &Path,
     start_relative: &str,
     include_ignored: bool,
+    cancel: Option<&tokio_util::sync::CancellationToken>,
 ) -> Result<Vec<(PathBuf, String, String)>> {
     let dir = if start_relative == "." || start_relative.is_empty() {
         root.canonicalize()?
@@ -1187,13 +1213,27 @@ fn collect_project_files(
 
     let mut stack = vec![(dir, prefix, initial_matcher)];
     let mut results = Vec::new();
+    let mut visited = 0usize;
     while let Some((current_dir, current_prefix, current_matcher)) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&current_dir) else {
-            continue;
+        let entries = match std::fs::read_dir(&current_dir) {
+            Ok(entries) => entries,
+            Err(err) if cancel.is_some() => return Err(err).context("无法遍历检索目录"),
+            Err(_) => continue,
         };
-        let mut dir_entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
+        let mut dir_entries = Vec::new();
+        for entry in entries {
+            if let Some(cancel) = cancel {
+                ensure!(!cancel.is_cancelled(), "任务已停止");
+                visited += 1;
+                ensure!(visited <= 100_000, "检索超过 100000 项，请缩小目录范围");
+            }
+            if let Ok(entry) = entry {
+                dir_entries.push(entry);
+            }
+        }
         dir_entries.sort_by_key(|e| e.file_name());
         for entry in dir_entries.into_iter().rev() {
+            ensure!(!cancel.is_some_and(|c| c.is_cancelled()), "任务已停止");
             let name = entry.file_name().to_string_lossy().into_owned();
             if skipped_dir(&name) || forbidden(&name) {
                 continue;
@@ -1205,6 +1245,15 @@ fn collect_project_files(
                 continue;
             }
             let path = entry.path();
+            #[cfg(windows)]
+            {
+                use std::os::windows::fs::MetadataExt;
+                if std::fs::symlink_metadata(&path)
+                    .map_or(true, |m| m.file_attributes() & 0x400 != 0)
+                {
+                    continue;
+                }
+            }
             let rel = if current_prefix.is_empty() {
                 name.clone()
             } else {
@@ -1636,7 +1685,7 @@ pub(crate) async fn execute_builtin(task: &Task, name: &str, args: &Value) -> Re
             let include_ignored = args["include_ignored"].as_bool().unwrap_or(false);
             let limit = args["limit"].as_u64().unwrap_or(200).clamp(1, 500) as usize;
             let rx = glob_to_regex(pattern)?;
-            let all_files = collect_project_files(root, sub_path, include_ignored)?;
+            let all_files = collect_project_files(root, sub_path, include_ignored, None)?;
             let mut matched: Vec<String> = all_files
                 .into_iter()
                 .filter(|(_, rel, file_name)| matches_glob(&rx, pattern, rel, file_name))
@@ -1743,7 +1792,7 @@ pub(crate) async fn execute_builtin(task: &Task, name: &str, args: &Value) -> Re
             };
 
             let include_ignored = args["include_ignored"].as_bool().unwrap_or(false);
-            let files = collect_project_files(root, sub_path, include_ignored)?;
+            let files = collect_project_files(root, sub_path, include_ignored, None)?;
             let mut matches = Vec::new();
             let mut truncated = false;
 
@@ -1753,13 +1802,7 @@ pub(crate) async fn execute_builtin(task: &Task, name: &str, args: &Value) -> Re
                 {
                     continue;
                 }
-                let Ok(meta) = std::fs::metadata(&canon_path) else {
-                    continue;
-                };
-                if meta.len() > MAX_FILE_BYTES as u64 {
-                    continue;
-                }
-                let Ok(content) = std::fs::read_to_string(&canon_path) else {
+                let Ok(Some(content)) = search_file_text(&canon_path) else {
                     continue;
                 };
                 let lines: Vec<&str> = content.lines().collect();
@@ -1876,6 +1919,16 @@ mod tests {
             created_at: 0,
             updated_at: 0,
         }
+    }
+
+    #[test]
+    fn standalone_workspace_does_not_advertise_engine_exploration() {
+        let task = test_task(Path::new("."), vec![]);
+        assert!(
+            definitions(&task)
+                .iter()
+                .all(|tool| tool["function"]["name"] != "explore_files")
+        );
     }
 
     #[test]

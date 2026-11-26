@@ -179,20 +179,72 @@ pub fn scrub(text: &str, secret: &str) -> String {
     }
 }
 
-/// Pass-through compatibility stub for callers that thread completion streams;
-/// performs zero heuristic redaction so generated code is never corrupted.
-#[allow(dead_code)]
-#[derive(Default)]
-pub(crate) struct StreamRedactor;
+/// The exact credentials authorized for one provider request. Never formatted or serialized.
+#[derive(Clone)]
+pub(crate) struct CredentialSet(std::sync::Arc<[String]>);
 
-#[allow(dead_code)]
+impl CredentialSet {
+    pub(crate) fn new(mut keys: Vec<String>) -> Self {
+        keys.retain(|key| !key.trim().is_empty());
+        keys.sort_unstable_by(|a, b| b.len().cmp(&a.len()).then(a.cmp(b)));
+        keys.dedup();
+        Self(keys.into())
+    }
+
+    pub(crate) fn scrub(&self, text: &str) -> String {
+        self.scrub_prefix(text, true).0
+    }
+
+    // Prefer the longest member when configured keys overlap. A suffix that might
+    // become a longer match stays buffered until the next chunk or end of stream.
+    fn scrub_prefix(&self, text: &str, at_end: bool) -> (String, usize) {
+        let mut out = String::with_capacity(text.len());
+        let mut offset = 0;
+        while offset < text.len() {
+            let rest = &text[offset..];
+            if !at_end
+                && self
+                    .0
+                    .iter()
+                    .any(|key| key.len() > rest.len() && key.starts_with(rest))
+            {
+                break;
+            }
+            if let Some(key) = self.0.iter().find(|key| rest.starts_with(key.as_str())) {
+                out.push_str("[redacted]");
+                offset += key.len();
+            } else {
+                let c = rest.chars().next().expect("nonempty suffix");
+                out.push(c);
+                offset += c.len_utf8();
+            }
+        }
+        (out, offset)
+    }
+
+    pub(crate) fn stream(&self) -> StreamRedactor {
+        StreamRedactor {
+            keys: self.clone(),
+            pending: String::new(),
+        }
+    }
+}
+
+pub(crate) struct StreamRedactor {
+    keys: CredentialSet,
+    pending: String,
+}
+
 impl StreamRedactor {
     pub(crate) fn push(&mut self, input: &str) -> String {
-        input.to_owned()
+        self.pending.push_str(input);
+        let (safe, consumed) = self.keys.scrub_prefix(&self.pending, false);
+        self.pending.drain(..consumed);
+        safe
     }
 
     pub(crate) fn finish(self) -> String {
-        String::new()
+        self.keys.scrub(&self.pending)
     }
 }
 
@@ -217,6 +269,20 @@ mod tests {
         );
         assert_eq!(scrub(sample, ""), sample);
         assert_eq!(scrub(sample, "   "), sample);
+    }
+
+    #[test]
+    fn pooled_stream_preserves_text_across_splits_and_overlapping_keys() {
+        let keys = CredentialSet::new(vec!["token-α".into(), "token-αβ".into(), "other".into()]);
+        let raw = "函数 token-αβ:token-α/other; tail token-";
+        let expected = "函数 [redacted]:[redacted]/[redacted]; tail token-";
+        for (split, _) in raw.char_indices() {
+            let mut stream = keys.stream();
+            let mut actual = stream.push(&raw[..split]);
+            actual.push_str(&stream.push(&raw[split..]));
+            actual.push_str(&stream.finish());
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]

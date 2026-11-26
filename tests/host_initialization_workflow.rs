@@ -85,6 +85,14 @@ fn client() -> reqwest::Client {
 }
 impl Host {
     async fn launch(root: &Path, data: &str, legacy: bool) -> Self {
+        Self::launch_with_env(root, data, legacy, &[]).await
+    }
+    async fn launch_with_env(
+        root: &Path,
+        data: &str,
+        legacy: bool,
+        extra: &[(&str, &str)],
+    ) -> Self {
         std::fs::create_dir_all(root.join("runner")).unwrap();
         std::fs::create_dir_all(root.join("workspace")).unwrap();
         let reservation = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -108,6 +116,7 @@ impl Host {
         if legacy {
             command.arg("--legacy-data").arg(root.join("data"));
         }
+        command.envs(extra.iter().copied());
         let mut child = command.spawn().unwrap();
         let http = client();
         let token = tokio::time::timeout(Duration::from_secs(15), async {
@@ -847,4 +856,189 @@ async fn i10_same_empty_database_cli_configuration_permissions_budget_completion
     println!(
         "I10 restarted same database; receipt/configuration/selection/budget/grant preserved; Provider=1, no replay"
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn route_check_shares_pool_between_models_and_completion_and_honors_revocation() {
+    use axum::{
+        http::{HeaderMap, StatusCode},
+        response::IntoResponse,
+    };
+    use std::sync::Mutex;
+    const ALT: &str = "qa-diagnostic-alt-1";
+    const NEXT: &str = "qa-diagnostic-alt-2";
+    let arrivals = Arc::new(Mutex::new(Vec::new()));
+    let wire = arrivals.clone();
+    let record = move |method, headers: HeaderMap| {
+        let auth = headers["authorization"].to_str().unwrap().to_owned();
+        wire.lock().unwrap().push((method, auth));
+    };
+    let models_record = record.clone();
+    let models = move |headers: HeaderMap| {
+        let primary = headers["authorization"].to_str().unwrap() == format!("Bearer {SECRET}");
+        models_record("GET", headers);
+        async move {
+            if primary {
+                (StatusCode::TOO_MANY_REQUESTS, [("retry-after", "120")]).into_response()
+            } else {
+                Json(json!({"data":[{"id":"mock-model"}]})).into_response()
+            }
+        }
+    };
+    let complete = move |headers: HeaderMap| {
+        record("POST", headers);
+        async {
+            let frame = json!({"choices":[{"delta":{"content":"323"},"finish_reason":"stop"}],
+                "usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3}});
+            (
+                [("content-type", "text/event-stream")],
+                format!("data: {frame}\n\ndata: [DONE]\n\n"),
+            )
+        }
+    };
+    let upstream = Router::new()
+        .route("/v1/models", get(models))
+        .route("/v1/chat/completions", post(complete));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/v1", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(listener, upstream).await.unwrap() });
+    let pools =
+        json!([{"routeId":"local","baseUrl":base,"keyEnvs":["QA_DIAG_ALT","QA_DIAG_NEXT"]}])
+            .to_string();
+    let root = tempfile::tempdir().unwrap();
+    let mut host = Host::launch_with_env(
+        root.path(),
+        "state",
+        false,
+        &[
+            ("CODA_KEY_POOLS", &pools),
+            ("QA_DIAG_ALT", ALT),
+            ("QA_DIAG_NEXT", NEXT),
+        ],
+    )
+    .await;
+    host.ok_input(
+        &[
+            "host",
+            "route",
+            "set",
+            "local",
+            "--expected-revision",
+            "0",
+            "--name",
+            "Local",
+            "--base-url",
+            &base,
+            "--model",
+            "mock-model",
+            "--max-tokens",
+            "128",
+            "--parallel-limit",
+            "1",
+            "--key",
+            "diagnostic-route",
+            "--credential-stdin",
+        ],
+        Some(format!("{SECRET}\n").as_bytes()),
+    )
+    .await;
+    let project = host
+        .ok(&[
+            "project",
+            "create",
+            "--name",
+            "diagnostic",
+            "--root",
+            root.path().join("workspace").to_str().unwrap(),
+            "--key",
+            "diagnostic-project",
+        ])
+        .await;
+    let project_id = project["id"].as_str().unwrap();
+    let config = root.path().join("config.json");
+    std::fs::write(&config,json!({"allowed_route_ids":["local"],"default_route_id":"local","tools":false,"write_scopes":[],"allow_commands":false}).to_string()).unwrap();
+    host.ok(&[
+        "project",
+        "config",
+        "set",
+        project_id,
+        "--expected-revision",
+        "1",
+        "--file",
+        config.to_str().unwrap(),
+    ])
+    .await;
+    let preview = host
+        .ok(&[
+            "network",
+            "preview",
+            "--route",
+            "local",
+            "--project",
+            project_id,
+        ])
+        .await;
+    let grant = host
+        .ok(&[
+            "network",
+            "authorize",
+            "--route",
+            "local",
+            "--project",
+            project_id,
+            "--config-revision",
+            &preview["config_revision"].to_string(),
+            "--credential-revision",
+            &preview["credential_revision"].to_string(),
+            "--binding",
+            preview["binding_digest"].as_str().unwrap(),
+            "--purpose",
+            "models",
+            "--purpose",
+            "completion",
+            "--key",
+            "diag-grant",
+        ])
+        .await;
+    let auth_id = grant["authorization"]["authorization_id"].as_str().unwrap();
+    let check = ["route", "check", "local", "--project", project_id];
+    let response = host.ok(&check).await;
+    assert_eq!(response["result"]["ok"], true);
+    let calls = response["calls"].as_array().unwrap();
+    assert_eq!(calls.len(), 3);
+    for (slot, call) in calls.iter().enumerate() {
+        assert_eq!(call["credential_slot"], slot);
+        assert_eq!(call["authorization_id"], auth_id);
+        assert_eq!(call["subject"]["project_id"], project_id);
+        assert!(call["task_id"].is_null());
+        assert_eq!(
+            call["purpose"],
+            if slot < 2 { "models" } else { "completion" }
+        );
+        assert_eq!(
+            call["http_status"],
+            if slot == 0 { json!(429) } else { Value::Null }
+        );
+    }
+    host.ok(&["network", "revoke", auth_id]).await;
+    let rejected = host
+        .web_json(
+            host.web_request(reqwest::Method::POST, "/api/routes/local/check")
+                .header("x-coda-token", &host.token)
+                .json(&json!({"project_id":project_id})),
+            409,
+        )
+        .await;
+    assert_eq!(rejected["error"]["code"], "revoked");
+    assert_eq!(rejected["error"]["calls"], json!([]));
+    assert_eq!(
+        *arrivals.lock().unwrap(),
+        [
+            ("GET", format!("Bearer {SECRET}")),
+            ("GET", format!("Bearer {ALT}")),
+            ("POST", format!("Bearer {NEXT}"))
+        ]
+    );
+    host.stop().await;
+    server.abort();
 }

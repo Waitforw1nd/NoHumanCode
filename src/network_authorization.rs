@@ -12,6 +12,21 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+tokio::task_local! {
+    static EXPLORATION_ATTEMPT: (String, i64);
+}
+
+/// Scope the receipt association to this branch, including its credential failover attempts.
+pub(crate) async fn with_exploration_attempt<F: std::future::Future>(
+    job_id: &str,
+    attempt: i64,
+    future: F,
+) -> F::Output {
+    EXPLORATION_ATTEMPT
+        .scope((job_id.to_owned(), attempt), future)
+        .await
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NetworkSubjectKind {
@@ -128,6 +143,9 @@ pub struct CallReceipt {
     pub call_id: String,
     pub authorization_id: String,
     pub subject: NetworkSubject,
+    /// Zero is the primary credential. Older and single-credential receipts omit this field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_slot: Option<usize>,
     pub task_id: Option<String>,
     pub purpose: NetworkPurpose,
     pub method: String,
@@ -209,6 +227,94 @@ impl NetworkError {
             kind,
             dispatch_state: DispatchState::NotSent,
             calls: vec![],
+        }
+    }
+}
+
+/// Each retry starts a new admission and settles its own receipt and budget reservation.
+#[derive(Default)]
+pub(crate) struct ProviderRetries {
+    calls: Vec<CallReceipt>,
+}
+
+impl ProviderRetries {
+    pub(crate) fn finish_error(&mut self, mut error: NetworkError) -> NetworkError {
+        error.calls.splice(0..0, self.calls.drain(..));
+        error
+    }
+
+    pub(crate) async fn after_attempt<T>(
+        &mut self,
+        attempt: Result<NetworkResponse<T>, NetworkError>,
+        hint: crate::provider_transport::RetryAfter,
+        cancel: &tokio_util::sync::CancellationToken,
+    ) -> Option<Result<NetworkResponse<T>, NetworkError>> {
+        self.after_pool_attempt(attempt, hint, cancel, false).await
+    }
+
+    pub(crate) async fn after_pool_attempt<T>(
+        &mut self,
+        attempt: Result<NetworkResponse<T>, NetworkError>,
+        hint: crate::provider_transport::RetryAfter,
+        cancel: &tokio_util::sync::CancellationToken,
+        can_failover: bool,
+    ) -> Option<Result<NetworkResponse<T>, NetworkError>> {
+        use std::time::Duration;
+        const BACKOFF: [Duration; 2] = [Duration::from_millis(250), Duration::from_millis(500)];
+        const MAX_WAIT: Duration = Duration::from_secs(10);
+
+        match attempt {
+            Ok(mut response) => {
+                response.calls.splice(0..0, self.calls.drain(..));
+                Some(Ok(response))
+            }
+            Err(mut error) => {
+                let failed_http = error.kind == NetworkErrorKind::Upstream
+                    && matches!(
+                        error.calls.as_slice(),
+                        [call] if call.result == Some(CallResult::HttpFailure)
+                            && call.http_status.is_some_and(crate::provider_transport::transient_status)
+                    );
+                let switch_member =
+                    can_failover && failed_http && error.calls[0].http_status == Some(429);
+                let backoff = BACKOFF.get(self.calls.len()).copied();
+                self.calls.append(&mut error.calls);
+                if failed_http && let Some(backoff) = backoff {
+                    // Retry-After on a 429 also cools down the affected credential in KeyPool.
+                    let delay = if switch_member {
+                        backoff
+                    } else {
+                        backoff.max(hint.get().copied().unwrap_or_default())
+                    };
+                    // A longer server minimum cannot be honored within our waiting budget.
+                    if delay <= MAX_WAIT {
+                        tokio::select! {
+                            biased;
+                            _ = cancel.cancelled() => {}
+                            _ = tokio::time::sleep(delay) => return None,
+                        }
+                    }
+                }
+                error.calls = std::mem::take(&mut self.calls);
+                Some(Err(error))
+            }
+        }
+    }
+}
+
+pub(crate) async fn retry_provider<T, F>(
+    cancel: &tokio_util::sync::CancellationToken,
+    mut send: impl FnMut(crate::provider_transport::RetryAfter) -> F,
+) -> Result<NetworkResponse<T>, NetworkError>
+where
+    F: Future<Output = Result<NetworkResponse<T>, NetworkError>>,
+{
+    let mut retries = ProviderRetries::default();
+    loop {
+        let hint = crate::provider_transport::RetryAfter::default();
+        let result = send(hint.clone()).await;
+        if let Some(done) = retries.after_attempt(result, hint, cancel).await {
+            return done;
         }
     }
 }
@@ -662,6 +768,25 @@ fn active_authorization(
 }
 
 impl Store {
+    pub(crate) fn network_primary_key(
+        &self,
+        subject: &NetworkSubject,
+        purpose: NetworkPurpose,
+        task: Option<&crate::domain::Task>,
+    ) -> Result<String, NetworkError> {
+        (|| -> AnyResult<_> {
+            let mut db = self
+                .db
+                .lock()
+                .map_err(|_| failure(NetworkErrorKind::Internal))?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let (_, current) = ensure_authorized_tx(&tx, subject, &[purpose], task)?;
+            tx.commit()?;
+            Ok(current.credential)
+        })()
+        .map_err(safe_error)
+    }
+
     pub fn network_preview(&self, subject: NetworkSubject) -> Result<NetworkPreview, NetworkError> {
         (|| -> AnyResult<_> {
             let mut db = self.db.lock().unwrap();
@@ -1034,6 +1159,17 @@ impl Store {
         task: Option<&crate::domain::Task>,
         revision: Option<u64>,
     ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
+        self.network_admit_with_key(subject, purpose, task, revision, None)
+    }
+
+    pub(crate) fn network_admit_with_key(
+        &self,
+        subject: &NetworkSubject,
+        purpose: NetworkPurpose,
+        task: Option<&crate::domain::Task>,
+        revision: Option<u64>,
+        selected: Option<&crate::key_pool::SelectedKey>,
+    ) -> Result<(crate::provider_transport::ProviderPermit, CallReceipt), NetworkError> {
         (|| -> AnyResult<_> {
             let mut db = self
                 .db
@@ -1054,6 +1190,22 @@ impl Store {
             }
             let (grant, current) = ensure_authorized_tx(&tx, subject, &[purpose], task)?;
             crate::budget::admit_check_tx(&tx, subject, purpose)?;
+            let (credential, credential_slot, scrub_keys) = if let Some(selected) = selected {
+                if subject.kind != NetworkSubjectKind::Route {
+                    return Err(failure(NetworkErrorKind::Invalid));
+                }
+                let mut keys = vec![current.credential];
+                for key in crate::key_pool_config::alternates(&subject.id, &current.snapshot.base_url)? {
+                    if !keys.contains(&key) {
+                        keys.push(key);
+                    }
+                }
+                let slot = keys.iter().position(|key| *key == selected.credential)
+                    .ok_or_else(|| failure(NetworkErrorKind::Stale))?;
+                (selected.credential.clone(), (keys.len() > 1).then_some(slot), keys)
+            } else {
+                (current.credential, None, Vec::new())
+            };
             let target = validate_target(&current.snapshot.base_url, purpose)
                 .map_err(|_| failure(NetworkErrorKind::Invalid))?;
             let id = uuid::Uuid::new_v4().to_string();
@@ -1063,7 +1215,7 @@ impl Store {
             };
             validate_permit_inputs(
                 &target,
-                &current.credential,
+                &credential,
                 &id,
                 model.as_deref(),
                 user.as_deref(),
@@ -1073,6 +1225,7 @@ impl Store {
                 call_id: id.clone(),
                 authorization_id: grant.authorization_id,
                 subject: subject.clone(),
+                credential_slot,
                 task_id: task.map(|t| t.id.clone()),
                 purpose,
                 method: target.method().into(),
@@ -1096,6 +1249,12 @@ impl Store {
                 ],
             )?;
             crate::budget::reserve_tx(&tx, &value)?;
+            if let Ok(linked) = EXPLORATION_ATTEMPT.try_with(|(job_id, attempt)| {
+                let parent = task.ok_or_else(|| failure(NetworkErrorKind::Invalid))?;
+                crate::exploration_jobs::link_call_tx(&tx, job_id, *attempt, &parent.id, &id)
+            }) {
+                linked?;
+            }
             if let Some(task) = task {
                 crate::store::task_event_tx(
                     &tx,
@@ -1108,13 +1267,13 @@ impl Store {
             drop(db);
             let permit = crate::provider_transport::ProviderPermit::new(
                 target,
-                current.credential,
+                credential,
                 id,
                 model,
                 user,
             );
             match permit {
-                Ok(permit) => Ok((permit, value)),
+                Ok(permit) => Ok((permit.with_scrub_keys(scrub_keys), value)),
                 Err(error) => Err(self
                     .finish_network::<()>(value, Err(error))
                     .unwrap_err()
