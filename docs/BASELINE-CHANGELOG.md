@@ -4,6 +4,13 @@
 
 ---
 
+## Baseline 8 · Sprint 06/S6-T1 Windows 目标观察与事件等待（2026-11-19，UTC+8）
+
+- 2026-11-26 已在本地分支 `coda/s6-integration-20261126` 固定原始验收快照：Baseline 7（S5-T2）为 `b55e04e5`，其直接后继 Baseline 8（S6-T1）为 `1d5ea925`。两者的提交树均与对应补丁工作树逐项核对一致；从该分支可直接按提交检出，无须再次应用累计补丁。
+- 本机验收锚点为 `baseline-1`（`7e9f36d4`）加累计补丁 `S6-T1-from-baseline-1.patch`，SHA-256 为 `de68abf98dcfa885f3f31c9dfd909af6b20623d785cead5655cf51594bf5c6fe`。独立 worktree `E:\code\.tmp\coda-s6-t1-2739985d3e` 中 `git apply --check`、`git apply` 均以 0 退出。此条登记补丁验收，不代表主干合入，也不包含后续 Ctrl+C 修复。
+- Windows/MSVC `build.ps1` 四项门禁 `fmt`、`check`、`clippy`（`-D warnings`）、`test` 均以 0 退出。默认套件 227 通过、0 失败、1 忽略；唯一忽略项为付费在线测试 `coda_live_stream_and_coding_tool`。
+- 两轮真实记事本 `watch` 记录覆盖主窗、标准对话框、失焦与切回、等待超时和目标退出；不涉及保存写入或内容核验。[Sprint 06 本机验收](sprints/SPRINT-06-windows-computer.md#windows-本机验收) 列出各轮观察顺序。证据目录为 `%LOCALAPPDATA%\Temp\coda-s6-t1-2739985d3e`。
+
 ## Baseline 7 · Sprint 05/S5-T2 独立子任务持久化与跨批次编排（2026-11-19，UTC+8）
 
 - 验收版本为 `baseline-1`（`7e9f36d4`）加累计补丁 `S5-T2-from-baseline-1.patch`。Windows 本机与服务器核对的 SHA-256 均为 `0a545fbee6a9bb0f67337eae8ecbed2248cf8aaa9a65cbc391d8910d03b3fb73`。用户在新的独立 worktree 中成功执行了 `git apply --check` 和 `git apply`。

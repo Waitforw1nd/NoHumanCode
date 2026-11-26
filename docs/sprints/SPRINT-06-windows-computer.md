@@ -33,4 +33,13 @@
 | 模型回环 | 登记的窗口状态和等待超时结果进入下一轮请求。等待期间模型请求数为零。无登记、错工作区、工具禁用时，伪造调用均遭拒绝。 |
 | Win32 双进程窗口实测 | 在私有 Xvfb/Wine 显示器运行实际 `coda.exe`，依次返回主窗、标准对话框、外部进程、同一对话框、主窗和目标退出。切走时记录不含标题或类名，切回产生新的观察引用。 |
 
-Windows/MSVC 四项门禁和本人登录桌面上的真实记事本实测待验收。先按 [README 的操作](../../README.md#在-windows-等待记事本的保存框) 核对状态、切回和超时；以实际记事本版本的窗类为准。最新验收基线为 [Baseline 7](../BASELINE-CHANGELOG.md)。
+### Windows 本机验收
+
+[Baseline 8](../BASELINE-CHANGELOG.md) 登记的是 `baseline-1` 加 S6-T1 累计补丁。`%LOCALAPPDATA%\Temp\coda-s6-t1-2739985d3e` 下的 `verification.log` 记录了补丁哈希、独立 worktree 的应用检查及原生门禁；`exit-codes.json` 中 `fmt/check/clippy/test` 均为 0。按 `test.log` 的各组结果合计 227 通过、0 失败、1 忽略（付费在线测试）。
+
+| 真实记事本记录（相对上述证据目录） | 观察到的状态与等待结果 |
+| --- | --- |
+| `watch-031835255/observations.jsonl` | 从 `Notepad` 主窗开始，多次切出和切回；最后一次失焦后，配置为 60 秒的等待返回 `timeout`，状态仍为 `outside_target`。 |
+| `watch-032130737/observations.jsonl` | 从 `outside_target` 切入 `Notepad` 主窗，随后匹配 `dialog_foreground`（类 `#32770`）。两次离开对话框再切回，每次切回都有新的观察引用；之后回到主窗、失焦，最终收到 `target_exited`。 |
+
+两轮 `watch` 的退出码均为 0；失焦记录都不含标题或窗类。`#32770` 仅表明观察到目标进程的标准对话框，不能据此认定其用途或保存结果。本轮只验收观察与等待，未执行控件输入、保存写入或读回文件核对内容。

@@ -8,17 +8,17 @@
 
 | 指标 | 状态 |
 | :--- | :--- |
-| **最新基线** | [Baseline 7](BASELINE-CHANGELOG.md)，验收版本为 `baseline-1`（`7e9f36d4`）加 S5-T2 累计补丁。 |
+| **最新基线** | [Baseline 8](BASELINE-CHANGELOG.md)，本机验收的 S6-T1 累计补丁已固定为本地集成分支的提交 `1d5ea925`；上一基线为 `b55e04e5`。 |
 | **持久化版本** | SQLite v19，事件格式 v1。 |
 | **当前阶段** | **Stage 1.5：CLI 编程工作台旗舰体验打磨与运行时加固**（Desktop GUI 暂缓至 Stage 2） |
-| **当前迭代** | [S6-T1 Windows 桌面目标观察与事件等待](sprints/SPRINT-06-windows-computer.md) 已完成服务器回归，待 Windows/MSVC 和真实记事本验收。 |
-| **Baseline 7 门禁** | Windows/MSVC 的 `fmt`、`check`、`clippy -D warnings` 和 `test` 均以 0 退出。默认测试 218 通过、0 失败、1 忽略。 |
+| **当前迭代** | [S6-T1 Windows 桌面目标观察与事件等待](sprints/SPRINT-06-windows-computer.md#windows-本机验收) 已完成服务器回归、Windows/MSVC 门禁及真实记事本观察验收。保存写入与内容核验留待后续。 |
+| **Baseline 8 门禁** | Windows/MSVC 的 `fmt`、`check`、`clippy -D warnings` 和 `test` 均以 0 退出。默认测试 227 通过、0 失败、1 忽略。 |
 
 ---
 
 ## 2. 最近工单
 
-上一轮交付见 [S5-T2 验收记录](sprints/SPRINT-05-parallel-exploration.md#验收记录)，上次原生验收见 [S5-T1](sprints/SPRINT-05-parallel-exploration.md#服务器验证与-windows-本机验收)。历轮交付见 [Sprint 04](sprints/SPRINT-04-mcp-oauth.md)、[Sprint 03](sprints/SPRINT-03-readonly-exploration.md)、[Sprint 02](sprints/SPRINT-02-runtime-and-cli.md) 和 [Sprint 01](sprints/SPRINT-01-zero-init-and-repl-ux.md)。
+本轮原生验收见 [S6-T1](sprints/SPRINT-06-windows-computer.md#windows-本机验收)，上一轮见 [S5-T2 验收记录](sprints/SPRINT-05-parallel-exploration.md#验收记录)。历轮交付见 [Sprint 04](sprints/SPRINT-04-mcp-oauth.md)、[Sprint 03](sprints/SPRINT-03-readonly-exploration.md)、[Sprint 02](sprints/SPRINT-02-runtime-and-cli.md) 和 [Sprint 01](sprints/SPRINT-01-zero-init-and-repl-ux.md)。
 
 | 工单 | 负责组 | 交付内容 |
 | --- | --- | --- |
