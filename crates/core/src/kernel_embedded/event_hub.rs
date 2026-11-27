@@ -53,6 +53,10 @@ impl RunEventHub {
         }
     }
 
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
     pub fn emit(&self, event: Value) -> Option<SequencedKernelEvent> {
         let mut inner = self.inner.lock().unwrap();
         if inner.finished {

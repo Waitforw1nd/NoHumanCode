@@ -405,12 +405,16 @@ pub async fn summarize_compaction(
     prep: &CompactionPreparation,
     system_prompt: Option<&str>,
     instructions: Option<&str>,
+    session_id: Option<&str>,
     cancel: &CancellationToken,
 ) -> Result<(String, Option<KernelUsageBreakdown>), CompactionError> {
-    let creds =
+    let mut creds =
         EmbeddedCredentialSource::new(proxy, protocol, None, Arc::new(Mutex::new(thinking_level)))
             .map_err(|e| CompactionError::Internal(e.to_string()))?
             .with_allow_empty_text(true);
+    if let Some(sid) = session_id {
+        creds = creds.with_session_id(sid);
+    }
 
     let sys = system_prompt
         .map(str::trim)

@@ -430,6 +430,7 @@ pub struct ProviderPermit {
     call_id: String,
     model: Option<String>,
     account_user: Option<HeaderValue>,
+    session_id: Option<HeaderValue>,
     retry_after: Option<RetryAfter>,
     scrub_keys: crate::redaction::CredentialSet,
     embedded_proxy: bool,
@@ -479,6 +480,7 @@ impl ProviderPermit {
             call_id,
             model,
             account_user,
+            session_id: None,
             retry_after: None,
             scrub_keys,
             embedded_proxy: false,
@@ -514,6 +516,18 @@ impl ProviderPermit {
     pub fn with_scrub_keys(mut self, keys: Vec<String>) -> Self {
         if !keys.is_empty() {
             self.scrub_keys = crate::redaction::CredentialSet::new(keys);
+        }
+        self
+    }
+
+    pub fn with_session_id(mut self, session_id: impl AsRef<str>) -> Self {
+        let trimmed = session_id.as_ref().trim();
+        if !trimmed.is_empty()
+            && trimmed.len() <= 256
+            && trimmed.bytes().all(|b| (0x21..=0x7E).contains(&b))
+            && let Ok(val) = HeaderValue::from_str(trimmed)
+        {
+            self.session_id = Some(val);
         }
         self
     }
@@ -758,6 +772,13 @@ impl ProviderClient {
         };
         if let Some(user) = permit.account_user {
             builder = builder.header("New-Api-User", user);
+        }
+        if permit.target.protocol == ProviderProtocol::OpenAiResponses
+            && let Some(session_id) = permit.session_id
+        {
+            builder = builder
+                .header("x-session-id", session_id.clone())
+                .header("session_id", session_id);
         }
         if let Some(body) = body {
             builder = builder.json(body);

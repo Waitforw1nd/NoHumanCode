@@ -135,6 +135,7 @@ pub struct CompletionLease {
     tools: Vec<Value>,
     thinking_level: Option<String>,
     allow_empty_text: bool,
+    prompt_cache_key: Option<String>,
 }
 
 impl Drop for CompletionLease {
@@ -320,6 +321,7 @@ impl ProviderRuntime {
                 tools: prepared.tools,
                 thinking_level: None,
                 allow_empty_text: false,
+                prompt_cache_key: None,
             },
             admitted,
         ))
@@ -373,6 +375,24 @@ impl ProviderRuntime {
     }
 }
 
+pub fn normalize_openai_prompt_cache_key(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.chars().count() <= 64 {
+        return Some(trimmed.to_owned());
+    }
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(trimmed.as_bytes());
+    let mut hex = String::with_capacity(64);
+    for b in digest {
+        use std::fmt::Write as _;
+        let _ = write!(&mut hex, "{b:02x}");
+    }
+    Some(hex)
+}
+
 impl CompletionLease {
     pub fn with_thinking_level(mut self, thinking_level: Option<String>) -> Self {
         self.thinking_level = thinking_level;
@@ -381,6 +401,11 @@ impl CompletionLease {
 
     pub fn with_allow_empty_text(mut self, allow: bool) -> Self {
         self.allow_empty_text = allow;
+        self
+    }
+
+    pub fn with_prompt_cache_key(mut self, key: Option<String>) -> Self {
+        self.prompt_cache_key = key;
         self
     }
 
@@ -484,7 +509,7 @@ impl CompletionLease {
             messages: &self.messages,
             tools: &self.tools,
         };
-        let wire_body = if protocol == ProviderProtocol::OpenAi {
+        let mut wire_body = if protocol == ProviderProtocol::OpenAi {
             let expected = expected_body(&input);
             if self.body == expected {
                 self.codec
@@ -509,6 +534,21 @@ impl CompletionLease {
                 )
                 .map_err(|_| TransportError::Invalid)?
         };
+        if protocol == ProviderProtocol::OpenAiResponses
+            && let Some(key) = self
+                .prompt_cache_key
+                .as_deref()
+                .and_then(normalize_openai_prompt_cache_key)
+            && let Some(obj) = wire_body.as_object_mut()
+            && obj
+                .get("prompt_cache_key")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .unwrap_or("")
+                .is_empty()
+        {
+            obj.insert("prompt_cache_key".to_owned(), Value::String(key));
+        }
         let is_embedded = permit.is_embedded_proxy();
         let response = client.send(permit, Some(&wire_body)).await?;
         let response_status = response.status().as_u16();
@@ -1182,6 +1222,102 @@ mod tests {
             crate::provider_usage::UsageObservation::Valid(u)
                 if u.prompt_tokens == 30 && u.completion_tokens == 12 && u.total_tokens == 42
         ));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn openai_responses_emits_prompt_cache_key_and_session_headers() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        assert_eq!(normalize_openai_prompt_cache_key("  "), None);
+        assert_eq!(
+            normalize_openai_prompt_cache_key("swe-chat-7f3a").as_deref(),
+            Some("swe-chat-7f3a")
+        );
+        let long_id = "s".repeat(96);
+        let hashed = normalize_openai_prompt_cache_key(&long_id).unwrap();
+        assert_eq!(hashed.len(), 64);
+        assert_eq!(hashed, normalize_openai_prompt_cache_key(&long_id).unwrap());
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let seen_req = Arc::new(std::sync::Mutex::new(String::new()));
+        let seen_srv = seen_req.clone();
+        let server = tokio::spawn(async move {
+            let (mut sock, _) = listener.accept().await.unwrap();
+            let mut req_buf = vec![0u8; 8192];
+            let n = sock.read(&mut req_buf).await.unwrap();
+            *seen_srv.lock().unwrap() = String::from_utf8_lossy(&req_buf[..n]).into_owned();
+            let sse = concat!(
+                "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"item_id\":\"m_1\",\"output_index\":0,\"delta\":\"ok\"}\n\n",
+                "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_swe\",\"status\":\"completed\",\"usage\":{\"input_tokens\":5,\"output_tokens\":1,\"total_tokens\":6}}}\n\n"
+            );
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n{sse}",
+                sse.len()
+            );
+            sock.write_all(resp.as_bytes()).await.unwrap();
+        });
+
+        let runtime = ProviderRuntime::builtin_with_state(true).unwrap();
+        let client = ProviderClient::new().unwrap();
+        let base = format!("http://{addr}/v1");
+        let route = Route {
+            id: "swe".into(),
+            name: "SWE".into(),
+            base_url: base.clone(),
+            model: "swe-2-flash".into(),
+            protocol: Some(ProviderProtocol::OpenAiResponses),
+            max_tokens: 256,
+            parallel_limit: 1,
+            key_env: None,
+        };
+        let target = crate::provider_transport::validate_target_with_protocol(
+            &base,
+            NetworkPurpose::Completion,
+            route.protocol,
+        )
+        .unwrap();
+        let permit = ProviderPermit::new(
+            target,
+            "sk-test-token-1234".into(),
+            "c".into(),
+            Some("swe-2-flash".into()),
+            None,
+        )
+        .unwrap()
+        .with_session_id("swe-chat-7f3a");
+        let messages = [NeutralMessage::user_text("hi")];
+        let input = CompletionInput {
+            model: "swe-2-flash",
+            max_tokens: 256,
+            messages: &messages,
+            tools: &[],
+        };
+        let prepared = runtime.prepare(&input).unwrap();
+        let lease = runtime
+            .acquire_unpersisted(prepared)
+            .unwrap()
+            .with_prompt_cache_key(Some("swe-chat-7f3a".into()));
+        let (msg, _) = lease
+            .execute_with_reasoning(&client, permit, &route, &mut |_| Ok(()), &mut |_| Ok(()))
+            .await
+            .unwrap();
+        assert_eq!(msg.text_content(), "ok");
+        let raw_req = seen_req.lock().unwrap().clone();
+        let (head, body_str) = raw_req.split_once("\r\n\r\n").unwrap();
+        let head_lower = head.to_ascii_lowercase();
+        assert!(
+            head_lower.contains("x-session-id: swe-chat-7f3a"),
+            "missing x-session-id header: {head}"
+        );
+        assert!(
+            head_lower.contains("session_id: swe-chat-7f3a"),
+            "missing session_id header: {head}"
+        );
+        let body: Value = serde_json::from_str(body_str).unwrap();
+        assert_eq!(body["prompt_cache_key"], "swe-chat-7f3a");
         server.abort();
     }
 

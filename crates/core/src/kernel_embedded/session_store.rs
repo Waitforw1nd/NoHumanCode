@@ -1327,6 +1327,7 @@ impl EmbeddedSessionStore {
             &prep,
             input.system_prompt.as_deref(),
             input.instructions.as_deref(),
+            Some(session_id),
             &cancel,
         )
         .await
@@ -2521,6 +2522,7 @@ impl EmbeddedTurnController {
                     &prep,
                     None,
                     None,
+                    Some(self.run.hub.session_id()),
                     cancel,
                 )
                 .await

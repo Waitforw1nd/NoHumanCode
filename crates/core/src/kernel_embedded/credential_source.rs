@@ -151,6 +151,7 @@ pub struct EmbeddedCredentialSource {
     thinking_level: Arc<Mutex<Option<String>>>,
     scrub_keys: CredentialSet,
     allow_empty_text: bool,
+    session_id: Option<String>,
 }
 
 impl EmbeddedCredentialSource {
@@ -161,6 +162,7 @@ impl EmbeddedCredentialSource {
         thinking_level: Arc<Mutex<Option<String>>>,
     ) -> Result<Self> {
         let scrub_keys = CredentialSet::new(vec![proxy.token.clone()]);
+        let session_id = hub.as_ref().map(|h| h.session_id().to_owned());
         Ok(Self {
             client: ProviderClient::new()?,
             runtime: ProviderRuntime::builtin_with_state(true)?,
@@ -170,11 +172,20 @@ impl EmbeddedCredentialSource {
             thinking_level,
             scrub_keys,
             allow_empty_text: false,
+            session_id,
         })
     }
 
     pub fn with_allow_empty_text(mut self, allow: bool) -> Self {
         self.allow_empty_text = allow;
+        self
+    }
+
+    pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
+        let sid = session_id.into();
+        if !sid.trim().is_empty() {
+            self.session_id = Some(sid);
+        }
         self
     }
 
@@ -212,7 +223,7 @@ impl EmbeddedCredentialSource {
 
             let hint = RetryAfter::default();
             let call_id = format!("embed-{}", uuid::Uuid::now_v7());
-            let permit = ProviderPermit::new_embedded_proxy(
+            let mut permit = ProviderPermit::new_embedded_proxy(
                 &self.proxy.base_url,
                 self.protocol,
                 self.proxy.token.clone(),
@@ -222,6 +233,9 @@ impl EmbeddedCredentialSource {
             .map_err(|e| classify_transport_error(e, &scrub))?
             .with_scrub_keys(vec![self.proxy.token.clone()])
             .track_retry_after(hint.clone());
+            if let Some(sid) = self.session_id.as_deref() {
+                permit = permit.with_session_id(sid);
+            }
 
             let prepared = self
                 .runtime
@@ -245,7 +259,8 @@ impl EmbeddedCredentialSource {
                     })?;
             let lease = lease
                 .with_thinking_level(thinking.clone())
-                .with_allow_empty_text(self.allow_empty_text);
+                .with_allow_empty_text(self.allow_empty_text)
+                .with_prompt_cache_key(self.session_id.clone());
 
             let fut = lease.execute_with_reasoning_detailed(
                 &self.client,

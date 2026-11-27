@@ -228,8 +228,20 @@ impl Engine {
                 let (lease, (permit, receipt)) = self
                     .admit_completion(subject, task, input, stop_dispatch, key)
                     .await?;
-                let call =
-                    output.execute(lease, self, permit.track_retry_after(hint.clone()), route);
+                let tracking_id = task
+                    .map(|t| {
+                        if !t.run_id.trim().is_empty() {
+                            t.run_id.clone()
+                        } else {
+                            t.id.clone()
+                        }
+                    })
+                    .unwrap_or_else(|| format!("coda-route-{}", route.id));
+                let lease = lease.with_prompt_cache_key(Some(tracking_id.clone()));
+                let permit = permit
+                    .with_session_id(&tracking_id)
+                    .track_retry_after(hint.clone());
+                let call = output.execute(lease, self, permit, route);
                 let result = tokio::select! {
                     biased;
                     _ = cancel.cancelled() => Err(TransportError::Unknown),
