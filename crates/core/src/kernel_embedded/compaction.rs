@@ -1,7 +1,9 @@
 //! Embedded session compaction (`codaKernel/1 §8`): §8.3 exclusions, atomic
 //! `(assistant toolCall + toolResult)` preservation, and LLM summarization via `modelProxy`.
 
-use crate::kernel_embedded::credential_source::{EmbeddedCredentialSource, EmbeddedModelError};
+use crate::kernel_embedded::credential_source::{
+    EmbeddedCredentialSource, EmbeddedModelError, SharedEmbeddedProvider,
+};
 use crate::kernel_embedded::projection::estimate_message_tokens;
 use crate::kernel_embedded::{ModelProxyConfig, new_entry_id};
 use crate::messages::{
@@ -408,10 +410,53 @@ pub async fn summarize_compaction(
     session_id: Option<&str>,
     cancel: &CancellationToken,
 ) -> Result<(String, Option<KernelUsageBreakdown>), CompactionError> {
-    let mut creds =
-        EmbeddedCredentialSource::new(proxy, protocol, None, Arc::new(Mutex::new(thinking_level)))
-            .map_err(|e| CompactionError::Internal(e.to_string()))?
-            .with_allow_empty_text(true);
+    summarize_compaction_with_shared(
+        None,
+        proxy,
+        protocol,
+        model_id,
+        max_output_tokens,
+        thinking_level,
+        prep,
+        system_prompt,
+        instructions,
+        session_id,
+        cancel,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn summarize_compaction_with_shared(
+    shared: Option<SharedEmbeddedProvider>,
+    proxy: ModelProxyConfig,
+    protocol: ProviderProtocol,
+    model_id: &str,
+    max_output_tokens: u32,
+    thinking_level: Option<String>,
+    prep: &CompactionPreparation,
+    system_prompt: Option<&str>,
+    instructions: Option<&str>,
+    session_id: Option<&str>,
+    cancel: &CancellationToken,
+) -> Result<(String, Option<KernelUsageBreakdown>), CompactionError> {
+    let mut creds = match shared {
+        Some(sp) => EmbeddedCredentialSource::with_shared(
+            sp,
+            proxy,
+            protocol,
+            None,
+            Arc::new(Mutex::new(thinking_level)),
+        ),
+        None => EmbeddedCredentialSource::new(
+            proxy,
+            protocol,
+            None,
+            Arc::new(Mutex::new(thinking_level)),
+        )
+        .map_err(|e| CompactionError::Internal(e.to_string()))?,
+    }
+    .with_allow_empty_text(true);
     if let Some(sid) = session_id {
         creds = creds.with_session_id(sid);
     }

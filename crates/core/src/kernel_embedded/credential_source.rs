@@ -142,9 +142,27 @@ pub fn classify_transport_error(
     }
 }
 
+/// Process/store-scoped reusable HTTP client + provider runtime shared across
+/// embedded runs and compactions to avoid per-run TLS root-store construction
+/// and to reuse loopback keep-alive pools to the host `modelProxy`.
+#[derive(Clone)]
+pub struct SharedEmbeddedProvider {
+    pub(crate) client: Arc<ProviderClient>,
+    pub(crate) runtime: Arc<ProviderRuntime>,
+}
+
+impl SharedEmbeddedProvider {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            client: Arc::new(ProviderClient::new()?),
+            runtime: Arc::new(ProviderRuntime::builtin_with_state(true)?),
+        })
+    }
+}
+
 pub struct EmbeddedCredentialSource {
-    client: ProviderClient,
-    runtime: ProviderRuntime,
+    client: Arc<ProviderClient>,
+    runtime: Arc<ProviderRuntime>,
     proxy: ModelProxyConfig,
     protocol: ProviderProtocol,
     hub: Option<Arc<RunEventHub>>,
@@ -161,11 +179,28 @@ impl EmbeddedCredentialSource {
         hub: Option<Arc<RunEventHub>>,
         thinking_level: Arc<Mutex<Option<String>>>,
     ) -> Result<Self> {
+        let shared = SharedEmbeddedProvider::new()?;
+        Ok(Self::with_shared(
+            shared,
+            proxy,
+            protocol,
+            hub,
+            thinking_level,
+        ))
+    }
+
+    pub fn with_shared(
+        shared: SharedEmbeddedProvider,
+        proxy: ModelProxyConfig,
+        protocol: ProviderProtocol,
+        hub: Option<Arc<RunEventHub>>,
+        thinking_level: Arc<Mutex<Option<String>>>,
+    ) -> Self {
         let scrub_keys = CredentialSet::new(vec![proxy.token.clone()]);
         let session_id = hub.as_ref().map(|h| h.session_id().to_owned());
-        Ok(Self {
-            client: ProviderClient::new()?,
-            runtime: ProviderRuntime::builtin_with_state(true)?,
+        Self {
+            client: shared.client,
+            runtime: shared.runtime,
             proxy,
             protocol,
             hub,
@@ -173,7 +208,7 @@ impl EmbeddedCredentialSource {
             scrub_keys,
             allow_empty_text: false,
             session_id,
-        })
+        }
     }
 
     pub fn with_allow_empty_text(mut self, allow: bool) -> Self {

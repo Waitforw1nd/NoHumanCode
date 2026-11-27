@@ -4,9 +4,11 @@
 use crate::agent_runtime::{AgentError, StrategyAction, StrategyInput, ToolVote};
 use crate::domain::{Route, Task, TaskSpec};
 use crate::kernel_embedded::compaction::{
-    CompactionError, make_compaction_entry_id, prepare_compaction, summarize_compaction,
+    CompactionError, make_compaction_entry_id, prepare_compaction, summarize_compaction_with_shared,
 };
-use crate::kernel_embedded::credential_source::{EmbeddedCredentialSource, EmbeddedModelError};
+use crate::kernel_embedded::credential_source::{
+    EmbeddedCredentialSource, EmbeddedModelError, SharedEmbeddedProvider,
+};
 use crate::kernel_embedded::event_hub::{EventReplayError, NoopEmbeddedEventSink, RunEventHub};
 use crate::kernel_embedded::projection::{
     ProjectionParams, build_model_view_messages, estimate_context_tokens,
@@ -488,6 +490,7 @@ pub struct EmbeddedSessionHandle {
 pub struct EmbeddedSessionStore {
     sessions: RwLock<HashMap<String, Arc<EmbeddedSessionHandle>>>,
     media_enabled: bool,
+    shared_provider: Mutex<Option<SharedEmbeddedProvider>>,
 }
 
 #[derive(Clone)]
@@ -772,11 +775,29 @@ impl EmbeddedSessionStore {
         Arc::new(Self {
             sessions: RwLock::new(HashMap::new()),
             media_enabled,
+            shared_provider: Mutex::new(None),
         })
     }
 
     pub fn media_enabled(&self) -> bool {
         self.media_enabled
+    }
+
+    fn shared_provider(&self) -> Result<SharedEmbeddedProvider, KernelError> {
+        let mut slot = self.shared_provider.lock().unwrap();
+        if let Some(existing) = slot.as_ref() {
+            return Ok(existing.clone());
+        }
+        let created = SharedEmbeddedProvider::new().map_err(|e| {
+            KernelError::new(
+                500,
+                "INTERNAL",
+                format!("failed to initialize embedded provider client: {e}"),
+                false,
+            )
+        })?;
+        *slot = Some(created.clone());
+        Ok(created)
     }
 
     fn get_handle(&self, session_id: &str) -> Result<Arc<EmbeddedSessionHandle>, KernelError> {
@@ -1318,7 +1339,9 @@ impl EmbeddedSessionStore {
             last_usage_tokens,
         );
         let cancel = CancellationToken::new();
-        let (summary, usage_bd) = summarize_compaction(
+        let shared = self.shared_provider()?;
+        let (summary, usage_bd) = summarize_compaction_with_shared(
+            Some(shared),
             input.model_proxy,
             proxy_protocol,
             &model_id,
@@ -1430,6 +1453,7 @@ impl EmbeddedSessionStore {
         if let Some(ref rc) = cfg.runtime_context {
             validate_kernel_contents_for_media(rc, self.media_enabled)?;
         }
+        let shared = self.shared_provider()?;
         if !(1..=65_535).contains(&cfg.max_requests) {
             return Err(KernelError::invalid_request(
                 "maxRequests must be in 1..=65535",
@@ -1621,7 +1645,7 @@ impl EmbeddedSessionStore {
         let handle_for_task = handle.clone();
         let run_for_task = run_ctrl.clone();
         tokio::spawn(async move {
-            run_embedded_task(handle_for_task, run_for_task, task).await;
+            run_embedded_task(handle_for_task, run_for_task, task, shared).await;
         });
 
         Ok((run_ctrl, rx_tuple.0, rx_tuple.1, rx_tuple.2))
@@ -2217,6 +2241,7 @@ struct ProjectedContextSnapshot {
 struct EmbeddedTurnController {
     handle: Arc<EmbeddedSessionHandle>,
     run: Arc<ActiveRunControl>,
+    shared: SharedEmbeddedProvider,
 }
 
 impl EmbeddedTurnController {
@@ -2513,7 +2538,8 @@ impl EmbeddedTurnController {
                 (trimmed, None)
             }
             GateAction::Continue | GateAction::Finish => {
-                match summarize_compaction(
+                match summarize_compaction_with_shared(
+                    Some(self.shared.clone()),
                     self.run.model_proxy.clone(),
                     self.run.proxy_protocol,
                     &model_id,
@@ -3261,26 +3287,18 @@ async fn run_embedded_task(
     handle: Arc<EmbeddedSessionHandle>,
     run: Arc<ActiveRunControl>,
     mut task: Task,
+    shared: SharedEmbeddedProvider,
 ) {
     let strategy = NoopStrategyDecider;
     let events = NoopEmbeddedEventSink;
     let repo = EmbeddedTaskRepository;
-    let creds = match EmbeddedCredentialSource::new(
+    let creds = EmbeddedCredentialSource::with_shared(
+        shared.clone(),
         run.model_proxy.clone(),
         run.proxy_protocol,
         Some(run.hub.clone()),
         run.run_thinking_level.clone(),
-    ) {
-        Ok(c) => c,
-        Err(err) => {
-            let ctrl = EmbeddedTurnController {
-                handle,
-                run: run.clone(),
-            };
-            let _ = ctrl.on_run_error(&mut task, &err).await;
-            return;
-        }
-    };
+    );
     let tools = EmbeddedToolExecutor {
         handle: handle.clone(),
         run: run.clone(),
@@ -3288,6 +3306,7 @@ async fn run_embedded_task(
     let controller = EmbeddedTurnController {
         handle,
         run: run.clone(),
+        shared,
     };
     let cancel = run.cancel.clone();
     if let Err(err) = crate::agent_loop::run_task_with_controller(
@@ -3579,6 +3598,7 @@ mod tests {
         let controller = EmbeddedTurnController {
             handle: handle.clone(),
             run: active_run,
+            shared: store.shared_provider().unwrap(),
         };
         let before = controller.build_projected_messages().unwrap();
         assert_eq!(before.messages[0].text_content(), "run override initial");
@@ -3604,5 +3624,14 @@ mod tests {
         assert_eq!(after.messages[0].text_content(), "patched mid-run system");
 
         store.abort_run("s-sp", "run-sp").await.unwrap();
+    }
+
+    #[test]
+    fn shared_provider_reuses_client_and_runtime_across_calls() {
+        let store = EmbeddedSessionStore::new();
+        let a = store.shared_provider().unwrap();
+        let b = store.shared_provider().unwrap();
+        assert!(Arc::ptr_eq(&a.client, &b.client));
+        assert!(Arc::ptr_eq(&a.runtime, &b.runtime));
     }
 }
