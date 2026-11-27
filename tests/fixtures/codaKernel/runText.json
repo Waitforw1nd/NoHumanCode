@@ -1,0 +1,59 @@
+{
+  "name": "runText",
+  "description": "会话 s-1（revision 1，leaf e-0002）上的纯文本回答。演示 runtimeContext 不入历史、thinking 块、usage 与 done。",
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-1/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-1",
+          "baseRevision": 1,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "用一句话介绍你自己" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "runtimeContext": [{ "type": "text", "text": "<system-reminder>Working directory: \"C:/Users/me/.coda/cd-1f2e\".</system-reminder>" }],
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-1", "token": "<PROXY_TOKEN>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "input 的最后一个 user 条目之后追加了 runtimeContext 文本",
+            "input 中不包含任何密钥",
+            "tools 只包含 activeToolNames 中的 read / shell / loadTools"
+          ]
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-1", "runId": "run-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-1", "runId": "run-1", "event": { "type": "entry", "revision": 2, "entry": { "id": "<ENTRY_ID:u1>", "parentId": "e-0002", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "用一句话介绍你自己" }] } } },
+          { "seq": 3, "sessionId": "s-1", "runId": "run-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u1>" } },
+          { "seq": 4, "sessionId": "s-1", "runId": "run-1", "event": { "type": "contextUsage", "tokens": 1830, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-1", "runId": "run-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a1>" } },
+          { "seq": 6, "sessionId": "s-1", "runId": "run-1", "event": { "type": "thinking", "blockId": "b-0", "delta": "用户要一句话自我介绍。" } },
+          { "seq": 7, "sessionId": "s-1", "runId": "run-1", "event": { "type": "thinking", "blockId": "b-0", "delta": "", "done": true } },
+          { "seq": 8, "sessionId": "s-1", "runId": "run-1", "event": { "type": "text", "blockId": "b-1", "delta": "我是 Coda，" } },
+          { "seq": 9, "sessionId": "s-1", "runId": "run-1", "event": { "type": "text", "blockId": "b-1", "delta": "运行在你电脑上的智能助手。", "done": true } },
+          { "seq": 10, "sessionId": "s-1", "runId": "run-1", "event": { "type": "usage", "usage": { "input": 1830, "output": 42, "cacheRead": 1024, "cacheWrite": 0, "reasoning": 12, "totalTokens": 1872 } } },
+          { "seq": 11, "sessionId": "s-1", "runId": "run-1", "event": { "type": "entry", "revision": 3, "entry": { "id": "<ENTRY_ID:a1>", "parentId": "<ENTRY_ID:u1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "thinking", "text": "用户要一句话自我介绍。", "signature": "<OPAQUE>" }, { "type": "text", "text": "我是 Coda，运行在你电脑上的智能助手。" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+          { "seq": 12, "sessionId": "s-1", "runId": "run-1", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:usage1>", "parentId": "<ENTRY_ID:a1>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1830, "output": 42, "cacheRead": 1024, "cacheWrite": 0, "reasoning": 12, "totalTokens": 1872 } } } },
+          { "seq": 13, "sessionId": "s-1", "runId": "run-1", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:usage1>", "userEntryId": "<ENTRY_ID:u1>", "assistantEntryId": "<ENTRY_ID:a1>", "revision": 4 } }
+        ]
+      },
+      "assertions": [
+        "runtimeContext 的文本不出现在任何 entry 中",
+        "seq 从 1 连续递增，done 是最后一帧",
+        "助手 entry 的 thinking 签名与 responseId 原样保留，供下次请求回传"
+      ]
+    }
+  ]
+}

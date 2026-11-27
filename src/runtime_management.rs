@@ -201,6 +201,203 @@ pub(crate) fn provider_status(
     }
 }
 
+pub(crate) trait ProviderRuntimeExt {
+    fn prepare_persisted(
+        &self,
+        store: &crate::store::Store,
+        input: &crate::provider_runtime::CompletionInput<'_>,
+    ) -> Result<
+        crate::provider_runtime::PreparedCompletion,
+        crate::network_authorization::NetworkError,
+    >;
+    fn enable_persisted(&self, store: &crate::store::Store) -> anyhow::Result<()>;
+    fn management_status(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<RuntimeComponentStatus, RuntimeManagementError>;
+    fn set_management(
+        &self,
+        store: &crate::store::Store,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<RuntimeMutationResult, RuntimeManagementError>;
+}
+
+impl ProviderRuntimeExt for crate::provider_runtime::ProviderRuntime {
+    fn prepare_persisted(
+        &self,
+        store: &crate::store::Store,
+        input: &crate::provider_runtime::CompletionInput<'_>,
+    ) -> Result<
+        crate::provider_runtime::PreparedCompletion,
+        crate::network_authorization::NetworkError,
+    > {
+        use crate::network_authorization::{NetworkError, NetworkErrorKind};
+        let desired = store
+            .plugin_desired_for(crate::provider_runtime::PROVIDER_ID)
+            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Internal))?;
+        if !desired.enabled {
+            return Err(NetworkError::not_sent(NetworkErrorKind::Internal));
+        }
+        let mut prepared = self.prepare(input)?;
+        Self::set_desired_revision(&mut prepared, desired.revision);
+        Ok(prepared)
+    }
+
+    fn enable_persisted(&self, store: &crate::store::Store) -> anyhow::Result<()> {
+        if !store
+            .plugin_desired_for(crate::provider_runtime::PROVIDER_ID)?
+            .enabled
+        {
+            anyhow::bail!("provider runtime unavailable");
+        }
+        self.apply_desired_enabled(true);
+        Ok(())
+    }
+
+    fn management_status(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<RuntimeComponentStatus, RuntimeManagementError> {
+        let desired = store
+            .plugin_desired_for(crate::provider_runtime::PROVIDER_ID)
+            .map_err(|_| RuntimeManagementError::Internal)?;
+        let snapshot = self
+            .status()
+            .map_err(|_| RuntimeManagementError::Internal)?;
+        Ok(provider_status(desired, snapshot))
+    }
+
+    fn set_management(
+        &self,
+        store: &crate::store::Store,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<RuntimeMutationResult, RuntimeManagementError> {
+        let op = store
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .map_err(|_| RuntimeManagementError::Internal)?;
+        let open = self.is_enabled();
+        let reject = if request.enabled && !open && self.generation_value() == u64::MAX {
+            Some(RuntimeManagementError::Unavailable)
+        } else {
+            None
+        };
+        let (receipt, replayed) = store.set_runtime_desired_with_operation(
+            &op,
+            crate::provider_runtime::PROVIDER_ID,
+            &request,
+            key,
+            reject,
+        )?;
+        if !replayed {
+            self.apply_desired_enabled(request.enabled);
+        }
+        let current = self.management_status(store)?;
+        Ok(RuntimeMutationResult {
+            receipt,
+            replayed,
+            current,
+        })
+    }
+}
+
+pub(crate) trait AgentRuntimeExt {
+    fn acquire_persisted(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<crate::agent_runtime::AgentLease, AgentError>;
+    fn enable_persisted(&self, store: &crate::store::Store) -> Result<(), AgentError>;
+    fn management_status(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<RuntimeComponentStatus, RuntimeManagementError>;
+    fn set_management(
+        &self,
+        store: &crate::store::Store,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<RuntimeMutationResult, RuntimeManagementError>;
+}
+
+impl AgentRuntimeExt for crate::agent_runtime::AgentRuntime {
+    fn acquire_persisted(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<crate::agent_runtime::AgentLease, AgentError> {
+        if !self.is_enabled() {
+            return Err(AgentError::Unavailable);
+        }
+        if store
+            .admit_runtime(crate::agent_runtime::AGENT_PROVIDER_ID)
+            .is_err()
+        {
+            return Err(AgentError::Unavailable);
+        }
+        self.acquire_unpersisted()
+    }
+
+    fn enable_persisted(&self, store: &crate::store::Store) -> Result<(), AgentError> {
+        if !store
+            .plugin_desired_for(crate::agent_runtime::AGENT_PROVIDER_ID)
+            .map_err(|_| AgentError::Internal)?
+            .enabled
+        {
+            return Err(AgentError::Unavailable);
+        }
+        self.enable_unpersisted()
+    }
+
+    fn management_status(
+        &self,
+        store: &crate::store::Store,
+    ) -> Result<RuntimeComponentStatus, RuntimeManagementError> {
+        let desired = store
+            .plugin_desired_for(crate::agent_runtime::AGENT_PROVIDER_ID)
+            .map_err(|_| RuntimeManagementError::Internal)?;
+        let snapshot = self
+            .status()
+            .map_err(|_| RuntimeManagementError::Internal)?;
+        Ok(agent_status(desired, snapshot))
+    }
+
+    fn set_management(
+        &self,
+        store: &crate::store::Store,
+        request: crate::plugin_management::SetPluginEnabled,
+        key: &str,
+    ) -> Result<RuntimeMutationResult, RuntimeManagementError> {
+        let op = store
+            .execution_operation(tokio_util::sync::CancellationToken::new())
+            .map_err(|_| RuntimeManagementError::Internal)?;
+        let open = self.is_enabled();
+        let in_flight = self.in_flight_count();
+        let reject = if request.enabled && !open && in_flight > 0 {
+            Some(RuntimeManagementError::Busy)
+        } else if request.enabled && !open && self.generation_value() == u64::MAX {
+            Some(RuntimeManagementError::Unavailable)
+        } else {
+            None
+        };
+        let (receipt, replayed) = store.set_runtime_desired_with_operation(
+            &op,
+            crate::agent_runtime::AGENT_PROVIDER_ID,
+            &request,
+            key,
+            reject,
+        )?;
+        if !replayed {
+            self.apply_desired_enabled(request.enabled);
+        }
+        let current = self.management_status(store)?;
+        Ok(RuntimeMutationResult {
+            receipt,
+            replayed,
+            current,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

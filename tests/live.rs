@@ -21,6 +21,7 @@ async fn coda_live_stream_and_coding_tool() {
             name: id.into(),
             base_url: "https://xpeach.codes/v1".into(),
             model: model.into(),
+            protocol: None,
             max_tokens: 1024,
             parallel_limit: 2,
             key_env: Some("CODA_TEST_KEY".into()),

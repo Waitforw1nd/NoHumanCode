@@ -6,7 +6,7 @@ description = "Coda CLI — native multi-model AI coding workbench"
 license = "MIT"
 
 [workspace]
-members = ["crates/protocol"]
+members = ["crates/protocol", "crates/core"]
 resolver = "2"
 
 [dependencies]
@@ -14,20 +14,28 @@ anyhow = "1"
 async-stream = "0.3"
 axum = "0.8"
 base64 = "0.22"
+bytes = "1"
 clap = { version = "4", features = ["derive"] }
 futures-util = "0.3"
+http = "1"
 httpdate = "1"
+httparse = "1"
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 sha2 = "0.10"
 tokio = { version = "1", features = ["full"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["tls12", "ring"] }
 tokio-util = "0.7"
-uuid = { version = "1", features = ["v4"] }
+url = "2"
+uuid = { version = "1", features = ["v4", "v7"] }
+webpki-roots = "1"
 coda-protocol = { path = "crates/protocol" }
+codacli-core = { path = "crates/core" }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = ["Win32_System_Com", "Win32_System_Ole", "Win32_System_Variant", "Win32_UI_Accessibility"] }

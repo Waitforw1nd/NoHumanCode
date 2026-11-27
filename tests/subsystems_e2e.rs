@@ -322,6 +322,7 @@ async fn setup_engine_with_project(
         name: "Default".into(),
         base_url: base_url.to_owned(),
         model: "test-coder".into(),
+        protocol: None,
         max_tokens: 4096,
         parallel_limit: 2,
         key_env: None,
@@ -871,7 +872,7 @@ async fn cancelling_dispatched_mcp_call_preserves_unknown_approval_outcome() {
         !task
             .messages
             .iter()
-            .any(|m| m["role"] == "tool" && m["tool_call_id"] == "call-mcp-1")
+            .any(|m| m.tool_call_id() == Some("call-mcp-1"))
     );
     let record = engine.store.approval(&approval_id).unwrap();
     assert!(matches!(

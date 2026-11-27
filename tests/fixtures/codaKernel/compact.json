@@ -1,0 +1,182 @@
+{
+  "name": "compact",
+  "description": "手动同步压缩（排除 codaRuntimeContext、includeInSummary=false 与 contextEdit(null) 目标，且不拆开 toolCall+toolResult 原子单元）与 Run 内自动压缩的 beforeCompact 闸门接管（replace）。",
+  "steps": [
+    {
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-compact",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" }
+          ],
+          "activeToolNames": ["read"],
+          "compaction": { "enabled": true, "keepRecentTokens": 200 },
+          "steeringMode": "one-at-a-time",
+          "gates": [],
+          "history": {
+            "leafId": "e-0010",
+            "entries": [
+              { "id": "e-0001", "parentId": null, "timestamp": "2026-11-27T01:00:00+08:00", "type": "message", "role": "user", "content": [{ "type": "text", "text": "旧的临时试探提问（已删除）" }] },
+              { "id": "e-0002", "parentId": "e-0001", "timestamp": "2026-11-27T01:00:01+08:00", "type": "contextEdit", "targetId": "e-0001", "replacement": null },
+              { "id": "e-0003", "parentId": "e-0002", "timestamp": "2026-11-27T01:00:02+08:00", "type": "customMessage", "name": "codaRuntimeContext", "content": [{ "type": "text", "text": "<system-reminder>Working directory: \"C:/Users/me/.coda/cd-1f2e\".</system-reminder>" }], "display": false, "includeInSummary": false },
+              { "id": "e-0004", "parentId": "e-0003", "timestamp": "2026-11-27T01:00:03+08:00", "type": "message", "role": "user", "content": [{ "type": "text", "text": "帮我查看 src/config.ts 里的端口设置" }] },
+              { "id": "e-0005", "parentId": "e-0004", "timestamp": "2026-11-27T01:00:04+08:00", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_cfg_1", "name": "read", "args": { "path": "src/config.ts" } }], "metadata": { "stopReason": "toolUse" } },
+              { "id": "e-0006", "parentId": "e-0005", "timestamp": "2026-11-27T01:00:05+08:00", "type": "toolResult", "callId": "call_cfg_1", "name": "read", "content": [{ "type": "text", "text": "export const PORT = 8080;" }], "isError": false },
+              { "id": "e-0007", "parentId": "e-0006", "timestamp": "2026-11-27T01:00:06+08:00", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "src/config.ts 中默认端口是 8080。" }], "metadata": { "stopReason": "stop" } },
+              { "id": "e-0008", "parentId": "e-0007", "timestamp": "2026-11-27T01:00:07+08:00", "type": "customMessage", "name": "codaNote", "content": [{ "type": "text", "text": "UI 提示：仅展示给用户，不进摘要" }], "display": true, "includeInSummary": false },
+              { "id": "e-0009", "parentId": "e-0008", "timestamp": "2026-11-27T01:00:08+08:00", "type": "message", "role": "user", "content": [{ "type": "text", "text": "接下来把 PORT 改为环境变量读取" }] },
+              { "id": "e-0010", "parentId": "e-0009", "timestamp": "2026-11-27T01:00:09+08:00", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "好的，我准备改为 Number(process.env.PORT ?? 8080)。" }], "metadata": { "stopReason": "stop" } }
+            ]
+          }
+        }
+      },
+      "response": { "status": 201, "body": { "sessionId": "s-compact", "revision": 1, "leafId": "e-0010", "status": "idle" } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-compact/compact",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "baseRevision": 1,
+          "systemPrompt": "你是会话摘要生成器，请输出结构化检查点。",
+          "instructions": "保留所有文件路径与关键配置常量",
+          "keepRecentTokens": 200,
+          "model": { "modelId": "gpt-5.2" },
+          "thinkingLevel": "low",
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/compact-1", "token": "<PROXY_TOKEN_1>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/compact-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_1>" },
+          "bodyIncludes": { "model": "gpt-5.2" },
+          "bodyAssertions": [
+            "请求使用宿主传入的 systemPrompt 与 instructions",
+            "摘要输入中不包含被 contextEdit(replacement=null) 删除的 e-0001",
+            "摘要输入中不包含 name=codaRuntimeContext 的 e-0003",
+            "摘要输入中不包含 includeInSummary=false 的 e-0008（codaNote）",
+            "切割点选在 e-0009，未拆开 e-0005（assistant toolCall）与 e-0006（toolResult）原子单元"
+          ]
+        }
+      ],
+      "response": {
+        "status": 200,
+        "body": {
+          "entry": {
+            "id": "<ENTRY_ID:cmp1>",
+            "parentId": "e-0010",
+            "timestamp": "<TS>",
+            "type": "compaction",
+            "summary": "已检查 src/config.ts，确认默认 PORT = 8080。",
+            "firstKeptEntryId": "e-0009",
+            "tokensBefore": 2480
+          },
+          "revision": 2,
+          "result": {
+            "entryId": "<ENTRY_ID:cmp1>",
+            "summary": "已检查 src/config.ts，确认默认 PORT = 8080。",
+            "firstKeptEntryId": "e-0009",
+            "tokensBefore": 2480,
+            "usage": { "input": 640, "output": 28, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 668 }
+          }
+        }
+      },
+      "assertions": [
+        "手动同步压缩直接经 modelProxy 执行，不触发 Run 内 beforeCompact 闸门",
+        "若模型返回空摘要，必须返回 502 COMPACTION_EMPTY_SUMMARY 且不推进 revision"
+      ]
+    },
+    {
+      "request": {
+        "method": "PATCH",
+        "path": "/api/kernel/sessions/s-compact",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "gates": ["beforeCompact"],
+          "compaction": { "enabled": true, "keepRecentTokens": 60 },
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 2048, "maxOutputTokens": 512, "thinkingLevel": "medium" }
+        }
+      },
+      "response": { "status": 200, "body": { "sessionId": "s-compact", "revision": 2, "leafId": "<ENTRY_ID:cmp1>", "status": "idle", "activeToolNames": ["read"] } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-compact/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-compact-auto",
+          "baseRevision": 2,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "请给出修改后的完整代码" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-compact-auto", "token": "<PROXY_TOKEN_2>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-compact-auto/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_2>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "beforeCompact 闸门返回 replace 后，codacli 不再额外调用摘要模型，上游总请求数严格等于 1",
+            "模型请求上下文中包含宿主接管提供的替代摘要文本"
+          ]
+        }
+      ],
+      "interactions": [
+        {
+          "afterSeq": 7,
+          "note": "宿主在 beforeCompact 闸门返回 replace 接管摘要（若返回 { action: 'cancel' } 则跳过本次压缩并发 compaction(active=false) 且不落盘 compaction 条目）",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-compact/runs/run-compact-auto/gates/<GATE_ID:gc1>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "replace", "summary": "【宿主接管摘要】已完成 src/config.ts 端口检查（8080），准备改为读取 process.env.PORT。" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "entry", "revision": 3, "entry": { "id": "<ENTRY_ID:u2>", "parentId": "<ENTRY_ID:cmp1>", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "请给出修改后的完整代码" }] } } },
+          { "seq": 3, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u2>" } },
+          { "seq": 4, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "status", "state": "compacting" } },
+          { "seq": 5, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "compaction", "active": true, "reason": "auto" } },
+          { "seq": 6, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "gate", "gateId": "<GATE_ID:gc1>", "kind": "beforeCompact", "turn": 1, "preparation": { "firstKeptEntryId": "<ENTRY_ID:u2>", "tokensBefore": 1680, "entryIdsToSummarize": ["e-0009", "e-0010"] } } },
+          { "seq": 7, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 8, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:cmp2>", "parentId": "<ENTRY_ID:u2>", "timestamp": "<TS>", "type": "compaction", "summary": "【宿主接管摘要】已完成 src/config.ts 端口检查（8080），准备改为读取 process.env.PORT。", "firstKeptEntryId": "<ENTRY_ID:u2>", "tokensBefore": 1680 } } },
+          { "seq": 9, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "compaction", "active": false, "reason": "auto", "entryId": "<ENTRY_ID:cmp2>", "summary": "【宿主接管摘要】已完成 src/config.ts 端口检查（8080），准备改为读取 process.env.PORT。", "firstKeptEntryId": "<ENTRY_ID:u2>", "tokensBefore": 1680 } },
+          { "seq": 10, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "status", "state": "running" } },
+          { "seq": 11, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "contextUsage", "tokens": 320, "contextWindow": 2048 } },
+          { "seq": 12, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a2>" } },
+          { "seq": 13, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "text", "blockId": "b-1", "delta": "export const PORT = Number(process.env.PORT ?? 8080);", "done": true } },
+          { "seq": 14, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "usage", "usage": { "input": 320, "output": 18, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 338 } } },
+          { "seq": 15, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "entry", "revision": 5, "entry": { "id": "<ENTRY_ID:a2>", "parentId": "<ENTRY_ID:cmp2>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "export const PORT = Number(process.env.PORT ?? 8080);" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+          { "seq": 16, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "entry", "revision": 6, "entry": { "id": "<ENTRY_ID:usage2>", "parentId": "<ENTRY_ID:a2>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 320, "output": 18, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 338 } } } },
+          { "seq": 17, "sessionId": "s-compact", "runId": "run-compact-auto", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:usage2>", "userEntryId": "<ENTRY_ID:u2>", "assistantEntryId": "<ENTRY_ID:a2>", "revision": 6 } }
+        ]
+      },
+      "assertions": [
+        "beforeCompact 的 preparation 仅传递 firstKeptEntryId、tokensBefore 与 entryIdsToSummarize，不含消息正文",
+        "replace 接管后按序发出 entry(compaction) 与 compaction(active=false) 并完成后续模型回合；cancel 时不产生 compaction 条目直接恢复模型回合"
+      ]
+    },
+    {
+      "request": { "method": "DELETE", "path": "/api/kernel/sessions/s-compact", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

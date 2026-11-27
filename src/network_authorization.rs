@@ -2,7 +2,9 @@
 pub use crate::provider_transport::NetworkPurpose;
 use crate::{
     domain::{Settings, now},
-    provider_transport::{validate_permit_inputs, validate_target},
+    provider_transport::{
+        ProviderError, ProviderProtocol, validate_permit_inputs, validate_target_with_protocol,
+    },
     secrets,
     store::Store,
     workspace_changes::digest,
@@ -219,6 +221,8 @@ pub struct NetworkError {
     pub kind: NetworkErrorKind,
     pub dispatch_state: DispatchState,
     pub calls: Vec<CallReceipt>,
+    #[serde(skip)]
+    pub provider_error: Option<ProviderError>,
 }
 
 impl NetworkError {
@@ -227,6 +231,7 @@ impl NetworkError {
             kind,
             dispatch_state: DispatchState::NotSent,
             calls: vec![],
+            provider_error: None,
         }
     }
 }
@@ -402,6 +407,12 @@ impl From<crate::budget::BudgetError> for NetworkError {
     }
 }
 
+impl From<crate::provider_runtime::ProviderRuntimeError> for NetworkError {
+    fn from(_error: crate::provider_runtime::ProviderRuntimeError) -> Self {
+        Self::not_sent(NetworkErrorKind::Internal)
+    }
+}
+
 impl std::fmt::Display for NetworkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(code) = self.kind.budget_code().or(self.kind.project_code()) {
@@ -459,6 +470,8 @@ struct SubjectSnapshot {
     base_url: String,
     identity: String,
     credential_ref: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    protocol: Option<ProviderProtocol>,
     binding_digest: String,
 }
 
@@ -503,7 +516,7 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
         .optional()?;
     let settings: Settings =
         parse_json(&value.ok_or_else(|| failure(NetworkErrorKind::Required))?)?;
-    let (base, identity, credential_ref, credential, purpose) = match subject.kind {
+    let (base, identity, credential_ref, credential, purpose, protocol) = match subject.kind {
         NetworkSubjectKind::Route => {
             let route = settings
                 .routes
@@ -534,6 +547,7 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
                 reference,
                 key,
                 NetworkPurpose::Completion,
+                route.protocol,
             )
         }
         NetworkSubjectKind::Account => {
@@ -549,10 +563,12 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
                 "stored/account/newapi".into(),
                 key,
                 NetworkPurpose::Balance,
+                None,
             )
         }
     };
-    let target = validate_target(&base, purpose).map_err(|_| failure(NetworkErrorKind::Invalid))?;
+    let target = validate_target_with_protocol(&base, purpose, protocol)
+        .map_err(|_| failure(NetworkErrorKind::Invalid))?;
     let (model, user) = if subject.kind == NetworkSubjectKind::Route {
         (Some(identity.as_str()), None)
     } else {
@@ -576,6 +592,7 @@ fn current_subject(db: &Connection, subject: &NetworkSubject) -> AnyResult<Curre
             base_url: target.base_url().into(),
             identity,
             credential_ref,
+            protocol,
             binding_digest: String::new(),
         },
         credential,
@@ -613,6 +630,7 @@ fn same_config(a: &SubjectSnapshot, b: &SubjectSnapshot) -> bool {
         && a.base_url == b.base_url
         && a.identity == b.identity
         && a.credential_ref == b.credential_ref
+        && a.protocol == b.protocol
 }
 
 fn matches_current(snapshot: &SubjectSnapshot, sealed: &[u8], current: &CurrentSubject) -> bool {
@@ -621,7 +639,7 @@ fn matches_current(snapshot: &SubjectSnapshot, sealed: &[u8], current: &CurrentS
 }
 
 fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
-    Ok(digest(&serde_json::to_vec(&json!({
+    let mut payload = json!({
         "version": if snapshot.subject.project_id.is_some() { 2 } else { 1 },
         "subject": snapshot.subject,
         "config_revision": snapshot.config_revision,
@@ -630,7 +648,11 @@ fn snapshot_digest(snapshot: &SubjectSnapshot) -> AnyResult<String> {
         "base_url": snapshot.base_url,
         "identity": snapshot.identity,
         "credential_ref": snapshot.credential_ref
-    }))?))
+    });
+    if let Some(protocol) = snapshot.protocol {
+        payload["protocol"] = json!(protocol);
+    }
+    Ok(digest(&serde_json::to_vec(&payload)?))
 }
 
 fn refresh_subject(db: &Connection, current: CurrentSubject) -> AnyResult<SubjectSnapshot> {
@@ -974,12 +996,23 @@ fn ensure_authorized_tx(
 
     let current = current_subject(db, subject)?;
     if let Some(task) = task {
-        let target = validate_target(&task.route.base_url, NetworkPurpose::Completion)
-            .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+        let target = validate_target_with_protocol(
+            &task.route.base_url,
+            NetworkPurpose::Completion,
+            task.route.protocol,
+        )
+        .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+        let current_target = validate_target_with_protocol(
+            &current.snapshot.base_url,
+            NetworkPurpose::Completion,
+            current.snapshot.protocol,
+        )
+        .map_err(|_| failure(NetworkErrorKind::Invalid))?;
         if task.route.id != subject.id
             || task.route.model != current.snapshot.identity
             || target.base_url() != current.snapshot.base_url
             || target.origin() != current.snapshot.origin
+            || target.protocol() != current_target.protocol()
         {
             return Err(failure(NetworkErrorKind::Stale));
         }
@@ -1051,10 +1084,21 @@ pub(crate) fn bind_task_tx(db: &Connection, task: &crate::domain::Task) -> AnyRe
         project_id: Some(crate::project_config::validate_task_tx(db, task, true, true)?.project_id),
     };
     let (grant, current) = ensure_authorized_tx(db, &subject, &[NetworkPurpose::Completion], None)?;
-    let target = validate_target(&task.route.base_url, NetworkPurpose::Completion)
-        .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+    let target = validate_target_with_protocol(
+        &task.route.base_url,
+        NetworkPurpose::Completion,
+        task.route.protocol,
+    )
+    .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+    let current_target = validate_target_with_protocol(
+        &current.snapshot.base_url,
+        NetworkPurpose::Completion,
+        current.snapshot.protocol,
+    )
+    .map_err(|_| failure(NetworkErrorKind::Invalid))?;
     if target.base_url() != current.snapshot.base_url
         || task.route.model != current.snapshot.identity
+        || target.protocol() != current_target.protocol()
     {
         return Err(failure(NetworkErrorKind::Stale));
     }
@@ -1206,8 +1250,12 @@ impl Store {
             } else {
                 (current.credential, None, Vec::new())
             };
-            let target = validate_target(&current.snapshot.base_url, purpose)
-                .map_err(|_| failure(NetworkErrorKind::Invalid))?;
+            let target = validate_target_with_protocol(
+                &current.snapshot.base_url,
+                purpose,
+                current.snapshot.protocol,
+            )
+            .map_err(|_| failure(NetworkErrorKind::Invalid))?;
             let id = uuid::Uuid::new_v4().to_string();
             let (model, user) = match subject.kind {
                 NetworkSubjectKind::Route => (Some(current.snapshot.identity.clone()), None),
@@ -1317,14 +1365,11 @@ impl Store {
         self.finish_network_observed(value, result, None)
     }
 
-    pub(crate) fn finish_completion(
+    pub(crate) fn finish_completion<M>(
         &self,
         value: CallReceipt,
-        result: Result<
-            (serde_json::Value, serde_json::Value),
-            crate::provider_transport::TransportError,
-        >,
-    ) -> Result<NetworkResponse<(serde_json::Value, serde_json::Value)>, NetworkError> {
+        result: Result<(M, serde_json::Value), crate::provider_transport::TransportError>,
+    ) -> Result<NetworkResponse<(M, serde_json::Value)>, NetworkError> {
         let observed = result
             .as_ref()
             .ok()
@@ -1340,6 +1385,10 @@ impl Store {
     ) -> Result<NetworkResponse<T>, NetworkError> {
         use crate::provider_transport::TransportError;
         value.finished_at = Some(now());
+        let provider_error = match &result {
+            Err(TransportError::Provider(err)) => Some(err.clone()),
+            _ => None,
+        };
         let kind = match &result {
             Ok(_) => {
                 value.state = CallState::Finished;
@@ -1351,6 +1400,13 @@ impl Store {
                 value.state = CallState::Finished;
                 value.success = Some(false);
                 value.http_status = Some(*status);
+                value.result = Some(CallResult::HttpFailure);
+                Some(NetworkErrorKind::Upstream)
+            }
+            Err(TransportError::Provider(err)) => {
+                value.state = CallState::Finished;
+                value.success = Some(false);
+                value.http_status = Some(err.status);
                 value.result = Some(CallResult::HttpFailure);
                 Some(NetworkErrorKind::Upstream)
             }
@@ -1418,6 +1474,7 @@ impl Store {
                 kind: NetworkErrorKind::Unknown,
                 dispatch_state: DispatchState::Unknown,
                 calls: vec![value],
+                provider_error: None,
             });
         }
         if let Some(kind) = kind {
@@ -1430,6 +1487,7 @@ impl Store {
                 kind,
                 dispatch_state,
                 calls: vec![value],
+                provider_error,
             });
         }
         Ok(NetworkResponse {
@@ -1525,6 +1583,7 @@ mod tests {
                     name: "OpenAI".into(),
                     base_url: "http://127.0.0.1:9/v1".into(),
                     model: "gpt-4o".into(),
+                    protocol: None,
                     max_tokens: 128,
                     parallel_limit: 2,
                     key_env: None,
@@ -1575,5 +1634,123 @@ mod tests {
             .err()
             .unwrap();
         assert_eq!(err.kind, NetworkErrorKind::Revoked);
+    }
+}
+
+#[cfg(test)]
+mod transport_retry_tests {
+    use super::*;
+    use crate::provider_transport::{
+        ProviderClient, ProviderPermit, TransportError, validate_target,
+    };
+    use axum::{Router, routing::get};
+    use std::sync::{Arc, Mutex};
+    use std::time::{Duration, Instant};
+
+    #[tokio::test]
+    async fn retries_transient_http_failures_before_reading_the_success_body() {
+        let arrivals = Arc::new(Mutex::new(Vec::new()));
+        let observed = arrivals.clone();
+        let app = Router::new().route(
+            "/models",
+            get(move || {
+                let mut seen = observed.lock().unwrap();
+                seen.push(Instant::now());
+                let status = match seen.len() {
+                    1 => 502,
+                    2 => 504,
+                    _ => 200,
+                };
+                async move {
+                    (
+                        reqwest::StatusCode::from_u16(status).unwrap(),
+                        r#"{"data":[{"id":"m"}]}"#,
+                    )
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let target = validate_target(&format!("http://{addr}"), NetworkPurpose::Models).unwrap();
+        let client = ProviderClient::new().unwrap();
+        let target = &target;
+        let client = &client;
+        let response = retry_provider(
+            &tokio_util::sync::CancellationToken::new(),
+            |hint| async move {
+                let id = uuid::Uuid::new_v4().to_string();
+                let permit = ProviderPermit::new(
+                    target.clone(),
+                    "test".into(),
+                    id.clone(),
+                    Some("m".into()),
+                    None,
+                )
+                .unwrap()
+                .track_retry_after(hint);
+                let result = client.send(permit, None).await;
+                let status = match &result {
+                    Err(TransportError::Response { status }) => Some(*status),
+                    Ok(_) => None,
+                    _ => panic!("unexpected transport failure"),
+                };
+                // The Engine integration tests cover persisted receipts. This fixture isolates
+                // the HTTP transport and retry loop so it can also run on hosts without DPAPI.
+                let calls = vec![CallReceipt {
+                    credential_slot: None,
+                    call_id: id,
+                    authorization_id: "fixture".into(),
+                    subject: NetworkSubject {
+                        kind: NetworkSubjectKind::Route,
+                        id: "m".into(),
+                        project_id: None,
+                    },
+                    task_id: None,
+                    purpose: NetworkPurpose::Models,
+                    method: "GET".into(),
+                    origin: target.origin().into(),
+                    endpoint_digest: crate::workspace_changes::digest(target.endpoint().as_bytes()),
+                    claimed_at: 0,
+                    finished_at: Some(0),
+                    state: CallState::Finished,
+                    success: Some(result.is_ok()),
+                    http_status: status,
+                    result: Some(if result.is_ok() {
+                        CallResult::Success
+                    } else {
+                        CallResult::HttpFailure
+                    }),
+                }];
+                match result {
+                    Ok(response) => Ok(NetworkResponse {
+                        result: crate::provider::json_response(response).await.unwrap().0,
+                        calls,
+                    }),
+                    Err(_) => Err(NetworkError {
+                        kind: NetworkErrorKind::Upstream,
+                        dispatch_state: DispatchState::Finished,
+                        calls,
+                        provider_error: None,
+                    }),
+                }
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(response.result["data"][0]["id"], "m");
+        assert_eq!(
+            response
+                .calls
+                .iter()
+                .map(|call| call.http_status)
+                .collect::<Vec<_>>(),
+            [Some(502), Some(504), None]
+        );
+        let seen = arrivals.lock().unwrap();
+        assert_eq!(seen.len(), 3);
+        assert!(seen[1] - seen[0] >= Duration::from_millis(250));
+        assert!(seen[2] - seen[1] >= Duration::from_millis(500));
+        server.abort();
     }
 }

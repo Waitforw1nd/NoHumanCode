@@ -265,11 +265,8 @@ async fn exercise(scenario: Scenario) {
             );
             assert_eq!(task.usage["total_tokens"], 6);
             assert!(task.messages.iter().any(|m| {
-                m["role"] == "tool"
-                    && m["tool_call_id"] == "probe"
-                    && m["content"]
-                        .as_str()
-                        .is_some_and(|s| s.contains("checked the probe: [redacted]"))
+                m.tool_call_id() == Some("probe")
+                    && m.text_content().contains("checked the probe: [redacted]")
             }));
             let status = store.budget_status(&project.id).unwrap();
             assert_eq!(

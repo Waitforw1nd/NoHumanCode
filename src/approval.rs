@@ -231,29 +231,32 @@ pub fn args_digest(args: &Value) -> Result<String> {
     Ok(format!("{:x}", Sha256::digest(bytes)))
 }
 
-pub(crate) fn validate_call_history(messages: &[Value]) -> Result<()> {
+pub(crate) fn validate_call_history(messages: &[crate::messages::NeutralMessage]) -> Result<()> {
     let mut ids = std::collections::HashSet::new();
     let mut answers = std::collections::HashSet::new();
     for message in messages {
-        if let Some(calls) = message.get("tool_calls") {
-            let calls = calls
-                .as_array()
-                .ok_or_else(|| ApprovalError::CorruptState { id: String::new() })?;
-            for call in calls {
-                let id = call["id"]
-                    .as_str()
-                    .filter(|s| !s.is_empty())
-                    .ok_or_else(|| ApprovalError::CorruptState { id: String::new() })?;
-                if message["role"] != "assistant" || !ids.insert(id) {
-                    return Err(ApprovalError::CorruptState { id: id.into() }.into());
+        if message.tool_calls().next().is_some() {
+            for call in message.tool_calls() {
+                if call.id.is_empty() {
+                    return Err(ApprovalError::CorruptState { id: String::new() }.into());
+                }
+                if !matches!(message.role, crate::messages::NeutralRole::Assistant)
+                    || !ids.insert(call.id.as_str())
+                {
+                    return Err(ApprovalError::CorruptState {
+                        id: call.id.clone(),
+                    }
+                    .into());
                 }
             }
         }
-        if message["role"] == "tool" {
-            let id = message["tool_call_id"].as_str().unwrap_or_default();
-            if !ids.contains(id) || !answers.insert(id) {
-                return Err(ApprovalError::CorruptState { id: id.into() }.into());
+        if let crate::messages::NeutralRole::ToolResult { call_id, .. } = &message.role
+            && (!ids.contains(call_id.as_str()) || !answers.insert(call_id.as_str()))
+        {
+            return Err(ApprovalError::CorruptState {
+                id: call_id.clone(),
             }
+            .into());
         }
     }
     Ok(())
@@ -571,6 +574,7 @@ mod tests {
                 name: "route".into(),
                 base_url: "http://127.0.0.1:1".into(),
                 model: "m".into(),
+                protocol: None,
                 max_tokens: 128,
                 parallel_limit: 1,
                 key_env: None,

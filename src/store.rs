@@ -4,7 +4,8 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 use std::{path::Path, sync::Mutex};
 
-pub const SCHEMA_VERSION: u32 = 19;
+pub const SCHEMA_VERSION: u32 = 20;
+pub(crate) const MEDIA_TASKS_MIGRATION_ID: &str = "media-tasks-v20";
 
 fn is_readonly_file_tool(name: &str) -> bool {
     matches!(
@@ -339,6 +340,9 @@ impl Store {
             if !repository::migration_applied(&tx, crate::exploration_jobs::MIGRATION_ID)? {
                 crate::exploration_jobs::migrate(&tx)?;
             }
+            if !repository::migration_applied(&tx, MEDIA_TASKS_MIGRATION_ID)? {
+                apply_schema_20(&tx)?;
+            }
             tx.commit()?;
         }
         *initialized = true;
@@ -585,7 +589,7 @@ impl Store {
             return Err(ToolResultError::Corrupt.into());
         }
         let messages = &durable.messages[inherited..];
-        let answers: Vec<_> = messages.iter().filter(|m| m["role"] == "tool").collect();
+        let answers: Vec<_> = messages.iter().filter(|m| m.is_tool_result()).collect();
         if existing.len() == answers.len() {
             return Ok(None);
         }
@@ -611,7 +615,12 @@ impl Store {
         let content = stable_safe_json(&event["result"])?;
         durable
             .messages
-            .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
+            .push(crate::messages::NeutralMessage::tool_result(
+                call_id,
+                Some(name.to_owned()),
+                content,
+                false,
+            ));
         durable.updated_at = now();
         save_task_tx(&tx, &durable, TaskSave::Snapshot)?;
         tx.commit()?;
@@ -677,7 +686,7 @@ impl Store {
         let answers: Vec<_> = durable
             .messages
             .iter()
-            .filter(|message| message["role"] == "tool" && message["tool_call_id"] == call_id)
+            .filter(|message| message.tool_call_id() == Some(call_id))
             .collect();
         let replay = !answers.is_empty() || !matching.is_empty();
         let caller_messages = safe_caller["messages"]
@@ -694,34 +703,31 @@ impl Store {
         let group_index = durable
             .messages
             .iter()
-            .position(|m| {
-                m["tool_calls"]
-                    .as_array()
-                    .is_some_and(|calls| calls.iter().any(|call| call["id"] == call_id))
-            })
+            .position(|m| m.tool_calls().any(|call| call.id == call_id))
             .ok_or(ToolResultError::Corrupt)?;
         if group_index < inherited {
             return Err(ToolResultError::Conflict.into());
         }
         validate_prior_groups(&durable.messages[inherited..group_index])?;
-        let group = durable.messages[group_index]["tool_calls"]
-            .as_array()
-            .ok_or(ToolResultError::Corrupt)?;
+        let group: Vec<_> = durable.messages[group_index].tool_calls().collect();
         let call_index = group
             .iter()
-            .position(|call| call["id"] == call_id)
+            .position(|call| call.id == call_id)
             .ok_or(ToolResultError::Corrupt)?;
         let preceding = durable
             .messages
             .get(group_index + 1..group_index + 1 + call_index)
             .ok_or(ToolResultError::Corrupt)?;
-        let call = &group[call_index];
-        if durable.messages[group_index]["role"] != "assistant"
-            || call["id"] != call_id
-            || call["function"]["name"] != name
-            || preceding.iter().zip(group).any(|(message, call)| {
-                message["role"] != "tool" || message["tool_call_id"] != call["id"]
-            })
+        let call = group[call_index];
+        if !matches!(
+            durable.messages[group_index].role,
+            crate::messages::NeutralRole::Assistant
+        ) || call.id != call_id
+            || call.name != name
+            || preceding
+                .iter()
+                .zip(group.iter())
+                .any(|(message, call)| message.tool_call_id() != Some(call.id.as_str()))
         {
             return Err(ToolResultError::Conflict.into());
         }
@@ -777,6 +783,7 @@ impl Store {
                         && result == Value::String(approval::tool_error(status))
                 })
             }
+            Origin::HostTool => false,
         };
         if !valid {
             return Err(ToolResultError::Conflict.into());
@@ -789,7 +796,7 @@ impl Store {
                 || matching[0]["name"] != name
                 || matching[0]["result"] != result
                 || matching[0]["origin"] != origin.as_str()
-                || answers[0]["content"].as_str().map(tool_result_value) != Some(result)
+                || tool_result_value(&answers[0].text_content()) != result
             {
                 return Err(ToolResultError::Conflict.into());
             }
@@ -805,7 +812,12 @@ impl Store {
         durable.usage = merge_usage(&durable.usage, &caller.usage)?;
         durable
             .messages
-            .push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
+            .push(crate::messages::NeutralMessage::tool_result(
+                call_id,
+                Some(name.to_owned()),
+                content,
+                false,
+            ));
         durable.updated_at = now();
         save_task_tx(&tx, &durable, TaskSave::Snapshot)?;
         task_event_tx(
@@ -825,16 +837,17 @@ impl Store {
     }
 
     pub(crate) fn save_new_assistant_group(&self, task: &Task) -> Result<()> {
-        let calls = task
+        let last = task
             .messages
             .last()
-            .and_then(|message| message.get("tool_calls"))
-            .and_then(Value::as_array)
             .context("assistant tool group missing")?;
+        let calls: Vec<_> = last.tool_calls().collect();
+        anyhow::ensure!(!calls.is_empty(), "assistant tool group missing");
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         for call in calls {
-            let id = call["id"].as_str().context("tool call id missing")?;
+            let id = call.id.as_str();
+            anyhow::ensure!(!id.is_empty(), "tool call id missing");
             let exists: bool = tx.query_row(
                 "SELECT EXISTS(SELECT 1 FROM approvals WHERE task_id=?1 AND tool_call_id=?2)",
                 params![&task.id, id],
@@ -899,7 +912,7 @@ impl Store {
         let mut task = caller.clone();
         for (_, message) in &pending {
             task.messages
-                .push(json!({"role":"user", "content":message}));
+                .push(crate::messages::NeutralMessage::user_text(message));
         }
         task.updated_at = now();
         let protected = protect_running_projection(&tx, &task)?;
@@ -1426,7 +1439,7 @@ impl Store {
         &self,
         session: &SessionId,
         previous: &Task,
-    ) -> Result<Vec<Value>> {
+    ) -> Result<Vec<crate::messages::NeutralMessage>> {
         let mut db = self.db.lock().unwrap();
         let tx = db.transaction()?;
         let prefix = chat_continuation_prefix_tx(&tx, session, previous)?;
@@ -2475,7 +2488,12 @@ impl Store {
         let mut updated_task = task.clone();
         updated_task
             .messages
-            .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":result}));
+            .push(crate::messages::NeutralMessage::tool_result(
+                tool_call_id,
+                Some(name.to_owned()),
+                &result,
+                false,
+            ));
         updated_task.updated_at = now();
         save_task_tx(&tx, &updated_task, TaskSave::Snapshot)?;
         task_event_tx(
@@ -2860,9 +2878,8 @@ fn tool_result_value(content: &str) -> Value {
 fn command_message(task: &Task) -> String {
     task.messages
         .last()
-        .and_then(|message| message["content"].as_str())
+        .map(crate::messages::NeutralMessage::text_content)
         .unwrap_or_default()
-        .to_owned()
 }
 
 fn run_context_error(error: anyhow::Error) -> anyhow::Error {
@@ -2891,38 +2908,17 @@ fn same_project_path(left: &str, right: &str) -> bool {
     left == right
 }
 
-fn close_dangling_calls(messages: &[Value]) -> Vec<Value> {
-    let answered: std::collections::HashSet<String> = messages
-        .iter()
-        .filter_map(|m| m["tool_call_id"].as_str().map(str::to_owned))
-        .collect();
-    let mut out = Vec::with_capacity(messages.len() + 2);
-    for msg in messages {
-        out.push(msg.clone());
-        if msg["role"] == "assistant"
-            && let Some(calls) = msg["tool_calls"].as_array()
-        {
-            for call in calls {
-                if let Some(id) = call["id"].as_str()
-                    && !answered.contains(id)
-                {
-                    out.push(json!({
-                        "role": "tool",
-                        "tool_call_id": id,
-                        "content": "{\"error\":\"Previous turn ended before tool execution completed.\"}"
-                    }));
-                }
-            }
-        }
-    }
-    out
+fn close_dangling_calls(
+    messages: &[crate::messages::NeutralMessage],
+) -> Vec<crate::messages::NeutralMessage> {
+    crate::agent_loop::close_dangling_tool_calls(messages)
 }
 
 fn chat_continuation_prefix_tx(
     tx: &rusqlite::Transaction<'_>,
     session_id: &SessionId,
     previous: &Task,
-) -> Result<Vec<Value>> {
+) -> Result<Vec<crate::messages::NeutralMessage>> {
     let repo = repository::Repository::new(tx);
     let session = repo.session(session_id)?;
     let latest = repo
@@ -2935,7 +2931,7 @@ fn chat_continuation_prefix_tx(
     let turns = stmt
         .query_map([&session_id.0], |row| row.get::<_, String>(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
-    let mut prefix: Vec<Value> = Vec::new();
+    let mut prefix: Vec<crate::messages::NeutralMessage> = Vec::new();
     let mut recovery_facts = Vec::new();
     let mut agent_id = None;
     for turn_id in turns {
@@ -3003,13 +2999,10 @@ fn chat_continuation_prefix_tx(
         prefix = close_dangling_calls(&task.messages);
     }
     if !recovery_facts.is_empty() {
-        prefix.push(json!({
-            "role": "user",
-            "content": format!(
-                "Host recovery fact: completed workspace restores {}. Prior tool results describe historical file contents, not current disk state. Read the current files before further edits.",
-                serde_json::to_string(&recovery_facts)?
-            )
-        }));
+        prefix.push(crate::messages::NeutralMessage::user_text(format!(
+            "Host recovery fact: completed workspace restores {}. Prior tool results describe historical file contents, not current disk state. Read the current files before further edits.",
+            serde_json::to_string(&recovery_facts)?
+        )));
     }
     Ok(prefix)
 }
@@ -3018,7 +3011,7 @@ fn candidate_continues_snapshot(
     previous: &Task,
     candidate: &Task,
     message: &str,
-    expected_prefix: &[Value],
+    expected_prefix: &[crate::messages::NeutralMessage],
     configured_route: Option<&Route>,
 ) -> bool {
     let candidate_route = serde_json::to_value(&candidate.route).ok();
@@ -3046,9 +3039,9 @@ fn candidate_continues_snapshot(
     (prefix == expected_prefix
         || prefix == closed_prev.as_slice()
         || prefix == previous.messages.as_slice())
-        && last["role"] == "user"
-        && last["content"] == message
-        && last.get("tool_calls").is_none()
+        && matches!(last.role, crate::messages::NeutralRole::User)
+        && last.text_content() == message
+        && last.tool_calls().next().is_none()
 }
 
 fn validate_current_approval_call(
@@ -3082,24 +3075,24 @@ fn validate_current_approval_call(
     let index = durable
         .messages
         .iter()
-        .rposition(|message| message.get("tool_calls").is_some())
+        .rposition(|message| message.tool_calls().next().is_some())
         .ok_or_else(conflict)?;
     if index < inherited {
         return Err(conflict().into());
     }
     validate_prior_groups(&durable.messages[inherited..index])?;
-    let group = durable.messages[index]["tool_calls"]
-        .as_array()
-        .ok_or_else(conflict)?;
+    let group: Vec<_> = durable.messages[index].tool_calls().collect();
     let prior = &durable.messages[index + 1..];
     let call = group.get(prior.len()).ok_or_else(conflict)?;
-    if durable.messages[index]["role"] != "assistant"
-        || call["id"] != call_id
-        || call["type"] != "function"
-        || call["function"]["name"] != name
-        || prior.iter().zip(group).any(|(answer, previous)| {
-            answer["role"] != "tool" || answer["tool_call_id"] != previous["id"]
-        })
+    if !matches!(
+        durable.messages[index].role,
+        crate::messages::NeutralRole::Assistant
+    ) || call.id != call_id
+        || call.name != name
+        || prior
+            .iter()
+            .zip(group.iter())
+            .any(|(answer, previous)| answer.tool_call_id() != Some(previous.id.as_str()))
     {
         return Err(conflict().into());
     }
@@ -3133,26 +3126,20 @@ fn approval_binding(
     let call = durable
         .messages
         .iter()
-        .filter_map(|m| m["tool_calls"].as_array())
-        .flatten()
-        .find(|c| c["id"] == call_id)
+        .flat_map(|m| m.tool_calls())
+        .find(|c| c.id == call_id)
         .ok_or_else(|| approval::ApprovalError::CorruptState { id: call_id.into() })?;
     let raw_call = task
         .messages
         .iter()
-        .filter_map(|m| m["tool_calls"].as_array())
-        .flatten()
-        .find(|c| c["id"] == call_id)
+        .flat_map(|m| m.tool_calls())
+        .find(|c| c.id == call_id)
         .ok_or_else(conflict)?;
-    let raw_args = raw_call["function"]["arguments"]
-        .as_str()
-        .ok_or_else(conflict)?;
+    let raw_args = raw_call.arguments.as_str();
     let raw_value: Value = serde_json::from_str(raw_args).map_err(|_| conflict())?;
-    let persisted = call["function"]["arguments"]
-        .as_str()
-        .ok_or_else(conflict)?;
+    let persisted = call.arguments.as_str();
     let equivalent = safe_tool_arguments_equal(raw_args, persisted)?;
-    if call["function"]["name"] != name
+    if call.name != name
         || !equivalent
         || approval::args_digest(&raw_value)? != approval::args_digest(args)?
     {
@@ -3200,16 +3187,11 @@ fn safe_approval_call_digest(
     let call = task
         .messages
         .iter()
-        .filter_map(|m| m["tool_calls"].as_array())
-        .flatten()
-        .find(|call| call["id"] == record.tool_call_id)
+        .flat_map(|m| m.tool_calls())
+        .find(|call| call.id == record.tool_call_id)
         .ok_or(ToolResultError::Conflict)?;
-    let args: Value = serde_json::from_str(
-        call["function"]["arguments"]
-            .as_str()
-            .ok_or(ToolResultError::Corrupt)?,
-    )
-    .map_err(|_| ToolResultError::Corrupt)?;
+    let args: Value =
+        serde_json::from_str(&call.arguments).map_err(|_| ToolResultError::Corrupt)?;
     approval::args_digest(&json!({
         "version": "approval-safe-call-v1",
         "approval_id": record.id,
@@ -3223,24 +3205,24 @@ fn safe_approval_call_digest(
     }))
 }
 
-fn validate_prior_groups(messages: &[Value]) -> Result<()> {
+fn validate_prior_groups(messages: &[crate::messages::NeutralMessage]) -> Result<()> {
     use crate::tool_results::ToolResultError;
     let mut index = 0;
     while index < messages.len() {
         let message = &messages[index];
-        if let Some(calls) = message.get("tool_calls") {
-            let calls = calls.as_array().ok_or(ToolResultError::Corrupt)?;
-            if message["role"] != "assistant" || calls.is_empty() {
+        let calls: Vec<_> = message.tool_calls().collect();
+        if !calls.is_empty() {
+            if !matches!(message.role, crate::messages::NeutralRole::Assistant) {
                 return Err(ToolResultError::Corrupt.into());
             }
             for call in calls {
                 index += 1;
                 let answer = messages.get(index).ok_or(ToolResultError::Conflict)?;
-                if answer["role"] != "tool" || answer["tool_call_id"] != call["id"] {
+                if answer.tool_call_id() != Some(call.id.as_str()) {
                     return Err(ToolResultError::Conflict.into());
                 }
             }
-        } else if message["role"] == "tool" {
+        } else if message.is_tool_result() {
             return Err(ToolResultError::Corrupt.into());
         }
         index += 1;
@@ -3248,38 +3230,36 @@ fn validate_prior_groups(messages: &[Value]) -> Result<()> {
     Ok(())
 }
 
-fn validate_owned_result_events(messages: &[Value], events: &[Value]) -> Result<()> {
+fn validate_owned_result_events(
+    messages: &[crate::messages::NeutralMessage],
+    events: &[Value],
+) -> Result<()> {
     use crate::tool_results::ToolResultError;
     let answers: Vec<_> = messages
         .iter()
-        .filter(|message| message["role"] == "tool")
+        .filter(|message| message.is_tool_result())
         .collect();
     if answers.len() != events.len() {
         return Err(ToolResultError::Conflict.into());
     }
     for (answer, event) in answers.iter().zip(events) {
-        let id = answer["tool_call_id"]
-            .as_str()
-            .ok_or(ToolResultError::Corrupt)?;
+        let id = answer.tool_call_id().ok_or(ToolResultError::Corrupt)?;
         let call = messages
             .iter()
-            .filter_map(|m| m["tool_calls"].as_array())
-            .flatten()
-            .find(|call| call["id"] == id)
+            .flat_map(|m| m.tool_calls())
+            .find(|call| call.id == id)
             .ok_or(ToolResultError::Corrupt)?;
-        let content = answer["content"].as_str().ok_or(ToolResultError::Corrupt)?;
-        let result = tool_result_value(content);
+        let content = answer.text_content();
+        let result = tool_result_value(&content);
         if event.get("result").is_none()
-            || event["name"] != call["function"]["name"]
+            || event["name"] != call.name
             || event["result"] != result
             || event.get("tool_call_id").is_some_and(|value| value != id)
         {
             return Err(ToolResultError::Corrupt.into());
         }
         if event.get("origin").is_some() || event.get("origin_version").is_some() {
-            let name = call["function"]["name"]
-                .as_str()
-                .ok_or(ToolResultError::Corrupt)?;
+            let name = call.name.as_str();
             let valid_semantics = match event["origin"].as_str() {
                 Some("read_completed") => {
                     is_readonly_file_tool(name) || crate::tool_results::is_computer_read(name)
@@ -3909,6 +3889,7 @@ pub fn initial_settings(store: &Store, legacy: &Path, workspace: &Path) -> Resul
                 max_tokens: 4096,
                 parallel_limit: 1,
                 key_env: provider["apiKeyEnv"].as_str().map(String::from),
+                protocol: None,
             };
             if let Some(secret) = route
                 .key_env
@@ -3931,6 +3912,7 @@ pub fn initial_settings(store: &Store, legacy: &Path, workspace: &Path) -> Resul
                 max_tokens: 4096,
                 parallel_limit: 1,
                 key_env: Some(format!("CODA_KEY_{n}")),
+                protocol: None,
             });
         }
     }
@@ -4075,6 +4057,419 @@ fn read_checkpoint(
     ))
 }
 
+fn apply_schema_20(tx: &rusqlite::Transaction<'_>) -> Result<()> {
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS media_tasks (
+            id TEXT PRIMARY KEY CHECK(typeof(id)='text' AND length(id) BETWEEN 1 AND 128),
+            idempotency_key TEXT UNIQUE CHECK(idempotency_key IS NULL OR (typeof(idempotency_key)='text' AND length(idempotency_key) BETWEEN 1 AND 200)),
+            request_hash TEXT NOT NULL CHECK(typeof(request_hash)='text' AND length(request_hash)=64),
+            session_id TEXT,
+            parent_task_id TEXT,
+            media_kind TEXT NOT NULL CHECK(media_kind IN ('embedding','rerank','image','tts','stt','music','video','realtime')),
+            vendor TEXT NOT NULL,
+            model TEXT NOT NULL,
+            route_id TEXT,
+            status TEXT NOT NULL CHECK(status IN ('queued','submitted','running','throttled','succeeded','failed','cancelled','unknown')),
+            remote_task_id TEXT,
+            poll_cursor TEXT,
+            request_summary TEXT NOT NULL DEFAULT '{}',
+            artifacts_json TEXT NOT NULL DEFAULT '[]',
+            error_code TEXT,
+            error_message TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS media_tasks_resumable
+            ON media_tasks(status, updated_at)
+            WHERE status IN ('queued','submitted','running','throttled');
+        CREATE INDEX IF NOT EXISTS media_tasks_session
+            ON media_tasks(session_id, created_at)
+            WHERE session_id IS NOT NULL;",
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(id, applied_at) VALUES (?1, ?2)",
+        params![MEDIA_TASKS_MIGRATION_ID, now()],
+    )?;
+    tx.pragma_update(None, "user_version", 20)?;
+    Ok(())
+}
+
+pub struct SqliteMediaTaskRepository(pub std::sync::Arc<Store>);
+
+impl crate::media::MediaTaskRepository for SqliteMediaTaskRepository {
+    fn create_task(
+        &self,
+        new_task: &crate::media::NewMediaTask,
+    ) -> Result<crate::media::CreateMediaTaskResult, crate::media::MediaError> {
+        self.0.create_task(new_task)
+    }
+
+    fn get_task(
+        &self,
+        id: &str,
+    ) -> Result<Option<crate::media::MediaTaskRecord>, crate::media::MediaError> {
+        self.0.get_task(id)
+    }
+
+    fn get_by_idempotency_key(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::media::MediaTaskRecord>, crate::media::MediaError> {
+        self.0.get_by_idempotency_key(key)
+    }
+
+    fn update_task_status(
+        &self,
+        id: &str,
+        update: &crate::media::MediaTaskUpdate,
+    ) -> Result<crate::media::MediaTaskRecord, crate::media::MediaError> {
+        self.0.update_task_status(id, update)
+    }
+
+    fn mark_cancelled(
+        &self,
+        id: &str,
+        reason: Option<&str>,
+    ) -> Result<crate::media::MediaTaskRecord, crate::media::MediaError> {
+        self.0.mark_cancelled(id, reason)
+    }
+
+    fn list_resumable_tasks(
+        &self,
+        session_id: Option<&str>,
+    ) -> Result<Vec<crate::media::MediaTaskRecord>, crate::media::MediaError> {
+        self.0.list_resumable_tasks(session_id)
+    }
+}
+
+fn map_media_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<crate::media::MediaTaskRecord> {
+    let kind_str: String = row.get(5)?;
+    let status_str: String = row.get(9)?;
+    let summary_str: String = row.get(12)?;
+    let artifacts_str: String = row.get(13)?;
+    let created_i64: i64 = row.get(16)?;
+    let updated_i64: i64 = row.get(17)?;
+
+    let media_kind = crate::media::MediaKind::parse(&kind_str).ok_or_else(|| {
+        rusqlite::Error::FromSqlConversionFailure(
+            5,
+            rusqlite::types::Type::Text,
+            format!("invalid media_kind: {kind_str}").into(),
+        )
+    })?;
+    let status = crate::media::MediaTaskStatus::parse(&status_str).ok_or_else(|| {
+        rusqlite::Error::FromSqlConversionFailure(
+            9,
+            rusqlite::types::Type::Text,
+            format!("invalid media_task status: {status_str}").into(),
+        )
+    })?;
+    let request_summary: Value = serde_json::from_str(&summary_str).map_err(|e| {
+        rusqlite::Error::FromSqlConversionFailure(12, rusqlite::types::Type::Text, Box::new(e))
+    })?;
+    let artifacts: Vec<crate::media::MediaArtifactRef> = serde_json::from_str(&artifacts_str)
+        .map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(13, rusqlite::types::Type::Text, Box::new(e))
+        })?;
+
+    Ok(crate::media::MediaTaskRecord {
+        id: row.get(0)?,
+        idempotency_key: row.get(1)?,
+        request_hash: row.get(2)?,
+        session_id: row.get(3)?,
+        parent_task_id: row.get(4)?,
+        media_kind,
+        vendor: row.get(6)?,
+        model: row.get(7)?,
+        route_id: row.get(8)?,
+        status,
+        remote_task_id: row.get(10)?,
+        poll_cursor: row.get(11)?,
+        request_summary,
+        artifacts,
+        error_code: row.get(14)?,
+        error_message: row.get(15)?,
+        created_at: u64::try_from(created_i64).unwrap_or(0),
+        updated_at: u64::try_from(updated_i64).unwrap_or(0),
+    })
+}
+
+const MEDIA_TASK_SELECT: &str = "SELECT id, idempotency_key, request_hash, session_id, parent_task_id, media_kind, vendor, model, route_id, status, remote_task_id, poll_cursor, request_summary, artifacts_json, error_code, error_message, created_at, updated_at FROM media_tasks";
+
+fn media_persist_err(err: impl std::fmt::Display) -> crate::media::MediaError {
+    crate::media::MediaError::new(
+        crate::media::MediaErrorCode::PersistenceFailed,
+        err.to_string(),
+    )
+}
+
+impl crate::media::MediaTaskRepository for Store {
+    fn create_task(
+        &self,
+        new_task: &crate::media::NewMediaTask,
+    ) -> Result<crate::media::CreateMediaTaskResult, crate::media::MediaError> {
+        crate::redaction::validate_persisted_id("media_task_id", &new_task.id)
+            .map_err(|e| crate::media::MediaError::invalid_request(e.to_string()))?;
+        if new_task.request_hash.len() != 64
+            || !new_task.request_hash.bytes().all(|b| b.is_ascii_hexdigit())
+        {
+            return Err(crate::media::MediaError::invalid_request(
+                "media task request_hash must be a 64-char hex digest",
+            ));
+        }
+        if let Some(key) = new_task.idempotency_key.as_deref() {
+            crate::redaction::validate_idempotency_key(key)
+                .map_err(|e| crate::media::MediaError::invalid_request(e.to_string()))?;
+        }
+
+        let summary_json = serde_json::to_string(&crate::redaction::redact_persisted(
+            &new_task.request_summary,
+        ))
+        .map_err(media_persist_err)?;
+        let artifacts_json =
+            serde_json::to_string(&new_task.artifacts).map_err(media_persist_err)?;
+        let created_at = i64::try_from(new_task.created_at).unwrap_or(i64::MAX);
+        let updated_at = i64::try_from(new_task.updated_at).unwrap_or(i64::MAX);
+
+        let mut db = self.db.lock().unwrap();
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(media_persist_err)?;
+
+        if let Some(key) = new_task.idempotency_key.as_deref() {
+            let existing = tx
+                .query_row(
+                    &format!("{MEDIA_TASK_SELECT} WHERE idempotency_key=?1"),
+                    [key],
+                    map_media_row,
+                )
+                .optional()
+                .map_err(media_persist_err)?;
+            if let Some(rec) = existing {
+                if rec.request_hash == new_task.request_hash {
+                    return Ok(crate::media::CreateMediaTaskResult::Replayed(rec));
+                }
+                return Ok(crate::media::CreateMediaTaskResult::IdempotencyConflict);
+            }
+        }
+
+        tx.execute(
+            "INSERT INTO media_tasks (id, idempotency_key, request_hash, session_id, parent_task_id, media_kind, vendor, model, route_id, status, remote_task_id, poll_cursor, request_summary, artifacts_json, error_code, error_message, created_at, updated_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18)",
+            params![
+                new_task.id,
+                new_task.idempotency_key,
+                new_task.request_hash,
+                new_task.session_id,
+                new_task.parent_task_id,
+                new_task.media_kind.as_str(),
+                new_task.vendor,
+                new_task.model,
+                new_task.route_id,
+                new_task.status.as_str(),
+                new_task.remote_task_id,
+                new_task.poll_cursor,
+                summary_json,
+                artifacts_json,
+                new_task.error_code,
+                new_task.error_message,
+                created_at,
+                updated_at,
+            ],
+        )
+        .map_err(media_persist_err)?;
+
+        let created = tx
+            .query_row(
+                &format!("{MEDIA_TASK_SELECT} WHERE id=?1"),
+                [&new_task.id],
+                map_media_row,
+            )
+            .map_err(media_persist_err)?;
+        tx.commit().map_err(media_persist_err)?;
+        Ok(crate::media::CreateMediaTaskResult::Created(created))
+    }
+
+    fn get_task(
+        &self,
+        id: &str,
+    ) -> Result<Option<crate::media::MediaTaskRecord>, crate::media::MediaError> {
+        let db = self.db.lock().unwrap();
+        db.query_row(
+            &format!("{MEDIA_TASK_SELECT} WHERE id=?1"),
+            [id],
+            map_media_row,
+        )
+        .optional()
+        .map_err(media_persist_err)
+    }
+
+    fn get_by_idempotency_key(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::media::MediaTaskRecord>, crate::media::MediaError> {
+        let db = self.db.lock().unwrap();
+        db.query_row(
+            &format!("{MEDIA_TASK_SELECT} WHERE idempotency_key=?1"),
+            [key],
+            map_media_row,
+        )
+        .optional()
+        .map_err(media_persist_err)
+    }
+
+    fn update_task_status(
+        &self,
+        id: &str,
+        update: &crate::media::MediaTaskUpdate,
+    ) -> Result<crate::media::MediaTaskRecord, crate::media::MediaError> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(media_persist_err)?;
+        let existing = tx
+            .query_row(
+                &format!("{MEDIA_TASK_SELECT} WHERE id=?1"),
+                [id],
+                map_media_row,
+            )
+            .optional()
+            .map_err(media_persist_err)?
+            .ok_or_else(|| {
+                crate::media::MediaError::new(
+                    crate::media::MediaErrorCode::NotFound,
+                    "media task not found",
+                )
+            })?;
+
+        if existing.status.is_terminal() && existing.status != update.status {
+            return Err(crate::media::MediaError::new(
+                crate::media::MediaErrorCode::Conflict,
+                format!(
+                    "cannot transition terminal media task from {} to {}",
+                    existing.status.as_str(),
+                    update.status.as_str()
+                ),
+            ));
+        }
+
+        let artifacts_json = update
+            .artifacts
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(media_persist_err)?;
+        let updated_at = i64::try_from(update.updated_at).unwrap_or(i64::MAX);
+
+        tx.execute(
+            "UPDATE media_tasks SET
+                status = ?2,
+                remote_task_id = COALESCE(?3, remote_task_id),
+                poll_cursor = COALESCE(?4, poll_cursor),
+                artifacts_json = COALESCE(?5, artifacts_json),
+                error_code = COALESCE(?6, error_code),
+                error_message = COALESCE(?7, error_message),
+                updated_at = ?8
+             WHERE id = ?1",
+            params![
+                id,
+                update.status.as_str(),
+                update.remote_task_id,
+                update.poll_cursor,
+                artifacts_json,
+                update.error_code,
+                update.error_message,
+                updated_at,
+            ],
+        )
+        .map_err(media_persist_err)?;
+
+        let updated = tx
+            .query_row(
+                &format!("{MEDIA_TASK_SELECT} WHERE id=?1"),
+                [id],
+                map_media_row,
+            )
+            .map_err(media_persist_err)?;
+        tx.commit().map_err(media_persist_err)?;
+        Ok(updated)
+    }
+
+    fn mark_cancelled(
+        &self,
+        id: &str,
+        reason: Option<&str>,
+    ) -> Result<crate::media::MediaTaskRecord, crate::media::MediaError> {
+        let mut db = self.db.lock().unwrap();
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(media_persist_err)?;
+        let existing = tx
+            .query_row(
+                &format!("{MEDIA_TASK_SELECT} WHERE id=?1"),
+                [id],
+                map_media_row,
+            )
+            .optional()
+            .map_err(media_persist_err)?
+            .ok_or_else(|| {
+                crate::media::MediaError::new(
+                    crate::media::MediaErrorCode::NotFound,
+                    "media task not found",
+                )
+            })?;
+
+        if matches!(
+            existing.status,
+            crate::media::MediaTaskStatus::Succeeded | crate::media::MediaTaskStatus::Failed
+        ) {
+            return Ok(existing);
+        }
+
+        let updated_at = i64::try_from(now()).unwrap_or(i64::MAX);
+        tx.execute(
+            "UPDATE media_tasks SET
+                status = 'cancelled',
+                error_code = COALESCE(error_code, 'cancelled'),
+                error_message = COALESCE(?2, error_message),
+                updated_at = ?3
+             WHERE id = ?1",
+            params![id, reason, updated_at],
+        )
+        .map_err(media_persist_err)?;
+
+        let updated = tx
+            .query_row(
+                &format!("{MEDIA_TASK_SELECT} WHERE id=?1"),
+                [id],
+                map_media_row,
+            )
+            .map_err(media_persist_err)?;
+        tx.commit().map_err(media_persist_err)?;
+        Ok(updated)
+    }
+
+    fn list_resumable_tasks(
+        &self,
+        session_id: Option<&str>,
+    ) -> Result<Vec<crate::media::MediaTaskRecord>, crate::media::MediaError> {
+        let db = self.db.lock().unwrap();
+        let mut stmt = db
+            .prepare(&format!(
+                "{MEDIA_TASK_SELECT}
+                 WHERE status IN ('queued','submitted','running','throttled')
+                   AND (?1 IS NULL OR session_id = ?1)
+                 ORDER BY created_at ASC, rowid ASC"
+            ))
+            .map_err(media_persist_err)?;
+        let rows = stmt
+            .query_map([session_id], map_media_row)
+            .map_err(media_persist_err)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(media_persist_err)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4085,6 +4480,7 @@ mod tests {
             name: "Route 1".into(),
             base_url: "http://127.0.0.1:8080/v1".into(),
             model: "test-model".into(),
+            protocol: None,
             max_tokens: 512,
             parallel_limit: 1,
             key_env: None,
@@ -4111,7 +4507,7 @@ mod tests {
             status: "queued".into(),
             output: String::new(),
             error: None,
-            messages: vec![json!({"role":"user","content":prompt})],
+            messages: vec![crate::messages::NeutralMessage::user_text(prompt)],
             usage: Value::Null,
             created_at: 1,
             updated_at: 1,
@@ -4152,15 +4548,18 @@ mod tests {
             created_at: 1,
         };
         let mut legacy1 = sample_task("t1", "run1", &ws_str, "first turn");
-        legacy1.messages.push(json!({
-            "role": "assistant",
-            "content": null,
-            "tool_calls": [{
-                "id": "call-1",
-                "type": "function",
-                "function": { "name": "edit_file", "arguments": "{\"path\":\"a.rs\",\"old_string\":\"x\",\"new_string\":\"y\"}" }
-            }]
-        }));
+        legacy1.messages.push(
+            crate::messages::NeutralMessage::from_legacy_value(&json!({
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [{
+                    "id": "call-1",
+                    "type": "function",
+                    "function": { "name": "edit_file", "arguments": "{\"path\":\"a.rs\",\"old_string\":\"x\",\"new_string\":\"y\"}" }
+                }]
+            }))
+            .unwrap(),
+        );
         let ttask1 = TurnTask {
             id: TaskId("t1".into()),
             turn_id: TurnId("turn1".into()),
@@ -4210,7 +4609,9 @@ mod tests {
         let mut prefix = store
             .chat_continuation_prefix(&session.id, &persisted1)
             .unwrap();
-        prefix.push(json!({"role":"user","content":"continue please"}));
+        prefix.push(crate::messages::NeutralMessage::user_text(
+            "continue please",
+        ));
         let mut legacy2 = sample_task("t2", "run1", &ws_str, "continue please");
         legacy2.messages = prefix;
         let ttask2 = TurnTask {
@@ -4239,5 +4640,92 @@ mod tests {
             .unwrap();
         assert!(!receipt.replayed);
         assert_eq!(receipt.turn.id, TurnId("turn2".into()));
+    }
+
+    #[test]
+    fn sqlite_media_task_repository_v20_idempotency_and_recover_preservation() {
+        use crate::media::{
+            CreateMediaTaskResult, MediaKind, MediaTaskRepository, MediaTaskStatus,
+            MediaTaskUpdate, NewMediaTask,
+        };
+
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(&dir.path().join("media-v20.sqlite")).unwrap();
+        assert_eq!(store.schema_version().unwrap(), 20);
+
+        let hash_a = "a".repeat(64);
+        let hash_b = "b".repeat(64);
+        let new_task = NewMediaTask {
+            id: "mtask-1".into(),
+            idempotency_key: Some("idem-1".into()),
+            request_hash: hash_a.clone(),
+            session_id: Some("sess-media".into()),
+            parent_task_id: None,
+            media_kind: MediaKind::Video,
+            vendor: "kling".into(),
+            model: "kling-v2".into(),
+            route_id: None,
+            status: MediaTaskStatus::Submitted,
+            remote_task_id: Some("remote-99".into()),
+            poll_cursor: None,
+            request_summary: json!({"prompt": "cat", "api_key": "should-redact"}),
+            artifacts: vec![],
+            error_code: None,
+            error_message: None,
+            created_at: 100,
+            updated_at: 100,
+        };
+        let created = match store.create_task(&new_task).unwrap() {
+            CreateMediaTaskResult::Created(rec) => rec,
+            other => panic!("expected Created, got {other:?}"),
+        };
+        assert_eq!(created.request_summary["api_key"], "[redacted]");
+        assert_eq!(created.remote_task_id.as_deref(), Some("remote-99"));
+
+        // Replay with same key & hash
+        assert!(matches!(
+            store.create_task(&new_task).unwrap(),
+            CreateMediaTaskResult::Replayed(rec) if rec.id == "mtask-1"
+        ));
+
+        // Conflict with same key & different hash
+        let mut diff = new_task.clone();
+        diff.id = "mtask-2".into();
+        diff.request_hash = hash_b;
+        assert_eq!(
+            store.create_task(&diff).unwrap(),
+            CreateMediaTaskResult::IdempotencyConflict
+        );
+
+        // Store::recover() MUST leave submitted/running media_tasks untouched for Engine 3 resume
+        let _ = store.recover().unwrap();
+        let resumable = store.list_resumable_tasks(Some("sess-media")).unwrap();
+        assert_eq!(resumable.len(), 1);
+        assert_eq!(resumable[0].status, MediaTaskStatus::Submitted);
+
+        // Transition to Succeeded and forbid regressing back to Running
+        let done = store
+            .update_task_status(
+                "mtask-1",
+                &MediaTaskUpdate {
+                    status: MediaTaskStatus::Succeeded,
+                    updated_at: 105,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        assert_eq!(done.status, MediaTaskStatus::Succeeded);
+        assert!(
+            store
+                .update_task_status(
+                    "mtask-1",
+                    &MediaTaskUpdate {
+                        status: MediaTaskStatus::Running,
+                        updated_at: 106,
+                        ..Default::default()
+                    }
+                )
+                .is_err()
+        );
     }
 }

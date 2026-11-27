@@ -666,6 +666,7 @@ mod tests {
                     name: "Route".into(),
                     base_url: "http://127.0.0.1:9".into(),
                     model: "mock".into(),
+                    protocol: None,
                     max_tokens: 128,
                     parallel_limit: 4,
                     key_env: None,
@@ -755,7 +756,10 @@ mod tests {
         let (_, failed_call) = store
             .network_admit(&subject, NetworkPurpose::Completion, None)
             .unwrap();
-        let _ = store.finish_completion(failed_call, Err(TransportError::Response { status: 429 }));
+        let _ = store.finish_completion::<serde_json::Value>(
+            failed_call,
+            Err(TransportError::Response { status: 429 }),
+        );
         assert_eq!(store.budget_status(&project).unwrap().blocked_reason, None);
 
         // Overrun within limit does not block; exceeding limit blocks until limit is raised.

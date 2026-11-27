@@ -28,6 +28,7 @@ fn sample_task(root: &std::path::Path) -> Task {
             name: "Local".into(),
             base_url: "http://127.0.0.1:1/v1".into(),
             model: "test-model".into(),
+            protocol: None,
             max_tokens: 4096,
             parallel_limit: 1,
             key_env: None,
@@ -487,7 +488,7 @@ async fn git_status_and_session_todo_tools_work_without_approval_friction() {
     assert_eq!(cli_items, expected_items);
 
     // 4. Simulate cross-process restart: clear in-memory RUN_TODOS cache and recover from task.messages!
-    task.messages = vec![
+    task.messages = coda::messages::from_legacy_values(&[
         json!({"role": "user", "content": "track tasks"}),
         json!({
             "role": "assistant",
@@ -523,7 +524,8 @@ async fn git_status_and_session_todo_tools_work_without_approval_friction() {
             }]
         }),
         json!({"role": "tool", "tool_call_id": "call-todo-latest", "content": "{}"}),
-    ];
+    ])
+    .unwrap();
     workspace::clear_todo_cache_for_run(&task.run_id);
     assert!(workspace::todos_for_run(&task.run_id).is_empty());
 

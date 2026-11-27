@@ -54,6 +54,7 @@ fn read_secret_from_stdin_line() -> Result<String, Failure> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct ProviderPreset {
     provider: InitProvider,
+    protocol: coda::provider::ProviderProtocol,
     display_name: &'static str,
     cli_flag: &'static str,
     key_env: &'static str,
@@ -64,9 +65,11 @@ struct ProviderPreset {
 
 impl InitProvider {
     fn preset(self) -> ProviderPreset {
+        use coda::provider::ProviderProtocol;
         match self {
             Self::Openai => ProviderPreset {
                 provider: Self::Openai,
+                protocol: ProviderProtocol::OpenAi,
                 display_name: "OpenAI",
                 cli_flag: "openai",
                 key_env: "OPENAI_API_KEY",
@@ -74,8 +77,19 @@ impl InitProvider {
                 default_base_url: DEFAULT_BASE_URL,
                 default_model: DEFAULT_MODEL,
             },
+            Self::OpenaiResponses => ProviderPreset {
+                provider: Self::OpenaiResponses,
+                protocol: ProviderProtocol::OpenAiResponses,
+                display_name: "OpenAI Responses",
+                cli_flag: "openai-responses",
+                key_env: "OPENAI_API_KEY",
+                base_env: "OPENAI_BASE_URL",
+                default_base_url: DEFAULT_BASE_URL,
+                default_model: "gpt-5.2",
+            },
             Self::Anthropic => ProviderPreset {
                 provider: Self::Anthropic,
+                protocol: ProviderProtocol::Anthropic,
                 display_name: "Anthropic",
                 cli_flag: "anthropic",
                 key_env: "ANTHROPIC_API_KEY",
@@ -85,6 +99,7 @@ impl InitProvider {
             },
             Self::Gemini => ProviderPreset {
                 provider: Self::Gemini,
+                protocol: ProviderProtocol::Gemini,
                 display_name: "Gemini",
                 cli_flag: "gemini",
                 key_env: "GEMINI_API_KEY",
@@ -98,6 +113,7 @@ impl InitProvider {
     fn from_protocol(protocol: coda::provider::ProviderProtocol) -> Self {
         match protocol {
             coda::provider::ProviderProtocol::OpenAi => Self::Openai,
+            coda::provider::ProviderProtocol::OpenAiResponses => Self::OpenaiResponses,
             coda::provider::ProviderProtocol::Anthropic => Self::Anthropic,
             coda::provider::ProviderProtocol::Gemini => Self::Gemini,
         }
@@ -157,6 +173,12 @@ where
         Some(r) if r.eq_ignore_ascii_case("anthropic") => Some(InitProvider::Anthropic),
         Some(r) if r.eq_ignore_ascii_case("gemini") => Some(InitProvider::Gemini),
         Some(r) if r.eq_ignore_ascii_case("openai") => Some(InitProvider::Openai),
+        Some(r)
+            if r.eq_ignore_ascii_case("openai-responses")
+                || r.eq_ignore_ascii_case("openai_responses") =>
+        {
+            Some(InitProvider::OpenaiResponses)
+        }
         _ => None,
     };
 
@@ -274,6 +296,7 @@ pub(super) async fn run_init(
         model: raw_model,
         max_tokens: args.max_tokens,
         parallel_limit: args.parallel_limit,
+        protocol: Some(preset.protocol),
     }
     .normalized()
     .map_err(|_| {
@@ -340,6 +363,7 @@ pub(super) async fn run_init(
             max_tokens: normalized.max_tokens,
             parallel_limit: normalized.parallel_limit,
             key_env: None,
+            protocol: normalized.protocol,
         };
 
         if let Some(existing) = settings.routes.iter_mut().find(|r| r.id == route.id) {
@@ -413,6 +437,7 @@ pub(super) async fn ensure_route_ready(
             model: plan.model,
             max_tokens: 16384,
             parallel_limit: 4,
+            protocol: Some(plan.preset.protocol),
         }
         .normalized()
         .map_err(|_| {
@@ -430,6 +455,7 @@ pub(super) async fn ensure_route_ready(
             max_tokens: normalized.max_tokens,
             parallel_limit: normalized.parallel_limit,
             key_env: Some(plan.preset.key_env.into()),
+            protocol: normalized.protocol,
         };
         settings.routes.push(route.clone());
         engine
@@ -576,5 +602,26 @@ mod tests {
         assert!(err.message.contains("OPENAI_API_KEY"));
         assert!(err.message.contains("ANTHROPIC_API_KEY"));
         assert!(err.message.contains("GEMINI_API_KEY"));
+    }
+
+    #[test]
+    fn resolve_zero_init_plan_supports_openai_responses_route() {
+        for route_name in ["openai-responses", "openai_responses"] {
+            let plan = resolve_zero_init_plan(route_name, Some(route_name), None, |k| match k {
+                "OPENAI_API_KEY" => Some("sk-resp-key".into()),
+                "OPENAI_BASE_URL" => Some("http://127.0.0.1:4200/v1".into()),
+                _ => None,
+            })
+            .unwrap();
+            assert_eq!(plan.preset.provider, InitProvider::OpenaiResponses);
+            assert_eq!(
+                plan.preset.protocol,
+                coda::provider::ProviderProtocol::OpenAiResponses
+            );
+            assert_eq!(plan.preset.key_env, "OPENAI_API_KEY");
+            assert_eq!(plan.base_url, "http://127.0.0.1:4200/v1");
+            assert_eq!(plan.model, "gpt-5.2");
+            assert_eq!(plan.api_key.as_str(), "sk-resp-key");
+        }
     }
 }

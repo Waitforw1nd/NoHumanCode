@@ -1,0 +1,160 @@
+{
+  "name": "runAbort",
+  "description": "工具等待期间执行 abort：保留已受理工具结果、为未配对工具调用自动补齐 isError=true 文本 aborted，随后用新的 Run 级模型代理无缝续跑。",
+  "steps": [
+    {
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-abort",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "shell", "description": "执行命令", "parameters": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] }, "label": "命令", "executionMode": "sequential" }
+          ],
+          "activeToolNames": ["shell"],
+          "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+          "steeringMode": "one-at-a-time",
+          "gates": [],
+          "history": {
+            "leafId": null,
+            "entries": []
+          }
+        }
+      },
+      "response": { "status": 201, "body": { "sessionId": "s-abort", "revision": 1, "leafId": null, "status": "idle" } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-abort/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-abort-1",
+          "baseRevision": 1,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "依次执行两个脚本命令" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-abort-1", "token": "<PROXY_TOKEN_1>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-abort-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_1>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true }
+        }
+      ],
+      "interactions": [
+        {
+          "afterSeq": 12,
+          "note": "宿主先提交第一个命令 call_1 的结果",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-abort/runs/run-abort-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_1",
+              "result": { "content": [{ "type": "text", "text": "step1 ok" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 12,
+          "note": "在 call_2 完成前用户取消，宿主发起 abort",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-abort/runs/run-abort-1/abort",
+            "headers": { "x-coda-token": "<TOKEN>" }
+          },
+          "response": { "status": 204 }
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "entry", "revision": 2, "entry": { "id": "<ENTRY_ID:u1>", "parentId": null, "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "依次执行两个脚本命令" }] } } },
+          { "seq": 3, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u1>" } },
+          { "seq": 4, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "contextUsage", "tokens": 950, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a1>" } },
+          { "seq": 6, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "text", "blockId": "b-1", "delta": "我先依次运行两个命令。", "done": true } },
+          { "seq": 7, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "toolCall", "callId": "call_1", "name": "shell", "args": { "command": "echo step1 ok" }, "batchId": "batch-1", "batchIndex": 0, "batchSize": 2 } },
+          { "seq": 8, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "toolCall", "callId": "call_2", "name": "shell", "args": { "command": "sleep 60" }, "batchId": "batch-1", "batchIndex": 1, "batchSize": 2 } },
+          { "seq": 9, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "usage", "usage": { "input": 950, "output": 46, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 996 } } },
+          { "seq": 10, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "entry", "revision": 3, "entry": { "id": "<ENTRY_ID:a1>", "parentId": "<ENTRY_ID:u1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "我先依次运行两个命令。" }, { "type": "toolCall", "callId": "call_1", "name": "shell", "args": { "command": "echo step1 ok" } }, { "type": "toolCall", "callId": "call_2", "name": "shell", "args": { "command": "sleep 60" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+          { "seq": 11, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:usage1>", "parentId": "<ENTRY_ID:a1>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 950, "output": 46, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 996 } } } },
+          { "seq": 12, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "status", "state": "waitingTools" } },
+          { "seq": 13, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "toolResult", "callId": "call_1", "result": { "content": [{ "type": "text", "text": "step1 ok" }], "details": null, "isError": false } } },
+          { "seq": 14, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "entry", "revision": 5, "entry": { "id": "<ENTRY_ID:tr1>", "parentId": "<ENTRY_ID:usage1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_1", "name": "shell", "content": [{ "type": "text", "text": "step1 ok" }], "isError": false } } },
+          { "seq": 15, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "toolResult", "callId": "call_2", "result": { "content": [{ "type": "text", "text": "aborted" }], "details": null, "isError": true } } },
+          { "seq": 16, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "entry", "revision": 6, "entry": { "id": "<ENTRY_ID:tr2>", "parentId": "<ENTRY_ID:tr1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_2", "name": "shell", "content": [{ "type": "text", "text": "aborted" }], "isError": true } } },
+          { "seq": 17, "sessionId": "s-abort", "runId": "run-abort-1", "event": { "type": "done", "reason": "aborted", "stopReason": "aborted", "leafId": "<ENTRY_ID:tr2>", "userEntryId": "<ENTRY_ID:u1>", "assistantEntryId": "<ENTRY_ID:a1>", "revision": 6 } }
+        ]
+      },
+      "assertions": [
+        "call_1 的已受理结果与 call_2 的合成 aborted 结果均在 done 之前发出并提交为 entry(toolResult)",
+        "done 是最后一帧且携带 reason=aborted、stopReason=aborted 与最终 revision=6"
+      ]
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/sessions/s-abort", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 200, "body": { "sessionId": "s-abort", "revision": 6, "leafId": "<ENTRY_ID:tr2>", "status": "idle", "activeToolNames": ["shell"] } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-abort/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-abort-2",
+          "baseRevision": 6,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "刚才取消了，直接总结第一步结果即可" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-abort-2", "token": "<PROXY_TOKEN_2>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-abort-2/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_2>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "使用新 Run 的 modelProxy（/m/run-abort-2 与 <PROXY_TOKEN_2>），未复用已作废的 run-abort-1 代理",
+            "历史中 call_1 与 call_2 均已配对 toolResult，保证续跑请求结构完整"
+          ]
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "entry", "revision": 7, "entry": { "id": "<ENTRY_ID:u2>", "parentId": "<ENTRY_ID:tr2>", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "刚才取消了，直接总结第一步结果即可" }] } } },
+          { "seq": 3, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u2>" } },
+          { "seq": 4, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "contextUsage", "tokens": 1120, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a2>" } },
+          { "seq": 6, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "text", "blockId": "b-1", "delta": "第一步命令已执行成功，输出为 step1 ok；第二步命令已按取消处理。", "done": true } },
+          { "seq": 7, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "usage", "usage": { "input": 1120, "output": 24, "cacheRead": 768, "cacheWrite": 0, "totalTokens": 1144 } } },
+          { "seq": 8, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "entry", "revision": 8, "entry": { "id": "<ENTRY_ID:a2>", "parentId": "<ENTRY_ID:u2>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "第一步命令已执行成功，输出为 step1 ok；第二步命令已按取消处理。" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+          { "seq": 9, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "entry", "revision": 9, "entry": { "id": "<ENTRY_ID:usage2>", "parentId": "<ENTRY_ID:a2>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1120, "output": 24, "cacheRead": 768, "cacheWrite": 0, "totalTokens": 1144 } } } },
+          { "seq": 10, "sessionId": "s-abort", "runId": "run-abort-2", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:usage2>", "userEntryId": "<ENTRY_ID:u2>", "assistantEntryId": "<ENTRY_ID:a2>", "revision": 9 } }
+        ]
+      },
+      "assertions": [
+        "abort 后会话保持可续跑状态，二次 Run 正常完成"
+      ]
+    },
+    {
+      "request": { "method": "DELETE", "path": "/api/kernel/sessions/s-abort", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

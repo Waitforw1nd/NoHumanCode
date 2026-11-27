@@ -1,11 +1,13 @@
 //! Authorized Provider HTTP requests without process-sealing leak guards or pre-send DB writes.
-use futures_util::Stream;
+use futures_util::{Stream, StreamExt};
 use reqwest::{Url, header::HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt, time::Duration};
 
 pub const RESPONSE_LIMIT: usize = 4_000_000;
+pub const ERROR_BODY_LIMIT: usize = 64 * 1024;
+pub const DEFAULT_STREAM_READ_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -19,12 +21,62 @@ pub enum NetworkPurpose {
 #[serde(rename_all = "snake_case")]
 pub enum ProviderProtocol {
     #[default]
+    #[serde(
+        alias = "openai",
+        alias = "openai-completions",
+        alias = "openai_completions"
+    )]
     OpenAi,
+    #[serde(alias = "openai-responses", alias = "openai_responses")]
+    OpenAiResponses,
+    #[serde(alias = "anthropic-messages", alias = "anthropic_messages")]
     Anthropic,
+    #[serde(alias = "gemini-native")]
     Gemini,
 }
 
 impl ProviderProtocol {
+    pub fn parse_explicit(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "openai-completions" | "openai_completions" | "open_ai" | "openai" => {
+                Some(Self::OpenAi)
+            }
+            "openai-responses" | "openai_responses" | "open_ai_responses" => {
+                Some(Self::OpenAiResponses)
+            }
+            "anthropic-messages" | "anthropic_messages" | "anthropic" => Some(Self::Anthropic),
+            "gemini" | "gemini-native" => Some(Self::Gemini),
+            _ => None,
+        }
+    }
+
+    pub fn parse_embedded_model_protocol(raw: &str) -> Option<Self> {
+        match raw.trim() {
+            "openai-completions" => Some(Self::OpenAi),
+            "openai-responses" => Some(Self::OpenAiResponses),
+            "anthropic-messages" => Some(Self::Anthropic),
+            _ => None,
+        }
+    }
+
+    pub const fn kernel_wire_name(self) -> &'static str {
+        match self {
+            Self::OpenAi => "openai-completions",
+            Self::OpenAiResponses => "openai-responses",
+            Self::Anthropic => "anthropic-messages",
+            Self::Gemini => "gemini",
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::OpenAi => "open_ai",
+            Self::OpenAiResponses => "open_ai_responses",
+            Self::Anthropic => "anthropic",
+            Self::Gemini => "gemini",
+        }
+    }
+
     pub fn detect(base_url: &str) -> Self {
         let Ok(url) = Url::parse(base_url.trim()) else {
             return Self::OpenAi;
@@ -115,31 +167,70 @@ impl NetworkTarget {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProviderError {
+    pub status: u16,
+    pub upstream_code: Option<String>,
+    pub message: Option<String>,
+    pub retryable: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TransportError {
     Invalid,
     Response { status: u16 },
+    Provider(ProviderError),
     InvalidResponse { status: u16 },
     Unknown,
 }
 
+impl TransportError {
+    pub fn status(&self) -> Option<u16> {
+        match self {
+            Self::Response { status } | Self::InvalidResponse { status } => Some(*status),
+            Self::Provider(err) => Some(err.status),
+            Self::Invalid | Self::Unknown => None,
+        }
+    }
+
+    pub fn provider_error(&self) -> Option<&ProviderError> {
+        match self {
+            Self::Provider(err) => Some(err),
+            _ => None,
+        }
+    }
+
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            Self::Provider(err) => err.retryable && transient_status(err.status),
+            Self::Response { status } => transient_status(*status),
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Display for TransportError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Invalid => "invalid provider request",
-            Self::Response { .. } => "provider HTTP failure",
-            Self::InvalidResponse { .. } => "invalid provider response",
-            Self::Unknown => "provider result unknown",
-        })
+        match self {
+            Self::Invalid => f.write_str("invalid provider request"),
+            Self::Response { status } => write!(f, "provider HTTP failure ({status})"),
+            Self::Provider(err) => match (&err.upstream_code, &err.message) {
+                (Some(code), Some(msg)) => {
+                    write!(f, "provider HTTP failure ({}) [{code}]: {msg}", err.status)
+                }
+                (Some(code), None) => write!(f, "provider HTTP failure ({}) [{code}]", err.status),
+                (None, Some(msg)) => write!(f, "provider HTTP failure ({}): {msg}", err.status),
+                (None, None) => write!(f, "provider HTTP failure ({})", err.status),
+            },
+            Self::InvalidResponse { status } => write!(f, "invalid provider response ({status})"),
+            Self::Unknown => f.write_str("provider result unknown"),
+        }
     }
 }
 
 impl std::error::Error for TransportError {}
 
-pub fn validate_target(
-    base: &str,
-    purpose: NetworkPurpose,
-) -> Result<NetworkTarget, TransportError> {
+fn parse_validated_base(base: &str) -> Result<(String, String, String, String), TransportError> {
     if base.is_empty()
         || base
             .bytes()
@@ -189,23 +280,43 @@ pub fn validate_target(
     {
         return Err(TransportError::Invalid);
     }
-    let host = url.host_str().ok_or(TransportError::Invalid)?;
+    let host = url.host_str().ok_or(TransportError::Invalid)?.to_owned();
     let port = url.port_or_known_default().ok_or(TransportError::Invalid)?;
-    let raw_trimmed_path = url.path().trim_end_matches('/');
+    let raw_trimmed_path = url.path().trim_end_matches('/').to_owned();
     let origin = format!("{}://{host}:{port}", url.scheme());
     let base_url = format!("{origin}{raw_trimmed_path}");
+    Ok((origin, base_url, host, raw_trimmed_path))
+}
+
+pub fn validate_target(
+    base: &str,
+    purpose: NetworkPurpose,
+) -> Result<NetworkTarget, TransportError> {
+    validate_target_with_protocol(base, purpose, None)
+}
+
+pub fn validate_target_with_protocol(
+    base: &str,
+    purpose: NetworkPurpose,
+    explicit: Option<ProviderProtocol>,
+) -> Result<NetworkTarget, TransportError> {
+    let (origin, base_url, host, raw_trimmed_path) = parse_validated_base(base)?;
     let protocol = match purpose {
         NetworkPurpose::Balance => ProviderProtocol::OpenAi,
-        NetworkPurpose::Models | NetworkPurpose::Completion => {
-            ProviderProtocol::from_host_and_path(host, raw_trimmed_path)
-        }
+        NetworkPurpose::Models | NetworkPurpose::Completion => explicit
+            .unwrap_or_else(|| ProviderProtocol::from_host_and_path(&host, &raw_trimmed_path)),
     };
     let lower_path = raw_trimmed_path.to_ascii_lowercase();
     let (method, endpoint) = match (protocol, purpose) {
         (_, NetworkPurpose::Balance) => ("GET", format!("{base_url}/api/user/self")),
-        (ProviderProtocol::OpenAi, NetworkPurpose::Models) => ("GET", format!("{base_url}/models")),
+        (ProviderProtocol::OpenAi | ProviderProtocol::OpenAiResponses, NetworkPurpose::Models) => {
+            ("GET", format!("{base_url}/models"))
+        }
         (ProviderProtocol::OpenAi, NetworkPurpose::Completion) => {
             ("POST", format!("{base_url}/chat/completions"))
+        }
+        (ProviderProtocol::OpenAiResponses, NetworkPurpose::Completion) => {
+            ("POST", format!("{base_url}/responses"))
         }
         (ProviderProtocol::Anthropic, NetworkPurpose::Models) => {
             let api_base = if lower_path.ends_with("/v1") {
@@ -257,6 +368,60 @@ pub fn validate_target(
     })
 }
 
+/// Embedded kernel model proxy target builder (`codaKernel/1 §5`).
+/// Enforces loopback IP literal (`127.0.0.1` / `[::1]`), forbids URL-path protocol guessing,
+/// and forbids `/v1` rewriting on `/m/<runId>`.
+pub fn validate_embedded_proxy_target(
+    base: &str,
+    protocol: ProviderProtocol,
+) -> Result<NetworkTarget, TransportError> {
+    validate_embedded_proxy_target_v11(base, protocol, false)
+}
+
+/// Embedded kernel model proxy target builder (`codaKernel/1 §5` + `codaKernel/1.1 §10`).
+/// When `media_enabled` is true, permits `ProviderProtocol::Gemini` targeting
+/// `{base}/gemini/models/{model}:streamGenerateContent?alt=sse`.
+pub fn validate_embedded_proxy_target_v11(
+    base: &str,
+    protocol: ProviderProtocol,
+    media_enabled: bool,
+) -> Result<NetworkTarget, TransportError> {
+    let (origin, base_url, host, _) = parse_validated_base(base)?;
+    let is_loopback_ip = host
+        .strip_prefix('[')
+        .and_then(|s| s.strip_suffix(']'))
+        .unwrap_or(&host)
+        .parse::<std::net::IpAddr>()
+        .is_ok_and(|ip| ip.is_loopback());
+    if !is_loopback_ip {
+        return Err(TransportError::Invalid);
+    }
+    let endpoint = match protocol {
+        ProviderProtocol::OpenAi => format!("{base_url}/chat/completions"),
+        ProviderProtocol::OpenAiResponses => format!("{base_url}/responses"),
+        ProviderProtocol::Anthropic => format!("{base_url}/v1/messages"),
+        ProviderProtocol::Gemini => {
+            if !media_enabled {
+                return Err(TransportError::Invalid);
+            }
+            let lower = base_url.to_ascii_lowercase();
+            if lower.ends_with("/gemini") {
+                format!("{base_url}/models/{{model}}:streamGenerateContent?alt=sse")
+            } else {
+                format!("{base_url}/gemini/models/{{model}}:streamGenerateContent?alt=sse")
+            }
+        }
+    };
+    Ok(NetworkTarget {
+        origin,
+        base_url,
+        endpoint,
+        method: "POST",
+        purpose: NetworkPurpose::Completion,
+        protocol,
+    })
+}
+
 /// Deliberately neither Clone nor Debug. Constructed after route/account admission.
 pub struct ProviderPermit {
     target: NetworkTarget,
@@ -266,18 +431,20 @@ pub struct ProviderPermit {
     model: Option<String>,
     account_user: Option<HeaderValue>,
     retry_after: Option<RetryAfter>,
-    scrub_keys: crate::secrets::CredentialSet,
+    scrub_keys: crate::redaction::CredentialSet,
+    embedded_proxy: bool,
+    media_enabled: bool,
 }
 
-pub(crate) type RetryAfter = std::sync::Arc<std::sync::OnceLock<Duration>>;
+pub type RetryAfter = std::sync::Arc<std::sync::OnceLock<Duration>>;
 
 impl ProviderPermit {
-    pub(crate) fn track_retry_after(mut self, retry_after: RetryAfter) -> Self {
+    pub fn track_retry_after(mut self, retry_after: RetryAfter) -> Self {
         self.retry_after = Some(retry_after);
         self
     }
 
-    pub(crate) fn new(
+    pub fn new(
         target: NetworkTarget,
         credential: String,
         call_id: String,
@@ -292,9 +459,11 @@ impl ProviderPermit {
             account_user.as_deref(),
         )?;
         let request_endpoint = target.resolved_endpoint(model.as_deref())?;
-        let scrub_keys = crate::secrets::CredentialSet::new(vec![credential.clone()]);
+        let scrub_keys = crate::redaction::CredentialSet::new(vec![credential.clone()]);
         let raw_header = match target.protocol {
-            ProviderProtocol::OpenAi => format!("Bearer {credential}"),
+            ProviderProtocol::OpenAi | ProviderProtocol::OpenAiResponses => {
+                format!("Bearer {credential}")
+            }
             ProviderProtocol::Anthropic | ProviderProtocol::Gemini => credential,
         };
         let mut credential =
@@ -312,41 +481,91 @@ impl ProviderPermit {
             account_user,
             retry_after: None,
             scrub_keys,
+            embedded_proxy: false,
+            media_enabled: false,
         })
     }
 
-    pub(crate) fn with_scrub_keys(mut self, keys: Vec<String>) -> Self {
+    pub fn new_embedded_proxy(
+        base_url: &str,
+        protocol: ProviderProtocol,
+        token: String,
+        call_id: String,
+        model: String,
+    ) -> Result<Self, TransportError> {
+        Self::new_embedded_proxy_with_media(base_url, protocol, token, call_id, model, false)
+    }
+
+    pub fn new_embedded_proxy_with_media(
+        base_url: &str,
+        protocol: ProviderProtocol,
+        token: String,
+        call_id: String,
+        model: String,
+        media_enabled: bool,
+    ) -> Result<Self, TransportError> {
+        let target = validate_embedded_proxy_target_v11(base_url, protocol, media_enabled)?;
+        let mut permit = Self::new(target, token, call_id, Some(model), None)?;
+        permit.embedded_proxy = true;
+        permit.media_enabled = media_enabled;
+        Ok(permit)
+    }
+
+    pub fn with_scrub_keys(mut self, keys: Vec<String>) -> Self {
         if !keys.is_empty() {
-            self.scrub_keys = crate::secrets::CredentialSet::new(keys);
+            self.scrub_keys = crate::redaction::CredentialSet::new(keys);
         }
         self
     }
 
-    pub(crate) fn credentials(&self) -> crate::secrets::CredentialSet {
+    pub fn credentials(&self) -> crate::redaction::CredentialSet {
         self.scrub_keys.clone()
     }
 
-    pub(crate) fn credential_scrubber(&self) -> impl Fn(&str) -> String + use<> {
+    pub fn credential_scrubber(&self) -> impl Fn(&str) -> String + use<> {
         let keys = self.credentials();
         move |text| keys.scrub(text)
     }
 
-    pub(crate) fn model(&self) -> Option<&str> {
+    pub fn model(&self) -> Option<&str> {
         self.model.as_deref()
     }
 
-    pub(crate) fn protocol(&self) -> ProviderProtocol {
+    pub fn protocol(&self) -> ProviderProtocol {
         self.target.protocol
     }
 
-    pub(crate) fn matches(
+    pub fn is_embedded_proxy(&self) -> bool {
+        self.embedded_proxy
+    }
+
+    pub fn matches(
         &self,
         base: &str,
         purpose: NetworkPurpose,
         model: Option<&str>,
         user: Option<&str>,
     ) -> Result<(), TransportError> {
-        let target = validate_target(base, purpose)?;
+        self.matches_with_protocol(base, purpose, model, user, None)
+    }
+
+    pub fn matches_with_protocol(
+        &self,
+        base: &str,
+        purpose: NetworkPurpose,
+        model: Option<&str>,
+        user: Option<&str>,
+        protocol: Option<ProviderProtocol>,
+    ) -> Result<(), TransportError> {
+        let target = if self.embedded_proxy {
+            if purpose != NetworkPurpose::Completion || user.is_some() {
+                return Err(TransportError::Invalid);
+            }
+            let explicit = protocol.ok_or(TransportError::Invalid)?;
+            validate_embedded_proxy_target_v11(base, explicit, self.media_enabled)?
+        } else {
+            validate_target_with_protocol(base, purpose, protocol)?
+        };
         if target != self.target
             || model != self.model.as_deref()
             || user.map(str::as_bytes) != self.account_user.as_ref().map(HeaderValue::as_bytes)
@@ -357,7 +576,7 @@ impl ProviderPermit {
     }
 }
 
-pub(crate) fn validate_permit_inputs(
+pub fn validate_permit_inputs(
     target: &NetworkTarget,
     credential: &str,
     call_id: &str,
@@ -395,20 +614,86 @@ pub(crate) fn validate_permit_inputs(
     Ok(())
 }
 
-pub(crate) struct ProviderResponse {
+pub struct ProviderResponse {
     response: reqwest::Response,
 }
 
 impl ProviderResponse {
-    pub(crate) fn status(&self) -> reqwest::StatusCode {
+    pub fn status(&self) -> reqwest::StatusCode {
         self.response.status()
     }
 
-    pub(crate) fn bytes_stream(
+    pub fn bytes_stream(
         self,
-    ) -> std::pin::Pin<Box<dyn Stream<Item = Result<axum::body::Bytes, reqwest::Error>> + Send>>
-    {
-        Box::pin(self.response.bytes_stream())
+    ) -> std::pin::Pin<Box<dyn Stream<Item = Result<Vec<u8>, reqwest::Error>> + Send>> {
+        Box::pin(
+            self.response
+                .bytes_stream()
+                .map(|result| result.map(|bytes| bytes.to_vec())),
+        )
+    }
+}
+
+pub async fn read_provider_error(
+    response: ProviderResponse,
+    scrub: &(impl Fn(&str) -> String + ?Sized),
+) -> TransportError {
+    let status = response.status().as_u16();
+    let mut bytes = Vec::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let Ok(chunk) = chunk else {
+            break;
+        };
+        let remaining = ERROR_BODY_LIMIT.saturating_sub(bytes.len());
+        if remaining == 0 {
+            break;
+        }
+        let take = chunk.len().min(remaining);
+        bytes.extend_from_slice(&chunk[..take]);
+        if bytes.len() >= ERROR_BODY_LIMIT {
+            break;
+        }
+    }
+    let raw = String::from_utf8_lossy(&bytes);
+    let mut upstream_code = None;
+    let mut message = None;
+    if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(&raw) {
+        let redacted = crate::redaction::redact_persisted(&Value::Object(map));
+        upstream_code = redacted
+            .pointer("/error/code")
+            .and_then(Value::as_str)
+            .or_else(|| redacted.get("code").and_then(Value::as_str))
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(scrub);
+        message = redacted
+            .pointer("/error/message")
+            .and_then(Value::as_str)
+            .or_else(|| redacted.get("message").and_then(Value::as_str))
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(scrub);
+    }
+    if message.is_none() {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            message = Some(truncate_chars(&scrub(trimmed), 512));
+        }
+    }
+    TransportError::Provider(ProviderError {
+        status,
+        upstream_code,
+        message,
+        retryable: transient_status(status),
+    })
+}
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    let mut iter = text.char_indices();
+    match iter.nth(max_chars) {
+        Some((idx, _)) => format!("{}...", &text[..idx]),
+        None => text.to_owned(),
     }
 }
 
@@ -417,10 +702,14 @@ pub struct ProviderClient {
 }
 
 impl ProviderClient {
-    pub(crate) fn new() -> Result<Self, TransportError> {
+    pub fn new() -> Result<Self, TransportError> {
+        Self::with_read_timeout(DEFAULT_STREAM_READ_TIMEOUT)
+    }
+
+    pub fn with_read_timeout(read_timeout: Duration) -> Result<Self, TransportError> {
         let client = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(15))
-            .timeout(Duration::from_secs(180))
+            .read_timeout(read_timeout)
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())
@@ -429,7 +718,7 @@ impl ProviderClient {
         Ok(Self { client })
     }
 
-    pub(crate) async fn send(
+    pub async fn send(
         &self,
         permit: ProviderPermit,
         body: Option<&Value>,
@@ -439,7 +728,9 @@ impl ProviderClient {
         }
         if let Some(body) = body {
             match permit.target.protocol {
-                ProviderProtocol::OpenAi | ProviderProtocol::Anthropic => {
+                ProviderProtocol::OpenAi
+                | ProviderProtocol::OpenAiResponses
+                | ProviderProtocol::Anthropic => {
                     if body.get("model").and_then(Value::as_str) != permit.model.as_deref() {
                         return Err(TransportError::Invalid);
                     }
@@ -457,7 +748,7 @@ impl ProviderClient {
             .map_err(|_| TransportError::Invalid)?;
         let mut builder = self.client.request(method, &permit.request_endpoint);
         builder = match permit.target.protocol {
-            ProviderProtocol::OpenAi => {
+            ProviderProtocol::OpenAi | ProviderProtocol::OpenAiResponses => {
                 builder.header(reqwest::header::AUTHORIZATION, permit.credential)
             }
             ProviderProtocol::Anthropic => builder
@@ -496,7 +787,7 @@ impl ProviderClient {
     }
 }
 
-pub(crate) fn transient_status(status: u16) -> bool {
+pub fn transient_status(status: u16) -> bool {
     matches!(status, 429 | 502 | 503 | 504)
 }
 
@@ -512,116 +803,6 @@ fn parse_retry_after(value: &str, now: std::time::SystemTime) -> Option<Duration
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[tokio::test]
-    async fn retries_transient_http_failures_before_reading_the_success_body() {
-        use crate::network_authorization::*;
-        use axum::{Router, routing::get};
-        use std::sync::{Arc, Mutex};
-        use std::time::Instant;
-        let arrivals = Arc::new(Mutex::new(Vec::new()));
-        let observed = arrivals.clone();
-        let app = Router::new().route(
-            "/models",
-            get(move || {
-                let mut seen = observed.lock().unwrap();
-                seen.push(Instant::now());
-                let status = match seen.len() {
-                    1 => 502,
-                    2 => 504,
-                    _ => 200,
-                };
-                async move {
-                    (
-                        reqwest::StatusCode::from_u16(status).unwrap(),
-                        r#"{"data":[{"id":"m"}]}"#,
-                    )
-                }
-            }),
-        );
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-        let target = validate_target(&format!("http://{addr}"), NetworkPurpose::Models).unwrap();
-        let client = ProviderClient::new().unwrap();
-        let target = &target;
-        let client = &client;
-        let response = retry_provider(
-            &tokio_util::sync::CancellationToken::new(),
-            |hint| async move {
-                let id = uuid::Uuid::new_v4().to_string();
-                let permit = ProviderPermit::new(
-                    target.clone(),
-                    "test".into(),
-                    id.clone(),
-                    Some("m".into()),
-                    None,
-                )
-                .unwrap()
-                .track_retry_after(hint);
-                let result = client.send(permit, None).await;
-                let status = match &result {
-                    Err(TransportError::Response { status }) => Some(*status),
-                    Ok(_) => None,
-                    _ => panic!("unexpected transport failure"),
-                };
-                // The Engine integration tests cover persisted receipts. This fixture isolates
-                // the HTTP transport and retry loop so it can also run on hosts without DPAPI.
-                let calls = vec![CallReceipt {
-                    credential_slot: None,
-                    call_id: id,
-                    authorization_id: "fixture".into(),
-                    subject: NetworkSubject {
-                        kind: NetworkSubjectKind::Route,
-                        id: "m".into(),
-                        project_id: None,
-                    },
-                    task_id: None,
-                    purpose: NetworkPurpose::Models,
-                    method: "GET".into(),
-                    origin: target.origin().into(),
-                    endpoint_digest: crate::workspace_changes::digest(target.endpoint().as_bytes()),
-                    claimed_at: 0,
-                    finished_at: Some(0),
-                    state: CallState::Finished,
-                    success: Some(result.is_ok()),
-                    http_status: status,
-                    result: Some(if result.is_ok() {
-                        CallResult::Success
-                    } else {
-                        CallResult::HttpFailure
-                    }),
-                }];
-                match result {
-                    Ok(response) => Ok(NetworkResponse {
-                        result: crate::provider::json_response(response).await.unwrap().0,
-                        calls,
-                    }),
-                    Err(_) => Err(NetworkError {
-                        kind: NetworkErrorKind::Upstream,
-                        dispatch_state: DispatchState::Finished,
-                        calls,
-                    }),
-                }
-            },
-        )
-        .await
-        .unwrap();
-        assert_eq!(response.result["data"][0]["id"], "m");
-        assert_eq!(
-            response
-                .calls
-                .iter()
-                .map(|call| call.http_status)
-                .collect::<Vec<_>>(),
-            [Some(502), Some(504), None]
-        );
-        let seen = arrivals.lock().unwrap();
-        assert_eq!(seen.len(), 3);
-        assert!(seen[1] - seen[0] >= Duration::from_millis(250));
-        assert!(seen[2] - seen[1] >= Duration::from_millis(500));
-        server.abort();
-    }
 
     #[test]
     fn credential_scrubber_follows_each_permit_and_preserves_business_text() {
@@ -852,5 +1033,268 @@ mod tests {
             assert!(error.source().is_none());
             assert!(!format!("{error:?} {error}").contains("http"));
         }
+    }
+
+    #[test]
+    fn route_protocol_legacy_compat_and_explicit_aliases() {
+        let legacy: crate::domain::Route = serde_json::from_str(
+            r#"{"id":"r1","name":"OpenAI","base_url":"https://api.example.com/v1","model":"gpt-4o","max_tokens":1024,"parallel_limit":1}"#,
+        )
+        .unwrap();
+        assert_eq!(legacy.protocol, None);
+        assert_eq!(legacy.effective_protocol(), ProviderProtocol::OpenAi);
+
+        for (raw, expected) in [
+            ("openai-completions", ProviderProtocol::OpenAi),
+            ("openai-responses", ProviderProtocol::OpenAiResponses),
+            ("anthropic-messages", ProviderProtocol::Anthropic),
+            ("gemini", ProviderProtocol::Gemini),
+        ] {
+            let parsed = ProviderProtocol::parse_explicit(raw).unwrap();
+            assert_eq!(parsed, expected);
+            assert_eq!(parsed.kernel_wire_name(), raw);
+            let route: crate::domain::Route = serde_json::from_str(&format!(
+                r#"{{"id":"r","name":"R","base_url":"https://api.example.com/v1","model":"m","protocol":"{raw}","max_tokens":128,"parallel_limit":1}}"#
+            ))
+            .unwrap();
+            assert_eq!(route.effective_protocol(), expected);
+            let target = validate_target_with_protocol(
+                &route.base_url,
+                NetworkPurpose::Completion,
+                route.protocol,
+            )
+            .unwrap();
+            assert_eq!(target.protocol(), expected);
+        }
+        assert_eq!(
+            ProviderProtocol::parse_embedded_model_protocol("openai-responses"),
+            Some(ProviderProtocol::OpenAiResponses)
+        );
+        assert_eq!(
+            ProviderProtocol::parse_embedded_model_protocol("gemini"),
+            None
+        );
+    }
+
+    #[test]
+    fn embedded_proxy_target_forbids_path_guessing_and_path_rewriting() {
+        for (url, proto, expected_endpoint) in [
+            (
+                "http://127.0.0.1:4100/m/run_1/anthropic",
+                ProviderProtocol::OpenAiResponses,
+                "http://127.0.0.1:4100/m/run_1/anthropic/responses",
+            ),
+            (
+                "http://127.0.0.1:4100/m/v1",
+                ProviderProtocol::Anthropic,
+                "http://127.0.0.1:4100/m/v1/v1/messages",
+            ),
+            (
+                "http://127.0.0.1:4100/m/run_3",
+                ProviderProtocol::OpenAi,
+                "http://127.0.0.1:4100/m/run_3/chat/completions",
+            ),
+        ] {
+            let target = validate_embedded_proxy_target(url, proto).unwrap();
+            assert_eq!(target.protocol(), proto);
+            assert_eq!(
+                target.resolved_endpoint(Some("gpt-5")).unwrap(),
+                expected_endpoint
+            );
+            let _permit = ProviderPermit::new_embedded_proxy(
+                url,
+                proto,
+                "proxy-tok".into(),
+                "call-1".into(),
+                "gpt-5".into(),
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            validate_embedded_proxy_target(
+                "http://127.0.0.1:4100/m/run_4",
+                ProviderProtocol::Gemini
+            ),
+            Err(TransportError::Invalid)
+        );
+        // Loopback IPv6 `[::1]` is allowed; `localhost` and external domains are rejected.
+        let v6 = validate_embedded_proxy_target(
+            "http://[::1]:4100/m/run_5",
+            ProviderProtocol::OpenAiResponses,
+        )
+        .unwrap();
+        assert_eq!(v6.endpoint(), "http://[::1]:4100/m/run_5/responses");
+        assert_eq!(
+            validate_embedded_proxy_target(
+                "http://localhost:4100/m/run_6",
+                ProviderProtocol::OpenAiResponses
+            ),
+            Err(TransportError::Invalid)
+        );
+        assert_eq!(
+            validate_embedded_proxy_target(
+                "https://api.example.com/m/run_7",
+                ProviderProtocol::OpenAiResponses
+            ),
+            Err(TransportError::Invalid)
+        );
+    }
+
+    #[test]
+    fn embedded_proxy_with_media_matches_gemini_protocol() {
+        assert_eq!(
+            ProviderPermit::new_embedded_proxy_with_media(
+                "http://127.0.0.1:4100/m/run_gem",
+                ProviderProtocol::Gemini,
+                "proxy-tok".into(),
+                "call-gem".into(),
+                "gemini-2.5-flash".into(),
+                false,
+            )
+            .err(),
+            Some(TransportError::Invalid)
+        );
+
+        let permit = ProviderPermit::new_embedded_proxy_with_media(
+            "http://127.0.0.1:4100/m/run_gem",
+            ProviderProtocol::Gemini,
+            "proxy-tok".into(),
+            "call-gem".into(),
+            "gemini-2.5-flash".into(),
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            permit.matches_with_protocol(
+                "http://127.0.0.1:4100/m/run_gem",
+                NetworkPurpose::Completion,
+                Some("gemini-2.5-flash"),
+                None,
+                Some(ProviderProtocol::Gemini),
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            permit.matches_with_protocol(
+                "http://127.0.0.1:4100/m/run_gem",
+                NetworkPurpose::Completion,
+                Some("gemini-2.5-flash"),
+                None,
+                Some(ProviderProtocol::OpenAi),
+            ),
+            Err(TransportError::Invalid)
+        );
+    }
+
+    #[tokio::test]
+    async fn read_timeout_allows_slow_chunked_stream_and_aborts_stalled_stream() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            // Request 1: slow chunks every 60ms across 240ms (> 2 * 120ms read timeout)
+            let (mut sock1, _) = listener.accept().await.unwrap();
+            let mut buf = [0u8; 2048];
+            let _ = sock1.read(&mut buf).await.unwrap();
+            sock1
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n")
+                .await
+                .unwrap();
+            for chunk in [
+                "data: {\"choices\":[{\"delta\":{\"content\":\"a\"}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"b\"}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"c\"},\"finish_reason\":\"stop\"}]}\n\n",
+                "data: [DONE]\n\n",
+            ] {
+                tokio::time::sleep(Duration::from_millis(60)).await;
+                let frame = format!("{:x}\r\n{chunk}\r\n", chunk.len());
+                sock1.write_all(frame.as_bytes()).await.unwrap();
+            }
+            sock1.write_all(b"0\r\n\r\n").await.unwrap();
+
+            // Request 2: stalls past read timeout after first chunk
+            let (mut sock2, _) = listener.accept().await.unwrap();
+            let _ = sock2.read(&mut buf).await.unwrap();
+            sock2
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n")
+                .await
+                .unwrap();
+            let first = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}\n\n";
+            let frame = format!("{:x}\r\n{first}\r\n", first.len());
+            sock2.write_all(frame.as_bytes()).await.unwrap();
+            tokio::time::sleep(Duration::from_millis(450)).await;
+        });
+
+        let client = ProviderClient::with_read_timeout(Duration::from_millis(120)).unwrap();
+        let base = format!("http://{addr}/v1");
+        let route = crate::domain::Route {
+            id: "r".into(),
+            name: "r".into(),
+            base_url: base.clone(),
+            model: "m".into(),
+            protocol: Some(ProviderProtocol::OpenAi),
+            max_tokens: 64,
+            parallel_limit: 1,
+            key_env: None,
+        };
+        let target =
+            validate_target_with_protocol(&base, NetworkPurpose::Completion, route.protocol)
+                .unwrap();
+        let permit1 = ProviderPermit::new(
+            target.clone(),
+            "k".into(),
+            "c1".into(),
+            Some("m".into()),
+            None,
+        )
+        .unwrap();
+        let messages = [crate::messages::NeutralMessage::user_text("hi")];
+        let (msg, _) =
+            crate::provider::complete_neutral(&client, permit1, &route, &messages, &[], |_| Ok(()))
+                .await
+                .unwrap();
+        assert_eq!(msg.text_content(), "abc");
+
+        let permit2 =
+            ProviderPermit::new(target, "k".into(), "c2".into(), Some("m".into()), None).unwrap();
+        let err =
+            crate::provider::complete_neutral(&client, permit2, &route, &messages, &[], |_| Ok(()))
+                .await
+                .unwrap_err();
+        assert_eq!(err, TransportError::Unknown);
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn json_response_enforces_response_limit() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut sock, _) = listener.accept().await.unwrap();
+            let mut buf = [0u8; 2048];
+            let _ = sock.read(&mut buf).await.unwrap();
+            let oversize = format!("{{\"data\":\"{}\"}}", "x".repeat(RESPONSE_LIMIT + 1024));
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+                oversize.len()
+            );
+            let _ = sock.write_all(header.as_bytes()).await;
+            let _ = sock.write_all(oversize.as_bytes()).await;
+        });
+
+        let client = ProviderClient::new().unwrap();
+        let base = format!("http://{addr}/v1");
+        let target = validate_target(&base, NetworkPurpose::Models).unwrap();
+        let permit =
+            ProviderPermit::new(target, "k".into(), "c".into(), Some("m".into()), None).unwrap();
+        let resp = client.send(permit, None).await.unwrap();
+        let err = crate::provider::json_response(resp).await.unwrap_err();
+        assert_eq!(err, TransportError::Unknown);
+        server.abort();
     }
 }

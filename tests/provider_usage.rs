@@ -36,13 +36,25 @@ fn classifier_rejects_incomplete_non_integer_and_inconsistent_usage() {
             UsageObservation::Invalid(Reason::InvalidShape)
         );
     }
-    for field in ["prompt_tokens", "completion_tokens", "total_tokens"] {
+    for field in ["prompt_tokens", "completion_tokens"] {
         let mut absent = valid(1, 1);
         absent.as_object_mut().unwrap().remove(field);
         assert_eq!(
             classify_usage(&absent),
             UsageObservation::Invalid(Reason::MissingField)
         );
+    }
+    let mut absent_total = valid(1, 1);
+    absent_total.as_object_mut().unwrap().remove("total_tokens");
+    assert_eq!(
+        classify_usage(&absent_total),
+        UsageObservation::Valid(TokenUsage {
+            prompt_tokens: 1,
+            completion_tokens: 1,
+            total_tokens: 2,
+        })
+    );
+    for field in ["prompt_tokens", "completion_tokens", "total_tokens"] {
         for wrong in [
             Value::Null,
             json!(-1),

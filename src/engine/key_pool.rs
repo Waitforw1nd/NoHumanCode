@@ -2,12 +2,15 @@ use super::Engine;
 use crate::{
     domain::{Route, Task},
     key_pool::SelectedKey,
+    messages::NeutralMessage,
     network_authorization::{
         CallResult, DispatchState, NetworkError, NetworkErrorKind, NetworkPurpose, NetworkResponse,
         NetworkSubject, ProviderRetries, safe_error,
     },
     provider_runtime::{CompletionInput, CompletionLease, Emit},
-    provider_transport::{ProviderPermit, RetryAfter, TransportError, validate_target},
+    provider_transport::{
+        ProviderPermit, RetryAfter, TransportError, validate_target_with_protocol,
+    },
 };
 use serde_json::Value;
 use std::{
@@ -126,7 +129,7 @@ impl CompletionOutput<'_> {
         engine: &Engine,
         permit: ProviderPermit,
         route: &Route,
-    ) -> Result<(Value, Value), TransportError> {
+    ) -> Result<(NeutralMessage, Value), TransportError> {
         match self {
             Self::Stream { text, reasoning } => {
                 lease
@@ -148,8 +151,12 @@ impl Engine {
         route: &Route,
         credential: &str,
     ) -> Result<Arc<Semaphore>, NetworkError> {
-        let target = validate_target(&route.base_url, NetworkPurpose::Completion)
-            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
+        let target = validate_target_with_protocol(
+            &route.base_url,
+            NetworkPurpose::Completion,
+            route.protocol,
+        )
+        .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
         let mut hash = DefaultHasher::new();
         target.base_url().hash(&mut hash);
         credential.hash(&mut hash);
@@ -158,8 +165,12 @@ impl Engine {
         if let Some(settings) = self.store.settings().map_err(safe_error)? {
             for other in &settings.routes {
                 if other.parallel_limit < limit
-                    && validate_target(&other.base_url, NetworkPurpose::Completion)
-                        .is_ok_and(|t| t.base_url() == target.base_url())
+                    && validate_target_with_protocol(
+                        &other.base_url,
+                        NetworkPurpose::Completion,
+                        other.protocol,
+                    )
+                    .is_ok_and(|t| t.base_url() == target.base_url())
                     && self.key(other).is_ok_and(|primary| {
                         crate::key_pool::contains_member(other, &primary, credential)
                     })
@@ -186,7 +197,7 @@ impl Engine {
         input: &CompletionInput<'_>,
         mut output: CompletionOutput<'_>,
         cancel: &CancellationToken,
-    ) -> Result<NetworkResponse<(Value, Value)>, NetworkError> {
+    ) -> Result<NetworkResponse<(NeutralMessage, Value)>, NetworkError> {
         // A sibling can stop queued admissions while an already admitted call settles.
         let stop_dispatch = match &output {
             CompletionOutput::Exploration { stop_dispatch } => *stop_dispatch,

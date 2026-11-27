@@ -1,6 +1,6 @@
 //! Lightweight builtin agent strategy runtime without PluginHost ceremony.
+use crate::messages::NeutralMessage;
 use serde::Serialize;
-use serde_json::Value;
 use std::{
     panic::{AssertUnwindSafe, catch_unwind},
     sync::{
@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-const PROVIDER: &str = "builtin.chat-agent";
+pub const AGENT_PROVIDER_ID: &str = "builtin.chat-agent";
 const SERVICE: &str = "agent.strategy";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -42,10 +42,10 @@ impl std::fmt::Display for AgentError {
 
 impl std::error::Error for AgentError {}
 
-pub(crate) type StrategyError = AgentError;
+pub type StrategyError = AgentError;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ToolClass {
+pub enum ToolClass {
     Read,
     List,
     Search,
@@ -54,25 +54,25 @@ pub(crate) enum ToolClass {
     Other,
 }
 
-pub(crate) enum StrategyInput<'a> {
+pub enum StrategyInput<'a> {
     BeforeCompletion { tools: &'a [ToolClass] },
     AfterCompletion { outcome: CompletionKind<'a> },
 }
 
-pub(crate) enum CompletionKind<'a> {
+pub enum CompletionKind<'a> {
     NoToolCalls,
     ToolGroup(&'a [ToolClass]),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ToolVote {
+pub enum ToolVote {
     ApplyHostPolicy,
     #[allow(dead_code)]
     Deny,
 }
 
 #[derive(Debug)]
-pub(crate) enum StrategyAction {
+pub enum StrategyAction {
     UseTools(Vec<usize>),
     ToolVotes(Vec<ToolVote>),
     Finish,
@@ -84,7 +84,7 @@ pub(crate) trait AgentStrategy: Send + Sync {
     fn decide(
         &self,
         input: StrategyInput<'_>,
-        messages: &[Value],
+        messages: &[NeutralMessage],
         round: usize,
         max_rounds: usize,
     ) -> Result<StrategyAction, StrategyError>;
@@ -95,7 +95,7 @@ impl AgentStrategy for Builtin {
     fn decide(
         &self,
         input: StrategyInput<'_>,
-        _: &[Value],
+        _: &[NeutralMessage],
         _: usize,
         _: usize,
     ) -> Result<StrategyAction, StrategyError> {
@@ -130,7 +130,7 @@ pub struct AgentRuntimeStatus {
     pub last_failure: Option<AgentError>,
 }
 
-pub(crate) struct AgentRuntime {
+pub struct AgentRuntime {
     enabled: AtomicBool,
     in_flight: Arc<AtomicU64>,
     generation: AtomicU64,
@@ -138,14 +138,14 @@ pub(crate) struct AgentRuntime {
     strategy: Arc<dyn AgentStrategy>,
 }
 
-pub(crate) struct AgentLease {
+pub struct AgentLease {
     strategy: Arc<dyn AgentStrategy>,
     in_flight: Arc<AtomicU64>,
     last_failure: Arc<Mutex<Option<AgentError>>>,
 }
 
 impl AgentRuntime {
-    pub(crate) fn builtin_with_state(enabled: bool) -> anyhow::Result<Self> {
+    pub fn builtin_with_state(enabled: bool) -> anyhow::Result<Self> {
         Self::with_strategy_and_state(Arc::new(Builtin), enabled)
     }
 
@@ -162,14 +162,8 @@ impl AgentRuntime {
         })
     }
 
-    pub(crate) fn acquire_persisted(
-        &self,
-        store: &crate::store::Store,
-    ) -> Result<AgentLease, AgentError> {
+    pub fn acquire_unpersisted(&self) -> Result<AgentLease, AgentError> {
         if !self.enabled.load(Ordering::SeqCst) {
-            return Err(AgentError::Unavailable);
-        }
-        if store.admit_runtime(PROVIDER).is_err() {
             return Err(AgentError::Unavailable);
         }
         self.in_flight.fetch_add(1, Ordering::SeqCst);
@@ -180,13 +174,13 @@ impl AgentRuntime {
         })
     }
 
-    pub(crate) fn status(&self) -> Result<AgentRuntimeStatus, AgentError> {
+    pub fn status(&self) -> Result<AgentRuntimeStatus, AgentError> {
         let admission_open = self.enabled.load(Ordering::SeqCst);
         let in_flight = self.in_flight.load(Ordering::SeqCst);
         let active = admission_open || in_flight > 0;
         let last_failure = *self.last_failure.lock().map_err(|_| AgentError::Internal)?;
         Ok(AgentRuntimeStatus {
-            plugin_id: PROVIDER,
+            plugin_id: AGENT_PROVIDER_ID,
             service: SERVICE,
             interface_version: "1.0.0",
             scope: "process",
@@ -202,26 +196,14 @@ impl AgentRuntime {
         })
     }
 
-    pub(crate) fn disable(&self) -> Result<(), AgentError> {
+    pub fn disable(&self) -> Result<(), AgentError> {
         if self.enabled.swap(false, Ordering::SeqCst) {
             self.generation.fetch_add(1, Ordering::SeqCst);
         }
         Ok(())
     }
 
-    pub(crate) fn enable_persisted(&self, store: &crate::store::Store) -> Result<(), AgentError> {
-        self.enable_with_store(Some(store))
-    }
-
-    fn enable_with_store(&self, store: Option<&crate::store::Store>) -> Result<(), AgentError> {
-        if let Some(store) = store
-            && !store
-                .plugin_desired_for(PROVIDER)
-                .map_err(|_| AgentError::Internal)?
-                .enabled
-        {
-            return Err(AgentError::Unavailable);
-        }
+    pub fn enable_unpersisted(&self) -> Result<(), AgentError> {
         if self.enabled.load(Ordering::SeqCst) {
             return Ok(());
         }
@@ -236,63 +218,29 @@ impl AgentRuntime {
         Ok(())
     }
 
-    pub(crate) fn management_status(
-        &self,
-        store: &crate::store::Store,
-    ) -> Result<
-        crate::runtime_management::RuntimeComponentStatus,
-        crate::runtime_management::RuntimeManagementError,
-    > {
-        use crate::runtime_management::{RuntimeManagementError as E, agent_status};
-        let desired = store
-            .plugin_desired_for(PROVIDER)
-            .map_err(|_| E::Internal)?;
-        let snapshot = self.status().map_err(|_| E::Internal)?;
-        Ok(agent_status(desired, snapshot))
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.load(Ordering::SeqCst)
     }
 
-    pub(crate) fn set_management(
-        &self,
-        store: &crate::store::Store,
-        request: crate::plugin_management::SetPluginEnabled,
-        key: &str,
-    ) -> Result<
-        crate::runtime_management::RuntimeMutationResult,
-        crate::runtime_management::RuntimeManagementError,
-    > {
-        use crate::runtime_management::{RuntimeManagementError as E, RuntimeMutationResult};
-        let op = store
-            .execution_operation(tokio_util::sync::CancellationToken::new())
-            .map_err(|_| E::Internal)?;
-        let open = self.enabled.load(Ordering::SeqCst);
-        let in_flight = self.in_flight.load(Ordering::SeqCst);
-        let reject = if request.enabled && !open && in_flight > 0 {
-            Some(E::Busy)
-        } else if request.enabled && !open && self.generation.load(Ordering::SeqCst) == u64::MAX {
-            Some(E::Unavailable)
-        } else {
-            None
-        };
-        let (receipt, replayed) =
-            store.set_runtime_desired_with_operation(&op, PROVIDER, &request, key, reject)?;
-        if !replayed {
-            if request.enabled {
-                if !self.enabled.swap(true, Ordering::SeqCst) {
-                    self.generation.fetch_add(1, Ordering::SeqCst);
-                    if let Ok(mut failure) = self.last_failure.lock() {
-                        *failure = None;
-                    }
-                }
-            } else if self.enabled.swap(false, Ordering::SeqCst) {
+    pub fn in_flight_count(&self) -> u64 {
+        self.in_flight.load(Ordering::SeqCst)
+    }
+
+    pub fn generation_value(&self) -> u64 {
+        self.generation.load(Ordering::SeqCst)
+    }
+
+    pub fn apply_desired_enabled(&self, enabled: bool) {
+        if enabled {
+            if !self.enabled.swap(true, Ordering::SeqCst) {
                 self.generation.fetch_add(1, Ordering::SeqCst);
+                if let Ok(mut failure) = self.last_failure.lock() {
+                    *failure = None;
+                }
             }
+        } else if self.enabled.swap(false, Ordering::SeqCst) {
+            self.generation.fetch_add(1, Ordering::SeqCst);
         }
-        let current = self.management_status(store)?;
-        Ok(RuntimeMutationResult {
-            receipt,
-            replayed,
-            current,
-        })
     }
 }
 
@@ -303,10 +251,10 @@ impl AgentLease {
         }
     }
 
-    pub(crate) fn decide(
+    pub fn decide(
         &self,
         input: StrategyInput<'_>,
-        messages: &[Value],
+        messages: &[NeutralMessage],
         round: usize,
         max_rounds: usize,
     ) -> Result<StrategyAction, AgentError> {

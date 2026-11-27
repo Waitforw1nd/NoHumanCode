@@ -252,15 +252,13 @@ impl ReviewRecovery {
             if let Some(call) = task
                 .messages
                 .iter()
-                .filter_map(|message| message["tool_calls"].as_array())
-                .flatten()
-                .find(|call| call["id"] == record.tool_call_id)
+                .flat_map(|message| message.tool_calls())
+                .find(|call| call.id == record.tool_call_id)
             {
-                if call["function"]["name"] != approval.tool_name {
+                if call.name != approval.tool_name {
                     return Err(WorkspaceChangeError::Corrupt.into());
                 }
-                if let Some(raw_args) = call["function"]["arguments"].as_str()
-                    && let Ok(args) = serde_json::from_str::<Value>(raw_args)
+                if let Ok(args) = serde_json::from_str::<Value>(&call.arguments)
                     && let Some(raw_path) = args["path"].as_str()
                 {
                     let (_, arg_path, arg_key) = self

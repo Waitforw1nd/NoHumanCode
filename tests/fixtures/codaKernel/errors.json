@@ -1,0 +1,413 @@
+{
+  "name": "errors",
+  "description": "覆盖 §9 核心错误码与自愈闭环：404 SESSION_NOT_FOUND 水合恢复、409 SESSION_DIVERGED 失配自愈、严格解析/未知工具/不支持协议 400、活跃 Run 期间 409 RUN_ACTIVE 与 409 RUN_EXISTS 重连回放、401/409 MODEL_PROXY_REJECTED 不重试，以及 410 EVENTS_EXPIRED。",
+  "steps": [
+    {
+      "note": "场景 1：会话未创建或空闲淘汰，返回 404 SESSION_NOT_FOUND（retryable=true）",
+      "request": { "method": "GET", "path": "/api/kernel/sessions/s-err", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 404, "body": { "error": { "code": "SESSION_NOT_FOUND", "message": "<ANY>", "retryable": true } } }
+    },
+    {
+      "note": "宿主收到 404 后通过 PUT 水合会话",
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-err",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" },
+            { "name": "shell", "description": "执行命令", "parameters": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] }, "label": "命令", "executionMode": "sequential" }
+          ],
+          "activeToolNames": ["read"],
+          "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+          "steeringMode": "one-at-a-time",
+          "gates": [],
+          "history": {
+            "leafId": "e-0001",
+            "entries": [
+              { "id": "e-0001", "parentId": null, "timestamp": "2026-11-27T01:00:00+08:00", "type": "message", "role": "user", "content": [{ "type": "text", "text": "你好" }] }
+            ]
+          }
+        }
+      },
+      "response": { "status": 201, "body": { "sessionId": "s-err", "revision": 1, "leafId": "e-0001", "status": "idle" } }
+    },
+    {
+      "note": "水合后重试查询成功",
+      "request": { "method": "GET", "path": "/api/kernel/sessions/s-err", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 200, "body": { "sessionId": "s-err", "revision": 1, "leafId": "e-0001", "status": "idle", "activeToolNames": ["read"] } }
+    },
+    {
+      "note": "场景 2：携带过期 baseRevision 触发 409 SESSION_DIVERGED（retryable=true，附当前 revision 与 leafId）",
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-err/entries",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "baseRevision": 0,
+          "entry": { "type": "customMessage", "name": "codaNote", "content": [{ "type": "text", "text": "自愈水合后重试追加" }], "display": true },
+          "deliverAs": "append"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": { "error": { "code": "SESSION_DIVERGED", "message": "<ANY>", "retryable": true, "details": { "revision": 1, "leafId": "e-0001" } } }
+      }
+    },
+    {
+      "note": "宿主以本地 JSONL 权威历史重新 PUT 水合（覆盖返回 200，revision 重置为 1）",
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-err",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" },
+            { "name": "shell", "description": "执行命令", "parameters": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] }, "label": "命令", "executionMode": "sequential" }
+          ],
+          "activeToolNames": ["read"],
+          "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+          "steeringMode": "one-at-a-time",
+          "gates": [],
+          "history": {
+            "leafId": "e-0002",
+            "entries": [
+              { "id": "e-0001", "parentId": null, "timestamp": "2026-11-27T01:00:00+08:00", "type": "message", "role": "user", "content": [{ "type": "text", "text": "你好" }] },
+              { "id": "e-0002", "parentId": "e-0001", "timestamp": "2026-11-27T01:00:02+08:00", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "你好！" }], "metadata": { "stopReason": "stop" } }
+            ]
+          }
+        }
+      },
+      "response": { "status": 200, "body": { "sessionId": "s-err", "revision": 1, "leafId": "e-0002", "status": "idle" } }
+    },
+    {
+      "note": "重新水合后以最新 baseRevision=1 重试追加成功",
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-err/entries",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "baseRevision": 1,
+          "entry": { "type": "customMessage", "name": "codaNote", "content": [{ "type": "text", "text": "自愈水合后重试追加" }], "display": true },
+          "deliverAs": "append"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "entry": { "id": "<ENTRY_ID:e3>", "parentId": "e-0002", "timestamp": "<TS>", "type": "customMessage", "name": "codaNote", "content": [{ "type": "text", "text": "自愈水合后重试追加" }], "display": true },
+          "revision": 2,
+          "leafId": "<ENTRY_ID:e3>"
+        }
+      }
+    },
+    {
+      "note": "场景 5a：严格解析拒绝多余未知字段，返回 400 INVALID_REQUEST",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/kernel/sessions/s-err",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": { "unknownField": true }
+      },
+      "response": { "status": 400, "body": { "error": { "code": "INVALID_REQUEST", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "note": "场景 5b：启用未在 tools 中声明的工具名，返回 400 UNKNOWN_TOOL",
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-err/active-tools",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": { "activeToolNames": ["read", "nonExistentTool"] }
+      },
+      "response": { "status": 400, "body": { "error": { "code": "UNKNOWN_TOOL", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "note": "场景 5c：使用能力列表外的 modelProxy.protocol，返回 400 UNSUPPORTED_PROTOCOL",
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-err/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-bad-proto",
+          "baseRevision": 2,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "测试不支持的协议" }],
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-bad-proto", "token": "<PROXY_TOKEN_BAD>", "protocol": "unknown-proto" }
+        }
+      },
+      "response": { "status": 400, "body": { "error": { "code": "UNSUPPORTED_PROTOCOL", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "note": "场景 3 & 4：活跃 Run 期间并发触发 409 RUN_ACTIVE（PUT 水合与不同 runId 的 POST /runs）、409 RUN_EXISTS（同 runId 重放），随后经 GET /events?after=2 重连回放 seq >= 3",
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-err/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-err-1",
+          "baseRevision": 2,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "读取 README.md" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-err-1", "token": "<PROXY_TOKEN_1>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-err-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_1>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true }
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-err-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_1>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true }
+        }
+      ],
+      "interactions": [
+        {
+          "afterSeq": 10,
+          "note": "活跃 Run 期间禁止 PUT 水合，返回 409 RUN_ACTIVE",
+          "request": {
+            "method": "PUT",
+            "path": "/api/kernel/sessions/s-err",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "cwd": "C:/Users/me/.coda/cd-1f2e",
+              "systemPrompt": "你是 Coda。",
+              "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+              "tools": [
+                { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" }
+              ],
+              "activeToolNames": ["read"],
+              "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+              "steeringMode": "one-at-a-time",
+              "gates": [],
+              "history": { "leafId": "e-0002", "entries": [] }
+            }
+          },
+          "response": { "status": 409, "body": { "error": { "code": "RUN_ACTIVE", "message": "<ANY>", "retryable": false } } }
+        },
+        {
+          "afterSeq": 10,
+          "note": "活跃 Run 期间以不同 runId 启动第二个 Run，返回 409 RUN_ACTIVE",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-err/runs",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "runId": "run-err-other",
+              "baseRevision": 5,
+              "model": { "modelId": "gpt-5.2" },
+              "content": [{ "type": "text", "text": "另一个并发 Run" }],
+              "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-err-other", "token": "<PROXY_TOKEN_OTHER>", "protocol": "openai-responses" }
+            }
+          },
+          "response": { "status": 409, "body": { "error": { "code": "RUN_ACTIVE", "message": "<ANY>", "retryable": false } } }
+        },
+        {
+          "afterSeq": 10,
+          "note": "重复以相同 runId 发起 POST /runs，返回 409 RUN_EXISTS，提示宿主改用 /events 重连",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-err/runs",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "runId": "run-err-1",
+              "baseRevision": 2,
+              "model": { "modelId": "gpt-5.2" },
+              "content": [{ "type": "text", "text": "读取 README.md" }],
+              "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-err-1", "token": "<PROXY_TOKEN_1>", "protocol": "openai-responses" }
+            }
+          },
+          "response": { "status": 409, "body": { "error": { "code": "RUN_EXISTS", "message": "<ANY>", "retryable": false } } }
+        },
+        {
+          "afterSeq": 10,
+          "note": "宿主通过 GET /events?after=2 重连，回放 seq >= 3 并继续接收后续实时事件直到 done",
+          "request": {
+            "method": "GET",
+            "path": "/api/kernel/sessions/s-err/runs/run-err-1/events?after=2",
+            "headers": { "x-coda-token": "<TOKEN>" }
+          },
+          "response": {
+            "status": 200,
+            "sse": [
+              { "seq": 3, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u1>" } },
+              { "seq": 4, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "contextUsage", "tokens": 1050, "contextWindow": 400000 } },
+              { "seq": 5, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a1>" } },
+              { "seq": 6, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "toolCall", "callId": "call_err_1", "name": "read", "args": { "path": "README.md" }, "batchId": "batch-1", "batchIndex": 0, "batchSize": 1 } },
+              { "seq": 7, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "usage", "usage": { "input": 1050, "output": 28, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1078 } } },
+              { "seq": 8, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:a1>", "parentId": "<ENTRY_ID:u1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_err_1", "name": "read", "args": { "path": "README.md" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+              { "seq": 9, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 5, "entry": { "id": "<ENTRY_ID:usage1>", "parentId": "<ENTRY_ID:a1>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1050, "output": 28, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1078 } } } },
+              { "seq": 10, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "status", "state": "waitingTools" } },
+              { "seq": 11, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "toolResult", "callId": "call_err_1", "result": { "content": [{ "type": "text", "text": "# Demo" }], "details": null, "isError": false } } },
+              { "seq": 12, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 6, "entry": { "id": "<ENTRY_ID:tr1>", "parentId": "<ENTRY_ID:usage1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_err_1", "name": "read", "content": [{ "type": "text", "text": "# Demo" }], "isError": false } } },
+              { "seq": 13, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "status", "state": "running" } },
+              { "seq": 14, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "contextUsage", "tokens": 1180, "contextWindow": 400000 } },
+              { "seq": 15, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a2>" } },
+              { "seq": 16, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "text", "blockId": "b-1", "delta": "已读取 README.md。", "done": true } },
+              { "seq": 17, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "usage", "usage": { "input": 1180, "output": 16, "cacheRead": 768, "cacheWrite": 0, "totalTokens": 1196 } } },
+              { "seq": 18, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 7, "entry": { "id": "<ENTRY_ID:a2>", "parentId": "<ENTRY_ID:tr1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "已读取 README.md。" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+              { "seq": 19, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 8, "entry": { "id": "<ENTRY_ID:usage2>", "parentId": "<ENTRY_ID:a2>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1180, "output": 16, "cacheRead": 768, "cacheWrite": 0, "totalTokens": 1196 } } } },
+              { "seq": 20, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:usage2>", "userEntryId": "<ENTRY_ID:u1>", "assistantEntryId": "<ENTRY_ID:a2>", "revision": 8 } }
+            ]
+          }
+        },
+        {
+          "afterSeq": 10,
+          "note": "宿主提交 call_err_1 结果以完成 run-err-1",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-err/runs/run-err-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_err_1",
+              "result": { "content": [{ "type": "text", "text": "# Demo" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 3, "entry": { "id": "<ENTRY_ID:u1>", "parentId": "<ENTRY_ID:e3>", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "读取 README.md" }] } } },
+          { "seq": 3, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u1>" } },
+          { "seq": 4, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "contextUsage", "tokens": 1050, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a1>" } },
+          { "seq": 6, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "toolCall", "callId": "call_err_1", "name": "read", "args": { "path": "README.md" }, "batchId": "batch-1", "batchIndex": 0, "batchSize": 1 } },
+          { "seq": 7, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "usage", "usage": { "input": 1050, "output": 28, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1078 } } },
+          { "seq": 8, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:a1>", "parentId": "<ENTRY_ID:u1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_err_1", "name": "read", "args": { "path": "README.md" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+          { "seq": 9, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 5, "entry": { "id": "<ENTRY_ID:usage1>", "parentId": "<ENTRY_ID:a1>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1050, "output": 28, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1078 } } } },
+          { "seq": 10, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "status", "state": "waitingTools" } },
+          { "seq": 11, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "toolResult", "callId": "call_err_1", "result": { "content": [{ "type": "text", "text": "# Demo" }], "details": null, "isError": false } } },
+          { "seq": 12, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 6, "entry": { "id": "<ENTRY_ID:tr1>", "parentId": "<ENTRY_ID:usage1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_err_1", "name": "read", "content": [{ "type": "text", "text": "# Demo" }], "isError": false } } },
+          { "seq": 13, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 14, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "contextUsage", "tokens": 1180, "contextWindow": 400000 } },
+          { "seq": 15, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a2>" } },
+          { "seq": 16, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "text", "blockId": "b-1", "delta": "已读取 README.md。", "done": true } },
+          { "seq": 17, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "usage", "usage": { "input": 1180, "output": 16, "cacheRead": 768, "cacheWrite": 0, "totalTokens": 1196 } } },
+          { "seq": 18, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 7, "entry": { "id": "<ENTRY_ID:a2>", "parentId": "<ENTRY_ID:tr1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "已读取 README.md。" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+          { "seq": 19, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "entry", "revision": 8, "entry": { "id": "<ENTRY_ID:usage2>", "parentId": "<ENTRY_ID:a2>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1180, "output": 16, "cacheRead": 768, "cacheWrite": 0, "totalTokens": 1196 } } } },
+          { "seq": 20, "sessionId": "s-err", "runId": "run-err-1", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:usage2>", "userEntryId": "<ENTRY_ID:u1>", "assistantEntryId": "<ENTRY_ID:a2>", "revision": 8 } }
+        ]
+      }
+    },
+    {
+      "note": "场景 6a：modelProxy 返回 409 ACCOUNT_CHANGED，codacli 禁止重试，直接发 error(MODEL_PROXY_REJECTED) + done(failed)",
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-err/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-err-proxy-409",
+          "baseRevision": 8,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "继续分析" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-err-proxy-409", "token": "<PROXY_TOKEN_409>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-err-proxy-409/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_409>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "mockResponse": {
+            "status": 409,
+            "body": { "error": { "code": "ACCOUNT_CHANGED", "message": "登入帳號已切換，請重試" } }
+          },
+          "bodyAssertions": [
+            "收到代理 409 后不得发起任何重试，上游请求总次数严格等于 1"
+          ]
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "entry", "revision": 9, "entry": { "id": "<ENTRY_ID:u2>", "parentId": "<ENTRY_ID:usage2>", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "继续分析" }] } } },
+          { "seq": 3, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u2>" } },
+          { "seq": 4, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "contextUsage", "tokens": 1240, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a3>" } },
+          { "seq": 6, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "error", "code": "MODEL_PROXY_REJECTED", "message": "登入帳號已切換，請重試", "status": 409, "retryable": false, "upstreamCode": "ACCOUNT_CHANGED" } },
+          { "seq": 7, "sessionId": "s-err", "runId": "run-err-proxy-409", "event": { "type": "done", "reason": "failed", "stopReason": "error", "leafId": "<ENTRY_ID:u2>", "userEntryId": "<ENTRY_ID:u2>", "revision": 9 } }
+        ]
+      },
+      "assertions": [
+        "代理返回 409 ACCOUNT_CHANGED 时不发出 retry 事件，error.upstreamCode 精确透传 ACCOUNT_CHANGED，紧接 done(failed, error)"
+      ]
+    },
+    {
+      "note": "场景 6b：modelProxy 返回 401 UNAUTHORIZED（权杖失效），codacli 同样禁止重试，直接发 error(MODEL_PROXY_REJECTED) + done(failed)",
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-err/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-err-proxy-401",
+          "baseRevision": 9,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "再试一次" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-err-proxy-401", "token": "<PROXY_TOKEN_401>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-err-proxy-401/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN_401>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "mockResponse": {
+            "status": 401,
+            "body": { "error": { "code": "UNAUTHORIZED", "message": "模型代理權杖無效或已撤銷" } }
+          },
+          "bodyAssertions": [
+            "收到代理 401 后不得发起任何重试，上游请求总次数严格等于 1",
+            "error.message 与事件中不得泄露 <PROXY_TOKEN_401>"
+          ]
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "entry", "revision": 10, "entry": { "id": "<ENTRY_ID:u3>", "parentId": "<ENTRY_ID:u2>", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "再试一次" }] } } },
+          { "seq": 3, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u3>" } },
+          { "seq": 4, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "contextUsage", "tokens": 1280, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a4>" } },
+          { "seq": 6, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "error", "code": "MODEL_PROXY_REJECTED", "message": "模型代理權杖無效或已撤銷", "status": 401, "retryable": false, "upstreamCode": "UNAUTHORIZED" } },
+          { "seq": 7, "sessionId": "s-err", "runId": "run-err-proxy-401", "event": { "type": "done", "reason": "failed", "stopReason": "error", "leafId": "<ENTRY_ID:u3>", "userEntryId": "<ENTRY_ID:u3>", "revision": 10 } }
+        ]
+      }
+    },
+    {
+      "note": "场景 4b：run-err-1 已被后续已结束 Run 挤出事件保留槽位，尝试 ?after=0 重连返回 410 EVENTS_EXPIRED",
+      "request": {
+        "method": "GET",
+        "path": "/api/kernel/sessions/s-err/runs/run-err-1/events?after=0",
+        "headers": { "x-coda-token": "<TOKEN>" }
+      },
+      "response": { "status": 410, "body": { "error": { "code": "EVENTS_EXPIRED", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "request": { "method": "DELETE", "path": "/api/kernel/sessions/s-err", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

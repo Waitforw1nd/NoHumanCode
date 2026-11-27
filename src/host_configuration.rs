@@ -18,6 +18,8 @@ pub struct RouteInput {
     pub model: String,
     pub max_tokens: u32,
     pub parallel_limit: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<provider_transport::ProviderProtocol>,
 }
 
 // Deliberately neither Debug nor Serialize: this object owns plaintext input.
@@ -101,6 +103,8 @@ pub struct RouteConfigView {
     pub parallel_limit: usize,
     #[serde(deserialize_with = "required_option")]
     pub key_env: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<provider_transport::ProviderProtocol>,
     pub credential_source: CredentialSource,
 }
 
@@ -226,9 +230,10 @@ impl RouteInput {
         if !(16..=65536).contains(&self.max_tokens) || !(1..=8).contains(&self.parallel_limit) {
             return Err(HostConfigError::Invalid);
         }
-        let target = provider_transport::validate_target(
+        let target = provider_transport::validate_target_with_protocol(
             &self.base_url,
             provider_transport::NetworkPurpose::Completion,
+            self.protocol,
         )
         .map_err(|_| HostConfigError::Invalid)?;
         let url = reqwest::Url::parse(&self.base_url).map_err(|_| HostConfigError::Invalid)?;
@@ -427,6 +432,7 @@ fn view_tx(db: &Connection, route: &Route) -> AnyResult<RouteConfigView> {
         max_tokens: route.max_tokens,
         parallel_limit: route.parallel_limit,
         key_env: route.key_env.clone(),
+        protocol: route.protocol,
         credential_source: source,
     };
     validate_view(&view)?;
@@ -471,6 +477,14 @@ fn fingerprint(route_id: &str, request: &ConfigureHostRoute, route: &RouteInput)
     }
     field(&mut hash, &route.max_tokens.to_be_bytes());
     field(&mut hash, &(route.parallel_limit as u64).to_be_bytes());
+    field(
+        &mut hash,
+        route
+            .protocol
+            .map(provider_transport::ProviderProtocol::as_str)
+            .unwrap_or("")
+            .as_bytes(),
+    );
     match &request.credential {
         CredentialUpdate::Keep => field(&mut hash, b"keep"),
         CredentialUpdate::Replace { value } => {
@@ -630,9 +644,10 @@ impl Store {
             let key_env = match &request.credential {
                 CredentialUpdate::Keep => {
                     let old = old.as_ref().ok_or(HostConfigError::CredentialRequired)?;
-                    let target = provider_transport::validate_target(
+                    let target = provider_transport::validate_target_with_protocol(
                         &old.base_url,
                         provider_transport::NetworkPurpose::Completion,
+                        old.protocol,
                     )
                     .map_err(|_| HostConfigError::Corrupt)?;
                     if target.base_url() != input.base_url {
@@ -657,6 +672,7 @@ impl Store {
                 max_tokens: input.max_tokens,
                 parallel_limit: input.parallel_limit,
                 key_env,
+                protocol: input.protocol,
             };
             if let Some(index) = settings.routes.iter().position(|r| r.id == route_id) {
                 settings.routes[index] = route.clone();
@@ -714,6 +730,7 @@ mod tests {
                 name: "Mock".into(),
                 base_url: "https://example.invalid/v1".into(),
                 model: "mock".into(),
+                protocol: None,
                 max_tokens: 128,
                 parallel_limit: 1,
             },

@@ -2,7 +2,9 @@
 use crate::{
     approval::{self, ApprovalStatus, PolicyDecision},
     domain::*,
+    messages::{NeutralMessage, NeutralRole, ToolCallBlock},
     project_config::ProjectError,
+    runtime_seams::SlotGuard,
     secrets,
     store::Store,
     tool_results::Origin,
@@ -211,13 +213,15 @@ impl ToolCallApplication {
         task: &mut Task,
         cancel: &CancellationToken,
         keys: &secrets::CredentialSet,
-        slot: &mut crate::engine::NetworkSlot,
+        slot: &mut Box<dyn SlotGuard>,
     ) -> Result<()> {
         approval::validate_call_history(&task.messages)?;
         let calls = unanswered_tool_calls(&task.messages);
         for call in calls {
-            let name = call["function"]["name"].as_str().context("工具名称缺失")?;
-            let call_id = call["id"].as_str().context("工具调用缺少 id")?;
+            let name = call.name.as_str();
+            ensure!(!name.is_empty(), "工具名称缺失");
+            let call_id = call.id.as_str();
+            ensure!(!call_id.is_empty(), "工具调用缺少 id");
             if name == "explore_parallel"
                 && let Some(batch) =
                     self.store
@@ -227,7 +231,9 @@ impl ToolCallApplication {
                 engine
                     .complete_exploration_batch(task, call_id, batch, keys, cancel)
                     .await?;
-                *slot = engine.task_slot(cancel).await?;
+                *slot = Box::new(crate::engine::adapters::CliSlotGuard(Some(
+                    engine.task_slot(cancel).await?,
+                )));
                 continue;
             }
             match self.store.approval_by_tool_call(&task.id, call_id)? {
@@ -288,11 +294,7 @@ impl ToolCallApplication {
                 }
                 Some(_) => {}
             }
-            let args: Value = serde_json::from_str(
-                call["function"]["arguments"]
-                    .as_str()
-                    .context("工具参数缺失")?,
-            )?;
+            let args: Value = serde_json::from_str(&call.arguments)?;
             self.execute_or_wait(task, &call, name, &args, keys, cancel, None)
                 .await?;
         }
@@ -302,13 +304,13 @@ impl ToolCallApplication {
     pub(crate) fn reject_unadvertised(
         &self,
         task: &mut Task,
-        call: &Value,
+        call: &ToolCallBlock,
         name: &str,
         keys: &secrets::CredentialSet,
     ) -> Result<()> {
         if let PolicyDecision::Deny { reason } = crate::store::evaluate_tool_policy(task, name) {
-            let call_id = call["id"].as_str().context("工具调用缺少 id")?;
-            self.record_tool_result(task, call_id, name, reason, keys, Origin::HostDenied)?;
+            ensure!(!call.id.is_empty(), "工具调用缺少 id");
+            self.record_tool_result(task, &call.id, name, reason, keys, Origin::HostDenied)?;
         }
         Ok(())
     }
@@ -317,7 +319,7 @@ impl ToolCallApplication {
     pub(crate) async fn execute_or_wait(
         &self,
         task: &mut Task,
-        call: &Value,
+        call: &ToolCallBlock,
         name: &str,
         args: &Value,
         keys: &secrets::CredentialSet,
@@ -334,14 +336,15 @@ impl ToolCallApplication {
     async fn execute_or_wait_in_domain(
         &self,
         task: &mut Task,
-        call: &Value,
+        call: &ToolCallBlock,
         name: &str,
         args: &Value,
         keys: &secrets::CredentialSet,
         cancel: &CancellationToken,
         advertised: Option<&crate::mcp::ToolTarget>,
     ) -> Result<()> {
-        let tool_call_id = call["id"].as_str().context("工具调用缺少 id")?;
+        let tool_call_id = call.id.as_str();
+        ensure!(!tool_call_id.is_empty(), "工具调用缺少 id");
         if name == "run_wasm" {
             return Err(ProjectError::OperationUnsupported.into());
         }
@@ -708,9 +711,12 @@ impl ToolCallApplication {
                         tool_call_id,
                         None,
                     )?;
-                    task.messages.push(
-                        json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}),
-                    );
+                    task.messages.push(NeutralMessage::tool_result(
+                        tool_call_id,
+                        Some(name.to_owned()),
+                        serialized,
+                        false,
+                    ));
                     task.updated_at = now();
                     return Ok(());
                 }
@@ -796,8 +802,12 @@ impl ToolCallApplication {
                         let _ = self.store.mark_workspace_change_unknown(&change.id);
                     }
                 })?;
-            task.messages
-                .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
+            task.messages.push(NeutralMessage::tool_result(
+                tool_call_id,
+                Some(name.to_owned()),
+                serialized,
+                false,
+            ));
             task.updated_at = now();
             Ok(())
         } else {
@@ -934,8 +944,12 @@ impl ToolCallApplication {
         let serialized =
             self.store
                 .finish_approval(task, approval_id, &serialized, name, tool_call_id)?;
-        task.messages
-            .push(json!({"role":"tool","tool_call_id":tool_call_id,"content":serialized}));
+        task.messages.push(NeutralMessage::tool_result(
+            tool_call_id,
+            Some(name.to_owned()),
+            serialized,
+            false,
+        ));
         task.updated_at = now();
         Ok(())
     }
@@ -994,16 +1008,19 @@ impl ToolCallApplication {
     }
 }
 
-fn transient_approval_task(task: &Task, call: &Value, name: &str, args: &Value) -> Result<Task> {
+fn transient_approval_task(
+    task: &Task,
+    call: &ToolCallBlock,
+    name: &str,
+    args: &Value,
+) -> Result<Task> {
     approval::validate_call_history(&task.messages)?;
-    let id = call["id"].as_str().context("工具调用缺少 id")?;
-    let raw = call["function"]["arguments"]
-        .as_str()
-        .context("工具参数缺失")?;
+    let id = call.id.as_str();
+    ensure!(!id.is_empty(), "工具调用缺少 id");
+    let raw = call.arguments.as_str();
     let parsed: Value = serde_json::from_str(raw)?;
     ensure!(
-        call["type"] == "function"
-            && call["function"]["name"] == name
+        call.name == name
             && parsed.is_object()
             && approval::args_digest(&parsed)? == approval::args_digest(args)?,
         "工具调用参数不匹配"
@@ -1011,46 +1028,45 @@ fn transient_approval_task(task: &Task, call: &Value, name: &str, args: &Value) 
     let group_index = task
         .messages
         .iter()
-        .rposition(|message| message.get("tool_calls").is_some())
+        .rposition(|message| message.tool_calls().next().is_some())
         .context("工具调用组缺失")?;
-    let group = task.messages[group_index]["tool_calls"]
-        .as_array()
-        .context("工具调用组损坏")?;
+    let group: Vec<&ToolCallBlock> = task.messages[group_index].tool_calls().collect();
     let prior = &task.messages[group_index + 1..];
-    let current = group.get(prior.len()).context("工具调用次序不匹配")?;
+    let current = *group.get(prior.len()).context("工具调用次序不匹配")?;
     ensure!(
-        task.messages[group_index]["role"] == "assistant"
-            && current["id"] == id
-            && current["type"] == "function"
-            && current["function"]["name"] == name
-            && prior.iter().zip(group).all(|(answer, previous)| {
-                answer["role"] == "tool" && answer["tool_call_id"] == previous["id"]
+        matches!(task.messages[group_index].role, NeutralRole::Assistant)
+            && current.id == id
+            && current.name == name
+            && prior.iter().zip(group.iter()).all(|(answer, previous)| {
+                matches!(
+                    &answer.role,
+                    NeutralRole::ToolResult { call_id, .. } if call_id == &previous.id
+                )
             }),
         "工具调用身份或次序不匹配"
     );
-    let saved = current["function"]["arguments"]
-        .as_str()
-        .context("持久工具参数缺失")?;
-    let equivalent = crate::domain::safe_tool_arguments_equal(raw, saved)?;
+    let equivalent = crate::domain::safe_tool_arguments_equal(raw, &current.arguments)?;
     ensure!(equivalent, "工具调用安全参数不匹配");
     let mut transient = task.clone();
-    transient.messages[group_index]["tool_calls"][prior.len()]["function"]["arguments"] =
-        Value::String(raw.to_owned());
+    if let Some(target_call) = transient.messages[group_index]
+        .tool_calls_mut()
+        .nth(prior.len())
+    {
+        target_call.arguments = raw.to_owned();
+    }
     Ok(transient)
 }
 
-pub(crate) fn unanswered_tool_calls(messages: &[Value]) -> Vec<Value> {
-    let answered: std::collections::HashSet<String> = messages
+pub(crate) fn unanswered_tool_calls(messages: &[NeutralMessage]) -> Vec<ToolCallBlock> {
+    let answered: std::collections::HashSet<&str> = messages
         .iter()
-        .filter_map(|message| message["tool_call_id"].as_str().map(str::to_owned))
+        .filter_map(|message| message.tool_call_id())
         .collect();
     let mut calls = Vec::new();
     for message in messages {
-        if let Some(tool_calls) = message["tool_calls"].as_array() {
-            for call in tool_calls {
-                if call["id"].as_str().is_some_and(|id| !answered.contains(id)) {
-                    calls.push(call.clone());
-                }
+        for call in message.tool_calls() {
+            if !call.id.is_empty() && !answered.contains(call.id.as_str()) {
+                calls.push(call.clone());
             }
         }
     }

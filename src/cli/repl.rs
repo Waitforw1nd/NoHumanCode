@@ -397,11 +397,9 @@ fn summarize_tool_start(engine: &Engine, task_id: &str, name: &str, data: &Value
     {
         task.messages
             .iter()
-            .filter_map(|m| m["tool_calls"].as_array())
-            .flatten()
-            .find(|c| c["id"].as_str() == Some(call_id))
-            .and_then(|c| c["function"]["arguments"].as_str())
-            .and_then(|s| serde_json::from_str::<Value>(s).ok())
+            .flat_map(|m| m.tool_calls())
+            .find(|c| c.id == call_id)
+            .and_then(|c| serde_json::from_str::<Value>(&c.arguments).ok())
     } else {
         data["preview"]
             .as_str()
@@ -569,11 +567,9 @@ fn display_approval_preview(engine: &Engine, record: &coda::approval::ApprovalRe
     let raw_args = task
         .messages
         .iter()
-        .filter_map(|m| m["tool_calls"].as_array())
-        .flatten()
-        .find(|c| c["id"].as_str() == Some(record.tool_call_id.as_str()))
-        .and_then(|c| c["function"]["arguments"].as_str())
-        .and_then(|s| serde_json::from_str::<Value>(s).ok())
+        .flat_map(|m| m.tool_calls())
+        .find(|c| c.id == record.tool_call_id)
+        .and_then(|c| serde_json::from_str::<Value>(&c.arguments).ok())
         .or_else(|| serde_json::from_str::<Value>(&record.preview).ok());
 
     if matches!(record.tool_name.as_str(), "write_file" | "edit_file")
@@ -1467,7 +1463,7 @@ pub(super) async fn run_chat(
                                         .map(|b| b.len())
                                         .unwrap_or(0);
                                     let compacted =
-                                        coda::engine::compact_messages(&task.messages);
+                                        coda::engine::compact_neutral_messages(&task.messages);
                                     let after_count = compacted.len();
                                     let after_bytes = serde_json::to_vec(&compacted)
                                         .map(|b| b.len())

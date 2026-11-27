@@ -56,22 +56,14 @@ pub fn todos_for_task(task: &Task) -> Vec<TodoItem> {
         }
     }
     for msg in task.messages.iter().rev() {
-        if msg["role"] != "assistant" {
+        if !matches!(msg.role, crate::messages::NeutralRole::Assistant) {
             continue;
         }
-        let Some(calls) = msg["tool_calls"].as_array() else {
-            continue;
-        };
-        for call in calls.iter().rev() {
-            if call["function"]["name"].as_str() != Some("todo_write") {
+        for call in msg.tool_calls().rev() {
+            if call.name != "todo_write" {
                 continue;
             }
-            let parsed = match &call["function"]["arguments"] {
-                Value::String(raw) => serde_json::from_str::<Value>(raw).ok(),
-                other if other.is_object() => Some(other.clone()),
-                _ => None,
-            };
-            if let Some(args) = parsed
+            if let Ok(args) = serde_json::from_str::<Value>(&call.arguments)
                 && let Ok(items) = parse_todo_items(&args)
             {
                 let mut guard = todo_store().lock().unwrap_or_else(|e| e.into_inner());
@@ -1961,6 +1953,7 @@ mod tests {
                 name: "route".into(),
                 base_url: "http://127.0.0.1".into(),
                 model: "model".into(),
+                protocol: None,
                 max_tokens: 16,
                 parallel_limit: 1,
                 key_env: None,

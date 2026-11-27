@@ -97,6 +97,7 @@ fn setup(dir: &std::path::Path, base: &str) -> Arc<Engine> {
             name: format!("Key {n}"),
             base_url: base.into(),
             model: if n == 2 { "model-b" } else { "model-a" }.into(),
+            protocol: None,
             max_tokens: 128,
             parallel_limit: 1,
             key_env: None,
@@ -521,10 +522,9 @@ async fn tool_execution_and_path_rejection() {
     let r = settled(&e, &r.id).await;
     assert_eq!(r.tasks[0].status, "completed");
     assert!(r.tasks[0].messages.iter().any(|m| {
-        m["role"] == "tool"
-            && m["content"]
-                .as_str()
-                .and_then(|content| serde_json::from_str::<Value>(content).ok())
+        m.is_tool_result()
+            && serde_json::from_str::<Value>(&m.text_content())
+                .ok()
                 .is_some_and(|content| content["error"].is_string())
     }));
     server.abort();
@@ -596,9 +596,8 @@ async fn dependency_order_summary_and_cycle_rejection() {
     let r = settled(&e, &r.id).await;
     assert!(r.tasks.iter().all(|t| t.status == "completed"));
     assert!(r.tasks[2].messages.iter().any(|m| {
-        m["content"]
-            .as_str()
-            .is_some_and(|s| s.contains("Completed predecessor results") && s.contains("reviewer"))
+        let s = m.text_content();
+        s.contains("Completed predecessor results") && s.contains("reviewer")
     }));
     {
         let c = mock.inner.lock().unwrap();
@@ -684,16 +683,14 @@ async fn replace_existing_file_preserves_hardlink_and_command_permission() {
     let results: Vec<_> = done.tasks[0]
         .messages
         .iter()
-        .filter(|message| {
-            message["role"] == "tool" && message["tool_call_id"] == "native-command-1"
-        })
+        .filter(|message| message.tool_call_id() == Some("native-command-1"))
         .collect();
     assert_eq!(
         results.len(),
         1,
         "approved command must produce one real result"
     );
-    let result: Value = serde_json::from_str(results[0]["content"].as_str().unwrap()).unwrap();
+    let result: Value = serde_json::from_str(&results[0].text_content()).unwrap();
     assert_eq!(result["exit_code"], 0);
     assert!(
         result["stdout"]

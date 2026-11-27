@@ -119,6 +119,7 @@ impl Fixture {
                     name: "local".into(),
                     base_url,
                     model: "explore-test".into(),
+                    protocol: None,
                     key_env: Some("CARGO_PKG_NAME".into()),
                     max_tokens: 128,
                     parallel_limit: key,

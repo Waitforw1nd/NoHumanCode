@@ -1,17 +1,18 @@
 //! Internal provenance for non-claimed tool results.
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Origin {
+pub enum Origin {
     ReadCompleted,
     AgentDenied,
     HostDenied,
     ApprovalDenied,
     ApprovalCancelled,
     InterruptedWithoutClaim,
+    HostTool,
 }
 
 impl Origin {
-    pub(crate) fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::ReadCompleted => "read_completed",
             Self::AgentDenied => "agent_denied",
@@ -19,23 +20,24 @@ impl Origin {
             Self::ApprovalDenied => "approval_denied",
             Self::ApprovalCancelled => "approval_cancelled",
             Self::InterruptedWithoutClaim => "interrupted_without_claim",
+            Self::HostTool => "host_tool",
         }
     }
 }
 
-pub(crate) fn is_computer_read(name: &str) -> bool {
+pub fn is_computer_read(name: &str) -> bool {
     matches!(name, "computer_observe" | "computer_wait")
 }
 
-pub(crate) fn is_computer(name: &str) -> bool {
+pub fn is_computer(name: &str) -> bool {
     is_computer_read(name) || name == "computer_save_as"
 }
 
-pub(crate) fn is_exploration(name: &str) -> bool {
+pub fn is_exploration(name: &str) -> bool {
     matches!(name, "explore_files" | "explore_parallel")
 }
 
-pub(crate) fn interrupted_message(tool_name: &str) -> &'static str {
+pub fn interrupted_message(tool_name: &str) -> &'static str {
     if is_computer_read(tool_name) {
         "Desktop observation was interrupted. Request a new observation for the current state."
     } else if tool_name == "explore_parallel" {
@@ -48,7 +50,7 @@ pub(crate) fn interrupted_message(tool_name: &str) -> &'static str {
 }
 
 #[derive(Debug)]
-pub(crate) enum ToolResultError {
+pub enum ToolResultError {
     Conflict,
     Corrupt,
 }
@@ -65,7 +67,17 @@ impl std::fmt::Display for ToolResultError {
 impl std::error::Error for ToolResultError {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum CommitDisposition {
+pub enum CommitDisposition {
     Inserted,
     Replayed,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn host_tool_origin_has_stable_label() {
+        assert_eq!(Origin::HostTool.as_str(), "host_tool");
+    }
 }

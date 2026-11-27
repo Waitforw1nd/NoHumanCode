@@ -3,7 +3,7 @@ use crate::{
     domain::Route,
     key_pool_config::alternates,
     network_authorization::{NetworkError, NetworkErrorKind},
-    provider_transport::{NetworkPurpose, validate_target},
+    provider_transport::{NetworkPurpose, validate_target_with_protocol},
     secrets,
 };
 use sha2::{Digest, Sha256};
@@ -79,8 +79,12 @@ impl KeyPool {
         previous: Option<&SelectedKey>,
     ) -> Result<SelectedKey, NetworkError> {
         let keys = credentials(route, primary)?;
-        let target = validate_target(&route.base_url, NetworkPurpose::Completion)
-            .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
+        let target = validate_target_with_protocol(
+            &route.base_url,
+            NetworkPurpose::Completion,
+            route.protocol,
+        )
+        .map_err(|_| NetworkError::not_sent(NetworkErrorKind::Invalid))?;
         self.select_at(
             (route.id.clone(), target.base_url().to_owned()),
             keys,

@@ -261,22 +261,30 @@ dependencies = [
  "async-stream",
  "axum",
  "base64",
+ "bytes",
  "clap",
  "coda-protocol",
+ "codacli-core",
  "futures-util",
+ "http",
+ "httparse",
  "httpdate",
  "regex",
  "reqwest",
  "rusqlite",
+ "rustls",
  "serde",
  "serde_json",
  "serde_yaml",
  "sha2",
  "tempfile",
  "tokio",
+ "tokio-rustls",
  "tokio-util",
  "tower",
+ "url",
  "uuid",
+ "webpki-roots",
  "windows",
  "windows-sys 0.59.0",
 ]
@@ -287,6 +295,32 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "codacli-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64",
+ "bytes",
+ "coda-protocol",
+ "futures-util",
+ "http",
+ "httparse",
+ "httpdate",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-rustls",
+ "tokio-util",
+ "url",
+ "uuid",
+ "webpki-roots",
 ]
 
 [[package]]

@@ -1,0 +1,267 @@
+{
+  "name": "runSteerGate",
+  "description": "beforeModelTurn 暂停/恢复、工具等待期间安全点 steer（含 POST /steer 与 POST /entries deliverAs=steer 保留完整 customMessage）、one-at-a-time 分轮注入、无工具调用回合不丢弃排队 steer，以及 afterTurn 闸门早停（finish）。",
+  "steps": [
+    {
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-steer",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" },
+            { "name": "requestInput", "description": "向用户发起交互式提问卡片", "parameters": { "type": "object", "properties": { "prompt": { "type": "string" } }, "required": ["prompt"] }, "label": "请求输入", "executionMode": "sequential" }
+          ],
+          "activeToolNames": ["read", "requestInput"],
+          "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+          "steeringMode": "one-at-a-time",
+          "gates": ["beforeModelTurn", "afterTurn"],
+          "history": {
+            "leafId": null,
+            "entries": []
+          }
+        }
+      },
+      "response": { "status": 201, "body": { "sessionId": "s-steer", "revision": 1, "leafId": null, "status": "idle" } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-steer/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-steer-1",
+          "baseRevision": 1,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "帮我看下 src/api.ts" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-steer-1", "token": "<PROXY_TOKEN>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-steer-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "Turn 1 仅在 beforeModelTurn 闸门放行后才发起模型请求"
+          ]
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-steer-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "Turn 2 包含闭合的 call_read_1 工具结果及第一条 steer（顺便检查下类型定义），尚未包含第二条 codaGroupPost steer"
+          ]
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-steer-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "Turn 3 由排队的第二条 customMessage steer（codaGroupPost）触发，即使 Turn 2 未产生工具调用"
+          ]
+        }
+      ],
+      "interactions": [
+        {
+          "afterSeq": 5,
+          "note": "宿主持有 beforeModelTurn 闸门实现暂停，随后答复 continue 恢复 Turn 1",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/gates/<GATE_ID:g1>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "continue" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 13,
+          "note": "在等待 call_read_1 结果期间排入第一条普通 steer",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/steer",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "content": [{ "type": "text", "text": "顺便检查下类型定义" }] }
+          },
+          "response": { "status": 202, "body": { "queued": true } }
+        },
+        {
+          "afterSeq": 13,
+          "note": "在等待 call_read_1 结果期间通过 POST /entries deliverAs=steer 排入第二条完整 customMessage",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/entries",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "entry": {
+                "type": "customMessage",
+                "name": "codaGroupPost",
+                "content": [{ "type": "text", "text": "群成员补充：已更新接口" }],
+                "display": false,
+                "includeInSummary": true
+              },
+              "deliverAs": "steer"
+            }
+          },
+          "response": { "status": 202, "body": { "queued": true } }
+        },
+        {
+          "afterSeq": 13,
+          "note": "宿主提交 call_read_1 结果以闭合 batch-1",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_read_1",
+              "result": { "content": [{ "type": "text", "text": "export interface ApiRes { ok: boolean }" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 17,
+          "note": "Turn 1 完成后 afterTurn 闸门放行",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/gates/<GATE_ID:g2>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "continue" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 22,
+          "note": "Turn 2 beforeModelTurn 闸门放行",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/gates/<GATE_ID:g3>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "continue" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 31,
+          "note": "Turn 2 完成后 afterTurn 闸门放行，队列中仍有第二条 steer 触发 Turn 3",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/gates/<GATE_ID:g4>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "continue" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 36,
+          "note": "Turn 3 beforeModelTurn 闸门放行",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/gates/<GATE_ID:g5>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "continue" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 44,
+          "note": "Turn 3 工具结果提交以闭合 batch-2",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_read_2",
+              "result": { "content": [{ "type": "text", "text": "export interface ApiRes { ok: boolean; version: number }" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 48,
+          "note": "Turn 3 完成后 afterTurn 闸门返回 finish，直接早停而不再发起 Turn 4",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-steer/runs/run-steer-1/gates/<GATE_ID:g6>",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "action": "finish" }
+          },
+          "response": { "status": 200, "body": { "accepted": true } }
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 2, "entry": { "id": "<ENTRY_ID:u1>", "parentId": null, "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "帮我看下 src/api.ts" }] } } },
+          { "seq": 3, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u1>" } },
+          { "seq": 4, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "gate", "gateId": "<GATE_ID:g1>", "kind": "beforeModelTurn", "turn": 1 } },
+          { "seq": 5, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 6, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 7, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "contextUsage", "tokens": 1100, "contextWindow": 400000 } },
+          { "seq": 8, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a1>" } },
+          { "seq": 9, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "toolCall", "callId": "call_read_1", "name": "read", "args": { "path": "src/api.ts" }, "batchId": "batch-1", "batchIndex": 0, "batchSize": 1 } },
+          { "seq": 10, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "usage", "usage": { "input": 1100, "output": 32, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1132 } } },
+          { "seq": 11, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 3, "entry": { "id": "<ENTRY_ID:a1>", "parentId": "<ENTRY_ID:u1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_read_1", "name": "read", "args": { "path": "src/api.ts" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+          { "seq": 12, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:usage1>", "parentId": "<ENTRY_ID:a1>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1100, "output": 32, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1132 } } } },
+          { "seq": 13, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingTools" } },
+          { "seq": 14, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "toolResult", "callId": "call_read_1", "result": { "content": [{ "type": "text", "text": "export interface ApiRes { ok: boolean }" }], "details": null, "isError": false } } },
+          { "seq": 15, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 5, "entry": { "id": "<ENTRY_ID:tr1>", "parentId": "<ENTRY_ID:usage1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_read_1", "name": "read", "content": [{ "type": "text", "text": "export interface ApiRes { ok: boolean }" }], "isError": false } } },
+          { "seq": 16, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "gate", "gateId": "<GATE_ID:g2>", "kind": "afterTurn", "turn": 1, "lastEntryId": "<ENTRY_ID:tr1>" } },
+          { "seq": 17, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 18, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 19, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 6, "entry": { "id": "<ENTRY_ID:u2>", "parentId": "<ENTRY_ID:tr1>", "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "顺便检查下类型定义" }] } } },
+          { "seq": 20, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u2>", "steered": true } },
+          { "seq": 21, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "gate", "gateId": "<GATE_ID:g3>", "kind": "beforeModelTurn", "turn": 2 } },
+          { "seq": 22, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 23, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 24, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "contextUsage", "tokens": 1350, "contextWindow": 400000 } },
+          { "seq": 25, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a2>" } },
+          { "seq": 26, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "text", "blockId": "b-1", "delta": "src/api.ts 中 ApiRes 定义完整，字段 ok 为 boolean。", "done": true } },
+          { "seq": 27, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "usage", "usage": { "input": 1350, "output": 26, "cacheRead": 1024, "cacheWrite": 0, "totalTokens": 1376 } } },
+          { "seq": 28, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 7, "entry": { "id": "<ENTRY_ID:a2>", "parentId": "<ENTRY_ID:u2>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "src/api.ts 中 ApiRes 定义完整，字段 ok 为 boolean。" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+          { "seq": 29, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 8, "entry": { "id": "<ENTRY_ID:usage2>", "parentId": "<ENTRY_ID:a2>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1350, "output": 26, "cacheRead": 1024, "cacheWrite": 0, "totalTokens": 1376 } } } },
+          { "seq": 30, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "gate", "gateId": "<GATE_ID:g4>", "kind": "afterTurn", "turn": 2, "lastEntryId": "<ENTRY_ID:usage2>" } },
+          { "seq": 31, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 32, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 33, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 9, "entry": { "id": "<ENTRY_ID:cm1>", "parentId": "<ENTRY_ID:usage2>", "timestamp": "<TS>", "type": "customMessage", "name": "codaGroupPost", "content": [{ "type": "text", "text": "群成员补充：已更新接口" }], "display": false, "includeInSummary": true } } },
+          { "seq": 34, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:cm1>", "steered": true } },
+          { "seq": 35, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "gate", "gateId": "<GATE_ID:g5>", "kind": "beforeModelTurn", "turn": 3 } },
+          { "seq": 36, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 37, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 38, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "contextUsage", "tokens": 1520, "contextWindow": 400000 } },
+          { "seq": 39, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a3>" } },
+          { "seq": 40, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "toolCall", "callId": "call_read_2", "name": "read", "args": { "path": "src/api.ts" }, "batchId": "batch-2", "batchIndex": 0, "batchSize": 1 } },
+          { "seq": 41, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "usage", "usage": { "input": 1520, "output": 28, "cacheRead": 1280, "cacheWrite": 0, "totalTokens": 1548 } } },
+          { "seq": 42, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 10, "entry": { "id": "<ENTRY_ID:a3>", "parentId": "<ENTRY_ID:cm1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_read_2", "name": "read", "args": { "path": "src/api.ts" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+          { "seq": 43, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 11, "entry": { "id": "<ENTRY_ID:usage3>", "parentId": "<ENTRY_ID:a3>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1520, "output": 28, "cacheRead": 1280, "cacheWrite": 0, "totalTokens": 1548 } } } },
+          { "seq": 44, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingTools" } },
+          { "seq": 45, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "toolResult", "callId": "call_read_2", "result": { "content": [{ "type": "text", "text": "export interface ApiRes { ok: boolean; version: number }" }], "details": null, "isError": false } } },
+          { "seq": 46, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "entry", "revision": 12, "entry": { "id": "<ENTRY_ID:tr2>", "parentId": "<ENTRY_ID:usage3>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_read_2", "name": "read", "content": [{ "type": "text", "text": "export interface ApiRes { ok: boolean; version: number }" }], "isError": false } } },
+          { "seq": 47, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "gate", "gateId": "<GATE_ID:g6>", "kind": "afterTurn", "turn": 3, "lastEntryId": "<ENTRY_ID:tr2>" } },
+          { "seq": 48, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "status", "state": "waitingGate" } },
+          { "seq": 49, "sessionId": "s-steer", "runId": "run-steer-1", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:tr2>", "userEntryId": "<ENTRY_ID:u1>", "assistantEntryId": "<ENTRY_ID:a3>", "revision": 12 } }
+        ]
+      },
+      "assertions": [
+        "steer 严禁在 batch-1 闭合（seq 14-15）前注入",
+        "steeringMode=one-at-a-time 时，Turn 2 前仅注入普通 steer（seq 19-20），Turn 3 前再注入完整保留 name/display/includeInSummary 的 customMessage（seq 33-34）",
+        "Turn 2 无工具调用但因存在排队 steer 仍自动推进到 Turn 3，而不是丢弃 steer",
+        "Turn 3 afterTurn 闸门返回 finish 后立即以 done(completed, stop) 结束，不再发起 Turn 4"
+      ]
+    },
+    {
+      "request": { "method": "DELETE", "path": "/api/kernel/sessions/s-steer", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

@@ -594,8 +594,8 @@ impl Explorer<'_> {
             prompt.push_str(&self.keys.scrub(&serde_json::to_string(inputs)?));
         }
         let messages = [
-            json!({"role":"system","content":SYSTEM_PROMPT}),
-            json!({"role":"user","content":prompt}),
+            crate::messages::NeutralMessage::system(SYSTEM_PROMPT),
+            crate::messages::NeutralMessage::user_text(prompt),
         ];
         let task = self.task;
         let subject = self.engine.task_route_subject(task)?;
@@ -623,18 +623,17 @@ impl Explorer<'_> {
     }
 }
 
-fn exploration_summary(message: &Value, keys: &secrets::CredentialSet) -> Result<String> {
+fn exploration_summary(
+    message: &crate::messages::NeutralMessage,
+    keys: &secrets::CredentialSet,
+) -> Result<String> {
     ensure!(
-        message
-            .get("tool_calls")
-            .is_none_or(|v| v.as_array().is_some_and(Vec::is_empty)),
+        message.tool_calls().next().is_none(),
         "只读探索模型请求了工具"
     );
-    let text = message["content"]
-        .as_str()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .context("只读探索模型未返回摘要")?;
+    let raw_text = message.text_content();
+    let text = raw_text.trim();
+    ensure!(!text.is_empty(), "只读探索模型未返回摘要");
     let mut summary = keys.scrub(text);
     if summary.len() > SUMMARY_BYTES {
         let marker = "…";
@@ -687,15 +686,35 @@ mod tests {
     fn summary_excludes_reasoning_and_tools_and_bounds_redacted_utf8() {
         let keys = secrets::CredentialSet::new(vec!["key".into()]);
         assert!(
-            exploration_summary(&json!({"content":" ", "reasoning_content":"思考"}), &keys)
-                .is_err()
+            exploration_summary(
+                &crate::messages::NeutralMessage::from_legacy_value(&json!({
+                    "role": "assistant",
+                    "content": " ",
+                    "reasoning_content": "思考"
+                }))
+                .unwrap(),
+                &keys
+            )
+            .is_err()
         );
         assert!(
-            exploration_summary(&json!({"content":"answer", "tool_calls":[{}]}), &keys).is_err()
+            exploration_summary(
+                &crate::messages::NeutralMessage::from_legacy_value(&json!({
+                    "role": "assistant",
+                    "content": "answer",
+                    "tool_calls": [{"id": "c1", "function": {"name": "read_file", "arguments": "{}"}}]
+                }))
+                .unwrap(),
+                &keys
+            )
+            .is_err()
         );
-        let message = json!({
-            "content":format!("key {}", "界".repeat(SUMMARY_BYTES)), "reasoning_content":"思考",
-        });
+        let message = crate::messages::NeutralMessage::from_legacy_value(&json!({
+            "role": "assistant",
+            "content": format!("key {}", "界".repeat(SUMMARY_BYTES)),
+            "reasoning_content": "思考",
+        }))
+        .unwrap();
         let summary = exploration_summary(&message, &keys).unwrap();
         assert!(summary.starts_with("[redacted] ") && summary.ends_with('…'));
         assert!(summary.len() <= SUMMARY_BYTES);

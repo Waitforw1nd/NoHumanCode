@@ -4,6 +4,7 @@ mod computer;
 mod http_admin;
 mod init_route;
 mod jobs;
+mod media;
 mod mentions;
 mod repl;
 
@@ -32,6 +33,8 @@ pub enum Command {
     Ask(AskArgs),
     /// Submit and inspect durable read-only exploration jobs in a chat session.
     Jobs(jobs::JobsArgs),
+    /// Run multimodal media protocol requests (embeddings, rerank, images).
+    Media(media::MediaArgs),
     /// Windows Computer Use: read-only diagnostics for a registered application.
     ///
     /// `watch` observes foreground and dialog changes without contacting a model.
@@ -47,6 +50,8 @@ pub enum Command {
     },
     /// Explicitly start the local HTTP harness server.
     Serve,
+    /// Start the embedded agent kernel (`codaKernel/1`).
+    Kernel(KernelArgs),
     /// Configure this local Host; saving does not authorize or contact a Provider.
     Host(HostArgs),
     /// Read process-local runtime diagnostics.
@@ -81,6 +86,8 @@ pub enum McpCommand {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum InitProvider {
     Openai,
+    #[value(name = "openai-responses")]
+    OpenaiResponses,
     Anthropic,
     Gemini,
 }
@@ -180,6 +187,40 @@ pub struct AskArgs {
 }
 
 #[derive(Args)]
+pub struct KernelArgs {
+    #[command(subcommand)]
+    pub command: KernelCommand,
+}
+
+#[derive(Subcommand)]
+pub enum KernelCommand {
+    /// Start the embedded kernel HTTP/SSE server (`codaKernel/1`).
+    Serve(KernelServeArgs),
+}
+
+#[derive(Args)]
+pub struct KernelServeArgs {
+    /// Run in embedded stdio-bound mode (no SQLite, no instance.lock).
+    #[arg(long)]
+    pub embedded: bool,
+    /// Loopback IP socket address to bind (e.g. 127.0.0.1:0 or [::1]:0).
+    #[arg(long, default_value = "127.0.0.1:0")]
+    pub listen: std::net::SocketAddr,
+    /// Ephemeral scratch directory (never used for authoritative sessions or secrets).
+    #[arg(long)]
+    pub data_dir: Option<PathBuf>,
+    /// Read {"token":"<base64url>"} from stdin line 1 and exit on stdin EOF.
+    #[arg(long)]
+    pub token_stdin: bool,
+    /// Read the auth token from the named environment variable (without stdin EOF shutdown).
+    #[arg(long, value_name = "VAR", conflicts_with = "token_stdin")]
+    pub token_env: Option<String>,
+    /// Enable codaKernel/1.1 media proxy routes and audio/video/resource content blocks.
+    #[arg(long)]
+    pub media_proxy: bool,
+}
+
+#[derive(Args)]
 pub struct HostArgs {
     #[command(subcommand)]
     command: HostCommand,
@@ -240,6 +281,8 @@ struct HostRouteSet {
     #[arg(long)]
     parallel_limit: usize,
     #[arg(long)]
+    protocol: Option<String>,
+    #[arg(long)]
     key: String,
     /// Read from a real console with echo disabled.
     #[arg(long)]
@@ -262,18 +305,27 @@ fn host_route_id_valid(id: &str) -> bool {
 
 impl HostRouteSet {
     fn input(&self) -> coda::host_configuration::RouteInput {
+        let protocol = self
+            .protocol
+            .as_deref()
+            .and_then(coda::provider::ProviderProtocol::parse_explicit);
         coda::host_configuration::RouteInput {
             name: self.name.clone(),
             base_url: self.base_url.clone(),
             model: self.model.clone(),
             max_tokens: self.max_tokens,
             parallel_limit: self.parallel_limit,
+            protocol,
         }
     }
     fn valid(&self) -> bool {
         host_route_id_valid(&self.id)
             && self.expected_revision <= i64::MAX as u64
             && host_key_valid(&self.key)
+            && self
+                .protocol
+                .as_deref()
+                .is_none_or(|p| coda::provider::ProviderProtocol::parse_explicit(p).is_some())
             && secrets::safe_metadata_text("name", &self.name).is_ok()
             && secrets::safe_metadata_text("model", &self.model).is_ok()
             && self.name.len() <= 500
@@ -916,6 +968,7 @@ impl Command {
                 | Self::Chat(_)
                 | Self::Ask(_)
                 | Self::Jobs(_)
+                | Self::Media(_)
                 | Self::Computer { .. }
                 | Self::Mcp { .. }
         )
@@ -930,6 +983,7 @@ impl Command {
                     && (1..=8).contains(&args.parallel_limit)
             }
             Self::Jobs(args) => valid_id(&args.session),
+            Self::Media(args) => args.valid(),
             Self::Computer { .. } => true,
             Self::Chat(args) => {
                 args.route.as_deref().is_none_or(host_route_id_valid)
@@ -953,6 +1007,13 @@ impl Command {
                 command: McpCommand::Login { server, .. },
             } => !server.is_empty(),
             Self::Serve => true,
+            Self::Kernel(args) => match &args.command {
+                KernelCommand::Serve(serve) => {
+                    serve.embedded
+                        && (serve.token_stdin ^ serve.token_env.is_some())
+                        && serve.listen.ip().is_loopback()
+                }
+            },
             Self::Host(args) => args.command.valid(),
             Self::Runtime(args) => match &args.command {
                 RuntimeCommand::Agent(_) => true,
@@ -1274,6 +1335,7 @@ pub async fn execute_local(
             )
             .await
         }
+        Command::Media(args) => media::run(args, top_data_dir, top_workspace, json_output).await,
         Command::Init(args) => run_init(instance_lock, top_data_dir, json_output, args).await,
         Command::Chat(args) => {
             run_chat(
@@ -1296,5 +1358,38 @@ pub async fn execute_local(
             .await
         }
         _ => unreachable!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn kernel_cmd(
+        embedded: bool,
+        token_stdin: bool,
+        token_env: Option<&str>,
+        listen: &str,
+    ) -> Command {
+        Command::Kernel(KernelArgs {
+            command: KernelCommand::Serve(KernelServeArgs {
+                embedded,
+                listen: listen.parse().unwrap(),
+                data_dir: None,
+                token_stdin,
+                token_env: token_env.map(str::to_owned),
+                media_proxy: false,
+            }),
+        })
+    }
+
+    #[test]
+    fn valid_ids_accepts_embedded_loopback_kernel_with_exactly_one_token_source() {
+        assert!(kernel_cmd(true, true, None, "127.0.0.1:0").valid_ids());
+        assert!(kernel_cmd(true, false, Some("CODA_TOK"), "[::1]:0").valid_ids());
+        assert!(!kernel_cmd(true, false, None, "127.0.0.1:0").valid_ids());
+        assert!(!kernel_cmd(true, true, Some("CODA_TOK"), "127.0.0.1:0").valid_ids());
+        assert!(!kernel_cmd(false, false, Some("CODA_TOK"), "127.0.0.1:0").valid_ids());
+        assert!(!kernel_cmd(true, false, Some("CODA_TOK"), "0.0.0.0:0").valid_ids());
     }
 }

@@ -1,0 +1,47 @@
+{
+  "name": "handshake",
+  "description": "受控拉起握手、能力协商、鉴权失败与跨源拒绝。",
+  "steps": [
+    {
+      "stdio": {
+        "argv": ["kernel", "serve", "--embedded", "--listen", "127.0.0.1:0", "--data-dir", "<DATA_DIR>", "--token-stdin"],
+        "stdin": "{\"token\":\"<TOKEN>\"}\n",
+        "stdout": { "type": "ready", "protocol": "codaKernel/1", "version": "<VERSION>", "pid": "<PID>", "port": "<PORT>" }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/capabilities", "headers": { "x-coda-token": "<TOKEN>", "host": "127.0.0.1:<PORT>" } },
+      "response": {
+        "status": 200,
+        "body": {
+          "protocol": "codaKernel/1",
+          "version": "<VERSION>",
+          "features": ["hydrate", "hostTools", "steer", "activeTools", "gates", "compact", "reconnect", "finish"],
+          "gates": ["beforeModelTurn", "afterTurn", "beforeCompact"],
+          "modelProtocols": ["openai-completions", "openai-responses", "anthropic-messages"],
+          "events": ["start", "text", "thinking", "toolCall", "toolResult", "compaction", "retry", "retryCleared", "usage", "contextUsage", "userMessage", "error", "done", "entry", "gate", "status", "toolsChanged"],
+          "limits": { "maxBodyBytes": 67108864, "maxToolsPerSession": 512, "eventReplayPerRun": 4096 }
+        }
+      }
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/capabilities", "headers": { "host": "127.0.0.1:<PORT>" } },
+      "response": { "status": 401, "body": { "error": { "code": "UNAUTHORIZED", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/capabilities", "headers": { "x-coda-token": "wrong", "host": "127.0.0.1:<PORT>" } },
+      "response": { "status": 401, "body": { "error": { "code": "UNAUTHORIZED", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/capabilities", "headers": { "x-coda-token": "<TOKEN>", "host": "127.0.0.1:<PORT>", "origin": "http://evil.example" } },
+      "response": { "status": 403, "body": { "error": { "code": "FORBIDDEN", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/capabilities", "headers": { "x-coda-token": "<TOKEN>", "host": "localhost:<PORT>" } },
+      "response": { "status": 403, "body": { "error": { "code": "FORBIDDEN", "message": "<ANY>", "retryable": false } } }
+    },
+    {
+      "stdio": { "stdinClosed": true, "expectExitWithinMs": 5000 }
+    }
+  ]
+}

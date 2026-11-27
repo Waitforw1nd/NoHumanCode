@@ -202,6 +202,7 @@ mod tests {
                 name: "r1".into(),
                 base_url: "https://example.invalid/v1".into(),
                 model: "mock".into(),
+                protocol: None,
                 max_tokens: 128,
                 parallel_limit: 1,
                 key_env: None,

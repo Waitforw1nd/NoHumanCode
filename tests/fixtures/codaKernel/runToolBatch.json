@@ -1,0 +1,233 @@
+{
+  "name": "runToolBatch",
+  "description": "多工具 batch 编排、幂等重放与冲突校验、未启用工具自动合成错误、同轮 active-tools 热更新（toolsChanged）、isError 续轮与 modelNote 仅模型可见。",
+  "steps": [
+    {
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-batch",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" },
+            { "name": "shell", "description": "执行命令", "parameters": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] }, "label": "命令", "executionMode": "sequential" },
+            { "name": "loadTools", "description": "按需加载更多工具", "parameters": { "type": "object", "properties": { "names": { "type": "array", "items": { "type": "string" } } }, "required": ["names"] }, "label": "加载工具", "executionMode": "sequential" },
+            { "name": "messageBot", "description": "给群聊中的其他 Coda 发消息", "parameters": { "type": "object", "properties": { "to": { "type": "string" }, "text": { "type": "string" } }, "required": ["to", "text"] }, "label": "群聊消息", "executionMode": "parallel" }
+          ],
+          "activeToolNames": ["read", "shell", "loadTools"],
+          "toolResultMaxChars": null,
+          "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+          "steeringMode": "one-at-a-time",
+          "gates": [],
+          "history": {
+            "leafId": null,
+            "entries": []
+          }
+        }
+      },
+      "response": { "status": 201, "body": { "sessionId": "s-batch", "revision": 1, "leafId": null, "status": "idle" } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-batch/runs",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "runId": "run-batch-1",
+          "baseRevision": 1,
+          "model": { "modelId": "gpt-5.2" },
+          "content": [{ "type": "text", "text": "读一下 package.json，加载 messageBot 并同步给 helper，顺便跑下测试" }],
+          "thinkingLevel": "medium",
+          "maxRequests": 64,
+          "modelProxy": { "baseUrl": "http://127.0.0.1:61234/m/run-batch-1", "token": "<PROXY_TOKEN>", "protocol": "openai-responses" }
+        }
+      },
+      "expectUpstream": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-batch-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "Turn 1 的 tools 仅包含 read / shell / loadTools，不包含尚未启用的 messageBot"
+          ]
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-batch-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "Turn 2 的 tools 已热更新并包含 messageBot",
+            "input 按 batchIndex 顺序包含 call_read_1、call_load_1 与自动合成错误结果 call_msg_1（工具未启用：messageBot）"
+          ]
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:61234/m/run-batch-1/responses",
+          "headers": { "authorization": "Bearer <PROXY_TOKEN>" },
+          "bodyIncludes": { "model": "gpt-5.2", "stream": true },
+          "bodyAssertions": [
+            "Turn 3 的 input 中 call_shell_2 结果保留 isError=true 并在末尾拼接了 \\n\\n[进度注记] 仅 1 个单测失败，请向用户汇总失败位置",
+            "Turn 3 的 input 中不包含 call_shell_2 或 call_msg_2 的 details 字段"
+          ]
+        }
+      ],
+      "interactions": [
+        {
+          "afterSeq": 11,
+          "note": "Turn 1 batch-1：宿主提交 read 结果",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-batch/runs/run-batch-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_read_1",
+              "result": { "content": [{ "type": "text", "text": "{\"name\":\"demo\",\"version\":\"1.0.0\"}" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 11,
+          "note": "同 callId 相同内容重放，返回幂等 replayed",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-batch/runs/run-batch-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_read_1",
+              "result": { "content": [{ "type": "text", "text": "{\"name\":\"demo\",\"version\":\"1.0.0\"}" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 200, "body": { "replayed": true } }
+        },
+        {
+          "afterSeq": 11,
+          "note": "同 callId 不同内容提交，返回 409 TOOL_RESULT_CONFLICT",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-batch/runs/run-batch-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_read_1",
+              "result": { "content": [{ "type": "text", "text": "{\"name\":\"demo\",\"version\":\"2.0.0\"}" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 409, "body": { "error": { "code": "TOOL_RESULT_CONFLICT", "message": "<ANY>", "retryable": false } } }
+        },
+        {
+          "afterSeq": 11,
+          "note": "宿主执行 loadTools 时启用 messageBot，下一次模型请求生效并触发 toolsChanged",
+          "request": {
+            "method": "PUT",
+            "path": "/api/kernel/sessions/s-batch/active-tools",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": { "activeToolNames": ["read", "shell", "loadTools", "messageBot"] }
+          },
+          "response": { "status": 200, "body": { "activeToolNames": ["read", "shell", "loadTools", "messageBot"], "added": ["messageBot"], "removed": [] } }
+        },
+        {
+          "afterSeq": 11,
+          "note": "宿主提交 loadTools 结果；不提交未启用的 call_msg_1（codacli 自动合成错误并闭合 batch-1）",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-batch/runs/run-batch-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_load_1",
+              "result": { "content": [{ "type": "text", "text": "已启用工具：messageBot" }], "details": null, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 27,
+          "note": "Turn 2 batch-2：故意先提交 batchIndex=1 的 messageBot，验证 codacli 仍按 batchIndex 排序输出",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-batch/runs/run-batch-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_msg_2",
+              "result": { "content": [{ "type": "text", "text": "已发送给 helper" }], "details": { "delivered": true }, "isError": false }
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        },
+        {
+          "afterSeq": 27,
+          "note": "Turn 2 batch-2：后提交 batchIndex=0 的 shell（isError=true + modelNote），验证续轮与 modelNote 不落盘",
+          "request": {
+            "method": "POST",
+            "path": "/api/kernel/sessions/s-batch/runs/run-batch-1/tool-results",
+            "headers": { "x-coda-token": "<TOKEN>" },
+            "body": {
+              "callId": "call_shell_2",
+              "result": { "content": [{ "type": "text", "text": "FAIL src/math.test.ts: expected 3, got 2" }], "details": { "exitCode": 1 }, "isError": true },
+              "modelNote": "[进度注记] 仅 1 个单测失败，请向用户汇总失败位置"
+            }
+          },
+          "response": { "status": 202, "body": { "accepted": true } }
+        }
+      ],
+      "response": {
+        "status": 200,
+        "sse": [
+          { "seq": 1, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 2, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 2, "entry": { "id": "<ENTRY_ID:u1>", "parentId": null, "timestamp": "<TS>", "type": "message", "role": "user", "content": [{ "type": "text", "text": "读一下 package.json，加载 messageBot 并同步给 helper，顺便跑下测试" }] } } },
+          { "seq": 3, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "userMessage", "entryId": "<ENTRY_ID:u1>" } },
+          { "seq": 4, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "contextUsage", "tokens": 1200, "contextWindow": 400000 } },
+          { "seq": 5, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a1>" } },
+          { "seq": 6, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolCall", "callId": "call_read_1", "name": "read", "args": { "path": "package.json" }, "batchId": "batch-1", "batchIndex": 0, "batchSize": 3 } },
+          { "seq": 7, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolCall", "callId": "call_load_1", "name": "loadTools", "args": { "names": ["messageBot"] }, "batchId": "batch-1", "batchIndex": 1, "batchSize": 3 } },
+          { "seq": 8, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "usage", "usage": { "input": 1200, "output": 68, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1268 } } },
+          { "seq": 9, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 3, "entry": { "id": "<ENTRY_ID:a1>", "parentId": "<ENTRY_ID:u1>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_read_1", "name": "read", "args": { "path": "package.json" } }, { "type": "toolCall", "callId": "call_load_1", "name": "loadTools", "args": { "names": ["messageBot"] } }, { "type": "toolCall", "callId": "call_msg_1", "name": "messageBot", "args": { "to": "helper", "text": "准备同步" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+          { "seq": 10, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 4, "entry": { "id": "<ENTRY_ID:usage1>", "parentId": "<ENTRY_ID:a1>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1200, "output": 68, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 1268 } } } },
+          { "seq": 11, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "status", "state": "waitingTools" } },
+          { "seq": 12, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolResult", "callId": "call_read_1", "result": { "content": [{ "type": "text", "text": "{\"name\":\"demo\",\"version\":\"1.0.0\"}" }], "details": null, "isError": false } } },
+          { "seq": 13, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 5, "entry": { "id": "<ENTRY_ID:tr1>", "parentId": "<ENTRY_ID:usage1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_read_1", "name": "read", "content": [{ "type": "text", "text": "{\"name\":\"demo\",\"version\":\"1.0.0\"}" }], "isError": false } } },
+          { "seq": 14, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolResult", "callId": "call_load_1", "result": { "content": [{ "type": "text", "text": "已启用工具：messageBot" }], "details": null, "isError": false } } },
+          { "seq": 15, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 6, "entry": { "id": "<ENTRY_ID:tr2>", "parentId": "<ENTRY_ID:tr1>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_load_1", "name": "loadTools", "content": [{ "type": "text", "text": "已启用工具：messageBot" }], "isError": false } } },
+          { "seq": 16, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolResult", "callId": "call_msg_1", "result": { "content": [{ "type": "text", "text": "工具未启用：messageBot" }], "details": null, "isError": true } } },
+          { "seq": 17, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 7, "entry": { "id": "<ENTRY_ID:tr3>", "parentId": "<ENTRY_ID:tr2>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_msg_1", "name": "messageBot", "content": [{ "type": "text", "text": "工具未启用：messageBot" }], "isError": true } } },
+          { "seq": 18, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolsChanged", "activeToolNames": ["read", "shell", "loadTools", "messageBot"], "added": ["messageBot"], "removed": [] } },
+          { "seq": 19, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 20, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "contextUsage", "tokens": 1620, "contextWindow": 400000 } },
+          { "seq": 21, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a2>" } },
+          { "seq": 22, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolCall", "callId": "call_shell_2", "name": "shell", "args": { "command": "bun test" }, "batchId": "batch-2", "batchIndex": 0, "batchSize": 2 } },
+          { "seq": 23, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolCall", "callId": "call_msg_2", "name": "messageBot", "args": { "to": "helper", "text": "package.json 版本为 1.0.0" }, "batchId": "batch-2", "batchIndex": 1, "batchSize": 2 } },
+          { "seq": 24, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "usage", "usage": { "input": 1620, "output": 54, "cacheRead": 1024, "cacheWrite": 0, "totalTokens": 1674 } } },
+          { "seq": 25, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 8, "entry": { "id": "<ENTRY_ID:a2>", "parentId": "<ENTRY_ID:tr3>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "toolCall", "callId": "call_shell_2", "name": "shell", "args": { "command": "bun test" } }, { "type": "toolCall", "callId": "call_msg_2", "name": "messageBot", "args": { "to": "helper", "text": "package.json 版本为 1.0.0" } }], "metadata": { "stopReason": "toolUse", "responseId": "<OPAQUE>" } } } },
+          { "seq": 26, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 9, "entry": { "id": "<ENTRY_ID:usage2>", "parentId": "<ENTRY_ID:a2>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1620, "output": 54, "cacheRead": 1024, "cacheWrite": 0, "totalTokens": 1674 } } } },
+          { "seq": 27, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "status", "state": "waitingTools" } },
+          { "seq": 28, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolResult", "callId": "call_shell_2", "result": { "content": [{ "type": "text", "text": "FAIL src/math.test.ts: expected 3, got 2" }], "details": null, "isError": true } } },
+          { "seq": 29, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 10, "entry": { "id": "<ENTRY_ID:tr4>", "parentId": "<ENTRY_ID:usage2>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_shell_2", "name": "shell", "content": [{ "type": "text", "text": "FAIL src/math.test.ts: expected 3, got 2" }], "isError": true } } },
+          { "seq": 30, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "toolResult", "callId": "call_msg_2", "result": { "content": [{ "type": "text", "text": "已发送给 helper" }], "details": null, "isError": false } } },
+          { "seq": 31, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 11, "entry": { "id": "<ENTRY_ID:tr5>", "parentId": "<ENTRY_ID:tr4>", "timestamp": "<TS>", "type": "toolResult", "callId": "call_msg_2", "name": "messageBot", "content": [{ "type": "text", "text": "已发送给 helper" }], "isError": false } } },
+          { "seq": 32, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "status", "state": "running" } },
+          { "seq": 33, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "contextUsage", "tokens": 1940, "contextWindow": 400000 } },
+          { "seq": 34, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "start", "model": { "modelId": "gpt-5.2" }, "entryId": "<ENTRY_ID:a3>" } },
+          { "seq": 35, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "text", "blockId": "b-1", "delta": "已读取 package.json（demo 1.0.0）并同步给 helper；测试在 src/math.test.ts 失败（expected 3, got 2）。", "done": true } },
+          { "seq": 36, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "usage", "usage": { "input": 1940, "output": 38, "cacheRead": 1536, "cacheWrite": 0, "totalTokens": 1978 } } },
+          { "seq": 37, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 12, "entry": { "id": "<ENTRY_ID:a3>", "parentId": "<ENTRY_ID:tr5>", "timestamp": "<TS>", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "已读取 package.json（demo 1.0.0）并同步给 helper；测试在 src/math.test.ts 失败（expected 3, got 2）。" }], "metadata": { "stopReason": "stop", "responseId": "<OPAQUE>" } } } },
+          { "seq": 38, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "entry", "revision": 13, "entry": { "id": "<ENTRY_ID:usage3>", "parentId": "<ENTRY_ID:a3>", "timestamp": "<TS>", "type": "usage", "category": "chat", "model": { "modelId": "gpt-5.2" }, "usage": { "input": 1940, "output": 38, "cacheRead": 1536, "cacheWrite": 0, "totalTokens": 1978 } } } },
+          { "seq": 39, "sessionId": "s-batch", "runId": "run-batch-1", "event": { "type": "done", "reason": "completed", "stopReason": "stop", "leafId": "<ENTRY_ID:usage3>", "userEntryId": "<ENTRY_ID:u1>", "assistantEntryId": "<ENTRY_ID:a3>", "revision": 13 } }
+        ]
+      },
+      "assertions": [
+        "Turn 1 助手 entry 先于任何 tool-results 发出，未启用工具 call_msg_1 不发 toolCall 回调并自动合成 isError=true",
+        "batch-1 与 batch-2 的 toolResult + entry(toolResult) 均严格按 batchIndex 顺序发出，不受宿主提交乱序影响",
+        "call_shell_2 的 isError=true 不中断 Run，继续进入 Turn 3",
+        "modelNote 仅出现在 Turn 3 上游模型请求中，不出现在 seq 28 toolResult 事件或 seq 29 entry(toolResult) 中"
+      ]
+    },
+    {
+      "request": { "method": "DELETE", "path": "/api/kernel/sessions/s-batch", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

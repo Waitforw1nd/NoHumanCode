@@ -46,6 +46,15 @@ pub struct Route {
     pub parallel_limit: usize,
     #[serde(default)]
     pub key_env: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<crate::provider_transport::ProviderProtocol>,
+}
+
+impl Route {
+    pub fn effective_protocol(&self) -> crate::provider_transport::ProviderProtocol {
+        self.protocol
+            .unwrap_or_else(|| crate::provider_transport::ProviderProtocol::detect(&self.base_url))
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -325,7 +334,8 @@ pub struct Task {
     pub status: String,
     pub output: String,
     pub error: Option<String>,
-    pub messages: Vec<Value>,
+    #[serde(with = "crate::messages::sqlite_messages_serde")]
+    pub messages: Vec<crate::messages::NeutralMessage>,
     pub usage: Value,
     pub created_at: u64,
     pub updated_at: u64,
@@ -490,9 +500,9 @@ pub(crate) fn safe_tool_arguments(raw: &str) -> Result<Option<String>> {
     if !value.is_object() {
         return Ok(None);
     }
-    let safe = crate::secrets::redact_persisted(&value);
+    let safe = crate::redaction::redact_persisted(&value);
     if safe == value
-        && crate::secrets::redact_persisted(&Value::String(raw.to_owned()))
+        && crate::redaction::redact_persisted(&Value::String(raw.to_owned()))
             == Value::String(raw.to_owned())
     {
         return Ok(Some(raw.to_owned()));
@@ -500,7 +510,7 @@ pub(crate) fn safe_tool_arguments(raw: &str) -> Result<Option<String>> {
     Ok(Some(stable_safe_json(&safe)?))
 }
 
-pub(crate) fn safe_tool_arguments_equal(left: &str, right: &str) -> Result<bool> {
+pub fn safe_tool_arguments_equal(left: &str, right: &str) -> Result<bool> {
     let (Some(left), Some(right)) = (safe_tool_arguments(left)?, safe_tool_arguments(right)?)
     else {
         return Ok(false);
@@ -536,7 +546,7 @@ pub fn safe_task_value(task: &Task) -> Result<Value> {
             }
         }
     }
-    Ok(crate::secrets::redact_persisted(&value))
+    Ok(crate::redaction::redact_persisted(&value))
 }
 
 struct UnicodeStringFormatter;
@@ -553,9 +563,9 @@ impl serde_json::ser::Formatter for UnicodeStringFormatter {
     }
 }
 
-pub(crate) fn stable_safe_json(value: &Value) -> Result<String> {
+pub fn stable_safe_json(value: &Value) -> Result<String> {
     let compact = value.to_string();
-    if crate::secrets::redact_persisted(&Value::String(compact.clone()))
+    if crate::redaction::redact_persisted(&Value::String(compact.clone()))
         == Value::String(compact.clone())
     {
         return Ok(compact);
@@ -569,7 +579,7 @@ pub(crate) fn stable_safe_json(value: &Value) -> Result<String> {
     let encoded = String::from_utf8(bytes)?;
     anyhow::ensure!(
         serde_json::from_str::<Value>(&encoded)? == *value
-            && crate::secrets::redact_persisted(&Value::String(encoded.clone()))
+            && crate::redaction::redact_persisted(&Value::String(encoded.clone()))
                 == Value::String(encoded.clone()),
         "安全工具结果无法稳定序列化"
     );
@@ -675,6 +685,36 @@ fn text_content_ok(message: &Value) -> bool {
                     })
             })
     })
+}
+
+pub fn tool_free_neutral_prefix(messages: &[crate::messages::NeutralMessage]) -> bool {
+    use crate::messages::{ContentBlock, NeutralRole};
+    if messages.is_empty() {
+        return false;
+    }
+    let mut saw_user = false;
+    for message in messages {
+        if message.tool_calls().next().is_some() {
+            return false;
+        }
+        let non_empty_text = !message.content.is_empty()
+            && message.content.iter().all(|block| match block {
+                ContentBlock::Text {
+                    text,
+                    signature: None,
+                } => !text.is_empty(),
+                _ => false,
+            });
+        if !non_empty_text {
+            return false;
+        }
+        match message.role {
+            NeutralRole::System | NeutralRole::Assistant => {}
+            NeutralRole::User => saw_user = true,
+            _ => return false,
+        }
+    }
+    saw_user
 }
 
 /// Prefix this tool-free command may copy.

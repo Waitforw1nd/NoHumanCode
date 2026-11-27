@@ -87,6 +87,7 @@ async fn run_fixture(
                 name: "mock".into(),
                 base_url: base,
                 model: "mock".into(),
+                protocol: None,
                 max_tokens: 128,
                 parallel_limit: 1,
                 key_env: None,
@@ -233,11 +234,11 @@ async fn run_fixture(
                     crate::workspace_changes::ChangeState::Failed
                 );
                 assert!(!workspace.join("saved.txt").exists());
-                assert!(task.messages.iter().any(|m| {
-                    m["content"]
-                        .as_str()
-                        .is_some_and(|s| s.contains("re-observe"))
-                }));
+                assert!(
+                    task.messages
+                        .iter()
+                        .any(|m| { m.text_content().contains("re-observe") })
+                );
             }
             SaveCase::Mismatch => {
                 assert_eq!(
@@ -417,7 +418,7 @@ async fn forged_observation_is_rejected_without_workspace_registration_or_task_t
             !task
                 .messages
                 .iter()
-                .any(|m| m["content"].as_str().is_some_and(|c| c.contains("Fixture")))
+                .any(|m| m.text_content().contains("Fixture"))
         );
     }
 }

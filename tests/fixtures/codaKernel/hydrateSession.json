@@ -1,0 +1,72 @@
+{
+  "name": "hydrateSession",
+  "description": "首次水合（带两条历史）、查询、追加 customMessage、切换分支、失配校验、配置更新与删除会话。",
+  "steps": [
+    {
+      "request": {
+        "method": "PUT",
+        "path": "/api/kernel/sessions/s-1",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": {
+          "cwd": "C:/Users/me/.coda/cd-1f2e",
+          "systemPrompt": "你是 Coda。",
+          "model": { "modelId": "gpt-5.2", "protocol": "openai-responses", "contextWindow": 400000, "maxOutputTokens": 128000, "thinkingLevel": "medium" },
+          "tools": [
+            { "name": "read", "description": "读取工作区文件", "parameters": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }, "label": "读取文件", "executionMode": "parallel" },
+            { "name": "shell", "description": "执行命令", "parameters": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] }, "label": "命令", "executionMode": "sequential" },
+            { "name": "loadTools", "description": "按需加载更多工具", "parameters": { "type": "object", "properties": { "names": { "type": "array", "items": { "type": "string" } } } }, "label": "加载工具", "executionMode": "sequential" },
+            { "name": "messageBot", "description": "给群聊中的其他 Coda 发消息", "parameters": { "type": "object", "properties": { "to": { "type": "string" }, "text": { "type": "string" } } }, "label": "群聊消息", "executionMode": "parallel" }
+          ],
+          "activeToolNames": ["read", "shell", "loadTools"],
+          "compaction": { "enabled": true, "keepRecentTokens": 20000 },
+          "steeringMode": "one-at-a-time",
+          "gates": ["beforeModelTurn", "afterTurn"],
+          "history": {
+            "leafId": "e-0002",
+            "entries": [
+              { "id": "e-0001", "parentId": null, "timestamp": "2026-11-27T01:00:00+08:00", "type": "message", "role": "user", "content": [{ "type": "text", "text": "你好" }] },
+              { "id": "e-0002", "parentId": "e-0001", "timestamp": "2026-11-27T01:00:02+08:00", "type": "message", "role": "assistant", "content": [{ "type": "text", "text": "你好，有什么可以帮你？" }], "metadata": { "stopReason": "stop" } }
+            ]
+          }
+        }
+      },
+      "response": { "status": 201, "body": { "sessionId": "s-1", "revision": 1, "leafId": "e-0002", "status": "idle" } }
+    },
+    {
+      "request": { "method": "GET", "path": "/api/kernel/sessions/s-1", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 200, "body": { "sessionId": "s-1", "revision": 1, "leafId": "e-0002", "status": "idle", "activeToolNames": ["read", "shell", "loadTools"] } }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/api/kernel/sessions/s-1/entries",
+        "headers": { "x-coda-token": "<TOKEN>" },
+        "body": { "baseRevision": 1, "entry": { "type": "customMessage", "name": "codaNote", "content": [{ "type": "text", "text": "主人切换了工作区" }], "display": true }, "deliverAs": "append" }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "entry": { "id": "<ENTRY_ID:e3>", "parentId": "e-0002", "timestamp": "<TS>", "type": "customMessage", "name": "codaNote", "content": [{ "type": "text", "text": "主人切换了工作区" }], "display": true },
+          "revision": 2,
+          "leafId": "<ENTRY_ID:e3>"
+        }
+      }
+    },
+    {
+      "request": { "method": "POST", "path": "/api/kernel/sessions/s-1/branch", "headers": { "x-coda-token": "<TOKEN>" }, "body": { "baseRevision": 2, "leafId": "e-0001" } },
+      "response": { "status": 200, "body": { "revision": 3, "leafId": "e-0001" } }
+    },
+    {
+      "request": { "method": "POST", "path": "/api/kernel/sessions/s-1/branch", "headers": { "x-coda-token": "<TOKEN>" }, "body": { "baseRevision": 2, "leafId": "e-0002" } },
+      "response": { "status": 409, "body": { "error": { "code": "SESSION_DIVERGED", "message": "<ANY>", "retryable": true, "details": { "revision": 3, "leafId": "e-0001" } } } }
+    },
+    {
+      "request": { "method": "PATCH", "path": "/api/kernel/sessions/s-1", "headers": { "x-coda-token": "<TOKEN>" }, "body": { "systemPrompt": "你是 Coda（已更新）。" } },
+      "response": { "status": 200, "body": { "sessionId": "s-1", "revision": 3, "leafId": "e-0001", "status": "idle", "activeToolNames": ["read", "shell", "loadTools"] } }
+    },
+    {
+      "request": { "method": "DELETE", "path": "/api/kernel/sessions/s-1", "headers": { "x-coda-token": "<TOKEN>" } },
+      "response": { "status": 204 }
+    }
+  ]
+}

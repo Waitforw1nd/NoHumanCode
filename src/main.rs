@@ -82,6 +82,51 @@ async fn run(instance_lock: &mut Option<std::fs::File>) -> Result<()> {
         error.exit()
     });
 
+    if let Some(cli::Command::Kernel(kernel_args)) = args.command {
+        if args.check
+            || args.json
+            || args.legacy_data.is_some()
+            || args.workspace.is_some()
+            || args.data_dir.is_some()
+        {
+            clap::Error::raw(
+                clap::error::ErrorKind::ArgumentConflict,
+                "kernel 子命令不能与顶层服务参数同时使用",
+            )
+            .exit();
+        }
+        let cli::KernelCommand::Serve(serve_args) = kernel_args.command;
+        if !serve_args.embedded
+            || (!serve_args.token_stdin && serve_args.token_env.is_none())
+            || !serve_args.listen.ip().is_loopback()
+        {
+            clap::Error::raw(
+                clap::error::ErrorKind::ValueValidation,
+                "kernel serve 需要 --embedded、(--token-stdin 或 --token-env) 且 --listen 必须为回环 IP 地址",
+            )
+            .exit();
+        }
+        let media_proxy = serve_args.media_proxy
+            || std::env::var("CODA_KERNEL_MEDIA")
+                .ok()
+                .map(|v| {
+                    let trimmed = v.trim();
+                    trimmed == "1"
+                        || trimmed.eq_ignore_ascii_case("true")
+                        || trimmed.eq_ignore_ascii_case("yes")
+                })
+                .unwrap_or(false);
+        return coda::kernel_server::run_embedded(coda::kernel_server::KernelServeConfig {
+            listen: serve_args.listen,
+            data_dir: serve_args.data_dir,
+            token_stdin: serve_args.token_stdin,
+            token_env: serve_args.token_env,
+            embedded: serve_args.embedded,
+            media_proxy,
+        })
+        .await;
+    }
+
     if let Some(command) = args.command
         && !matches!(command, cli::Command::Serve)
     {
@@ -357,5 +402,38 @@ mod audit_shutdown_tests {
         );
         drop(retained);
         contender.try_lock().unwrap();
+    }
+
+    #[test]
+    fn kernel_serve_parses_token_env_and_conflicts_with_token_stdin() {
+        let parsed = Args::try_parse_from([
+            "coda",
+            "kernel",
+            "serve",
+            "--embedded",
+            "--listen",
+            "127.0.0.1:0",
+            "--token-env",
+            "CODA_CLI_TOKEN",
+        ])
+        .unwrap();
+        let Some(cli::Command::Kernel(k)) = parsed.command else {
+            panic!("expected kernel command");
+        };
+        let cli::KernelCommand::Serve(serve) = k.command;
+        assert!(serve.embedded);
+        assert!(!serve.token_stdin);
+        assert_eq!(serve.token_env.as_deref(), Some("CODA_CLI_TOKEN"));
+
+        let conflict = Args::try_parse_from([
+            "coda",
+            "kernel",
+            "serve",
+            "--embedded",
+            "--token-stdin",
+            "--token-env",
+            "CODA_CLI_TOKEN",
+        ]);
+        assert!(conflict.is_err());
     }
 }

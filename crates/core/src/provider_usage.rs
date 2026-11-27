@@ -85,15 +85,20 @@ pub fn classify_usage(value: &Value) -> UsageObservation {
     let parse = || -> Result<TokenUsage, Reason> {
         let prompt_tokens = read("prompt_tokens")?;
         let completion_tokens = read("completion_tokens")?;
-        let raw_total = read("total_tokens")?;
         let sum = prompt_tokens
             .checked_add(completion_tokens)
             .filter(|&s| s <= i64::MAX as u64)
             .ok_or(Reason::InconsistentTotal)?;
-        let total_tokens = if raw_total == 0 && sum > 0 {
-            sum
-        } else {
-            raw_total
+        let total_tokens = match object.get("total_tokens") {
+            Some(_) => {
+                let raw_total = read("total_tokens")?;
+                if raw_total == 0 && sum > 0 {
+                    sum
+                } else {
+                    raw_total
+                }
+            }
+            None => sum,
         };
         if total_tokens < sum {
             return Err(Reason::InconsistentTotal);
@@ -170,6 +175,38 @@ mod tests {
                 &json!({"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 14})
             ),
             UsageObservation::Invalid(UsageInvalidReason::InconsistentTotal)
+        );
+    }
+
+    #[test]
+    fn computes_total_tokens_when_omitted() {
+        assert_eq!(
+            classify_usage(&json!({"prompt_tokens": 111, "completion_tokens": 22})),
+            UsageObservation::Valid(TokenUsage {
+                prompt_tokens: 111,
+                completion_tokens: 22,
+                total_tokens: 133,
+            })
+        );
+        assert_eq!(
+            classify_usage(&json!({"prompt_tokens": 0, "completion_tokens": 0})),
+            UsageObservation::Valid(TokenUsage {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                total_tokens: 0,
+            })
+        );
+        assert_eq!(
+            classify_usage(&json!({"prompt_tokens": i64::MAX, "completion_tokens": 1})),
+            UsageObservation::Invalid(UsageInvalidReason::InconsistentTotal)
+        );
+        assert_eq!(
+            classify_usage(&json!({"prompt_tokens": 111})),
+            UsageObservation::Invalid(UsageInvalidReason::MissingField)
+        );
+        assert_eq!(
+            classify_usage(&json!({"completion_tokens": 22})),
+            UsageObservation::Invalid(UsageInvalidReason::MissingField)
         );
     }
 }
